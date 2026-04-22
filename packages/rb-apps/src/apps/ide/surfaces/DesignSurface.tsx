@@ -995,11 +995,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const suppressNextToolModeWireFeedbackClearRef = useRef(false);
   // Auto-trace refs: track which node was auto-traced and read traceState without dep
   const autoTracedNodeRef = useRef<string | null>(null);
+  /** When set, traceState wire-net was auto-applied from a lone wire selection (clears on deselect / clear / non-wire trace). */
+  const autoWireSelectionTraceIdRef = useRef<string | null>(null);
   const traceStateRef = useRef<DesignTraceState | null>(null);
   traceStateRef.current = traceState;
 
   const clearTrace = useCallback(() => {
     lastTracedPortRef.current = null;
+    autoWireSelectionTraceIdRef.current = null;
     setTraceState(null);
   }, []);
 
@@ -1010,6 +1013,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return;
     }
     lastTracedPortRef.current = portKey;
+    autoWireSelectionTraceIdRef.current = null;
     const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wid) => highlights.set(wid, ['#fbbf24']));
@@ -1036,6 +1040,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       return;
     }
     lastTracedPortRef.current = fanoutKey;
+    autoWireSelectionTraceIdRef.current = null;
     const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
@@ -3192,6 +3197,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     highlightedNodes.add(nodeId);
     const portKeys = buildTracePortKeySet(wireIds);
     portKeys.add(`${nodeId}:${portName}`);
+    autoWireSelectionTraceIdRef.current = null;
     setTraceState({
       kind: 'fanin-port',
       sourceKey: `verify:${verifyLinkedSignalKey}`,
@@ -3221,6 +3227,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     highlightedNodes.add(nodeId);
     const portKeys = buildTracePortKeySet(wireIds);
     portKeys.add(`${nodeId}:${portName}`);
+    autoWireSelectionTraceIdRef.current = null;
     setTraceState({
       kind: 'fanin-port',
       sourceKey: `debug:${debugLinkedSignalKey}:${activeDebugContext?.tick ?? effectiveExternalDebugTick ?? 'tick'}`,
@@ -3733,23 +3740,81 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     </div>
   );
 
-  const traceSelectedWire = useCallback((wireId: string) => {
-    const bundle = buildWireTraceBundle(editorCircuit, wireId);
-    const parsed = parseWireId(wireId);
-    if (!bundle || !parsed) return;
-    setTraceState({
-      kind: 'wire-net',
-      sourceKey: wireId,
-      label: `Net ${parsed.fromNodeId}.${parsed.fromPort}`,
-      signalKey: `${parsed.fromNodeId}.${parsed.fromPort}`,
-      wireHighlights: bundle.wireHighlights,
-      nodeIds: bundle.nodeIds,
-      portKeys: bundle.portKeys,
-    });
-    lastTracedPortRef.current = null;
-    setWireContextMenu(null);
-    setActionToast(`Tracing ${parsed.fromNodeId}.${parsed.fromPort}.`);
-  }, [editorCircuit]);
+  const applyWireNetTraceForWireId = useCallback(
+    (wireId: string, origin: 'manual' | 'selection') => {
+      const bundle = buildWireTraceBundle(editorCircuit, wireId);
+      const parsed = parseWireId(wireId);
+      if (!bundle || !parsed) return;
+      if (origin === 'manual') {
+        autoWireSelectionTraceIdRef.current = null;
+        setActionToast(`Tracing ${parsed.fromNodeId}.${parsed.fromPort}.`);
+      } else {
+        autoWireSelectionTraceIdRef.current = wireId;
+      }
+      setTraceState({
+        kind: 'wire-net',
+        sourceKey: wireId,
+        label: `Net ${parsed.fromNodeId}.${parsed.fromPort}`,
+        signalKey: `${parsed.fromNodeId}.${parsed.fromPort}`,
+        wireHighlights: bundle.wireHighlights,
+        nodeIds: bundle.nodeIds,
+        portKeys: bundle.portKeys,
+      });
+      lastTracedPortRef.current = null;
+      setWireContextMenu(null);
+    },
+    [editorCircuit]
+  );
+
+  const traceSelectedWire = useCallback(
+    (wireId: string) => {
+      applyWireNetTraceForWireId(wireId, 'manual');
+    },
+    [applyWireNetTraceForWireId]
+  );
+
+  // Auto: selecting a single wire shows every segment driven by the same source (fanout) without an extra "Trace net" click.
+  useEffect(() => {
+    if (verifyLinkedSignalKey || debugLinkedSignalKey) return;
+    if (selection.nodes.size > 0) return;
+    if (selection.wires.size !== 1) {
+      if (selection.wires.size === 0) {
+        const id = autoWireSelectionTraceIdRef.current;
+        if (id && traceStateRef.current?.kind === 'wire-net' && traceStateRef.current.sourceKey === id) {
+          setTraceState(null);
+          autoWireSelectionTraceIdRef.current = null;
+        }
+      }
+      return;
+    }
+    const wireId = Array.from(selection.wires)[0]!;
+    if (
+      autoWireSelectionTraceIdRef.current === wireId &&
+      traceStateRef.current?.kind === 'wire-net' &&
+      traceStateRef.current.sourceKey === wireId
+    ) {
+      return;
+    }
+    applyWireNetTraceForWireId(wireId, 'selection');
+  }, [
+    applyWireNetTraceForWireId,
+    debugLinkedSignalKey,
+    selection.nodes.size,
+    selection.wires,
+    verifyLinkedSignalKey,
+  ]);
+
+  useEffect(() => {
+    if (selection.nodes.size === 0) return;
+    if (!autoWireSelectionTraceIdRef.current) return;
+    if (
+      traceStateRef.current?.kind === 'wire-net' &&
+      traceStateRef.current.sourceKey === autoWireSelectionTraceIdRef.current
+    ) {
+      setTraceState(null);
+    }
+    autoWireSelectionTraceIdRef.current = null;
+  }, [selection.nodes.size]);
 
   const traceSelectedContext = useCallback(() => {
     if (primarySelectedWireId) {

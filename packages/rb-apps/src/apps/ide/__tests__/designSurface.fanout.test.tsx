@@ -286,6 +286,20 @@ describe('DesignSurface fan-out — trace activation', () => {
       expect(traceLabel.textContent).toBe('No trace locked');
     });
   });
+
+  it('auto-applies driver net trace when a single wire is selected (no Trace net click)', async () => {
+    const view = renderSurface();
+    const wireId = 'sw0_node.out-ld0_node.in';
+
+    act(() => {
+      useLogicViewStore.getState().selectWire(wireId);
+    });
+
+    await waitFor(() => {
+      const traceLabel = view.getByTestId('ide-design-context-trace-state');
+      expect(traceLabel.textContent).toContain('Net sw0_node.out');
+    });
+  });
 });
 
 // ─── Upstream trace regression ────────────────────────────────────────────────
