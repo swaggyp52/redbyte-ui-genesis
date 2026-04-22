@@ -246,7 +246,7 @@ describe('DesignSurface multi-wire net story', () => {
     expect(hint).toMatch(/SW1/);
   });
 
-  it('clears auto net trace when a second wire is added to the selection', async () => {
+  it('keeps the full net highlighted when a second same-net segment is added to the selection', async () => {
     useCircuitStore.setState({
       circuit: structuredClone(FANOUT_TWO_WIRES),
       isDirty: false,
@@ -274,7 +274,8 @@ describe('DesignSurface multi-wire net story', () => {
     });
 
     await waitFor(() => {
-      expect(view.queryByTestId('ide-design-active-trace')).toBeNull();
+      const el = view.queryByTestId('ide-design-active-trace');
+      expect(el?.textContent).toMatch(/One net/);
     });
   });
 });

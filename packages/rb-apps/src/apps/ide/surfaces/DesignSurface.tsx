@@ -3860,7 +3860,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   const applyWireNetTraceForWireId = useCallback(
-    (wireId: string, origin: 'manual' | 'selection') => {
+    (wireId: string, origin: 'manual' | 'selection' | 'multi-same-net') => {
       const bundle = buildWireTraceBundle(editorCircuit, wireId);
       const parsed = parseWireId(wireId);
       if (!bundle || !parsed) return;
@@ -3869,6 +3869,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         // Intentionally no action toast: traceState.label (title bar + inspector) and canvas
         // highlight already confirm the same relationship — a toast duplicates noise.
       } else {
+        // selection or multi-same-net: one canonical wire id for auto-trace ref bookkeeping
         autoWireSelectionTraceIdRef.current = wireId;
       }
       setTraceState({
@@ -3924,13 +3925,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     verifyLinkedSignalKey,
   ]);
 
-  // Multi-wire: clear any net/fanin/fanout trace so the title bar and inspector cannot contradict the grouped message.
+  // Multi-wire: if every segment is from the same driver, re-use the same full-net highlight as
+  // single-wire auto-trace (one electrical story). If drivers differ, clear trace to avoid
+  // implying a single net.
   useEffect(() => {
     if (verifyLinkedSignalKey || debugLinkedSignalKey) return;
     if (selection.wires.size <= 1) return;
     if (selection.nodes.size > 0) return;
+    const wireIds = Array.from(selection.wires);
+    const netSummary = summarizeMultiWireNetSelection(editorCircuit, wireIds, ioRowByNodeId);
+    if (netSummary.sameNet && wireIds.length > 0) {
+      const canonical = [...wireIds].sort()[0]!;
+      applyWireNetTraceForWireId(canonical, 'multi-same-net');
+      return;
+    }
     clearTrace();
-  }, [clearTrace, debugLinkedSignalKey, selection.nodes.size, selection.wires.size, verifyLinkedSignalKey]);
+  }, [
+    applyWireNetTraceForWireId,
+    clearTrace,
+    debugLinkedSignalKey,
+    editorCircuit,
+    ioRowByNodeId,
+    selection.nodes.size,
+    selection.wires,
+    verifyLinkedSignalKey,
+  ]);
 
   useEffect(() => {
     if (selection.nodes.size === 0) return;
@@ -4393,7 +4412,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
             <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
               {multiWireNetSummary?.sameNet
-                ? 'To read live value for one hop, select a single wire. To re-run a full net highlight, deselect to one of these segments so the canvas can trace from the same driver again.'
+                ? 'To read live value for one hop, select a single wire. The canvas still shows the full net while several segments on that net stay selected.'
                 : 'Pick one net at a time: deselect until you have one driver in this list, or a single wire, then use Trace and the signal panel on the right.'}
             </p>
           </div>
@@ -7859,7 +7878,7 @@ function summarizeMultiWireNetSelection(
       sameNet: true,
       groupLabels,
       headline: 'Same net — all selected segments share one driver',
-      detail: `The ${totalWires} segments you picked all branch from one source (${g}) — it is one electrical signal. Select a single wire to read a clean hop, or deselect to one segment to re-run full-net highlight.`,
+      detail: `The ${totalWires} segments you picked all branch from one source (${g}) — it is one electrical signal. The canvas keeps the full net highlighted; select one segment when you want a single-hop readout in the panel.`,
     };
   }
   const list = groupLabels.join(' · ');
