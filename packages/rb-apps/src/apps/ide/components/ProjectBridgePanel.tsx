@@ -4,7 +4,7 @@ import { SurfacePanel } from './SurfaceLayoutPrimitives';
 import { getProjectKindDisplayName, type ProjectKind, type ScenarioAuthority } from '../projectIdentity';
 import type { ProjectHealth } from '../projectHealth';
 
-// ProjectBridgePanel — single authoritative "what does this project actually describe"
+// ProjectBridgePanel - single authoritative "what does this project actually describe"
 // summary. All truth fields are pre-derived by the caller (usually ProjectSurface via
 // workflowAuthority + projectHealth). This component is intentionally presentational:
 // it does not guess state or compute readiness; it only renders.
@@ -35,7 +35,7 @@ export interface ProjectBridgePanelProps {
 }
 
 // Truthful hardware-readiness copy. We never claim "hardware proven" from app state
-// alone — only that the project is ready for hardware handoff. Proof of an actual
+// alone - only that the project is ready for hardware handoff. Proof of an actual
 // lab bring-up is tracked elsewhere (bitstream provenance + submission manifest).
 function hardwareReadinessCopy(
   hardwareReady: boolean,
@@ -91,7 +91,7 @@ function importFidelityCopy(fidelity: ProjectBridgeImportFidelity): {
       return {
         tone: 'warn',
         label: 'Reconstructed',
-        detail: 'Circuit was rebuilt from HDL — some authoring details may not round-trip exactly.',
+        detail: 'Circuit was rebuilt from HDL - some authoring details may not round-trip exactly.',
       };
     case 'partial':
       return {
@@ -186,9 +186,10 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
   const kindLabel = projectKind === 'blank' && readiness.hasCircuit
     ? 'Fresh Project'
     : getProjectKindDisplayName(projectKind);
+  const kindContextLabel = projectKind === 'example' && sourceExampleId ? 'Starter loaded' : null;
   // Sim top is an authored, distinct entity (conventionally `${designTop}_tb`).
-  // Even when a caller omits it, we never claim the testbench *is* the design —
-  // we show a muted em-dash so the distinction stays visible.
+  // Even when a caller omits it, we never claim the testbench *is* the design -
+  // we show a muted dash so the distinction stays visible.
   const simTop = simulationTopName && simulationTopName.trim().length > 0
     ? simulationTopName
     : null;
@@ -203,7 +204,7 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
           </h3>
           <p className="ide-project-bridge-subtitle" data-testid={`${testId}-subtitle`}>
             {kindLabel}
-            {sourceExampleId ? ` · ${sourceExampleId}` : ''}
+            {kindContextLabel ? ` · ${kindContextLabel}` : ''}
           </p>
         </div>
         <div className="ide-project-bridge-header-right">

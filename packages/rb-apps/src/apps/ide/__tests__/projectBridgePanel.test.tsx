@@ -55,6 +55,22 @@ describe('ProjectBridgePanel', () => {
     expect(getByTestId('ide-project-bridge-board').textContent).toContain('Basys3');
   });
 
+  it('does not leak raw starter ids into detached custom project framing', () => {
+    const { getByTestId } = render(
+      <ProjectBridgePanel {...makeProps({ sourceExampleId: 'signal-tour' })} />
+    );
+    const subtitle = getByTestId('ide-project-bridge-subtitle').textContent ?? '';
+    expect(subtitle).toContain('Custom Project');
+    expect(subtitle).not.toContain('signal-tour');
+  });
+
+  it('uses student-facing starter copy for active example framing', () => {
+    const { getByTestId } = render(
+      <ProjectBridgePanel {...makeProps({ projectKind: 'example', sourceExampleId: 'signal-tour' })} />
+    );
+    expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Starter loaded');
+  });
+
   it('truncates the determinism hash to 12 characters', () => {
     const { getByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
     expect(getByTestId('ide-project-bridge-hash').textContent).toBe('abc123def456');

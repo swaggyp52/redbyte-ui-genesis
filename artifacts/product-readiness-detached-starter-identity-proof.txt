@@ -1,0 +1,15 @@
+Post-fix runtime proof - 2026-04-22
+URL: http://127.0.0.1:4173/os/
+Flow: restored detached starter session -> Project surface
+Observed shell state:
+- top heading: 2-Bit Up Counter
+- Project Bridge title: 2-Bit Up Counter
+- Project Bridge subtitle: Custom Project
+Persisted runtime state:
+- projectKind: custom
+- sourceExampleId: two-bit-counter
+- activeExampleId: null
+- projectName: 2-Bit Up Counter
+- projectDescription: Clock-driven counter. SW0 enables; LD1/LD0 show the 2-bit value 00?01?10?11?00.
+Console warnings observed:
+- [RB_BOOT] RB_APPS_REGISTER_TIMEOUT (IDE) {ms: 5000}

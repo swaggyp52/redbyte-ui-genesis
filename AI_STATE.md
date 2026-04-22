@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-04-21 (Whole-repo product-readiness deep dive: detached starter identity truth)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `docs/release/product-hardening-ticket-2026-04-21-whole-repo-product-readiness-deep-dive.md`, `artifacts/product-readiness-detached-starter-identity-restore.png`, `artifacts/product-readiness-detached-starter-identity-proof.txt`
+
+**Context**: A whole-repo audit found the highest-severity actionable issue in startup/project truth: detached starter projects were restoring as `Untitled Project` while the loaded design still clearly came from a named starter. The same issue family also leaked raw starter ids like `two-bit-counter` into Project bridge chrome.
+
+**Changes**:
+- **Recovered honest project identity for detached starters**: the runtime now preserves starter-derived project name/summary when a student first edits a starter and also repairs older persisted detached snapshots that had already been scrubbed to `Untitled Project`.
+- **Kept ownership truth intact**: the project still detaches to `custom`, clears `activeExampleId`, and strips inherited starter compare state, so the fix restores naming truth without reintroducing starter authority.
+- **Removed raw starter slug leakage from Project bridge**: detached custom projects no longer append internal `sourceExampleId` values in student-facing bridge chrome; active example framing uses student-facing copy instead.
+- **Captured live proof after rebuild**: the rebuilt preview restored the counter session with matching shell heading, bridge title, and persisted runtime identity under `2-Bit Up Counter`.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` -> **57/57 pass**
+- `pnpm --filter @redbyte/playground build` -> **pass**
+- `pnpm build:unified` -> **pass**
+- `pnpm repo:status` -> **fails on pre-existing `IDE ZIP Import Contract` only**
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (Doc index, manuals, QA, ticket templates, GitHub issue forms)
 
 **Subsystem**: `docs/DOC_INDEX.md`, `docs/ai-usage-rules.md`, `docs/manuals/RedByte_Product_Manual.md`, `docs/rehearsal/failure-ticket-template.md`, `docs/release/manual-assignment-qa-script.md`, `docs/release/product-hardening-ticket-template.md`, `.github/ISSUE_TEMPLATE/`

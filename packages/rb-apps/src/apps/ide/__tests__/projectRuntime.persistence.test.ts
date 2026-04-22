@@ -142,11 +142,11 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.projectKind).toBe('custom');
     expect(merged.activeExampleId).toBeNull();
     expect(merged.sourceExampleId).toBe('signal-tour');
-    expect(merged.projectName).toBe('Untitled Project');
-    expect(merged.projectDescription).toBe('');
+    expect(merged.projectName).toBe('Signal Tour: Switches → LEDs');
+    expect(merged.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
   });
 
-  it('sanitizes detached starter identity when loading a saved project snapshot', () => {
+  it('recovers detached starter identity when loading a saved project snapshot', () => {
     useProjectRuntime.getState().loadFromProject({
       kind: 'rb-project',
       version: 1,
@@ -194,8 +194,8 @@ describe('mergePersistedRuntimeState', () => {
     expect(loaded.projectKind).toBe('custom');
     expect(loaded.activeExampleId).toBeNull();
     expect(loaded.sourceExampleId).toBe('signal-tour');
-    expect(loaded.projectName).toBe('Untitled Project');
-    expect(loaded.projectDescription).toBe('');
+    expect(loaded.projectName).toBe('Signal Tour: Switches → LEDs');
+    expect(loaded.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
     expect(loaded.scenarioAuthority).toBe('draft');
     expect(loaded.projectVectors[0]?.expected).toEqual({});
     expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
@@ -246,10 +246,30 @@ describe('mergePersistedRuntimeState', () => {
 
     expect(loaded.projectKind).toBe('custom');
     expect(loaded.sourceExampleId).toBe('signal-tour');
+    expect(loaded.projectName).toBe('Signal Tour: Switches → LEDs');
+    expect(loaded.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
     expect(loaded.scenarioAuthority).toBe('draft');
     expect(loaded.verifyLastRun).toBeUndefined();
     expect(loaded.projectVectors[0]?.expected).toEqual({});
     expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
+  });
+
+  it('keeps the starter name when the first design edit detaches example ownership', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('signal-tour');
+
+    const beforeEdit = useProjectRuntime.getState();
+    expect(beforeEdit.projectKind).toBe('example');
+    expect(beforeEdit.projectName).toBe('Signal Tour: Switches → LEDs');
+
+    runtime.addDesignNode('NOT', { x: 480, y: 120 });
+
+    const detached = useProjectRuntime.getState();
+    expect(detached.projectKind).toBe('custom');
+    expect(detached.activeExampleId).toBeNull();
+    expect(detached.sourceExampleId).toBe('signal-tour');
+    expect(detached.projectName).toBe('Signal Tour: Switches → LEDs');
+    expect(detached.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
   });
 
   it('invalidates legacy runtime-backed verify trust on restore', () => {

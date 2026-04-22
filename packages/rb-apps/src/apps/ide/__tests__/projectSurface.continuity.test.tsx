@@ -510,8 +510,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
-            projectName: 'Untitled Project',
-            description: '',
+            projectName: 'Signal Tour: Switches â†’ LEDs',
+            description: 'Four-wire passthrough. Learn mapping, run Verify, and see the board light up.',
             examples,
             projectKind: 'custom',
             sourceExampleId: 'signal-tour',
@@ -524,7 +524,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     // Reconciliation R2: the Bridge owns kind framing; the session narrative owns name.
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
-    expect(getByTestId('ide-project-session-narrative').textContent).toContain('Untitled Project');
+    expect(getByTestId('ide-project-bridge-subtitle').textContent).not.toContain('signal-tour');
+    expect(getByTestId('ide-project-session-narrative').textContent).toContain('Signal Tour: Switches â†’ LEDs');
     expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
     expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();
