@@ -41,7 +41,7 @@
 ## Disposition
 
 - **Status:** fixed in slice
-- **Git:** `fix(ide): Phase 3b — Project-first mapping authority (Hardware/Export)` on `main` (full SHA: `git log -1 --grep=Phase 3b`)
+- **Commit:** `eb0c69911c23d000b16c0fa837928a3116d471fb` — `fix(ide): Phase 3b — Project-first mapping authority (Hardware/Export)` on `main`
 
 ## Attribution
 
