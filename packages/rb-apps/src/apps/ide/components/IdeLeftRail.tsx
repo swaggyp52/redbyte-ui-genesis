@@ -10,12 +10,14 @@ interface WorkflowStep {
   id: IdeMode;
   label: string;
   step: number;
+  hint: string;
   icon: React.ReactNode;
 }
 
 interface UtilityEntry {
   id: IdeMode;
   label: string;
+  hint: string;
   icon: React.ReactNode;
 }
 
@@ -128,6 +130,7 @@ const WORKFLOW_STEPS: WorkflowStep[] = IDE_WORKFLOW_ROUTE_STEPS.map((step) => ({
 const PROJECT_ENTRY: UtilityEntry = {
   id: 'project',
   label: 'Project',
+  hint: 'Start and review',
   icon: <ProjectIcon />,
 };
 
@@ -167,7 +170,10 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
         title={entry.label}
       >
         <span className="ide-mode-icon">{entry.icon}</span>
-        <span className="ide-mode-label">{entry.label}</span>
+        <span className="ide-mode-copy">
+          <span className="ide-mode-label">{entry.label}</span>
+          <span className="ide-mode-hint">{entry.hint}</span>
+        </span>
       </button>
     );
   };
@@ -193,7 +199,10 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
           {isDone && !isActive ? 'OK' : step.step}
         </span>
         <span className="ide-mode-icon">{step.icon}</span>
-        <span className="ide-mode-label">{step.label}</span>
+        <span className="ide-mode-copy">
+          <span className="ide-mode-label">{step.label}</span>
+          <span className="ide-mode-hint">{step.hint}</span>
+        </span>
       </button>
     );
   };

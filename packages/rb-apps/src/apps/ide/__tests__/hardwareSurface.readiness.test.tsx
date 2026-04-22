@@ -93,12 +93,12 @@ function makeHardwareWorkflowAuthority(
 }
 
 describe('HardwareSurface readiness', () => {
-  it('starts with the inspector collapsed and the console minimized so mapping stays central', () => {
+  it('starts with the inspector visible and the console minimized so bring-up context stays readable', () => {
     const health = makeHealth({
       blockingIssues: [],
       dirtySinceExport: false,
     });
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Hardware Layout Defaults"
@@ -124,8 +124,8 @@ describe('HardwareSurface readiness', () => {
 
     expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Hardware');
     expect(queryByTestId('ide-hw-callout')).toBeNull();
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(getByTestId('ide-inspector')).toBeTruthy();
+    expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
   });
 
@@ -271,7 +271,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('opens in map mode and points back to Design when no boundary rows exist yet', () => {
-    const { getByTestId, queryByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Empty hardware flow"
@@ -298,7 +298,9 @@ describe('HardwareSurface readiness', () => {
     expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
     expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Add boundary I/O in Design first');
     expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
-    expect(getByTestId('ide-hw-map-empty').textContent).toContain('Add inputs and outputs in Design');
+    expect(getAllByTestId('ide-hw-map-empty').at(-1)?.textContent).toContain(
+      'Add inputs and outputs in Design'
+    );
   });
 
   it('treats combinational projects as timing-ready when no control signal is required', () => {

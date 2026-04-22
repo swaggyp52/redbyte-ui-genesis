@@ -31814,3 +31814,70 @@ Key details:
 - The stimulus table still leaves some dead vertical space in the draft state; a second pass could tighten the empty lower canvas region further.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-04-21 (IDE shell / rails / workspace coherence)
+
+**Subsystem**: IDE shared shell
+
+**Problem**
+
+- The accepted Project, Verify, Hardware, and Export logic slices were stronger, but the always-visible shell still felt rough and fragmented.
+- The global left rail was too cramped in runtime, Project still duplicated shell navigation with its own dock, and Hardware / Export hid critical right-side context by default.
+- Cross-surface transitions still risked reading like separate tools instead of one guided IDE.
+
+**Files changed**
+
+- `packages/rb-apps/src/apps/ide/workflowStages.ts`
+- `packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.launchpadRemoval.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx`
+- `docs/release/product-hardening-ticket-2026-04-21-ide-shell-rails-workspace-coherence.md`
+
+**What changed**
+
+- Added short action hints to the global workflow rail:
+  - `Design / Build circuit`
+  - `Verify / Check behavior`
+  - `Map Pins / Assign board pins`
+  - `Export / Build files`
+- Widened and respaced the left rail so the shell reads as a deliberate navigation spine instead of cropped utility chrome.
+- Removed the duplicate Project-side workflow dock so Project relies on the shared shell hierarchy.
+- Opened the right inspector by default in Hardware and Export while keeping manual collapse available.
+- Renamed the staged hardware step language from `Test on Board` to `Board Check` in the runtime shell.
+- Tightened shell-facing tests so they assert the new Project dock behavior and the new visible-inspector defaults.
+
+**Validation**
+
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx` -> PASS
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.launchpadRemoval.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` -> PASS
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm build:unified` -> PASS
+- Runtime replay against local preview (`http://127.0.0.1:4173/os/`) covered:
+  - Flow A fresh entry
+  - Flow B starter to design
+  - Flow C design to verify
+  - Flow D verify to project
+  - Flow E project to hardware/export
+- Runtime artifacts:
+  - `artifacts/ide-shell-coherence-flow-a-fresh-entry-postpatch.png`
+  - `artifacts/ide-shell-coherence-flow-b-design-postpatch.png`
+  - `artifacts/ide-shell-coherence-flow-c-verify-postpatch.png`
+  - `artifacts/ide-shell-coherence-flow-d-project-after-verify-postpatch.png`
+  - `artifacts/ide-shell-coherence-flow-e-hardware-postpatch.png`
+  - `artifacts/ide-shell-coherence-flow-e-export-postpatch.png`
+- Playwright runtime measurement confirmed the final left rail width at `92px`; before the final shell CSS correction, a stale later rule was still forcing `72px`.
+
+**Remaining weakness**
+
+- The default startup route still shows a starter-derived project body while the top-level title reads `Untitled Project`, so first-launch truth is not fully resolved by this shell slice.
+- Verify remains intentionally sparse before a run populates evidence; the shell is more coherent, but that pre-run empty state is still visually thin.
+
+- **Attribution**: Connor Angiel

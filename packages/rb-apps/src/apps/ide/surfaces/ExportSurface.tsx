@@ -1287,7 +1287,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       consoleHasBlocking={hasBlockingErrors}
       consoleHasEntries={diagnosticsList.length > 0}
       leftDockMode="hidden"
-      rightDockMode="collapsed"
+      rightDockMode="visible"
+      rightDockCanCollapse
       consoleMode="collapsed"
       inspector={
         <>

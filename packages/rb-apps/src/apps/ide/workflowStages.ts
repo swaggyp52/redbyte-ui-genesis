@@ -18,6 +18,7 @@ export interface IdeWorkflowRouteStep {
   id: IdeWorkflowRouteMode;
   label: string;
   step: number;
+  hint: string;
 }
 
 export const DESIGN_STAGE_LABEL = 'Design';
@@ -53,10 +54,10 @@ export const IDE_MODE_DEFINITIONS: IdeModeDefinition[] = [
 ];
 
 export const IDE_WORKFLOW_ROUTE_STEPS: IdeWorkflowRouteStep[] = [
-  { id: 'design', label: DESIGN_STAGE_LABEL, step: 1 },
-  { id: 'verify', label: VERIFY_STAGE_LABEL, step: 2 },
-  { id: 'hardware', label: MAP_PINS_STAGE_LABEL, step: 3 },
-  { id: 'export', label: EXPORT_STAGE_LABEL, step: 4 },
+  { id: 'design', label: DESIGN_STAGE_LABEL, step: 1, hint: 'Build circuit' },
+  { id: 'verify', label: VERIFY_STAGE_LABEL, step: 2, hint: 'Check behavior' },
+  { id: 'hardware', label: MAP_PINS_STAGE_LABEL, step: 3, hint: 'Assign board pins' },
+  { id: 'export', label: EXPORT_STAGE_LABEL, step: 4, hint: 'Build files' },
 ];
 
 export function getIdeModeLabel(mode: IdeMode): string {

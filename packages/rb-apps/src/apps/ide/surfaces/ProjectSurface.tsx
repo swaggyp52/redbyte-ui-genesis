@@ -880,6 +880,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={false}
       consoleHasEntries={false}
+      leftDockMode="hidden"
       consoleMode="hidden"
       inspector={null}
       hideRightDock

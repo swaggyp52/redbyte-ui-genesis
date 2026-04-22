@@ -17698,6 +17698,107 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   opacity: 1;
 }
 
+/* Shell hardening: give the always-visible rail enough room to read like a real
+   navigation spine, and keep collapsed dock affordances legible when users hide
+   them manually. */
+:root[data-redbyte-mode='ide'] {
+  --ide-rail-width: 92px;
+}
+
+.ide-left-rail {
+  width: var(--ide-rail-width) !important;
+  min-width: var(--ide-rail-width) !important;
+  padding: 10px 8px !important;
+  gap: 8px !important;
+}
+
+.ide-left-rail-nav {
+  gap: 8px !important;
+}
+
+.ide-mode-button {
+  min-height: 72px !important;
+  padding: 12px 8px !important;
+  gap: 7px !important;
+  border-radius: 12px !important;
+}
+
+.ide-mode-button--utility {
+  min-height: 64px !important;
+}
+
+.ide-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(18, 32, 49, 0.88);
+  border: 1px solid rgba(88, 131, 166, 0.26);
+  color: rgba(173, 201, 226, 0.82);
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 0 !important;
+}
+
+.ide-mode-button.is-complete .ide-step-num {
+  background: rgba(10, 49, 34, 0.82);
+}
+
+.ide-mode-icon {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.ide-mode-copy {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.ide-mode-label {
+  max-width: none !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1.18 !important;
+  text-align: center;
+  white-space: normal !important;
+  text-wrap: balance;
+}
+
+.ide-mode-hint {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-align: center;
+  color: rgba(151, 178, 201, 0.72);
+  text-wrap: balance;
+}
+
+.ide-mode-button.is-active .ide-mode-hint {
+  color: rgba(196, 245, 239, 0.82);
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail {
+  min-width: 46px !important;
+  padding: 14px 6px !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-label {
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
+  font-size: 9px !important;
+}
+
 /* ── Design — selection identity heading ─────────────────────────────────────── */
 .ide-design-selection-identity {
   padding-bottom: var(--rb-space-2);

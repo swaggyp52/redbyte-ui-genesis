@@ -114,15 +114,16 @@ describe('ProjectSurface — launchpad trio removed (Phase 2 Slice 1)', () => {
     expect(getByTestId('ide-project-command-strip-primary-cta')).toBeTruthy();
   });
 
-  it('still renders all 4 dock stage navigation items', () => {
-    const { getByTestId } = render(
+  it('keeps project free of a duplicate workflow dock', () => {
+    const { queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
       </BoardSignalProvider>
     );
-    expect(getByTestId('ide-project-dock-nav-design')).toBeTruthy();
-    expect(getByTestId('ide-project-dock-nav-verify')).toBeTruthy();
-    expect(getByTestId('ide-project-dock-nav-hardware')).toBeTruthy();
-    expect(getByTestId('ide-project-dock-nav-export')).toBeTruthy();
+    expect(queryByTestId('ide-project-start-dock')).toBeNull();
+    expect(queryByTestId('ide-project-dock-nav-design')).toBeNull();
+    expect(queryByTestId('ide-project-dock-nav-verify')).toBeNull();
+    expect(queryByTestId('ide-project-dock-nav-hardware')).toBeNull();
+    expect(queryByTestId('ide-project-dock-nav-export')).toBeNull();
   });
 });

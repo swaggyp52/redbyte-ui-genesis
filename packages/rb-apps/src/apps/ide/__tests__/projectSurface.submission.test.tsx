@@ -435,8 +435,8 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    const dockNavList = getAllByTestId('ide-project-dock-nav-export');
-    expect(dockNavList[dockNavList.length - 1]?.textContent).toContain('Open now');
+    const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
+    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Continue to Verify');
   });
 
   it('displays up to top 3 blocking issues with readable messages', () => {

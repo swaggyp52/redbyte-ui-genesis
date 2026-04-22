@@ -1,0 +1,6 @@
+[WARNING] [RB_BOOT] RB_APPS_REGISTER_TIMEOUT (IDE) {ms: 5000}
+Source builds observed during replay:
+- full-bootstrap-wuYZCeUu.js
+- full-bootstrap-B4p7Gief.js
+- full-bootstrap-Db4YSaU7.js
+No Playwright-observed runtime errors during post-patch shell replay.

@@ -971,7 +971,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       return {
         title: 'Prepare the board with guided bring-up',
         body: 'Use the board-first bring-up checklist to set inputs, watch the highlighted outputs, and confirm behavior before you program the Basys3.',
-        primaryLabel: 'Open Board Test',
+        primaryLabel: 'Open Board Check',
         primaryAction: () => setHwMode('bringup'),
         primaryTestId: 'ide-hardware-next-primary',
         secondaryLabel: 'Open Pre-flight',
@@ -1208,7 +1208,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     hwMode === 'map'
       ? 'Stage 1 · Map Pins'
       : hwMode === 'bringup'
-        ? 'Stage 2 · Test on Board'
+        ? 'Stage 2 · Board Check'
         : hwMode === 'proof'
           ? 'Stage 3 · Pre-flight'
           : 'Stage 4 · Simulation';
@@ -1220,7 +1220,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           return 'Add inputs and outputs in Design first, then bind each boundary signal to a physical pin on the Basys3.';
         }
         if (mappingReady) {
-          return 'Mapping is complete. Continue to Test on Board with bring-up vectors, or open Export when you are ready to build a bitstream.';
+          return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export when you are ready to build a bitstream.';
         }
         return `Assign every required signal to a board pin (${unresolvedRequiredCount} remaining). Select a row in the list, then click the matching region on the board.`;
       case 'bringup':
@@ -1366,7 +1366,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const bringupDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--bringup" testId="ide-hw-bringup-dock">
       <header className="ide-workbench-placeholder-header">
-        <h3>Test on Board</h3>
+        <h3>Board Check</h3>
         <IdeStatusPill
           tone={
             bringupTickGroups.length === 0
@@ -1720,7 +1720,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={hasBlocking}
       consoleHasEntries={hasBlocking}
-      rightDockMode="collapsed"
+      rightDockMode="visible"
+      rightDockCanCollapse
       consoleMode="collapsed"
       dock={activeDock}
       inspector={
@@ -1932,7 +1933,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Test on Board</span>
+              <span className="ide-hw-mode-segment-title">Board Check</span>
               <span className="ide-hw-mode-segment-hint">Guided board checks</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 {vectorsCount > 0 ? '✓' : '○'}
