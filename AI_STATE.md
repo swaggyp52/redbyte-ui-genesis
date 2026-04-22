@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 4 — Project Map Pins completion flow / vertical order)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `docs/release/product-hardening-ticket-2026-04-22-project-map-pins-manual-redesign.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context**: Authority/copy for Map Pins was improved in Phase 3b, but **Board pin mapping** still rendered **after** the command strip, **About this project** session block, and **Try another starter** — the editable table was often **below the fold**, so manual mapping felt hidden or secondary.
+
+**Changes**:
+- Move **`ide-project-panel-mapping`** into the loaded-circuit branch **immediately after** `ProjectWarningsPanel`, **before** `ide-surface-command-stack`; remove the duplicate section that followed examples.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.mapping-legitimacy.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.launchpadRemoval.test.tsx` → pass
+- `pnpm exec playwright test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project=chromium` → **2/2**
+- `pnpm --filter @redbyte/playground build` → pass
+- `pnpm build:unified` → pass
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Phase 3b dual mapping UI — Project authority story)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts`, `docs/release/product-hardening-ticket-2026-04-22-dual-mapping-ui-authority-clarity.md`, `docs/IDE_SYSTEM_MAP.md`

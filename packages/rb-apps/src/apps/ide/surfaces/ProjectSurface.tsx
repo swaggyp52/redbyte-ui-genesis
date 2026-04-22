@@ -1145,6 +1145,180 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           issues={blockingIssues}
           onNavigateFix={handleProjectModeAction}
         />
+        {readiness.hasCircuit && (
+        <section
+          ref={mappingSectionRef}
+          className="ide-export-section ide-project-map-pins-section"
+          data-testid="ide-project-panel-mapping"
+        >
+          {/*
+            R2 Project surface reconciliation: the legacy `Project details`
+            details block duplicated the ProjectBridgePanel hash + fidelity +
+            verify/export pills and was not covered by any active test. Its
+            determinism hash now lives in the Bridge header (ide-project-bridge-hash).
+            Its verify/export/dirty/unmapped flags are reflected by the
+            Bridge Verify/Export field tones and by ProjectWarningsPanel.
+          */}
+
+          <header className="ide-project-map-pins-header" data-testid="ide-project-map-pins-header">
+            <div>
+              <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
+              <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
+                <strong>This is the main place to type Basys3 pin codes.</strong> After Design and Verify, assign each
+                top-level port to a board pin here. <strong>Export and Hardware Map Pins both read this same table.</strong>
+              </p>
+            </div>
+            <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">
+              <span className="ide-surface-block-label">Export readiness</span>
+              <p className="ide-project-map-pins-export-text">{exportSummary}</p>
+            </div>
+          </header>
+
+          {hasVerifyRun && unmappedRequiredCount > 0 && (
+            <div className="ide-project-map-post-verify" data-testid="ide-project-mapping-post-verify-hint">
+              <IdeCallout tone="info" title="You verified the logic — finish board pins">
+                Assign the highlighted required ports below so the Vivado bundle matches what you simulated.
+                Optional ports stay off the board unless you map them on purpose.
+              </IdeCallout>
+            </div>
+          )}
+
+          {/* FPGA Configuration - collapsed by default */}
+          <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
+            <summary>FPGA configuration</summary>
+            <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
+              <div className="ide-kv-row">
+                <span>Board</span>
+                <span>{fpgaConfig?.board ?? 'Basys3'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <label htmlFor="ide-fpga-top-input">Top module</label>
+                <input
+                  id="ide-fpga-top-input"
+                  type="text"
+                  className="ide-input-inline"
+                  value={fpgaConfig?.top ?? topModuleName ?? 'top'}
+                  data-testid="ide-project-fpga-top"
+                  onChange={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value })}
+                />
+              </div>
+              <div className="ide-kv-row">
+                <label htmlFor="ide-fpga-part-input">Part number</label>
+                <input
+                  id="ide-fpga-part-input"
+                  type="text"
+                  className="ide-input-inline"
+                  value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+                  data-testid="ide-project-fpga-part"
+                  onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
+                />
+              </div>
+              {importFidelity && (
+                <div className="ide-kv-row">
+                  <span>Import fidelity</span>
+                  <span
+                    data-testid="ide-project-import-fidelity"
+                    className={`ide-chip ${importFidelity === 'full' ? 'ide-chip-ok' : importFidelity === 'reconstructed' ? 'ide-chip-warn' : 'ide-chip-err'}`}
+                  >
+                    {importFidelity === 'full' ? 'Full restore' : importFidelity === 'reconstructed' ? 'Reconstructed' : 'Partial'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </details>
+
+          {mappingEditFeedback && (
+            <div className="ide-project-mapping-saved-feedback" data-testid="ide-project-mapping-saved-feedback" role="status">
+              {mappingEditFeedback}
+            </div>
+          )}
+
+          <div
+            className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
+            data-testid="ide-project-mapping-summary-strip"
+          >
+            <span className="ide-project-mapping-summary-stat" data-testid="ide-project-mapping-stat">
+              {unmappedRequiredCount > 0
+                ? `${unmappedRequiredCount} port${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
+                : `${mappedRequiredCount}/${requiredCount} required mapped`}
+            </span>
+            {unmappedRequiredCount > 0 && (
+              <span className="ide-chip ide-chip-warn" data-testid="ide-project-mapping-warn-chip">
+                {unmappedRequiredCount} unmapped
+              </span>
+            )}
+            {missingRequiredRows.length > 0 && (
+              <div
+                className="ide-project-mapping-preview"
+                data-testid="ide-project-mapping-missing-list"
+              >
+                {missingRequiredRows.map((row) => (
+                  <span key={row.id} className="ide-project-mapping-preview-chip">
+                    {getStudentFacingIoLabel(row)}
+                  </span>
+                ))}
+                {unmappedRequiredCount > missingRequiredRows.length && (
+                  <span className="ide-project-mapping-preview-more">
+                    +{unmappedRequiredCount - missingRequiredRows.length} more
+                  </span>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              className={`ide-project-mapping-expand-btn${unmappedRequiredCount > 0 ? ' is-error' : ''}`}
+              onClick={() => setMappingExpanded((previous) => !previous)}
+              data-testid="ide-project-mapping-expand-btn"
+              aria-expanded={mappingExpanded}
+            >
+              {mappingExpanded
+                ? 'Close Mapping'
+                : unmappedRequiredCount > 0 ? 'Fix Mapping' : 'Open Mapping'}
+              <span className="ide-project-mapping-expand-arrow" aria-hidden="true">
+                {mappingExpanded ? '^' : 'v'}
+              </span>
+            </button>
+          </div>
+
+          {mappingExpanded && (
+            <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
+              <div className="ide-project-mapping-quick-hint" data-testid="ide-project-mapping-quick-hint">
+                Quick picks and placeholders infer likely pins from port names (clock, reset, switches, LEDs).{' '}
+                You can override any suggestion — the project stores exactly what you type. Board aliases: inputs{' '}
+                <code>CLK100MHZ</code>, <code>SW0-SW15</code>, <code>BTNC-BTNR</code>; outputs{' '}
+                <code>LD0-LD15</code>, <code>SEG0-SEG6</code>, <code>DP</code>, <code>AN0-AN3</code>.
+              </div>
+              <div
+                className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
+                data-testid="ide-project-mapping-banner"
+              >
+                <span className="ide-project-mapping-status-dot" />
+                <span>
+                  {unmappedRequiredCount > 0
+                    ? `${unmappedRequiredCount} required port${unmappedRequiredCount !== 1 ? 's' : ''} still need a board pin`
+                    : `${mappedRequiredCount} / ${requiredCount} required ports mapped — optional rows can stay blank`}
+                </span>
+              </div>
+              <IdeDataTable
+                columns={['Port', 'Role', 'Alias → package pin', 'Pin editor', 'Dir', 'Status']}
+                rows={mappingRowsUi}
+                testId="ide-project-mapping-table"
+                getRowClassName={(rowIndex) => mappingRowClassNames[rowIndex]}
+              />
+              <datalist id="ide-project-input-pin-options">
+                {PROJECT_INPUT_ALIAS_OPTIONS.map((pin) => (
+                  <option key={pin} value={pin} />
+                ))}
+              </datalist>
+              <datalist id="ide-project-output-pin-options">
+                {PROJECT_OUTPUT_ALIAS_OPTIONS.map((pin) => (
+                  <option key={pin} value={pin} />
+                ))}
+              </datalist>
+            </div>
+          )}
+        </section>
+        )}
         <div className="ide-surface-command-stack">
           <SurfaceCommandStrip
             className="ide-project-command-strip"
@@ -1357,181 +1531,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </details>
         )}
           </>
-        )}
-
-        {readiness.hasCircuit && (
-        <section
-          ref={mappingSectionRef}
-          className="ide-export-section ide-project-map-pins-section"
-          data-testid="ide-project-panel-mapping"
-        >
-          {/*
-            R2 Project surface reconciliation: the legacy `Project details`
-            details block duplicated the ProjectBridgePanel hash + fidelity +
-            verify/export pills and was not covered by any active test. Its
-            determinism hash now lives in the Bridge header (ide-project-bridge-hash).
-            Its verify/export/dirty/unmapped flags are reflected by the
-            Bridge Verify/Export field tones and by ProjectWarningsPanel.
-          */}
-
-          <header className="ide-project-map-pins-header" data-testid="ide-project-map-pins-header">
-            <div>
-              <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
-              <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
-                <strong>This is the main place to type Basys3 pin codes.</strong> After Design and Verify, assign each
-                top-level port to a board pin here. <strong>Export and Hardware Map Pins both read this same table.</strong>
-              </p>
-            </div>
-            <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">
-              <span className="ide-surface-block-label">Export readiness</span>
-              <p className="ide-project-map-pins-export-text">{exportSummary}</p>
-            </div>
-          </header>
-
-          {hasVerifyRun && unmappedRequiredCount > 0 && (
-            <div className="ide-project-map-post-verify" data-testid="ide-project-mapping-post-verify-hint">
-              <IdeCallout tone="info" title="You verified the logic — finish board pins">
-                Assign the highlighted required ports below so the Vivado bundle matches what you simulated.
-                Optional ports stay off the board unless you map them on purpose.
-              </IdeCallout>
-            </div>
-          )}
-
-          {/* FPGA Configuration - collapsed by default */}
-          <details className="ide-project-identity-details" data-testid="ide-project-fpga-config">
-            <summary>FPGA configuration</summary>
-            <div className="ide-kv-list" style={{ marginTop: 'var(--rb-space-2)' }}>
-              <div className="ide-kv-row">
-                <span>Board</span>
-                <span>{fpgaConfig?.board ?? 'Basys3'}</span>
-              </div>
-              <div className="ide-kv-row">
-                <label htmlFor="ide-fpga-top-input">Top module</label>
-                <input
-                  id="ide-fpga-top-input"
-                  type="text"
-                  className="ide-input-inline"
-                  value={fpgaConfig?.top ?? topModuleName ?? 'top'}
-                  data-testid="ide-project-fpga-top"
-                  onChange={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value })}
-                />
-              </div>
-              <div className="ide-kv-row">
-                <label htmlFor="ide-fpga-part-input">Part number</label>
-                <input
-                  id="ide-fpga-part-input"
-                  type="text"
-                  className="ide-input-inline"
-                  value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
-                  data-testid="ide-project-fpga-part"
-                  onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
-                />
-              </div>
-              {importFidelity && (
-                <div className="ide-kv-row">
-                  <span>Import fidelity</span>
-                  <span
-                    data-testid="ide-project-import-fidelity"
-                    className={`ide-chip ${importFidelity === 'full' ? 'ide-chip-ok' : importFidelity === 'reconstructed' ? 'ide-chip-warn' : 'ide-chip-err'}`}
-                  >
-                    {importFidelity === 'full' ? 'Full restore' : importFidelity === 'reconstructed' ? 'Reconstructed' : 'Partial'}
-                  </span>
-                </div>
-              )}
-            </div>
-          </details>
-
-          {mappingEditFeedback && (
-            <div className="ide-project-mapping-saved-feedback" data-testid="ide-project-mapping-saved-feedback" role="status">
-              {mappingEditFeedback}
-            </div>
-          )}
-
-          <div
-            className={`ide-project-mapping-summary${unmappedRequiredCount > 0 ? ' has-error' : ''}`}
-            data-testid="ide-project-mapping-summary-strip"
-          >
-            <span className="ide-project-mapping-summary-stat" data-testid="ide-project-mapping-stat">
-              {unmappedRequiredCount > 0
-                ? `${unmappedRequiredCount} port${unmappedRequiredCount !== 1 ? 's' : ''} unmapped`
-                : `${mappedRequiredCount}/${requiredCount} required mapped`}
-            </span>
-            {unmappedRequiredCount > 0 && (
-              <span className="ide-chip ide-chip-warn" data-testid="ide-project-mapping-warn-chip">
-                {unmappedRequiredCount} unmapped
-              </span>
-            )}
-            {missingRequiredRows.length > 0 && (
-              <div
-                className="ide-project-mapping-preview"
-                data-testid="ide-project-mapping-missing-list"
-              >
-                {missingRequiredRows.map((row) => (
-                  <span key={row.id} className="ide-project-mapping-preview-chip">
-                    {getStudentFacingIoLabel(row)}
-                  </span>
-                ))}
-                {unmappedRequiredCount > missingRequiredRows.length && (
-                  <span className="ide-project-mapping-preview-more">
-                    +{unmappedRequiredCount - missingRequiredRows.length} more
-                  </span>
-                )}
-              </div>
-            )}
-            <button
-              type="button"
-              className={`ide-project-mapping-expand-btn${unmappedRequiredCount > 0 ? ' is-error' : ''}`}
-              onClick={() => setMappingExpanded((previous) => !previous)}
-              data-testid="ide-project-mapping-expand-btn"
-              aria-expanded={mappingExpanded}
-            >
-              {mappingExpanded
-                ? 'Close Mapping'
-                : unmappedRequiredCount > 0 ? 'Fix Mapping' : 'Open Mapping'}
-              <span className="ide-project-mapping-expand-arrow" aria-hidden="true">
-                {mappingExpanded ? '^' : 'v'}
-              </span>
-            </button>
-          </div>
-
-          {mappingExpanded && (
-            <div className="ide-project-mapping-table-wrap" data-testid="ide-project-mapping-table-wrap">
-              <div className="ide-project-mapping-quick-hint" data-testid="ide-project-mapping-quick-hint">
-                Quick picks and placeholders infer likely pins from port names (clock, reset, switches, LEDs).{' '}
-                You can override any suggestion — the project stores exactly what you type. Board aliases: inputs{' '}
-                <code>CLK100MHZ</code>, <code>SW0-SW15</code>, <code>BTNC-BTNR</code>; outputs{' '}
-                <code>LD0-LD15</code>, <code>SEG0-SEG6</code>, <code>DP</code>, <code>AN0-AN3</code>.
-              </div>
-              <div
-                className={`ide-project-mapping-status ${unmappedRequiredCount > 0 ? 'is-error' : 'is-complete'}`}
-                data-testid="ide-project-mapping-banner"
-              >
-                <span className="ide-project-mapping-status-dot" />
-                <span>
-                  {unmappedRequiredCount > 0
-                    ? `${unmappedRequiredCount} required port${unmappedRequiredCount !== 1 ? 's' : ''} still need a board pin`
-                    : `${mappedRequiredCount} / ${requiredCount} required ports mapped — optional rows can stay blank`}
-                </span>
-              </div>
-              <IdeDataTable
-                columns={['Port', 'Role', 'Alias → package pin', 'Pin editor', 'Dir', 'Status']}
-                rows={mappingRowsUi}
-                testId="ide-project-mapping-table"
-                getRowClassName={(rowIndex) => mappingRowClassNames[rowIndex]}
-              />
-              <datalist id="ide-project-input-pin-options">
-                {PROJECT_INPUT_ALIAS_OPTIONS.map((pin) => (
-                  <option key={pin} value={pin} />
-                ))}
-              </datalist>
-              <datalist id="ide-project-output-pin-options">
-                {PROJECT_OUTPUT_ALIAS_OPTIONS.map((pin) => (
-                  <option key={pin} value={pin} />
-                ))}
-              </datalist>
-            </div>
-          )}
-        </section>
         )}
         {/*
           R2 reconciliation: a minimal, collapsed low-level diagnostics block.
