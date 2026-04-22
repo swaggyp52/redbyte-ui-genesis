@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-04-22 (Student journey audit: Export readiness → Project / Map Pins)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-student-journey-cross-surface-friction-audit.md`
+
+**Context**: Broader Phase 2 student journey — replayed `ide-mapping-pipeline-coherence` (signal-tour + two-bit-counter) in Playwright; audited cross-surface friction. **Export** “Readiness gates” **I/O Mapping** row labeled **Fix Mapping** only called `scrollIntoView` on the Export pin table. Product truth (and copy) says **Project / Map Pins** is authoritative when `onUpdateMappingPin` is wired — students on Export with a **failing** mapping gate got a **dead-end** affordance instead of being taken to the surface where they can actually fix pins.
+
+**Changes**:
+- When the mapping gate is in **error** and **Project mapping authority** is active (`onUpdateMappingPin` + `onGoToProject`), the gate CTA becomes **Open Project — Map Pins** and invokes **`onGoToProject()`**; otherwise keep scroll-to-pin-table for local-preview / non-error cases.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx` → **17/17 pass**
+- `pnpm --filter @redbyte/playground build` → **pass**
+- `pnpm build:unified` → **pass** (at slice close)
+- `pnpm exec playwright test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project=chromium` → **2/2 pass**
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Phase 2 startup: false `RB_APPS_REGISTER_TIMEOUT` watchdog)
 
 **Subsystem**: `apps/playground/src/boot/ide-bootstrap.ts`, `docs/release/product-hardening-ticket-2026-04-22-startup-restore-readiness-top-blocker.md`

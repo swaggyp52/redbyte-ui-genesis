@@ -580,6 +580,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : clockDiag
           ? clockDiag.message.slice(0, 55)
           : formatExportClockGateDetail(activeScheduleContract, effectiveTimingGuidance.exportDetail);
+    const mappingGateActionLabel =
+      mappingTone === 'error' && hasExternalMappingAuthority && onGoToProject
+        ? 'Open Project — Map Pins'
+        : 'Fix Mapping';
     return [
       {
         id: 'verify',
@@ -594,8 +598,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         label: 'I/O Mapping',
         tone: mappingTone,
         detail: mappingDetail,
-        actionLabel: 'Fix Mapping',
-        onAction: () => mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        actionLabel: mappingGateActionLabel,
+        onAction: () => {
+          if (mappingTone === 'error' && hasExternalMappingAuthority && onGoToProject) {
+            onGoToProject();
+            return;
+          }
+          mapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
       },
       {
         id: 'clock',
@@ -630,6 +640,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     hasBlockingErrors,
     diagnosticsList,
     onOpenVerify,
+    hasExternalMappingAuthority,
+    onGoToProject,
   ]);
 
   const deterministicChecks = useMemo(() => [

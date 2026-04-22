@@ -530,4 +530,24 @@ describe('ExportSurface trust clarity', () => {
     expect(dock.textContent).toContain('Build details');
     expect(dock.textContent).not.toContain('Evidence snapshot');
   });
+
+  it('Readiness gate mapping CTA goes to Project when I/O mapping fails and Project authority is active', () => {
+    const onGoToProject = vi.fn();
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildMappingBlockedProject()}
+        determinismHash="ide-hash"
+        verifyResult={passResult}
+        dirtySinceVerify={false}
+        workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
+        onGoToProject={onGoToProject}
+        onUpdateMappingPin={vi.fn()}
+      />
+    );
+    fireEvent.click(getByTestId('ide-export-gate-details').querySelector('summary')!);
+    const mappingCta = getByTestId('ide-export-gate-action-mapping');
+    expect(mappingCta.textContent).toContain('Open Project');
+    fireEvent.click(mappingCta);
+    expect(onGoToProject).toHaveBeenCalledTimes(1);
+  });
 });
