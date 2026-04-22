@@ -418,7 +418,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       const requiredOutputs = mappingRows.filter(
         (row) => row.direction === 'out' && row.required
       );
-      return requiredOutputs.length > 0 && requiredOutputs.every((row) => row.pin.trim().length > 0);
+      if (requiredOutputs.length === 0) {
+        // No boundary outputs to map — same "N/A satisfied" idea as clock for non-board-clock labs.
+        return true;
+      }
+      return requiredOutputs.every((row) => row.pin.trim().length > 0);
     },
     [mappingRows]
   );

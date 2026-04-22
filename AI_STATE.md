@@ -1,5 +1,21 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 3 mapping authority: Hardware outputs N/A vs Project/Export)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-mapping-authority-coherence-top-blocker.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context**: Phase 3 coherence across Project / Hardware / Export. When `projectIoRows` had **only required inputs** (no output rows) and all pins were set with **no export mapping gap**, Hardware **Map Pins** dock stayed non-ready and showed **`0 left`** because `hasOutputMapping` required `requiredOutputs.length > 0`. Project (`effectiveReadiness`) and Export (`exportRequiredMappingGapCount`) already treated mapping as satisfied — **contradictory student truth**.
+
+**Changes**:
+- **`hasOutputMapping`**: If there are no required output rows, treat outputs as **satisfied** (N/A), matching clock handling for non-board-clock lab modes.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` → pass (at slice close)
+- `pnpm --filter @redbyte/playground build` → pass
+- `pnpm build:unified` → pass
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Student journey audit: Export readiness → Project / Map Pins)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-student-journey-cross-surface-friction-audit.md`

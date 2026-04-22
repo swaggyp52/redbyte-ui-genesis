@@ -536,6 +536,40 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-map-export-gap').textContent).toContain('required port');
   });
 
+  it('shows Map Pins Complete when only inputs are required (no output rows) and pins are set', () => {
+    const health = makeHealth({
+      blockingIssues: [],
+      dirtySinceExport: false,
+    });
+    const { getAllByTestId, getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Inputs-only boundary"
+          expectedBehavior="Combinational in-only fixture for mapping coherence."
+          mappingRows={[
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
+          ]}
+          missingRequiredPortsFromExport={0}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={health}
+          workflowAuthority={makeHardwareWorkflowAuthority(health, {
+            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+            currentExportHash: health.lastExport?.hash ?? null,
+          })}
+          timingGuidance={deriveTimingGuidance(undefined)}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Complete');
+    expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
+  });
+
   it('points students to Export first when hardware is blocked before a current bundle exists', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
