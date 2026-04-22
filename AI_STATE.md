@@ -1,5 +1,15 @@
 # AI State
 
+## Change Log 2026-04-22 (Campaign D — ZIP import contract + import authority)
+
+**Subsystem:** `packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts`, `packages/rb-apps/src/apps/ide/importSurfaceZipAuthority.ts`, `packages/rb-apps/src/apps/ide/__tests__/importSurfaceZipAuthority.test.ts`, `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`, `docs/release/product-hardening-ticket-2026-04-22-zip-import-truth-contract-and-authority-cleanup.md`
+
+**Context:** `repo:status` / `ide:gate:zip-import-contract` failed on a stale full-project hash. Replaced with structural assertions + A===B digest stability. Added a pure `getZipImportAuthorityModel` and one `ImportZipAuthorityCallout` under both ZIP inspection UIs so manifest vs HDL/XDC reconstruction, ignored files, and “replace only after confirm” are singular and classroom-oriented.
+
+**Validation:** `pnpm exec vitest run` (ide-zip-import-contract, importSurfaceZipAuthority, importSurface first-look + honesty) + `pnpm -s ide:gate:zip-import-contract` + `pnpm build:unified` → pass.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Blocker ledger — Design + Verify student polish (2026-04-22 campaign)
 
 | Surface | Done | Open / optional |

@@ -23,6 +23,7 @@ import {
   reimportZipWithCandidates,
   type ZipImportInspection,
 } from '../zipImport';
+import { getZipImportAuthorityModel } from '../importSurfaceZipAuthority';
 import {
   IdeButton,
   IdeCallout,
@@ -53,6 +54,22 @@ export interface ImportSurfaceProps {
   onGoToDesign?: () => void;
   onGoToVerify?: () => void;
   onGoToExport?: () => void;
+}
+
+function ImportZipAuthorityCallout({ zi }: { zi: ZipImportInspection }) {
+  const m = getZipImportAuthorityModel(zi);
+  return (
+    <IdeCallout tone={m.tone} title={m.title} testId="ide-import-zip-authority">
+      <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
+        {m.classroom}
+      </p>
+      <ul className="ide-bullets" style={{ margin: 0, paddingLeft: '1.1em' }}>
+        {m.facts.map((f, idx) => (
+          <li key={`${f.k}-${idx}`}>{f.text}</li>
+        ))}
+      </ul>
+    </IdeCallout>
+  );
 }
 
 const BASYS3_QUICK_PINS = [
@@ -2069,13 +2086,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 title="ZIP Inspection"
                 meta={`${zipInspection.detectedFiles.length} detected / ${zipInspection.ignoredFiles.length} ignored`}
               />
-              {isManifestZipImport ? (
-                <IdeCallout tone="success" title="RedByte export detected" testId="ide-import-zip-manifest-mode">
-                  <p className="ide-copy" style={{ margin: 0 }}>
-                    Using <code>{zipInspection.manifestPath ?? 'project.rbproj.json'}</code> as the source of truth. HDL/XDC override is disabled for this ZIP.
-                  </p>
-                </IdeCallout>
-              ) : null}
+              <ImportZipAuthorityCallout zi={zipInspection} />
               {!isManifestZipImport ? (
                 <div className="ide-import-zip-chooser" data-testid="ide-import-zip-chooser">
                   <div className="ide-import-zip-chooser-col">
@@ -3610,14 +3621,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                       title="ZIP Inspection"
                       meta={`${zipInspection!.detectedFiles.length} detected / ${zipInspection!.ignoredFiles.length} ignored`}
                     />
-                    {isManifestZipImport && (
-                      <IdeCallout tone="success" title="RedByte export detected" testId="ide-import-zip-manifest-mode">
-                        <p className="ide-copy" style={{ margin: 0 }}>
-                          Using <code>{zipInspection!.manifestPath ?? 'project.rbproj.json'}</code> as the source of truth.
-                          HDL/XDC candidate override is disabled for this ZIP.
-                        </p>
-                      </IdeCallout>
-                    )}
+                    <ImportZipAuthorityCallout zi={zipInspection!} />
                     {!isManifestZipImport && (
                     <div className="ide-import-zip-chooser" data-testid="ide-import-zip-chooser">
                       <div className="ide-import-zip-chooser-col">
