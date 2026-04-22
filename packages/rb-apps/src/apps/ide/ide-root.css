@@ -25287,6 +25287,16 @@ button:disabled,
   margin-left: auto;
 }
 
+.ide-vcb-failure-recovery {
+  margin: 6px 0 0;
+  padding: 6px 2px 0 0;
+  max-width: 72ch;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: rgba(226, 232, 240, 0.88);
+  border-top: 1px solid rgba(248, 113, 113, 0.2);
+}
+
 .ide-vcb-row--session {
   display: flex;
   align-items: stretch;

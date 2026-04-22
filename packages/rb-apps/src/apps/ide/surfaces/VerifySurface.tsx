@@ -3622,6 +3622,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     selectedFailureCase,
     selectedFailureDisplayLabel,
   ]);
+  const verifyFailureRecoveryLine = useMemo(() => {
+    if (!hasSessionFailureEvidence) return undefined;
+    return 'Find the first mismatch on the waveform (red highlights), then fix your circuit or saved checks. Open Details for the full list.';
+  }, [hasSessionFailureEvidence]);
   const verifySessionMetricsRow =
     sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
@@ -3908,6 +3912,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showAnalysisToggle={Boolean(lastRun)}
           analysisOpen={drawerOpen}
           analysisHint={analysisDrawerHint}
+          failureRecoveryLine={verifyFailureRecoveryLine}
           onToggleAnalysis={() => setDrawerOpen((prev) => !prev)}
           showEditCases={hasSessionFailureEvidence}
           onEditCases={handleEditExpectedOutputs}
@@ -3993,7 +3998,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <strong>What this means:</strong>{' '}
                   {isRunStale
                     ? `The waveform and checks here belong to an older build (${shortenHash(lastRun.deterministicHash)}) than your current circuit (${shortenHash(deterministicHash)}). Re-run Verify when you are ready.`
-                    : 'Pass or fail reflects this Verify run: your saved test vectors were compared to the simulation. Change the design in Design, or finish board pins on Project — then return here to re-check.'}
+                    : lastRun.qualification === 'incomplete-mapping'
+                      ? 'Pass or fail reflects this Verify run: your saved test vectors were compared to the simulation. Change the design in Design, or finish board pins on Project — then return here to re-check.'
+                      : 'Your saved checks matched this run. Change the circuit or board pins if you need different behavior, then re-run Verify when you are ready.'}
                 </p>
               </div>
               <div className="ide-verify-run-proof-actions">

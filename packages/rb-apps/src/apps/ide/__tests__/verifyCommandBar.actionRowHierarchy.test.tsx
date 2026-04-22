@@ -136,4 +136,14 @@ describe('VerifyCommandBar session header hierarchy', () => {
     const fullText = getByTestId('ide-vcb-session-summary').textContent ?? '';
     expect(fullText.match(/Checks need review/g)?.length ?? 0).toBe(1);
   });
+
+  it('renders a visible failure recovery line when provided (before opening details)', () => {
+    const { getByTestId } = render(
+      <VerifyCommandBar
+        {...BASE}
+        failureRecoveryLine="Find the first mismatch on the waveform, then fix checks or the circuit."
+      />
+    );
+    expect(getByTestId('ide-vcb-failure-recovery').textContent).toContain('first mismatch');
+  });
 });

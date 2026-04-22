@@ -78,6 +78,11 @@ export interface VerifyCommandBarProps {
 
   /** Optional authority / recovery callout rendered above the tool row inside one chrome card */
   readonly leadingPanel?: React.ReactNode;
+  /**
+   * Compare-failure: one line students can read before opening the details drawer
+   * (first recovery move + where detail lives).
+   */
+  readonly failureRecoveryLine?: string;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -122,6 +127,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   experimentCaseLabel,
   experimentTimingHint,
   leadingPanel,
+  failureRecoveryLine,
 }) => {
   const hasUtilityActions = Boolean(
     (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
@@ -431,6 +437,14 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           )}
         </div>
       </div>
+      {failureRecoveryLine && failureRecoveryLine.trim() !== '' ? (
+        <p
+          className="ide-vcb-failure-recovery ide-copy"
+          data-testid="ide-vcb-failure-recovery"
+        >
+          {failureRecoveryLine.trim()}
+        </p>
+      ) : null}
     </div>
   );
 };

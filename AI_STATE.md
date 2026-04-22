@@ -1,5 +1,26 @@
 # AI State
 
+## Blocker ledger — Design + Verify student polish (2026-04-22 campaign)
+
+| Surface | Done | Open / optional |
+|--------|------|-----------------|
+| **Design** | Removed duplicate **Type** row (identity now only in `Part · type` with `ide-design-selection-type` on the type span); **Fanout** label → **Outgoing connections** in eval order; **Trace state** in dock shortens to **Active** + `title` when the workspace health strip already shows the full `traceState.label`. | **Optional:** unified multi-select same-net highlight — skipped (would touch selection/trace clearing; higher risk). |
+| **Verify** | One-line `failureRecoveryLine` on `VerifyCommandBar` for compare-fail; pass hero **What this means** short copy when checks matched and mapping complete (incomplete-mapping still uses the longer explainer). | Mismatch copy sweep in drawer/explainer; optional waveform “same signals” line — not done this round. |
+
+**Hardening doc:** `docs/release/product-hardening-ticket-2026-04-22-design-traceability-composite-inspection-recovery.md` (append-only note in thread); new Verify items tracked here until a dedicated ticket is split out.
+
+## Change Log 2026-04-22 (Campaign — Design eval/trace copy + Verify fail/pass chrome)
+
+**Subsystem:** `DesignSurface.tsx`, `designSurface.fanout.test.tsx`, `VerifyCommandBar.tsx`, `VerifySurface.tsx`, `ide-root.css`, `verifyCommandBar.actionRowHierarchy.test.tsx`
+
+**Context:** Continuation of the ranked Design queue (identity / fanout label / trace duplicate) and first two Verify follow-ups (failure line before details; calmer pass authority copy).
+
+**Validation:**
+- `pnpm exec vitest run --config vitest.config.ts` (focused Design + `verifyCommandBar.actionRowHierarchy` + `verifySurface.workstation`)
+- `pnpm build:unified` → pass
+
+**Attribution:** Connor Angiel (agent continuation)
+
 ## Change Log 2026-04-22 (Phase 6 — Verify header simplification / result hierarchy recovery)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-simplification-result-hierarchy-recovery.md`, `docs/IDE_SYSTEM_MAP.md`

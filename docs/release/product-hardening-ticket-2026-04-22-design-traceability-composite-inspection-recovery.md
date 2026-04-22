@@ -33,6 +33,12 @@
 - `pnpm --filter @redbyte/rb-apps exec vitest run src/apps/ide/__tests__/designSurface.fanout.test.tsx`
 - `pnpm build:unified`
 
+## Follow-up (2026-04-22 — polish campaign)
+
+- Identity card: remove redundant **Type** kv-row when `Part · type` already carries the friendly type; keep `ide-design-selection-type` on the subtitle type span.
+- Eval order: relabel **Fanout** to student-facing **Outgoing connections** (numeric `ide-design-fanout` unchanged).
+- Live summary: when workspace health shows the full trace sentence, **Trace state** in the dock shows **Active** + tooltip instead of duplicating the same sentence.
+
 ## Attribution
 
 Connor Angiel
