@@ -2,6 +2,8 @@
 
 Use this template for each failure discovered during rehearsal. One failure per ticket.
 
+For non-rehearsal product issues, use `docs/release/product-hardening-ticket-template.md` or `.github/ISSUE_TEMPLATE/product-hardening.yml`.
+
 ## Ticket
 
 - Date:

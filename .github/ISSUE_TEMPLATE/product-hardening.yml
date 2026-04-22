@@ -1,0 +1,156 @@
+name: Product hardening ticket
+description: Capture one concrete RedByte journey or surface defect with explicit proof obligations.
+title: "[Hardening]: "
+body:
+  - type: dropdown
+    id: journey_segment
+    attributes:
+      label: Journey segment
+      description: Where does the issue appear in the product path?
+      options:
+        - Startup / first run
+        - Project entry / project selection
+        - Design authoring
+        - Verify observation / comparison
+        - Hardware mapping / board handoff
+        - Export / Vivado handoff
+        - Import / round-trip
+        - Cross-surface coherence
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options:
+        - Project
+        - Design
+        - Verify
+        - Hardware
+        - Export
+        - Import
+        - Shared shell / workflow spine
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      options:
+        - Student
+        - Instructor
+        - Dev / internal
+        - Unknown
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: What environment best describes the reproduction?
+      options:
+        - Fresh machine / clean browser profile
+        - Existing machine / existing profile
+        - CI / automated gate
+        - Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: environment_details
+    attributes:
+      label: Environment details
+      description: OS, browser, board status, Node, pnpm, or anything else that matters.
+      placeholder: "Windows 11, Chrome 135, Basys3 disconnected, Node 20.19.0, pnpm 10.24.0"
+
+  - type: textarea
+    id: observed_behavior
+    attributes:
+      label: Observed behavior
+      description: What actually happens?
+      placeholder: "Describe the exact user-visible problem."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected behavior
+      description: What should happen instead?
+      placeholder: "Describe the intended product behavior."
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro_steps
+    attributes:
+      label: Exact repro steps
+      description: Provide deterministic steps when possible.
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Link screenshots, recordings, logs, console excerpts, or failing tests/gates.
+      placeholder: "Attach evidence or paste short proof snippets."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: truth_sources_reviewed
+    attributes:
+      label: Truth sources reviewed
+      description: Check every source you used to define the defect.
+      options:
+        - label: Product contract (`docs/contracts/RedByte_Product_Contract.md`)
+        - label: Product manual (`docs/manuals/RedByte_Product_Manual.md`)
+        - label: Gap audit (`docs/roadmap/RedByte_Gap_Audit.md`)
+        - label: IDE system map (`docs/IDE_SYSTEM_MAP.md`)
+        - label: Surface conformance (`docs/ide/SURFACE_CONFORMANCE.md`)
+        - label: Manual QA script (`docs/release/manual-assignment-qa-script.md`)
+        - label: Release checklist or rehearsal doc
+    validations:
+      required: true
+
+  - type: textarea
+    id: violated_clauses
+    attributes:
+      label: Violated clause or promise
+      description: Cite the exact contract, QA, or current-truth clauses the issue violates.
+      placeholder: "Example: Product Contract -> Verify promise; Manual QA Phase 3 -> waveform lock-step."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_proof
+    attributes:
+      label: Minimum acceptance proof
+      description: What proof is required before this issue can close?
+      placeholder: "List the required tests, gates, screenshots, and manual replay evidence."
+    validations:
+      required: true
+
+  - type: textarea
+    id: docs_review
+    attributes:
+      label: Docs to review or update
+      description: Which docs must be reviewed or changed if the behavior changes?
+      placeholder: "Manual, contract, system map, QA script, release checklist, AI_STATE."
+    validations:
+      required: true
+
+  - type: input
+    id: linked_context
+    attributes:
+      label: Linked context
+      description: Optional Obsidian note, issue, PR, or other tracking reference.
+      placeholder: "01 Dashboard/... or #123"

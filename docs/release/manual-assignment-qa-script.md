@@ -28,13 +28,18 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
 ## Phase 1 — Project entry and workflow orientation
 
 1. Open IDE and create/open a project.
-2. Confirm the workflow is understandable at first glance:
+2. Load one starter from Project (Lab 8 preferred for a high-signal pass) and confirm Design opens with:
+   - the active starter name
+   - a visible starter-loaded handoff
+   - a visibly changed schematic/canvas
+3. Confirm the workflow is understandable at first glance:
    - Build → Test → Export → Program sequence is obvious.
    - Only one primary next action is emphasized.
-3. Confirm developer-only metadata is not distracting in student path.
+4. Confirm developer-only metadata is not distracting in student path.
 
 **Pass criteria**
 - A first-time student can identify the next action in under 10 seconds.
+- Loading a starter visibly updates the active design state without extra clicks or inference.
 
 ---
 
@@ -83,10 +88,12 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
 3. Select a signal in mapping list and click matching Basys3 pin on board view.
 4. Repeat for at least one input and one output.
 5. Confirm mapped/unmapped states are visually distinct.
+6. Rename one top-level input or output in Design, return to Project or Hardware, and confirm the renamed port still accepts a new pin assignment that persists into Export without creating a duplicate ghost port row.
 
 **Pass criteria**
 - Mapping table updates immediately after board interaction.
 - Selected signal highlight and board highlight remain synchronized.
+- Renamed top-level ports keep one shared mapping truth across Project, Hardware, and Export.
 
 ---
 
@@ -125,6 +132,22 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
    - Selecting SW0 and clicking SW0 maps immediately.
 5. **Waveform lock-step**
    - Three step clicks => UI shows tick 3 and cursor at tick 3.
+
+---
+
+## Failure handling
+
+If any phase or acceptance check fails:
+
+1. Open `docs/release/product-hardening-ticket-template.md` or `.github/ISSUE_TEMPLATE/product-hardening.yml`.
+2. Record the journey segment, surface, observed behavior, expected behavior, exact repro steps, evidence, violated contract / QA clause, and minimum acceptance proof.
+3. Review the relevant current-truth and target-truth docs before coding:
+   - `docs/contracts/RedByte_Product_Contract.md`
+   - `docs/manuals/RedByte_Product_Manual.md`
+   - `docs/roadmap/RedByte_Gap_Audit.md`
+   - `docs/IDE_SYSTEM_MAP.md`
+   - `docs/ide/SURFACE_CONFORMANCE.md`
+4. Do not close the work until the fix, proof, and impacted docs all agree.
 
 ---
 

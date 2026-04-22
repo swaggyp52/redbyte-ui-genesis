@@ -284,7 +284,7 @@ On first launch, the user sees the **Project** surface with the option to start 
 | Full Adder | One-bit addition with carry-in and carry-out | Combinational |
 | Two-Bit Counter | 2-bit binary counter with clock and reset | Sequential |
 
-Selecting a starter example loads a pre-built circuit with test vectors, pin mappings, and learning goals. The user can modify the circuit freely after loading.
+Selecting a starter example loads a pre-built circuit with test vectors, pin mappings, and learning goals, then opens the Design surface with a starter-loaded handoff that names the active starter and the next action. The user can modify the circuit freely after loading.
 
 ### 5.4 Quick Walkthrough: First Circuit to Vivado Export
 
@@ -327,7 +327,7 @@ The RedByte IDE shell is present on every surface and consists of four persisten
 
 ### 6.2 Navigation Model
 
-Surface switching is explicit. The user clicks a mode entry in the left rail or uses a keyboard shortcut to navigate. The system does not automatically switch surfaces in response to user actions — mode transitions are always user-initiated.
+Surface switching is explicit through the left rail and surface CTAs. Certain Project actions intentionally carry the user into the next surface when they load a starter or use a direct recovery path. Those transitions must state what loaded and what the next action is so the active workflow remains unambiguous.
 
 ### 6.3 Empty States
 
@@ -358,10 +358,11 @@ Each surface displays a maximum of three status pills summarizing the current st
 **Primary Controls.**
 
 - Edit project name and description.
-- Open a starter example (with overwrite confirmation if unsaved work exists).
+- Open a starter example (with overwrite confirmation if unsaved work exists). Loading a starter opens Design immediately after the starter becomes authoritative.
 - Review readiness indicators for IO mapping, test vectors, and export status.
+- Use the Project mapping table as the same authoritative pin map consumed by Hardware and Export; if a top-level port is renamed in Design, the renamed port remains the current mapping target instead of creating a second hidden/export-only port identity.
 
-**Typical Workflow.** Create or open a project → review metadata → optionally load a starter example → proceed to Design.
+**Typical Workflow.** Create or open a project → review metadata → optionally load a starter example → Design opens with the loaded starter name and next action.
 
 **Outputs.** Updated project metadata. Readiness assessment for downstream surfaces.
 
@@ -385,6 +386,7 @@ Each surface displays a maximum of three status pills summarizing the current st
 **Major UI Regions.**
 
 - *Main center:* Circuit canvas with a lightweight tool row (select, wire, delete, zoom controls).
+- *Starter handoff:* When Design opens from Project with a starter, a starter-loaded banner identifies the active starter, expected behavior, and next action.
 - *Left panel:* Searchable component palette listing all available gates, I/O elements, and timing components.
 - *Right inspector:* Properties of the selected element, including port details and configuration options for IO nodes.
 
@@ -733,6 +735,7 @@ Verification results are deterministic. Running the same circuit with the same t
 Hardware mapping is the process of assigning each circuit port to a physical pin on the Basys 3 FPGA board. This determines which physical switch controls which circuit input, and which LED or display segment shows which circuit output.
 
 The mapping is stored as part of the project and used by the export pipeline to generate the XDC constraint file.
+Renaming a top-level input or output does not create a second mapping identity. Project, Hardware, and Export all continue to reflect the same live port record after the rename.
 
 ### 10.2 Mapping Procedure
 
@@ -746,6 +749,7 @@ The mapping is stored as part of the project and used by the export pipeline to 
 Result: The mapping status changes to "Mapping complete."
 
 > **Note:** For sequential circuits, the clock port must be assigned to CLK100MHZ (pin W5). This is the on-board 100 MHz oscillator.
+> Human-friendly labels such as `ENTER CLK` or `Main Reset` do not change that requirement; RedByte still treats those renamed top-level ports as the same clock/reset mapping authority.
 
 ### 10.3 Pin Presets
 

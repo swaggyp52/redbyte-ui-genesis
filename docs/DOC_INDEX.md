@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated:** 2026-04-01
+**Last Updated:** 2026-04-21
 
 Navigation hub for all documentation in the RedByte project.
 
@@ -50,6 +50,18 @@ Defines what RedByte must become. Separate from the current-state manual.
 | [contracts/RedByte_Product_Contract.md](./contracts/RedByte_Product_Contract.md) | Target-state blueprint — quality bar, surface contracts, release gates |
 | [contracts/Sequential_Support_Boundary.md](./contracts/Sequential_Support_Boundary.md) | Enforced sequential model: single-clock, rising-edge, active-high-reset |
 | [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Honest product-legitimacy audit (14 gaps, scorecard — P0+P1 closed) |
+
+---
+
+## Product Hardening Governance
+
+These docs turn surface complaints into governed work with explicit proof obligations.
+
+| File | Purpose |
+|------|---------|
+| [ide/SURFACE_CONFORMANCE.md](./ide/SURFACE_CONFORMANCE.md) | Surface change -> contract, QA, and proof review rules |
+| [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Canonical local ticket schema for product-legitimacy issues |
+| [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
 
 ---
 
@@ -106,6 +118,8 @@ All in `docs/00-canon/`:
 ## Stale / OS-Era Documents
 
 These documents reference the older "RedByte OS" architecture (3D views, CPU modules, desktop shell). They are retained for historical reference but **do not describe the current product**.
+
+Default agent context excludes these docs unless the task is explicitly about historical cleanup, legacy shell behavior, or archive review.
 
 | File | Why stale |
 |------|-----------|

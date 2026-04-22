@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-04-21 (Doc index, manuals, QA, ticket templates, GitHub issue forms)
+
+**Subsystem**: `docs/DOC_INDEX.md`, `docs/ai-usage-rules.md`, `docs/manuals/RedByte_Product_Manual.md`, `docs/rehearsal/failure-ticket-template.md`, `docs/release/manual-assignment-qa-script.md`, `docs/release/product-hardening-ticket-template.md`, `.github/ISSUE_TEMPLATE/`
+
+**Context**: Align entry-point docs and rehearsal/release templates with surface conformance and product-hardening workflow; add GitHub issue form for product hardening (points at template path in repo).
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (Hardware board mapping coherence + pipeline e2e)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `__tests__/hardwareSurface.readiness.test.tsx`, `tests/e2e/ide-mapping-pipeline-coherence.spec.ts`, `docs/release/product-hardening-ticket-2026-04-21-hardware-board-mapping-coherence.md`, `artifacts/ide-mapping-pipeline-coherence-flow-a-export.png`
