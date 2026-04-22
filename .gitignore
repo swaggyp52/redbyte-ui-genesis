@@ -131,6 +131,8 @@ codex_laneA_*.bundle
 
 # Local dev server logs in artifacts/ (not proof assets)
 /artifacts/playground-dev-*.log
+# E2E scratch copy (stable proof filename is ide-mapping-pipeline-coherence-flow-a-export.png)
+/artifacts/ide-mapping-pipeline-flow-a-chromium*.png
 
 # Accidental artifacts
 ersconnoredbyte-ui

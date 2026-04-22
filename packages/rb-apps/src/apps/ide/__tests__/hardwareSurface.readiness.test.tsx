@@ -712,4 +712,35 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getByTestId('ide-hw-export-repair-open-design'));
     expect(onGoToDesign).toHaveBeenCalled();
   });
+
+  it('shows Project authority callout on Map Pins when onGoToProject is wired', () => {
+    const onGoToProject = vi.fn();
+    const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Authority UX"
+          expectedBehavior="Test"
+          mappingRows={[
+            { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true, port: 'out' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={health}
+          workflowAuthority={makeHardwareWorkflowAuthority(health, {
+            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+            currentExportHash: health.lastExport?.hash ?? null,
+          })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+          onGoToProject={onGoToProject}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Project/);
+    fireEvent.click(getByTestId('ide-hw-open-project-map-pins'));
+    expect(onGoToProject).toHaveBeenCalled();
+  });
 });

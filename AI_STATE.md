@@ -1,5 +1,17 @@
 # AI State
 
+## Change Log 2026-04-21 (Hardware board mapping coherence + pipeline e2e)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `__tests__/hardwareSurface.readiness.test.tsx`, `tests/e2e/ide-mapping-pipeline-coherence.spec.ts`, `docs/release/product-hardening-ticket-2026-04-21-hardware-board-mapping-coherence.md`, `artifacts/ide-mapping-pipeline-coherence-flow-a-export.png`
+
+**Context**: Keep Hardware read-only mapping rows aligned with Project authority; Playwright proves Verify → Project (Map Pins) → Hardware → Export share one mapping truth.
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> **18/18 pass**
+- `pnpm exec playwright test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project=chromium` -> **2/2 pass**
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (Project surface + startup entry hardening; surface conformance)
 
 **Subsystem**: `packages/rb-apps/src/apps/IdeApp.tsx`, `ProjectSurface.tsx`, `DesignSurface.tsx`, `ScenarioBuilderPanel.tsx`, `VerifyWaveformPlaceholder.tsx`, `IdePrimitives.tsx`, `ide-root.css`, `docs/ide/SURFACE_CONFORMANCE.md`, `docs/release/product-hardening-ticket-2026-04-21-project-mapping-legitimacy-ux.md`, `docs/release/product-hardening-ticket-2026-04-21-startup-project-entry-starter-load.md`, `__tests__/projectSurface.mapping-legitimacy.test.tsx`, `__tests__/ideApp.labday-wiring.test.tsx`, and related verify surface test tweaks, plus startup-flow PNG evidence under `artifacts/`.

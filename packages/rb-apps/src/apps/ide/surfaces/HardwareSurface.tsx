@@ -142,6 +142,8 @@ export interface HardwareSurfaceProps {
   onOpenExport: () => void;
   onOpenVerify: () => void;
   onGoToDesign?: () => void;
+  /** Jump to Project surface — authoritative student-facing pin table (typed Map Pins). */
+  onGoToProject?: () => void;
   onSetMappingPin?: (rowId: string, alias: string) => void;
   hardwareMappingV2?: HardwareMappingDocumentV2;
   onApplyHardwareMappingEdit?: (operation: HardwareMappingV2EditOperation) => void;
@@ -245,6 +247,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onOpenExport,
   onOpenVerify,
   onGoToDesign,
+  onGoToProject,
   onSetMappingPin,
   hardwareMappingV2,
   onApplyHardwareMappingEdit,
@@ -1343,9 +1346,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             Continue to Export →
           </IdeButton>
         ) : (
-          <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-            Select a row in the table, then click the matching board region.
-          </p>
+          <div className="ide-hw-map-dock-hint" data-testid="ide-hw-map-dock-incomplete-hint">
+            <p className="ide-copy" style={{ margin: 0, fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
+              Select a row in the table, then click a region on the board, or finish typing pins on Project.
+            </p>
+            {onGoToProject ? (
+              <div className="ide-inline-actions" style={{ marginTop: '8px' }}>
+                <IdeButton tone="primary" onClick={onGoToProject} testId="ide-hw-dock-open-project-map">
+                  Open Project — Map Pins
+                </IdeButton>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </SurfacePanel>
@@ -2091,6 +2103,24 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </span>
               </div>
             </header>
+            {onGoToProject ? (
+              <IdeCallout
+                tone="info"
+                title="Same mapping as Project and Export"
+                testId="ide-hw-map-authority-callout"
+              >
+                <p className="ide-copy ide-copy--flush">
+                  Use <strong>Project → Map Pins</strong> to type Basys3 aliases and read required vs optional rows.
+                  This Map Pins stage uses the <strong>same saved project mapping</strong> as Export. Select a signal
+                  row here and click the board to quick-assign, or jump back to Project for precise typing.
+                </p>
+                <div className="ide-inline-actions" style={{ marginTop: 'var(--rb-space-2)' }}>
+                  <IdeButton tone="primary" onClick={onGoToProject} testId="ide-hw-open-project-map-pins">
+                    Open Project — Map Pins
+                  </IdeButton>
+                </div>
+              </IdeCallout>
+            ) : null}
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
@@ -2161,6 +2191,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               ) : null}
               {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
                 <div className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
+                  <IdeCallout
+                    tone="info"
+                    title="Advanced entry editor (same document as Map Pins)"
+                    testId="ide-hw-structured-authority-note"
+                  >
+                    <p className="ide-copy ide-copy--flush">
+                      Scalar pins are easiest to assign on <strong>Project → Map Pins</strong>. Use this block when you need
+                      bus/bit rows or Export surfaced a structured validation issue — it edits the same{' '}
+                      <code>hardwareMappingV2</code> payload as Project and Export.
+                    </p>
+                  </IdeCallout>
                   <h4 className="ide-hw-structured-editor-title">Pin mapping entries</h4>
                   <p className="ide-copy ide-hw-map-instructions">
                     Match circuit boundary signals to Basys3 pins. Export reads these entries directly, so the top port name must match the generated VHDL entity.
