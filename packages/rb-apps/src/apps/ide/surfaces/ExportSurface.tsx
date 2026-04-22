@@ -945,7 +945,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             >
               The project ZIP includes <code>top.vhd</code> (your generated top), <code>top.xdc</code> (Basys3 pin
               constraints), <code>{projectSlug}.xpr</code> (Vivado project), <code>vivado_import.tcl</code>, and a README
-              with bring-up notes. “Ready for Vivado” in RedByte means those files line up with your mapped ports and
+              with bring-up notes. &quot;Ready for Vivado&quot; in RedByte means those files line up with your mapped ports and
               the export build completed without hard blockers — you still run synthesis, implementation, and bitstream
               on your computer in Vivado.
             </p>
