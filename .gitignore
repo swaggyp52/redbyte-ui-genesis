@@ -134,6 +134,9 @@ codex_laneA_*.bundle
 # E2E scratch copy (stable proof filename is ide-mapping-pipeline-coherence-flow-a-export.png)
 /artifacts/ide-mapping-pipeline-flow-a-chromium*.png
 
+# Local browser-boot triage output (scripts/diag/browser-boot-*.mjs)
+/artifacts/browser-boot-*
+
 # Accidental artifacts
 ersconnoredbyte-ui
 ops-liveness*.json
