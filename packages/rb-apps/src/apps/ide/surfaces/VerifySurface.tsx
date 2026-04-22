@@ -2032,13 +2032,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       let action: string;
       if (reason === 'missing-output-node') {
         label = `${row.signal} is not connected to a design node`;
-        action = `Check that ${row.signal} is mapped in Project → Mapping`;
+        action = `On Project, open Map Pins and wire this output to a real node before trusting checks.`;
       } else if (reason === 'missing-output-sample') {
-        label = `${row.signal} is floating — no driver found`;
-        action = `Check whether ${row.signal} has a wire connected from a gate output`;
+        label = `${row.signal} is floating — the simulator could not see a value`;
+        action = `In Design, add a net so ${row.signal} is driven; then re-run.`;
       } else {
-        label = `${row.signal} mismatched — expected ${expected}, observed ${actual}`;
-        action = `Inspect the logic feeding ${row.signal} — trace back from that output`;
+        label = `${row.signal} did not match — wanted ${expected}, saw ${actual}`;
+        action = `On the chart below, follow this signal’s lane, then open Design to fix the path that drives it.`;
       }
       result.push({ signal: row.signal, label, action });
     }
@@ -3472,7 +3472,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Open Project, then the Map Pins stage, and finish pin names there — Export and Hardware read that same table.`
         : 'Every saved check matched the observed outputs.'
       : sessionSignalsAssertionFailure
-        ? 'Inspect the first mismatch on the waveform, then adjust checks or the circuit.'
+        ? 'Use the chart below: red ticks mark the problem times. Then fix your circuit or the saved check at that point.'
       : sessionStatus === 'stale'
           ? hasStaleAuthoredReference
             ? 'The visible waveform belongs to an older build. Verify has switched back to stimulus tracing so you can inspect the live circuit before re-authoring or intentionally reusing the older reference.'
@@ -3616,7 +3616,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const analysisDrawerHint = useMemo(() => {
     if (!hasSessionFailureEvidence || !selectedFailureCase) return undefined;
-    return `Focus ${selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t${selectedFailureCase.tick}`;
+    return `In the chart, select ${selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t${selectedFailureCase.tick}`;
   }, [
     hasSessionFailureEvidence,
     selectedFailureCase,
@@ -3624,7 +3624,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   ]);
   const verifyFailureRecoveryLine = useMemo(() => {
     if (!hasSessionFailureEvidence) return undefined;
-    return 'Find the first mismatch on the waveform (red highlights), then fix your circuit or saved checks. Open Details for the full list.';
+    return 'The lanes in the chart are the same signals as your checks. Use First mismatch or a red row, then fix the design or the saved value. Open Details for every row.';
   }, [hasSessionFailureEvidence]);
   const verifySessionMetricsRow =
     sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
@@ -4073,7 +4073,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </div>
             </div>
             <details className="ide-verify-run-proof-facts" data-testid="ide-verify-run-proof-facts">
-              <summary className="ide-verify-run-proof-facts-summary">Hashes & scenario</summary>
+              <summary className="ide-verify-run-proof-facts-summary">Build hashes and scenario (optional detail)</summary>
               <dl className="ide-verify-run-proof-grid">
                 {runProofFacts.map((fact) => (
                   <div key={fact.label} className="ide-verify-run-proof-item">
@@ -4532,7 +4532,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
                           <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
                           <span className="ide-verify-fail-nav-summary__values ide-copy">
-                            exp <code>{selectedFailureCase.expected}</code> obs <code>{selectedFailureCase.actual}</code>
+                            expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
                           </span>
                         </span>
                       )}
@@ -4541,6 +4541,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           {selectedFailurePositionLabel}
                         </span>
                       )}
+                      <span
+                        className="ide-verify-fail-nav-waveform-hint ide-copy"
+                        data-testid="ide-verify-fail-nav-waveform-hint"
+                      >
+                        Same names appear as lanes in the chart under this bar.
+                      </span>
                     </>
                   ) : (
                     <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">

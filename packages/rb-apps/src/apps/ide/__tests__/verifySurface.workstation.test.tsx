@@ -1348,7 +1348,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('Focus');
+    expect(getByTestId('ide-verify-drawer-hint').textContent).toMatch(/chart|Focus/i);
     expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('t1');
     expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('expected');

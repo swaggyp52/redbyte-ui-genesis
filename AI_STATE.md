@@ -4,10 +4,20 @@
 
 | Surface | Done | Open / optional |
 |--------|------|-----------------|
-| **Design** | Removed duplicate **Type** row (identity now only in `Part · type` with `ide-design-selection-type` on the type span); **Fanout** label → **Outgoing connections** in eval order; **Trace state** in dock shortens to **Active** + `title` when the workspace health strip already shows the full `traceState.label`. | **Optional:** unified multi-select same-net highlight — skipped (would touch selection/trace clearing; higher risk). |
-| **Verify** | One-line `failureRecoveryLine` on `VerifyCommandBar` for compare-fail; pass hero **What this means** short copy when checks matched and mapping complete (incomplete-mapping still uses the longer explainer). | Mismatch copy sweep in drawer/explainer; optional waveform “same signals” line — not done this round. |
+| **Design** | Items 1–3 from prior slice (`de4745c4`): identity type de-dup, **Outgoing connections**, dock **Active** trace. **Campaign C:** same-driver **multi-wire** selection re-applies full **wire-net** highlight (no longer clears trace); copy + next-step updated; `67565392`. | None in this queue unless regression. |
+| **Verify** | Prior slice: `failureRecoveryLine` + short pass authority. **Campaign C:** classroom `failureDiagnosis` + pass summary; **waveform hint** under fail nav (`ide-verify-fail-nav-waveform-hint`); drawer hint + recovery line tie to chart; optional details summary relabel; Why empty state; tests aligned (`Cases and details`, observe toggle, drawer hint). | Deep pass on `VerifyFailureExplanationPanel` / K-map **exp** tokens (intentionally left). |
 
 **Hardening doc:** `docs/release/product-hardening-ticket-2026-04-22-design-traceability-composite-inspection-recovery.md` (append-only note in thread); new Verify items tracked here until a dedicated ticket is split out.
+
+## Change Log 2026-04-22 (Campaign C — same-net multi-wire trace + Verify classroom / waveform glue)
+
+**Subsystem:** `DesignSurface.tsx`, `designSurface.multiWireNet.test.tsx`, `VerifySurface.tsx`, `WhyInspectorPanel.tsx`, `ide-root.css`, `verifySurface.*.test.tsx`, `verifySurface.failure-context.test.tsx`
+
+**Context:** Finish Design queue item 4 (low-risk same-net multi-select net highlight). Verify: classroom failure copy, mismatch↔waveform hint, proof details label, test maintenance for current Verify chrome.
+
+**Validation:** Focused vitest (Design multiWire + fanout; Verify workstation, failure-context, fail-state) + `pnpm build:unified` → pass.
+
+**Attribution:** Connor Angiel (agent)
 
 ## Change Log 2026-04-22 (Campaign — Design eval/trace copy + Verify fail/pass chrome)
 

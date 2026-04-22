@@ -134,10 +134,10 @@ describe('VerifySurface failure context', () => {
     );
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Details'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Cases and details'));
     fireEvent.click(getByTestId('ide-verify-right-fix-action'));
     expect(onFixPath).not.toHaveBeenCalled();
-    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Details'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Cases and details'));
     expect(getByTestId('ide-verify-vectors-table')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-right-open-design'));

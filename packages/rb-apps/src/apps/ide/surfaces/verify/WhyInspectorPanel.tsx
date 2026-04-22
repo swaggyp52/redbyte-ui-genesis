@@ -40,7 +40,7 @@ export const WhyInspectorPanel: React.FC<WhyInspectorPanelProps> = ({ explanatio
         data-testid="ide-why-panel-empty"
       >
         <p className="ide-why-empty-message">
-          Select a signal or transition in the waveform to see why it changed.
+          Click a row or tick in the chart below, or pick a signal from the list on the left, to see a step-by-step reason for that value.
         </p>
       </section>
     );
