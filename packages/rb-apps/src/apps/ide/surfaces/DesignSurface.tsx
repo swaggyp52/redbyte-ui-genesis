@@ -3755,7 +3755,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [editorCircuit, focusedIssueSignalKey, selectionAuthoringIssues]);
   const hasSingleSelectedNode = !!selectedNode && selection.nodes.size === 1;
   const hasMultiNodeSelection = selection.nodes.size > 1;
-  const hasMultiWireSelection = !hasMultiNodeSelection && selectedWireIds.length > 1;
+  const hasMultiWireSelection = !hasMultiNodeSelection && selectedWireIdsAll.length > 1;
+  const multiWireNetSummary = useMemo(() => {
+    if (selectedWireIdsAll.length < 2 || selection.nodes.size > 0) return null;
+    return summarizeMultiWireNetSelection(editorCircuit, selectedWireIdsAll, ioRowByNodeId);
+  }, [editorCircuit, ioRowByNodeId, selectedWireIdsAll, selection.nodes.size]);
   const hasInspectorSelectionContext =
     hasSingleSelectedNode ||
     hasMultiNodeSelection ||
@@ -3918,6 +3922,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     selection.wires,
     verifyLinkedSignalKey,
   ]);
+
+  // Multi-wire: clear any net/fanin/fanout trace so the title bar and inspector cannot contradict the grouped message.
+  useEffect(() => {
+    if (verifyLinkedSignalKey || debugLinkedSignalKey) return;
+    if (selection.wires.size <= 1) return;
+    if (selection.nodes.size > 0) return;
+    clearTrace();
+  }, [clearTrace, debugLinkedSignalKey, selection.nodes.size, selection.wires.size, verifyLinkedSignalKey]);
 
   useEffect(() => {
     if (selection.nodes.size === 0) return;
@@ -4353,14 +4365,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         <div className="ide-design-selection-inspector" data-testid="ide-design-multiselect-summary">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
             <span className="ide-design-inspector-eyebrow">Selection</span>
-            <div className="ide-design-inspector-title-block">
-              <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
-                <strong>{selectedWireIds.length} wires selected</strong>
+            <div className="ide-design-inspector-identity-row">
+              <div className="ide-design-inspector-title-block">
+                <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
+                  <strong data-testid="ide-design-multiwire-count">{selectedWireIdsAll.length} wire segments selected</strong>
+                </div>
+                <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
+                  {multiWireNetSummary?.headline ?? 'Multiple wires — comparing signal paths'}
+                </p>
+                {multiWireNetSummary ? (
+                  <div className="ide-design-inspector-meaning" data-testid="ide-design-multiwire-net-meaning">
+                    <p className="ide-design-inspector-what-it-is" data-testid="ide-design-multiwire-net-detail">
+                      {multiWireNetSummary.detail}
+                    </p>
+                    {multiWireNetSummary.groupLabels.length > 0 ? (
+                      <p
+                        className="ide-design-inspector-structure-hint"
+                        data-testid="ide-design-multiwire-group-labels"
+                        title={multiWireNetSummary.groupLabels.join('\n')}
+                      >
+                        Signal groups: {multiWireNetSummary.groupLabels.join(' · ')}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-              <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
-                Narrow the selection to one net to inspect live signal state.
-              </p>
+              <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
+                {selectionStatusLabel}
+              </span>
             </div>
+            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+              {multiWireNetSummary?.sameNet
+                ? 'To read live value for one hop, select a single wire. To re-run a full net highlight, deselect to one of these segments so the canvas can trace from the same driver again.'
+                : 'Pick one net at a time: deselect until you have one driver in this list, or a single wire, then use Trace and the signal panel on the right.'}
+            </p>
           </div>
         </div>
       );
@@ -5383,9 +5421,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </div>
         </>
       ) : null}
-      {selectedWireIds.length > 0 ? (
+      {selectedWireIdsAll.length > 0 ? (
         <div className="ide-copy-top-gap">
-          <strong>Selected wires:</strong> {selectedWireIds.length}
+          <strong>Selected wires:</strong> {selectedWireIdsAll.length}
         </div>
       ) : null}
       <div>
@@ -7730,6 +7768,77 @@ function buildStudentVerifyDebugTraceLabel(
   const node = findNodeById(circuit, nodeId);
   const part = formatTracePartName(node, ioByNodeId.get(nodeId), nodeId);
   return `${mode}: what drives ${part} · ${portName} — same highlight`;
+}
+
+/** Buckets multiple selected wire segment ids by their driver (from-end of the edge), matching one-net auto-trace. */
+interface DesignMultiWireNetSummary {
+  totalWires: number;
+  distinctGroupCount: number;
+  sameNet: boolean;
+  /** Sorted driver display labels, e.g. "SW0 · out" */
+  groupLabels: string[];
+  headline: string;
+  detail: string;
+}
+
+function summarizeMultiWireNetSelection(
+  circuit: Circuit,
+  wireIds: readonly string[],
+  ioByNodeId: Map<string, DesignIoRow>
+): DesignMultiWireNetSummary {
+  const byDriver = new Map<string, number>();
+  for (const wid of wireIds) {
+    const p = parseWireId(wid);
+    if (!p) continue;
+    const key = `${p.fromNodeId}.${p.fromPort}`;
+    byDriver.set(key, (byDriver.get(key) ?? 0) + 1);
+  }
+  if (byDriver.size === 0) {
+    return {
+      totalWires: wireIds.length,
+      distinctGroupCount: 0,
+      sameNet: false,
+      groupLabels: [],
+      headline: 'Wires selected',
+      detail: "We could not read one or more connection ids. Deselect and try again.",
+    };
+  }
+  const groupLabels: string[] = [];
+  for (const key of [...byDriver.keys()].sort((a, b) => a.localeCompare(b))) {
+    const sampleWire = wireIds.find((w) => {
+      const q = parseWireId(w);
+      return q && `${q.fromNodeId}.${q.fromPort}` === key;
+    });
+    if (!sampleWire) continue;
+    const p = parseWireId(sampleWire);
+    if (!p) continue;
+    const node = findNodeById(circuit, p.fromNodeId);
+    const part = formatTracePartName(node, ioByNodeId.get(p.fromNodeId), p.fromNodeId);
+    groupLabels.push(`${part} · ${p.fromPort}`);
+  }
+  const distinct = groupLabels.length;
+  const sameNet = distinct === 1;
+  const totalWires = wireIds.length;
+  if (sameNet) {
+    const g = groupLabels[0] ?? 'this driver';
+    return {
+      totalWires,
+      distinctGroupCount: 1,
+      sameNet: true,
+      groupLabels,
+      headline: 'Same net — all selected segments share one driver',
+      detail: `The ${totalWires} segments you picked all branch from one source (${g}) — it is one electrical signal. Select a single wire to read a clean hop, or deselect to one segment to re-run full-net highlight.`,
+    };
+  }
+  const list = groupLabels.join(' · ');
+  return {
+    totalWires,
+    distinctGroupCount: distinct,
+    sameNet: false,
+    groupLabels,
+    headline: `Multiple signals — ${distinct} different drivers in this selection`,
+    detail: `These ${totalWires} segments span more than one path (${list}). Tracing and live current value are clearest for one net at a time: deselect until one wire, or one signal group, remains.`,
+  };
 }
 
 function buildTracePortKeySet(wireIds: Iterable<string>): Set<string> {
