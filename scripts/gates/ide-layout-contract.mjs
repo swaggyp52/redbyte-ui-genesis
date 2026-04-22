@@ -2,14 +2,15 @@
 
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
+// Import is not a primary-rail mode (utility entry only); there is no `mode-button-import`.
+const MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 const MODE_CONSOLE_EXPECTATIONS = {
   project: 'hidden',
-  design: 'visible',
+  // Design only mounts the workbench console when compiler/drawer diagnostics exist (clean canvas → hidden).
+  design: 'hidden',
   verify: 'hidden',
   hardware: 'visible',
   export: 'visible',
-  import: 'hidden',
 };
 
 await runIdeGate('IDE layout contract satisfied', async ({ page, baseUrl }) => {
@@ -35,8 +36,13 @@ await runIdeGate('IDE layout contract satisfied', async ({ page, baseUrl }) => {
     const marker = await modeRoot.getAttribute('data-ide-mode-marker');
     assert(marker === mode, `mode marker mismatch for ${mode}: ${marker}`);
 
-    if (mode !== 'verify') {
-      assert(await visible(modeRoot.locator('[data-testid="ide-left-dock"]')), `mode=${mode} missing left dock`);
+    // Project + Export hide the left dock. Verify defaults to a collapsed rail (toggle, not `ide-left-dock`).
+    const modesExpectIdeLeftDock = new Set(['design', 'hardware']);
+    if (modesExpectIdeLeftDock.has(mode)) {
+      assert(
+        await visible(modeRoot.locator('[data-testid="ide-left-dock"]')),
+        `mode=${mode} missing left dock`
+      );
     }
     assert(await visible(modeRoot.locator('[data-testid="ide-mode-body"]')), `mode=${mode} missing workspace`);
     const consoleLocator = modeRoot.locator('[data-testid="ide-workbench-console"]').first();

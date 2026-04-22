@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-21 (SEV-1 boot triage: IDE shell rail width + layout gate truth)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/ide-root.css`, `scripts/gates/ide-layout-contract.mjs`, `docs/release/product-hardening-ticket-2026-04-21-boot-triage-top-blocker.md`
+
+**Context**: Phase 1 product recovery — runtime/gate evidence showed `ide-shell-chrome-contract` and rail width assertion in `ide-layout-contract` failing with **92px** left rail (contract **68–80px**, canonical **72px**). Root cause: a late “shell hardening” block set `--ide-rail-width: 92px`, overriding the Phase 7 **72px** baseline. `ide-layout-contract` also assumed Import was primary-rail navigable and that Design always mounted the workbench console; both diverged from current surfaces.
+
+**Changes**:
+- Set `:root[data-redbyte-mode='ide']` rail token to **72px** and document gate obligation in CSS comment.
+- Updated `ide-layout-contract.mjs`: primary-rail mode list only (drop Import loop), left-dock expectations for Design + Hardware only, Design console expectation `hidden` when clean canvas, comments for product truth.
+
+**Tests / gates**:
+- `pnpm --filter @redbyte/playground build` → **pass** (gates serve preview `dist`)
+- `node scripts/gates/ide-shell-chrome-contract.mjs` → **PASS**
+- `node scripts/gates/ide-layout-contract.mjs` → **PASS**
+- `pnpm build:unified` → **pass**
+- `pnpm repo:status` → not re-run end-to-end in this slice; prior note: unrelated gates (e.g. IDE ZIP import) may still fail
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-21 (Whole-repo product-readiness deep dive: detached starter identity truth)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/ide/components/ProjectBridgePanel.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/projectBridgePanel.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `docs/release/product-hardening-ticket-2026-04-21-whole-repo-product-readiness-deep-dive.md`, `artifacts/product-readiness-detached-starter-identity-restore.png`, `artifacts/product-readiness-detached-starter-identity-proof.txt`

@@ -17698,11 +17698,10 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   opacity: 1;
 }
 
-/* Shell hardening: give the always-visible rail enough room to read like a real
-   navigation spine, and keep collapsed dock affordances legible when users hide
-   them manually. */
+/* Shell hardening: rail width must stay within ide-shell-chrome / ide-layout gate
+   contract (68–80px, canonical 72). Wider values override Phase 7 baseline and fail gates. */
 :root[data-redbyte-mode='ide'] {
-  --ide-rail-width: 92px;
+  --ide-rail-width: 72px;
 }
 
 .ide-left-rail {
