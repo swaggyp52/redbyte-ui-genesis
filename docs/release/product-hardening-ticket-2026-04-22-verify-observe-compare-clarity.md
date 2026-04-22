@@ -33,7 +33,7 @@
 ## Disposition
 
 - **Status:** fixed in slice
-- **Commit:** (record at push)
+- **Commit:** `3d06eb1433fe5ad244cfe3cb7ad9a59a17a63586`
 
 ## Attribution
 
