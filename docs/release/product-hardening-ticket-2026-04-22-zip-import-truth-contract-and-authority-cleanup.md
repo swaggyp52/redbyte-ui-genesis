@@ -38,7 +38,7 @@
 ## Disposition
 
 - **Status:** **fixed** (this slice: contract + authority + validation)
-- **Commits (local):** `21de3167` (contract test), `69e3932a` (authority + ticket + `AI_STATE`), `aa0081d0` (ticket SHAs / disposition)
+- **Commits (local, order):** `21de3167` (contract) → `69e3932a` (authority + `AI_STATE` + ticket create) → `aa0081d0` (ticket disposition); doc touch `8b135ec4` optional
 - **Notes:** Remote sync is out of scope for this environment; re-land by cherry-pick or rebase of listed files.
 
 ## Attribution
