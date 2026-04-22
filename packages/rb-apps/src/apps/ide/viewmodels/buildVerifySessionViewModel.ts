@@ -253,16 +253,19 @@ export function buildVerifySessionViewModel(
                       : 'Stimulus is ready. Run it to observe outputs.'
                     : 'Author input patterns for each tick, then run the circuit.';
 
+  /** Primary Run must spell out next-run intent — observe vs compare were previously identical. */
   const runLabel =
     input.isRunStale
-      ? 'Update run'
+      ? mode === 'assertion'
+        ? 'Update run · compare checks'
+        : 'Update run · observe only'
       : mode === 'assertion'
         ? input.lastRun
-          ? 'Update run'
-          : 'Run current stimulus'
+          ? 'Update run · compare checks'
+          : 'Run · compare checks'
         : input.lastRun
-          ? 'Update run'
-          : 'Run current stimulus';
+          ? 'Update run · observe only'
+          : 'Run · observe only';
 
   return {
     mode,

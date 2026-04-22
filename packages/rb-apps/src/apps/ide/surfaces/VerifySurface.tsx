@@ -3298,9 +3298,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const runActionTone = primaryActionKind === 'run' ? 'primary' : 'secondary';
   const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
-  const emptyStateRunLabel = isDraftSession
-    ? 'Run current stimulus'
-    : verifySession.runLabel;
+  const emptyStateRunLabel = verifySession.runLabel;
   const referenceModeLabel: string = hasStaleAuthoredReference
     ? `Stale saved checks loaded (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
     : totalExpectedCaseCount === 0

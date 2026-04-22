@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-04-22 (Phase 5 — Verify observe vs compare Run label)
+
+**Subsystem**: `packages/rb-apps/src/apps/ide/viewmodels/buildVerifySessionViewModel.ts`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts`, `packages/rb-apps/src/__tests__/buildVerifySessionViewModel.observe-first.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-observe-compare-clarity.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context**: **Use saved checks** vs **Switch to observe** toggled compare intent, but the primary **Run** button used the same **Run current stimulus** / **Update run** text for both modes — students could not read the control hierarchy from the main CTA.
+
+**Changes**:
+- **`buildVerifySessionViewModel.runLabel`:** observe vs assertion (compare) paths — `Run · observe only`, `Run · compare checks`, `Update run · observe only`, `Update run · compare checks` (stale respects mode).
+- **`VerifySurface`:** draft **`VerifyWaveformPlaceholder`** uses **`verifySession.runLabel`** (removes hardcoded **Run current stimulus** override).
+- Tests aligned; **`observe-first`** label expectations synced to implementation (**Checks armed** for `modeLabel` in compare).
+
+**Tests / gates**:
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/buildVerifySessionViewModel.test.ts packages/rb-apps/src/__tests__/buildVerifySessionViewModel.observe-first.test.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.frontend-dedup.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` → pass
+- `pnpm exec playwright test tests/e2e/verify-surface-legitimacy-proof.spec.ts --project=chromium` → pass
+- `pnpm --filter @redbyte/playground build` → pass
+- `pnpm build:unified` → pass
+
+**Attribution**: Connor Angiel
+
 ## Change Log 2026-04-22 (Phase 4 — Project Map Pins completion flow / vertical order)
 
 **Subsystem**: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `docs/release/product-hardening-ticket-2026-04-22-project-map-pins-manual-redesign.md`, `docs/IDE_SYSTEM_MAP.md`

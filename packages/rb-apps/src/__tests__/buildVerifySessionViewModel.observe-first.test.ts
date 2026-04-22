@@ -106,12 +106,12 @@ describe('buildVerifySessionViewModel — compare mode', () => {
 // ─── Label changes ────────────────────────────────────────────────────────────
 
 describe('buildVerifySessionViewModel — updated labels', () => {
-  it('runLabel is "Run current stimulus" for first observe run', () => {
+  it('runLabel is "Run · observe only" for first observe run', () => {
     const vm = buildVerifySessionViewModel(baseInput({ nextRunUsesAssertions: false }));
-    expect(vm.runLabel).toBe('Run current stimulus');
+    expect(vm.runLabel).toBe('Run · observe only');
   });
 
-  it('runLabel is "Re-run stimulus" after an observe run', () => {
+  it('runLabel is "Update run · observe only" after an observe run', () => {
     const vm = buildVerifySessionViewModel(
       baseInput({
         nextRunUsesAssertions: false,
@@ -120,17 +120,17 @@ describe('buildVerifySessionViewModel — updated labels', () => {
         hasResults: true,
       })
     );
-    expect(vm.runLabel).toBe('Re-run stimulus');
+    expect(vm.runLabel).toBe('Update run · observe only');
   });
 
-  it('runLabel is "Run with checks" for first checked run', () => {
+  it('runLabel is "Run · compare checks" for first checked run', () => {
     const vm = buildVerifySessionViewModel(
       baseInput({ nextRunUsesAssertions: true, totalExpectedCaseCount: 2 })
     );
-    expect(vm.runLabel).toBe('Run with checks');
+    expect(vm.runLabel).toBe('Run · compare checks');
   });
 
-  it('runLabel is "Re-run with checks" after a checked run', () => {
+  it('runLabel is "Update run · compare checks" after a checked run', () => {
     const vm = buildVerifySessionViewModel(
       baseInput({
         nextRunUsesAssertions: true,
@@ -140,7 +140,7 @@ describe('buildVerifySessionViewModel — updated labels', () => {
         hasResults: true,
       })
     );
-    expect(vm.runLabel).toBe('Re-run with checks');
+    expect(vm.runLabel).toBe('Update run · compare checks');
   });
 
   it('modeLabel is "Observe" in observation mode', () => {
@@ -148,11 +148,11 @@ describe('buildVerifySessionViewModel — updated labels', () => {
     expect(vm.modeLabel).toBe('Observe');
   });
 
-  it('modeLabel is "Check outputs" in checked mode', () => {
+  it('modeLabel is "Checks armed" in checked mode', () => {
     const vm = buildVerifySessionViewModel(
       baseInput({ nextRunUsesAssertions: true, totalExpectedCaseCount: 2 })
     );
-    expect(vm.modeLabel).toBe('Check outputs');
+    expect(vm.modeLabel).toBe('Checks armed');
   });
 
   it('modeLabel never returns "SIMULATION" (removed jargon)', () => {
@@ -177,13 +177,13 @@ describe('buildVerifySessionViewModel — updated labels', () => {
 // ─── Stale run label ──────────────────────────────────────────────────────────
 
 describe('buildVerifySessionViewModel — stale run label', () => {
-  it('runLabel is "Run current stimulus" when run is stale', () => {
+  it('runLabel is "Update run · observe only" when run is stale in observe mode', () => {
     const vm = buildVerifySessionViewModel(
       baseInput({
         isRunStale: true,
         lastRun: { status: 'pass', kind: 'trace' } as never,
       })
     );
-    expect(vm.runLabel).toBe('Run current stimulus');
+    expect(vm.runLabel).toBe('Update run · observe only');
   });
 });

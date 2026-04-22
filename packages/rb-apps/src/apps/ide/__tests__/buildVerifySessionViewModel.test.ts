@@ -38,7 +38,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.statusBadge).toBe('Draft');
     expect(model.title).toBe('Ready to run the current stimulus');
     expect(model.summary).toContain('Stimulus is ready');
-    expect(model.runLabel).toBe('Run current stimulus');
+    expect(model.runLabel).toBe('Run · observe only');
   });
 
   it('treats first-run sessions with expected outputs armed as draft assertion work', () => {
@@ -59,7 +59,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.status).toBe('draft');
     expect(model.statusBadge).toBe('Draft');
     expect(model.title).toBe('Ready to run the current stimulus');
-    expect(model.runLabel).toBe('Run current stimulus');
+    expect(model.runLabel).toBe('Run · compare checks');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -148,7 +148,7 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.mode).toBe('assertion');
     expect(model.status).toBe('assertions-differ');
-    expect(model.runLabel).toBe('Update run');
+    expect(model.runLabel).toBe('Update run · compare checks');
     expect(model.recommendedNextAction).toBe('verify');
   });
 
@@ -367,6 +367,6 @@ describe('buildVerifySessionViewModel', () => {
 
     expect(model.status).toBe('stale');
     expect(model.statusBadge).toBe('Needs update');
-    expect(model.runLabel).toBe('Update run');
+    expect(model.runLabel).toBe('Update run · compare checks');
   });
 });

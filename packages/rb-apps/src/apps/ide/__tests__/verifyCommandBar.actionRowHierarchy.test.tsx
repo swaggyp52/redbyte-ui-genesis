@@ -10,7 +10,7 @@ const BASE: VerifyCommandBarProps = {
   onSetCompare: vi.fn(),
   compareAvailable: false,
   onRun: vi.fn(),
-  runLabel: 'Run current stimulus',
+  runLabel: 'Run · observe only',
   runDisabled: false,
   onGenerate: vi.fn(),
   generateLabel: 'Seed stimulus',
