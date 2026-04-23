@@ -25,7 +25,7 @@
 - `pnpm -s ide:gate:export-download-contract` -> pass
 - `pnpm -s build:unified` -> pass
 
-**Release-process debt:** The immediately preceding Hardware Surface Reset push reported a bypassed required status check: `Classroom Truth Gates`. That branch-protection debt remains tracked until the required check is enforced by the remote instead of bypassed.
+**Release-process debt:** The immediately preceding Hardware Surface Reset push and this Blocker Truth push reported a bypassed required status check: `Classroom Truth Gates`. That branch-protection debt remains tracked until the required check is enforced by the remote instead of bypassed.
 
 **Attribution:** Connor Angiel (agent)
 
