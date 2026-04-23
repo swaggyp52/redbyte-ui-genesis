@@ -12,7 +12,7 @@
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
 | Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, waveform viewer; **Phase 6:** header now keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`) instead of hiding compare inside **Tools**, and the session strip dedupes repeated labels so students read one state before acting |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
-| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Bring-up checklist, mapping summary; **Map Pins `mappingReady`** treats **no required output rows** as outputs satisfied (N/A); **Phase 3b:** left dock **Pin readiness** + copy frames **Project → Map Pins** as the authoritative pin table; **`map-pins` / incomplete-mapping CTAs prefer `onGoToProject`** over “fake” Map Pins that only toggled Hardware map mode |
+| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, click a board control, and see the saved board control plus physical package pin. Board Check / Pre-flight / Simulation remain secondary after-mapping tools, and the advanced structured mapping editor is collapsed by default. |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
 
 ### Design chrome (layout system)
@@ -23,7 +23,10 @@
 
 ### Hardware chrome (layout system)
 
-- **Stage rail**: Caption + four-column **stage tabs** (Map Pins → Test on Board → Pre-flight → Simulation) with title + hint + status; **board workspace** frame below with chrome header (`Stage N · …`) and Basys3 / timing pills.
+- **Map Pins-first workspace**: Hardware opens on a plain signal-to-board binding job. The top block summarizes mapped/missing counts and the next selected signal; the main workspace pairs grouped project signals with the large clickable Basys3 board visual.
+- **Board assignment loop**: Rows show friendly signal labels, board control aliases, physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Board clicks write through the same saved mapping authority that Export reads.
+- **After-mapping tools**: Board Check, Pre-flight, and Simulation are demoted into a secondary rail below the Map Pins header. They should not visually compete with the mapping task.
+- **Advanced editor containment**: Structured `hardwareMappingV2` entry editing remains available behind an explicit `Advanced mapping editor` disclosure and is not part of the default student path.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
 
 ### Verify chrome (layout system)

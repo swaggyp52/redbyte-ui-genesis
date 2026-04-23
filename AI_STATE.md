@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-23 (Hardware Surface Reset - Map Pins student workflow)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/components/Basys3BoardView.tsx`, `packages/rb-apps/src/apps/ide/ioLabels.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.ts`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-hardware-surface-reset.md`
+
+**Context:** Hardware / Map Pins was blocking students because the default surface read like a staged internal mapping editor. The page exposed raw entry ids and structured mapping fields ahead of the actual job: choose a project signal, click the matching Basys3 board control, and see the resulting physical pin.
+
+**Changes:**
+- **Map Pins-first default:** Hardware now opens on Map Pins and leads with a direct binding header, mapped/missing summary, grouped signal list, and the central clickable Basys3 board visual.
+- **Student-facing rows:** Mapping rows use friendly signal labels such as `IN0`, show board control aliases such as `SW0`, show physical package pins such as `V17`, and reduce status to `Mapped`, `Missing`, or `Conflict`.
+- **Board click guidance:** Existing saved mapping writes still flow through `onSetMappingPin`; the board now resolves package pins back to board controls for highlights and dims invalid board regions by selected signal direction.
+- **Advanced containment:** Structured `hardwareMappingV2` editing remains available, but it is collapsed behind an explicit `Advanced mapping editor` disclosure instead of dominating the default path.
+- **Docs/tests:** Hardware ownership docs now describe the Map Pins-first surface and focused tests cover friendly labels, signal -> board control -> package pin rows, board click assignment, and collapsed advanced editing.
+
+**Validation:**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareMappingV2EditorModel.test.ts` -> pass
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/__tests__/basys3BoardView.test.tsx` -> pass
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.mapping-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts` -> pass
+- `pnpm -s ide:gate:bringup-contract` -> pass
+- `pnpm -s ide:gate:hardware-checklist-contract` -> pass
+- `pnpm -s ide:gate:export-ready-contract` -> pass
+- `pnpm build:unified` -> pass
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-22 (Campaign G - Verify workspace legitimacy reset)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-workspace-legitimacy-reset.md`

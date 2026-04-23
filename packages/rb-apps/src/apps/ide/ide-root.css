@@ -31350,6 +31350,164 @@ button:disabled,
   font-size: 18px;
 }
 
+/* Hardware surface reset: Map Pins is the default student workflow. */
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 18px 20px;
+  margin: 0 0 12px;
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(9, 25, 42, 0.92), rgba(8, 18, 30, 0.76));
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-kicker {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(125, 211, 252, 0.88);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-header h3 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+  color: rgba(239, 249, 255, 0.98);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-header p {
+  margin: 7px 0 0;
+  max-width: 76ch;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(204, 226, 242, 0.88);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-summary {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 3px;
+  min-width: 116px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(82, 130, 168, 0.38);
+  background: rgba(5, 14, 24, 0.66);
+  text-align: right;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-summary span {
+  font-size: 11px;
+  color: rgba(173, 202, 224, 0.76);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-summary strong {
+  font-size: 15px;
+  color: rgba(240, 253, 250, 0.96);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted {
+  padding: 9px 12px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgba(5, 14, 24, 0.52);
+  box-shadow: none;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-toggle {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-segment:first-child {
+  display: none !important;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-segment {
+  min-height: 42px !important;
+  padding: 8px 10px !important;
+  background: rgba(9, 21, 34, 0.54) !important;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-segment-title {
+  font-size: 12px !important;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-segment-hint {
+  display: none;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map[data-testid='ide-hw-board-workspace'] [data-testid='ide-hw-map-authority-callout'] {
+  display: none;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-table {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-structured-editor {
+  order: 20;
+  margin-top: 8px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(75, 108, 138, 0.38);
+  background: rgba(5, 14, 24, 0.58);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-structured-editor:not([open]) > :not(summary) {
+  display: none;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-structured-summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  color: rgba(202, 225, 242, 0.86);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row {
+  align-items: stretch;
+  gap: 12px;
+  min-height: 74px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(241, 248, 255, 0.98);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-binding {
+  flex: 0 0 162px;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  text-align: left;
+  font-size: 11px;
+  color: rgba(194, 216, 232, 0.86);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-binding strong {
+  color: rgba(241, 248, 255, 0.96);
+  font-size: 12px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-badge--conflict {
+  background: rgba(251, 113, 133, 0.16);
+  color: #fda4af;
+  border: 1px solid rgba(251, 113, 133, 0.38);
+}
+
 [data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.58fr) minmax(272px, 0.42fr);

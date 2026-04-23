@@ -167,7 +167,7 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hw-stage-rail')).toBeTruthy();
     expect(getByTestId('ide-hw-stage-caption').textContent).toMatch(/required pin.*board assignments/i);
     expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
-    expect(getByTestId('ide-hw-board-chrome-stage').textContent).toContain('Stage 1');
+    expect(getByTestId('ide-hw-board-chrome-stage').textContent).toContain('Map Pins');
     expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
   });
 
@@ -508,8 +508,8 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
 
-    const clockGroup = getAllByText('Clock').at(-1)?.closest('details');
-    expect(clockGroup?.textContent).toContain('phase_driver');
+    const clockGroup = getAllByText('Clock / reset').at(-1)?.closest('details');
+    expect(clockGroup?.textContent).toContain('PHASE_DRIVER');
   });
 
   it('keeps map mode blocked when export reports required unmapped ports', () => {
@@ -575,6 +575,84 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     expect(getByTestId('ide-hw-map-dock').textContent).toContain('Complete');
     expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
+  });
+
+  it('makes the default Map Pins row read as signal to board control to physical pin', () => {
+    const onSetMappingPin = vi.fn();
+    const { getByTestId, queryByText } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Student mapping loop"
+          expectedBehavior="IN0 drives LOCK."
+          mappingRows={[
+            { id: 'iom-in0', label: 'iom-in0', direction: 'in', pin: 'V17', required: true },
+            { id: 'lock', label: 'LOCK', direction: 'out', pin: 'U16', required: true },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+          onSetMappingPin={onSetMappingPin}
+        />
+      </BoardSignalProvider>
+    );
+
+    const row = getByTestId('ide-hw-map-row-iom-in0');
+    expect(row.textContent).toContain('IN0');
+    expect(row.textContent).toContain('SW0');
+    expect(row.textContent).toContain('V17');
+    expect(queryByText('iom-in0')).toBeNull();
+
+    fireEvent.click(row);
+    fireEvent.click(getByTestId('ide-hw-map-sw-1'));
+
+    expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
+  });
+
+  it('keeps the structured mapping editor collapsed behind an advanced affordance', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Advanced contained"
+          expectedBehavior="Advanced data stays available but not dominant."
+          mappingRows={[
+            { id: 'reset', label: 'RESET', direction: 'in', pin: '', required: true, timingRole: 'reset' },
+          ]}
+          hardwareMappingV2={{
+            schemaVersion: '2.0',
+            boardId: 'basys3',
+            entries: [
+              {
+                kind: 'scalar',
+                id: 'reset',
+                direction: 'in',
+                width: 1,
+                portName: 'reset',
+                nodeId: 'reset_node',
+                port: 'out',
+                label: 'RESET',
+                timingRole: 'reset',
+                pin: '',
+              },
+            ],
+          }}
+          onApplyHardwareMappingEdit={vi.fn()}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ lastVerify: undefined, lastExport: undefined, blockingIssues: [] })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    const advanced = getByTestId('ide-hw-structured-editor') as HTMLDetailsElement;
+    expect(advanced.tagName.toLowerCase()).toBe('details');
+    expect(advanced.open).toBe(false);
+    expect(advanced.querySelector('summary')?.textContent).toContain('Advanced mapping editor');
   });
 
   it('points students to Export first when hardware is blocked before a current bundle exists', () => {

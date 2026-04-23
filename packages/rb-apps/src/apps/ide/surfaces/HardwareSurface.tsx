@@ -46,6 +46,10 @@ import {
   buildGuidedHdlCatalogFromText,
   suggestEntryIdFromHdl,
 } from '../hardwareMappingGuidance';
+import {
+  resolveBasys3BoardAlias,
+  resolveBasys3PackagePin,
+} from '../../../fpga/boards/basys3/basys3Pins';
 
 export interface HardwareMappingRow {
   id: string;
@@ -181,6 +185,63 @@ export function signalHumanLabel(signal: string): string {
   return signal.toUpperCase();
 }
 
+function formatProjectSignalName(row: HardwareMappingRow): string {
+  const label = getStudentFacingIoLabel(row, row.id).trim() || row.id;
+  return label.replace(/\s+/g, ' ').toUpperCase();
+}
+
+function resolveBoardControlAlias(pin: string | undefined): string | null {
+  const trimmed = pin?.trim() ?? '';
+  if (!trimmed) return null;
+  return resolveBasys3BoardAlias(trimmed) ?? trimmed.toUpperCase();
+}
+
+function describeBoardControl(pin: string | undefined): string {
+  return resolveBoardControlAlias(pin) ?? 'Choose on board';
+}
+
+function describePackagePin(pin: string | undefined): string {
+  const trimmed = pin?.trim() ?? '';
+  if (!trimmed) return 'Not assigned';
+  return resolveBasys3PackagePin(trimmed) ?? 'Unknown pin';
+}
+
+function mappingPinConflictKey(pin: string | undefined): string {
+  const trimmed = pin?.trim() ?? '';
+  if (!trimmed) return '';
+  return resolveBasys3PackagePin(trimmed) ?? trimmed.toUpperCase();
+}
+
+function buildAllowedBoardAliasesForRow(row: HardwareMappingRow | null): Set<string> | undefined {
+  if (!row) return undefined;
+  if (row.direction === 'in') {
+    return new Set([
+      ...Array.from({ length: 16 }, (_, index) => `SW${index}`),
+      'BTNC',
+      'BTNU',
+      'BTND',
+      'BTNL',
+      'BTNR',
+      'CLK100MHZ',
+    ]);
+  }
+  return new Set([
+    ...Array.from({ length: 16 }, (_, index) => `LD${index}`),
+    'CA',
+    'CB',
+    'CC',
+    'CD',
+    'CE',
+    'CF',
+    'CG',
+    'DP',
+    'AN0',
+    'AN1',
+    'AN2',
+    'AN3',
+  ]);
+}
+
 /** Format a single assertion entry as a plain student-readable sentence. */
 export function formatAssertionPlain(a: {
   tick: number;
@@ -223,13 +284,8 @@ function resolveInitialHardwareMode(input: {
   vectorsCount: number;
   missingRequiredPortsFromExport?: number;
 }): HwMode {
-  if (input.mappingRows.length === 0) return 'map';
-  const hasMissingRequiredPins = input.mappingRows.some(
-    (row) => row.required && row.pin.trim().length === 0
-  ) || (input.missingRequiredPortsFromExport ?? 0) > 0;
-  if (hasMissingRequiredPins) return 'map';
-  if (input.vectorsCount > 0) return 'bringup';
-  return 'proof';
+  void input;
+  return 'map';
 }
 
 export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
@@ -445,7 +501,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const mapModeAliases = useMemo(() => {
     const s = new Set<string>();
     for (const row of mappingRows) {
-      const pin = row.pin.trim().toUpperCase();
+      const pin = resolveBoardControlAlias(row.pin);
       if (pin) s.add(pin);
     }
     return s;
@@ -455,7 +511,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const selectedMappingRowPin = useMemo(() => {
     if (!selectedMappingRowId) return null;
     const row = mappingRows.find((r) => r.id === selectedMappingRowId);
-    return row?.pin?.trim().toUpperCase() || null;
+    return resolveBoardControlAlias(row?.pin) ?? null;
   }, [selectedMappingRowId, mappingRows]);
   const selectedMappingRow = useMemo(
     () => (selectedMappingRowId ? mappingRows.find((row) => row.id === selectedMappingRowId) ?? null : null),
@@ -463,36 +519,46 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
 
   // ── Map mode: group rows by signal type for the assignment table ───────
+  const pinUsageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of mappingRows) {
+      const key = mappingPinConflictKey(row.pin);
+      if (!key) continue;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    return counts;
+  }, [mappingRows]);
+  const selectedAllowedBoardAliases = useMemo(
+    () => buildAllowedBoardAliasesForRow(selectedMappingRow),
+    [selectedMappingRow]
+  );
+
   const mapModeGroups = useMemo(() => {
     const groups: Array<{ label: string; rows: HardwareMappingRow[] }> = [
-      { label: effectiveTimingGuidance.signalLabelSingular, rows: [] },
-      { label: 'Switches', rows: [] },
-      { label: 'Buttons', rows: [] },
-      { label: 'LEDs', rows: [] },
-      { label: '7-Segment', rows: [] },
+      { label: 'Clock / reset', rows: [] },
+      { label: 'Inputs', rows: [] },
+      { label: 'Outputs', rows: [] },
       { label: 'Other', rows: [] },
     ];
     for (const row of mappingRows) {
-      const pin = row.pin.trim().toUpperCase();
-      const lbl = getStudentFacingIoLabel(row).toUpperCase();
-      if (getIoSignalLookupKeys(row, mappingRows).some((key) => clockRoleKeys.has(key))) {
+      const lbl = formatProjectSignalName(row);
+      const lookupKeys = getIoSignalLookupKeys(row, mappingRows);
+      if (lookupKeys.some((key) => clockRoleKeys.has(key))) {
         groups[0].rows.push(row);
-      } else if (/CLK|W5/.test(pin) || /CLK|CLOCK/.test(lbl)) {
+      } else if (lookupKeys.some((key) => signalRoles?.[key] === 'reset') || /(^|[^A-Z])(RST|RESET)([^A-Z]|$)/.test(lbl)) {
         groups[0].rows.push(row);
-      } else if (/^SW\d/.test(pin) || /^SW\d/.test(lbl)) {
+      } else if (/CLK|CLOCK/.test(lbl)) {
+        groups[0].rows.push(row);
+      } else if (row.direction === 'in') {
         groups[1].rows.push(row);
-      } else if (/^BTN/.test(pin) || /^BTN/.test(lbl)) {
+      } else if (row.direction === 'out') {
         groups[2].rows.push(row);
-      } else if (/^LD\d/.test(pin) || /^LD\d/.test(lbl)) {
-        groups[3].rows.push(row);
-      } else if (/^(CA|CB|CC|CD|CE|CF|CG|DP|AN\d)/.test(pin) || /^(CA|CB|CC|CD|CE|CF|CG|DP|AN\d)/.test(lbl)) {
-        groups[4].rows.push(row);
       } else {
-        groups[5].rows.push(row);
+        groups[3].rows.push(row);
       }
     }
     return groups.filter((g) => g.rows.length > 0);
-  }, [clockRoleKeys, effectiveTimingGuidance.signalLabelSingular, mappingRows]);
+  }, [clockRoleKeys, mappingRows, signalRoles]);
   const structuredEntries = useMemo(
     () => (hardwareMappingV2 ? buildStructuredHardwareEntryViews(hardwareMappingV2) : []),
     [hardwareMappingV2]
@@ -1215,48 +1281,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const hardwareBoardChromeStage =
     hwMode === 'map'
-      ? 'Stage 1 · Map Pins'
+      ? 'Map Pins'
       : hwMode === 'bringup'
         ? 'Stage 2 · Board Check'
         : hwMode === 'proof'
           ? 'Stage 3 · Pre-flight'
           : 'Stage 4 · Simulation';
-
-  const hardwareStageCaption = useMemo(() => {
-    switch (hwMode) {
-      case 'map':
-        if (hasNoBoundaryRows) {
-          return 'Add inputs and outputs in Design first, then bind each boundary signal to a physical pin on the Basys3.';
-        }
-        if (mappingReady) {
-          return 'Mapping is complete. Continue to Board Check with bring-up vectors, or open Export to download the Vivado project ZIP. The bitstream (.bit) is created later in Vivado (synthesis/implementation) — not inside RedByte.';
-        }
-        if (unresolvedRequiredCount > 0) {
-          return `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a row here and click the board so Export receives the same saved mapping.`;
-        }
-        return 'Finish the required clock and output checks, then use the board view here to complete the saved mapping.';
-      case 'bringup':
-        if (bringupTickGroups.length === 0) {
-          return 'Generate bring-up vectors from Verify, then use these steps to set switches and confirm LEDs against the expected trace.';
-        }
-        return `Step ${bringupStepIndex + 1} of ${bringupTickGroups.length}${
-          currentTick != null ? ` · vector tick ${currentTick}` : ''
-        }. Follow the checklist on the left; the board highlights what to set; the inspector shows live values.`;
-      case 'proof':
-        return 'Confirm compare and export are current for this design. After that, program happens in Vivado: synthesize, generate bitstream, then use Hardware Manager — RedByte does not produce the .bit file.';
-      case 'live':
-      default:
-        return 'Explore the mapped board interactively. Switches and buttons drive the same I/O path as bring-up, without the guided step list.';
-    }
-  }, [
-    bringupStepIndex,
-    bringupTickGroups.length,
-    currentTick,
-    hasNoBoundaryRows,
-    hwMode,
-    mappingReady,
-    unresolvedRequiredCount,
-  ]);
 
   // ── Dock nodes ──────────────────────────────────────────────────────
   const liveDock = (
@@ -1922,12 +1952,32 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>}
 
         {/* ── Stage rail: workflow caption + primary stage tabs ── */}
-        <div className="ide-hw-stage-rail" data-testid="ide-hw-stage-rail">
+        <div className="ide-hw-map-reset-header" data-testid="ide-hw-map-reset-header">
+          <div>
+            <span className="ide-hw-map-reset-kicker">Map Pins</span>
+            <h3>Bind project signals to the Basys3 board</h3>
+            <p data-testid="ide-hw-stage-caption">
+              {hasNoBoundaryRows
+                ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
+                  : selectedMappingRow
+                  ? `${formatProjectSignalName(selectedMappingRow)} is selected. Click the matching board control to save its pin.`
+                  : unresolvedRequiredCount > 0
+                    ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a signal row, then click the matching board control.`
+                  : 'Select a signal, click the matching board control, then confirm the physical package pin shown in the row.'}
+            </p>
+          </div>
+          <div className="ide-hw-map-reset-summary" aria-label="Mapping summary">
+            <span>{mappingRows.length} signal{mappingRows.length === 1 ? '' : 's'}</span>
+            <strong>{mappingReady ? 'Mapped' : `${unresolvedRequiredCount} missing`}</strong>
+          </div>
+        </div>
+
+        <div className="ide-hw-stage-rail ide-hw-stage-rail--demoted" data-testid="ide-hw-stage-rail">
           <div className="ide-hw-stage-rail-top">
             <div className="ide-hw-stage-rail-intro">
-              <span className="ide-hw-stage-kicker">Basys3 bring-up</span>
-              <p className="ide-hw-stage-caption" data-testid="ide-hw-stage-caption">
-                {hardwareStageCaption}
+              <span className="ide-hw-stage-kicker">After mapping</span>
+              <p className="ide-hw-stage-caption">
+                Board check, pre-flight, and live simulation stay available, but pin binding is the main hardware job.
               </p>
             </div>
             {sim.tick > 0 ? (
@@ -2220,7 +2270,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </IdeCallout>
               ) : null}
               {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
-                <div className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
+                <details className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
+                  <summary className="ide-hw-structured-summary">Advanced mapping editor</summary>
                   <IdeCallout
                     tone="info"
                     title="Advanced entry editor (same document as Map Pins)"
@@ -2689,7 +2740,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       </IdeButton>
                     </div>
                   </details>
-                </div>
+                </details>
               ) : null}
               <p className="ide-copy ide-hw-map-instructions">
                 {hasNoBoundaryRows
@@ -2713,11 +2764,23 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       const completeness = deriveMappingCompleteness(row);
                       const resourceChip = formatBoardResourceChip(row.boardResourceType);
                       const timingChip = formatTimingRoleChip(row.timingRole);
+                      const signalLabel = formatProjectSignalName(row);
+                      const boardControl = describeBoardControl(row.pin);
+                      const packagePin = describePackagePin(row.pin);
+                      const conflictKey = mappingPinConflictKey(row.pin);
+                      const hasConflict = conflictKey.length > 0 && (pinUsageCounts.get(conflictKey) ?? 0) > 1;
+                      const statusLabel = hasConflict
+                        ? 'Conflict'
+                        : isMissing
+                          ? 'Missing'
+                          : completeness === 'partial'
+                            ? 'Partial'
+                            : 'Mapped';
                       return (
                         <button
                           key={row.id}
                           type="button"
-                          className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''} ${isMissing ? 'is-required-missing' : ''} ${!row.required ? 'is-optional' : ''}`}
+                          className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''} ${isMissing ? 'is-required-missing' : ''} ${hasConflict ? 'is-conflict' : ''} ${!row.required ? 'is-optional' : ''}`}
                           data-testid={`ide-hw-map-row-${row.id}`}
                           data-required={row.required ? 'true' : 'false'}
                           onClick={() =>
@@ -2725,23 +2788,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           }
                         >
                           <span className="ide-hw-map-row-left">
-                            <span className="ide-hw-map-row-label">{getStudentFacingIoLabel(row)}</span>
+                            <span className="ide-hw-map-row-label">{signalLabel}</span>
                             <div
                               className="ide-hw-map-row-v2-chips"
                               data-testid={`ide-hw-map-row-v2-${row.id}`}
                             >
-                              <span
-                                className="ide-hw-map-chip ide-hw-map-chip--kind"
-                                title="hardwareMappingV2 entry kind"
-                              >
-                                {formatMappingKindChip(row.mappingKind)}
-                              </span>
-                              <span
-                                className={`ide-hw-map-chip ide-hw-map-chip--complete ide-hw-map-chip--complete-${completeness}`}
-                                title="Pin mapping completeness"
-                              >
-                                {formatCompletenessChip(completeness)}
-                              </span>
                               {resourceChip ? (
                                 <span className="ide-hw-map-chip ide-hw-map-chip--resource" title="Board resource">
                                   {resourceChip}
@@ -2757,12 +2808,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           <span className="ide-hw-map-row-meta">
                             {row.required ? (
                               isMissing
-                                ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">required</span>
-                                : <span className="ide-hw-map-row-badge ide-hw-map-row-badge--ok">✓</span>
+                                ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">Missing</span>
+                                : <span className={`ide-hw-map-row-badge ${hasConflict ? 'ide-hw-map-row-badge--conflict' : 'ide-hw-map-row-badge--ok'}`}>{statusLabel}</span>
                             ) : (
                               <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
                             )}
-                            <code className="ide-hw-map-row-pin">{row.pin || '—'}</code>
+                            <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
+                              <span>Board: <strong>{boardControl}</strong></span>
+                              <span>Pin: <strong>{packagePin}</strong></span>
+                            </span>
                           </span>
                         </button>
                       );
@@ -2775,6 +2829,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               <Basys3BoardView
                 mappedAliases={mapModeAliases}
                 highlightedAlias={selectedMappingRowPin}
+                allowedAliases={selectedAllowedBoardAliases}
                 onSelectAlias={(alias) => {
                   if (selectedMappingRowId && onSetMappingPin) {
                     onSetMappingPin(selectedMappingRowId, alias);

@@ -4,6 +4,7 @@ import styles from './Basys3BoardView.module.css';
 export interface Basys3BoardViewProps {
   mappedAliases: Set<string>;
   highlightedAlias?: string | null;
+  allowedAliases?: Set<string>;
   onSelectAlias: (alias: string) => void;
 }
 
@@ -34,26 +35,43 @@ const SEG_DEFS = [
   { alias: 'CG', dx: -9,  dy: -2,  w: 18, h: 4,  rx: 2 }, // middle
 ];
 
-function regionFill(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null): string {
+function isAllowed(alias: string, allowedAliases?: Set<string>): boolean {
+  return !allowedAliases || allowedAliases.has(alias);
+}
+
+function regionFill(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null, allowedAliases?: Set<string>): string {
+  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.05)';
   if (alias === highlightedAlias) return 'rgba(56,189,248,0.85)';
   if (mappedAliases.has(alias))   return 'rgba(61,186,110,0.8)';
   return 'rgba(255,255,255,0.12)';
 }
 
-function regionStroke(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null): string {
+function regionStroke(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null, allowedAliases?: Set<string>): string {
+  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.08)';
   if (alias === highlightedAlias) return '#38bdf8';
   if (mappedAliases.has(alias))   return 'rgba(61,186,110,0.9)';
   return 'rgba(255,255,255,0.2)';
 }
 
-function labelFill(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null): string {
+function labelFill(alias: string, mappedAliases: Set<string>, highlightedAlias?: string | null, allowedAliases?: Set<string>): string {
+  if (!isAllowed(alias, allowedAliases)) return 'rgba(255,255,255,0.1)';
   if (alias === highlightedAlias || mappedAliases.has(alias)) return 'rgba(180,230,220,0.7)';
   return 'rgba(255,255,255,0.2)';
+}
+
+function boardCursor(alias: string, allowedAliases?: Set<string>): React.CSSProperties {
+  return { cursor: isAllowed(alias, allowedAliases) ? 'pointer' : 'not-allowed' };
+}
+
+function selectAllowed(alias: string, allowedAliases: Set<string> | undefined, onSelectAlias: (alias: string) => void): void {
+  if (!isAllowed(alias, allowedAliases)) return;
+  onSelectAlias(alias);
 }
 
 export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
   mappedAliases,
   highlightedAlias,
+  allowedAliases,
   onSelectAlias,
 }) => {
   return (
@@ -138,12 +156,12 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               width={seg.w}
               height={seg.h}
               rx={seg.rx}
-              fill={regionFill(seg.alias, mappedAliases, highlightedAlias)}
-              stroke={regionStroke(seg.alias, mappedAliases, highlightedAlias)}
+              fill={regionFill(seg.alias, mappedAliases, highlightedAlias, allowedAliases)}
+              stroke={regionStroke(seg.alias, mappedAliases, highlightedAlias, allowedAliases)}
               strokeWidth="0.5"
-              style={{ cursor: 'pointer' }}
+              style={boardCursor(seg.alias, allowedAliases)}
               className={seg.alias === highlightedAlias ? 'map-hl' : undefined}
-              onClick={() => onSelectAlias(seg.alias)}
+              onClick={() => selectAllowed(seg.alias, allowedAliases, onSelectAlias)}
             />
           ))}
 
@@ -153,12 +171,12 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             cx={cx + 14}
             cy={cy + 15}
             r={3}
-            fill={regionFill('DP', mappedAliases, highlightedAlias)}
-            stroke={regionStroke('DP', mappedAliases, highlightedAlias)}
+            fill={regionFill('DP', mappedAliases, highlightedAlias, allowedAliases)}
+            stroke={regionStroke('DP', mappedAliases, highlightedAlias, allowedAliases)}
             strokeWidth="0.5"
-            style={{ cursor: 'pointer' }}
+            style={boardCursor('DP', allowedAliases)}
             className={'DP' === highlightedAlias ? 'map-hl' : undefined}
-            onClick={() => onSelectAlias('DP')}
+            onClick={() => selectAllowed('DP', allowedAliases, onSelectAlias)}
           />
 
           {/* Digit-enable (AN) region */}
@@ -169,19 +187,19 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             width={28}
             height={13}
             rx={3}
-            fill={regionFill(an, mappedAliases, highlightedAlias)}
-            stroke={regionStroke(an, mappedAliases, highlightedAlias)}
+            fill={regionFill(an, mappedAliases, highlightedAlias, allowedAliases)}
+            stroke={regionStroke(an, mappedAliases, highlightedAlias, allowedAliases)}
             strokeWidth="0.8"
-            style={{ cursor: 'pointer' }}
+            style={boardCursor(an, allowedAliases)}
             className={an === highlightedAlias ? 'map-hl' : undefined}
-            onClick={() => onSelectAlias(an)}
+            onClick={() => selectAllowed(an, allowedAliases, onSelectAlias)}
           />
           <text
             x={cx}
             y={cy + 31}
             fontFamily="IBM Plex Mono, monospace"
             fontSize="6"
-            fill={labelFill(an, mappedAliases, highlightedAlias)}
+            fill={labelFill(an, mappedAliases, highlightedAlias, allowedAliases)}
             textAnchor="middle"
             style={{ pointerEvents: 'none' }}
           >
@@ -197,19 +215,19 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const cx = 10 + 20 + i * 36 + 18;
         const cy = 40;
         return (
-          <g key={alias} onClick={() => onSelectAlias(alias)} style={{ cursor: 'pointer' }}>
+          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
             <circle
               data-testid={`ide-hw-map-ld-${idx}`}
               cx={cx} cy={cy} r={7}
-              fill={regionFill(alias, mappedAliases, highlightedAlias)}
-              stroke={regionStroke(alias, mappedAliases, highlightedAlias)}
+              fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
+              stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases)}
               strokeWidth={alias === highlightedAlias ? '2' : '1'}
               className={alias === highlightedAlias ? 'map-hl' : undefined}
             />
             {/* expanded hitbox */}
             <circle cx={cx} cy={cy} r={16} fill="transparent" />
             <text x={cx} y={58} fontSize={7} fontFamily="IBM Plex Mono, monospace"
-              fill={labelFill(alias, mappedAliases, highlightedAlias)}
+              fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
               textAnchor="middle" style={{ pointerEvents: 'none' }}>
               {alias}
             </text>
@@ -219,19 +237,19 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
 
       {/* === Buttons === */}
       {BTN_DEFS.map(({ cx, cy, alias, label }) => (
-        <g key={alias} onClick={() => onSelectAlias(alias)} style={{ cursor: 'pointer' }}>
+        <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
           <circle
             data-testid={`ide-hw-map-btn-${label.toLowerCase()}`}
             cx={cx} cy={cy} r={9}
-            fill={regionFill(alias, mappedAliases, highlightedAlias)}
-            stroke={regionStroke(alias, mappedAliases, highlightedAlias)}
+            fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
+            stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases)}
             strokeWidth={alias === highlightedAlias ? '2' : '1'}
             className={alias === highlightedAlias ? 'map-hl' : undefined}
           />
           {/* expanded hitbox */}
           <circle cx={cx} cy={cy} r={18} fill="transparent" />
           <text x={cx} y={cy + 22} fontSize={7} fontFamily="IBM Plex Mono, monospace"
-            fill={labelFill(alias, mappedAliases, highlightedAlias)}
+            fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
             textAnchor="middle" style={{ pointerEvents: 'none' }}>
             {alias}
           </text>
@@ -248,12 +266,12 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
         const trackW = 14;
         const trackH = 22;
         return (
-          <g key={alias} onClick={() => onSelectAlias(alias)} style={{ cursor: 'pointer' }}>
+          <g key={alias} onClick={() => selectAllowed(alias, allowedAliases, onSelectAlias)} style={boardCursor(alias, allowedAliases)}>
             <rect
               data-testid={`ide-hw-map-sw-${idx}`}
               x={trackX} y={trackY} width={trackW} height={trackH} rx={4}
-              fill={regionFill(alias, mappedAliases, highlightedAlias)}
-              stroke={regionStroke(alias, mappedAliases, highlightedAlias)}
+              fill={regionFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
+              stroke={regionStroke(alias, mappedAliases, highlightedAlias, allowedAliases)}
               strokeWidth={alias === highlightedAlias ? '2' : '1'}
               className={alias === highlightedAlias ? 'map-hl' : undefined}
             />
@@ -262,7 +280,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               rx={6} fill="transparent" />
             <text x={centerX} y={220} fontSize={7} fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"
-              fill={labelFill(alias, mappedAliases, highlightedAlias)}
+              fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases)}
               style={{ pointerEvents: 'none' }}>
               {alias}
             </text>

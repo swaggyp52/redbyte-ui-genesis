@@ -16,6 +16,7 @@ export const BASYS3_LED_PINS = [
 export const BASYS3_BUTTON_PINS = ['U18', 'T18', 'W19', 'T17', 'U17'] as const;
 export const BASYS3_SEGMENT_PINS = ['W7', 'W6', 'U8', 'V8', 'U5', 'V5', 'U7'] as const;
 export const BASYS3_ANODE_PINS = ['U2', 'U4', 'V4', 'W4'] as const;
+export const BASYS3_SEGMENT_ALIASES = ['CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG'] as const;
 
 function indexAliasMap(prefix: string, pins: readonly string[]): Record<string, string> {
   const map: Record<string, string> = {};
@@ -39,8 +40,33 @@ const BASYS3_ALIAS_TO_PACKAGE_PIN: Record<string, string> = {
   ...indexAliasMap('LED', BASYS3_LED_PINS),
   ...indexAliasMap('BTN', BASYS3_BUTTON_PINS),
   ...indexAliasMap('SEG', BASYS3_SEGMENT_PINS),
+  ...Object.fromEntries(BASYS3_SEGMENT_ALIASES.map((alias, index) => [alias, BASYS3_SEGMENT_PINS[index]])),
   ...indexAliasMap('AN', BASYS3_ANODE_PINS),
 };
+
+const BASYS3_PACKAGE_PIN_TO_PRIMARY_ALIAS: Record<string, string> = (() => {
+  const preferredAliases = [
+    'CLK100MHZ',
+    ...Array.from({ length: BASYS3_SWITCH_PINS.length }, (_, index) => `SW${index}`),
+    ...Array.from({ length: BASYS3_LED_PINS.length }, (_, index) => `LD${index}`),
+    'BTNC',
+    'BTNU',
+    'BTNL',
+    'BTNR',
+    'BTND',
+    ...BASYS3_SEGMENT_ALIASES,
+    'DP',
+    ...Array.from({ length: BASYS3_ANODE_PINS.length }, (_, index) => `AN${index}`),
+  ];
+  const map: Record<string, string> = {};
+  for (const alias of preferredAliases) {
+    const packagePin = BASYS3_ALIAS_TO_PACKAGE_PIN[alias];
+    if (packagePin && !map[packagePin]) {
+      map[packagePin] = alias;
+    }
+  }
+  return map;
+})();
 
 export const BASYS3_INPUT_PACKAGE_PINS = new Set<string>([
   ...BASYS3_SWITCH_PINS,
@@ -71,6 +97,15 @@ export function resolveBasys3PackagePin(pin: string): string | null {
   if (fromAlias) return fromAlias;
   if (BASYS3_ALLOWED_PACKAGE_PINS.has(normalized)) return normalized;
   return null;
+}
+
+export function resolveBasys3BoardAlias(pin: string): string | null {
+  const normalized = normalizeBasys3PinAlias(pin);
+  if (normalized.length === 0) return null;
+  if (BASYS3_ALIAS_TO_PACKAGE_PIN[normalized]) return normalized;
+  const packagePin = resolveBasys3PackagePin(normalized);
+  if (!packagePin) return null;
+  return BASYS3_PACKAGE_PIN_TO_PRIMARY_ALIAS[packagePin] ?? null;
 }
 
 export function isBasys3InputCapablePin(pin: string): boolean {

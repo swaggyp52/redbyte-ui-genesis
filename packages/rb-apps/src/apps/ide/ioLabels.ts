@@ -14,15 +14,28 @@ export function getStudentFacingIoLabel(
   fallback = ''
 ): string {
   const label = typeof row?.label === 'string' ? row.label.trim() : '';
+  const generatedLabel = formatGeneratedIoToken(label);
+  if (generatedLabel) return generatedLabel;
   if (isStudentFacingIoToken(label)) return label;
 
   const port = typeof row?.port === 'string' ? row.port.trim() : '';
   if (port.length > 0) return port;
 
   const id = typeof row?.id === 'string' ? row.id.trim() : '';
+  const generatedId = formatGeneratedIoToken(id);
+  if (generatedId) return generatedId;
   if (isStudentFacingIoToken(id)) return id;
 
   return fallback.trim();
+}
+
+export function formatGeneratedIoToken(value: string): string | null {
+  const normalized = value.trim();
+  const iomMatch = normalized.match(/^iom[-_](in|out)(\d+)$/i);
+  if (iomMatch) {
+    return `${iomMatch[1]!.toUpperCase()}${iomMatch[2]}`;
+  }
+  return null;
 }
 
 function isStudentFacingIoToken(value: string): boolean {
@@ -30,6 +43,9 @@ function isStudentFacingIoToken(value: string): boolean {
 
   const normalized = value.trim().toLowerCase();
   if (normalized === 'input' || normalized === 'output') {
+    return false;
+  }
+  if (/^iom[-_](in|out)\d+$/i.test(normalized)) {
     return false;
   }
 

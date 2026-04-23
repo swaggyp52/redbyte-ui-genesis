@@ -76,13 +76,18 @@ This context retains all diagnostic views without restriction.
 ### HardwareSurface (`mode: 'hardware'`)
 
 **Student sees:**
-- Port-to-pin mapping table with clear labels (port name → Basys3 pin → physical label)
-- Pin preset selector (pre-configured for common Basys3 assignments)
+- A short list of relevant project signals grouped as inputs, outputs, clock/reset, or other
+- A central clickable Basys3 board visual for assigning the selected signal
+- Clear mapping rows in the shape signal → board control → physical package pin
 - "Mapping complete" / "Pins missing" status
 
 **Student does NOT see:**
 - XDC constraint syntax in the main view
 - Internal port validation error codes (show as plain English)
+- Raw mapping entry ids, HDL port fields, mapping kind, alias, direction, or comma-separated pin forms as the default mapping path
+
+**Advanced accordion (collapsed by default):**
+- Structured mapping data editor for legitimate bus/slice/group repair
 
 ---
 
