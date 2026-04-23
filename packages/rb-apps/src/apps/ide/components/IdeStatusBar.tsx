@@ -12,10 +12,10 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, determinismHas
   const isQuietDesignMode = mode === 'design';
   const gateLabel =
     gateStatus === 'pass'
-      ? 'Preflight Ready'
+      ? 'Workflow Ready'
       : gateStatus === 'warn'
-        ? 'Preflight Review'
-        : 'Preflight Issues';
+        ? 'Workflow Review'
+        : 'Workflow Blocked';
 
   return (
     <footer

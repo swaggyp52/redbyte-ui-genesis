@@ -624,6 +624,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     clockDiag,
     hasBlockingErrors,
     diagnosticsList,
+    onGoToHardware,
     onOpenVerify,
     hasExternalMappingAuthority,
     onGoToProject,
@@ -737,6 +738,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () =>
       derivePackageHandoffSummary({
         handoffSeverity: handoffTruth.severity,
+        handoffCondition: handoffTruth.condition,
         exportViewBlocked: viewModel.status === 'blocked',
         hasVerifyEvidenceWarning,
         agreementWorst,
@@ -748,6 +750,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     [
       agreementWorst,
       boardTargetLabel,
+      handoffTruth.condition,
       handoffTruth.severity,
       hasVerifyEvidenceWarning,
       mappingPlain,
@@ -805,36 +808,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     handoffTruth.primaryCtaIntent !== 're-export-current-bundle';
   const nextActionTitle = downloadDone
     ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
-    : exportTrusted
-      ? 'Open Vivado and import the generated project.'
-      : exportBlocked
-        ? 'Resolve blockers before downloading the build package.'
-        : isIncompleteMappingQualified
-          ? 'Export available - assertions match, but mapping review is still needed.'
-        : isVerifyStale
-          ? 'Export available - Verify evidence is stale for the current circuit.'
-        : isStarterScenarioFail
-          ? 'Export available - scenario not yet authored.'
-          : isNoRunYet
-            ? 'Export available - no comparison run yet.'
-            : 'Export available - assertions differ from observed outputs.';
+    : handoffTruth.title;
   const nextActionDetail = downloadDone
     ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
-    : exportTrusted
-      ? 'Download the Vivado Project, unzip it, then run the import script or open the project directly.'
-      : exportBlocked
-      ? !resolvedWorkflowAuthority.designReady && !hasBlockingErrors
-        ? 'The live design authority is incomplete. Fix the circuit or its mapped boundary IO before exporting.'
-        : 'Use the blocker list and pin review below to clear mapping or clock issues before export.'
-      : isIncompleteMappingQualified
-        ? 'Your latest comparison run matched the live design, but at least one required output pin is still unmapped. Complete the live pin mapping before relying on hardware behavior.'
-      : isVerifyStale
-        ? 'The design changed after the last Verify run. Export files are still available, but the previous compare or trace evidence no longer describes the current circuit. Re-run Verify when you want current evidence for this export.'
-      : isStarterScenarioFail
-        ? 'Your HDL was generated from your circuit design. The current scenario still uses starter vectors, so this export is available to download but should be treated as a starter handoff until you author a real comparison scenario.'
-      : isNoRunYet
-          ? 'Your HDL is generated and ready to download. Run Compare when you want a checked expectation result, but export is already available.'
-          : 'Your HDL is generated and ready to download. Compare results differ from observed outputs, so review them before relying on behavior.';
+    : handoffTruth.message;
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -842,7 +819,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
-        ? 'Re-export Current Bundle'
+        ? 'Rebuild Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
       : 'Download Vivado Project (Open Project)';
@@ -851,7 +828,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
       ? 'Build Current Bundle'
       : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
-        ? 'Re-export Current Bundle'
+        ? 'Rebuild Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
       : isStaleButPassBefore
@@ -1432,9 +1409,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             ? 'Project Downloaded'
             : exportBlocked
               ? 'Export Blocked'
-              : exportTrusted
-                ? 'Export Ready'
-                : 'Export Needs Review'
+              : handoffTruth.condition === 'export-missing'
+                ? 'Export Ready to Build'
+                : handoffTruth.condition === 'export-stale'
+                  ? 'Export Stale'
+                  : exportTrusted
+                    ? 'Export Ready'
+                    : 'Export Needs Review'
         }
         description={
           downloadDone
@@ -1738,7 +1719,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   ) : handoffTruth.severity === 'advisory' ? (
                     <div className="ide-export-trust-row ide-export-trust-row--available">
                       <div className="ide-export-trust-header">
-                        <IdeStatusPill tone="warn">NEEDS REVIEW</IdeStatusPill>
+                        <IdeStatusPill tone="warn">{handoffTruth.statusLabel}</IdeStatusPill>
                       </div>
                       <div className="ide-export-trust-body">
                         <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
@@ -1747,7 +1728,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
                           {handoffTruth.message}
                         </p>
-                        {onOpenVerify && (
+                        {handoffTruth.primaryCtaIntent === 'verify' && onOpenVerify && (
                           <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
                             Open Verify
                           </IdeButton>

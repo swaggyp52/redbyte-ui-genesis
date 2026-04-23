@@ -31508,6 +31508,42 @@ button:disabled,
   border: 1px solid rgba(251, 113, 133, 0.38);
 }
 
+/* Workflow coherence reset: keep the fixed 72px rail intact instead of wrapping labels into cropped blocks. */
+.ide-left-rail:not(.ide-left-rail--expanded) .ide-mode-button {
+  min-height: 62px;
+  padding: 7px 3px 6px !important;
+  gap: 3px !important;
+}
+
+.ide-left-rail:not(.ide-left-rail--expanded) .ide-mode-copy {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+
+.ide-left-rail:not(.ide-left-rail--expanded) .ide-mode-label {
+  display: block;
+  max-width: 58px !important;
+  margin: 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap !important;
+  text-wrap: nowrap !important;
+  font-size: 10px !important;
+  line-height: 1.15 !important;
+  letter-spacing: 0 !important;
+}
+
+.ide-left-rail:not(.ide-left-rail--expanded) .ide-mode-hint {
+  display: none !important;
+}
+
+.ide-left-rail:not(.ide-left-rail--expanded) .ide-step-num {
+  min-width: 0;
+  text-align: center;
+  line-height: 1;
+}
+
 [data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.58fr) minmax(272px, 0.42fr);

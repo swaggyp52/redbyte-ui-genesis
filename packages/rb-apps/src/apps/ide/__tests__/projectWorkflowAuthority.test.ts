@@ -183,7 +183,7 @@ describe('project workflow authority', () => {
     expect(authority.exportPackageCurrent).toBe(false);
     expect(authority.exportTrusted).toBe(true);
     expect(authority.hardwareReady).toBe(false);
-    expect(authority.statusBarGateStatus).toBe('fail');
+    expect(authority.statusBarGateStatus).toBe('warn');
   });
 
   it('keeps stage completion and primary CTA aligned when export is the next required step', () => {
@@ -239,7 +239,7 @@ describe('project workflow authority', () => {
     );
   });
 
-  it('maps missing export bundles to a blocked Build Current Bundle handoff', () => {
+  it('maps missing export bundles to a ready-to-build handoff instead of a blocker', () => {
     const authority = deriveAuthority({
       core: {
         lastVerify: {
@@ -262,10 +262,48 @@ describe('project workflow authority', () => {
     ).toEqual(
       expect.objectContaining({
         condition: 'export-missing',
-        severity: 'blocked',
-        statusLabel: 'BLOCKED',
+        severity: 'advisory',
+        statusLabel: 'READY TO BUILD',
         primaryCtaLabel: 'Build Current Bundle',
         primaryCtaIntent: 'build-current-bundle',
+      })
+    );
+  });
+
+  it('maps stale export bundles to a rebuild advisory instead of a blocker', () => {
+    const authority = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          reportHash: 'verify-report-hash',
+          ranAtIso: '2026-04-06T10:00:00.000Z',
+        },
+        lastExport: {
+          status: 'ok',
+          hash: 'export-old-hash',
+          ranAtIso: '2026-04-06T10:01:00.000Z',
+        },
+        dirtySinceExport: true,
+      },
+      currentVerifyProjectHash: 'verify-pass-hash',
+      currentExportHash: 'export-new-hash',
+      verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
+    });
+
+    expect(
+      deriveHardwareExportFailureTruth({
+        workflowAuthority: authority,
+        hasRequiredMappingGap: false,
+        hasOtherBlockingIssue: false,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        condition: 'export-stale',
+        severity: 'advisory',
+        statusLabel: 'STALE',
+        primaryCtaLabel: 'Rebuild Current Bundle',
+        primaryCtaIntent: 're-export-current-bundle',
       })
     );
   });

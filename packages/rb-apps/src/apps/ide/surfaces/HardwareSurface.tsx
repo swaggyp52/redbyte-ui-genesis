@@ -1009,6 +1009,21 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       };
     }
 
+    if (
+      failureTruth.primaryCtaIntent === 'build-current-bundle' ||
+      failureTruth.primaryCtaIntent === 're-export-current-bundle'
+    ) {
+      return {
+        title: failureTruth.title,
+        body: failureTruth.message,
+        primaryLabel: failureTruth.primaryCtaLabel,
+        primaryAction: dominantPrimaryAction,
+        primaryTestId: 'ide-hardware-next-primary',
+        secondaryLabel: onOpenVerify ? 'Open Verify' : null,
+        secondaryAction: onOpenVerify ?? null,
+      };
+    }
+
     if (scenarioDrifted) {
       return {
         title: isDifferentScenario ? 'Re-run Verify for the active scenario' : 'Re-run Verify after the scenario edit',
@@ -1064,6 +1079,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     };
   }, [
     blockedHero,
+    dominantPrimaryAction,
+    failureTruth.message,
+    failureTruth.primaryCtaIntent,
+    failureTruth.primaryCtaLabel,
+    failureTruth.title,
     hasNoBoundaryRows,
     hwMode,
     isDifferentScenario,

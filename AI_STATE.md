@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-04-23 (Blocker Truth + Workflow Coherence Reset)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `packages/rb-apps/src/apps/ide/projectHealth.ts`, `packages/rb-apps/src/apps/ide/exportPackageHandoffModel.ts`, `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/components/IdeStatusBar.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, readiness/export/hardware/status tests, `scripts/gates/ide-export-blockers-contract.mjs`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-blocker-truth-workflow-coherence.md`
+
+**Context:** After the Hardware reset, Project/Hardware/Export could still disagree about blocker truth. Missing or stale export bundles were modeled as hard blockers, so Hardware and Export could show `BLOCKED` while mapping/check/artifact indicators showed the project was otherwise ready. The fixed left rail also allowed long workflow labels/hints to wrap and crop.
+
+**Changes:**
+- **Shared blocker semantics:** `deriveHardwareExportFailureTruth` now reserves `BLOCKED` for real prerequisite failures. A missing bundle is `READY TO BUILD`; a stale successful bundle is `STALE`.
+- **Project health alignment:** `dirtySinceExport` is no longer a structural `blockingIssue`, so blocker counts do not contradict stale/rebuild advisories.
+- **Surface coherence:** Export, Hardware, and package handoff summaries consume the shared handoff condition for titles, chips, CTAs, and next-action copy.
+- **Status language:** status bar labels now read `Workflow Ready`, `Workflow Review`, or `Workflow Blocked`, removing stale preflight wording.
+- **Rail coherence:** collapsed left-rail labels are clamped and long hints are hidden so Map Pins / Export workflow entries no longer crop inside the fixed rail.
+- **Gate update:** `ide:gate:export-blockers-contract` now creates a missing-pin blocker through Hardware's advanced mapping escape hatch and verifies Export routes the fix path back to Map Pins. The old gate encoded stale Project-owned mapping edits.
+
+**Validation:**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportPackageHandoffModel.test.ts packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx packages/rb-apps/src/apps/ide/__tests__/IdeStatusBar.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.persistence.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> pass (148 tests)
+- `pnpm -s ide:gate:project-readiness-contract` -> pass
+- `pnpm -s ide:gate:export-ready-contract` -> pass
+- `pnpm -s ide:gate:hardware-checklist-contract` -> pass
+- `pnpm -s ide:gate:shell-chrome-contract` -> pass
+- `pnpm -s ide:gate:shell-density-contract` -> pass
+- `pnpm -s ide:gate:export-blockers-contract` -> pass
+- `pnpm -s ide:gate:export-download-contract` -> pass
+- `pnpm -s build:unified` -> pass
+
+**Release-process debt:** The immediately preceding Hardware Surface Reset push reported a bypassed required status check: `Classroom Truth Gates`. That branch-protection debt remains tracked until the required check is enforced by the remote instead of bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Hardware Surface Reset - Map Pins student workflow)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/components/Basys3BoardView.tsx`, `packages/rb-apps/src/apps/ide/ioLabels.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.ts`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-hardware-surface-reset.md`

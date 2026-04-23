@@ -12,7 +12,7 @@ describe('IdeStatusBar', () => {
 
     expect(view.getByTestId('ide-status-bar').textContent).toContain('Mode: verify');
     expect(view.getByTestId('ide-status-bar').textContent).toContain('Project Hash: abc123def456');
-    expect(view.getByTestId('ide-status-bar').textContent).toContain('Preflight Review');
+    expect(view.getByTestId('ide-status-bar').textContent).toContain('Workflow Review');
   });
 
   it('demotes the Design footer to the readiness pill only', () => {
@@ -22,6 +22,6 @@ describe('IdeStatusBar', () => {
 
     expect(view.getByTestId('ide-status-bar').textContent).not.toContain('Mode: design');
     expect(view.getByTestId('ide-status-bar').textContent).not.toContain('Project Hash:');
-    expect(view.getByTestId('ide-status-bar').textContent).toContain('Preflight Issues');
+    expect(view.getByTestId('ide-status-bar').textContent).toContain('Workflow Blocked');
   });
 });

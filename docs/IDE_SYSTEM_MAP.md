@@ -46,7 +46,8 @@
 | `projectRuntime.ts` | `packages/rb-apps/src/apps/ide/projectRuntime.ts` | Runtime-authoritative design state, deterministic verification, and IO-backed project authority |
 | `circuitStore.ts` | `packages/rb-apps/src/stores/circuitStore.ts` | Circuit graph mutations |
 | `unifiedProjectStore.ts` | `packages/rb-lab-engine/src/stores/unifiedProjectStore.ts` | Single source of truth for RBProject |
-| `projectHealth.ts` | `packages/rb-apps/src/apps/ide/projectHealth.ts` | Derives blocking issues from core state |
+| `projectHealth.ts` | `packages/rb-apps/src/apps/ide/projectHealth.ts` | Derives structural blocking issues from core state; stale export state is advisory, not a blocking issue |
+| `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Shared workflow truth for verify state, export current/missing/stale state, stage completion, primary CTA, and Hardware/Export handoff labels |
 | `simEngine.ts` | `packages/rb-apps/src/apps/ide/sim/simEngine.ts` | Simulation advancement, trace accumulation |
 
 ---
@@ -89,6 +90,8 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 Gate: `scripts/gates/ide-export-generates-hdl.mjs`
 Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `<details>`; artifact list uses `ide-export-artifact-preview`)
 
+**Blocker truth:** Project / Hardware / Export consume `ProjectWorkflowAuthority`. **No bundle yet** is **READY TO BUILD** when design + mapping are satisfied; **stale bundle** is **STALE / rebuild current bundle**; **blocked** is reserved for real prerequisite failures (mapping gap, design/export diagnostics, blocked export attempt).
+
 ---
 
 ### Path 4: Hardware Checklist
@@ -99,6 +102,8 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `
 4. **Student truth (Vivado / board):** RedByte’s **export** is a **Vivado project ZIP** (HDL, constraints, `xpr`, etc.); the **.bit** is produced in **Vivado** (synth/impl, **Generate Bitstream**), then **Hardware Manager → Program Device**. Hardware copy (`HardwareSurface` map/proof stages, program handoff, `ide-hardware-submission-hint`) is explicit about that boundary — **not** a bitstream in the ZIP from RedByte.
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
+
+**Blocker truth:** Hardware routes missing/stale bundles to Build/Rebuild in Export without calling those buildable states `BLOCKED`.
 
 ---
 

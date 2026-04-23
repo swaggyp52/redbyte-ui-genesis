@@ -66,7 +66,7 @@ export type HardwareExportFailureTruthIntent =
 export interface HardwareExportFailureTruth {
   condition: HardwareExportFailureTruthCondition;
   severity: HardwareExportFailureTruthSeverity;
-  statusLabel: 'BLOCKED' | 'NEEDS REVIEW' | 'READY';
+  statusLabel: 'BLOCKED' | 'READY TO BUILD' | 'STALE' | 'NEEDS REVIEW' | 'READY';
   title: string;
   message: string;
   primaryCtaLabel: string;
@@ -170,23 +170,29 @@ export function deriveHardwareExportFailureTruth(
   }
 
   if (workflowAuthority.hasSuccessfulExportBundle && !workflowAuthority.exportCurrent) {
-    return blocked(
-      'export-stale',
-      'Re-export the current bundle',
-      'A successful bundle exists, but it no longer matches the current circuit. Re-export the current bundle, then continue to programming.',
-      'Re-export Current Bundle',
-      're-export-current-bundle'
-    );
+    return {
+      condition: 'export-stale',
+      severity: 'advisory',
+      statusLabel: 'STALE',
+      title: 'Rebuild the current bundle',
+      message:
+        'A successful bundle exists, but it no longer matches the current circuit. Rebuild it in Export so the ZIP matches the current design.',
+      primaryCtaLabel: 'Rebuild Current Bundle',
+      primaryCtaIntent: 're-export-current-bundle',
+    };
   }
 
   if (!workflowAuthority.hasSuccessfulExportBundle) {
-    return blocked(
-      'export-missing',
-      'Build the current bundle first',
-      'No current hardware bundle exists yet. Build the current bundle in Export, then continue to programming.',
-      'Build Current Bundle',
-      'build-current-bundle'
-    );
+    return {
+      condition: 'export-missing',
+      severity: 'advisory',
+      statusLabel: 'READY TO BUILD',
+      title: 'Build the current bundle',
+      message:
+        'Mapping and design inputs are ready for Export. Build the current Vivado project ZIP, then continue to the hardware handoff.',
+      primaryCtaLabel: 'Build Current Bundle',
+      primaryCtaIntent: 'build-current-bundle',
+    };
   }
 
   if (workflowAuthority.verifyState === 'not-run') {

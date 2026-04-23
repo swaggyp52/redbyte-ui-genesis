@@ -40,6 +40,40 @@ describe('exportPackageHandoffModel', () => {
     expect(summary.statusLabel).toBe('PACKAGE PARTIAL');
   });
 
+  it('derivePackageHandoffSummary labels a buildable missing bundle without calling it partial', () => {
+    const summary = derivePackageHandoffSummary({
+      handoffSeverity: 'advisory',
+      handoffCondition: 'export-missing',
+      exportViewBlocked: false,
+      hasVerifyEvidenceWarning: false,
+      agreementWorst: 'ok',
+      boardTarget: 'Basys3',
+      timingPlain: 'Clock',
+      mappingPlain: 'ok',
+      verifyPlain: 'ok',
+    });
+    expect(summary.status).toBe('partial');
+    expect(summary.statusLabel).toBe('READY TO BUILD');
+    expect(summary.headline).toContain('Build a current');
+  });
+
+  it('derivePackageHandoffSummary labels stale bundles as stale instead of blocked', () => {
+    const summary = derivePackageHandoffSummary({
+      handoffSeverity: 'advisory',
+      handoffCondition: 'export-stale',
+      exportViewBlocked: false,
+      hasVerifyEvidenceWarning: false,
+      agreementWorst: 'ok',
+      boardTarget: 'Basys3',
+      timingPlain: 'Clock',
+      mappingPlain: 'ok',
+      verifyPlain: 'ok',
+    });
+    expect(summary.status).toBe('partial');
+    expect(summary.statusLabel).toBe('STALE');
+    expect(summary.headline).toContain('Rebuild');
+  });
+
   it('derivePackageHandoffSummary blocks when agreement has errors', () => {
     const summary = derivePackageHandoffSummary({
       handoffSeverity: 'ready',

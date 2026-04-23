@@ -147,8 +147,8 @@ describe('projectHealth verify trust vs structural blockers', () => {
 
     expect(health.blockingIssues.map((issue) => issue.code)).toEqual(['RBP1001', 'RBP1005']);
     expect(choosePrimaryProjectCta(health, readiness)).toEqual({
-      label: 'Fix Mapping',
-      mode: 'project',
+      label: 'Map Pins',
+      mode: 'hardware',
       code: 'RBP1001',
     });
   });
@@ -250,7 +250,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
     ).toEqual({ label: 'Program', mode: 'hardware', code: 'RBP4000' });
   });
 
-  it('keeps stale verify out of structural blockingIssues while preserving export dirtiness', () => {
+  it('keeps stale verify and stale export out of structural blockingIssues', () => {
     const health = deriveProjectHealth(
       {
         lastVerify: {
@@ -270,13 +270,7 @@ describe('projectHealth verify trust vs structural blockers', () => {
       }
     );
 
-    expect(health.blockingIssues).toEqual([
-      {
-        code: 'RBP2002',
-        message: 'Project changed since last successful export.',
-        fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
-      },
-    ]);
+    expect(health.blockingIssues).toEqual([]);
   });
 
   it('routes back to Verify after a design mutation even when required mapping is now incomplete', () => {

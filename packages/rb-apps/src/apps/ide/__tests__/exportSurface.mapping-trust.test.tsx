@@ -5,6 +5,7 @@ import { fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import { getIdeExampleById } from '../examplesCatalog';
+import { deriveProjectWorkflowAuthority } from '../projectWorkflowAuthority';
 
 function buildProject(): RBProject {
   return {
@@ -231,5 +232,45 @@ describe('ExportSurface mapping trust', () => {
     expect(within(resetRow).getByText('U18')).toBeTruthy();
     expect(within(enableRow).queryByRole('textbox')).toBeNull();
     expect(within(resetRow).queryByRole('textbox')).toBeNull();
+  });
+
+  it('shows a buildable missing-bundle state instead of Export Blocked when prerequisites are satisfied', () => {
+    const verifyResult = {
+      status: 'pass' as const,
+      hash: 'verify-pass-hash',
+      reportHash: 'verify-report-hash',
+      ranAtIso: '2026-04-23T12:00:00.000Z',
+    };
+    const workflowAuthority = deriveProjectWorkflowAuthority({
+      projectHealthCore: {
+        lastVerify: verifyResult,
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      readiness: {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+      },
+      verifyLastRun: verifyResult,
+      verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
+      currentVerifyProjectHash: 'verify-pass-hash',
+      currentExportHash: 'current-export-hash',
+    });
+
+    const view = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="current-export-hash"
+        verifyResult={verifyResult}
+        workflowAuthority={workflowAuthority}
+      />
+    );
+
+    expect(view.getByTestId('ide-export-panel').textContent).toContain('Export Ready to Build');
+    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('READY TO BUILD');
+    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('Build the current bundle');
+    expect(view.getByTestId('ide-export-panel').textContent).not.toContain('Export Blocked');
   });
 });

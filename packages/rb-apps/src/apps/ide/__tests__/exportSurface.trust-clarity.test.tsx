@@ -531,8 +531,8 @@ describe('ExportSurface trust clarity', () => {
     expect(dock.textContent).not.toContain('Evidence snapshot');
   });
 
-  it('Readiness gate mapping CTA goes to Project when I/O mapping fails and Project authority is active', () => {
-    const onGoToProject = vi.fn();
+  it('Readiness gate mapping CTA goes to Map Pins when I/O mapping fails', () => {
+    const onGoToHardware = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappingBlockedProject()}
@@ -540,14 +540,14 @@ describe('ExportSurface trust clarity', () => {
         verifyResult={passResult}
         dirtySinceVerify={false}
         workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
-        onGoToProject={onGoToProject}
+        onGoToHardware={onGoToHardware}
         onUpdateMappingPin={vi.fn()}
       />
     );
     fireEvent.click(getByTestId('ide-export-gate-details').querySelector('summary')!);
     const mappingCta = getByTestId('ide-export-gate-action-mapping');
-    expect(mappingCta.textContent).toContain('Open Project');
+    expect(mappingCta.textContent).toContain('Open Map Pins');
     fireEvent.click(mappingCta);
-    expect(onGoToProject).toHaveBeenCalledTimes(1);
+    expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
 });

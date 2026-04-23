@@ -13,18 +13,17 @@ await runIdeGate('IDE export blockers contract satisfied', async ({ page, baseUr
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await loadStarterProject(page);
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
-  await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
+  await page.locator('[data-testid="mode-button-hardware"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-hw-map-table"]', { timeout: 10000 });
 
-  const firstMappingInput = page.locator('[data-testid^="ide-project-map-input-"]').first();
-  await firstMappingInput.fill('');
-  await firstMappingInput.blur();
+  const advancedEditor = page.locator('[data-testid="ide-hw-structured-editor"]');
+  await advancedEditor.locator('summary').first().click();
+  await advancedEditor.locator('[data-testid^="ide-hw-structured-entry-"]').first().getByRole('button', { name: 'Clear' }).click();
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'attached', timeout: 10000 });
 
   const statusStrip = await text(page.locator('[data-testid="ide-export-gate-stack"]'));
   assert(statusStrip.toUpperCase().includes('MAPPING'), 'export status strip must include mapping gate');
@@ -37,20 +36,21 @@ await runIdeGate('IDE export blockers contract satisfied', async ({ page, baseUr
   assert(mappingActionCount >= 1, 'expected export mapping blocker with fix action');
   await mappingAction.first().click();
 
-  const navigatedToProject = await page.locator('[data-testid="ide-mode-project"]').first().isVisible().catch(() => false);
-  const navigatedToDesign = await page.locator('[data-testid="ide-mode-design"]').first().isVisible().catch(() => false);
+  const mapPinsFix = page.locator('[data-testid^="ide-export-fixpath-open-map-pins-"]').first();
+  assert(await visible(mapPinsFix), 'mapping blocker fix path must route to Map Pins');
+  await mapPinsFix.click();
+
+  const navigatedToHardware = await page.locator('[data-testid="ide-mode-hardware"]').first().isVisible().catch(() => false);
   const stayedOnExport = await page.locator('[data-testid="ide-mode-export"]').first().isVisible().catch(() => false);
   assert(
-    navigatedToProject || navigatedToDesign || stayedOnExport,
-    'fix path should keep app on a repair-capable surface (Project, Design, or Export)'
+    navigatedToHardware || stayedOnExport,
+    'mapping fix path should keep app on Export details or navigate to Map Pins'
   );
-  if (navigatedToProject) {
-    const activeIsMappingInput = await page.evaluate(() => {
-      const active = document.activeElement;
-      const testId = active?.getAttribute('data-testid') ?? '';
-      return testId.startsWith('ide-project-map-input-');
-    });
-    assert(activeIsMappingInput, 'project fix path should focus a mapping input');
+  if (navigatedToHardware) {
+    assert(
+      await visible(page.locator('[data-testid="ide-hw-map-table"]').first()),
+      'Map Pins fix path should show the Hardware mapping table'
+    );
   }
 });
 

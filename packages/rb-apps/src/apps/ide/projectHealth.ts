@@ -155,14 +155,6 @@ export function deriveProjectHealth(
     });
   }
 
-  if (core.dirtySinceExport) {
-    blockingIssues.push({
-      code: 'RBP2002',
-      message: 'Project changed since last successful export.',
-      fixPath: { mode: 'export', actionLabel: 'Build Submission Package' },
-    });
-  }
-
   return {
     ...core,
     blockingIssues,

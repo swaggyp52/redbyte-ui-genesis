@@ -95,12 +95,14 @@ This context retains all diagnostic views without restriction.
 
 **Student sees:**
 - Readiness checklist: "Circuit built?", "Simulation passed?", "Pins mapped?" (plain language)
+- Precise build state: ready to build, stale / rebuild needed, ready to download, or blocked by a real prerequisite
 - "Download Vivado Kit" — large primary CTA
 - Generated HDL panel: `top.vhd`, `constraints.xdc`, `testbench.vhd` (always visible when ready)
 - Copy-to-clipboard on each generated file
 - "Open in Vivado" steps panel (collapsible, shown after download)
 
 **Student does NOT see by default:**
+- "Blocked" for merely missing or stale export bundles when the project can be built
 - Manifest hash, bundle hash
 - "Capsule state: not sealed" language
 - "Evidence capsule" terminology

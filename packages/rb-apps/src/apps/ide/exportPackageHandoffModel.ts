@@ -1,5 +1,6 @@
 import type { RBProject } from '../../export/projectFormat';
 import type { IdeDiagnosticOwner } from './diagnostics';
+import type { HardwareExportFailureTruthCondition } from './projectWorkflowAuthority';
 import type { TimingGuidance } from './timingGuidance';
 import type { ExportViewModel } from './viewmodels/buildExportViewModel';
 
@@ -62,6 +63,7 @@ export function formatExportDiagnosticOwner(owner?: IdeDiagnosticOwner): string 
 
 export function derivePackageHandoffSummary(input: {
   handoffSeverity: 'ready' | 'advisory' | 'blocked';
+  handoffCondition?: HardwareExportFailureTruthCondition;
   exportViewBlocked: boolean;
   hasVerifyEvidenceWarning: boolean;
   agreementWorst: ArtifactAgreementTone;
@@ -88,22 +90,32 @@ export function derivePackageHandoffSummary(input: {
     status = 'partial';
   }
 
-  const statusLabel =
+  let statusLabel =
     status === 'ready' ? 'PACKAGE READY' : status === 'blocked' ? 'PACKAGE BLOCKED' : 'PACKAGE PARTIAL';
 
-  const headline =
+  let headline =
     status === 'ready'
       ? 'This handoff ZIP is internally consistent and matches your project authority.'
       : status === 'blocked'
         ? 'Resolve blockers before treating the download as submission-quality.'
         : 'You can inspect or download files, but finish Verify or pins before a hard handoff.';
 
-  const subline =
+  let subline =
     status === 'ready'
       ? 'Top RTL, constraints, bench, and manifest were emitted together from the same design and mapping state.'
       : status === 'blocked'
         ? 'Each blocker names what broke, why it matters, and which surface owns the fix.'
         : 'Re-run Compare or complete mapping when you need assertion-backed confidence for Vivado.';
+
+  if (!blocked && input.handoffCondition === 'export-missing') {
+    statusLabel = 'READY TO BUILD';
+    headline = 'Build a current Vivado project ZIP from this mapped design.';
+    subline = 'Design and pin mapping are ready; no current bundle has been recorded yet.';
+  } else if (!blocked && input.handoffCondition === 'export-stale') {
+    statusLabel = 'STALE';
+    headline = 'Rebuild the bundle so the ZIP matches the current circuit.';
+    subline = 'A previous bundle exists, but design, verify, or mapping inputs changed after it was built.';
+  }
 
   const artifactsPlain =
     input.agreementWorst === 'error'

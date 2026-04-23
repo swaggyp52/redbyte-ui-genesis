@@ -242,10 +242,12 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'no longer matches the current circuit'
     );
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Re-export the current bundle');
-    expect(getByTestId('ide-hardware-blocked-primary').textContent).toContain('Re-export Current Bundle');
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Rebuild the current bundle');
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
+    expect(getByTestId('ide-hardware-command-strip').textContent).not.toContain('BLOCKED');
+    expect(getByTestId('ide-hardware-next-primary').textContent).toContain('Rebuild Current Bundle');
     expect(getByTestId('ide-hardware-build-export').textContent).toContain(
-      'Re-export Current Bundle'
+      'Rebuild Current Bundle'
     );
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   });
@@ -655,7 +657,7 @@ describe('HardwareSurface readiness', () => {
     expect(advanced.querySelector('summary')?.textContent).toContain('Advanced mapping editor');
   });
 
-  it('points students to Export first when hardware is blocked before a current bundle exists', () => {
+  it('points students to Export first without calling a missing bundle blocked', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -683,10 +685,12 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent).toContain('Build the current bundle first');
-    expect(getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent).toContain('Build the current bundle in Export');
-    expect(getAllByTestId('ide-hardware-blocked-primary').at(-1)?.textContent).toContain('Build Current Bundle');
-    expect(getAllByTestId('ide-hardware-blocked-secondary').at(-1)?.textContent).toContain('Open Design');
+    const commandText = getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent ?? '';
+    expect(commandText).toContain('Build the current bundle');
+    expect(commandText).toContain('Mapping and design inputs are ready for Export');
+    expect(commandText).toContain('READY TO BUILD');
+    expect(commandText).not.toContain('BLOCKED');
+    expect(getAllByTestId('ide-hardware-next-primary').at(-1)?.textContent).toContain('Build Current Bundle');
   });
 
   it('shows program handoff CTA when export is current', () => {
