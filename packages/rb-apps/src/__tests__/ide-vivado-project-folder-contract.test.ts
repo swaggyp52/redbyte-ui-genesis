@@ -69,6 +69,51 @@ function buildFixtureProject(): RBProject {
   };
 }
 
+function buildClockedFixtureProject(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-04-23T00:00:00.000Z',
+    updatedAt: '2026-04-23T00:00:00.000Z',
+    name: 'Vivado Project Folder Clock Fixture',
+    description: 'Sequential fixture with real Basys3 board clock export.',
+    circuit: {
+      nodes: [
+        { id: 'clk', type: 'Clock', x: 40, y: 60, label: 'clk', config: { period: 10 }, state: {} },
+        { id: 'sw0', type: 'Switch', x: 40, y: 160, label: 'd', config: {}, state: {} },
+        { id: 'rst', type: 'Switch', x: 40, y: 260, label: 'rst', config: {}, state: {} },
+        { id: 'ff0', type: 'DFlipFlop', x: 240, y: 140, label: 'ff0', config: {}, state: {} },
+        { id: 'ld0', type: 'Lamp', x: 440, y: 140, label: 'q', config: {}, state: {} },
+      ],
+      connections: [
+        { id: 'c1', from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'ff0', portName: 'CLK' } },
+        { id: 'c2', from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'ff0', portName: 'D' } },
+        { id: 'c3', from: { nodeId: 'rst', portName: 'out' }, to: { nodeId: 'ff0', portName: 'RST' } },
+        { id: 'c4', from: { nodeId: 'ff0', portName: 'Q' }, to: { nodeId: 'ld0', portName: 'in' } },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'clk', nodeId: 'clk', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
+        { id: 'sw0', nodeId: 'sw0', port: 'out', label: 'd', pin: 'SW0' },
+        { id: 'rst', nodeId: 'rst', port: 'out', label: 'rst', pin: 'BTNC' },
+      ],
+      outputs: [
+        { id: 'ld0', nodeId: 'ld0', port: 'in', label: 'q', pin: 'LD0' },
+      ],
+    },
+    vectors: [
+      { tick: 0, inputs: { clk: 0, d: 0, rst: 1 }, expected: { q: 0 } },
+      { tick: 1, inputs: { clk: 1, d: 1, rst: 0 }, expected: { q: 1 } },
+    ],
+    fpga: { board: 'basys3', top: 'top' },
+    meta: {
+      projectId: 'rb-project-folder-clock-fixture',
+      tags: ['contract', 'vivado-project-folder', 'clocked'],
+    },
+  };
+}
+
 async function buildProjectFolderZip(project: RBProject): Promise<Uint8Array> {
   const viewModel = buildExportViewModel(project);
   expect(viewModel.status).toBe('ok');
@@ -102,7 +147,7 @@ describe('IDE Vivado project folder contract', () => {
 
     expect(fileNames).toEqual(
       [
-        `${slug}/${slug}.srcs/constrs_1/new/basys3.xdc`,
+        `${slug}/${slug}.srcs/constrs_1/new/top.xdc`,
         `${slug}/${slug}.srcs/sources_1/new/top.vhd`,
         `${slug}/${slug}.xpr`,
         `${slug}/BRINGUP.md`,
@@ -121,7 +166,7 @@ describe('IDE Vivado project folder contract', () => {
     expect(xprText).toContain('Option Name="SimulatorVersionXsim" Val="2024.2"');
     expect(xprText).toContain('Option Name="TopModule" Val="student_top"');
     expect(xprText).toContain('$PSRCDIR/sources_1/new/top.vhd');
-    expect(xprText).toContain('$PSRCDIR/constrs_1/new/basys3.xdc');
+    expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
     expect(xprText).toContain('<Option Name="ConstrsType" Val="XDC"/>');
     expect(xprText).toContain('<Option Name="TopAutoSet" Val="TRUE"/>');
     expect(xprText).toContain('<Simulator Name="ModelSim">');
@@ -137,7 +182,7 @@ describe('IDE Vivado project folder contract', () => {
     const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
     expect(importTclText).toContain('set part "xc7a100tcsg324-1"');
     expect(importTclText).toContain('set top_module "student_top"');
-    expect(importTclText).toContain(`${slug}.srcs/constrs_1/new/basys3.xdc`);
+    expect(importTclText).toContain(`${slug}.srcs/constrs_1/new/top.xdc`);
 
     const manifestText = await loaded.file(`${slug}/project.rbproj.json`)!.async('string');
     const manifestProject = JSON.parse(manifestText) as RBProject;
@@ -147,7 +192,7 @@ describe('IDE Vivado project folder contract', () => {
     const readmeText = await loaded.file(`${slug}/README.txt`)!.async('string');
     expect(readmeText).toContain('Open Project');
     expect(readmeText).toContain(`${slug}.xpr`);
-    expect(readmeText).toContain('basys3.xdc');
+    expect(readmeText).toContain('top.xdc');
 
     expect(loaded.files[`${slug}/${slug}.srcs/utils_1/`]?.dir).toBe(true);
     expect(loaded.files[`${slug}/${slug}.runs/`]?.dir).toBe(true);
@@ -170,5 +215,28 @@ describe('IDE Vivado project folder contract', () => {
 
     expect(imported.importMode).toBe('manifest');
     expect(encodeRBProject(imported.project)).toBe(encodeRBProject(normalizedProject));
+  });
+
+  it('keeps top.xdc canonical and preserves the real W5 board clock in sequential project folders', async () => {
+    const project = buildClockedFixtureProject();
+    const slug = deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+    const zipBytes = await buildProjectFolderZip(project);
+    const loaded = await JSZip.loadAsync(zipBytes);
+
+    const topXdcPath = `${slug}/${slug}.srcs/constrs_1/new/top.xdc`;
+    const xprPath = `${slug}/${slug}.xpr`;
+    const tclPath = `${slug}/vivado_import.tcl`;
+
+    expect(loaded.file(topXdcPath)).toBeDefined();
+    expect(loaded.file(`${slug}/${slug}.srcs/constrs_1/new/basys3.xdc`)).toBeNull();
+
+    const topXdcText = await loaded.file(topXdcPath)!.async('string');
+    const xprText = await loaded.file(xprPath)!.async('string');
+    const importTclText = await loaded.file(tclPath)!.async('string');
+
+    expect(topXdcText).toContain('PACKAGE_PIN W5');
+    expect(topXdcText).toContain('create_clock -period 10.000');
+    expect(xprText).toContain('$PSRCDIR/constrs_1/new/top.xdc');
+    expect(importTclText).toContain(`${slug}.srcs/constrs_1/new/top.xdc`);
   });
 });

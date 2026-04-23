@@ -1221,6 +1221,14 @@ function diagnosticCodeFor(
   if (lowered.includes('multiple clock drivers')) return 'RBEX4202';
   if (lowered.includes('multiple reset drivers')) return 'RBEX4203';
   if (lowered.includes('unsupported reset polarity')) return 'RBEX4204';
+  if (
+    lowered.includes('unsupported timing directive "create_generated_clock"') ||
+    lowered.includes('unsupported timing directive "derive_pll_clocks"') ||
+    lowered.includes('unsupported timing directive "derive_clocks"') ||
+    lowered.includes('unsupported timing directive "set_clock_groups"')
+  ) {
+    return 'RBEX4205';
+  }
   if (lowered.includes('unsupported bus port')) return 'RBEX4300';
   if (lowered.includes('unsupported') && lowered.includes('pin')) return 'RBEX2001';
   if (lowered.includes('questionable') && lowered.includes('mapping')) return 'RBEX2002';
@@ -1270,6 +1278,7 @@ function diagnosticTitleFor(
   if (code === 'RBEX4202') return 'Sequential node has multiple clocks';
   if (code === 'RBEX4203') return 'Sequential node has multiple resets';
   if (code === 'RBEX4204') return 'Unsupported reset polarity';
+  if (code === 'RBEX4205') return 'Unsupported derived-clock constraint';
   if (code === 'RBEX4300') return 'Unsupported top-level bus port';
   if (code === 'RBEX2001') return 'Unsupported Basys3 pin alias';
   if (code === 'RBEX2002') return 'Questionable direction mapping';

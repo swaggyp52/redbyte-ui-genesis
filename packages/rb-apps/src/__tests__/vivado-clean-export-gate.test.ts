@@ -154,7 +154,7 @@ describe('Vivado clean export — TCL sets VHDL 2008 for sim_1', () => {
       projectName: 'test_project',
       topEntity: 'top',
       sourcePaths: ['test_project.srcs/sources_1/new/top.vhd'],
-      constraintsPath: 'test_project.srcs/constrs_1/new/basys3.xdc',
+      constraintsPath: 'test_project.srcs/constrs_1/new/top.xdc',
       simulationPath: 'test_project.srcs/sim_1/new/testbench.vhd',
     });
     expect(tcl).toContain('get_filesets sim_1');
@@ -171,7 +171,7 @@ describe('Vivado clean export — TCL sets VHDL 2008 for sim_1', () => {
       projectName: 'test_project',
       topEntity: 'top',
       sourcePaths: ['test_project.srcs/sources_1/new/top.vhd'],
-      constraintsPath: 'test_project.srcs/constrs_1/new/basys3.xdc',
+      constraintsPath: 'test_project.srcs/constrs_1/new/top.xdc',
     });
     expect(tcl).not.toContain('add_files -fileset sim_1');
     expect(tcl).not.toContain('get_filesets sim_1');
@@ -182,7 +182,7 @@ describe('Vivado clean export — TCL sets VHDL 2008 for sim_1', () => {
       projectName: 'test_project',
       topEntity: 'top',
       sourcePaths: ['test_project.srcs/sources_1/new/top.vhd'],
-      constraintsPath: 'test_project.srcs/constrs_1/new/basys3.xdc',
+      constraintsPath: 'test_project.srcs/constrs_1/new/top.xdc',
     });
     expect(tcl).toContain('get_filesets sources_1');
     expect(tcl).toContain('set_property FILE_TYPE {VHDL 2008}');

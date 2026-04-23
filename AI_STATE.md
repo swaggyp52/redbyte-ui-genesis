@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-04-23 (Vivado Export Fidelity + Board Rehearsal Reset)
+
+**Subsystem:** `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`, `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`, `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts`, `packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts`, `packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`, `packages/rb-apps/src/__tests__/export-sequential-boundary.test.ts`, `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/release/product-hardening-ticket-2026-04-23-vivado-export-fidelity-board-rehearsal-reset.md`, `docs/release/proof/vivado-export-fidelity-board-rehearsal-2026-04-23.md`
+
+**Context:** Export already produced coherent Basys3 artifacts, but the real Vivado handoff still had truth gaps: the project-folder path renamed `top.xdc` to `basys3.xdc`, generated/derived clock directives were silently ignored, and bundle validity could still be vetoed by a stale raw-Verilog lint path even though the authoritative student handoff is `top.vhd` + `top.xdc`.
+
+**Changes:**
+- **Canonical constraints file:** `vivadoProjectFolder.ts` now keeps `top.xdc` canonical through the `.xpr`, `vivado_import.tcl`, project-folder ZIP layout, and README guidance instead of renaming the constraints file inside the open-project export.
+- **Shared board truth in project-folder validation:** project-folder XDC validation now reads valid Basys3 package pins from the shared Basys3 pin catalog instead of a duplicated local list.
+- **Honest generated-clock policy:** `basys3ExportService.ts` now blocks unsupported timing directives (`create_generated_clock`, `derive_pll_clocks`, `derive_clocks`, `set_clock_groups`) with explicit export errors instead of silently dropping derived-clock intent from source constraints.
+- **Bundle authority cleanup:** `basys3Bundle.ts` still emits legacy raw-Verilog lint warnings for debugging, but `bundle.valid` is now decided by the canonical VHDL/XDC contract and blocking diagnostics rather than the obsolete Verilog lint path. This removed false invalidation of classroom exports such as the Basys3 ALU fixture.
+- **Wider export fidelity matrix:** project-folder consistency coverage now includes a sequential W5-board-clock fixture; the ALU golden hash was refreshed to the current deterministic artifact set; Lab 8 sequential export proof remained green.
+
+**Validation:**
+- `pnpm vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts packages/rb-apps/src/__tests__/lab8-export-validation.test.ts packages/rb-apps/src/__tests__/ide-vivado-pack-contract.test.ts packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts packages/rb-apps/src/__tests__/export-sequential-boundary.test.ts packages/rb-apps/src/__tests__/ide-zip-import-contract.test.ts packages/rb-apps/src/apps/ide/__tests__/zipImport.nestedfolder.test.ts` -> pass (64 tests)
+- `pnpm ide:gate:export-ready-contract` -> pass
+- `pnpm ide:gate:vivado-pack-contract` -> pass
+- `pnpm ide:gate:hardware-checklist-contract` -> pass
+- `pnpm build:unified` -> pass
+- `pnpm tsx scripts/lab8-vivado-export.ts` -> pass (`bundle.valid = true`, deterministic ZIP SHA256 `5000809bda02132c906404171ca66f57fc0c2af514743e453ba514e709704457`)
+
+**Manual proof:** `docs/release/proof/vivado-export-fidelity-board-rehearsal-2026-04-23.md`
+
+**Remaining limitation:** this slice strengthened the handoff artifact and fenced unsupported derived-clock timing honestly, but it did not run a real Vivado synth/impl/bitstream compile in this environment.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Design + Verify Board Clock Semantics Reset)
 
 **Subsystem:** `packages/rb-apps/src/fpga/boards/basys3/basys3SignalSemantics.ts`, `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`, `packages/rb-apps/src/apps/ide/ioSignalRoles.ts`, `packages/rb-apps/src/apps/ide/BoardSignalContext.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/basys3SignalSemantics.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockSemantics.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`, `docs/release/product-hardening-ticket-2026-04-23-design-verify-board-clock-semantics-reset.md`

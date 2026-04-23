@@ -3,6 +3,7 @@ import { buildDeterministicZip, sha256Hex } from '../../export/deterministicZip'
 import { compareCodepoint } from '../../export/codepointSort';
 import { hashString } from '../../utils/digest';
 import { generateVivadoImportTcl } from '../boards/basys3/vivadoImportTcl';
+import { BASYS3_ALLOWED_PACKAGE_PINS } from '../boards/basys3/basys3Pins';
 
 export interface VivadoProjectFolderArtifact {
   path: string;
@@ -41,26 +42,7 @@ const VIVADO_XSIM_VERSION = '2024.2';
 const VIVADO_MODELSIM_VERSION = '2024.1';
 const VIVADO_QUESTA_VERSION = '2024.1';
 const VIVADO_XCELIUM_VERSION = '24.03.003';
-const REFERENCE_CONSTRAINTS_FILE_NAME = 'basys3.xdc';
-
-// Basys3 boards (xc7a35tcpg236-1) valid I/O pins for constraint validation
-const BASYS3_VALID_PINS = new Set([
-  // Switches (SW0-SW15)
-  'V17', 'V16', 'W16', 'W17', 'W15', 'V15', 'W14', 'W13',
-  'V2', 'T3', 'T2', 'R3', 'W2', 'U2', 'U3', 'V1',
-  // LEDs (LD0-LD15)
-  'U16', 'E19', 'U19', 'V19', 'W18', 'U18', 'U17', 'U14',
-  'V14', 'V13', 'V3', 'W3', 'W13', 'V20', 'V9', 'W9',
-  // Buttons (BTNC, BTNU, BTNL, BTNR, BTND)
-  'N17', 'P18', 'P17', 'M17', 'M18',
-  // Clock (CLK)
-  'W5',
-  // PMOD connectors (common header pins)
-  'J17', 'D17', 'D16', 'J18', 'E18', 'E16', 'F18', 'G17',
-  'D14', 'F16', 'G16', 'H15', 'J16', 'J14', 'G14', 'H16',
-  // Additional valid package pins for flexibility
-  'U1', 'W1', 'T1', 'Y1', 'Y2', 'Y3', 'U4', 'V4', 'V6', 'W6',
-]);
+const REFERENCE_CONSTRAINTS_FILE_NAME = 'top.xdc';
 
 
 
@@ -530,7 +512,7 @@ function validateBasys3Pins(topXdc: string): string[] {
   const assignedPins = pinMatches.map((m) => (m[1] || m[2]).trim());
 
   for (const pin of assignedPins) {
-    if (!BASYS3_VALID_PINS.has(pin)) {
+    if (!BASYS3_ALLOWED_PACKAGE_PINS.has(pin)) {
       issues.push(
         `XDC references pin ${pin}, which does not exist on Basys3 (xc7a35tcpg236-1). ` +
           `Valid pins include: SW0-SW15 (V17,V16,W16...), LD0-LD15 (U16,E19...), BTNC-BTND, CLK (W5).`

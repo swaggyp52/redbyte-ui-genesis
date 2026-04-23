@@ -324,6 +324,9 @@ export function exportBasys3Bundle(
     /STD_LOGIC_VECTOR/i.test(port.vhdlType ?? '')
   );
   if (!hasVectorTopPorts) {
+    // Legacy raw-Verilog lint remains advisory only. The real student handoff is
+    // top.vhd + top.xdc, so bundle validity is decided by the canonical VHDL/XDC
+    // contract below, not by this older structural cross-check.
     if (!lint.verilogModuleFound) {
       warnings.push('top module not found in generated verilog');
     }
@@ -365,17 +368,11 @@ export function exportBasys3Bundle(
     compareCodepoint(left, right),
   );
 
-  const valid = hasVectorTopPorts
-    ? xdcPinWarnings.length === 0 &&
-      vhdlXdcMismatches.length === 0 &&
-      exportModel.blockingDiagnostics.length === 0
-    : lint.verilogModuleFound &&
-      lint.missingInHdl.length === 0 &&
-      lint.missingInXdc.length === 0 &&
-      xdcPinWarnings.length === 0 &&
-      verilog.unsupportedNodes.length === 0 &&
-      vhdlXdcMismatches.length === 0 &&
-      exportModel.blockingDiagnostics.length === 0;
+  const valid =
+    xdcPinWarnings.length === 0 &&
+    verilog.unsupportedNodes.length === 0 &&
+    vhdlXdcMismatches.length === 0 &&
+    exportModel.blockingDiagnostics.length === 0;
 
   return {
     topV: verilog.verilog,

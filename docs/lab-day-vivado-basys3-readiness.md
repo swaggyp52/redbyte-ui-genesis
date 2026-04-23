@@ -79,14 +79,14 @@ Reference ZIP inspected from `C:\Users\conno\Downloads\swaggy.zip`.
 | --- | --- | --- | --- |
 | Root project file | `swaggy/swaggy.xpr` | `<slug>/<slug>.xpr` | Must match pattern only; current RedByte pattern is correct |
 | `.srcs` HDL path | `swaggy.srcs/sources_1/new/top.vhd` | `<slug>.srcs/sources_1/new/top.vhd` | Must match; current RedByte export matches |
-| `.srcs` constraints path | `swaggy.srcs/constrs_1/new/basys3.xdc` | `<slug>.srcs/constrs_1/new/top.xdc` | Filename may differ if `.xpr` and Tcl are consistent; keep `top.xdc` canonical unless real Vivado proof fails |
+| `.srcs` constraints path | `swaggy.srcs/constrs_1/new/basys3.xdc` | `<slug>.srcs/constrs_1/new/top.xdc` | Keep `top.xdc` canonical across the flat kit, `.xpr`, and `vivado_import.tcl` |
 | Simulation files | empty `sim_1` file set in `.xpr`; no bundled simulation source | optional `sim_1/new/testbench.vhd` when vectors exist | Allowed difference |
 | `.xpr` metadata | large Vivado-generated file with absolute machine paths | deterministic file using `$PPRDIR/$PSRCDIR` macros | RedByte behavior is preferred; do not regress to machine paths |
 | `.xpr` part/top | `xc7a35tcpg236-1`, `TopModule=top` | same by default, now student-overridable from Project | Must remain explicit and consistent |
 | `.xpr` board part | empty `<BoardPart>` | explicit Basys3 board part | Allowed difference |
 | Run/cache noise | includes `.runs`, `.cache`, `.hw`, `.sim`, `.ip_user_files` | omitted | Keep omitted |
 | Manifest/helper files | none | `project.rbproj.json`, `README.txt`, `vivado_import.tcl`, bring-up files | Keep |
-| Constraints familiarity | `basys3.xdc` | `top.xdc` | Optional alias only if real Vivado/manual proof forces it |
+| Constraints familiarity | `basys3.xdc` | `top.xdc` | RedByte stays canonical on `top.xdc`; import still accepts either filename |
 
 ### Structural alignment required today
 
@@ -100,7 +100,6 @@ Reference ZIP inspected from `C:\Users\conno\Downloads\swaggy.zip`.
 
 - helper files at the project root
 - no `.runs/.cache/.hw/.sim`
-- `top.xdc` instead of `basys3.xdc`
 - deterministic `.xpr` content instead of a full Vivado-authored `.xpr`
 
 ## Lab capability matrix

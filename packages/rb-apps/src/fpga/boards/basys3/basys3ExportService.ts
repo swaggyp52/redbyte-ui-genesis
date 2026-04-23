@@ -275,6 +275,7 @@ function validateProjectForBasys3(project: RBProject): Basys3ExportError[] {
     });
   }
 
+  errors.push(...collectUnsupportedConstraintErrors(project));
   errors.push(...collectIgnoredConstraintWarnings(project));
 
   return errors.sort((left, right) => compareCodepoint(left.message, right.message));
@@ -1107,6 +1108,65 @@ function suggestBasys3Fix(portName: string, direction: MappingDirection): string
   return '"LD0 / U16"';
 }
 
+const UNSUPPORTED_CONSTRAINT_DIRECTIVES: ReadonlyArray<{
+  directive: string;
+  pattern: RegExp;
+  remediation: string;
+}> = [
+  {
+    directive: 'create_generated_clock',
+    pattern: /\bcreate_generated_clock\b/i,
+    remediation:
+      'RedByte Basys3 export currently emits only the primary board clock on CLK100MHZ/W5. Complete generated-clock constraints manually in Vivado after export.',
+  },
+  {
+    directive: 'derive_pll_clocks',
+    pattern: /\bderive_pll_clocks\b/i,
+    remediation:
+      'RedByte Basys3 export does not preserve derived PLL/MMCM clock inference today. Recreate this timing step manually in Vivado after export.',
+  },
+  {
+    directive: 'derive_clocks',
+    pattern: /\bderive_clocks\b/i,
+    remediation:
+      'RedByte Basys3 export does not preserve derived clock inference today. Recreate this timing step manually in Vivado after export.',
+  },
+  {
+    directive: 'set_clock_groups',
+    pattern: /\bset_clock_groups\b/i,
+    remediation:
+      'Clock-group relationships are not exported until RedByte models generated and multi-domain timing explicitly. Apply clock-group constraints manually in Vivado after export.',
+  },
+];
+
+function collectUnsupportedConstraintErrors(project: RBProject): Basys3ExportError[] {
+  const constraintText = project.fpga?.constraints?.text;
+  if (!constraintText || constraintText.trim().length === 0) {
+    return [];
+  }
+
+  const diagnostics: Basys3ExportError[] = [];
+  const seen = new Set<string>();
+  for (const line of constraintText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    for (const entry of UNSUPPORTED_CONSTRAINT_DIRECTIVES) {
+      if (!entry.pattern.test(trimmed) || seen.has(entry.directive)) continue;
+      seen.add(entry.directive);
+      diagnostics.push({
+        type: 'constraint',
+        severity: 'error',
+        message:
+          `Unsupported timing directive "${entry.directive}" in source constraints. ` +
+          `Deterministic Basys3 export will not preserve generated or grouped clock Tcl. ` +
+          `Fix: ${entry.remediation}`,
+      });
+    }
+  }
+
+  return diagnostics.sort((left, right) => compareCodepoint(left.message, right.message));
+}
+
 function collectIgnoredConstraintWarnings(project: RBProject): Basys3ExportError[] {
   const constraintText = project.fpga?.constraints?.text;
   if (!constraintText || constraintText.trim().length === 0) {
@@ -1118,6 +1178,9 @@ function collectIgnoredConstraintWarnings(project: RBProject): Basys3ExportError
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) continue;
+    if (UNSUPPORTED_CONSTRAINT_DIRECTIVES.some((entry) => entry.pattern.test(trimmed))) {
+      continue;
+    }
     const directiveMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
     if (!directiveMatch) continue;
     const directive = directiveMatch[1].toLowerCase();

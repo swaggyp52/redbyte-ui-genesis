@@ -105,6 +105,50 @@ function buildRicherLogicProject(): RBProject {
   };
 }
 
+function buildClockedRegisterProject(): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-04-23T00:00:00.000Z',
+    updatedAt: '2026-04-23T00:00:00.000Z',
+    name: 'Clocked Register Vivado Consistency Fixture',
+    description: 'Sequential board-clock fixture for artifact consistency.',
+    circuit: {
+      nodes: [
+        { id: 'clk', type: 'Clock', x: 40, y: 60, label: 'clk', config: { period: 10 }, state: {} },
+        { id: 'sw0', type: 'Switch', x: 40, y: 160, label: 'D', config: {}, state: {} },
+        { id: 'rst', type: 'Switch', x: 40, y: 260, label: 'RST', config: {}, state: {} },
+        { id: 'ff0', type: 'DFlipFlop', x: 240, y: 140, label: 'FF0', config: {}, state: {} },
+        { id: 'ld0', type: 'Lamp', x: 440, y: 140, label: 'Q', config: {}, state: {} },
+      ],
+      connections: [
+        { id: 'c1', from: { nodeId: 'clk', portName: 'out' }, to: { nodeId: 'ff0', portName: 'CLK' } },
+        { id: 'c2', from: { nodeId: 'sw0', portName: 'out' }, to: { nodeId: 'ff0', portName: 'D' } },
+        { id: 'c3', from: { nodeId: 'rst', portName: 'out' }, to: { nodeId: 'ff0', portName: 'RST' } },
+        { id: 'c4', from: { nodeId: 'ff0', portName: 'Q' }, to: { nodeId: 'ld0', portName: 'in' } },
+      ],
+    },
+    ioMapping: {
+      inputs: [
+        { id: 'clk', nodeId: 'clk', port: 'out', label: 'clk', pin: 'CLK100MHZ' },
+        { id: 'sw0', nodeId: 'sw0', port: 'out', label: 'D', pin: 'SW0' },
+        { id: 'rst', nodeId: 'rst', port: 'out', label: 'RST', pin: 'BTNC' },
+      ],
+      outputs: [
+        { id: 'out_ld0', nodeId: 'ld0', port: 'in', label: 'Q', pin: 'LD0' },
+      ],
+    },
+    vectors: [
+      { tick: 0, inputs: { clk: 0, D: 0, RST: 1 }, expected: { Q: 0 } },
+      { tick: 1, inputs: { clk: 1, D: 1, RST: 0 }, expected: { Q: 1 } },
+    ],
+    meta: {
+      projectId: 'vivado-consistency-clocked-register',
+      tags: ['contract', 'vivado', 'consistency', 'clocked'],
+    },
+  };
+}
+
 function buildProjectFolderInput(project: RBProject): BuildVivadoProjectFolderInput {
   const viewModel = buildExportViewModel(project);
   expect(viewModel.status).toBe('ok');
@@ -241,9 +285,9 @@ function assertFullConsistency(
     vivadoImportTcl: importTclText,
     expectedTopModule: 'top',
     expectedXprSourceRef: 'sources_1/new/top.vhd',
-    expectedXprConstraintsRef: 'constrs_1/new/basys3.xdc',
+    expectedXprConstraintsRef: 'constrs_1/new/top.xdc',
     expectedTclSourcePath: `${slug}.srcs/sources_1/new/top.vhd`,
-    expectedTclConstraintsPath: `${slug}.srcs/constrs_1/new/basys3.xdc`,
+    expectedTclConstraintsPath: `${slug}.srcs/constrs_1/new/top.xdc`,
     expectedTclSimulationPath: `${slug}.srcs/sim_1/new/testbench.vhd`,
   });
 
@@ -261,7 +305,7 @@ describe('IDE Vivado full artifact consistency contract', () => {
     const loaded = await JSZip.loadAsync(zipBytes);
 
     const topVhd = await loaded.file(`${slug}/${slug}.srcs/sources_1/new/top.vhd`)!.async('string');
-    const topXdc = await loaded.file(`${slug}/${slug}.srcs/constrs_1/new/basys3.xdc`)!.async('string');
+    const topXdc = await loaded.file(`${slug}/${slug}.srcs/constrs_1/new/top.xdc`)!.async('string');
     const testbenchVhd = await loaded.file(`${slug}/${slug}.srcs/sim_1/new/testbench.vhd`)!.async('string');
     const xprText = await loaded.file(`${slug}/${slug}.xpr`)!.async('string');
     const importTclText = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
@@ -278,7 +322,7 @@ describe('IDE Vivado full artifact consistency contract', () => {
     const byPath = toEntryTextMap(entries);
 
     const topVhd = byPath.get(`${slug}/${slug}.srcs/sources_1/new/top.vhd`) ?? '';
-    const topXdc = byPath.get(`${slug}/${slug}.srcs/constrs_1/new/basys3.xdc`) ?? '';
+    const topXdc = byPath.get(`${slug}/${slug}.srcs/constrs_1/new/top.xdc`) ?? '';
     const testbenchVhd = byPath.get(`${slug}/${slug}.srcs/sim_1/new/testbench.vhd`) ?? '';
     const xprText = byPath.get(`${slug}/${slug}.xpr`) ?? '';
     const importTclText = byPath.get(`${slug}/vivado_import.tcl`) ?? '';
@@ -289,6 +333,25 @@ describe('IDE Vivado full artifact consistency contract', () => {
     expect(xprText.length).toBeGreaterThan(0);
     expect(importTclText.length).toBeGreaterThan(0);
 
+    assertFullConsistency(slug, topVhd, topXdc, testbenchVhd, xprText, importTclText);
+  });
+
+  it('clocked project stays consistent and preserves a real W5 board clock constraint', async () => {
+    const project = buildClockedRegisterProject();
+    const input = buildProjectFolderInput(project);
+    const slug = deriveVivadoProjectSlug(project.meta?.projectId ?? project.name);
+
+    const entries = await buildVivadoProjectFolderEntries(input);
+    const byPath = toEntryTextMap(entries);
+
+    const topVhd = byPath.get(`${slug}/${slug}.srcs/sources_1/new/top.vhd`) ?? '';
+    const topXdc = byPath.get(`${slug}/${slug}.srcs/constrs_1/new/top.xdc`) ?? '';
+    const testbenchVhd = byPath.get(`${slug}/${slug}.srcs/sim_1/new/testbench.vhd`) ?? '';
+    const xprText = byPath.get(`${slug}/${slug}.xpr`) ?? '';
+    const importTclText = byPath.get(`${slug}/vivado_import.tcl`) ?? '';
+
+    expect(topXdc).toContain('PACKAGE_PIN W5');
+    expect(topXdc).toContain('create_clock -period 10.000');
     assertFullConsistency(slug, topVhd, topXdc, testbenchVhd, xprText, importTclText);
   });
 
