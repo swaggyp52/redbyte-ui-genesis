@@ -264,4 +264,13 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
     expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
   });
+
+  it('finds the Basys3 board clock by package pin and surfaces the CLK100MHZ board resource', () => {
+    const view = renderSurface();
+
+    fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'w5' } });
+
+    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
+  });
 });

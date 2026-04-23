@@ -11,6 +11,7 @@ import {
 import type { IoMapping, VerifySchedule } from '@redbyte/rb-utils';
 import type { ToolchainProjectInput } from '../../toolchainBackend';
 import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
+import { resolveBasys3SignalBinding } from './basys3SignalSemantics';
 
 export type { VerifySchedule } from '@redbyte/rb-utils';
 export { CLOCKED_MACRO_SEQUENCE } from '@redbyte/rb-utils';
@@ -311,6 +312,16 @@ function resolveClockSignalNameFromStructure(
 
 function resolveIoMappedClockName(ioMapping: IoMapping | undefined): string | undefined {
   for (const entry of ioMapping?.inputs ?? []) {
+    const boardBinding = resolveBasys3SignalBinding({
+      id: entry.id,
+      label: entry.label,
+      pin: entry.pin,
+      direction: 'in',
+    });
+    if (boardBinding?.role === 'clock') {
+      return entry.label?.trim() || entry.id.trim() || boardBinding.alias;
+    }
+
     const namedCandidates = [entry.label, entry.id, entry.pin];
     if (namedCandidates.some((candidate) => candidate === 'CLK100MHZ')) {
       return entry.label?.trim() || entry.id.trim() || 'CLK100MHZ';

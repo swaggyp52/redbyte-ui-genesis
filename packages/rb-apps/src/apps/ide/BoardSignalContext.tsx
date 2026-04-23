@@ -1,13 +1,17 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
+import { resolveBasys3BoardAlias } from '../../fpga/boards/basys3/basys3Pins';
 
 export type BoardSignal =
   | { type: 'sw'; index: number }
   | { type: 'ld'; index: number }
-  | { type: 'btn'; index: number };
+  | { type: 'btn'; index: number }
+  | { type: 'clock'; index: 0 };
 
 export function resolveBoardSignal(value: string | null | undefined): BoardSignal | null {
   const label = (value ?? '').trim();
   if (!label) return null;
+  const boardAlias = resolveBasys3BoardAlias(label);
+  if (boardAlias === 'CLK100MHZ') return { type: 'clock', index: 0 };
   const swMatch = /^sw(\d+)$/i.exec(label);
   if (swMatch) return { type: 'sw', index: Number.parseInt(swMatch[1], 10) };
   const ldMatch = /^ld(\d+)$/i.exec(label);

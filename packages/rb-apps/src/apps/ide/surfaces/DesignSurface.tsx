@@ -38,6 +38,8 @@ import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
+import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import {
   getDesignChipMetadataForNode,
@@ -1836,6 +1838,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         matchesPaletteQuery(paletteQueryTerms, [
           entry.alias,
           entry.kind,
+          getBasys3BoardResource(entry.alias)?.packagePin,
           'basys3',
           'board resource',
           describeBoardEntry(entry),
@@ -1849,6 +1852,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         matchesPaletteQuery(paletteQueryTerms, [
           entry.alias,
           entry.kind,
+          getBasys3BoardResource(entry.alias)?.packagePin,
           'basys3',
           'board resource',
           describeBoardEntry(entry),
@@ -5771,7 +5775,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                   title={
                                     isPlaced
                                       ? `${entry.alias} already placed`
-                                      : `${entry.alias} - ${describeBoardEntry(entry)}`
+                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
                                   }
                                   aria-pressed={isPending}
                                 >
@@ -7256,22 +7260,42 @@ function resolveNodeIoPresentation(
   node: Node,
   ioRow?: DesignIoRow
 ): NodeIoPresentation {
+  const isInputNode = node.type === 'INPUT' || node.type === 'Switch';
+  const isOutputNode = node.type === 'OUTPUT' || node.type === 'Lamp';
   const tokenSource = [ioRow?.label, ioRow?.pin, node.label, node.id]
     .filter((entry): entry is string => typeof entry === 'string')
     .join(' ')
     .toUpperCase();
+  const boardBinding = resolveBasys3SignalBinding({
+    id: ioRow?.id ?? node.id,
+    label: ioRow?.label ?? node.label ?? node.id,
+    pin: ioRow?.pin,
+    direction: ioRow?.direction ?? (isInputNode ? 'in' : 'out'),
+    timingRole: ioRow?.timingRole,
+    boardResourceType: ioRow?.boardResourceType,
+  });
 
-  const isInputNode = node.type === 'INPUT' || node.type === 'Switch';
-  const isOutputNode = node.type === 'OUTPUT' || node.type === 'Lamp';
-  const pinAlias = normalizeAlias(ioRow?.pin ?? '');
-
-  if (isInputNode && /(CLK100MHZ|CLK|CLOCK)/.test(tokenSource)) {
-    return {
-      kind: 'clock',
-      label: pinAlias.length > 0 ? pinAlias : 'CLK100MHZ',
-      pinAlias: pinAlias.length > 0 ? pinAlias : 'CLK100MHZ',
-    };
+  if (boardBinding) {
+    const resourceKind =
+      boardBinding.resource.category === 'clock'
+        ? 'clock'
+        : boardBinding.resource.category === 'button'
+          ? 'button'
+          : boardBinding.resource.category === 'switch'
+            ? 'switch'
+            : boardBinding.resource.category === 'led'
+              ? 'led'
+              : undefined;
+    if (resourceKind) {
+      return {
+        kind: resourceKind,
+        label: boardBinding.alias,
+        pinAlias: boardBinding.packagePin,
+      };
+    }
   }
+
+  const pinAlias = normalizeAlias(ioRow?.pin ?? '');
 
   if (isInputNode && /(BTN[CUDLR]|BTN\d+)/.test(tokenSource)) {
     const alias = extractAlias(tokenSource, /(BTN[CUDLR]|BTN\d+)/);

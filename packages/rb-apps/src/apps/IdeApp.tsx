@@ -69,6 +69,7 @@ import { deriveTimingGuidance } from './ide/timingGuidance';
 import { useProjectRuntime, type ProjectIoRow } from './ide/projectRuntime';
 import type { IdeImportMeta } from './ide/projectImportMeta';
 import { deriveProjectWorkflowAuthority } from './ide/projectWorkflowAuthority';
+import { resolveBasys3SignalBinding } from '../fpga/boards/basys3/basys3SignalSemantics';
 import {
   decodePersistedIdeProject,
   listIdeProjectSnapshots,
@@ -2014,14 +2015,11 @@ function buildConstraintText(
   }>
 ): string {
   const clockRow = ioRows.find(
-    (row) =>
-      row.direction === 'in' &&
-      /(^clk$|clock|clk100mhz)/i.test(getStudentFacingIoLabel(row, row.id)) &&
-      row.pin.trim().length > 0
+    (row) => row.direction === 'in' && resolveBasys3SignalBinding(row)?.role === 'clock'
   );
 
   if (!clockRow) {
-    return '# Clock constraint pending: map a clock-like input (clk/clock/clk100mhz) to CLK100MHZ.';
+    return '# Clock constraint pending: map the design clock to the Basys3 board clock CLK100MHZ / W5.';
   }
 
   const clockSignal = createSignalName(getStudentFacingIoLabel(clockRow, clockRow.id), 'clk');

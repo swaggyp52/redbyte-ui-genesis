@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-04-23 (Design + Verify Board Clock Semantics Reset)
+
+**Subsystem:** `packages/rb-apps/src/fpga/boards/basys3/basys3SignalSemantics.ts`, `packages/rb-apps/src/fpga/boards/basys3/verifySchedule.ts`, `packages/rb-apps/src/apps/ide/ioSignalRoles.ts`, `packages/rb-apps/src/apps/ide/BoardSignalContext.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/basys3SignalSemantics.test.ts`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockSemantics.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx`, `docs/release/product-hardening-ticket-2026-04-23-design-verify-board-clock-semantics-reset.md`
+
+**Context:** Hardware already exposed authoritative Basys3 board truth, but Design and Verify still leaked generic clock-input behavior. A project signal bound to `CLK100MHZ` on `W5` could still be classified through heuristics and authored like an ordinary manual stimulus lane instead of a board-backed clock source.
+
+**Changes:**
+- **Shared Basys3 clock binding owner:** added `basys3SignalSemantics.ts` so app/runtime/export code can resolve authoritative Basys3 resource bindings from alias or package pin and classify `CLK100MHZ / W5` as a real clock-class resource.
+- **Runtime/schedule truth:** `verifySchedule.ts` and `ioSignalRoles.ts` now recognize a `W5`-bound signal as the board clock even when the project signal name is not clock-like.
+- **Design-side clock legitimacy:** `DesignSurface.tsx` now derives board I/O presentation from the shared Basys3 resource binding instead of label regexes, and the board-resource palette can discover `CLK100MHZ` by package pin `W5`.
+- **Verify-side clock semantics:** `VerifySurface.tsx` now separates the board clock from editable manual inputs, explains that the signal is the Basys3 100 MHz oscillator, and presents clock-specific insertion actions as a simulated board-clock source instead of an ordinary switch-style lane.
+- **Cross-surface board identity:** `BoardSignalContext.tsx` now understands the Basys3 board clock so board-resource selection/highlighting can carry the clock identity, not only switches/buttons/LEDs.
+- **Constraint truth:** `IdeApp.tsx` now emits the clock-constraint guidance from authoritative Basys3 clock binding truth rather than clock-name regexes.
+
+**Validation:**
+- `pnpm vitest run packages/rb-apps/src/fpga/boards/basys3/basys3SignalSemantics.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockSemantics.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.paletteDock.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.entryState.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.sequentialInspector.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> pass (77 tests)
+- `pnpm ide:gate:verify-workbench-contract` -> pass
+- `pnpm ide:gate:hardware-checklist-contract` -> pass
+- `pnpm ide:gate:export-ready-contract` -> pass
+- `pnpm build:unified` -> pass
+
+**Out-of-scope gate failures observed during proof:**
+- `pnpm ide:gate:design-workbench-contract` -> fail (`canvas starts too low in the design workspace (offsetY=221.0)`)
+- `pnpm ide:gate:design-inspector-contract` -> fail (`page.waitForSelector('[data-testid=\"ide-design-inspector-health\"]')` timeout)
+
+**Manual proof:** `docs/release/proof/design-board-clock-semantics-2026-04-23.png`, `docs/release/proof/verify-board-clock-semantics-2026-04-23.png`
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Hardware Board Planner / Pinout Truth Reset)
 
 **Subsystem:** `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.test.ts`, `packages/rb-apps/src/apps/ide/components/Basys3BoardView.tsx`, `packages/rb-apps/src/__tests__/basys3BoardView.test.tsx`, `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-hardware-board-planner-pinout-truth.md`
