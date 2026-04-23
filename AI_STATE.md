@@ -2562,6 +2562,7 @@ This left an unresolved contradiction with the locked product direction (`Import
 - The screenshot proof uses the local Chromium preview and starter mapping path; this slice did not include a physical Basys3 programming rehearsal.
 - Later-stage Hardware panels remain intentionally available below Map Pins, but their deeper product value still depends on future board bring-up work.
 - Full repo status is still blocked by the Design workbench canvas-offset gate, which was not reopened for this Hardware-only slice.
+- Pushing commit `11733317` to `origin/main` reported a bypassed required check: `Classroom Truth Gates` is expected. The source commit is on GitHub, but this remains release-process debt until the required check runs and passes normally.
 
 - **Attribution**: Connor Angiel
 
