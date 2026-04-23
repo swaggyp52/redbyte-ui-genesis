@@ -984,15 +984,11 @@ describe('VerifySurface workstation controls', () => {
 
     fireEvent.click(getByTestId('ide-vcb-observe-only'));
 
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'saved checks'
-    );
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).not.toContain(
-      'comparing against'
-    );
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'observation mode'
-    );
+    expect(getByTestId('ide-vcb-observe-only')).toHaveAttribute('aria-pressed', 'true');
+    expect(getByTestId('ide-vcb-use-saved-checks')).toHaveAttribute('aria-pressed', 'false');
+    const sessionSummaryText = getByTestId('ide-vcb-session-summary').textContent?.toLowerCase() ?? '';
+    expect(sessionSummaryText).not.toContain('checks armed');
+    expect(sessionSummaryText).not.toContain('compare current circuit');
   });
 
   it('preserves blank assertions when capture updates an existing assertion mask', () => {
@@ -1088,7 +1084,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-stimulus-toolbar-advanced')).toBeNull();
     expect(getByTestId('ide-stimulus-toolbar')).toBeTruthy();
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Cases and details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
 
     fireEvent.click(getByTestId('ide-verify-right-accept-observed'));
 
@@ -1314,7 +1310,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
     expect(getByTestId('ide-verify-authority-note').textContent).toMatch(/What this means|Pass or fail reflects this Verify run/i);
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Cases and details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
     expect(getByTestId('ide-verify-run-context-sampling').textContent).toContain('steady state');
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing all 2 ticks');
@@ -1348,7 +1344,6 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-fail-nav-first')).toBeTruthy();
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-fail-nav-summary').textContent).toContain('t1');
-    expect(getByTestId('ide-verify-drawer-hint').textContent).toMatch(/chart|Focus/i);
     expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-drawer-hint').textContent).toContain('t1');
     expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('expected');
@@ -1369,7 +1364,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Cases and details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-failure-explainer')).toBeTruthy();
     expect(getByTestId('ide-verify-right-tick').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-signal-key').textContent).toContain('ld0');
@@ -1378,7 +1373,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('ld0');
     expect(getByTestId('ide-verify-right-likely-reason').textContent).toContain('t1');
     expect(getByTestId('ide-verify-right-next-step').textContent).toContain('ld0');
-    fireEvent.click(getAllByText('Checks')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Checks' }));
     expect(getByTestId('ide-verify-mismatch-case-id').textContent).toContain('vec-02');
     expect(getByTestId('ide-verify-mismatch-sampled-key').textContent).toContain('ld0_node.in');
     expect(getByTestId('ide-verify-mismatch-expected-key').textContent).toContain('ld0');
@@ -1942,13 +1937,13 @@ describe('VerifySurface workstation controls', () => {
     );
 
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Cases and details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-truth-table-title').textContent).toContain('TRACE TABLE (TICK LOG)');
     expect(queryByTestId('ide-truth-table-mode-combos')).toBeNull();
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('CLK=0');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('RST=1');
     expect(getByTestId('ide-truth-table-inputs-0').textContent).toContain('+2');
-    fireEvent.click(getAllByText('Cases and details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context-protocol').textContent).toContain('Clocked macro');
     expect(getByTestId('ide-verify-run-context-tick_0').textContent).toContain('Initial state');
   });
@@ -1972,9 +1967,9 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    const status = getByTestId('ide-verify-primary-status');
+    const status = getByTestId('ide-verify-session-meta');
     expect(status.textContent).toMatch(/Board pins|Map Pins|not finished on Project/i);
-    expect(getByTestId('ide-verify-primary-open-project-mappins').textContent).toContain('Open Project');
+    expect(getByTestId('ide-verify-primary-open-project-mappins').textContent).toContain('Map Pins');
   });
 
   it('shows PASS (INCOMPLETE) status label when pass run has incomplete-mapping qualification', () => {

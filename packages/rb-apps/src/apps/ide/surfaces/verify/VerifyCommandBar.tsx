@@ -42,6 +42,10 @@ export interface VerifyCommandBarProps {
   readonly referenceModeLabel?: string;
   readonly primaryStatusTitle?: string;
   readonly primaryStatusMessage?: string;
+  readonly compactStatusActionLabel?: string;
+  readonly compactStatusActionTone?: 'primary' | 'secondary' | 'ghost';
+  readonly compactStatusActionTestId?: string;
+  readonly onCompactStatusAction?: () => void;
 
   /** Circuit kind for contextual hints */
   readonly isSequential: boolean;
@@ -109,6 +113,10 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   referenceModeLabel,
   primaryStatusTitle,
   primaryStatusMessage,
+  compactStatusActionLabel,
+  compactStatusActionTone = 'secondary',
+  compactStatusActionTestId,
+  onCompactStatusAction,
   isSequential,
   evidenceLabel,
   evidenceTone,
@@ -330,37 +338,6 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           </div>
         )}
 
-        <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
-          <div className="ide-vcb-truth-strip-stack">
-            <span data-testid="ide-verify-summary-status">
-              <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-                {statusLabel}
-              </span>
-            </span>
-            {compactMetaNodes.length > 0 && (
-              <span
-                className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
-                data-testid="ide-verify-session-meta"
-              >
-                {interleaveWithSeparators(compactMetaNodes, 'ide-vcb-session-sep')}
-              </span>
-            )}
-            {showMetricsRow && metricsNodes.length > 0 ? (
-              <span className="ide-vcb-session-line ide-vcb-session-line--metrics">
-                {interleaveWithSeparators(metricsNodes, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
-              </span>
-            ) : null}
-          </div>
-          {referenceModeLabel ? (
-            <details className="ide-vcb-session-details" data-testid="ide-vcb-session-details">
-              <summary className="ide-vcb-session-details-summary">Session details</summary>
-              <span className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
-                {referenceModeLabel}
-              </span>
-            </details>
-          ) : null}
-        </div>
-
         <div className="ide-vcb-group ide-vcb-group--status">
           {showAnalysisToggle && onToggleAnalysis && (
             <button
@@ -382,6 +359,15 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 </span>
               )}
             </button>
+          )}
+          {compactStatusActionLabel && onCompactStatusAction && (
+            <IdeButton
+              tone={compactStatusActionTone}
+              onClick={onCompactStatusAction}
+              testId={compactStatusActionTestId}
+            >
+              {compactStatusActionLabel}
+            </IdeButton>
           )}
           {showGoToDesign && onGoToDesign && (
             <span className="ide-vcb-design-bridge">
@@ -435,6 +421,36 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               )}
             </div>
           )}
+        </div>
+        <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
+          <div className="ide-vcb-truth-strip-stack">
+            <span data-testid="ide-verify-summary-status">
+              <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
+                {statusLabel}
+              </span>
+            </span>
+            {compactMetaNodes.length > 0 && (
+              <span
+                className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
+                data-testid="ide-verify-session-meta"
+              >
+                {interleaveWithSeparators(compactMetaNodes, 'ide-vcb-session-sep')}
+              </span>
+            )}
+            {showMetricsRow && metricsNodes.length > 0 ? (
+              <span className="ide-vcb-session-line ide-vcb-session-line--metrics">
+                {interleaveWithSeparators(metricsNodes, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
+              </span>
+            ) : null}
+          </div>
+          {referenceModeLabel ? (
+            <details className="ide-vcb-session-details" data-testid="ide-vcb-session-details">
+              <summary className="ide-vcb-session-details-summary">Session details</summary>
+              <span className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
+                {referenceModeLabel}
+              </span>
+            </details>
+          ) : null}
         </div>
       </div>
       {failureRecoveryLine && failureRecoveryLine.trim() !== '' ? (

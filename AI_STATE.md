@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-04-22 (Campaign G - Verify workspace legitimacy reset)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-verify-workspace-legitimacy-reset.md`
+
+**Context:** Mapping authority had already been reset to **Project -> Map Pins**, but Verify still behaved like a stacked dashboard: the desktop workbench share gate failed, command chrome overclaimed height, the drawer vector tab had drifted to **Cases and details**, and the signal rail default could present **visible** instead of a relevance-first subset. That made Verify feel less like a deterministic verification instrument and more like a cluttered status slab.
+
+**Changes:**
+- **Desktop workspace ownership:** widened the Verify lab split so the stimulus workbench keeps a real desktop share while waveform remains the dominant evidence companion.
+- **Header compression:** folded the run-truth strip into the primary command row, shortened compare-mode run CTA copy to **Run / Update run**, removed duplicate mapping/status chrome from the command bar, and kept the post-run bar within the compact desktop contract.
+- **Truthful secondary navigation:** restored the drawer’s explicit **Vectors** tab label and kept the analysis drawer as the read-only secondary inspection path instead of a shell-rail detour.
+- **Relevant-by-default evidence rail:** signal list default now reports and opens on a **relevant** subset, with **All** still available on demand; fail-state focus remains able to collapse further to flagged lanes.
+- **Tests:** aligned workstation assertions with the compressed header and the restored **Vectors** tab wording.
+
+**Validation:**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.panelOwnership.test.tsx` -> pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm -s ide:gate:verify-workbench-contract` -> pass
+- `pnpm -s ide:gate:verify-summary-contract` -> pass
+- `pnpm build:unified` -> pass
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-22 (Campaign F — Program device / bitstream / submission lane, slice 1)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/release/product-hardening-ticket-2026-04-22-program-device-bitstream-submission-lane.md`, `docs/IDE_SYSTEM_MAP.md` (Path 4)

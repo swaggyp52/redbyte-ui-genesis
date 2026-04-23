@@ -3312,6 +3312,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? `Using custom checks (${customVectorCount})`
             : `Using project checks (${authoredVectors.length})`;
   const sessionModeBadge: string = nextRunIsCompare ? 'Checks armed' : 'Observe';
+  const compactCommandRunLabel =
+    totalExpectedCaseCount > 0
+      ? lastRun
+        ? 'Update run'
+        : 'Run'
+      : verifySession.runLabel;
   const sessionTitle: string = !lastRun
     ? 'Ready to run'
     : isTraceOnly ? 'Outputs observed — stimulus captured'
@@ -3616,16 +3622,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const analysisDrawerHint = useMemo(() => {
     if (!hasSessionFailureEvidence || !selectedFailureCase) return undefined;
-    return `In the chart, select ${selectedFailureDisplayLabel ?? selectedFailureCase.signal} at t${selectedFailureCase.tick}`;
+    return `${selectedFailureDisplayLabel ?? selectedFailureCase.signal} t${selectedFailureCase.tick}`;
   }, [
     hasSessionFailureEvidence,
     selectedFailureCase,
     selectedFailureDisplayLabel,
   ]);
-  const verifyFailureRecoveryLine = useMemo(() => {
-    if (!hasSessionFailureEvidence) return undefined;
-    return 'The lanes in the chart are the same signals as your checks. Use First mismatch or a red row, then fix the design or the saved value. Open Details for every row.';
-  }, [hasSessionFailureEvidence]);
+  const compactPrimaryStatusAction =
+    primaryStatus?.title === 'Board pins are not finished on Project'
+      ? primaryStatus.actions?.[0]
+      : undefined;
   const verifySessionMetricsRow =
     sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
@@ -3724,7 +3730,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ? `${visibleSignalCount} flagged`
                     : showAllSignals
                       ? `${signalTimeline.length} visible`
-                      : `${visibleSignalCount} visible`}
+                      : `${visibleSignalCount} relevant`}
                 </span>
               </div>
               <div className="ide-verify-signal-rail-actions">
@@ -3866,7 +3872,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {verifyMode !== 'blocked' && (
         <VerifyCommandBar
           leadingPanel={
-            primaryStatus ? (
+            primaryStatus && !compactPrimaryStatusAction ? (
               <VerifyPrimaryStatusArea
                 {...primaryStatus}
                 density="embedded"
@@ -3884,7 +3890,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onSetCompare={() => setNextRunUsesAssertions(true)}
           compareAvailable={totalExpectedCaseCount > 0}
           onRun={() => handleRunWithPreflight()}
-          runLabel={verifySession.runLabel}
+          runLabel={compactCommandRunLabel}
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
           onGenerate={handleGenerateBasicVectors}
@@ -3895,9 +3901,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           statusLabel={sessionStatusBadgeLabel}
           statusTone={sessionStatusTone}
           sessionStatusBadge={sessionStatusBadgeLabel}
-          sessionModeLabel={sessionModeBadge}
-          sessionTitle={sessionTitle}
-          referenceModeLabel={referenceModeLabel}
+          sessionModeLabel={sessionSignalsAssertionFailure ? undefined : sessionModeBadge}
+          sessionTitle={sessionSignalsAssertionFailure ? undefined : sessionTitle}
+          referenceModeLabel={sessionSignalsAssertionFailure ? undefined : referenceModeLabel}
+          primaryStatusTitle={compactPrimaryStatusAction ? primaryStatus?.title : undefined}
+          primaryStatusMessage={compactPrimaryStatusAction ? primaryStatus?.message : undefined}
+          compactStatusActionLabel={compactPrimaryStatusAction ? 'Project → Map Pins' : undefined}
+          compactStatusActionTone={compactPrimaryStatusAction?.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction?.tone}
+          compactStatusActionTestId={compactPrimaryStatusAction?.testId}
+          onCompactStatusAction={compactPrimaryStatusAction?.onClick}
           isSequential={isSequentialRun}
           evidenceLabel={commandBarEvidenceLabel}
           evidenceTone={
@@ -3907,12 +3919,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'idle'
                 : undefined
           }
-          coverageLabel={commandBarCoverageLabel}
+          coverageLabel={sessionSignalsAssertionFailure ? undefined : commandBarCoverageLabel}
           sessionMetricsRow={verifySessionMetricsRow}
           showAnalysisToggle={Boolean(lastRun)}
           analysisOpen={drawerOpen}
           analysisHint={analysisDrawerHint}
-          failureRecoveryLine={verifyFailureRecoveryLine}
           onToggleAnalysis={() => setDrawerOpen((prev) => !prev)}
           showEditCases={hasSessionFailureEvidence}
           onEditCases={handleEditExpectedOutputs}
@@ -3920,8 +3931,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onGoToDesign={handleGoToDesignFromVerify}
           goToDesignTick={selectedTick}
           experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-          experimentCaseLabel={lastRun && selectedTick != null ? `t${selectedTick}` : null}
-          experimentTimingHint={lastRun ? sequencerModeLabel : null}
+          experimentCaseLabel={lastRun && selectedTick != null && !sessionSignalsAssertionFailure ? `t${selectedTick}` : null}
+          experimentTimingHint={lastRun && !sessionSignalsAssertionFailure ? sequencerModeLabel : null}
         />
         )}
         </div>
@@ -4917,7 +4928,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 >
                   {tab === 'why' ? 'Inspect'
                     : tab === 'mismatches' ? 'Checks'
-                    : 'Cases and details'}
+                    : 'Vectors'}
                 </button>
               ))}
             </nav>

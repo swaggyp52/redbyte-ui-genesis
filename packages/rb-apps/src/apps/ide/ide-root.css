@@ -31693,6 +31693,144 @@ button:disabled,
   border-bottom: 1px solid rgba(72, 118, 158, 0.18);
 }
 
+/* Verify legitimacy reset:
+   restore a real desktop authoring lane while keeping waveform dominant, and
+   trim post-run chrome that was spending height without improving the next action. */
+[data-ide-mode-marker='verify'] .ide-verify-workspace {
+  gap: 10px !important;
+  padding: 14px 16px 16px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+  grid-template-columns: minmax(392px, 1fr) minmax(0, 1.4fr) !important;
+  gap: 12px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
+  flex: 1 1 40% !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
+  flex: 1 1 60% !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-command-bar {
+  gap: 6px !important;
+  padding: 6px 10px 8px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-row--primary {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  column-gap: 10px !important;
+  row-gap: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-truth-strip {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  flex: 0 1 auto !important;
+  min-height: 0 !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  margin-left: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-group--actions,
+[data-ide-mode-marker='verify'] .ide-vcb-group--mode,
+[data-ide-mode-marker='verify'] .ide-vcb-group--status {
+  flex-wrap: nowrap !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-group--status {
+  margin-left: 0 !important;
+  justify-content: flex-end !important;
+  margin-left: auto !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--meta {
+  font-size: 10px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--summary,
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--metrics {
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof {
+  padding: 12px 14px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-main {
+  gap: 12px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-copy {
+  gap: 4px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-title {
+  font-size: 16px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-summary,
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-authority {
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-actions {
+  gap: 6px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-run-proof-facts {
+  margin-top: 4px !important;
+  padding-top: 4px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-failure-recovery {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-top: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-truth-strip-stack {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 4px 8px !important;
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--compact,
+[data-ide-mode-marker='verify'] .ide-vcb-session-line--metrics {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-session-details {
+  flex: 0 0 auto !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-vcb-session-details-summary {
+  font-size: 10px !important;
+  padding: 0 !important;
+}
+
 [data-ide-mode-marker='verify'] .ide-vwp-observe-chip {
   display: inline-flex;
   align-items: center;
