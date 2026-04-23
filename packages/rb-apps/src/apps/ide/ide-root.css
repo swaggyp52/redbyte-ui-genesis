@@ -31351,7 +31351,12 @@ button:disabled,
 }
 
 /* Hardware surface reset: Map Pins is the default student workflow. */
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-surface-command-stack {
+  order: 0;
+}
+
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-reset-header {
+  order: 10;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -31411,11 +31416,31 @@ button:disabled,
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted {
+  order: 35;
   padding: 9px 12px;
-  margin-bottom: 12px;
+  margin: 10px 0 12px;
   border-radius: 10px;
   background: rgba(5, 14, 24, 0.52);
   box-shadow: none;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-workflow-ribbon {
+  order: 40;
+  margin-top: 0;
+  opacity: 0.86;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-workflow-ribbon .ide-hardware-dep-chain {
+  padding: 6px 8px;
+  gap: 6px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-workflow-ribbon .ide-callout {
+  padding: 8px 10px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace {
+  order: 25;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted .ide-hw-mode-toggle {
@@ -31481,6 +31506,15 @@ button:disabled,
   min-height: 74px;
 }
 
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row.is-selected {
+  border-color: rgba(56, 189, 248, 0.78) !important;
+  background:
+    linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(8, 24, 38, 0.7)) !important;
+  box-shadow:
+    inset 3px 0 0 rgba(56, 189, 248, 0.92),
+    0 0 0 1px rgba(56, 189, 248, 0.18);
+}
+
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-label {
   font-size: 15px;
   font-weight: 800;
@@ -31506,6 +31540,58 @@ button:disabled,
   background: rgba(251, 113, 133, 0.16);
   color: #fda4af;
   border: 1px solid rgba(251, 113, 133, 0.38);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(52, 88, 118, 0.34);
+  background: rgba(5, 14, 24, 0.58);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card.is-selected {
+  background:
+    linear-gradient(90deg, rgba(56, 189, 248, 0.14), rgba(5, 14, 24, 0.66));
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card__item {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card__item span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(148, 178, 204, 0.72);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card__item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: rgba(241, 248, 255, 0.96);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card__arrow {
+  font-size: 12px;
+  color: rgba(125, 211, 252, 0.76);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-selected-signal-card {
+  display: grid;
+  gap: 10px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-selected-signal-card > strong {
+  font-size: 16px;
+  color: rgba(241, 248, 255, 0.98);
 }
 
 /* Workflow coherence reset: keep the fixed 72px rail intact instead of wrapping labels into cropped blocks. */

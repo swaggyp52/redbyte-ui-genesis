@@ -2,12 +2,12 @@
 
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 const MODE_EXPECTATIONS = {
-  project: { leftDock: 'visible', rightDock: 'hidden', console: 'hidden' },
+  project: { leftDock: 'hidden', rightDock: 'hidden', console: 'hidden' },
   design: { leftDock: 'visible', rightDock: 'visible', console: 'hidden' },
-  hardware: { leftDock: 'visible', rightDock: 'collapsed', console: 'visible' },
-  export: { leftDock: 'visible', rightDock: 'collapsed', console: 'visible' },
+  hardware: { leftDock: 'visible', rightDock: 'visible', console: 'hidden' },
+  export: { leftDock: 'hidden', rightDock: 'visible', console: 'visible' },
   import: { leftDock: 'visible', rightDock: 'hidden', console: 'hidden' },
 };
 
@@ -60,7 +60,12 @@ await runIdeGate('IDE workbench layout contract satisfied', async ({ page, baseU
 
     if (mode !== 'verify') {
       const expectation = MODE_EXPECTATIONS[mode];
-      assert(await visible(modeRoot.locator('[data-testid="ide-left-dock"]')), `mode=${mode} missing left dock`);
+      const leftDockVisible = await visible(modeRoot.locator('[data-testid="ide-left-dock"]'));
+      if (expectation.leftDock === 'visible') {
+        assert(leftDockVisible, `mode=${mode} missing left dock`);
+      } else {
+        assert(!leftDockVisible, `mode=${mode} should not show a duplicate left dock`);
+      }
       assert(await visible(modeRoot.locator('[data-testid="ide-mode-body"]')), `mode=${mode} missing workspace`);
 
       const inspectorVisible = await modeRoot.locator('[data-testid="ide-inspector"]').first().isVisible().catch(() => false);

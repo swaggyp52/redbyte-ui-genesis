@@ -606,8 +606,13 @@ describe('HardwareSurface readiness', () => {
     expect(row.textContent).toContain('SW0');
     expect(row.textContent).toContain('V17');
     expect(queryByText('iom-in0')).toBeNull();
+    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('Select a signal row');
 
     fireEvent.click(row);
+    expect(row.getAttribute('aria-pressed')).toBe('true');
+    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('IN0');
+    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('SW0');
+    expect(getByTestId('ide-hw-selected-signal-card').textContent).toContain('V17');
     fireEvent.click(getByTestId('ide-hw-map-sw-1'));
 
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
@@ -686,11 +691,17 @@ describe('HardwareSurface readiness', () => {
     );
 
     const commandText = getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent ?? '';
-    expect(commandText).toContain('Build the current bundle');
-    expect(commandText).toContain('Mapping and design inputs are ready for Export');
-    expect(commandText).toContain('READY TO BUILD');
+    expect(commandText).toContain('Map project signals to Basys3 controls');
+    expect(commandText).toContain('MAPPING COMPLETE');
+    expect(commandText).not.toContain('Build the current bundle');
     expect(commandText).not.toContain('BLOCKED');
-    expect(getAllByTestId('ide-hardware-next-primary').at(-1)?.textContent).toContain('Build Current Bundle');
+    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
+      'Build the current bundle'
+    );
+    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
+      'Mapping and design inputs are ready for Export'
+    );
+    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).not.toContain('BLOCKED');
   });
 
   it('shows program handoff CTA when export is current', () => {
@@ -868,7 +879,8 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Map Pins owns board binding/);
-    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/authoritative mapping lives here/i);
+    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/saved board bindings live here/i);
+    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/export reads these pins/i);
     expect(onGoToProject).not.toHaveBeenCalled();
   });
 });

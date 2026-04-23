@@ -517,6 +517,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     () => (selectedMappingRowId ? mappingRows.find((row) => row.id === selectedMappingRowId) ?? null : null),
     [mappingRows, selectedMappingRowId]
   );
+  const selectedMappingLabel = selectedMappingRow ? formatProjectSignalName(selectedMappingRow) : null;
+  const selectedMappingBoardControl = selectedMappingRow ? describeBoardControl(selectedMappingRow.pin) : null;
+  const selectedMappingPackagePin = selectedMappingRow ? describePackagePin(selectedMappingRow.pin) : null;
+  const selectedMappingResource =
+    selectedMappingRow
+      ? formatBoardResourceChip(selectedMappingRow.boardResourceType) ??
+        (selectedMappingRow.direction === 'in' ? 'Input control' : 'Output control')
+      : null;
 
   // ── Map mode: group rows by signal type for the assignment table ───────
   const pinUsageCounts = useMemo(() => {
@@ -1360,10 +1368,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--map" testId="ide-hw-map-dock">
       <header className="ide-workbench-placeholder-header ide-hw-map-dock-header">
         <div className="ide-hw-map-dock-head-main">
-          <h3>Pin readiness</h3>
+          <h3>Map Pins</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
-            Authoritative mapping lives here in <strong>Map Pins</strong>. Export reads this same saved binding for
-            constraints and handoff files.
+            Saved board bindings live here. Export reads these pins for constraints and handoff files.
           </p>
         </div>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
@@ -1410,8 +1417,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             Add inputs and outputs in Design, then return here to assign board pins.
           </p>
         ) : mappingReady ? (
-          <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-map-dock-primary">
-            Continue to Export →
+          <IdeButton tone="secondary" onClick={onOpenExport} testId="ide-hardware-map-dock-primary">
+            Open Export
           </IdeButton>
         ) : (
           <div className="ide-hw-map-dock-hint" data-testid="ide-hw-map-dock-incomplete-hint">
@@ -1727,7 +1734,35 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const mapInspector = (
     <>
-      <IdeInspectorSection title="Mapping Status" defaultOpen>
+      <IdeInspectorSection title="Selected Signal" defaultOpen>
+        {selectedMappingRow ? (
+          <div className="ide-hw-selected-signal-card" data-testid="ide-hw-selected-signal-card">
+            <strong>{selectedMappingLabel}</strong>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Board control</span>
+                <span>{selectedMappingBoardControl}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Physical pin</span>
+                <span>{selectedMappingPackagePin}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Target type</span>
+                <span>{selectedMappingResource}</span>
+              </div>
+            </div>
+            <p className="ide-copy ide-copy--flush">
+              Click a highlighted valid control on the board to save this signal's binding.
+            </p>
+          </div>
+        ) : (
+          <p className="ide-copy" data-testid="ide-hw-selected-signal-empty">
+            Select a signal row to show its board control and physical package pin here.
+          </p>
+        )}
+      </IdeInspectorSection>
+      <IdeInspectorSection title="Mapping Status" defaultOpen={false}>
         {hasNoBoundaryRows ? (
           <p className="ide-copy" data-testid="ide-hw-map-empty">
             Add inputs and outputs in Design, then return here to assign board pins.
@@ -1776,14 +1811,66 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     [ioBus.state.btn, ioBus.state.ld, ioBus.state.sw]
   );
   const hardwareCommandDescription =
-    hwMode === 'map' && !mappingReady && !hasNoBoundaryRows
-      ? 'Assign the required Basys3 pins in the board workspace first, then continue to board preparation and programming.'
+    hwMode === 'map'
+      ? hasNoBoundaryRows
+        ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
+        : selectedMappingRow
+          ? `${selectedMappingLabel} is selected. Click a highlighted valid board control to save the binding.`
+          : 'Select a signal row, then click the matching Basys3 board control. The row shows the board control and physical package pin.'
       : nextActionHero.body;
+  const hardwareCommandTitle =
+    hwMode === 'map'
+      ? hasNoBoundaryRows
+        ? 'Add boundary I/O in Design first'
+        : 'Map project signals to Basys3 controls'
+      : nextActionHero.title;
   const hardwareCommandSecondaryAction =
     showBlockedHero ? heroSecondaryAction : nextActionHero.secondaryAction;
   const hardwareCommandSecondaryLabel =
     showBlockedHero ? heroSecondaryLabel : nextActionHero.secondaryLabel;
-  const showHardwareCommandActions = hwMode !== 'map' || mappingReady;
+  const showHardwareCommandActions = hwMode !== 'map';
+  const hardwareCommandMeta = hwMode === 'map'
+    ? (
+      <>
+        <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
+          {hasNoBoundaryRows ? 'DESIGN I/O NEEDED' : mappingReady ? 'MAPPING COMPLETE' : `${unresolvedRequiredCount} MISSING`}
+        </IdeStatusPill>
+        <span className="ide-surface-command-chip">Basys3</span>
+        <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
+          {mappingRows.length} signal{mappingRows.length === 1 ? '' : 's'}
+        </span>
+        {selectedMappingLabel ? (
+          <span className="ide-surface-command-chip is-ok">Selected: {selectedMappingLabel}</span>
+        ) : null}
+      </>
+    )
+    : (
+      <>
+        <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
+          {failureTruth.statusLabel.toUpperCase()}
+        </IdeStatusPill>
+        <span className="ide-surface-command-chip">Basys3</span>
+        <span className="ide-surface-command-chip">
+          {explicitTimingMode === 'synchronous_board_clock'
+            ? 'Mode: board clock'
+            : explicitTimingMode === 'manual_event_driven_lab'
+              ? 'Mode: manual event'
+              : 'Mode: combinational'}
+        </span>
+        <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
+          {mappingReady ? 'Mapping current' : `${mappingRows.length} mapped rows`}
+        </span>
+        <span className={`ide-surface-command-chip${compareMatches ? ' is-ok' : ''}`}>
+          {verifyStatus}
+        </span>
+        <span
+          className={`ide-surface-command-chip${exportReady ? ' is-ok' : ''}`}
+          data-testid="ide-hardware-export-status"
+        >
+          Export: {exportStatus}
+        </span>
+      </>
+    );
 
   /** Shown in the main workspace (not the bottom console) so Verify → Export → Program and readiness are visible on first entry. */
   const hardwareWorkflowRibbon = (
@@ -1891,39 +1978,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             className="ide-hardware-command-strip"
             testId="ide-hardware-command-strip"
             label="Hardware"
-            title={
-              hwMode === 'map' && !mappingReady && !hasNoBoundaryRows
-                ? 'Continue mapping before you prepare or program the board'
-                : nextActionHero.title
-            }
+            title={hardwareCommandTitle}
             description={hardwareCommandDescription}
-            meta={(
-              <>
-                <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
-                  {failureTruth.statusLabel.toUpperCase()}
-                </IdeStatusPill>
-                <span className="ide-surface-command-chip">Basys3</span>
-                <span className="ide-surface-command-chip">
-                  {explicitTimingMode === 'synchronous_board_clock'
-                    ? 'Mode: board clock'
-                    : explicitTimingMode === 'manual_event_driven_lab'
-                      ? 'Mode: manual event'
-                      : 'Mode: combinational'}
-                </span>
-                <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
-                  {mappingReady ? 'Mapping current' : `${mappingRows.length} mapped rows`}
-                </span>
-                <span className={`ide-surface-command-chip${compareMatches ? ' is-ok' : ''}`}>
-                  {verifyStatus}
-                </span>
-                <span
-                  className={`ide-surface-command-chip${exportReady ? ' is-ok' : ''}`}
-                  data-testid="ide-hardware-export-status"
-                >
-                  Export: {exportStatus}
-                </span>
-              </>
-            )}
+            meta={hardwareCommandMeta}
             actions={
               showHardwareCommandActions ? (
                 <>
@@ -2211,6 +2268,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </span>
               </div>
             </header>
+            <div
+              className={`ide-hw-map-loop-card${selectedMappingRow ? ' is-selected' : ' is-empty'}`}
+              data-testid="ide-hw-map-loop-card"
+            >
+              <div className="ide-hw-map-loop-card__item">
+                <span>Signal</span>
+                <strong>{selectedMappingLabel ?? 'Select a signal row'}</strong>
+              </div>
+              <div className="ide-hw-map-loop-card__arrow" aria-hidden="true">
+                {'->'}
+              </div>
+              <div className="ide-hw-map-loop-card__item">
+                <span>Board control</span>
+                <strong>{selectedMappingBoardControl ?? 'Click a valid control'}</strong>
+              </div>
+              <div className="ide-hw-map-loop-card__arrow" aria-hidden="true">
+                {'->'}
+              </div>
+              <div className="ide-hw-map-loop-card__item">
+                <span>Physical pin</span>
+                <strong>{selectedMappingPackagePin ?? 'Shown in the row'}</strong>
+              </div>
+            </div>
             <IdeCallout
               tone="info"
               title="Map Pins owns board binding"
@@ -2803,6 +2883,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           className={`ide-hw-map-row ${selectedMappingRowId === row.id ? 'is-selected' : ''} ${isMissing ? 'is-required-missing' : ''} ${hasConflict ? 'is-conflict' : ''} ${!row.required ? 'is-optional' : ''}`}
                           data-testid={`ide-hw-map-row-${row.id}`}
                           data-required={row.required ? 'true' : 'false'}
+                          aria-pressed={selectedMappingRowId === row.id}
                           onClick={() =>
                             setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
                           }
@@ -2850,6 +2931,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 mappedAliases={mapModeAliases}
                 highlightedAlias={selectedMappingRowPin}
                 allowedAliases={selectedAllowedBoardAliases}
+                assignmentMode={Boolean(selectedMappingRow)}
                 onSelectAlias={(alias) => {
                   if (selectedMappingRowId && onSetMappingPin) {
                     onSetMappingPin(selectedMappingRowId, alias);

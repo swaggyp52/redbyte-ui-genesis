@@ -80,11 +80,13 @@ This context retains all diagnostic views without restriction.
 - A central clickable Basys3 board visual for assigning the selected signal
 - Clear mapping rows in the shape signal → board control → physical package pin
 - "Mapping complete" / "Pins missing" status
+- A compact selected-signal confirmation strip near the board while assigning pins
 
 **Student does NOT see:**
 - XDC constraint syntax in the main view
 - Internal port validation error codes (show as plain English)
 - Raw mapping entry ids, HDL port fields, mapping kind, alias, direction, or comma-separated pin forms as the default mapping path
+- Build/program workflow chrome above the default Map Pins workspace
 
 **Advanced accordion (collapsed by default):**
 - Structured mapping data editor for legitimate bus/slice/group repair

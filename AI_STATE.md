@@ -2512,6 +2512,59 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-04-23 (Hardware finalization / happy-path cleanup)
+
+**Subsystem**: IDE Hardware / Map Pins
+
+**Problem**
+
+- Hardware had already moved mapping authority into Map Pins, but the default view still read partly like a workflow dashboard.
+- Export/program lifecycle chrome, the after-mapping rail, and repeated status copy competed with the actual student job: select a signal, click the matching Basys3 control, and confirm the physical pin.
+- The selected-row -> board-control -> package-pin feedback loop was functional but not prominent enough for classroom use.
+
+**Files changed**
+
+- `docs/release/product-hardening-ticket-2026-04-23-hardware-finalization-happy-path.md`
+- `docs/release/proof/hardware-finalization-2026-04-23.png`
+- `docs/IDE_SYSTEM_MAP.md`
+- `docs/STUDENT_UX_LAYER.md`
+- `packages/rb-apps/src/apps/ide/components/Basys3BoardView.tsx`
+- `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`
+- `packages/rb-apps/src/apps/ide/ide-root.css`
+- `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+- `scripts/gates/ide-workbench-layout-contract.mjs`
+
+**What changed**
+
+- Made Hardware map mode's command strip mapping-only, with compact mapping status instead of export/program blocker state.
+- Kept Export/program lifecycle guidance available below the board workspace so it no longer dominates the first Hardware view.
+- Added a selected signal card in the right inspector and a board-workspace confirmation strip showing `Signal -> Board control -> Physical pin`.
+- Strengthened selected mapping rows and board-valid target highlighting while a row is selected.
+- Demoted the map dock's complete-state CTA from a primary `Continue to Export` button to a secondary `Open Export` action, preserving navigation without making Export the main Hardware story.
+- Updated the shared workbench layout gate's stale shell expectations so it matches current Project/Hardware/Export defaults: Project has no duplicate left dock, Hardware keeps the right inspector open and no bottom console, Export keeps its current inspector/console model, and hidden Import is no longer treated as a rail mode.
+- Updated Hardware docs and tests to encode the finished Map Pins-first hierarchy.
+
+**Validation**
+
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareMappingV2EditorModel.test.ts packages/rb-apps/src/__tests__/basys3BoardView.test.tsx` -> PASS (`39 passed`)
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.mapping-authority.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` -> PASS (`20 passed`)
+- `pnpm -s ide:gate:hardware-checklist-contract` -> PASS
+- `pnpm -s ide:gate:bringup-contract` -> PASS
+- `pnpm -s ide:gate:shell-chrome-contract` -> PASS
+- `pnpm -s ide:gate:shell-density-contract` -> PASS
+- `pnpm -s ide:gate:workbench-layout-contract` -> PASS
+- `pnpm -s build:unified` -> PASS
+- Manual screenshot proof: `docs/release/proof/hardware-finalization-2026-04-23.png`
+- `pnpm -s repo:status` -> FAIL at existing out-of-scope `IDE Design Workbench Contract` (`canvas starts too low in the design workspace (offsetY=221.0)`)
+
+**Remaining weakness**
+
+- The screenshot proof uses the local Chromium preview and starter mapping path; this slice did not include a physical Basys3 programming rehearsal.
+- Later-stage Hardware panels remain intentionally available below Map Pins, but their deeper product value still depends on future board bring-up work.
+- Full repo status is still blocked by the Design workbench canvas-offset gate, which was not reopened for this Hardware-only slice.
+
+- **Attribution**: Connor Angiel
+
 ## 2026-04-12 - Broad Design/Verify visual-system pass + cross-surface replay sync
 
 - Reworked the Design/Verify shell geometry so both surfaces share a clearer primary workspace, support rail, and inspector rhythm:

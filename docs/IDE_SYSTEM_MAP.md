@@ -23,9 +23,9 @@
 
 ### Hardware chrome (layout system)
 
-- **Map Pins-first workspace**: Hardware opens on a plain signal-to-board binding job. The top block summarizes mapped/missing counts and the next selected signal; the main workspace pairs grouped project signals with the large clickable Basys3 board visual.
-- **Board assignment loop**: Rows show friendly signal labels, board control aliases, physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Board clicks write through the same saved mapping authority that Export reads.
-- **After-mapping tools**: Board Check, Pre-flight, and Simulation are demoted into a secondary rail below the Map Pins header. They should not visually compete with the mapping task.
+- **Map Pins-first workspace**: Hardware opens on a plain signal-to-board binding job. The command strip is mapping-only in map mode; export/program state moves below the board so the first-view center of gravity is the signal list plus clickable Basys3 visual.
+- **Board assignment loop**: Rows show friendly signal labels, board control aliases, physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Selecting a row now drives a visible signal -> board control -> physical pin confirmation strip and highlights valid board targets. Board clicks write through the same saved mapping authority that Export reads.
+- **After-mapping tools**: Board Check, Pre-flight, Simulation, and the Verify -> Export -> Program dependency ribbon are demoted below the Map Pins board workspace. They remain available without visually competing with pin binding.
 - **Advanced editor containment**: Structured `hardwareMappingV2` entry editing remains available behind an explicit `Advanced mapping editor` disclosure and is not part of the default student path.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
 
