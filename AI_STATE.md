@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-04-23 (Hardware Board Planner / Pinout Truth Reset)
+
+**Subsystem:** `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Pins.test.ts`, `packages/rb-apps/src/apps/ide/components/Basys3BoardView.tsx`, `packages/rb-apps/src/__tests__/basys3BoardView.test.tsx`, `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-hardware-board-planner-pinout-truth.md`
+
+**Context:** The Hardware reset made Map Pins cleaner, but it still was not trustworthy enough as a student-facing board planner. Clock truth was buried in export/pin helpers, board-control names and package pins were split across UI constants, and students could not inspect a coherent Basys3 resource catalog or see how a selected binding maps to `top.xdc`.
+
+**Changes:**
+- **Authoritative Basys3 board catalog:** `basys3Pins.ts` now exposes a shared `BASYS3_BOARD_RESOURCES` model with category, direction, alias, label, package pin, planner visibility, and metadata for the planner-visible clock / switch / button / LED / seven-segment resources plus extended official XDC references (Pmods, XADC, VGA, USB-UART, PS/2, QSPI).
+- **Clock truth surfaced in Hardware:** the board visual now renders `CLK100MHZ` directly, and Hardware inspector details call out the 100 MHz oscillator on `W5` with the matching 10 ns `create_clock` export truth.
+- **Board planner UI upgrade:** Hardware now shows a planner summary, richer selected-resource details, grouped supported-resource catalog chips with mapped/available/conflict state, and an always-visible XDC binding preview tied to the same saved mapping authority Export uses.
+- **Tests/docs:** new board-resource truth coverage in `basys3Pins.test.ts`; Hardware readiness and board-view tests now prove clock/resource/XDC visibility; system map and student UX docs now describe the planner and authoritative board catalog.
+
+**Validation:**
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/fpga/boards/basys3/basys3Pins.test.ts packages/rb-apps/src/__tests__/basys3BoardView.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` -> pass
+- `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareMappingV2EditorModel.test.ts packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/__tests__/basys3-bundle-gate.test.ts` -> pass
+- `pnpm -s ide:gate:hardware-checklist-contract` -> pass
+- `pnpm -s ide:gate:bringup-contract` -> pass
+- `pnpm -s ide:gate:shell-chrome-contract` -> pass
+- `pnpm -s ide:gate:workbench-layout-contract` -> pass
+- `pnpm -s ide:gate:export-ready-contract` -> pass
+- `pnpm -s build:unified` -> pass
+
+**Manual proof:** `docs/release/proof/hardware-board-planner-pinout-truth-2026-04-23.png`
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Blocker Truth + Workflow Coherence Reset)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `packages/rb-apps/src/apps/ide/projectHealth.ts`, `packages/rb-apps/src/apps/ide/exportPackageHandoffModel.ts`, `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/components/IdeStatusBar.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, readiness/export/hardware/status tests, `scripts/gates/ide-export-blockers-contract.mjs`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_UX_LAYER.md`, `docs/release/product-hardening-ticket-2026-04-23-blocker-truth-workflow-coherence.md`

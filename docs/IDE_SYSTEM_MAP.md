@@ -12,7 +12,7 @@
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
 | Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, waveform viewer; **Phase 6:** header now keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`) instead of hiding compare inside **Tools**, and the session strip dedupes repeated labels so students read one state before acting |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
-| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, click a board control, and see the saved board control plus physical package pin. Board Check / Pre-flight / Simulation remain secondary after-mapping tools, and the advanced structured mapping editor is collapsed by default. |
+| Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, inspect an authoritative board resource, click a board control, and see the saved board control plus physical package pin. Hardware now behaves like a simplified Basys3 board planner with clock truth, grouped resource catalog, and an XDC binding preview tied to the same saved mapping Export reads. |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
 
 ### Design chrome (layout system)
@@ -25,6 +25,9 @@
 
 - **Map Pins-first workspace**: Hardware opens on a plain signal-to-board binding job. The command strip is mapping-only in map mode; export/program state moves below the board so the first-view center of gravity is the signal list plus clickable Basys3 visual.
 - **Board assignment loop**: Rows show friendly signal labels, board control aliases, physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Selecting a row now drives a visible signal -> board control -> physical pin confirmation strip and highlights valid board targets. Board clicks write through the same saved mapping authority that Export reads.
+- **Authoritative board planner model**: `basys3Pins.ts` owns the shared Basys3 resource catalog for planner-visible resources (clock, switches, buttons, LEDs, seven-segment controls) plus extended official XDC references (Pmods, XADC, VGA, USB-UART, PS/2, QSPI). Hardware summary cards, the board visual, the inspector, and Export/XDC binding truth all consume that same source.
+- **Clock truth is explicit**: the 100 MHz oscillator is surfaced as `CLK100MHZ` on package pin `W5`, and Hardware exposes the 10 ns `create_clock` relationship that Export emits for the mapped top-level clock port.
+- **Catalog + XDC traceability**: Hardware now makes the chain explicit: project signal -> board resource -> package pin -> XDC binding preview. The preview stays secondary detail inside Hardware, but students can inspect it without dropping into a schema editor or leaving the planner.
 - **After-mapping tools**: Board Check, Pre-flight, Simulation, and the Verify -> Export -> Program dependency ribbon are demoted below the Map Pins board workspace. They remain available without visually competing with pin binding.
 - **Advanced editor containment**: Structured `hardwareMappingV2` entry editing remains available behind an explicit `Advanced mapping editor` disclosure and is not part of the default student path.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
@@ -99,7 +102,8 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `
 1. Hardware surface receives `health` + `mappingRows` + `vectorsCount`
 2. Derives: `hasClockMapping`, `hasResetMapping`, `hasOutputMapping`
 3. Checklist rows show Ready/Missing per check
-4. **Student truth (Vivado / board):** RedByte’s **export** is a **Vivado project ZIP** (HDL, constraints, `xpr`, etc.); the **.bit** is produced in **Vivado** (synth/impl, **Generate Bitstream**), then **Hardware Manager → Program Device**. Hardware copy (`HardwareSurface` map/proof stages, program handoff, `ide-hardware-submission-hint`) is explicit about that boundary — **not** a bitstream in the ZIP from RedByte.
+4. **Board planner truth:** planner-visible Basys3 resources come from the shared board catalog in `basys3Pins.ts`; selected-resource details show alias, package pin, category, mapped signal, availability/conflict state, and an XDC binding preview derived from the same mapping authority Export uses.
+5. **Student truth (Vivado / board):** RedByte’s **export** is a **Vivado project ZIP** (HDL, constraints, `xpr`, etc.); the **.bit** is produced in **Vivado** (synth/impl, **Generate Bitstream**), then **Hardware Manager → Program Device**. Hardware copy (`HardwareSurface` map/proof stages, program handoff, `ide-hardware-submission-hint`) is explicit about that boundary — **not** a bitstream in the ZIP from RedByte.
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
 

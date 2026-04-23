@@ -78,18 +78,22 @@ This context retains all diagnostic views without restriction.
 **Student sees:**
 - A short list of relevant project signals grouped as inputs, outputs, clock/reset, or other
 - A central clickable Basys3 board visual for assigning the selected signal
+- An explicit board planner summary for supported Basys3 resources, including the onboard `CLK100MHZ` clock
+- Selected-resource detail that names the board control, package pin, type/group, mapped signal, and availability state
+- A grouped supported-resource catalog so students can inspect what exists and what is still available
 - Clear mapping rows in the shape signal → board control → physical package pin
 - "Mapping complete" / "Pins missing" status
 - A compact selected-signal confirmation strip near the board while assigning pins
 
 **Student does NOT see:**
-- XDC constraint syntax in the main view
+- Raw XDC constraint dumps as the main interface
 - Internal port validation error codes (show as plain English)
 - Raw mapping entry ids, HDL port fields, mapping kind, alias, direction, or comma-separated pin forms as the default mapping path
 - Build/program workflow chrome above the default Map Pins workspace
 
 **Advanced accordion (collapsed by default):**
 - Structured mapping data editor for legitimate bus/slice/group repair
+- Any lower-level binding detail beyond the standard selected-resource/XDC preview shown in the planner
 
 ---
 

@@ -47,8 +47,12 @@ import {
   suggestEntryIdFromHdl,
 } from '../hardwareMappingGuidance';
 import {
+  formatBasys3XdcBinding,
+  getBasys3BoardResource,
+  listBasys3BoardResources,
   resolveBasys3BoardAlias,
   resolveBasys3PackagePin,
+  type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
 
 export interface HardwareMappingRow {
@@ -206,6 +210,69 @@ function describePackagePin(pin: string | undefined): string {
   return resolveBasys3PackagePin(trimmed) ?? 'Unknown pin';
 }
 
+function formatPlannerResourceKind(resource: Basys3BoardResource | null | undefined): string {
+  if (!resource) return 'Board resource';
+  switch (resource.category) {
+    case 'clock':
+      return 'Board clock';
+    case 'switch':
+      return 'Slide switch';
+    case 'button':
+      return 'Pushbutton';
+    case 'led':
+      return 'LED';
+    case 'seven_seg':
+      return '7-segment';
+    case 'pmod':
+      return 'Pmod';
+    case 'xadc':
+      return 'XADC';
+    case 'vga':
+      return 'VGA';
+    case 'uart':
+      return 'USB-UART';
+    case 'ps2':
+      return 'PS/2';
+    case 'qspi':
+      return 'Quad SPI';
+    default:
+      return 'Board resource';
+  }
+}
+
+function formatPlannerDirection(resource: Basys3BoardResource | null | undefined): string {
+  if (!resource) return 'I/O';
+  switch (resource.direction) {
+    case 'in':
+      return 'Input';
+    case 'out':
+      return 'Output';
+    case 'inout':
+      return 'Bidirectional';
+    case 'system':
+      return 'System';
+    default:
+      return 'I/O';
+  }
+}
+
+function sanitizeXdcPortRef(name: string): string {
+  const normalized = name
+    .trim()
+    .replace(/[^A-Za-z0-9_]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  if (!normalized) return '';
+  return /^[A-Za-z]/.test(normalized) ? normalized : `sig_${normalized}`;
+}
+
+function buildHardwareXdcPortRef(row: HardwareMappingRow | null): string | null {
+  if (!row) return null;
+  const labelRef = sanitizeXdcPortRef(row.label ?? '');
+  if (labelRef) return labelRef;
+  return sanitizeXdcPortRef(`${row.nodeId ?? row.id}_${row.port ?? ''}`) || null;
+}
+
 function mappingPinConflictKey(pin: string | undefined): string {
   const trimmed = pin?.trim() ?? '';
   if (!trimmed) return '';
@@ -330,6 +397,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
   const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
+  const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string>('CLK100MHZ');
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
   const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
@@ -525,6 +593,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? formatBoardResourceChip(selectedMappingRow.boardResourceType) ??
         (selectedMappingRow.direction === 'in' ? 'Input control' : 'Output control')
       : null;
+  const selectedMappedBoardResource = selectedMappingRow
+    ? getBasys3BoardResource(selectedMappingRow.pin)
+    : null;
 
   // ── Map mode: group rows by signal type for the assignment table ───────
   const pinUsageCounts = useMemo(() => {
@@ -536,10 +607,62 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return counts;
   }, [mappingRows]);
+  const mappedRowsByPackagePin = useMemo(() => {
+    const result = new Map<string, HardwareMappingRow[]>();
+    for (const row of mappingRows) {
+      const packagePin = resolveBasys3PackagePin(row.pin);
+      if (!packagePin) continue;
+      const rows = result.get(packagePin) ?? [];
+      rows.push(row);
+      result.set(packagePin, rows);
+    }
+    return result;
+  }, [mappingRows]);
   const selectedAllowedBoardAliases = useMemo(
     () => buildAllowedBoardAliasesForRow(selectedMappingRow),
     [selectedMappingRow]
   );
+  const plannerResources = useMemo(() => listBasys3BoardResources({ plannerOnly: true }), []);
+  const officialCatalogResources = useMemo(() => listBasys3BoardResources(), []);
+  const resourcePlannerGroups = useMemo(() => {
+    const groups = new Map<string, Basys3BoardResource[]>();
+    for (const resource of plannerResources) {
+      const rows = groups.get(resource.group) ?? [];
+      rows.push(resource);
+      groups.set(resource.group, rows);
+    }
+    return Array.from(groups.entries()).map(([label, resources]) => ({ label, resources }));
+  }, [plannerResources]);
+  const selectedBoardResource =
+    selectedMappedBoardResource ??
+    getBasys3BoardResource(selectedBoardResourceAlias) ??
+    getBasys3BoardResource('CLK100MHZ');
+  const selectedBoardResourceRows = selectedBoardResource
+    ? mappedRowsByPackagePin.get(selectedBoardResource.packagePin) ?? []
+    : [];
+  const selectedBoardResourceStatus =
+    selectedBoardResourceRows.length > 1
+      ? 'Conflict'
+      : selectedBoardResourceRows.length === 1
+        ? `Mapped to ${formatProjectSignalName(selectedBoardResourceRows[0])}`
+        : selectedBoardResource?.supportedInPlanner
+          ? 'Available'
+          : 'Catalog only';
+  const selectedXdcPortRef = buildHardwareXdcPortRef(selectedMappingRow) ?? selectedBoardResource?.xdcPort ?? 'signal';
+  const selectedBoardResourceXdc = selectedBoardResource
+    ? formatBasys3XdcBinding(selectedBoardResource, selectedXdcPortRef)
+    : '';
+  const supportedResourceCounts = useMemo(() => {
+    const count = (category: Basys3BoardResource['category']) =>
+      plannerResources.filter((resource) => resource.category === category).length;
+    return {
+      clock: count('clock'),
+      switch: count('switch'),
+      button: count('button'),
+      led: count('led'),
+      sevenSeg: count('seven_seg'),
+    };
+  }, [plannerResources]);
 
   const mapModeGroups = useMemo(() => {
     const groups: Array<{ label: string; rows: HardwareMappingRow[] }> = [
@@ -1762,6 +1885,51 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </p>
         )}
       </IdeInspectorSection>
+      <IdeInspectorSection title="Board Resource" defaultOpen>
+        {selectedBoardResource ? (
+          <div className="ide-hw-selected-signal-card" data-testid="ide-hw-selected-resource-card">
+            <strong>{selectedBoardResource.alias}</strong>
+            <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Resource</span>
+                <span>{selectedBoardResource.label}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Package pin</span>
+                <span>{selectedBoardResource.packagePin}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Group</span>
+                <span>{selectedBoardResource.group}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Type</span>
+                <span>{formatPlannerResourceKind(selectedBoardResource)}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Status</span>
+                <span>{selectedBoardResourceStatus}</span>
+              </div>
+            </div>
+            {selectedBoardResource.category === 'clock' ? (
+              <p className="ide-copy ide-copy--flush" data-testid="ide-hw-clock-truth">
+                Basys3 clock resource: 100 MHz oscillator on package pin W5. Export emits a 10 ns
+                create_clock constraint for the mapped top-level clock port.
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="ide-copy">Select a board resource to inspect its package pin and mapping state.</p>
+        )}
+      </IdeInspectorSection>
+      <IdeInspectorSection title="XDC Binding Preview" defaultOpen>
+        <p className="ide-copy ide-copy--flush">
+          Export uses the same saved Map Pins binding when generating <code>top.xdc</code>.
+        </p>
+        <pre className="ide-hw-xdc-preview" data-testid="ide-hw-xdc-preview">
+          {selectedBoardResourceXdc || 'Select a board resource to preview its XDC binding.'}
+        </pre>
+      </IdeInspectorSection>
       <IdeInspectorSection title="Mapping Status" defaultOpen={false}>
         {hasNoBoundaryRows ? (
           <p className="ide-copy" data-testid="ide-hw-map-empty">
@@ -2301,6 +2469,41 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 Export reads the same saved mapping when it generates `top.xdc`.
               </p>
             </IdeCallout>
+            <div className="ide-hw-board-planner-summary" data-testid="ide-hw-board-resource-summary">
+              <button
+                type="button"
+                className="ide-hw-resource-summary-card ide-hw-resource-summary-card--clock"
+                data-testid="ide-hw-clock-resource-card"
+                onClick={() => {
+                  setSelectedBoardResourceAlias('CLK100MHZ');
+                  setSelectedMappingRowId(null);
+                }}
+              >
+                <span>System clock</span>
+                <strong>CLK100MHZ</strong>
+                <em>100 MHz oscillator · W5</em>
+              </button>
+              <div className="ide-hw-resource-summary-card">
+                <span>Slide switches</span>
+                <strong>{supportedResourceCounts.switch}</strong>
+                <em>SW0-SW15</em>
+              </div>
+              <div className="ide-hw-resource-summary-card">
+                <span>Pushbuttons</span>
+                <strong>{supportedResourceCounts.button}</strong>
+                <em>BTNC / U / L / R / D</em>
+              </div>
+              <div className="ide-hw-resource-summary-card">
+                <span>LED outputs</span>
+                <strong>{supportedResourceCounts.led}</strong>
+                <em>LD0-LD15</em>
+              </div>
+              <div className="ide-hw-resource-summary-card">
+                <span>7-segment lines</span>
+                <strong>{supportedResourceCounts.sevenSeg}</strong>
+                <em>CA-CG, DP, AN0-AN3</em>
+              </div>
+            </div>
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
@@ -2884,9 +3087,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           data-testid={`ide-hw-map-row-${row.id}`}
                           data-required={row.required ? 'true' : 'false'}
                           aria-pressed={selectedMappingRowId === row.id}
-                          onClick={() =>
-                            setSelectedMappingRowId(row.id === selectedMappingRowId ? null : row.id)
-                          }
+                          onClick={() => {
+                            const nextSelected = row.id === selectedMappingRowId ? null : row.id;
+                            setSelectedMappingRowId(nextSelected);
+                            if (nextSelected) {
+                              setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin) ?? selectedBoardResourceAlias);
+                            }
+                          }}
                         >
                           <span className="ide-hw-map-row-left">
                             <span className="ide-hw-map-row-label">{signalLabel}</span>
@@ -2933,12 +3140,52 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 allowedAliases={selectedAllowedBoardAliases}
                 assignmentMode={Boolean(selectedMappingRow)}
                 onSelectAlias={(alias) => {
+                  setSelectedBoardResourceAlias(alias);
                   if (selectedMappingRowId && onSetMappingPin) {
                     onSetMappingPin(selectedMappingRowId, alias);
                     setSelectedMappingRowId(null);
                   }
                 }}
               />
+              <details className="ide-hw-resource-catalog" data-testid="ide-hw-resource-catalog" open>
+                <summary>Supported Basys3 resource catalog</summary>
+                <div className="ide-hw-resource-catalog-grid">
+                  {resourcePlannerGroups.map((group) => (
+                    <section key={group.label} className="ide-hw-resource-catalog-group">
+                      <header>
+                        <strong>{group.label}</strong>
+                        <span>{group.resources.length} resource{group.resources.length === 1 ? '' : 's'}</span>
+                      </header>
+                      <div className="ide-hw-resource-chip-list">
+                        {group.resources.map((resource) => {
+                          const mappedRows = mappedRowsByPackagePin.get(resource.packagePin) ?? [];
+                          const status = mappedRows.length > 1
+                            ? 'Conflict'
+                            : mappedRows.length === 1
+                              ? formatProjectSignalName(mappedRows[0])
+                              : 'Available';
+                          return (
+                            <button
+                              key={resource.id}
+                              type="button"
+                              className={`ide-hw-resource-chip${selectedBoardResource?.id === resource.id ? ' is-selected' : ''}`}
+                              data-testid={`ide-hw-resource-${resource.alias.toLowerCase()}`}
+                              onClick={() => setSelectedBoardResourceAlias(resource.alias)}
+                            >
+                              <span>{resource.alias}</span>
+                              <strong>{resource.packagePin}</strong>
+                              <em>{status}</em>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+                <p className="ide-copy ide-copy--flush ide-hw-resource-catalog-note">
+                  Expanded official XDC catalog: {officialCatalogResources.length} Basys3 resources tracked, including Pmods, XADC, VGA, USB-UART, PS/2, and QSPI reference pins.
+                </p>
+              </details>
             </div>
           </div>
             </div>

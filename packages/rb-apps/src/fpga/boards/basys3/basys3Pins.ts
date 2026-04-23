@@ -18,6 +18,274 @@ export const BASYS3_SEGMENT_PINS = ['W7', 'W6', 'U8', 'V8', 'U5', 'V5', 'U7'] as
 export const BASYS3_ANODE_PINS = ['U2', 'U4', 'V4', 'W4'] as const;
 export const BASYS3_SEGMENT_ALIASES = ['CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG'] as const;
 
+export type Basys3BoardResourceCategory =
+  | 'clock'
+  | 'switch'
+  | 'button'
+  | 'led'
+  | 'seven_seg'
+  | 'pmod'
+  | 'xadc'
+  | 'vga'
+  | 'uart'
+  | 'ps2'
+  | 'qspi';
+
+export type Basys3BoardResourceDirection = 'in' | 'out' | 'inout' | 'system';
+
+export interface Basys3BoardResource {
+  id: string;
+  alias: string;
+  label: string;
+  packagePin: string;
+  category: Basys3BoardResourceCategory;
+  group: string;
+  direction: Basys3BoardResourceDirection;
+  xdcPort: string;
+  supportedInPlanner: boolean;
+  frequencyMHz?: number;
+  activeLow?: boolean;
+  note?: string;
+}
+
+function resource(input: Basys3BoardResource): Basys3BoardResource {
+  return input;
+}
+
+const BASYS3_SWITCH_RESOURCES = BASYS3_SWITCH_PINS.map((packagePin, index) =>
+  resource({
+    id: `switch-${index}`,
+    alias: `SW${index}`,
+    label: `Slide switch SW${index}`,
+    packagePin,
+    category: 'switch',
+    group: 'Slide switches',
+    direction: 'in',
+    xdcPort: `sw[${index}]`,
+    supportedInPlanner: true,
+  })
+);
+
+const BASYS3_LED_RESOURCES = BASYS3_LED_PINS.map((packagePin, index) =>
+  resource({
+    id: `led-${index}`,
+    alias: `LD${index}`,
+    label: `LED LD${index}`,
+    packagePin,
+    category: 'led',
+    group: 'LEDs',
+    direction: 'out',
+    xdcPort: `led[${index}]`,
+    supportedInPlanner: true,
+  })
+);
+
+const BASYS3_BUTTON_ALIASES = ['BTNC', 'BTNU', 'BTNL', 'BTNR', 'BTND'] as const;
+const BASYS3_BUTTON_LABELS = ['Center pushbutton', 'Up pushbutton', 'Left pushbutton', 'Right pushbutton', 'Down pushbutton'] as const;
+const BASYS3_BUTTON_PORTS = ['btnC', 'btnU', 'btnL', 'btnR', 'btnD'] as const;
+const BASYS3_BUTTON_RESOURCES = BASYS3_BUTTON_PINS.map((packagePin, index) =>
+  resource({
+    id: `button-${BASYS3_BUTTON_ALIASES[index].toLowerCase()}`,
+    alias: BASYS3_BUTTON_ALIASES[index],
+    label: `${BASYS3_BUTTON_LABELS[index]} ${BASYS3_BUTTON_ALIASES[index]}`,
+    packagePin,
+    category: 'button',
+    group: 'Pushbuttons',
+    direction: 'in',
+    xdcPort: BASYS3_BUTTON_PORTS[index],
+    supportedInPlanner: true,
+  })
+);
+
+const BASYS3_SEGMENT_RESOURCES = BASYS3_SEGMENT_PINS.map((packagePin, index) =>
+  resource({
+    id: `seven-seg-${BASYS3_SEGMENT_ALIASES[index].toLowerCase()}`,
+    alias: BASYS3_SEGMENT_ALIASES[index],
+    label: `7-segment cathode ${BASYS3_SEGMENT_ALIASES[index]}`,
+    packagePin,
+    category: 'seven_seg',
+    group: 'Seven-segment display',
+    direction: 'out',
+    xdcPort: `seg[${index}]`,
+    supportedInPlanner: true,
+    activeLow: true,
+  })
+);
+
+const BASYS3_ANODE_RESOURCES = BASYS3_ANODE_PINS.map((packagePin, index) =>
+  resource({
+    id: `seven-seg-an${index}`,
+    alias: `AN${index}`,
+    label: `7-segment digit enable AN${index}`,
+    packagePin,
+    category: 'seven_seg',
+    group: 'Seven-segment display',
+    direction: 'out',
+    xdcPort: `an[${index}]`,
+    supportedInPlanner: true,
+    activeLow: true,
+  })
+);
+
+function indexedCatalogResources(
+  prefix: string,
+  category: Basys3BoardResourceCategory,
+  group: string,
+  pins: readonly string[],
+  direction: Basys3BoardResourceDirection,
+  xdcPrefix = prefix
+): Basys3BoardResource[] {
+  return pins.map((packagePin, index) =>
+    resource({
+      id: `${prefix.toLowerCase()}-${index}`,
+      alias: `${prefix}${index}`,
+      label: `${group} ${prefix}${index}`,
+      packagePin,
+      category,
+      group,
+      direction,
+      xdcPort: `${xdcPrefix}[${index}]`,
+      supportedInPlanner: false,
+      note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+    })
+  );
+}
+
+export const BASYS3_BOARD_RESOURCES: readonly Basys3BoardResource[] = [
+  resource({
+    id: 'clock-clk100mhz',
+    alias: 'CLK100MHZ',
+    label: '100 MHz oscillator CLK100MHZ',
+    packagePin: BASYS3_CLOCK_PIN,
+    category: 'clock',
+    group: 'System clock',
+    direction: 'in',
+    xdcPort: 'clk',
+    supportedInPlanner: true,
+    frequencyMHz: 100,
+    note: 'Official Basys3 master XDC clock resource with 10 ns clock period.',
+  }),
+  ...BASYS3_SWITCH_RESOURCES,
+  ...BASYS3_LED_RESOURCES,
+  ...BASYS3_BUTTON_RESOURCES,
+  ...BASYS3_SEGMENT_RESOURCES,
+  resource({
+    id: 'seven-seg-dp',
+    alias: 'DP',
+    label: '7-segment decimal point DP',
+    packagePin: BASYS3_DP_PIN,
+    category: 'seven_seg',
+    group: 'Seven-segment display',
+    direction: 'out',
+    xdcPort: 'dp',
+    supportedInPlanner: true,
+    activeLow: true,
+  }),
+  ...BASYS3_ANODE_RESOURCES,
+  ...indexedCatalogResources('JA', 'pmod', 'Pmod JA', ['J1', 'L2', 'J2', 'G2', 'H1', 'K2', 'H2', 'G3'], 'inout'),
+  ...indexedCatalogResources('JB', 'pmod', 'Pmod JB', ['A14', 'A16', 'B15', 'B16', 'A15', 'A17', 'C15', 'C16'], 'inout'),
+  ...indexedCatalogResources('JC', 'pmod', 'Pmod JC', ['K17', 'M18', 'N17', 'P18', 'L17', 'M19', 'P17', 'R18'], 'inout'),
+  ...indexedCatalogResources('JXADC', 'xadc', 'XADC Pmod', ['J3', 'L3', 'M2', 'N2', 'K3', 'M3', 'M1', 'N1'], 'inout'),
+  ...indexedCatalogResources('VGARED', 'vga', 'VGA red', ['G19', 'H19', 'J19', 'N19'], 'out', 'vgaRed'),
+  ...indexedCatalogResources('VGABLUE', 'vga', 'VGA blue', ['N18', 'L18', 'K18', 'J18'], 'out', 'vgaBlue'),
+  ...indexedCatalogResources('VGAGREEN', 'vga', 'VGA green', ['J17', 'H17', 'G17', 'D17'], 'out', 'vgaGreen'),
+  resource({
+    id: 'vga-hsync',
+    alias: 'HSYNC',
+    label: 'VGA horizontal sync',
+    packagePin: 'P19',
+    category: 'vga',
+    group: 'VGA connector',
+    direction: 'out',
+    xdcPort: 'Hsync',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+  }),
+  resource({
+    id: 'vga-vsync',
+    alias: 'VSYNC',
+    label: 'VGA vertical sync',
+    packagePin: 'R19',
+    category: 'vga',
+    group: 'VGA connector',
+    direction: 'out',
+    xdcPort: 'Vsync',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+  }),
+  resource({
+    id: 'uart-rsrx',
+    alias: 'RSRX',
+    label: 'USB-UART receive RsRx',
+    packagePin: 'B18',
+    category: 'uart',
+    group: 'USB-UART',
+    direction: 'in',
+    xdcPort: 'RsRx',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+  }),
+  resource({
+    id: 'uart-rstx',
+    alias: 'RSTX',
+    label: 'USB-UART transmit RsTx',
+    packagePin: 'A18',
+    category: 'uart',
+    group: 'USB-UART',
+    direction: 'out',
+    xdcPort: 'RsTx',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+  }),
+  resource({
+    id: 'ps2-clk',
+    alias: 'PS2CLK',
+    label: 'PS/2 clock',
+    packagePin: 'C17',
+    category: 'ps2',
+    group: 'USB HID / PS/2',
+    direction: 'inout',
+    xdcPort: 'PS2Clk',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource with pull-up; catalog reference only in the current classroom planner.',
+  }),
+  resource({
+    id: 'ps2-data',
+    alias: 'PS2DATA',
+    label: 'PS/2 data',
+    packagePin: 'B17',
+    category: 'ps2',
+    group: 'USB HID / PS/2',
+    direction: 'inout',
+    xdcPort: 'PS2Data',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource with pull-up; catalog reference only in the current classroom planner.',
+  }),
+  ...indexedCatalogResources('QSPIDB', 'qspi', 'Quad SPI flash data', ['D18', 'D19', 'G18', 'F18'], 'inout', 'QspiDB'),
+  resource({
+    id: 'qspi-csn',
+    alias: 'QSPICSN',
+    label: 'Quad SPI flash chip select',
+    packagePin: 'K19',
+    category: 'qspi',
+    group: 'Quad SPI flash',
+    direction: 'out',
+    xdcPort: 'QspiCSn',
+    supportedInPlanner: false,
+    note: 'Official Basys3 XDC resource; catalog reference only in the current classroom planner.',
+  }),
+] as const;
+
+const BASYS3_RESOURCE_BY_ALIAS = new Map<string, Basys3BoardResource>(
+  BASYS3_BOARD_RESOURCES.map((entry) => [entry.alias.toUpperCase(), entry])
+);
+const BASYS3_RESOURCE_BY_PACKAGE_PIN = new Map<string, Basys3BoardResource>();
+for (const entry of BASYS3_BOARD_RESOURCES) {
+  if (!BASYS3_RESOURCE_BY_PACKAGE_PIN.has(entry.packagePin)) {
+    BASYS3_RESOURCE_BY_PACKAGE_PIN.set(entry.packagePin, entry);
+  }
+}
+
 function indexAliasMap(prefix: string, pins: readonly string[]): Record<string, string> {
   const map: Record<string, string> = {};
   for (let i = 0; i < pins.length; i += 1) {
@@ -132,4 +400,35 @@ export function listKnownBasys3AliasesForDirection(direction: 'input' | 'output'
     .map(([alias]) => alias)
     .sort((left, right) => compareCodepoint(left, right));
   return aliases.join(', ');
+}
+
+export function getBasys3BoardResource(pinOrAlias: string | undefined): Basys3BoardResource | null {
+  const normalized = normalizeBasys3PinAlias(pinOrAlias ?? '');
+  if (!normalized) return null;
+  const byAlias = BASYS3_RESOURCE_BY_ALIAS.get(normalized);
+  if (byAlias) return byAlias;
+  const packagePin = resolveBasys3PackagePin(normalized) ?? normalized;
+  return BASYS3_RESOURCE_BY_PACKAGE_PIN.get(packagePin) ?? null;
+}
+
+export function listBasys3BoardResources(options?: {
+  plannerOnly?: boolean;
+  category?: Basys3BoardResourceCategory;
+}): Basys3BoardResource[] {
+  return BASYS3_BOARD_RESOURCES.filter((entry) => {
+    if (options?.plannerOnly && !entry.supportedInPlanner) return false;
+    if (options?.category && entry.category !== options.category) return false;
+    return true;
+  });
+}
+
+export function formatBasys3XdcBinding(resourceEntry: Basys3BoardResource, portRef = resourceEntry.xdcPort): string {
+  const lines = [
+    `set_property PACKAGE_PIN ${resourceEntry.packagePin} [get_ports {${portRef}}]`,
+    `set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`,
+  ];
+  if (resourceEntry.category === 'clock') {
+    lines.push(`create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${portRef}}]`);
+  }
+  return lines.join('\n');
 }

@@ -50,6 +50,18 @@ describe('Basys3BoardView', () => {
     expect(onSelectAlias).toHaveBeenCalledWith('SW3');
   });
 
+  it('fires onSelectAlias when clicking the clock resource', () => {
+    const onSelectAlias = vi.fn();
+    render(
+      <Basys3BoardView
+        mappedAliases={new Set()}
+        onSelectAlias={onSelectAlias}
+      />
+    );
+    fireEvent.click(screen.getByTestId('ide-hw-map-clock'));
+    expect(onSelectAlias).toHaveBeenCalledWith('CLK100MHZ');
+  });
+
   it('fires onSelectAlias when clicking a button region', () => {
     const onSelectAlias = vi.fn();
     render(

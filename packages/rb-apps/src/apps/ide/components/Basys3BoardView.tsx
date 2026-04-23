@@ -141,6 +141,36 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
       <text x="18" y="118" fontFamily="IBM Plex Mono, monospace" fontSize="7"
         fill="rgba(210,220,240,0.18)" style={{ pointerEvents: 'none' }}>BTN</text>
 
+      {/* === 100 MHz oscillator / system clock === */}
+      <g
+        onClick={() => selectAllowed('CLK100MHZ', allowedAliases, onSelectAlias)}
+        style={boardCursor('CLK100MHZ', allowedAliases)}
+      >
+        <rect
+          data-testid="ide-hw-map-clock"
+          x="248"
+          y="24"
+          width="124"
+          height="30"
+          rx="6"
+          fill={regionFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          stroke={regionStroke('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          strokeWidth={'CLK100MHZ' === highlightedAlias ? '2.4' : assignmentMode && isAllowed('CLK100MHZ', allowedAliases) ? '1.6' : '1'}
+          className={'CLK100MHZ' === highlightedAlias ? 'map-hl' : undefined}
+        />
+        <rect x="240" y="18" width="140" height="42" rx="8" fill="transparent" />
+        <text x="310" y="36" fontFamily="IBM Plex Mono, monospace" fontSize="8"
+          fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          textAnchor="middle" style={{ pointerEvents: 'none' }}>
+          CLK100MHZ
+        </text>
+        <text x="310" y="47" fontFamily="IBM Plex Mono, monospace" fontSize="6.5"
+          fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
+          textAnchor="middle" style={{ pointerEvents: 'none' }}>
+          W5 100MHz
+        </text>
+      </g>
+
       {/* FPGA chip */}
       <rect x="238" y="78" width="144" height="104" rx="6" ry="6"
         fill="url(#mapChipGrad)" stroke="rgba(0,180,150,0.22)" strokeWidth="1.5" />

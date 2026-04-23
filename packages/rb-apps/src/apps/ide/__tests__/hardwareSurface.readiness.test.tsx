@@ -618,6 +618,39 @@ describe('HardwareSurface readiness', () => {
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
   });
 
+  it('shows board planner clock truth, supported resources, and xdc preview in Hardware', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Clock planner"
+          expectedBehavior="CLK drives the sequential design."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('CLK100MHZ');
+    expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('W5');
+    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('SW0-SW15');
+    expect(getByTestId('ide-hw-selected-resource-card').textContent).toContain('100 MHz oscillator');
+    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('W5');
+    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('10 ns');
+    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('PACKAGE_PIN W5');
+    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('create_clock -period 10.000');
+    expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Supported Basys3 resource catalog');
+    expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Expanded official XDC catalog');
+  });
+
   it('keeps the structured mapping editor collapsed behind an advanced affordance', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
