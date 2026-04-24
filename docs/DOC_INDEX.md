@@ -71,6 +71,8 @@ These docs turn surface complaints into governed work with explicit proof obliga
 |------|---------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Five-layer architecture (A: logic core, B: verify engine, C: Vivado adapter, D: submission engine, E: student UX shell) |
 | [STUDENT_UX_LAYER.md](./STUDENT_UX_LAYER.md) | Student-facing content rules, diagnostic language bans, pill budgets |
+| [STUDENT_RELEASE_READINESS.md](./STUDENT_RELEASE_READINESS.md) | **Canonical TA surface** — certified starter matrix tiers (L0/E0–E3), what is safe for class *this week*, Vivado/board proof links |
+| [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) | **RC1 release freeze** — honest E1 vs E2/E3 posture; TA checklist to complete hardware proof |
 | [VIVADO_INTEGRATION.md](./VIVADO_INTEGRATION.md) | Vivado export workflow, generated files, port naming |
 
 ---

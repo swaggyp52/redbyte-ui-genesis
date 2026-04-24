@@ -11,7 +11,7 @@ export interface ZipImportAuthorityModel {
    */
   classroom: string;
   /** Key facts for the bullet list. */
-  facts: Array<{ k: 'top' | 'xdc' | 'ignored' | 'next'; text: string }>;
+  facts: Array<{ k: 'top' | 'xdc' | 'ignored' | 'next' | 'companion' | 'testbench'; text: string }>;
 }
 
 /**
@@ -87,6 +87,23 @@ export function getZipImportAuthorityModel(zi: ZipImportInspection): ZipImportAu
       ? zi.detectedXdcPath
       : 'none selected — board pins are guessed until constraints are added or parsed';
 
+  const companionFact =
+    zi.preservedRtlCompanionPaths.length > 0
+      ? {
+          k: 'companion' as const,
+          text: `Companion RTL preserved in project (${zi.preservedRtlCompanionPaths.length} file${
+            zi.preservedRtlCompanionPaths.length === 1 ? '' : 's'
+          }): packages/entities ship with the import for Code view and fidelity — the canvas only reconstructs what RedByte supports structurally.`,
+        }
+      : null;
+  const tbFact =
+    zi.detectedTestbenchPaths.length > 0
+      ? {
+          k: 'testbench' as const,
+          text: `Testbenches detected (${zi.detectedTestbenchPaths.length}) — not embedded in the RedByte project; keep full chip-level simulation in Vivado.`,
+        }
+      : null;
+
   return {
     tone,
     title,
@@ -95,6 +112,8 @@ export function getZipImportAuthorityModel(zi: ZipImportInspection): ZipImportAu
     facts: [
       { k: 'top', text: `Top HDL: ${zi.detectedTopPath} (${zi.detectedTopLanguage.toUpperCase()})` },
       { k: 'xdc', text: `Constraints (XDC): ${xdcFact}` },
+      ...(companionFact ? [companionFact] : []),
+      ...(tbFact ? [tbFact] : []),
       {
         k: 'ignored',
         text: `Ignored in this ZIP: ${ignoredN} file${ignoredN === 1 ? '' : 's'} (see list below) — not loaded as project sources`,

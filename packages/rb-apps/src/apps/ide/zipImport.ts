@@ -34,6 +34,10 @@ export interface ZipImportInspection {
   detectedTopPath: string;
   detectedTopLanguage: 'vhdl' | 'verilog';
   detectedXdcPath?: string;
+  /** RTL companion files copied into `project.hdl.sources` (packages, entities) — not used for canvas reconstruction. */
+  preservedRtlCompanionPaths: string[];
+  /** HDL paths treated as simulation-only (heuristic); not embedded in `hdl.sources`. */
+  detectedTestbenchPaths: string[];
   detectedFiles: string[];
   ignoredFiles: string[];
   hdlCandidates: string[];
@@ -137,6 +141,9 @@ export async function importVivadoZipBytes(
           }))
       : [];
 
+  const companionHdls = collectCompanionRtlFromZip(files, topEntry.path);
+  const detectedTestbenchPaths = collectTestbenchPaths(files, topEntry.path);
+
   const compilerResult = buildImportedProjectCompilerResult({
     sourceName,
     topPath: topEntry.path,
@@ -145,10 +152,15 @@ export async function importVivadoZipBytes(
     xdcPath: xdcEntry?.path,
     xdcText: xdcEntry?.text,
     xdcResult,
+    companionHdls,
     parserDiagnostics: [...xdcPortWarnings, ...collectXprDiagnostics(entries)],
   });
 
-  const selectedPaths = new Set<string>([topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])]);
+  const selectedPaths = new Set<string>([
+    topEntry.path,
+    ...companionHdls.map((c) => c.path),
+    ...(xdcEntry ? [xdcEntry.path] : []),
+  ]);
   const ignoredFiles = allPaths
     .filter((path) => !selectedPaths.has(path))
     .sort(compareCodepoint);
@@ -162,10 +174,16 @@ export async function importVivadoZipBytes(
   return {
     sourceName,
     importMode: 'reconstructed',
-    detectedTopPath: autoTopEntry.path,
+    detectedTopPath: topEntry.path,
     detectedTopLanguage,
     detectedXdcPath: autoXdcEntry?.path,
-    detectedFiles: [topEntry.path, ...(xdcEntry ? [xdcEntry.path] : [])],
+    preservedRtlCompanionPaths: companionHdls.map((c) => c.path).sort(compareCodepoint),
+    detectedTestbenchPaths,
+    detectedFiles: [
+      topEntry.path,
+      ...companionHdls.map((c) => c.path).sort(compareCodepoint),
+      ...(xdcEntry ? [xdcEntry.path] : []),
+    ],
     ignoredFiles,
     hdlCandidates,
     xdcCandidates,
@@ -307,6 +325,8 @@ async function buildManifestInspection(input: {
     detectedTopPath: manifestTopSource?.path ?? input.manifestEntry.path,
     detectedTopLanguage: parsedHdl.lang,
     detectedXdcPath: xdcText.length > 0 ? zipXdcEntry?.path ?? 'embedded constraints' : undefined,
+    preservedRtlCompanionPaths: [],
+    detectedTestbenchPaths: [],
     detectedFiles,
     ignoredFiles: input.allPaths
       .filter((path) => !detectedFiles.includes(path))
@@ -615,17 +635,58 @@ function compareXdcEntry(left: ZipTextEntry, right: ZipTextEntry): number {
   return compareCodepoint(left.path, right.path);
 }
 
+function isProbableTestbenchPath(path: string): boolean {
+  const lower = path.toLowerCase();
+  const file = baseName(lower);
+  if (file.startsWith('tb_')) return true;
+  if (/_tb\.(vhd|vhdl|v|sv)$/.test(file)) return true;
+  if (file.includes('testbench')) return true;
+  if (/(^|\/)sim_\d+\//.test(lower) || /\/simulation\//.test(lower)) return true;
+  return false;
+}
+
+function collectCompanionRtlFromZip(
+  files: ZipTextEntry[],
+  topPath: string
+): { path: string; text: string; language: 'vhdl' | 'verilog' }[] {
+  const out: { path: string; text: string; language: 'vhdl' | 'verilog' }[] = [];
+  for (const entry of files) {
+    if (!isHdlPath(entry.path) || entry.path === topPath) continue;
+    if (isProbableTestbenchPath(entry.path)) continue;
+    out.push({
+      path: entry.path,
+      text: entry.text,
+      language: detectHdlLanguage(entry.path, entry.text),
+    });
+  }
+  return out;
+}
+
+function collectTestbenchPaths(files: ZipTextEntry[], topPath: string): string[] {
+  return files
+    .filter((e) => isHdlPath(e.path) && e.path !== topPath && isProbableTestbenchPath(e.path))
+    .map((e) => e.path)
+    .sort(compareCodepoint);
+}
+
 function topHdlScore(path: string): number {
   const lower = path.toLowerCase();
   const file = lower.split('/').pop() ?? lower;
+  const isTopSuffix =
+    /_top\.vhd$/.test(file) ||
+    /_top\.vhdl$/.test(file) ||
+    /_top\.v$/.test(file) ||
+    /_top\.sv$/.test(file);
   const fileScore =
     file === 'top.vhd' || file === 'top.vhdl' || file === 'top.v' || file === 'top.sv'
       ? 0
-      : file.startsWith('top.')
-        ? 1
-        : file.includes('top')
-          ? 2
-          : 3;
+      : isTopSuffix
+        ? 0
+        : file.startsWith('top.')
+          ? 1
+          : file.includes('top')
+            ? 2
+            : 3;
   const inSourcesDir = /(^|\/)sources?_\d+\//.test(lower);
   return inSourcesDir ? fileScore : fileScore + 4;
 }

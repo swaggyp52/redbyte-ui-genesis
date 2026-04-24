@@ -26,8 +26,12 @@ export interface VivadoArtifactConsistencyInput {
   testbenchVhd?: string;
   expectedTopModule?: string;
   expectedXprSourceRef?: string;
+  /** Each path is relative to `sources_1/` (e.g. `imported/pkg.vhd`). */
+  expectedXprExtraDesignRefs?: string[];
   expectedXprConstraintsRef?: string;
   expectedTclSourcePath?: string;
+  /** Full Tcl-relative paths for extra design sources (e.g. `slug.srcs/sources_1/imported/pkg.vhd`). */
+  expectedTclExtraDesignSourcePaths?: string[];
   expectedTclConstraintsPath?: string;
   expectedTclSimulationPath?: string;
 }
@@ -97,12 +101,26 @@ export async function buildVivadoProjectFolderEntries(
   const ipUserFilesDirPath = `${slug}/${slug}.ip_user_files/`;
   const topModule = resolveVivadoTopModule(sourceText, input.topModule);
   const xprId = await buildVivadoProjectId(manifestText);
+
+  const importedVhdArtifacts = input.artifacts
+    .filter((artifact) => {
+      const pathLower = artifact.path.trim().toLowerCase();
+      return pathLower.startsWith('imported/') && pathLower.endsWith('.vhd');
+    })
+    .sort((left, right) => compareCodepoint(left.path, right.path));
+
+  const extraDesignSourcePaths = importedVhdArtifacts.map((artifact) => {
+    const tail = artifact.path.trim().replace(/^imported\//i, '').replace(/\\/g, '/');
+    return `imported/${tail}`;
+  });
+
   const xprText = buildVivadoXpr({
     projectFileName: `${slug}.xpr`,
     topModule,
     part,
     xprId,
     includeSimulation: testbenchText.length > 0,
+    extraDesignSourcePaths,
   });
   const readmeText = buildVivadoProjectFolderReadme({
     projectName: input.projectName,
@@ -111,11 +129,16 @@ export async function buildVivadoProjectFolderEntries(
     part,
     includeSimulation: testbenchText.length > 0,
   });
+
+  const topVhdTclPath = `${slug}.srcs/sources_1/new/top.vhd`;
+  const importedTclPaths = extraDesignSourcePaths.map(
+    (rel) => `${slug}.srcs/sources_1/${rel.replace(/\\/g, '/')}`,
+  );
   const importTclText = generateVivadoImportTcl({
     projectName: slug,
     topEntity: topModule,
     part,
-    sourcePaths: [`${slug}.srcs/sources_1/new/top.vhd`],
+    sourcePaths: [...importedTclPaths, topVhdTclPath],
     constraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
     simulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
   });
@@ -128,8 +151,10 @@ export async function buildVivadoProjectFolderEntries(
     vivadoImportTcl: importTclText,
     expectedTopModule: topModule,
     expectedXprSourceRef: 'sources_1/new/top.vhd',
+    expectedXprExtraDesignRefs: extraDesignSourcePaths,
     expectedXprConstraintsRef: `constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
-    expectedTclSourcePath: `${slug}.srcs/sources_1/new/top.vhd`,
+    expectedTclSourcePath: topVhdTclPath,
+    expectedTclExtraDesignSourcePaths: importedTclPaths,
     expectedTclConstraintsPath: `${slug}.srcs/constrs_1/new/${REFERENCE_CONSTRAINTS_FILE_NAME}`,
     expectedTclSimulationPath: testbenchText.length > 0 ? `${slug}.srcs/sim_1/new/testbench.vhd` : undefined,
   });
@@ -159,6 +184,14 @@ export async function buildVivadoProjectFolderEntries(
     { name: constraintsPath, text: constraintsText },
   ];
 
+  for (const artifact of importedVhdArtifacts) {
+    const insideImported = artifact.path.replace(/^imported\//i, '').trim().replace(/\\/g, '/');
+    entries.push({
+      name: `${slug}/${slug}.srcs/sources_1/imported/${insideImported}`,
+      text: artifact.content,
+    });
+  }
+
   if (testbenchText.length > 0) {
     entries.push({ name: simulationPath, text: testbenchText });
   }
@@ -181,6 +214,25 @@ export interface BuildVivadoXprInput {
   part?: string;
   xprId: string;
   includeSimulation?: boolean;
+  /** Paths under `sources_1/` (e.g. `imported/pkg.vhd`), listed before `new/top.vhd` in the fileset. */
+  extraDesignSourcePaths?: string[];
+}
+
+function buildExtraDesignVhdlXmlBlocks(paths: string[] | undefined): string[] {
+  if (!paths?.length) return [];
+  const lines: string[] = [];
+  const sorted = [...paths].sort((left, right) => compareCodepoint(left, right));
+  for (const raw of sorted) {
+    const normalized = raw.replace(/\\/g, '/').replace(/^\/+/, '');
+    lines.push(`      <File Path="$PSRCDIR/sources_1/${xmlAttr(normalized)}">`);
+    lines.push('        <FileInfo>');
+    lines.push('          <Attr Name="UsedIn" Val="synthesis"/>');
+    lines.push('          <Attr Name="UsedIn" Val="simulation"/>');
+    lines.push('          <Attr Name="VHDLVersion" Val="vhdl_2k8"/>');
+    lines.push('        </FileInfo>');
+    lines.push('      </File>');
+  }
+  return lines;
 }
 
 export function buildVivadoXpr(input: BuildVivadoXprInput): string {
@@ -205,6 +257,7 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
   const simulationConfigTop = includeSimulation ? TESTBENCH_TOP_MODULE : topModule;
   const synthRunBlock = buildVivadoSynthRunBlock(part);
   const implRunBlock = buildVivadoImplRunBlock(part);
+  const extraDesignBlocks = buildExtraDesignVhdlXmlBlocks(input.extraDesignSourcePaths);
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -273,6 +326,7 @@ export function buildVivadoXpr(input: BuildVivadoXprInput): string {
     `  <FileSets Version="1" Minor="${VIVADO_FILESETS_MINOR}">`,
     '    <FileSet Name="sources_1" Type="DesignSrcs" RelSrcDir="$PSRCDIR/sources_1" RelGenDir="$PGENDIR/sources_1">',
     '      <Filter Type="Srcs"/>',
+    ...extraDesignBlocks,
     '      <File Path="$PSRCDIR/sources_1/new/top.vhd">',
       '        <FileInfo>',
       '          <Attr Name="UsedIn" Val="synthesis"/>',
@@ -618,6 +672,15 @@ export function validateVivadoArtifactConsistency(input: VivadoArtifactConsisten
   ) {
     issues.push(`.xpr is missing expected design-source reference "$PSRCDIR/${input.expectedXprSourceRef}".`);
   }
+  if (input.expectedXprExtraDesignRefs && input.expectedXprExtraDesignRefs.length > 0) {
+    for (const ref of input.expectedXprExtraDesignRefs) {
+      const normalized = ref.replace(/\\/g, '/').replace(/^\/+/, '');
+      const needle = `$psrcdir/sources_1/${normalized}`.toLowerCase();
+      if (!input.xprText.toLowerCase().includes(needle)) {
+        issues.push(`.xpr is missing expected design-source reference "$PSRCDIR/sources_1/${normalized}".`);
+      }
+    }
+  }
   if (
     input.expectedXprConstraintsRef &&
     !input.xprText.toLowerCase().includes(`$psrcdir/${input.expectedXprConstraintsRef}`.toLowerCase())
@@ -630,6 +693,13 @@ export function validateVivadoArtifactConsistency(input: VivadoArtifactConsisten
     !input.vivadoImportTcl.toLowerCase().includes(`"${input.expectedTclSourcePath}"`.toLowerCase())
   ) {
     issues.push(`vivado_import.tcl is missing expected source path "${input.expectedTclSourcePath}".`);
+  }
+  if (input.expectedTclExtraDesignSourcePaths && input.expectedTclExtraDesignSourcePaths.length > 0) {
+    for (const path of input.expectedTclExtraDesignSourcePaths) {
+      if (!input.vivadoImportTcl.toLowerCase().includes(`"${path}"`.toLowerCase())) {
+        issues.push(`vivado_import.tcl is missing expected source path "${path}".`);
+      }
+    }
   }
   if (
     input.expectedTclConstraintsPath &&

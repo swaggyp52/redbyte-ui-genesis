@@ -410,8 +410,11 @@ const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
     ld0: 'U16', ld1: 'E19', ld2: 'U19',
   },
   'two-bit-counter': {
-    clk: 'W5', en: 'V17', rst: 'U18',
-    q0: 'U16', q1: 'E19',
+    clk: 'CLK100MHZ',
+    en: 'SW0',
+    rst: 'BTNC',
+    q0: 'LD0',
+    q1: 'LD1',
   },
   'half-adder': {
     sw0: 'V17', sw1: 'W16',

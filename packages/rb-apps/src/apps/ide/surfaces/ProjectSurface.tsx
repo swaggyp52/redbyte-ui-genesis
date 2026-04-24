@@ -924,6 +924,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   Start from one clear move: reopen work, load a starter, or open a blank design and follow {STUDENT_WORKFLOW_SUMMARY}.
                 </p>
               </div>
+              <IdeCallout tone="info" title="Workflow spine" testId="ide-project-workflow-spine">
+                <p className="ide-copy" style={{ margin: 0 }}>
+                  <strong>Project</strong> owns your entry and stage summary. The path is{' '}
+                  <strong>Design → Verify → Map Pins → Export → Hardware</strong>. For{' '}
+                  <strong>multi-file Vivado finals</strong> (packages, FSM, seven-seg), start in{' '}
+                  <strong>Import</strong> — companion RTL is preserved with the project; the canvas shows supported
+                  structural reconstruction; full simulation often stays in Vivado until export catches up.
+                </p>
+              </IdeCallout>
               <div className="ide-project-start-summary" data-testid="ide-project-start-summary">
                 <span className="ide-project-start-summary-chip">No circuit loaded</span>
                 <span className="ide-project-start-summary-chip">Next up: Design</span>
@@ -1676,12 +1685,12 @@ function getExamplePreview(exampleId: string): {
       };
     case 'two-bit-counter':
       return {
-        eyebrow: 'Clocked',
-        pill: 'Sequential',
+        eyebrow: 'Basys3 clocked',
+        pill: 'CLK100MHZ',
         rows: [
-          { left: 'CLK', right: 'Q0' },
-          { left: 'Q0', right: 'Q1' },
-          { left: 'RST', right: 'CLR' },
+          { left: 'CLK100MHZ', right: 'Q0,Q1' },
+          { left: 'SW0', right: 'enable' },
+          { left: 'BTNC', right: 'sync RST' },
         ],
       };
     case SECURITY_LOCK_STARTER_ID:

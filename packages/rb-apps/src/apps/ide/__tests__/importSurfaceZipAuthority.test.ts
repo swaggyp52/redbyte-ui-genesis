@@ -8,6 +8,8 @@ const base: ZipImportInspection = {
   detectedTopPath: 'top.vhd',
   detectedTopLanguage: 'vhdl',
   detectedXdcPath: 'board.xdc',
+  preservedRtlCompanionPaths: [],
+  detectedTestbenchPaths: [],
   detectedFiles: ['top.vhd', 'board.xdc'],
   ignoredFiles: ['README.md'],
   hdlCandidates: ['top.vhd'],

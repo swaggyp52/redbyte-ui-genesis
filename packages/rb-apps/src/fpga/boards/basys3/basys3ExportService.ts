@@ -26,6 +26,7 @@ import {
 } from './basys3Pins';
 import { buildBasys3ExportModel, buildTopLevelBindingRefs } from './basys3ExportModel';
 import { buildExportContract } from './basys3ExportContract';
+import { tryBuildPreservedImportHandoff } from './preservedImportHandoff';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -41,6 +42,10 @@ export interface Basys3ExportResult {
     readme: string;
     topVerilog?: string;
     testbench?: string;
+    /** Preserved companion VHDL from import (design sources only). */
+    importedCompanionSources?: { exportPath: string; content: string }[];
+    /** `preserved-import-rtl` replaces netlist stub top with imported sources + XDC. */
+    exportMode?: 'synthesized-netlist' | 'preserved-import-rtl';
   };
   errors: Basys3ExportError[];
   warnings: string[];
@@ -375,7 +380,9 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     hdlPortProjection &&
     bundleResult.warnings.length > 0 &&
     bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
-  if (!bundleResult.valid && !allowProjectionWarnings) {
+  const preservedHandoff = tryBuildPreservedImportHandoff(project);
+  const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
+  if (!treatBundleValid) {
     result.errors.push({
       type: 'validation',
       severity: 'error',
@@ -385,11 +392,18 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   // Step 4: Assemble bundle
   result.bundle = {
-    topVhd: bundleResult.topVhd,
-    topXdc: bundleResult.topXdc,
+    topVhd: preservedHandoff?.topVhd ?? bundleResult.topVhd,
+    topXdc: preservedHandoff?.topXdc ?? bundleResult.topXdc,
     readme: bundleResult.readme,
     topVerilog: bundleResult.topV,
+    importedCompanionSources: preservedHandoff?.companions,
+    exportMode: preservedHandoff ? 'preserved-import-rtl' : 'synthesized-netlist',
   };
+  if (preservedHandoff) {
+    result.warnings.push(
+      'Export uses preserved imported VHDL and XDC (multi-file handoff). The synthesized netlist top was not emitted.'
+    );
+  }
 
   // ── Testbench compatibility fallback ─────────────────────────────────────────
   // This is the ONLY alternate testbench generation path.
@@ -431,7 +445,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
   const bundleJson = JSON.stringify(result.bundle, Object.keys(result.bundle).sort());
   result.determinismHash = computeDeterminismHash(projectJson, bundleJson);
 
-  result.success = result.errors.length === 0;
+  result.success = !result.errors.some((entry) => entry.severity === 'error');
 
   return result;
 }

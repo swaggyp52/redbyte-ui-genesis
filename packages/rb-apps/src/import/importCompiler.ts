@@ -67,6 +67,8 @@ export interface BuildImportedProjectCompilerInput {
   xdcPath?: string;
   xdcText?: string;
   xdcResult?: XdcParseResult;
+  /** Additional RTL files from the same ZIP (packages, entities). Preserved for Code view / export fidelity; not used for canvas reconstruction. */
+  companionHdls?: readonly { path: string; text: string; language: 'vhdl' | 'verilog' }[];
   existingPositions?: Map<string, { x: number; y: number }>;
   parseStatus?: ImportParseStatus;
   parserDiagnostics?: ImportDiagnostic[];
@@ -269,6 +271,25 @@ function buildImportedProjectRecord(
   const projectName = deriveProjectName(input.sourceName, topEntity);
   const projectId = deriveProjectId(input.sourceName, topEntity);
 
+  const topSource = {
+    path: normalizePath(input.topPath),
+    language: input.parsedHdl.lang,
+    text: input.topText,
+  };
+  const companions = [...(input.companionHdls ?? [])].map((c) => ({
+    path: normalizePath(c.path),
+    language: c.language,
+    text: c.text,
+  }));
+  const pkg = companions.filter((c) => /_pkg\.(vhd|vhdl)$/i.test(c.path));
+  const nonPkg = companions
+    .filter((c) => !/_pkg\.(vhd|vhdl)$/i.test(c.path))
+    .sort((a, b) => compareCodepoint(a.path, b.path));
+  const orderedSources = [...pkg.sort((a, b) => compareCodepoint(a.path, b.path)), ...nonPkg, topSource];
+
+  const tags = ['import', 'vivado', CLASSROOM_BOARD];
+  if (companions.length > 0) tags.push('multi-file-hdl');
+
   return {
     kind: 'rb-project',
     version: 1,
@@ -279,13 +300,7 @@ function buildImportedProjectRecord(
     circuit,
     hdl: {
       top: topEntity,
-      sources: [
-        {
-          path: normalizePath(input.topPath),
-          language: input.parsedHdl.lang,
-          text: input.topText,
-        },
-      ],
+      sources: orderedSources,
     },
     fpga: {
       board: CLASSROOM_BOARD,
@@ -305,7 +320,8 @@ function buildImportedProjectRecord(
     meta: {
       appSurface: 'ide-import',
       projectId,
-      tags: ['import', 'vivado', CLASSROOM_BOARD],
+      projectKind: 'import',
+      tags,
     },
   };
 }

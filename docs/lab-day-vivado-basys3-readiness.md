@@ -2,6 +2,9 @@
 
 This document defines the release bar for "students can use this today" on the ECE141 lab path.
 
+**Companion (certified starter matrix + what is safe *this week*):** [`STUDENT_RELEASE_READINESS.md`](./STUDENT_RELEASE_READINESS.md)  
+**RC1 freeze (tool vs board truth):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)
+
 ## Finish line
 
 RedByte is lab-day ready only when all of these are true on a real lab machine:
@@ -44,6 +47,15 @@ The release bar is two real proofs, not just tests:
   - `FullAdder`
   - `MUX4`
   - `DFlipFlop`
+
+### Final-project (security lock) class — honest tier
+
+Reference package: **ECE141 Digital Security Lock** (multi-file VHDL, package, FSM, debounce, SSD, TBs, full Vivado tree).
+
+- **Import:** Top detection prefers `*_top.vhd` / `top.vhd`; companion RTL (non-`tb_*`) is **preserved in `project.hdl.sources`**; testbench paths are **surfaced but not embedded**. See `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md`.
+- **Design canvas:** Partial reconstruction only — not a full Vivado elaborated schematic.
+- **Export (RedByte Open Project):** **Blocked** for typical wide-vector tops until bus-native top export is supported; students keep **Vivado as source of truth for bitstream** for that class unless the top is refactored to scalar ports.
+- **Verify:** Native deterministic Verify is **not** a substitute for `tb_system` / `tb_fsm` in Vivado for this complexity.
 
 ### Partially supported today
 

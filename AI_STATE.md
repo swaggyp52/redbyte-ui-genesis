@@ -1,5 +1,108 @@
 # AI State
 
+## Change Log 2026-04-23 (Complex import + workflow spine — security-lock class)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/zipImport.ts`, `packages/rb-apps/src/import/importCompiler.ts`, `packages/rb-apps/src/apps/ide/importSurfaceZipAuthority.ts`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/zipImport.multifile-rtl.test.ts`, `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`
+
+**Context:** Anchor **Project_A ECE141 Final Security Lock** package: multi-file VHDL, TBs, vector top — tiered honesty + product spine.
+
+**Changes:**
+- **ZIP import:** Preserve companion RTL in `project.hdl.sources` (package-first order); heuristic **testbench** path list; prefer `*_top.vhd`; `meta.projectKind: 'import'`, tag `multi-file-hdl`.
+- **Import authority copy:** Explains preserved companions vs TBs vs ignored noise.
+- **Project Home:** `ide-project-workflow-spine` callout — Design → Verify → Map Pins → Export → Hardware; finals start in Import.
+- **Docs:** Security-lock audit proof + lab-day “final-project class” tier (export still fenced for vector top).
+
+**Validation:** vitest zipImport + importSurfaceZipAuthority; `ide:gate:export-ready-contract` + `build:unified`.
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (From-scratch authoring certification — blank saves → Vivado → Basys3)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/fixtures/fromScratchBasys3CertProjects.ts`, `scripts/vivado-cert-export-from-scratch.ts`, `package.json` (`lab:vivado:cert:from-scratch`), `packages/rb-apps/src/__tests__/from-scratch-basys3-cert-fixtures.test.ts`, `vivado-cert-scripts-present-contract.test.ts`, `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md`, `docs/release/from-scratch-basys3-authoring-checklist.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/STUDENT_RELEASE_READINESS.md`, `scripts/vivado/README.md`
+
+**Context:** Distinguish **curated IDE examples** from **blank-project** pipeline trust. Two fixtures (`fs-comb-switch-and-basys3`, `fs-seq-two-bit-counter-basys3`) export, **E1** batch build, and **E2** program on live bench (`vivado_program_fs_*_from_scratch.log`).
+
+**Validation:** vitest from-scratch fixtures + `ide:gate:export-ready-contract` + `build:unified`.
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (`two-bit-counter` **E2** on live Basys3)
+
+**Subsystem:** `out/vivado-cert/hw_probe.log`, `out/vivado-cert/vivado_program_two_bit_counter_e2_2026-04-23.log`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`
+
+**Context:** `pnpm lab:vivado:hw-probe` → exit **0**; batch `redbyte_program_device.tcl` with `two-bit-counter` `impl_1/top.bit` → **SUCCESS**; target `xilinx_tcf/Digilent/210183BF7C42A`, device `xc7a35t_0`.
+
+**Changes:** Matrix + readiness + RC1 freeze + proof doc updated for **E2**; **E3** left as TA checklist / pending sign-off.
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (IDE `two-bit-counter` — Basys3 truth + E1 e2e + E2 blocked on host)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/examplesCatalog.ts`, `packages/rb-apps/src/export/__tests__/golden-examples.test.ts`, IDE landing copy for `two-bit-counter`, `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, `scripts/vivado/README.md`
+
+**Context:** Certify the **sequential reference row** with real Basys3 clock semantics in the catalog, golden pin contract, and Vivado batch path; attempt **E2** where JTAG is visible.
+
+**Changes:**
+- **Example truth:** `two-bit-counter` documents **CLK100MHZ** (board clock), **SW0** enable, **BTNC** synchronous reset, **LD0/LD1** count; `timingRole` / `boardResourceType` metadata for Verify + mapping.
+- **E1:** Re-export + `redbyte_batch_synth_impl_bitstream.tcl` → `out/vivado-cert/vivado_batch_two_bit_counter_e2e.log`, `impl_1/top.bit` under `out/vivado-cert/examples/two-bit-counter/unpacked/...`.
+- **E2/E3 on automation host:** `hw_probe` + `redbyte_program_device.tcl` still **exit 2** — Vivado reports **no `hw_target`** (`Labtools 44-27`). Documented as environment/USB visibility, not export defect; README adds triage bullets.
+
+**Validation:** `vitest` golden-examples + `pnpm -s ide:gate:export-ready-contract` + `pnpm -s build:unified` before merge.
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (RC1 bench closeout — E2/E3 honesty + hw_probe)
+
+**Subsystem:** `docs/RC1_STUDENT_RELEASE_FREEZE.md`, `docs/release/proof/rc1-bench-closeout-2026-04-23.md`, `scripts/vivado/redbyte_program_device.tcl`, `scripts/vivado/hw_probe.tcl`, `scripts/vivado/run-hw-probe.mjs`, `scripts/vivado/README.md`, `package.json` (`lab:vivado:hw-probe`), `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/DOC_INDEX.md`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/IDE_SYSTEM_MAP.md`, `packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts`, `packages/rb-apps/src/__tests__/vivado-hw-probe-script-contract.test.ts`
+
+**Context:** E1 was proven earlier; RC1 still needed **honest E2/E3 posture** and tooling so TAs can distinguish “no target” from script bugs.
+
+**Changes:**
+- **RC1 freeze doc:** `RC1_STUDENT_RELEASE_FREEZE.md` — single release truth: **E1 certified / E2–E3 not on RC1 automation host** until `hw_probe` passes on a lab PC.
+- **Programming Tcl:** `refresh_hw_server`, `get_hw_targets -of_objects` first `hw_server`, `catch` on target query, explicit `open_hw_target $tgt`.
+- **TA probe:** `hw_probe.tcl` + `run-hw-probe.mjs` + `pnpm lab:vivado:hw-probe` — no `.bit` required.
+- **Bench result (this machine):** `hw_probe` / program still **exit 2** — Vivado reports **no hardware targets** on `localhost:3121` (logs under `out/vivado-cert/`).
+
+**Validation:** run `pnpm -w exec vitest run packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts packages/rb-apps/src/__tests__/vivado-hw-probe-script-contract.test.ts` and `pnpm -s ide:gate:export-ready-contract` before merge.
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (Student release readiness + certified starter matrix)
+
+**Subsystem:** `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/release/proof/student-release-readiness-2026-04-23.md`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/DOC_INDEX.md`, `docs/IDE_SYSTEM_MAP.md`, `scripts/vivado-cert-export-ide-example.ts`, `scripts/vivado/redbyte_program_device.tcl`, `package.json` (`lab:vivado:cert:*`), `packages/rb-apps/src/__tests__/vivado-cert-scripts-present-contract.test.ts`, `packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts`
+
+**Context:** Surfaces were hardened, but instructors still lacked one canonical “what is safe for class this week” truth tied to **real Vivado** and an explicit L0/E0–E3 tier model.
+
+**Changes:**
+- **Canonical TA doc:** `STUDENT_RELEASE_READINESS.md` — certified vs fenced starters, reproduce commands, honest limits.
+- **Real Vivado E1 proof:** batch `redbyte_batch_synth_impl_bitstream.tcl` succeeded for `golden-basys3-switch-and` Open Project export, IDE `signal-tour`, and IDE `two-bit-counter` (sequential W5 clock); logs under `out/vivado-cert/vivado_batch_*.log`.
+- **E2 attempt:** `redbyte_program_device.tcl` run found **no JTAG hw_targets** (board not visible / not connected in session) — documented in proof; Tcl now fails fast with `get_hw_targets` when count is zero.
+- **Export any IDE example / lab starter for cert:** `scripts/vivado-cert-export-ide-example.ts` + `pnpm lab:vivado:cert:example <id>`.
+- **Matrix + index:** certification matrix rows updated with evidence; `DOC_INDEX`, `IDE_SYSTEM_MAP`, `lab-day` link to the canonical readiness doc.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts packages/rb-apps/src/__tests__/vivado-cert-scripts-present-contract.test.ts` → pass
+- `pnpm -s ide:gate:export-ready-contract` → pass
+- `pnpm -s build:unified` → pass
+
+**Manual / tool proof:** `docs/release/proof/student-release-readiness-2026-04-23.md`
+
+**Attribution:** Connor Angiel (agent)
+
+## Change Log 2026-04-23 (Vivado batch program path for real Basys3 / hw_server)
+
+**Subsystem:** `scripts/vivado/redbyte_program_device.tcl`, `scripts/vivado/README.md`, `docs/release/vivado-basys3-certification-matrix.md`, `packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts`
+
+**Context:** Lab machines can run full Vivado and program a physical Basys3; certification tier **E2** needs a reproducible batch path, not only GUI Hardware Manager steps.
+
+**Changes:**
+- **Batch programming Tcl:** `redbyte_program_device.tcl` takes a `.bit` path and optional `hw_server` URL (`host:3121`) for remote benches, then `open_hw_manager` → `connect_hw_server` → `open_hw_target` → `program_hw_devices`.
+- **Docs:** `scripts/vivado/README.md` and the certification matrix now treat this as the canonical **E2** automation; contract test asserts required Tcl commands are present.
+
+**Validation:** `pnpm -w exec vitest run packages/rb-apps/src/__tests__/vivado-batch-build-script-contract.test.ts` → pass (2 tests)
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Vivado Export Fidelity + Board Rehearsal Reset)
 
 **Subsystem:** `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`, `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts`, `packages/rb-apps/src/apps/ide/viewmodels/buildExportViewModel.ts`, `packages/rb-apps/src/__tests__/ide-vivado-project-folder-contract.test.ts`, `packages/rb-apps/src/__tests__/ide-vivado-artifact-consistency.test.ts`, `packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts`, `packages/rb-apps/src/__tests__/export-sequential-boundary.test.ts`, `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/release/product-hardening-ticket-2026-04-23-vivado-export-fidelity-board-rehearsal-reset.md`, `docs/release/proof/vivado-export-fidelity-board-rehearsal-2026-04-23.md`

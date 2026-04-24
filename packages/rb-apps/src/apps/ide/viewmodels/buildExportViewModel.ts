@@ -416,7 +416,9 @@ function buildArtifacts(
   const bundle = exportResult.bundle;
   const rbprojJson = encodeRBProject(project);
   const topEntity = resolveTopEntity(project);
-  const vhdlSourcePaths: string[] = ['top.vhd'];
+  const companionPaths =
+    bundle?.importedCompanionSources?.map((row) => row.exportPath).sort(compareCodepoint) ?? [];
+  const vhdlSourcePaths: string[] = [...companionPaths, 'top.vhd'];
   const vivadoImportTcl = generateVivadoImportTcl({
     projectName: project.name,
     topEntity,
@@ -454,8 +456,23 @@ function buildArtifacts(
       content: normalizeArtifactContent(topVhdHeader + bundle.topVhd),
       preview: buildPreview(bundle.topVhd),
       status: blocked ? 'blocked' : 'ready',
-      note: `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
+      note:
+        bundle.exportMode === 'preserved-import-rtl'
+          ? `Preserved imported top-level VHDL (multi-file handoff). designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`
+          : `Synthesizable top-level VHDL. designTop=${topAuthority?.designTop ?? resolveTopEntity(project)}.`,
     });
+    for (const companion of bundle.importedCompanionSources ?? []) {
+      const companionHeader = buildProvenanceHeader('--', provenanceBase);
+      artifacts.push({
+        path: companion.exportPath,
+        kind: 'vhd',
+        category: 'design-source',
+        content: normalizeArtifactContent(companionHeader + companion.content),
+        preview: buildPreview(companion.content),
+        status: blocked ? 'blocked' : 'ready',
+        note: 'Preserved imported companion VHDL (package / subsystem).',
+      });
+    }
     // Constraints
     const topXdcHeader = buildProvenanceHeader('#', provenanceBase);
     artifacts.push({

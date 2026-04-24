@@ -2,13 +2,15 @@
 
 > Living reference for the IDE codebase. Update when surfaces, authorities, or gates change.
 
+**Release / certification:** Instructor-facing “what is safe for students right now” (starter matrix, E0–E3 tiers, Vivado proof links) lives in `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, and `docs/release/vivado-basys3-certification-matrix.md`.
+
 ---
 
 ## 1. Surfaces and Responsibilities
 
 | Surface | File | Responsibility |
 |---------|------|----------------|
-| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Project identity, I/O mapping, readiness dashboard; **Phase 4:** **Board pin mapping (Map Pins)** block is **above** the Project command strip and session narrative so the pin table is visible without scrolling past “About this project” / starters |
+| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | **Workflow spine** on Project Home (`ide-project-workflow-spine`): owns Design → Verify → Map Pins → Export → Hardware narrative; multi-file finals start in **Import**. Project identity, I/O mapping, readiness dashboard; **Phase 4:** **Board pin mapping (Map Pins)** block is **above** the Project command strip and session narrative so the pin table is visible without scrolling past “About this project” / starters |
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
 | Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, waveform viewer; **Phase 6:** header now keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`) instead of hiding compare inside **Tools**, and the session strip dedupes repeated labels so students read one state before acting |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
@@ -60,7 +62,7 @@
 ### Path 1: Professor ZIP Import → Design Shows Circuit
 
 1. ImportSurface → user uploads ZIP
-2. `zipImport.ts::importVivadoZipFile()` → extracts HDL + XDC → `ZipImportInspection`
+2. `zipImport.ts::importVivadoZipFile()` → extracts HDL + XDC → `ZipImportInspection` (companion RTL → `project.hdl.sources`; `tb_*` listed only)
 3. `zipImport.ts::buildImportedProject()` → calls `parsedHdlToCircuit()` → `RBProject`
 4. User clicks Apply → `onImportProject?.(project)` → IDE loads project
 5. Design surface renders nodes + connections
