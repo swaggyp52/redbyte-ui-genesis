@@ -23,15 +23,27 @@ It provides:
 
 ## Quick Start
 
-```bash
-pnpm install
-pnpm dev
+For Windows, double-click:
+
+```text
+run.bat
 ```
 
-Build for production:
+The launcher checks Node.js and pnpm, installs workspace dependencies with pnpm if
+they are missing, then opens the local RedByte IDE.
+
+From a terminal, the same startup path is:
 
 ```bash
-pnpm build:unified
+pnpm start
+```
+
+Developer shortcuts:
+
+```bash
+pnpm dev                 # Vite dev server
+pnpm start:production    # Build and preview the /os/ production bundle
+pnpm build:unified       # Full production build path
 ```
 
 Run tests:
@@ -163,7 +175,7 @@ Test baseline: 168 pure-logic tests + 52 render tests = 220 total, all green.
 
 **RedByte Proprietary License (RPL-1.0)**
 
-Copyright 2025-2026 Connor Angiel. All rights reserved.
+Copyright 2025-2026 Connor Angiel.
 
 ---
 

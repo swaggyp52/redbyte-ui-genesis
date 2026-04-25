@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-04-25 (One-click local startup hardening)
+
+**Subsystem:** `run.bat`, `Start-RedByte.ps1`, `package.json`, `README.md`, `docs/release/product-hardening-ticket-2026-04-25-one-click-startup.md`
+
+**Context:** Make the repository folder bootable for a Windows user by double-clicking `run.bat` or running one clear terminal command, without stale OS-era launcher copy or npm-based pnpm installation.
+
+**Changes:**
+- Added root `run.bat` that delegates to the PowerShell launcher and pauses on startup failure.
+- Rewrote `Start-RedByte.ps1` as the current RedByte IDE launcher: checks Node `>=20.19.0`, checks/activates pnpm `10.24.0` through pnpm/Corepack, uses `pnpm install --frozen-lockfile` only when workspace dependencies are missing, starts the IDE dev URL at `/`, and supports `-Production` preview at `/os/`.
+- Added `-SmokeTest`, `-SkipInstall`, `-SkipBuild`, `-NoOpen`, and `-Port` options for deterministic startup proof.
+- Added `pnpm start`, `pnpm start:local`, `pnpm start:production`, and `pnpm start:smoke`; README Quick Start now points Windows users to `run.bat` and terminal users to `pnpm start`.
+- Cleaned README attribution wording while editing the startup instructions.
+- Recorded the startup complaint as a structured hardening ticket.
+
+**Validation:**
+- `pnpm start:smoke` -> pass (`http://127.0.0.1:5197/` HTTP 200)
+- `powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-RedByte.ps1 -Production -SkipInstall -SkipBuild -NoOpen -SmokeTest -Port 5198` -> pass (`http://127.0.0.1:5198/os/` HTTP 200)
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-23 (Complex import + workflow spine — security-lock class)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/zipImport.ts`, `packages/rb-apps/src/import/importCompiler.ts`, `packages/rb-apps/src/apps/ide/importSurfaceZipAuthority.ts`, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/zipImport.multifile-rtl.test.ts`, `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md`, `docs/lab-day-vivado-basys3-readiness.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`
