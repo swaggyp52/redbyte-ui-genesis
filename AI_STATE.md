@@ -18,6 +18,8 @@
 - `pnpm start:smoke` -> pass (`http://127.0.0.1:5197/` HTTP 200)
 - `powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-RedByte.ps1 -Production -SkipInstall -SkipBuild -NoOpen -SmokeTest -Port 5198` -> pass (`http://127.0.0.1:5198/os/` HTTP 200)
 
+**Release-process debt:** `git push origin main` accepted the commit while reporting a bypassed required status check: `Classroom Truth Gates` expected. Source is delivered to `origin/main`, but branch protection still needs enforcement so required checks cannot be bypassed silently.
+
 **Attribution:** Connor Angiel (agent)
 
 ## Change Log 2026-04-23 (Complex import + workflow spine — security-lock class)
