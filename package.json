@@ -8,6 +8,11 @@
         "tools/*"
     ],
     "scripts": {
+        "rb:session:start": "node scripts/rb-session-start.mjs",
+        "rb:session:status": "node scripts/rb-session-status.mjs",
+        "rb:session:close": "node scripts/rb-session-close.mjs",
+        "rb:doc:validate": "node scripts/rb-doc-validate.mjs",
+        "rb:bench:status": "node scripts/rb-bench-status.mjs",
         "start": "pnpm start:local",
         "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1",
         "start:production": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1 -Production",

@@ -16,9 +16,9 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — both have E1 (Vivado bitstream certified). They need a connected-bench session: program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
-2. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0` to restore component render tests broken by React 19 incompatibility. Pre-existing.
-3. **Repo gate health** — keep `pnpm verify:gates` green. If a gate goes red, dispatch the `gate-failure-analyzer` agent before any new feature work.
+1. **Product-spine + app-usability hardening** — the real front-facing app, not the example pipeline. Target slices in order: (a) Project surface as true onboarding/workflow home, (b) Design canvas usability — wire readability, selection, navigation, (c) Verify usability after testbench creation, (d) Hardware/Export only where they block real student use. Start from the cockpit, not vibes.
+2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
+3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
 ---
 
@@ -84,6 +84,8 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
+| ✓ Done | Ops layer — `rb:session:*` + `rb:doc:validate` + `rb:bench:status` scripts | pending |
+| ✓ Done | Claude Code hooks — `SessionStart` context injection, `Stop` reminder, `PostToolUse` doc guard | pending |
 | ✓ Done | Control Tower v1 — ACTIVE_WORK cockpit + canonical doc frontmatter + repo OS reset | `c7500702` |
 | ✓ Done | One-click local startup hardening (`Start-RedByte.ps1` + `run.bat` + `pnpm start`) | `408d4846` |
 | ✓ Done | Security-lock import/export spine hardening | `845cffdd` |
