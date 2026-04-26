@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: frozen design system contract
+---
+
 # RedByte IDE Design System v1.0
 
 Status: Frozen contract for visual authority and implementation consistency.

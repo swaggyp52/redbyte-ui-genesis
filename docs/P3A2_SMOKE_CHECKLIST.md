@@ -1,3 +1,5 @@
+> 📋 **HISTORICAL QA RECORD — OS ERA.** This is a smoke test checklist from an earlier release cycle. It is not current guidance. See `docs/release/` for current certification evidence.
+
 # Phase 3A-2 Smoke Checklist (Error Boundaries + Student-Friendly Errors)
 
 ## Last Validated
@@ -29,4 +31,3 @@ Re-run this checklist when changing any of:
 - `packages/rb-shell/src/Shell.*` (per-app crash boundary)
 - `packages/rb-shell/src/ErrorBoundary.*` (top-level shell boundary)
 - `packages/rb-utils/src/studentError.*`
-

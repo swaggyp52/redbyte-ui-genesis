@@ -1,27 +1,40 @@
+---
+doc_status: current
+last_validated: 2026-04-26
+owner: Connor Angiel
+used_by_claude: true
+role: navigation hub
+---
+
 # Documentation Index
 
-**Last Updated:** 2026-04-21
+**Last Updated:** 2026-04-26
 
-Navigation hub for all documentation in the RedByte project.
-
----
-
-## Documentation Principles
-
-1. **No overlapping information** — Each document has a unique purpose
-2. **Cross-reference freely** — Documents link to each other instead of duplicating
-3. **Living documents** — Update docs when you update code
-4. **Two-layer truth model** — Current-state docs (manual) are factual; target-state docs (product contract) are aspirational
+Navigation hub for all RedByte documentation. Start with the **Active Work** section below.
 
 ---
 
-## Start Here
+## Truth Hierarchy
 
-### [README.md](../README.md)
-Quick introduction, project structure, dev commands, and documentation links.
+When docs conflict: code wins → active work queue → current release truth → surface specs → architecture → everything else.
+
+**Stale zone:** `docs/00-canon/00–08-*.md`, `docs/STUDENT_WORKFLOW.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/PRODUCT_SURFACES.md`, `docs/INTERACTION_CONTRACT.md`, `docs/PROJECT_MODEL.md`, `docs/P*_SMOKE_CHECKLIST.md` — all carry explicit SUPERSEDED/HISTORICAL headers. Do not use as current context.
+
+---
+
+## Start Here (Active Work + Release Truth)
+
+### [ACTIVE_WORK.md](./ACTIVE_WORK.md)
+**Current priorities, in-flight work, RC1 posture.** Check this first.
 
 ### [CLAUDE.md](../CLAUDE.md)
-Persistent instructions for AI agents working in this repo. Connection format rules, test runner constraints, Obsidian integration rules.
+Agent operating manual. Truth hierarchy, startup path, runtime constraints, @imports ACTIVE_WORK.md.
+
+### [STUDENT_RELEASE_READINESS.md](./STUDENT_RELEASE_READINESS.md)
+Canonical TA surface — certified starter matrix (L0/E0–E3 tiers), what is safe for class right now.
+
+### [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md)
+RC1 honest posture — E1 certified rows, E2/E3 status, TA closeout checklist.
 
 ---
 

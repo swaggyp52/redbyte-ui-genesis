@@ -1,4 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA.** Describes OS-era `ProjectContext` / `ProjectSerializer` multi-app data model (Logic Designer, CPU Designer, 3D viewer). Not the current project schema. Current schema: `packages/rb-utils/src/labProjectSchema.ts`.
+
 # Project model
+
+**Status:** SUPERSEDED — see note above
 
 This document explains the unified project shape used across RedByte OS. The model is stored in `ProjectContext` and persisted through `ProjectSerializer`, so every app (Logic Designer, CPU Designer, 3D viewer, exporters) reads and writes the same structure.
 

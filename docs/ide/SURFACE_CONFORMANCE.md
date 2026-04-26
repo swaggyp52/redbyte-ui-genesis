@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: surface change governance
+---
+
 # RedByte IDE Surface Conformance Governance
 
 **Document:** RB-SURF-CONF-001 v1.0

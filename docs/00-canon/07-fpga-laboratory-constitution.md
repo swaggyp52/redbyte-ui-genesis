@@ -1,6 +1,8 @@
+> ℹ️ **ASPIRATIONAL / PARTIALLY IMPLEMENTED (2026-01-05).** The invariants (determinism, explicit contracts, hardware-is-truth, additive evolution) remain valid principles. The concrete bridge architecture (toolchain / bridge / board-models three-layer split, `/devices` `/program` `/stream` endpoints) is aspirational — those HTTP endpoints are not fully implemented in the current product. Do not rely on the bridge endpoint contracts as current truth.
+
 # 07 — FPGA Laboratory Platform Constitution
 
-**Status:** CANONICAL  
+**Status:** ASPIRATIONAL — see note above. Invariants valid, bridge endpoints not current.  
 **Last Updated:** 2026-01-05  
 **Maintainer:** Connor Angiel
 

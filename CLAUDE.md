@@ -1,33 +1,57 @@
-# RedByte — Claude Persistent Instructions
+# RedByte — Agent Operating Manual
 
-This file is read at the start of every session. It defines permanent rules for working in this repo.
+RedByte is an **FPGA educational IDE**. Students design circuits, verify behavior against test vectors, map ports to Basys3 pins, and export Vivado-ready ZIPs. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado 2024.2.
 
----
-
-## Project
-
-RedByte is an FPGA educational IDE. It includes a circuit design surface, a verify engine, an export pipeline, and hardware deployment tooling for the Basys3 board.
-
-The primary package under active development is `packages/rb-apps`.
+The canonical student path is: **Design → Verify → Map Pins → Export.** Import is a utility action. Board programming is an external handoff after Export.
 
 ---
 
-## Test Runner
+## Truth Hierarchy
 
-Tests must be run from Windows via Desktop Commander. The vitest binary in `node_modules/.bin/vitest` contains hardcoded Windows paths and cannot be invoked from the Linux VM.
+When docs conflict, trust in this order:
 
-**Correct invocation:**
+| Priority | Source | What it covers |
+|----------|--------|---------------|
+| 1 | Code + tests | Ground truth — code wins over all docs |
+| 2 | `docs/ACTIVE_WORK.md` | **Cockpit** — top 3 priorities, blocked, latest proof, next bench task |
+| 3 | `docs/STUDENT_RELEASE_READINESS.md` | Certified starters, E1/E2/E3 tiers |
+| 4 | `docs/ide/0{N}-{surface}.md` | Surface-level specs |
+| 5 | `docs/ARCHITECTURE.md` | Five-layer architecture |
+| 6 | `docs/DOC_INDEX.md` | Navigation for everything else |
+| IGNORE | `docs/00-canon/00–08-*.md` | OS-era (3D Redstone, CPU OS, bridge endpoints). Not current. |
+| IGNORE | `docs/STUDENT_WORKFLOW.md`, `IMPLEMENTATION_STATUS.md` | OS-era. Not current. |
+
+**Trust signal:** Canonical docs declare `doc_status: current` and `used_by_claude: true` in YAML frontmatter. Treat any doc without these properties as background context, not authoritative truth.
+
+---
+
+## Agent Startup
+
+Before starting any task:
+
+1. Read `docs/ACTIVE_WORK.md` — know what's in flight and what the priority ladder is.
+2. Run `pnpm verify:gates` if gates may be affected — never commit a batch that breaks a green gate.
+3. Check `docs/DOC_INDEX.md` if you need a surface spec, release proof, or roadmap doc.
+
+For strategic direction or multi-surface work, use the **redbyte-prime** agent in `.claude/agents/redbyte-prime.md`.
+
+---
+
+## Runtime Constraints
+
+### Test Runner (Windows-only)
+
+Tests must be run from Windows via Desktop Commander. The vitest binary has hardcoded Windows paths and cannot run from a Linux VM.
+
 ```
 pnpm -w exec vitest run [pattern]
 ```
 
-Run from: `C:\Users\conno\projects\redbyte-ui` (or wherever the repo is cloned on Windows).
+Run from: `C:\Users\conno\redbyte-ui`
 
-**Green baseline (2026-03-25):** 168 pure-logic tests across 12 suites. Component render tests are broken by a pre-existing React 19 / `@testing-library/react` incompatibility — do not treat these as regressions from new work.
+**Green baseline (2026-03-25):** 168 pure-logic tests across 12 suites. Component render tests are broken by a pre-existing React 19 / `@testing-library/react` incompatibility — do not treat as regressions.
 
----
-
-## Connection Format
+### Connection Format
 
 The canonical wire connection shape is:
 
@@ -39,55 +63,45 @@ The flat shape (`fromNodeId`, `toNodeId`, etc.) is **never valid**. `normalizePo
 
 ---
 
-## Obsidian Vault
+## Code Invariants
 
-The Obsidian engineering brain lives at `redbyte-ui/` (same directory as this file). Vault folders start at `00 Inbox/` through `10 Reference/`.
-
-### Obsidian integration rule
-
-After any of the following, perform a documentation pass before moving on:
-- test execution (pass or fail)
-- debugging session
-- multi-file implementation
-- discovery of a new constraint
-- diagnosis of a failure
-- implicit decision made during work
-
-### Documentation pass steps
-
-1. Identify any bug status changes
-2. Identify any architecture truths learned
-3. Identify any decision implied by the work
-4. Update canonical notes first (see `08 Agents + Prompts/Canonical Notes Policy.md`)
-5. Create new notes only when needed
-6. Every note must use Obsidian Properties from `03 Architecture/Note Schema.md`
-7. Report what changed: which notes were created, which were updated, why
-
-### Note placement
-- `03 Architecture/` = architecture notes only
-- `04 Decisions/` = ADRs only
-- `05 Bugs/` = bug notes only
-- `08 Agents + Prompts/` = handoffs, workflows, reusable prompts only
-
-### Key vault files
-- `08 Agents + Prompts/Claude Session Mode.md` — full operating rules
-- `08 Agents + Prompts/Post Run Extraction.md` — post-run extraction prompt
-- `08 Agents + Prompts/Canonical Notes Policy.md` — which notes are source of truth
-- `03 Architecture/Note Schema.md` — property schema for all note types
-- `01 Dashboard/RedByte Engineering Brain.md` — master entry point
-
----
-
-## Code Style
-
-- TypeScript strict mode throughout
-- No `any` unless in legacy test fixtures with a comment
-- Prefer pure functions for logic that will be contract-tested
-- Connection shapes: always use nested format (see above)
+- TypeScript strict mode throughout. No `any` except legacy test fixtures with a comment.
+- Prefer pure functions for logic that will be contract-tested.
+- Determinism is non-negotiable: no wall-clock timestamps in hashes, no random IDs in verify/export paths.
+- Port names must match Basys3 XDC exactly: `SW{N}`, `LD{N}`, `BTN{N}`, `CLK100MHZ`.
 
 ---
 
 ## Known Issues
 
-- `BUG-003`: React 19 / `@testing-library/react@16.1` incompatibility breaks component render tests. Pre-existing. Fix: upgrade to `@testing-library/react@^17.0.0`.
-- Vitest Windows-only constraint (see Test Runner above)
+- **BUG-003**: React 19 / `@testing-library/react@16.1` breaks component render tests. Pre-existing. Fix: upgrade to `@testing-library/react@^17.0.0`.
+- Vitest Windows-only constraint (see Runtime Constraints above).
+
+---
+
+## Documentation Update Obligation
+
+After any meaningful implementation batch (new feature, bug fix, surface change, release proof):
+
+1. Update `docs/ACTIVE_WORK.md` in-flight table and blockers.
+2. Update the relevant surface spec in `docs/ide/` if behavior changed.
+3. Update `docs/STUDENT_RELEASE_READINESS.md` if a certification tier changed.
+4. Do **not** update OS-era docs — they are superseded and should remain labeled as such.
+
+---
+
+## Active Work
+
+@docs/ACTIVE_WORK.md
+
+---
+
+## Obsidian Vault (Optional Context)
+
+The Obsidian engineering brain lives at `redbyte-ui/` (vault folders `00 Inbox/` through `10 Reference/`). It is useful working memory but is **not mandatory agent startup reading**. Key vault files if you need them:
+
+- `08 Agents + Prompts/Claude Session Mode.md` — session operating rules
+- `08 Agents + Prompts/Canonical Notes Policy.md` — which vault notes are source of truth
+- `01 Dashboard/RedByte Engineering Brain.md` — master entry point
+
+Obsidian notes are working memory. Repo markdown files (`docs/`) are canonical. When they conflict, repo markdown wins.

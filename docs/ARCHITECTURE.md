@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-26
+owner: Connor Angiel
+used_by_claude: true
+role: five-layer architecture authority
+---
+
 # RedByte IDE Architecture
 
 This document defines the five architectural layers of the RedByte IDE system and the explicit

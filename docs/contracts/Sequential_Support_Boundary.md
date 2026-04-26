@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-01
+owner: Connor Angiel
+used_by_claude: true
+role: sequential model boundary contract
+---
+
 # Sequential Support Boundary — RedByte v1
 
 > **Status:** Enforced

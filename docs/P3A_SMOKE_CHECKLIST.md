@@ -1,3 +1,5 @@
+> 📋 **HISTORICAL QA RECORD — OS ERA.** This is a smoke test checklist from an earlier release cycle. It is not current guidance. See `docs/release/` for current certification evidence.
+
 # Phase 3A Smoke Checklist (Windowing + OS Interaction)
 
 ## Last Validated

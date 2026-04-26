@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-23
+owner: Connor Angiel
+used_by_claude: true
+role: RC1 release freeze — honest posture
+---
+
 # RedByte RC1 — student release freeze (honest posture)
 
 **Freeze date:** 2026-04-23  

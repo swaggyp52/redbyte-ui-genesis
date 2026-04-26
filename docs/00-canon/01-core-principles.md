@@ -1,6 +1,8 @@
+> ℹ️ **ASPIRATIONAL PRINCIPLES (2026-01-05).** The eight principles below are philosophically valid for RedByte today. However, the concrete examples and "In Scope" lists reference an OS-era product (3D views, oscilloscope, CPU modules) that no longer describes the current FPGA IDE. Read for principles; ignore the feature lists.
+
 # 01 — Core Principles
 
-**Status:** CANONICAL
+**Status:** ASPIRATIONAL PRINCIPLES — see note above
 **Last Updated:** 2026-01-05
 **Maintainer:** Connor Angiel
 

@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: Verify surface spec
+---
+
 # Verify Mode Spec
 
 Status: Phase 1 v1

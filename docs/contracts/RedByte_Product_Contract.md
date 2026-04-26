@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-01
+owner: Connor Angiel
+used_by_claude: true
+role: target-state product blueprint
+---
+
 # RedByte Product Contract
 
 **Status:** Draft v0.1

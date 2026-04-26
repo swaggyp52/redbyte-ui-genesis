@@ -1,6 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA (2026-01-05).** This document describes a prior product direction: a 3D Redstone/multi-view OS platform. The current product is an FPGA educational IDE. See `docs/ACTIVE_WORK.md` and `docs/DOC_INDEX.md` for current truth. Do not use this as agent context for current-product decisions.
+
 # 00 — Project Identity
 
-**Status:** CANONICAL
+**Status:** SUPERSEDED — see note above
 **Last Updated:** 2026-01-05
 **Maintainer:** Connor Angiel
 

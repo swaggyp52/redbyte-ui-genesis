@@ -1,4 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA (2025).** This document tracks OS Genesis phases (Logic Playground, 2D Lab, 3D Virtual Lab, `.rbx.zip` format). The current product is an FPGA IDE with a different architecture and format. Use `docs/ACTIVE_WORK.md` for current status.
+
 # RedByte Lab-Ready: Implementation Status & Next Steps
+
+**Status:** SUPERSEDED — see note above
 
 Copyright © 2025 Connor Angiel — RedByte OS Genesis
 

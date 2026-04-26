@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: design tokens + component catalog
+---
+
 # RedByte IDE Style Guide (Phase 1)
 
 Status: v1 design token contract for `IdeApp`

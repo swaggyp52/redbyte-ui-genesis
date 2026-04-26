@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-23
+owner: Connor Angiel
+used_by_claude: true
+role: canonical TA / instructor release surface
+---
+
 # Student release readiness (canonical TA / instructor surface)
 
 **Last updated:** 2026-04-23  

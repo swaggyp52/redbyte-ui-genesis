@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: Project surface spec
+---
+
 # Project Mode Spec
 
 Status: Phase 1 v1

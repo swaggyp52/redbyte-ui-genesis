@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: surface anatomy + status vocabulary
+---
+
 # RedByte Product Surface System
 
 RedByte uses one product surface contract across every major stage surface.

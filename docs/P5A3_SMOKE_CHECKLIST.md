@@ -1,3 +1,5 @@
+> 📋 **HISTORICAL QA RECORD — OS ERA.** This is a smoke test checklist from an earlier release cycle. It is not current guidance. See `docs/release/` for current certification evidence.
+
 # P5A-3 Smoke Checklist — Help/Troubleshooting App (Slice 1 + Slice 2)
 
 **Purpose**: Quick human validation of Help app functionality and entry points before release.

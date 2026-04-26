@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: pixel-level shell layout spec
+---
+
 # RedByte IDE UI Contract (Pixel Spec v1)
 
 Status: Canonical

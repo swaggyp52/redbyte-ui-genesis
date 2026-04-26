@@ -1,4 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA.** Describes a 3D/2D tripartite surface model that is not the current product. The current IDE surfaces are in `docs/ide/`. See `docs/DOC_INDEX.md`.
+
 # Product Surfaces & Interaction Contract
+
+**Status:** SUPERSEDED — see note above
 
 **Core Principle:** Single Source of Truth. 2D is the Editor. 3D is the Viewer.
 

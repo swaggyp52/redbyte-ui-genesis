@@ -1,6 +1,8 @@
+> ⚠️ **SUPERSEDED (2026-01-05).** This bootstrap references HTTP bridge endpoints (`/devices`, `/program`, `/run`, `/stream`, `/stop`) and a three-layer toolchain/bridge/board-models split that does not reflect the current product. For current agent operating rules, see `.claude/agents/redbyte-prime.md`. For current product truth, see `docs/ACTIVE_WORK.md`.
+
 # 08 — FPGA Agent Bootstrap (Quick Reference)
 
-**Status:** CANONICAL  
+**Status:** SUPERSEDED — see note above  
 **Last Updated:** 2026-01-05  
 **Maintainer:** Connor Angiel
 

@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-02
+owner: Connor Angiel
+used_by_claude: true
+role: student-facing language rules
+---
+
 # Student UX Layer
 
 This document defines which content is student-facing vs. diagnostic-only in the RedByte IDE,

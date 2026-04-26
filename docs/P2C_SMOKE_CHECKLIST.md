@@ -1,3 +1,5 @@
+> 📋 **HISTORICAL QA RECORD — OS ERA.** This is a smoke test checklist from an earlier release cycle. It is not current guidance. See `docs/release/` for current certification evidence.
+
 # P2C Smoke Checklist - SIM ↔ HW Live Mode Robustness (Bridge Dry-run + Fallback)
 
 ## Last Validated
@@ -41,4 +43,3 @@ Re-run this checklist when changing any of:
 - `packages/rb-apps/src/stores/hardwareStore.*` (connection state mapping)
 - `packages/rb-apps/src/apps/ECELabApp.*` (executionSource handling + fallback behavior)
 - `docs/ERROR_MESSAGE_MATRIX.md` (student-facing offline/disconnect copy)
-

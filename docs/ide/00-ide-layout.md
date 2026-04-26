@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: IDE shell layout contract
+---
+
 # RedByte IDE Layout Contract
 
 Status: Draft v1 (Phase 1 lock)

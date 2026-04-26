@@ -1,4 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA.** Playground/2D Lab/3D Viewer tripartite model is not the current product. Current interaction contract is in `docs/ide/00-ide-layout.md`.
+
 # Interaction Contract: Playground, 2D Lab, & 3D Viewer
+
+**Status:** SUPERSEDED — see note above
 
 **Core Principle:** A single, deterministic "Circuit State" drives all views.
 

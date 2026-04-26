@@ -1,3 +1,11 @@
+---
+doc_status: current
+last_validated: 2026-04-21
+owner: Connor Angiel
+used_by_claude: true
+role: Design surface spec
+---
+
 # Design Mode Spec
 
 Status: Surface reconciliation v2

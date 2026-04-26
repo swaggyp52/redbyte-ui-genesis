@@ -1,4 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA.** This document describes an old workflow: COM port connection, `.rb-lab.zip` export, `StudentLabApp`, Blackboard submission. The current student workflow is Design → Verify → Map Pins → Export (Vivado ZIP). See `docs/ide/` surface specs for current stage guidance.
+
 # Student Workflow (Basys 3)
+
+**Status:** SUPERSEDED — see note above
 
 This is the short, copy-paste-ready flow for students.
 

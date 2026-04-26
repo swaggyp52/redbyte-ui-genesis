@@ -2,9 +2,10 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-04-26
 related:
   - "[[Session Startup Checklist]]"
+  - "[[Session Log]]"
   - "[[Post Run Extraction]]"
   - "[[Claude Session Mode]]"
   - "[[RedByte Engineering Brain]]"
@@ -54,9 +55,25 @@ For every meaningful change:
 
 ---
 
-## 5. Capture the next action
+## 5. Update the Session Log
 
-End with one explicit statement:
+Open `08 Agents + Prompts/Session Log.md`.
+
+Add a new entry at the top using today's date. Fill in:
+- What changed
+- What is true now
+- What failed / is still open
+- Exact next action
+
+Remove the oldest entry if count exceeds 5.
+
+Also update the Active Work Board in `01 Dashboard/RedByte Engineering Brain.md` — move done items to Done, add new Next items.
+
+---
+
+## 6. Capture the next action explicitly
+
+End with one explicit statement in the session note:
 > "Next session should start with: [specific task]"
 
 This becomes the first item in the next `Session Startup Checklist` run.

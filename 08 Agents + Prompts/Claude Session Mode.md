@@ -2,12 +2,13 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-04-26
 related:
   - "[[Post Run Extraction]]"
   - "[[Canonical Notes Policy]]"
   - "[[Note Schema]]"
   - "[[RedByte Engineering Brain]]"
+  - "[[Session Log]]"
 ---
 
 # Claude Session Mode
@@ -67,6 +68,28 @@ related:
   - "[[Architecture note]]"
   - "[[Decision note]]"
 ```
+
+### Canonical repo docs (docs/ folder) — YAML frontmatter
+
+Canonical docs in `docs/` that Claude must trust use YAML frontmatter at the top of the file. Pattern:
+
+```yaml
+---
+doc_status: current | active | historical | superseded
+last_validated: YYYY-MM-DD
+owner: <name>
+used_by_claude: true | false
+role: <one-line description of the doc's authority>
+supersedes: <path if applicable>
+imported_by: <path if imported via @ in CLAUDE.md>
+---
+```
+
+`doc_status: current` and `used_by_claude: true` together mark a doc as authoritative for agent context.
+
+**Stale docs** keep their `⚠️ SUPERSEDED` or `📋 HISTORICAL` banner from the 2026-04-26 governance pass. Do not remove these banners. They may also receive frontmatter with `doc_status: superseded` when touched.
+
+**When updating any canonical doc:** bump `last_validated` to today's date.
 
 ## File placement rules
 - `03 Architecture/` = architecture notes only

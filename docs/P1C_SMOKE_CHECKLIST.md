@@ -1,3 +1,5 @@
+> 📋 **HISTORICAL QA RECORD — OS ERA.** This is a smoke test checklist from an earlier release cycle. It is not current guidance. See `docs/release/` for current certification evidence.
+
 # Phase 1C Smoke Checklist (State + Performance)
 
 Goal: confirm RedByte OS + key lab surfaces run without runaway renders, leaked loops, or obvious performance regressions.

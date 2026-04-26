@@ -2,9 +2,11 @@
 type: handoff
 status: active
 area: infrastructure
-updated: 2026-03-25
+updated: 2026-04-26
 related:
   - "[[Session Shutdown Checklist]]"
+  - "[[Session Log]]"
+  - "[[Session Template]]"
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
   - "[[RedByte Engineering Brain]]"
@@ -16,26 +18,27 @@ Run this at the start of every RedByte coding session. Takes 2–3 minutes. Prev
 
 ---
 
-## 1. Read CLAUDE.md
+## 1. Read current truth
 
-`CLAUDE.md` is the repo root. It contains:
-- test runner constraints (Windows-only pnpm)
-- connection format rule (nested, never flat)
-- Obsidian integration rules
-- known bugs
+`CLAUDE.md` is the repo constitution. It contains:
+- truth hierarchy (what to trust in what order)
+- product spine and constraints
+- @imports `docs/ACTIVE_WORK.md` with current priorities
 
-Verify these haven't changed since last session. If they have, update them before starting work.
+Also read: `docs/ACTIVE_WORK.md` — priority ladder, in-flight work, RC1 posture.
 
 ---
 
-## 2. Inspect the Dashboard
+## 2. Open the Dashboard + Session Log
 
 Open: `01 Dashboard/RedByte Engineering Brain.md`
 
 Check:
-- Active work table — what was in progress?
-- Open bugs section — what's still unresolved?
+- Active Work Board — what is Now / Next / Blocked?
+- RC1 Release Truth — what's certified vs pending?
 - Architecture map — which stubs need expansion?
+
+Then open: `08 Agents + Prompts/Session Log.md` — what exactly happened last session? What's the exact next action?
 
 ---
 
@@ -51,7 +54,15 @@ Check:
 
 ---
 
-## 4. Confirm current work area
+## 4. Open a session note
+
+Copy `01 Dashboard/Session Template.md` → rename to today's date → fill in `goal`, `work_area`, `top_priority`.
+
+This is your session anchor. Keep it open and add notes as you go.
+
+---
+
+## 5. Confirm current work area
 
 Say explicitly:
 > "I'm working in [verify | export | design | infrastructure | hardware] today."
@@ -60,7 +71,7 @@ This activates workspace routing — Claude will prioritize the right canonical 
 
 ---
 
-## 5. Enter Session Mode
+## 6. Enter Session Mode
 
 Say:
 > "Enter Session Mode."

@@ -1,6 +1,8 @@
+> ⚠️ **SUPERSEDED — OS ERA (2026-01-05).** References OS-era code architecture (3D shell, Turborepo multi-app, non-FPGA stack). Not valid for the current FPGA IDE in `packages/rb-apps`. See `docs/ARCHITECTURE.md` for current layer map.
+
 # 06 — Owner's Manual
 
-**Status:** CANONICAL — "I Can Rebuild This From Scratch"
+**Status:** SUPERSEDED — see note above
 **Last Updated:** 2026-01-05
 **Maintainer:** Connor Angiel
 
