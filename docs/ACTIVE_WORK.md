@@ -84,8 +84,8 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Control Tower v1 — ACTIVE_WORK cockpit + canonical doc frontmatter | 2026-04-26 |
-| ✓ Done | Repo operating system reset — CLAUDE.md rewrite, stale headers | 2026-04-26 |
+| ✓ Done | Control Tower v1 — ACTIVE_WORK cockpit + canonical doc frontmatter + repo OS reset | `c7500702` |
+| ✓ Done | One-click local startup hardening (`Start-RedByte.ps1` + `run.bat` + `pnpm start`) | `408d4846` |
 | ✓ Done | Security-lock import/export spine hardening | `845cffdd` |
 | ✓ Done | Vivado export fidelity hardening | `be52fb09` |
 | ✓ Done | Board clock semantics — CLK100MHZ→W5 canonical | `69e89999` |

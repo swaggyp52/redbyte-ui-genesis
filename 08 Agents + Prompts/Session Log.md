@@ -18,6 +18,28 @@ Use the [[Session Template]] to generate the raw content; paste the "End of sess
 
 ---
 
+## 2026-04-26 — Control Tower v1 committed + origin synced
+
+**What changed:**
+- Control Tower v1 committed (`c7500702`): ACTIVE_WORK.md cockpit, Session Template, Support Matrix, Session Log, Engineering Brain WIP board, Claude Session Mode frontmatter docs
+- Rebased clean onto origin/main (2 commits: one-click startup hardening `408d4846`, branch-protection debt note `e8fd751e`)
+- Repo is now clean, linear, and synced with origin
+
+**What is true now:**
+- `docs/ACTIVE_WORK.md` is the daily cockpit — imported by `CLAUDE.md` at every agent startup
+- OS-era docs self-declare as SUPERSEDED at line 1; 18 canonical docs have `doc_status: current` + `used_by_claude: true` YAML frontmatter
+- One-click startup: `pnpm start` or `run.bat` launches RedByte locally (Vivado 2024.2 path hardened)
+- RC1 posture unchanged: `two-bit-counter` E1+E2 (live bench). `golden-basys3-switch-and` + `signal-tour` E1 only.
+
+**What is still open:**
+- E2/E3 matrix rows for `golden-basys3-switch-and` and `signal-tour` (need connected bench)
+- BUG-003: React 19 / testing-library incompatibility (pre-existing)
+- Branch protection not yet configured (tracked in AI_STATE.md)
+
+**Exact next action:** On connected bench — run `pnpm lab:vivado:hw-probe`, then program `golden-basys3-switch-and` `.bit`, observe LD0 behavior, log to `out/vivado-cert/vivado_program_golden_and.log`.
+
+---
+
 ## 2026-04-26 — Repo operating system reset + Vivado/hardware hardening
 
 **What changed:**
