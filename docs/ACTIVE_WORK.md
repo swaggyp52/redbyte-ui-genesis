@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product-spine + app-usability hardening** — Slices A+B+C+D done (D: Design canvas wiring discoverability — HUD hints now explain port-click-to-wire, blank canvas step 3 rewritten, commit `90d49f94`). Next slice: **(e) Project surface as onboarding/workflow spine** — Project surface should orient students to the workflow and show live status for each stage.
+1. **Product-spine + app-usability hardening** — Slices A–E done (E: Project Home neutralized — ECE141 panel removed, primary-actions strip added, commit `778c02cc`). Next slice: **(f) Full-surface friction sweep** — walk all 12 flows in the live app, root-cause highest-severity state/render-truth bugs, execute the strongest fix.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,11 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
+| ✓ Done | Project Home neutralized — ECE141 panel removed, primary-actions strip (Build Fresh / Import / Open) | `778c02cc` |
 | ✓ Done | Design canvas wiring discoverability — HUD hints, blank canvas step 3 rewritten for port-click-to-wire model | `90d49f94` |
 | ✓ Done | VCB meta line density — removed redundant mode/title/timing; evidence shown on all post-run states | `54aed13c` |
 | ✓ Done | Verify pre-run waveform placeholder fill — `max-height: none` clears 645px dead space | `7aa4db27` |
 | ✓ Done | Project Bridge vocabulary scrub — removed developer jargon from student view | `4480ad77` |
-| ✓ Done | Ops layer — `rb:session:*` + `rb:doc:validate` + `rb:bench:status` scripts | pending |
 
 ---
 
