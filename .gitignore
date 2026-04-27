@@ -110,6 +110,9 @@ archive/pdfs/basys3_rm*.pdf
 # Claude Code IDE local settings
 .claude/settings.local.json
 
+# Claude runtime lock files (local-only, tooling junk)
+.claude/scheduled_tasks.lock
+
 # Lab8 import fixture: full Vivado trees are local-only; tests use fixtures/.../sources/
 packages/rb-apps/src/fixtures/import/04-lab8-security-lock/lab8_security_lock_vivado/
 
