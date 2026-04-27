@@ -40,7 +40,7 @@ export interface ProjectHealthVerifyResult {
   reportHash?: string;
   report?: VerifyReport;
   failingTick?: number;
-  ranAtIso: string;
+  ranAtIso?: string;
 }
 
 export interface ProjectHealthExportResult {
@@ -49,7 +49,7 @@ export interface ProjectHealthExportResult {
   manifestHash?: string;
   bundleHash?: string;
   artifacts?: string[];
-  ranAtIso: string;
+  ranAtIso?: string;
 }
 
 export interface ProjectHealthCore {
