@@ -5,13 +5,13 @@ import { render } from '@testing-library/react';
 import { IdeStatusBar } from '../components/IdeStatusBar';
 
 describe('IdeStatusBar', () => {
-  it('keeps the full footer details for non-Design modes', () => {
+  it('shows mode label and gate status for non-Design modes', () => {
     const view = render(
       <IdeStatusBar mode="verify" determinismHash="abc123def456" gateStatus="warn" />
     );
 
     expect(view.getByTestId('ide-status-bar').textContent).toContain('Mode: verify');
-    expect(view.getByTestId('ide-status-bar').textContent).toContain('Project Hash: abc123def456');
+    expect(view.getByTestId('ide-status-bar').textContent).not.toContain('Project Hash:');
     expect(view.getByTestId('ide-status-bar').textContent).toContain('Workflow Review');
   });
 

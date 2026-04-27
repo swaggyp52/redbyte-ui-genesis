@@ -46,12 +46,10 @@ function makeProps(overrides: Partial<ProjectBridgePanelProps> = {}): ProjectBri
 }
 
 describe('ProjectBridgePanel', () => {
-  it('renders project identity, design top, and target part', () => {
+  it('renders project identity and target board', () => {
     const { getByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
     expect(getByTestId('ide-project-bridge-title').textContent).toContain('My Project');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
-    expect(getByTestId('ide-project-bridge-design-top').textContent).toContain('top');
-    expect(getByTestId('ide-project-bridge-part').textContent).toContain('xc7a35tcpg236-1');
     expect(getByTestId('ide-project-bridge-board').textContent).toContain('Basys3');
   });
 
@@ -71,15 +69,9 @@ describe('ProjectBridgePanel', () => {
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Starter loaded');
   });
 
-  it('truncates the determinism hash to 12 characters', () => {
-    const { getByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
-    expect(getByTestId('ide-project-bridge-hash').textContent).toBe('abc123def456');
-  });
-
-  it('reports native fidelity for custom/blank projects', () => {
-    const { getByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
-    expect(getByTestId('ide-project-bridge-fidelity').textContent).toContain('Native');
-    expect(getByTestId('ide-project-bridge-fidelity-hint').textContent).toContain('No external reconstruction');
+  it('hides fidelity field for native (authored-in-RedByte) projects', () => {
+    const { queryByTestId } = render(<ProjectBridgePanel {...makeProps()} />);
+    expect(queryByTestId('ide-project-bridge-fidelity')).toBeNull();
   });
 
   it('marks reconstructed imports as warn with explanatory hint', () => {
@@ -96,25 +88,6 @@ describe('ProjectBridgePanel', () => {
     );
     expect(getByTestId('ide-project-bridge-fidelity').textContent).toContain('Partial');
     expect(getByTestId('ide-project-bridge-fidelity-hint').textContent).toContain('inspection-only');
-  });
-
-  it('shows a muted em-dash when simulation top is not supplied', () => {
-    const { getByTestId } = render(
-      <ProjectBridgePanel {...makeProps({ simulationTopName: null })} />
-    );
-    expect(getByTestId('ide-project-bridge-sim-top').textContent).toContain('—');
-  });
-
-  it('always renders simulation top as its own authored entity, not as "same as design"', () => {
-    const { getByTestId } = render(
-      <ProjectBridgePanel
-        {...makeProps({ topModuleName: 'alu', simulationTopName: 'alu_tb' })}
-      />
-    );
-    const simTop = getByTestId('ide-project-bridge-sim-top').textContent ?? '';
-    expect(simTop).toContain('alu_tb');
-    expect(simTop.toLowerCase()).not.toContain('same as design');
-    expect(simTop).toContain('Testbench entity');
   });
 
   it('labels verify state as Not run when no verify has happened', () => {
@@ -140,7 +113,6 @@ describe('ProjectBridgePanel', () => {
     );
     const verify = getByTestId('ide-project-bridge-verify').textContent ?? '';
     expect(verify).toContain('Stale');
-    expect(verify).toContain('v1234567890');
   });
 
   it('labels export as Stale bundle when dirty since export', () => {

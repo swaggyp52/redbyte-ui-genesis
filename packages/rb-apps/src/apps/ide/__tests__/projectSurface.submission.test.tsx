@@ -381,9 +381,8 @@ describe('ProjectSurface workspace panels', () => {
 
     const fidelityList = getAllByTestId('ide-project-import-fidelity');
     expect(fidelityList[fidelityList.length - 1].textContent).toContain('Reconstructed');
-    // Reconciliation R2: the Bridge owns the canonical fidelity and determinism hash display.
+    // Reconciliation R2: the Bridge owns the canonical fidelity display (non-native only).
     expect(getByTestId('ide-project-bridge-fidelity').textContent).toContain('Reconstructed');
-    expect(getByTestId('ide-project-bridge-hash').textContent).toContain('abc123def456');
     
     const topList = getAllByTestId('ide-project-fpga-top');
     fireEvent.change(topList[topList.length - 1], { target: { value: 'lab_top' } });

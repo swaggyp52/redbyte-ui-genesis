@@ -161,13 +161,8 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
   projectName,
   projectKind,
   sourceExampleId,
-  determinismHash,
-  topModuleName,
-  simulationTopName,
   fpgaBoard,
-  fpgaPart,
   importFidelity,
-  scenarioAuthority,
   health,
   readiness,
   hardwareReady,
@@ -178,7 +173,6 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
   const fidelity = importFidelityCopy(importFidelity);
   const verify = verifyCopy(health);
   const exp = exportCopy(health);
-  const shortHash = determinismHash ? determinismHash.slice(0, 12) : '—';
   // Reconciliation R2: a loaded blank-origin project is framed as "Fresh Project"
   // rather than "Blank Project". This used to live as a duplicate `projectContextLabel`
   // memo on ProjectSurface + a duplicate `currentFocusProjectLabel` inside the hero.
@@ -187,18 +181,11 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
     ? 'Fresh Project'
     : getProjectKindDisplayName(projectKind);
   const kindContextLabel = projectKind === 'example' && sourceExampleId ? 'Starter loaded' : null;
-  // Sim top is an authored, distinct entity (conventionally `${designTop}_tb`).
-  // Even when a caller omits it, we never claim the testbench *is* the design -
-  // we show a muted dash so the distinction stays visible.
-  const simTop = simulationTopName && simulationTopName.trim().length > 0
-    ? simulationTopName
-    : null;
 
   return (
     <SurfacePanel className="ide-project-bridge" testId={testId}>
       <header className="ide-project-bridge-header">
         <div>
-          <p className="ide-surface-block-label">Project Bridge</p>
           <h3 className="ide-project-bridge-title" data-testid={`${testId}-title`}>
             {projectName}
           </h3>
@@ -211,66 +198,29 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
           <IdeStatusPill tone={hw.tone} testId={`${testId}-hardware-pill`}>
             {hw.label.toUpperCase()}
           </IdeStatusPill>
-          <code className="ide-project-bridge-hash" data-testid={`${testId}-hash`}>
-            {shortHash}
-          </code>
         </div>
       </header>
 
       <dl className="ide-project-bridge-grid" data-testid={`${testId}-grid`}>
         <BridgeField
-          label="Design top"
-          value={topModuleName || 'top'}
-          mono
-          hint="Synthesized onto the target board."
-          testId={`${testId}-design-top`}
-        />
-        <BridgeField
-          label="Simulation top"
-          value={simTop ?? '—'}
-          mono
-          muted={!simTop}
-          hint="Testbench entity used for simulation only. Never synthesized."
-          testId={`${testId}-sim-top`}
-        />
-        <BridgeField
           label="Target board"
           value={fpgaBoard}
           testId={`${testId}-board`}
         />
-        <BridgeField
-          label="Target part"
-          value={fpgaPart}
-          mono
-          testId={`${testId}-part`}
-        />
-        <BridgeField
-          label="Import fidelity"
-          value={fidelity.label}
-          tone={fidelity.tone}
-          hint={fidelity.detail}
-          testId={`${testId}-fidelity`}
-        />
-        <BridgeField
-          label="Scenario authority"
-          value={scenarioAuthority.toUpperCase()}
-          tone={
-            scenarioAuthority === 'verified'
-              ? 'ok'
-              : scenarioAuthority === 'stale'
-                ? 'warn'
-                : scenarioAuthority === 'authored' || scenarioAuthority === 'draft'
-                  ? 'idle'
-                  : 'idle'
-          }
-          testId={`${testId}-scenario-authority`}
-        />
+        {importFidelity !== 'native' && (
+          <BridgeField
+            label="Import fidelity"
+            value={fidelity.label}
+            tone={fidelity.tone}
+            hint={fidelity.detail}
+            testId={`${testId}-fidelity`}
+          />
+        )}
         <BridgeField
           label="Verify"
           value={verify.label}
           tone={verify.tone}
           hint={verify.detail}
-          secondary={verify.hash !== '—' ? `hash ${verify.hash}` : undefined}
           testId={`${testId}-verify`}
         />
         <BridgeField
@@ -278,7 +228,6 @@ export const ProjectBridgePanel: React.FC<ProjectBridgePanelProps> = ({
           value={exp.label}
           tone={exp.tone}
           hint={exp.detail}
-          secondary={exp.hash !== '—' ? `hash ${exp.hash}` : undefined}
           testId={`${testId}-export`}
         />
       </dl>

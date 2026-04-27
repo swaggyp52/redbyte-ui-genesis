@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-26
+last_validated: 2026-04-27
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product-spine + app-usability hardening** — the real front-facing app, not the example pipeline. Target slices in order: (a) Project surface as true onboarding/workflow home, (b) Design canvas usability — wire readability, selection, navigation, (c) Verify usability after testbench creation, (d) Hardware/Export only where they block real student use. Start from the cockpit, not vibes.
+1. **Product-spine + app-usability hardening** — Slice A done (Project Bridge jargon scrub: removed "PROJECT BRIDGE" label, determinism hash, Simulation top, Target part, Scenario authority from student view; status bar hash removed). Next slice: **(b) Verify pre-run empty state** — right waveform panel is blank (884px dead space) before first run, layout reads as broken. Then (c) Verify post-run command bar density — 15+ data items crammed into 47px strip.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,13 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
+| ✓ Done | Project Bridge vocabulary scrub — removed developer jargon from student view | pending |
 | ✓ Done | Ops layer — `rb:session:*` + `rb:doc:validate` + `rb:bench:status` scripts | pending |
 | ✓ Done | Claude Code hooks — `SessionStart` context injection, `Stop` reminder, `PostToolUse` doc guard | pending |
 | ✓ Done | Control Tower v1 — ACTIVE_WORK cockpit + canonical doc frontmatter + repo OS reset | `c7500702` |
 | ✓ Done | One-click local startup hardening (`Start-RedByte.ps1` + `run.bat` + `pnpm start`) | `408d4846` |
-| ✓ Done | Security-lock import/export spine hardening | `845cffdd` |
-| ✓ Done | Vivado export fidelity hardening | `be52fb09` |
-| ✓ Done | Board clock semantics — CLK100MHZ→W5 canonical | `69e89999` |
 
 ---
 
