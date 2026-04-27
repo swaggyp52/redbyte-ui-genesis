@@ -18,6 +18,29 @@ Use the [[Session Template]] to generate the raw content; paste the "End of sess
 
 ---
 
+## 2026-04-27 — Product audit + Project Bridge vocabulary scrub
+
+**What changed:**
+- Full product-use audit of all 5 surfaces (Project, Design, Verify, Map Pins, Export) — walked live app and read source
+- Committed `4480ad77`: Project Bridge vocabulary scrub — removed "Project Bridge" label, determinism hash from header, Simulation top, Target part, Scenario authority rows, hash from Verify/Export fields, Import fidelity field when native, "Project Hash:" from status bar
+- Updated `docs/ACTIVE_WORK.md` — Priority 1 reflects Slice A done, next slice is Verify pre-run empty state
+- 47 tests green across all project surface suites; `verify:gates` exit 0
+
+**What is true now:**
+- Project surface now shows students only: project name, kind label, hardware readiness pill, Target board, Verify status, Export status — all signal, no developer noise
+- Status bar no longer leaks determinism hash in any non-design mode
+- Import fidelity is only surfaced for non-native imports (reconstructed / partial) where it's actionable
+
+**What is still open:**
+- Verify pre-run empty state: right waveform panel (884px) is blank before first run — reads as broken layout
+- Verify post-run command bar: 15+ data items crammed into 47px strip
+- `window.confirm()` for Reset/Restore actions blocks browser thread (spawned as separate task)
+- E2/E3 matrix rows for `golden-basys3-switch-and` and `signal-tour` (need connected bench)
+
+**Exact next action:** Open `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` — find the pre-run right panel (waveform region, `ide-verify-waveform` or similar). Currently empty before any run. Add a "Run to see waveform" placeholder or instruction panel in that space. Check `docs/ide/03-verify.md` for the current spec before changing layout.
+
+---
+
 ## 2026-04-26 — Control Tower v1 committed + origin synced
 
 **What changed:**

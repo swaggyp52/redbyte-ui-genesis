@@ -32094,6 +32094,7 @@ button:disabled,
   display: flex;
   flex-direction: column;
   min-height: 0;
+  max-height: none;
   height: 100%;
   padding: 10px 12px 12px;
   gap: 10px;
