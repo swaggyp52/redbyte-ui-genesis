@@ -3689,8 +3689,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     primaryStatus?.title === 'Board pins are not finished on Project'
       ? primaryStatus.actions?.[0]
       : undefined;
-  const verifySessionMetricsRow =
-    sessionSignalsAssertionFailure || (Boolean(lastRun) && isTraceOnly) ? ('inline' as const) : ('hidden' as const);
+  const verifySessionMetricsRow = Boolean(lastRun) ? ('inline' as const) : ('hidden' as const);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode === 'sequential' && isFirstRunState) {
       return (
@@ -3973,8 +3972,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           statusLabel={sessionStatusBadgeLabel}
           statusTone={sessionStatusTone}
           sessionStatusBadge={sessionStatusBadgeLabel}
-          sessionModeLabel={sessionSignalsAssertionFailure ? undefined : sessionModeBadge}
-          sessionTitle={sessionSignalsAssertionFailure ? undefined : sessionTitle}
+          sessionModeLabel={undefined}
+          sessionTitle={undefined}
           referenceModeLabel={sessionSignalsAssertionFailure ? undefined : referenceModeLabel}
           primaryStatusTitle={compactPrimaryStatusAction ? primaryStatus?.title : undefined}
           primaryStatusMessage={compactPrimaryStatusAction ? primaryStatus?.message : undefined}
@@ -4004,7 +4003,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           goToDesignTick={selectedTick}
           experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
           experimentCaseLabel={lastRun && selectedTick != null && !sessionSignalsAssertionFailure ? `t${selectedTick}` : null}
-          experimentTimingHint={lastRun && !sessionSignalsAssertionFailure ? sequencerModeLabel : null}
+          experimentTimingHint={lastRun && !sessionSignalsAssertionFailure && isSequentialRun ? sequencerModeLabel : null}
         />
         )}
         </div>

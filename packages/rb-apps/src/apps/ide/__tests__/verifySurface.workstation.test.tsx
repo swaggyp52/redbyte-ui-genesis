@@ -259,8 +259,8 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved checks');
     expect(getByTestId('ide-vcb-status').textContent).toContain('READY');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run');
+    expect(queryByTestId('ide-verify-session-mode')).toBeNull();
+    expect(queryByTestId('ide-verify-session-title')).toBeNull();
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(queryByTestId('ide-verify-run')).toBeNull();
@@ -292,8 +292,8 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('observation run only');
     expect(getByTestId('ide-vcb-status').textContent).toContain('READY');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Ready to run');
+    expect(queryByTestId('ide-verify-session-mode')).toBeNull();
+    expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
       'Outputs are observed on the waveform'
     );
@@ -685,8 +685,8 @@ describe('VerifySurface workstation controls', () => {
     const { container, getByTestId, queryByTestId } = view;
 
     expect(getByTestId('ide-vcb-status').textContent).toContain('Observation only');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Outputs observed — stimulus captured');
+    expect(queryByTestId('ide-verify-session-mode')).toBeNull();
+    expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('Observation only');
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
@@ -926,7 +926,7 @@ describe('VerifySurface workstation controls', () => {
 
     expect(getByTestId('ide-vcb-status').textContent).toContain('Observation only');
     expect(getByTestId('ide-vcb-status').textContent).not.toContain('Stale');
-    expect(getByTestId('ide-verify-session-mode').textContent).toContain('Observe');
+    expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-mode')).toBeNull();
     expect(queryByTestId('ide-verify-workbench-subtitle')).toBeNull();
   });
@@ -1137,7 +1137,7 @@ describe('VerifySurface workstation controls', () => {
       expect(getByTestId('ide-verify-primary-status').textContent).toContain('Older authored reference available');
     });
     expect(getByTestId('ide-vcb-status').textContent).toContain('Needs update');
-    expect(getByTestId('ide-verify-session-title').textContent).toContain('Observe current circuit');
+    expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent).toContain('Stale saved checks loaded');
     expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
