@@ -331,24 +331,41 @@ describe('deriveStageCompletion — unified progress signal for all three nav sy
     expect(completion.design).toBe(true);
   });
 
-  it('marks verify as complete only when assertions match (not stale, not trace, not differ)', () => {
+  it('marks verify as complete for any current run (assertions-match, trace, assertions-differ)', () => {
+    // assertions-match: pass verify run, not stale → complete
     const passCurrent = deriveProjectHealth(
       { lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
       { hasCircuit: true, hasIoMapping: true, hasVectors: true }
     );
     expect(deriveStageCompletion(passCurrent, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
 
+    // stale: pass run but circuit changed → incomplete (needs re-run)
     const passStale = deriveProjectHealth(
       { lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: true, dirtySinceExport: false },
       { hasCircuit: true, hasIoMapping: true, hasVectors: true }
     );
     expect(deriveStageCompletion(passStale, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
 
+    // assertions-differ: verify ran, student saw failures → complete (engaged; can proceed)
     const failed = deriveProjectHealth(
       { lastVerify: { status: 'fail', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
       { hasCircuit: true, hasIoMapping: true, hasVectors: true }
     );
-    expect(deriveStageCompletion(failed, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
+    expect(deriveStageCompletion(failed, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
+
+    // trace: observation-only run → complete (student observed behavior)
+    const traceRun = deriveProjectHealth(
+      { lastVerify: { status: 'pass', hash: 'h2', runKind: 'trace', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(traceRun, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
+
+    // not-run: no verify at all → incomplete
+    const noRun = deriveProjectHealth(
+      { lastVerify: undefined, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
+      { hasCircuit: true, hasIoMapping: true, hasVectors: true }
+    );
+    expect(deriveStageCompletion(noRun, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
   });
 
   it('marks hardware complete when IO mapping exists', () => {

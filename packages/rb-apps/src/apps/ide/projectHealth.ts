@@ -165,14 +165,20 @@ export function deriveProjectHealth(
  * Single source of truth for workflow stage completion.
  * All progress indicators (IdeLeftRail, ProjectSurface dock)
  * must consume this to avoid contradictory done/pass signals.
+ *
+ * Verify is marked complete whenever the student has a current (non-stale) run —
+ * trace (observe-only), assertions-match, or assertions-differ all count.
+ * Only 'not-run', 'stale', and 'verify-error' leave it incomplete, because
+ * those states mean verify has not been meaningfully engaged with.
  */
 export function deriveStageCompletion(
   health: ProjectHealth,
   readiness: ProjectReadinessState
 ): Record<IdeWorkflowRouteMode, boolean> {
+  const verifyState = deriveProjectVerifyState(health);
   return {
     design: readiness.hasCircuit,
-    verify: deriveProjectVerifyState(health) === 'assertions-match',
+    verify: verifyState === 'assertions-match' || verifyState === 'trace' || verifyState === 'assertions-differ',
     hardware: readiness.hasIoMapping,
     export: health.lastExport?.status === 'ok' && !health.dirtySinceExport,
   };
