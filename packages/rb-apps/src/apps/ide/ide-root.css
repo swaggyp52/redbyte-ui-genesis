@@ -21001,11 +21001,12 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.12) inset !important;
 }
 
-/* ── Palette: narrower, tighter rows ── */
+/* ── Palette: fill dock width — never overflow the left panel ── */
 [data-ide-mode-marker='design'] .ide-design-palette {
-  width: 180px !important;
-  min-width: 160px !important;
-  max-width: 200px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Palette cards: tighter rows — icon + name only, subtitle hidden */
