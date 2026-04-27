@@ -3002,9 +3002,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ? `Click to place ${placementModeLabel}. Hold Shift to keep placing. Esc cancels.`
         : toolMode === 'wire'
           ? wireStartPort
-            ? 'Hover valid sinks in green, then click to connect. Esc cancels the wire.'
-          : 'Start Wire (W), click a source pin, then click a valid sink pin.'
-        : 'Click a node to inspect it. Drag to reposition.';
+            ? 'Valid targets glow green — click one to connect. Esc cancels.'
+          : 'Click any port to start a wire.'
+        : 'Click a node to inspect · click a port to wire · drag to move';
   const handleNodeDiagnosticBadgeClick = useCallback(
     (nodeId: string) => {
       setToolMode('select');
@@ -6543,7 +6543,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span className="ide-design-tool-hud-hint">{toolHint}</span>
                     {toolMode === 'wire' && !isPlacementMode ? (
                       <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
-                        {wireStartPort ? 'Source selected. Click a valid sink pin.' : 'Pick a source pin to start wiring.'}
+                        {wireStartPort ? 'Source selected — click the destination port.' : 'Click any port to start wiring.'}
                       </span>
                     ) : null}
                     {wireFeedback ? (
@@ -6916,7 +6916,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             <span>2. Click the canvas to place it</span>
                           </li>
                           <li>
-                            <span>3. Wire outputs into valid inputs</span>
+                            <span>3. Click a port on one gate, then a port on another to wire them</span>
                           </li>
                         </ol>
                         <div className="ide-design-empty-actions">
