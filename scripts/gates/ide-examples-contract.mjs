@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, runIdeGate } from './_gateHarness.mjs';
 
 await runIdeGate('IDE examples catalog and guarded open contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
@@ -10,8 +10,10 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  const examplesPanel = page.locator('[data-testid="ide-project-start-dock"]');
-  assert(await visible(examplesPanel), 'project start dock should be visible');
+  // The project start dock is inside the hidden left dock panel — it is in the DOM
+  // but not visible. Instead, confirm we're on the project landing by checking that
+  // example cards are rendered in the main workspace.
+  await page.waitForSelector('[data-testid^="ide-project-landing-example-"]', { timeout: 10000 });
 
   const landingExamples = page.locator('[data-testid^="ide-project-landing-example-"]');
   const landingCount = await landingExamples.count();
@@ -65,7 +67,8 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   }
 
-  await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
+  // After loading an example the surface is STATE B (bridge visible, not start dock).
+  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
 
   const loadedButtonClass = await targetCard.getAttribute('class');
   assert(
