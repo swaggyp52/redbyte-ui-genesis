@@ -25898,6 +25898,81 @@ button:disabled,
   max-width: 280px;
 }
 
+/* ── Waveform placeholder: empty state hero (no vectors yet) ── */
+.ide-vwp--no-vectors {
+  max-height: none;
+}
+
+.ide-vwp-empty-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.ide-vwp-empty-hero-icon {
+  font-size: 28px;
+  color: rgba(100, 160, 220, 0.45);
+  line-height: 1;
+}
+
+.ide-vwp-empty-hero-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(188, 210, 232, 0.9);
+  letter-spacing: 0.01em;
+}
+
+.ide-vwp-empty-hero-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(150, 180, 210, 0.72);
+  max-width: 320px;
+}
+
+.ide-vwp-empty-hero-signals {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ide-vwp-empty-hero-signals-label {
+  font-size: 11px;
+  color: rgba(100, 140, 180, 0.55);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ide-vwp-empty-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ide-vwp-empty-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-family: var(--rb-font-mono, 'JetBrains Mono', monospace);
+  border: 1px solid rgba(50, 80, 110, 0.5);
+  background: rgba(12, 24, 40, 0.6);
+}
+
+.ide-vwp-empty-chip--clk { color: #a78bfa; border-color: rgba(139, 92, 246, 0.3); }
+.ide-vwp-empty-chip--in  { color: #5eead4; border-color: rgba(20, 184, 166, 0.25); }
+.ide-vwp-empty-chip--out { color: #fcd34d; border-color: rgba(251, 191, 36, 0.2); }
+
 /* ════════════════════════════════════════════════════════════════
    Scenario Library Header — styled dropdown, tabs, CRUD actions
    ════════════════════════════════════════════════════════════════ */

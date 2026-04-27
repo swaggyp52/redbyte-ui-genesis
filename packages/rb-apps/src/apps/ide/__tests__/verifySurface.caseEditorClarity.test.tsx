@@ -53,7 +53,8 @@ describe('Verify first-run composition', () => {
     expect(queryByTestId('ide-verify-first-run-panel')).toBeNull();
     expect(queryByTestId('ide-verify-workspace-story')).toBeNull();
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
-    expect(getByTestId('ide-vwp-header-run-note').textContent).toContain('Author stimulus');
+    // Empty-state hero replaces the passive instruction text (no-vectors path)
+    expect(getByTestId('ide-verify-waveform-placeholder-cta')).toBeTruthy();
   });
 
   it('keeps the stimulus canvas visible when vectors exist without a hero panel', () => {
