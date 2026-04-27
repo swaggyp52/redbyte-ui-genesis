@@ -6407,6 +6407,51 @@ details[open] summary .details-arrow {
   border-style: dashed;
 }
 
+/* ── Primary launch actions strip (Slice E) ─────────────────────────────── */
+.ide-project-primary-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ide-project-primary-action {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 160px;
+  min-width: 140px;
+  padding: 14px 16px;
+  background: rgba(46,196,182,0.07);
+  border: 1px solid rgba(46,196,182,0.28);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+.ide-project-primary-action:hover {
+  border-color: var(--rb-accent, #2ec4b6);
+  background: rgba(46,196,182,0.12);
+}
+.ide-project-primary-action-label {
+  font-weight: 600;
+  font-size: 0.97rem;
+  color: var(--ide-text, #e2e8f0);
+}
+.ide-project-primary-action-sub {
+  font-size: 0.8rem;
+  color: var(--ide-text-subtle, rgba(160,190,220,0.65));
+  line-height: 1.4;
+}
+.ide-project-primary-action--build {
+  border-color: rgba(46,196,182,0.4);
+}
+.ide-project-primary-action--import {
+  border-color: rgba(99,179,237,0.3);
+}
+.ide-project-primary-action--open {
+  border-color: rgba(160,190,220,0.25);
+}
+
 /* Submission hero banner — shown in State C (verify passed + export ready) */
 .ide-project-submit-hero {
   display: flex;

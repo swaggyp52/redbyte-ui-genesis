@@ -37,19 +37,19 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
     );
 
     const buildFreshVisible = await page
-      .locator('[data-testid="ide-project-landing-fresh"]')
+      .locator('[data-testid="ide-project-build-fresh-primary"]')
       .first()
       .isVisible()
       .catch(() => false);
-    assert(buildFreshVisible, 'project landing must offer Build Fresh');
+    assert(buildFreshVisible, 'project landing must offer Build Fresh as a primary action');
 
     const importUtilityVisible = await page
-      .locator('[data-testid="ide-project-quickstart-import-link"]')
+      .locator('[data-testid="ide-project-import-primary"]')
       .first()
       .isVisible()
       .catch(() => false);
 
-    assert(importUtilityVisible, 'project landing must offer import as a secondary utility path');
+    assert(importUtilityVisible, 'project landing must offer Import HDL as a primary action');
 
     const importCardVisible = await page
       .locator('[data-testid="ide-project-landing-import"]')

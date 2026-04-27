@@ -20,11 +20,11 @@ await runIdeGate('IDE project continue CTA contract satisfied', async ({ page, b
     .catch(() => false);
 
   if (landingVisible) {
-    const buildFresh = page.locator('[data-testid="ide-project-landing-fresh"]').first();
+    const buildFresh = page.locator('[data-testid="ide-project-build-fresh-primary"]').first();
     const buildFreshText = await text(buildFresh);
     assert(
       buildFreshText.toLowerCase().includes('build fresh'),
-      `project landing must expose Build Fresh, got "${buildFreshText}"`
+      `project landing must expose Build Fresh primary action, got "${buildFreshText}"`
     );
     await buildFresh.click();
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });

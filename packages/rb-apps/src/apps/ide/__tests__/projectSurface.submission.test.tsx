@@ -240,7 +240,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
-    expect(getByTestId('ide-project-quickstart-import-link').textContent).toContain('import HDL / Vivado ZIP');
+    expect(getByTestId('ide-project-import-primary').textContent).toContain('Import HDL');
     expect(getByTestId('ide-project-landing-example-teacher-template').textContent).toContain('Teacher Template');
     expect(queryByTestId('ide-project-landing-import')).toBeNull();
   });

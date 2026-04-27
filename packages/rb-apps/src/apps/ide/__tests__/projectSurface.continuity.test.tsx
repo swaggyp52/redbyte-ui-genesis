@@ -169,13 +169,13 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
     expect(getByTestId('ide-project-landing-example-signal-tour').textContent).toContain('Load & Design ->');
-    expect(getByTestId('ide-project-landing-fresh').textContent).toContain('Open blank Design ->');
+    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build fresh');
     expect(container.querySelector('[data-testid^="ide-project-lab-card-"]')?.textContent).toContain('Start ->');
     expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
   });
 
-  it('features the security lock bridge as the recommended student path and separates the advanced reference', () => {
-    const { getByTestId } = render(
+  it('shows primary actions (Build Fresh, Import) above the fold regardless of examples list', () => {
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -220,10 +220,17 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-featured-security-lock').textContent).toContain('Load recommended starter ->');
-    expect(getByTestId('ide-project-featured-security-lock').textContent).toContain('Lab 8 Bridge');
-    expect(getByTestId('ide-project-security-lock-reference-note').textContent).toContain('labs/ece141-final-project');
-    expect(getByTestId('ide-project-start-column').textContent).toContain('Other starting points');
+    // Primary actions strip always present
+    expect(getByTestId('ide-project-primary-actions')).toBeTruthy();
+    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build fresh');
+    // ECE141 course-specific featured panel is gone
+    expect(queryByTestId('ide-project-recommended-security-lock')).toBeNull();
+    expect(queryByTestId('ide-project-featured-security-lock')).toBeNull();
+    // Security lock example appears as a regular example card, not a featured panel
+    expect(getByTestId('ide-project-landing-example-23_lab8-fsm-lock-starter-basys3')).toBeTruthy();
+    // Start column says "Examples", not "Other starting points"
+    expect(getByTestId('ide-project-start-column').textContent).toContain('Examples');
+    expect(getByTestId('ide-project-start-column').textContent).not.toContain('Other starting points');
   });
 
   it('renders blocker and mapping actions without mojibake suffixes', () => {

@@ -22,11 +22,11 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
     const modeRoot = page.locator(`[data-testid="ide-mode-${mode}"]`).first();
     if (mode === 'project') {
       // ide-project-continue-cta is rendered in the showcase panel (circuit loaded state).
-      // ide-project-landing-fresh / ide-project-landing-import are always rendered when
-      // no circuit is loaded (landing state A).
+      // ide-project-build-fresh-primary / ide-project-import-primary are always rendered when
+      // no circuit is loaded (landing state A primary-actions strip).
       const continueButton = modeRoot.locator('[data-testid="ide-project-continue-cta"]').first();
-      const autoMapButton = modeRoot.locator('[data-testid="ide-project-landing-fresh"]').first();
-      const launchpadDesignButton = modeRoot.locator('[data-testid="ide-project-landing-import"]').first();
+      const autoMapButton = modeRoot.locator('[data-testid="ide-project-build-fresh-primary"]').first();
+      const launchpadDesignButton = modeRoot.locator('[data-testid="ide-project-import-primary"]').first();
       const projectContinueVisible = await continueButton.isVisible().catch(() => false);
       const autoMapVisible = await autoMapButton.isVisible().catch(() => false);
       const launchpadVisible = await launchpadDesignButton.isVisible().catch(() => false);

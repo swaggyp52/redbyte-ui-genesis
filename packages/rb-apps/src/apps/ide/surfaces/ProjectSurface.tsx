@@ -921,50 +921,48 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   {projectKind === 'home' ? 'Project Home' : 'Start your lab'}
                 </h2>
                 <p className="ide-project-landing-sub">
-                  Start from one clear move: reopen work, load a starter, or open a blank design and follow {STUDENT_WORKFLOW_SUMMARY}.
+                  Build fresh, import existing HDL, or start from an example. The path is {STUDENT_WORKFLOW_SUMMARY}.
                 </p>
               </div>
-              <IdeCallout tone="info" title="Workflow spine" testId="ide-project-workflow-spine">
-                <p className="ide-copy" style={{ margin: 0 }}>
-                  <strong>Project</strong> owns your entry and stage summary. The path is{' '}
-                  <strong>Design → Verify → Map Pins → Export → Hardware</strong>. For{' '}
-                  <strong>multi-file Vivado finals</strong> (packages, FSM, seven-seg), start in{' '}
-                  <strong>Import</strong> — companion RTL is preserved with the project; the canvas shows supported
-                  structural reconstruction; full simulation often stays in Vivado until export catches up.
-                </p>
-              </IdeCallout>
               <div className="ide-project-start-summary" data-testid="ide-project-start-summary">
                 <span className="ide-project-start-summary-chip">No circuit loaded</span>
                 <span className="ide-project-start-summary-chip">Next up: Design</span>
                 <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
               </div>
-              {featuredSecurityStarter && (
-                <SurfacePanel className="ide-project-quickstart" testId="ide-project-recommended-security-lock">
-                  <p className="ide-project-quickstart-title">
-                    Recommended for the ECE141 security lock
-                  </p>
-                  <p className="ide-project-quickstart-sub">
-                    Start here for the Digital Security Lock project. This Lab 8 bridge keeps the manual ENTER clock and D flip-flop feel, but leaves the logic for you to build.
-                  </p>
-                  <div className="ide-project-landing-options">
-                    <button
-                      type="button"
-                      className="ide-project-landing-option"
-                      onClick={() => { onOpenExample(featuredSecurityStarter.id); onOpenDesign(); }}
-                      data-testid="ide-project-featured-security-lock"
-                    >
-                      <span className="ide-project-landing-option-eyebrow">ECE141 final project</span>
-                      <span className="ide-project-landing-option-title">{featuredSecurityStarter.name}</span>
-                      <span className="ide-project-landing-option-sub">Lab 8 bridge starter</span>
-                      <span className="ide-project-landing-option-learn">{featuredSecurityStarter.summary}</span>
-                      <span className="ide-project-landing-option-cta">Load recommended starter -&gt;</span>
-                    </button>
-                  </div>
-                  <p className="ide-copy" style={{ margin: 0, fontSize: 11 }} data-testid="ide-project-security-lock-reference-note">
-                    Advanced reference only: the fuller package stays separate in <code>{SECURITY_LOCK_REFERENCE_PATH}</code>. Start from this bridge unless you are reviewing the instructor/reference package.
-                  </p>
-                </SurfacePanel>
-              )}
+              {/* Primary launch actions */}
+              <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
+                <button
+                  type="button"
+                  className="ide-project-primary-action ide-project-primary-action--build"
+                  onClick={onStartBlankProject ?? onOpenDesign}
+                  data-testid="ide-project-build-fresh-primary"
+                >
+                  <span className="ide-project-primary-action-label">Build fresh</span>
+                  <span className="ide-project-primary-action-sub">Start from an empty canvas</span>
+                </button>
+                {onOpenImport && (
+                  <button
+                    type="button"
+                    className="ide-project-primary-action ide-project-primary-action--import"
+                    onClick={onOpenImport}
+                    data-testid="ide-project-import-primary"
+                  >
+                    <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
+                    <span className="ide-project-primary-action-sub">Bring in existing RTL or Vivado project</span>
+                  </button>
+                )}
+                {hasRecentEntryPoints && onOpenSavedProjects && (
+                  <button
+                    type="button"
+                    className="ide-project-primary-action ide-project-primary-action--open"
+                    onClick={onOpenSavedProjects}
+                    data-testid="ide-project-open-existing-primary"
+                  >
+                    <span className="ide-project-primary-action-label">Open saved project</span>
+                    <span className="ide-project-primary-action-sub">Resume previous work</span>
+                  </button>
+                )}
+              </div>
               <div
                 className={`ide-project-start-grid${hasRecentEntryPoints ? '' : ' is-launch-only'}`}
                 data-testid="ide-project-start-grid"
@@ -1014,13 +1012,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 ) : null}
                 <div className="ide-project-start-column" data-testid="ide-project-start-column">
                   <div className="ide-project-start-column-head">
-                    <p className="ide-project-recent-title">
-                      {featuredSecurityStarter ? 'Other starting points' : 'Start the project'}
-                    </p>
+                    <p className="ide-project-recent-title">Examples</p>
                     <p className="ide-project-recent-sub">
-                      {featuredSecurityStarter
-                        ? 'The Lab 8 bridge above is the recommended student path for the security lock. These are secondary starting points.'
-                        : 'Choose one primary starting point for this workspace.'}
+                      Worked designs — load one as a starting point and modify to your spec.
                     </p>
                   </div>
                   <div className="ide-project-landing-options">
@@ -1044,32 +1038,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                         </button>
                       );
                     })}
-                    <button
-                      type="button"
-                      className="ide-project-landing-option ide-project-landing-option--fresh"
-                      onClick={onStartBlankProject ?? onOpenDesign}
-                      data-testid="ide-project-landing-fresh"
-                    >
-                      <span className="ide-project-landing-option-eyebrow">Empty canvas</span>
-                      <span className="ide-project-landing-option-title">Build Fresh</span>
-                      <span className="ide-project-landing-option-sub">Start with gates and wires from scratch</span>
-                      <span className="ide-project-landing-option-cta">Open blank Design -&gt;</span>
-                    </button>
                   </div>
                 </div>
               </div>
-              <p className="ide-project-start-import-note" data-testid="ide-project-start-import-note">
-                Need to reuse prior HDL?{' '}
-                <button
-                  type="button"
-                  className="ide-project-quickstart-import-link"
-                  onClick={onOpenImport}
-                  data-testid="ide-project-quickstart-import-link"
-                >
-                  import HDL / Vivado ZIP
-                </button>
-                .
-              </p>
             </section>
 
             {/* Lab Starters Gallery */}
