@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product-spine + app-usability hardening** — Slice A done (Project Bridge jargon scrub: removed "PROJECT BRIDGE" label, determinism hash, Simulation top, Target part, Scenario authority from student view; status bar hash removed). Next slice: **(b) Verify pre-run empty state** — right waveform panel is blank (884px dead space) before first run, layout reads as broken. Then (c) Verify post-run command bar density — 15+ data items crammed into 47px strip.
+1. **Product-spine + app-usability hardening** — Slices A+B+C+D done (D: Design canvas wiring discoverability — HUD hints now explain port-click-to-wire, blank canvas step 3 rewritten, commit `90d49f94`). Next slice: **(e) Project surface as onboarding/workflow spine** — Project surface should orient students to the workflow and show live status for each stage.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,11 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Project Bridge vocabulary scrub — removed developer jargon from student view | pending |
+| ✓ Done | Design canvas wiring discoverability — HUD hints, blank canvas step 3 rewritten for port-click-to-wire model | `90d49f94` |
+| ✓ Done | VCB meta line density — removed redundant mode/title/timing; evidence shown on all post-run states | `54aed13c` |
+| ✓ Done | Verify pre-run waveform placeholder fill — `max-height: none` clears 645px dead space | `7aa4db27` |
+| ✓ Done | Project Bridge vocabulary scrub — removed developer jargon from student view | `4480ad77` |
 | ✓ Done | Ops layer — `rb:session:*` + `rb:doc:validate` + `rb:bench:status` scripts | pending |
-| ✓ Done | Claude Code hooks — `SessionStart` context injection, `Stop` reminder, `PostToolUse` doc guard | pending |
-| ✓ Done | Control Tower v1 — ACTIVE_WORK cockpit + canonical doc frontmatter + repo OS reset | `c7500702` |
-| ✓ Done | One-click local startup hardening (`Start-RedByte.ps1` + `run.bat` + `pnpm start`) | `408d4846` |
 
 ---
 
