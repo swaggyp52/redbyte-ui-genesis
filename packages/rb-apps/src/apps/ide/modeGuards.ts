@@ -33,6 +33,7 @@ export const MODE_MUTATION_ALLOWLIST: Readonly<Record<IDEMode, readonly ProjectF
   project: ['name', 'description', 'meta', 'layout'],
   design: ['circuit', 'layout', 'submodules', 'macros'],
   verify: ['vectors', 'traceMetadata', 'recorder', 'probes', 'oscilloscope'],
+  hardware: ['ioMapping'],
   export: ['hdl', 'fpga', 'ioMapping', 'meta'],
   import: ['name', 'description', 'circuit', 'hdl', 'fpga', 'ioMapping', 'vectors', 'submodules', 'macros', 'layout', 'meta', 'probes', 'oscilloscope', 'recorder', 'traceMetadata'],
 };

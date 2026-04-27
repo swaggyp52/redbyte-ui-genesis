@@ -421,9 +421,9 @@ const PALETTE_ITEMS: PaletteItem[] = [
     title: 'Clock',
     category: 'Sequential',
     sequentialTier: 'timing',
-    subtitle: 'Free-running or board-mapped timing source for sequential logic.',
+    subtitle: 'Simulation timing source for sequential logic. In Map Pins, assign this to CLK100MHZ (the Basys3 100 MHz board clock) to drive real hardware.',
     glyph: 'CLK',
-    searchTerms: ['clock', 'pulse', 'timing', 'oscillator'],
+    searchTerms: ['clock', 'pulse', 'timing', 'oscillator', 'CLK100MHZ'],
   },
   {
     type: 'DFlipFlop',
@@ -439,7 +439,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
     type: 'INPUT',
     title: 'Input Pin',
     category: 'IO',
-    subtitle: 'Student-controlled source pin for entering signals.',
+    subtitle: 'Generic named input — give it any signal name. To start from a specific Basys3 switch, button, or clock, use Board Resources instead.',
     glyph: 'IN',
     searchTerms: ['input', 'pin', 'source', 'io', 'i/o'],
   },
@@ -447,7 +447,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
     type: 'OUTPUT',
     title: 'Output Pin',
     category: 'IO',
-    subtitle: 'Observed sink pin for circuit outputs and labels.',
+    subtitle: 'Generic named output — give it any signal name. To start from a specific Basys3 LED or display segment, use Board Resources instead.',
     glyph: 'OUT',
     searchTerms: ['output', 'pin', 'sink', 'probe', 'io', 'i/o'],
   },
@@ -509,6 +509,18 @@ const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
 
 const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
   {
+    id: 'board',
+    title: 'Board Resources',
+    description:
+      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Map Pins.',
+  },
+  {
+    id: 'io',
+    title: 'Inputs & Outputs',
+    description:
+      'Generic pins for abstract or board-agnostic designs. Name them anything you like. Use Board Resources (above) to start from specific Basys3 hardware signals instead.',
+  },
+  {
     id: 'logic',
     title: 'Logic Gates',
     description: 'Core combinational building blocks for the main circuit path.',
@@ -520,19 +532,9 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
       'Native registers and state banks first, then timing sources — legacy DFF/TFF sit in clearly marked tiers.',
   },
   {
-    id: 'io',
-    title: 'Inputs & Outputs',
-    description: 'Student-facing pins for driving and observing circuit behavior.',
-  },
-  {
     id: 'reusable',
     title: 'Reusable Blocks',
     description: 'Built-in helpers, saved macros, and custom parts you can place quickly.',
-  },
-  {
-    id: 'board',
-    title: 'Board Resources',
-    description: 'Basys3 inventory for mapped hardware work once the circuit path is in place.',
   },
 ];
 
@@ -633,32 +635,32 @@ function groupBoardPaletteItems(
   return [
     {
       id: 'switches',
-      title: 'Switches',
-      description: 'Toggleable board inputs for quick manual testing.',
+      title: 'Switches (SW0–SW15)',
+      description: 'Adds a pre-named input pin. Assign its board mapping in Map Pins.',
       entries: inputs.filter((entry) => entry.kind === 'switch'),
     },
     {
       id: 'buttons',
-      title: 'Buttons',
-      description: 'Momentary push-button inputs.',
+      title: 'Buttons (BTNC/U/L/R/D)',
+      description: 'Adds a pre-named button input. Assign its board mapping in Map Pins.',
       entries: inputs.filter((entry) => entry.kind === 'button'),
     },
     {
       id: 'system',
       title: 'Clock & Reset',
-      description: 'Dedicated board timing and reset lines.',
+      description: 'CLK100MHZ is the Basys3 100 MHz system clock. Assign it to your Clock component in Map Pins.',
       entries: inputs.filter((entry) => entry.kind === 'clock' || entry.kind === 'reset'),
     },
     {
       id: 'leds',
-      title: 'LEDs',
-      description: 'Single-bit board outputs.',
+      title: 'LEDs (LD0–LD15)',
+      description: 'Adds a pre-named output pin. Assign its board mapping in Map Pins.',
       entries: outputs.filter((entry) => entry.kind === 'led'),
     },
     {
       id: 'display',
-      title: 'Seven Segment',
-      description: 'Display segments, digit enables, and decimal point.',
+      title: 'Seven Segment Display',
+      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Map Pins.',
       entries: outputs.filter(
         (entry) => entry.kind === 'segment' || entry.kind === 'anode' || entry.kind === 'dp'
       ),
@@ -4221,7 +4223,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, []);
 
   const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph'>,
+    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
     options?: {
       badge?: string;
       className?: string;
@@ -4256,7 +4258,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </button>
     );
   };
-  const [logicPaletteSection, boardPaletteSection, sequentialPaletteSection, ioPaletteSection, reusablePaletteSection] =
+  const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
     PALETTE_SECTION_ORDER;
   const renderSelectionIdentityCard = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -5553,6 +5555,102 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
 
             <div className="ide-design-palette-sections">
+              {/* Board Resources — first: primary destination for board-aware work */}
+              {filteredBoardGroups.length > 0 ? (
+                <section
+                  className="ide-palette-section ide-palette-section--board"
+                  data-testid="ide-design-palette-section-board"
+                  data-collapsed={isBoardSectionCollapsed ? 'true' : 'false'}
+                >
+                  <header className="ide-palette-section-header">
+                    <div className="ide-palette-section-title-row">
+                      <h4>{boardPaletteSection.title}</h4>
+                    </div>
+                    <div className="ide-palette-section-meta">
+                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                      <button
+                        type="button"
+                        className="ide-palette-section-toggle"
+                        data-testid="ide-design-palette-toggle-board"
+                        aria-expanded={isBoardSectionCollapsed ? 'false' : 'true'}
+                        onClick={() => toggleDockSection('board')}
+                      >
+                        {isBoardSectionCollapsed ? 'Show' : 'Hide'}
+                      </button>
+                    </div>
+                  </header>
+                  {!isBoardSectionCollapsed ? (
+                    <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
+                      {filteredBoardGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="ide-palette-board-group"
+                          data-testid={`ide-design-board-group-${group.id}`}
+                        >
+                          <div className="ide-palette-subsection-header">
+                            <div>
+                              <h5>{group.title}</h5>
+                              <p>{group.description}</p>
+                            </div>
+                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
+                          </div>
+                          <div className="ide-palette-board-grid">
+                            {group.entries.map((entry) => {
+                              const isPlaced = isBoardAliasPlaced(entry);
+                              const isPending =
+                                pendingPlacement?.kind === 'board-io' &&
+                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
+                                pendingPlacement.boardIoEntry?.direction === entry.direction;
+                              const testId =
+                                entry.direction === 'in'
+                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
+                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
+                              return (
+                                <button
+                                  key={entry.alias}
+                                  className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
+                                  type="button"
+                                  onClick={() => beginBoardIoPlacement(entry)}
+                                  data-testid={testId}
+                                  disabled={isPlaced}
+                                  title={
+                                    isPlaced
+                                      ? `${entry.alias} already placed`
+                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
+                                  }
+                                  aria-pressed={isPending}
+                                >
+                                  {entry.alias}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {/* Inputs & Outputs — second: generic pins for abstract designs */}
+              {filteredPaletteByCategory.io.length > 0 ? (
+                <section className="ide-palette-section" data-testid="ide-design-palette-section-io">
+                  <header className="ide-palette-section-header">
+                    <div className="ide-palette-section-title-row">
+                      <h4>{ioPaletteSection.title}</h4>
+                      <span className="ide-palette-section-count">
+                        {filteredPaletteByCategory.io.length}
+                      </span>
+                    </div>
+                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
+                  </header>
+                  <div className="ide-palette-card-list">
+                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
+                  </div>
+                </section>
+              ) : null}
+
+              {/* Logic Gates */}
               {filteredPaletteByCategory.logic.length > 0 ? (
                 <section
                   className="ide-palette-section"
@@ -5573,6 +5671,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               ) : null}
 
+              {/* Sequential & Timing */}
               {filteredPaletteByCategory.sequential.length > 0 ? (
                 <section
                   className="ide-palette-section"
@@ -5612,23 +5711,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </section>
               ) : null}
 
-              {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section" data-testid="ide-design-palette-section-io">
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{ioPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.io.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
+              {/* Reusable Blocks — macros, custom parts, built-in helpers */}
               {filteredPaletteByCategory.components.length > 0 ||
               filteredCustomComponents.length > 0 ||
               filteredMacros.length > 0 ? (
@@ -5712,82 +5795,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onSelectMacro={handleSelectMacro}
                     onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
                   />
-                </section>
-              ) : null}
-
-              {filteredBoardGroups.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--board"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed={isBoardSectionCollapsed ? 'true' : 'false'}
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
-                      <button
-                        type="button"
-                        className="ide-palette-section-toggle"
-                        data-testid="ide-design-palette-toggle-board"
-                        aria-expanded={isBoardSectionCollapsed ? 'false' : 'true'}
-                        onClick={() => toggleDockSection('board')}
-                      >
-                        {isBoardSectionCollapsed ? 'Show' : 'Hide'}
-                      </button>
-                    </div>
-                  </header>
-                  {!isBoardSectionCollapsed ? (
-                    <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
-                      {filteredBoardGroups.map((group) => (
-                        <div
-                          key={group.id}
-                          className="ide-palette-board-group"
-                          data-testid={`ide-design-board-group-${group.id}`}
-                        >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
-                          </div>
-                          <div className="ide-palette-board-grid">
-                            {group.entries.map((entry) => {
-                              const isPlaced = isBoardAliasPlaced(entry);
-                              const isPending =
-                                pendingPlacement?.kind === 'board-io' &&
-                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                                pendingPlacement.boardIoEntry?.direction === entry.direction;
-                              const testId =
-                                entry.direction === 'in'
-                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                              return (
-                                <button
-                                  key={entry.alias}
-                                  className={`ide-palette-chip ide-palette-chip-board${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                  type="button"
-                                  onClick={() => beginBoardIoPlacement(entry)}
-                                  data-testid={testId}
-                                  disabled={isPlaced}
-                                  title={
-                                    isPlaced
-                                      ? `${entry.alias} already placed`
-                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
-                                  }
-                                  aria-pressed={isPending}
-                                >
-                                  {entry.alias}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
                 </section>
               ) : null}
 

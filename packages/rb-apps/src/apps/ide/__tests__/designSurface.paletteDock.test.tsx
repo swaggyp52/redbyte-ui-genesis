@@ -59,6 +59,8 @@ const FIXTURE_MACRO: MacroDefinition = {
       },
     ],
     connections: [],
+    originX: 0,
+    originY: 0,
   },
 };
 
@@ -66,6 +68,7 @@ function makeRuntimeSim(): RuntimeSimState {
   return {
     tick: 3,
     running: false,
+    stepMode: false,
     lastAction: 'step',
     speedHz: 10,
     irHash: 'ir-hash',
@@ -168,7 +171,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface palette dock redesign', () => {
-  it('renders builder-first sections and keeps reusable blocks inside the main palette', () => {
+  it('renders board-first sections and keeps reusable blocks inside the main palette', () => {
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
       customComponentTypes: [
@@ -185,12 +188,14 @@ describe('DesignSurface palette dock redesign', () => {
       palette.querySelectorAll<HTMLElement>('[data-testid^="ide-design-palette-section-"]')
     ).map((element) => element.dataset.testid ?? element.getAttribute('data-testid'));
 
+    // Board Resources is first — the primary destination for board-aware work.
+    // IO pins follow, then gates, sequential, reusable.
     expect(sectionOrder).toEqual([
+      'ide-design-palette-section-board',
+      'ide-design-palette-section-io',
       'ide-design-palette-section-logic',
       'ide-design-palette-section-sequential',
-      'ide-design-palette-section-io',
       'ide-design-palette-section-reusable',
-      'ide-design-palette-section-board',
     ]);
 
     expect(within(palette).getByTestId('ide-macro-library-panel')).toBeTruthy();
