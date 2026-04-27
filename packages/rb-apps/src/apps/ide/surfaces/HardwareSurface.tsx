@@ -1007,6 +1007,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hasRequiredMappingRows = mappingRows.some((row) => row.required);
   const hasNoBoundaryRows = !hasBoundaryRows || !hasRequiredMappingRows;
   const unresolvedRequiredCount = unmappedRequiredPins.length + missingRequiredPortsFromExport;
+  const totalRequiredCount = useMemo(
+    () => mappingRows.filter((row) => row.required).length,
+    [mappingRows]
+  );
+  const mappedRequiredCount = totalRequiredCount - unmappedRequiredPins.length;
   const mappingReady = hasRequiredMappingRows && hasClockMapping && hasOutputMapping && unresolvedRequiredCount === 0;
   const hasOtherBlockingIssue = useMemo(
     () =>
@@ -1983,8 +1988,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? hasNoBoundaryRows
         ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
         : selectedMappingRow
-          ? `${selectedMappingLabel} is selected. Click a highlighted valid board control to save the binding.`
-          : 'Select a signal row, then click the matching Basys3 board control. The row shows the board control and physical package pin.'
+          ? `${selectedMappingLabel} is selected. Click a highlighted Basys3 control below to assign the board pin.`
+          : 'Pin mapping connects each circuit signal to a physical Basys3 board control. Select a signal row, then click the matching control on the board diagram to assign it.'
       : nextActionHero.body;
   const hardwareCommandTitle =
     hwMode === 'map'
@@ -2000,8 +2005,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hardwareCommandMeta = hwMode === 'map'
     ? (
       <>
-        <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
-          {hasNoBoundaryRows ? 'DESIGN I/O NEEDED' : mappingReady ? 'MAPPING COMPLETE' : `${unresolvedRequiredCount} MISSING`}
+        <IdeStatusPill
+          tone={mappingReady ? 'ok' : 'warn'}
+          testId="ide-hardware-mapping-progress"
+        >
+          {hasNoBoundaryRows
+            ? 'DESIGN I/O NEEDED'
+            : mappingReady
+              ? 'MAPPING COMPLETE'
+              : `${mappedRequiredCount} / ${totalRequiredCount} REQUIRED MAPPED`}
         </IdeStatusPill>
         <span className="ide-surface-command-chip">Basys3</span>
         <span className={`ide-surface-command-chip${mappingReady ? ' is-ok' : ''}`}>
