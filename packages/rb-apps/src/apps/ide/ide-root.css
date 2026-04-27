@@ -6407,49 +6407,86 @@ details[open] summary .details-arrow {
   border-style: dashed;
 }
 
-/* ── Primary launch actions strip (Slice E) ─────────────────────────────── */
+/* ── Primary launch actions hero (Slice K) ──────────────────────────────── */
 .ide-project-primary-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin: 6px 0 4px;
 }
 .ide-project-primary-action {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  flex: 1 1 160px;
-  min-width: 140px;
-  padding: 14px 16px;
-  background: rgba(46,196,182,0.07);
-  border: 1px solid rgba(46,196,182,0.28);
-  border-radius: 6px;
+  gap: 5px;
+  padding: 20px 18px 18px;
+  background: rgba(46,196,182,0.06);
+  border: 1px solid rgba(46,196,182,0.22);
+  border-radius: 8px;
   cursor: pointer;
   text-align: left;
   color: inherit;
-  transition: border-color 0.12s, background 0.12s;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
-.ide-project-primary-action:hover {
-  border-color: var(--rb-accent, #2ec4b6);
-  background: rgba(46,196,182,0.12);
+.ide-project-primary-action:focus-visible {
+  outline: 2px solid rgba(46,196,182,0.6);
+  outline-offset: 2px;
+}
+.ide-project-primary-action-icon {
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 4px;
 }
 .ide-project-primary-action-label {
   font-weight: 600;
-  font-size: 0.97rem;
+  font-size: 1rem;
+  line-height: 1.2;
   color: var(--ide-text, #e2e8f0);
 }
 .ide-project-primary-action-sub {
   font-size: 0.8rem;
   color: var(--ide-text-subtle, rgba(160,190,220,0.65));
-  line-height: 1.4;
+  line-height: 1.45;
+  margin-top: 2px;
 }
+/* Build Fresh — teal accent */
 .ide-project-primary-action--build {
-  border-color: rgba(46,196,182,0.4);
+  border-color: rgba(46,196,182,0.45);
+  background: rgba(46,196,182,0.07);
 }
+.ide-project-primary-action--build .ide-project-primary-action-icon {
+  color: rgba(46,196,182,0.82);
+}
+.ide-project-primary-action--build:hover {
+  border-color: rgba(46,196,182,0.72);
+  background: rgba(46,196,182,0.12);
+  box-shadow: 0 0 0 1px rgba(46,196,182,0.18), 0 2px 14px rgba(0,0,0,0.28);
+}
+/* Import — blue accent */
 .ide-project-primary-action--import {
-  border-color: rgba(99,179,237,0.3);
+  border-color: rgba(99,179,237,0.38);
+  background: rgba(99,179,237,0.05);
 }
+.ide-project-primary-action--import .ide-project-primary-action-icon {
+  color: rgba(99,179,237,0.78);
+}
+.ide-project-primary-action--import:hover {
+  border-color: rgba(99,179,237,0.65);
+  background: rgba(99,179,237,0.10);
+  box-shadow: 0 0 0 1px rgba(99,179,237,0.18), 0 2px 14px rgba(0,0,0,0.28);
+}
+/* Open — muted slate accent */
 .ide-project-primary-action--open {
-  border-color: rgba(160,190,220,0.25);
+  border-color: rgba(160,190,220,0.3);
+  background: rgba(160,190,220,0.04);
+}
+.ide-project-primary-action--open .ide-project-primary-action-icon {
+  color: rgba(160,190,220,0.65);
+}
+.ide-project-primary-action--open:hover {
+  border-color: rgba(160,190,220,0.55);
+  background: rgba(160,190,220,0.09);
+  box-shadow: 0 0 0 1px rgba(160,190,220,0.18), 0 2px 14px rgba(0,0,0,0.28);
 }
 
 /* Submission hero banner — shown in State C (verify passed + export ready) */

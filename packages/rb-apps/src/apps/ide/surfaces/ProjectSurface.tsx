@@ -937,6 +937,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   onClick={onStartBlankProject ?? onOpenDesign}
                   data-testid="ide-project-build-fresh-primary"
                 >
+                  <span className="ide-project-primary-action-icon" aria-hidden="true">◻</span>
                   <span className="ide-project-primary-action-label">Build fresh</span>
                   <span className="ide-project-primary-action-sub">Start from an empty canvas</span>
                 </button>
@@ -947,6 +948,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     onClick={onOpenImport}
                     data-testid="ide-project-import-primary"
                   >
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">↓</span>
                     <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
                     <span className="ide-project-primary-action-sub">Bring in existing RTL or Vivado project</span>
                   </button>
@@ -958,6 +960,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     onClick={onOpenSavedProjects}
                     data-testid="ide-project-open-existing-primary"
                   >
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">↩</span>
                     <span className="ide-project-primary-action-label">Open saved project</span>
                     <span className="ide-project-primary-action-sub">Resume previous work</span>
                   </button>
