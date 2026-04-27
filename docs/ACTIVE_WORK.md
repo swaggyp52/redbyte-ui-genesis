@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product-spine + app-usability hardening** — Slices A–J done (CI fixed, Design palette reordered, Map Pins clarity, Verify empty-state hero). Next: **(K) Project surface primary-actions as 3-card visual hero** — the primary-actions strip exists but can be more visually prominent.
+1. **Product-spine + app-usability hardening** — Slices A–K done (CI fixed, Design palette reordered, Map Pins clarity, Verify empty-state hero, Project 3-card hero). Next: **(L) Full-surface friction sweep** — walk all 12 flows in the live app, root-cause highest-severity state/render-truth bugs, execute the strongest fix.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,11 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | CI fixes: Classroom Truth Gates, Nightly FPGA port 4242, P1D pnpm PATH | `36bd4ede` |
 | ✓ Done | Slice G: Design palette Board Resources first; modeGuards hardware key; clock/IO copy | `39221826` |
 | ✓ Done | Slice H: palette fills dock width (no overflow at compact breakpoint) | `45ebbaea` |
 | ✓ Done | Slice I: Verify waveform placeholder empty-state hero — "No test vectors yet" | `435fd31d` |
 | ✓ Done | Slice J: Map Pins "X / Y REQUIRED MAPPED" progress + product-model description | `cfe55bb7` |
+| ✓ Done | Slice K: Project primary-actions — 3-card visual hero (grid layout, icons, per-type accent) | `4502ba2b` |
 
 ---
 
