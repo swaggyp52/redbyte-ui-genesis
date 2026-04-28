@@ -1558,14 +1558,22 @@
 }
 
 .ide-design-toolbar {
+  /* Slice N1: flex-wrap:wrap (was nowrap) so the rightmost utility group
+     (View toggle / Tools button) drops onto a second row instead of being
+     clipped under the dock seam on narrow viewports. The toolbar grows
+     vertically as needed; min-height keeps it visually consistent on wide
+     viewports where everything fits in one row. */
   min-height: 36px;
-  padding: 0 var(--ide-space-3, 12px);
+  padding: 4px var(--ide-space-3, 12px);
   display: flex;
   align-items: center;
   gap: var(--ide-space-2, 8px);
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  row-gap: 4px;
   border-bottom: 1px solid color-mix(in srgb, var(--rb-signal, #5af) 14%, transparent);
   background: rgba(6, 16, 24, 0.65);
+  /* overflow-x:auto kept as a per-group fallback in case a single element
+     is wider than the available width (e.g. very long status text). */
   overflow-x: auto;
   flex-shrink: 0;
 }
@@ -7342,7 +7350,11 @@ details[open] summary .details-arrow {
   opacity: 0.65;
 }
 
-/* ── Phase 19A: Status strip — status-first layout ── */
+/* ── Phase 19A: Status strip — status-first layout ──
+   Slice N1 — chrome rebuild: flex-wrap:wrap (was nowrap) + overflow:visible
+   (was hidden) so the rightmost chips drop onto a second row instead of
+   being clipped under the right rail seam. row-gap added so wrapped rows
+   don't touch the row above. */
 .ide-verify-status-strip {
   display: flex;
   align-items: center;
@@ -7351,8 +7363,8 @@ details[open] summary .details-arrow {
   border-bottom: 1px solid rgba(255,255,255,0.06);
   flex-shrink: 0;
   min-height: 36px;
-  flex-wrap: nowrap;
-  overflow: hidden;
+  flex-wrap: wrap;
+  row-gap: 4px;
 }
 .ide-verify-strip-sep {
   margin: 0 6px;
@@ -20745,7 +20757,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-radius: 0 !important;
 }
 
-/* Workstation run bar (first-run state compact header) — single-line, max 44px */
+/* Workstation run bar (first-run state compact header).
+   Slice N1 — chrome rebuild: flex-wrap:wrap (was nowrap), max-height removed
+   and overflow:hidden removed so contents wrap to a second row on narrow
+   viewports instead of being clipped. min-height keeps the bar visually
+   consistent on wide viewports where everything fits in one row. */
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar {
   flex: 0 0 auto !important;
   display: flex !important;
@@ -20754,9 +20770,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 5px 10px !important;
   background: rgba(3, 8, 18, 0.7) !important;
   border-bottom: 1px solid rgba(48, 77, 107, 0.4) !important;
-  flex-wrap: nowrap !important;
-  max-height: 44px !important;
-  overflow: hidden !important;
+  flex-wrap: wrap !important;
+  row-gap: 4px !important;
   min-height: 36px !important;
 }
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workstation-run-bar .ide-verify-empty-message {
@@ -27827,7 +27842,13 @@ button:disabled,
   margin-top: 0;
   border: 1px solid rgba(46, 77, 106, 0.3);
   border-radius: 16px;
-  overflow: hidden;
+  /* Slice N1 — chrome rebuild:
+     Replaced overflow:hidden with clip-path so the rounded corners stay crisp,
+     but the inner .ide-design-toolbar's overflow-x:auto can render its scroll
+     affordance and the toolbar's right edge isn't clipped under the dock seam.
+     min-height:0 lets the flex column shrink correctly inside the surface stack. */
+  clip-path: inset(0 round 16px);
+  min-height: 0;
 }
 
 [data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
