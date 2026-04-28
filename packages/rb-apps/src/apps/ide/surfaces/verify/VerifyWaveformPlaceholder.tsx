@@ -48,7 +48,8 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
           <h4 className="ide-vwp-empty-hero-title">No test vectors yet</h4>
           <p className="ide-vwp-empty-hero-desc">
             Build your first stimulus in the pane on the left, or use{' '}
-            <strong>Seed stimulus</strong> in the toolbar above to auto-generate a starter set.
+            <strong>{isSequential ? 'Generate starter stimulus' : 'Seed stimulus'}</strong>{' '}
+            in the toolbar above to auto-generate a starter set.
             The waveform appears here after the first run.
           </p>
           <div className="ide-vwp-empty-hero-signals">

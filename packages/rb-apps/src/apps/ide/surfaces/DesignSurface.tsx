@@ -418,12 +418,13 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
   {
     type: 'Clock',
-    title: 'Clock',
+    title: 'Sim Clock',
     category: 'Sequential',
     sequentialTier: 'timing',
-    subtitle: 'Simulation timing source for sequential logic. In Map Pins, assign this to CLK100MHZ (the Basys3 100 MHz board clock) to drive real hardware.',
+    paletteBadge: 'Sim Only',
+    subtitle: 'Browser oscillator for simulation-only designs. For FPGA export, use CLK100MHZ from Board Resources — that is the real Basys3 100 MHz board clock.',
     glyph: 'CLK',
-    searchTerms: ['clock', 'pulse', 'timing', 'oscillator', 'CLK100MHZ'],
+    searchTerms: ['clock', 'pulse', 'timing', 'oscillator', 'simulation', 'sim'],
   },
   {
     type: 'DFlipFlop',
@@ -466,17 +467,19 @@ const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
     type: 'RSLatch',
     title: 'RS Latch',
     category: 'Components',
-    subtitle: 'Simple bistable latch with set and reset control.',
+    paletteBadge: '⚠ Latch',
+    subtitle: 'Bistable latch with set/reset. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
     glyph: 'RS',
-    searchTerms: ['latch', 'memory', 'state'],
+    searchTerms: ['latch', 'memory', 'state', 'bistable'],
   },
   {
     type: 'DLatch',
     title: 'D Latch',
     category: 'Components',
-    subtitle: 'Level-sensitive latch for gated storage.',
+    paletteBadge: '⚠ Latch',
+    subtitle: 'Level-sensitive latch with enable. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
     glyph: 'DL',
-    searchTerms: ['latch', 'memory', 'state'],
+    searchTerms: ['latch', 'memory', 'state', 'gated', 'level'],
   },
   {
     type: 'JKFlipFlop',
@@ -1033,7 +1036,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const [paletteQuery, setPaletteQuery] = useState('');
   const [collapsedDockSections, setCollapsedDockSections] = useState<ReadonlySet<DesignDockSectionId>>(
-    () => new Set<DesignDockSectionId>(['board', 'live-inputs'])
+    // Board Resources start expanded — students need board parts (SW, LD, CLK100MHZ) immediately visible.
+    // Live Inputs stays collapsed — it is a runtime/debug tool, not a primary authoring surface.
+    () => new Set<DesignDockSectionId>(['live-inputs'])
   );
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
