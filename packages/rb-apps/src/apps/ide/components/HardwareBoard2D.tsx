@@ -215,7 +215,11 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             : isOn
               ? 'ledLensOn'
               : 'ledLensOff';
-        const opacity = isMapped ? 1 : 0.28;
+        // Slice N4 — chrome rebuild: unmapped pins render at full opacity so the
+        // board reads as "available, awaiting binding" instead of "greyed out, broken."
+        // The existing `ledLensUnmapped` gradient already provides visual differentiation
+        // from mapped/on states, so a subtle desaturation suffices instead of fading.
+        const opacity = isMapped ? 1 : 0.78;
 
         return (
           <g key={`ld-${idx}`} opacity={opacity}>
@@ -421,7 +425,7 @@ export const HardwareBoard2D: React.FC<HardwareBoard2DProps> = ({
             data-testid={`ide-hw-sw-${idx}`}
             data-active={isActiveSw ? 'true' : undefined}
             className={swGroupClassName}
-            opacity={isMapped ? 1 : 0.32}
+            opacity={isMapped ? 1 : 0.82}
           >
             {/* Expanded switch hitbox (invisible, pointer-catching) */}
             <rect

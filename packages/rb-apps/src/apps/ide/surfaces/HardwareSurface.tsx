@@ -397,6 +397,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
   const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
+
+  // Slice N4 — chrome rebuild: Esc returns the user to Map Pins from any
+  // sub-mode (bringup / proof / live). Without this, students who entered a
+  // sub-mode by accident reported being unable to escape unless they
+  // navigated away from the surface and came back.
+  useEffect(() => {
+    if (hwMode === 'map') return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      // Don't steal Escape from inputs, dialogs, or component-local handlers.
+      // Guard against non-Element targets (window, document) which don't expose .closest().
+      const target = event.target;
+      if (target && target instanceof Element) {
+        if (target.closest('input, textarea, select, [role="dialog"], [contenteditable="true"]')) {
+          return;
+        }
+      }
+      setHwMode('map');
+      setSelectedMappingRowId(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [hwMode]);
   const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string>('CLK100MHZ');
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
@@ -2187,6 +2210,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             }
           />
         </div>
+        {/* Slice N4 — chrome rebuild: always-visible exit affordance from any
+            sub-mode back to Map Pins. Previous design relied on the mode-tabs
+            below the stage-rail caption, which students missed and reported as
+            being "trapped" in the bringup/proof/live mode with no way out. */}
+        {hwMode !== 'map' ? (
+          <div
+            className="ide-hw-mode-exit-banner"
+            data-testid="ide-hw-mode-exit-banner"
+            role="region"
+            aria-label="Hardware sub-mode navigation"
+          >
+            <IdeButton
+              tone="secondary"
+              onClick={() => {
+                setHwMode('map');
+                setSelectedMappingRowId(null);
+              }}
+              testId="ide-hw-mode-exit-back"
+            >
+              ← Back to Map Pins
+            </IdeButton>
+            <span className="ide-hw-mode-exit-hint" data-testid="ide-hw-mode-exit-hint">
+              {hwMode === 'bringup'
+                ? 'Board Check active — press Esc or click Back to return to Map Pins.'
+                : hwMode === 'proof'
+                  ? 'Pre-flight active — press Esc or click Back to return to Map Pins.'
+                  : 'Simulation active — press Esc or click Back to return to Map Pins.'}
+            </span>
+          </div>
+        ) : null}
         {hardwareWorkflowRibbon}
         {/* ── Connection callout strip ── */}
         {false && <div className="ide-hw-callout" data-testid="ide-hw-callout">
