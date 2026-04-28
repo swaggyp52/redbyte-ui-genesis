@@ -35,6 +35,15 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'import',
+  topStripSlots: ['command-bar'],
+  leftDockPolicy: 'always',
+  rightDockPolicy: 'collapsed-default',
+  exitPaths: [],
+} satisfies IdeChromeContract;
 
 type ImportTab = 'hdl' | 'xdc' | 'upload';
 type HdlLanguage = 'auto' | 'vhdl' | 'verilog';

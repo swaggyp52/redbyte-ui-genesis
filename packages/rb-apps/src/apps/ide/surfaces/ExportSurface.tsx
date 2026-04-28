@@ -51,6 +51,15 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip } from '../components/SurfaceLayoutPrimitives';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'export',
+  topStripSlots: ['command-bar'],
+  leftDockPolicy: 'hidden',
+  rightDockPolicy: 'always',
+  exitPaths: [],
+} satisfies IdeChromeContract;
 
 export interface ExportSurfaceProps {
   project: RBProject;

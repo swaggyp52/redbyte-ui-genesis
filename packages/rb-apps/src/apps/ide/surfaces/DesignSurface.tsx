@@ -69,6 +69,15 @@ import {
   resolveDesignWorkspacePreset,
   type DesignArtifact,
 } from './designWorkspaceConfig';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'design',
+  topStripSlots: ['command-bar', 'status-row'],
+  leftDockPolicy: 'always',
+  rightDockPolicy: 'always',
+  exitPaths: [],
+} satisfies IdeChromeContract;
 
 /** Maps internal node type strings to student-readable labels for toast feedback. */
 function nodeTypeLabel(nodeType: string): string {

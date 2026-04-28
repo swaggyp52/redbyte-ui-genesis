@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-04-28 (Slice N2 - Chrome contract interface)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/chromeContract.ts`, IDE surface `CHROME_CONTRACT` exports, `packages/rb-apps/src/apps/ide/__tests__/chromeContract.test.ts`, `docs/ACTIVE_WORK.md`
+
+**Context:** Continue the Production Takeover Plan Phase 1 after N1/N4/N7 by formalizing surface chrome ownership and sub-mode exit-path coverage.
+
+**Changes:**
+- Added `IdeChromeContract` with typed top-strip slots, dock visibility policy, and exit-path declarations.
+- Added `CHROME_CONTRACT` exports to Project, Design, Verify, Hardware, Export, and Import surfaces.
+- Hardware declares exactly one exit path for each interactive sub-mode (`bringup`, `proof`, `live`), all pointing at the N4 `ide-hw-mode-exit-back` trigger.
+- Added a focused chrome contract test that asserts all six surface contracts exist, non-Hardware surfaces have no exit paths, Hardware has its three exits, and no top-strip declaration exceeds three slots.
+- Updated the active-work cockpit to mark N2 done and move Phase 1 priority to N3.
+
+**Validation:**
+- `pnpm -w exec vitest run chromeContract` -> pass (4 tests)
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-25 (One-click local startup hardening)
 
 **Subsystem:** `run.bat`, `Start-RedByte.ps1`, `package.json`, `README.md`, `docs/release/product-hardening-ticket-2026-04-25-one-click-startup.md`

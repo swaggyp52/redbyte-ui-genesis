@@ -106,6 +106,15 @@ import type { VerifyScenarioStepKind } from '../verifyScenarioSteps';
 import type { ScenarioStepDraft } from '../verifyScenarioSteps';
 import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'verify',
+  topStripSlots: ['command-bar', 'status-row'],
+  leftDockPolicy: 'collapsed-default',
+  rightDockPolicy: 'hidden',
+  exitPaths: [],
+} satisfies IdeChromeContract;
 
 interface VerifyRow {
   tick: number;

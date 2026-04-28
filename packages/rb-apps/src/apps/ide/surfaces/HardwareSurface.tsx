@@ -54,6 +54,31 @@ import {
   resolveBasys3PackagePin,
   type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'hardware',
+  topStripSlots: ['command-bar', 'mode-banner'],
+  leftDockPolicy: 'always',
+  rightDockPolicy: 'always',
+  exitPaths: [
+    {
+      fromMode: 'bringup',
+      label: 'Back to Map Pins',
+      testId: 'ide-hw-mode-exit-back',
+    },
+    {
+      fromMode: 'proof',
+      label: 'Back to Map Pins',
+      testId: 'ide-hw-mode-exit-back',
+    },
+    {
+      fromMode: 'live',
+      label: 'Back to Map Pins',
+      testId: 'ide-hw-mode-exit-back',
+    },
+  ],
+} satisfies IdeChromeContract;
 
 export interface HardwareMappingRow {
   id: string;

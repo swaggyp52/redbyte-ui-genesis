@@ -54,6 +54,15 @@ import {
 } from '../workflowStages';
 import type { ProjectIoMappingKind } from '../examplesCatalog';
 import type { IoSignalRole } from '../ioSignalRoles';
+import type { IdeChromeContract } from '../chromeContract';
+
+export const CHROME_CONTRACT = {
+  surfaceId: 'project',
+  topStripSlots: ['command-bar'],
+  leftDockPolicy: 'hidden',
+  rightDockPolicy: 'always',
+  exitPaths: [],
+} satisfies IdeChromeContract;
 
 export interface ProjectMappingRow {
   id: string;
