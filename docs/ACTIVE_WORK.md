@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-27
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product-spine + app-usability hardening** — Slices A–K done (CI fixed, Design palette reordered, Map Pins clarity, Verify empty-state hero, Project 3-card hero). Next: **(L) Full-surface friction sweep** — walk all 12 flows in the live app, root-cause highest-severity state/render-truth bugs, execute the strongest fix.
+1. **Design-authority hardening pass** — Slices A–L done. L delivered: Board Resources open by default, Clock→"Sim Clock" disambiguation (Sim Only badge + FPGA redirect to CLK100MHZ Board Resource), RSLatch/DLatch FPGA synthesis warnings, VWP sequential/combinational text fix. Next: **(M) Design palette authority — component registry, symbol geometry, clock model split** — canonical component-registry doc, actual Clock-node split into BoardClockIn vs SimClock primitives, symbol geometry hardening.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,11 +84,10 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Slice G: Design palette Board Resources first; modeGuards hardware key; clock/IO copy | `39221826` |
-| ✓ Done | Slice H: palette fills dock width (no overflow at compact breakpoint) | `45ebbaea` |
 | ✓ Done | Slice I: Verify waveform placeholder empty-state hero — "No test vectors yet" | `435fd31d` |
 | ✓ Done | Slice J: Map Pins "X / Y REQUIRED MAPPED" progress + product-model description | `cfe55bb7` |
 | ✓ Done | Slice K: Project primary-actions — 3-card visual hero (grid layout, icons, per-type accent) | `4502ba2b` |
+| ✓ Done | Slice L: Board Resources open by default; Clock→Sim Clock (Sim Only); latch FPGA warnings; VWP seq/comb text | `a1ac8d02` |
 
 ---
 
