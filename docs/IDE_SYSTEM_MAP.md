@@ -17,6 +17,10 @@
 | Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, inspect an authoritative board resource, click a board control, and see the saved board control plus physical package pin. Hardware now behaves like a simplified Basys3 board planner with clock truth, grouped resource catalog, and an XDC binding preview tied to the same saved mapping Export reads. |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
 
+### Shell chrome controls
+
+- **User chrome toggles** (`IdeWorkbenchShell.tsx`, `chromeToggles.ts`): the shell owns persistent visibility controls under `rb.ide.chrome.toggles.v1` for side rails, console, the Design toolbar, and Verify command-bar inner rows. The controls live outside surface `CHROME_CONTRACT.topStripSlots`, so they do not add a new top-strip slot or hide Hardware sub-mode exit banners.
+
 ### Design chrome (layout system)
 
 - **Workbench header**: `ide-design-workspace-header` is the top owner. It carries the `Design` label, mode headline (Canvas / Code / Split / replay-linked variants), and the existing primary / secondary CTAs. The old standalone Design command strip does not exist anymore.

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-28 (Slice N3 - user chrome toggles)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/chromeToggles.ts`, `IdeWorkbenchShell`, shared IDE CSS, workbench shell tests, `docs/ACTIVE_WORK.md`
+
+**Context:** Continue Production Takeover Plan Phase 1 after N2 by giving students a persistent, reversible way to reclaim chrome space without changing the N2 surface slot contract or hiding Hardware exit paths.
+
+**Changes:**
+- Added a versioned `rb.ide.chrome.toggles.v1` storage helper with safe defaults for missing, malformed, or older saved settings.
+- Added shell-owned toggle controls for Design toolbar visibility, Verify command row visibility, side rails, and console visibility.
+- Routed side rail and console toggles through `IdeWorkbenchShell` policy resolution so recovery controls stay visible even when rails or console are hidden.
+- Added scoped CSS hooks that hide only Design toolbar rows and Verify command-bar inner rows; Hardware's N4 `ide-hw-mode-exit-back` banner remains outside this hide path.
+- Added focused tests for storage resilience and shell toggle behavior, while keeping the N2 chrome contract test green.
+- Updated the active-work cockpit to mark N3 done and move the next Phase 1 priority to N5.
+
+**Validation:**
+- `pnpm -w exec vitest run chromeToggles` -> pass (3 tests)
+- `pnpm -w exec vitest run ideWorkbenchShell` -> pass (21 tests)
+- `pnpm -w exec vitest run chromeContract` -> pass (4 tests)
+- `pnpm verify:gates` -> pass / exit 0 (full 28-gate sequence)
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment was not verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (Slice N2 - Chrome contract interface)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/chromeContract.ts`, IDE surface `CHROME_CONTRACT` exports, `packages/rb-apps/src/apps/ide/__tests__/chromeContract.test.ts`, `docs/ACTIVE_WORK.md`

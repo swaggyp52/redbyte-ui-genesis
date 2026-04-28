@@ -570,6 +570,60 @@
   min-height: 0;
 }
 
+.ide-workbench-chrome-toggles {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(94, 176, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(7, 15, 27, 0.84);
+  box-shadow: 0 8px 20px rgba(2, 8, 16, 0.24);
+  backdrop-filter: blur(8px);
+}
+
+.ide-workbench-chrome-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 24px;
+  padding: 3px 7px;
+  border: 1px solid rgba(96, 140, 182, 0.32);
+  border-radius: 6px;
+  background: rgba(12, 26, 44, 0.9);
+  color: rgba(226, 236, 248, 0.92);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ide-workbench-chrome-toggle:hover,
+.ide-workbench-chrome-toggle:focus-visible {
+  border-color: rgba(94, 176, 255, 0.7);
+  outline: none;
+}
+
+.ide-workbench-chrome-toggle.is-off {
+  border-style: dashed;
+  color: rgba(165, 184, 205, 0.8);
+  background: rgba(7, 15, 27, 0.82);
+}
+
+.ide-workbench-chrome-toggle-state {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: rgba(126, 247, 227, 0.9);
+}
+
+.ide-workbench-chrome-toggle.is-off .ide-workbench-chrome-toggle-state {
+  color: rgba(255, 201, 128, 0.9);
+}
+
 .ide-workbench-dock {
   grid-column: 1;
   grid-row: 1;
@@ -27851,6 +27905,11 @@ button:disabled,
   min-height: 0;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='design'][data-design-toolbar-visible='false'] .ide-design-toolbar,
+.ide-workbench-shell[data-ide-mode-marker='design'][data-design-toolbar-visible='false'] .ide-design-toolbarExpanded {
+  display: none !important;
+}
+
 [data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
   background:
     linear-gradient(180deg, rgba(10, 20, 34, 0.98), rgba(6, 13, 24, 0.94)),
@@ -27890,6 +27949,13 @@ button:disabled,
   border: 1px solid rgba(44, 80, 112, 0.34);
   border-radius: 14px;
   background: rgba(8, 16, 29, 0.9);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-verify-command-rows-visible='false'] .ide-vcb-leading-slot,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-verify-command-rows-visible='false'] .ide-vcb-truth-strip,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-verify-command-rows-visible='false'] .ide-vcb-session-details,
+.ide-workbench-shell[data-ide-mode-marker='verify'][data-verify-command-rows-visible='false'] .ide-vcb-failure-recovery {
+  display: none !important;
 }
 
 @media (max-width: 1400px) {

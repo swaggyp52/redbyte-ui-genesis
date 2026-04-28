@@ -1,4 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  DEFAULT_IDE_CHROME_TOGGLES,
+  readIdeChromeToggles,
+  writeIdeChromeToggles,
+  type IdeChromeToggles,
+} from '../chromeToggles';
 
 export type IdeSurfaceMode =
   | 'project'
@@ -16,6 +22,7 @@ export type WorkbenchShellDensity = 'default' | 'immersive';
 export type WorkbenchSurfaceFrame = 'panel' | 'edge-to-edge';
 export type WorkbenchLayoutIntent = 'readable' | 'workbench';
 type WorkbenchConsoleState = 'blocking' | 'expanded' | 'collapsed' | 'hidden';
+type ChromeToggleKey = keyof Omit<IdeChromeToggles, 'version'>;
 
 const LAYOUT_STORAGE_KEY = 'rb.ide.workbench.layout.v6';
 const DEFAULT_LAYOUT = {
@@ -98,16 +105,30 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const resizeRef = useRef<ActiveResizeState | null>(null);
   const [consolePinnedOpen, setConsolePinnedOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<WorkbenchLayoutMode>(() => detectLayoutMode());
+  const [chromeToggles, setChromeToggles] = useState<IdeChromeToggles>(DEFAULT_IDE_CHROME_TOGGLES);
+  const [chromeTogglesReady, setChromeTogglesReady] = useState(false);
+  const effectiveLeftDockMode = chromeToggles.sideRailsVisible ? leftDockMode : 'hidden';
+  const effectiveRightDockMode = chromeToggles.sideRailsVisible ? rightDockMode : 'hidden';
+  const effectiveConsoleMode = chromeToggles.consoleVisible ? consoleMode : 'hidden';
   const policy = useMemo<ResolvedWorkbenchPolicy>(
     () => ({
-      leftDockMode,
-      rightDockMode: hideRightDock ? 'hidden' : rightDockMode,
-      consoleMode,
+      leftDockMode: effectiveLeftDockMode,
+      rightDockMode: hideRightDock ? 'hidden' : effectiveRightDockMode,
+      consoleMode: effectiveConsoleMode,
       shellDensity,
       surfaceFrame,
       layoutIntent: layoutIntent ?? resolveDefaultWorkbenchLayoutIntent(mode),
     }),
-    [consoleMode, hideRightDock, layoutIntent, leftDockMode, mode, rightDockMode, shellDensity, surfaceFrame]
+    [
+      effectiveConsoleMode,
+      effectiveLeftDockMode,
+      effectiveRightDockMode,
+      hideRightDock,
+      layoutIntent,
+      mode,
+      shellDensity,
+      surfaceFrame,
+    ]
   );
   const [isLeftDockExpanded, setIsLeftDockExpanded] = useState(
     policy.leftDockMode === 'visible'
@@ -200,6 +221,27 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const leftRailLabel = mode === 'verify' ? 'Signals' : 'Library';
   const leftRailAriaLabel = mode === 'verify' ? 'Show signals' : 'Show library';
   const leftCollapseAriaLabel = mode === 'verify' ? 'Collapse signals' : 'Collapse library';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setChromeTogglesReady(true);
+      return;
+    }
+    setChromeToggles(readIdeChromeToggles(window.localStorage));
+    setChromeTogglesReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!chromeTogglesReady || typeof window === 'undefined') return;
+    writeIdeChromeToggles(window.localStorage, chromeToggles);
+  }, [chromeToggles, chromeTogglesReady]);
+
+  const toggleChrome = useCallback((key: ChromeToggleKey) => {
+    setChromeToggles((previous) => ({
+      ...previous,
+      [key]: !previous[key],
+    }));
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -424,8 +466,17 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-shell-density={policy.shellDensity}
       data-surface-frame={policy.surfaceFrame}
       data-layout-intent={policy.layoutIntent}
+      data-design-toolbar-visible={chromeToggles.designToolbarVisible ? 'true' : 'false'}
+      data-verify-command-rows-visible={chromeToggles.verifyCommandRowsVisible ? 'true' : 'false'}
+      data-side-rails-visible={chromeToggles.sideRailsVisible ? 'true' : 'false'}
+      data-console-visible={chromeToggles.consoleVisible ? 'true' : 'false'}
       style={shellStyle}
     >
+      <ChromeToggleBar
+        mode={mode}
+        toggles={chromeToggles}
+        onToggle={toggleChrome}
+      />
       <div
         className={`ide-workbench-main${showLeftCollapsedRail ? ' is-left-dock-collapsed' : ''}${
           showRightCollapsedRail ? ' is-right-dock-collapsed' : ''
@@ -592,6 +643,62 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     </section>
   );
 };
+
+const ChromeToggleBar: React.FC<{
+  mode: IdeSurfaceMode;
+  toggles: IdeChromeToggles;
+  onToggle: (key: ChromeToggleKey) => void;
+}> = ({ mode, toggles, onToggle }) => (
+  <div className="ide-workbench-chrome-toggles" data-testid="ide-chrome-toggle-bar" aria-label="Workbench chrome">
+    {mode === 'design' ? (
+      <ChromeToggleButton
+        label="Toolbar"
+        pressed={toggles.designToolbarVisible}
+        testId="ide-chrome-toggle-design-toolbar"
+        onClick={() => onToggle('designToolbarVisible')}
+      />
+    ) : null}
+    {mode === 'verify' ? (
+      <ChromeToggleButton
+        label="Verify rows"
+        pressed={toggles.verifyCommandRowsVisible}
+        testId="ide-chrome-toggle-verify-rows"
+        onClick={() => onToggle('verifyCommandRowsVisible')}
+      />
+    ) : null}
+    <ChromeToggleButton
+      label="Rails"
+      pressed={toggles.sideRailsVisible}
+      testId="ide-chrome-toggle-rails"
+      onClick={() => onToggle('sideRailsVisible')}
+    />
+    <ChromeToggleButton
+      label="Console"
+      pressed={toggles.consoleVisible}
+      testId="ide-chrome-toggle-console"
+      onClick={() => onToggle('consoleVisible')}
+    />
+  </div>
+);
+
+const ChromeToggleButton: React.FC<{
+  label: string;
+  pressed: boolean;
+  testId: string;
+  onClick: () => void;
+}> = ({ label, pressed, testId, onClick }) => (
+  <button
+    type="button"
+    className={`ide-workbench-chrome-toggle${pressed ? ' is-on' : ' is-off'}`}
+    data-testid={testId}
+    aria-pressed={pressed ? 'true' : 'false'}
+    title={`${pressed ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
+    onClick={onClick}
+  >
+    <span className="ide-workbench-chrome-toggle-label">{label}</span>
+    <span className="ide-workbench-chrome-toggle-state">{pressed ? 'On' : 'Off'}</span>
+  </button>
+);
 
 const DefaultDock: React.FC<{ mode: IdeSurfaceMode; side: 'left' | 'right' }> = ({ mode, side }) => (
   <section className="ide-workbench-placeholder">

@@ -4,6 +4,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { IdeWorkbenchShell } from '../components/IdeWorkbenchShell';
+import { DEFAULT_IDE_CHROME_TOGGLES, IDE_CHROME_TOGGLES_KEY } from '../chromeToggles';
 
 describe('IdeWorkbenchShell', () => {
   const nativeWidth = window.innerWidth;
@@ -379,6 +380,72 @@ describe('IdeWorkbenchShell', () => {
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
+  });
+
+  it('renders persistent chrome controls that can hide and restore rails and console', async () => {
+    const { getByTestId, queryByTestId } = renderShell({
+      mode: 'design',
+      consoleHasEntries: true,
+    });
+
+    expect(getByTestId('ide-chrome-toggle-bar')).toBeTruthy();
+    expect(getByTestId('ide-chrome-toggle-design-toolbar')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(getByTestId('ide-chrome-toggle-rails'));
+
+    await waitFor(() => {
+      expect(queryByTestId('ide-left-dock')).toBeNull();
+      expect(queryByTestId('ide-inspector')).toBeNull();
+      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-side-rails-visible', 'false');
+    });
+
+    fireEvent.click(getByTestId('ide-chrome-toggle-rails'));
+
+    await waitFor(() => {
+      expect(getByTestId('ide-left-dock')).toBeTruthy();
+      expect(getByTestId('ide-inspector')).toBeTruthy();
+      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-side-rails-visible', 'true');
+    });
+
+    fireEvent.click(getByTestId('ide-chrome-toggle-console'));
+
+    await waitFor(() => {
+      expect(queryByTestId('ide-workbench-console')).toBeNull();
+      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-console-visible', 'false');
+    });
+
+    await waitFor(() => {
+      const stored = JSON.parse(localStorage.getItem(IDE_CHROME_TOGGLES_KEY) ?? '{}');
+      expect(stored.consoleVisible).toBe(false);
+      expect(stored.sideRailsVisible).toBe(true);
+    });
+  });
+
+  it('restores saved chrome controls from localStorage without changing the slot contract', async () => {
+    localStorage.setItem(
+      IDE_CHROME_TOGGLES_KEY,
+      JSON.stringify({
+        ...DEFAULT_IDE_CHROME_TOGGLES,
+        verifyCommandRowsVisible: false,
+        sideRailsVisible: false,
+        consoleVisible: false,
+      })
+    );
+
+    const { getByTestId, queryByTestId } = renderShell({
+      mode: 'verify',
+      consoleHasEntries: true,
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-verify-command-rows-visible', 'false');
+      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-side-rails-visible', 'false');
+      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-console-visible', 'false');
+    });
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(queryByTestId('ide-workbench-console')).toBeNull();
+    expect(getByTestId('ide-chrome-toggle-verify-rows')).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('does not render a global Focus toggle or focus-mode shell marker', () => {
