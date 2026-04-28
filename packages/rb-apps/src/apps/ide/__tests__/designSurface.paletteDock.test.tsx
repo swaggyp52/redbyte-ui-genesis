@@ -220,11 +220,13 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.queryByTestId('ide-design-input-toggle-sw0_node')).toBeNull();
   });
 
-  it('groups sequential palette into registers, timing, and legacy subsections', () => {
+  it('groups sequential palette into registers and legacy subsections', () => {
     const view = renderSurface();
     const palette = view.getByTestId('ide-design-dock-palette');
     expect(within(palette).getByTestId('ide-design-palette-sequential-registers')).toBeTruthy();
-    expect(within(palette).getByTestId('ide-design-palette-sequential-timing')).toBeTruthy();
+    // Slice N7: 'timing' subsection no longer renders — Sim Clock was its only
+    // entry and was removed. CLK100MHZ Board Resource is the canonical clock.
+    expect(within(palette).queryByTestId('ide-design-palette-sequential-timing')).toBeNull();
     expect(within(palette).getByTestId('ide-design-palette-sequential-legacy')).toBeTruthy();
     expect(within(palette).getByTestId('ide-design-palette-sequential-workflow-hint')).toBeTruthy();
   });
@@ -282,6 +284,29 @@ describe('DesignSurface palette dock redesign', () => {
     fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'w5' } });
 
     expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
+  });
+
+  /* Slice N7 — Sim Clock palette removal.
+     Canonical clock model: CLK100MHZ Board Resource is the only clock the user
+     places. Pure-sim sequential designs auto-inject __sim_clk__. The Sim Clock
+     palette entry is REMOVED so users can never accidentally place a duplicate
+     clock that masquerades as a board clock. */
+  it('removes the Sim Clock palette entry — CLK100MHZ Board Resource is the only clock surface', () => {
+    const view = renderSurface();
+
+    // No Sim Clock palette card under any tier
+    expect(view.queryByTestId('ide-design-palette-clock')).toBeNull();
+
+    // Search by every term that previously found Sim Clock — none should match
+    const searchInput = view.getByTestId('ide-design-search');
+    for (const term of ['sim clock', 'oscillator', 'sim']) {
+      fireEvent.change(searchInput, { target: { value: term } });
+      expect(view.queryByTestId('ide-design-palette-clock')).toBeNull();
+    }
+
+    // CLK100MHZ Board Resource is still surfaceable — that's the canonical clock
+    fireEvent.change(searchInput, { target: { value: 'clock' } });
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
   });
 });

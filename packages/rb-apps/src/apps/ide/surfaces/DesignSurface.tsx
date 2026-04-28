@@ -416,16 +416,13 @@ const PALETTE_ITEMS: PaletteItem[] = [
     glyph: 'BANK',
     searchTerms: ['state', 'bank', 'register bank', 'fsm', 'sequential'],
   },
-  {
-    type: 'Clock',
-    title: 'Sim Clock',
-    category: 'Sequential',
-    sequentialTier: 'timing',
-    paletteBadge: 'Sim Only',
-    subtitle: 'Browser oscillator for simulation-only designs. For FPGA export, use CLK100MHZ from Board Resources — that is the real Basys3 100 MHz board clock.',
-    glyph: 'CLK',
-    searchTerms: ['clock', 'pulse', 'timing', 'oscillator', 'simulation', 'sim'],
-  },
+  // Slice N7 — chrome rebuild: Sim Clock palette entry REMOVED.
+  // Canonical clock model (Plan §4.1): one clock concept visible to the user — the
+  // board clock CLK100MHZ from Board Resources. Pure-sim sequential designs auto-
+  // inject `__sim_clk__` (rb-apps/.../verifySchedule.ts), so students never need
+  // to place a Clock node themselves. Existing serialized projects with legacy
+  // Clock nodes (no role) continue to load and elaborate correctly via the IR
+  // backward-compat path established in Slice M.
   {
     type: 'DFlipFlop',
     title: 'DFF',
@@ -651,7 +648,10 @@ function groupBoardPaletteItems(
     {
       id: 'system',
       title: 'Clock & Reset',
-      description: 'CLK100MHZ is the Basys3 100 MHz system clock. Assign it to your Clock component in Map Pins.',
+      // Slice N7 — sharpened messaging to make CLK100MHZ the single canonical
+      // clock surface. Sequential designs without an explicit board clock
+      // automatically use an internal sim clock — students do not place one.
+      description: 'CLK100MHZ is the Basys3 100 MHz board clock. Drag it onto the canvas for any sequential FPGA design. Designs without a board clock automatically use an internal sim clock for simulation only — no manual setup needed.',
       entries: inputs.filter((entry) => entry.kind === 'clock' || entry.kind === 'reset'),
     },
     {
