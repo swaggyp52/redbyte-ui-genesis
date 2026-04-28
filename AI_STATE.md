@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-04-28 (Slice N5 - reclaim surface chrome spacing)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/ide-root.css`, `docs/ACTIVE_WORK.md`
+
+**Context:** Complete Production Takeover Plan Phase 1 after N3 by reclaiming the shared vertical chrome gap between surface command stacks and workspaces.
+
+**Changes:**
+- Replaced the shared `.ide-surface-command-stack` `gap: 12px` + `margin-bottom: 16px` pattern with `padding-bottom: 8px`.
+- Neutralized later Design/Verify command-stack overrides that reintroduced gap/margin spacing, keeping the N5 rule effective across the main authoring and verification surfaces.
+- Updated the active-work cockpit to mark Phase 1 complete and move the next priority to N6.
+
+**Validation:**
+- `pnpm verify:gates` -> pass / exit 0 (full 28-gate sequence)
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment was not verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (Slice N3 - user chrome toggles)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/chromeToggles.ts`, `IdeWorkbenchShell`, shared IDE CSS, workbench shell tests, `docs/ACTIVE_WORK.md`

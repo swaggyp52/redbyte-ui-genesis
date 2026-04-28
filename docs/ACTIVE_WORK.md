@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Production Takeover Plan - Phase 1 (Architecture & Layout Authority)** - N1, N2, N3, N4, N7 shipped. N1: cropped middle rail eliminated across Design/Verify command bars (overflow:hidden -> clip-path; flex-wrap:nowrap -> wrap). N2: every IDE surface now exports an `IdeChromeContract` declaring top-strip slots, dock policy, and exit-path coverage; Hardware declares bringup/proof/live exits through `ide-hw-mode-exit-back`. N3: shell-owned chrome toggles persist under `rb.ide.chrome.toggles.v1` for Design toolbar, Verify command rows, side rails, and console. N4: Hardware mode-trap killed - always-visible Back to Map Pins banner + Esc handler; unmapped pin opacity lifted from 0.28 -> 0.78 so the board reads available, not broken. N7: Sim Clock palette entry removed - CLK100MHZ Board Resource is the canonical clock surface; pure-sim sequential designs auto-inject `__sim_clk__`. Next: **(N5) 28px chrome waste reclaim** - tighten `.ide-surface-command-stack` spacing.
+1. **Production Takeover Plan - Phase 1 complete; Phase 2 next** - N1, N2, N3, N4, N5, N7 shipped. N1: cropped middle rail eliminated across Design/Verify command bars (overflow:hidden -> clip-path; flex-wrap:nowrap -> wrap). N2: every IDE surface now exports an `IdeChromeContract` declaring top-strip slots, dock policy, and exit-path coverage; Hardware declares bringup/proof/live exits through `ide-hw-mode-exit-back`. N3: shell-owned chrome toggles persist under `rb.ide.chrome.toggles.v1` for Design toolbar, Verify command rows, side rails, and console. N4: Hardware mode-trap killed - always-visible Back to Map Pins banner + Esc handler; unmapped pin opacity lifted from 0.28 -> 0.78 so the board reads available, not broken. N5: `.ide-surface-command-stack` now uses an 8px bottom pad instead of stacked gap + margin waste. N7: Sim Clock palette entry removed - CLK100MHZ Board Resource is the canonical clock surface; pure-sim sequential designs auto-inject `__sim_clk__`. Next: **(N6) componentRegistry single source of truth**.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -84,11 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Slice N1: Cropped middle rail killed — Design/Verify command bars no longer clip toolbar content under the dock seam | `b4ebb51f` |
 | ✓ Done | Slice N4: Hardware mode-trap exit — always-visible Back banner + Esc handler; unmapped pins de-greyed; 5 contract tests | `ed07fb04` |
 | ✓ Done | Slice N7: Sim Clock removed from palette; CLK100MHZ is canonical clock | `d7ce3929` |
 | ✓ Done | Slice N2: Chrome contract interface - every surface declares top-strip slots, dock policy, and sub-mode exit paths | `7beed429` |
-| ✓ Done | Slice N3: User-controlled chrome toggles - persistent Design toolbar, Verify row, side rail, and console visibility | `pending commit` |
+| ✓ Done | Slice N3: User-controlled chrome toggles - persistent Design toolbar, Verify row, side rail, and console visibility | `2256a9a7` |
+| ✓ Done | Slice N5: 28px chrome waste reclaim - command stacks use 8px bottom padding instead of stacked gap + margin | `pending commit` |
 
 ---
 

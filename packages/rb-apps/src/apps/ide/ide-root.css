@@ -27215,8 +27215,7 @@ button:disabled,
 
 .ide-surface-command-stack {
   display: grid;
-  gap: 12px;
-  margin-bottom: 16px;
+  padding-bottom: 8px;
 }
 
 .ide-surface-primary-region {
@@ -27981,8 +27980,9 @@ button:disabled,
 /* ── 1. DESIGN — SurfaceCommandStrip: mode headline + coaching copy + compact meta ── */
 
 [data-ide-mode-marker='design'] .ide-surface-command-stack {
-  gap: 8px !important;
-  margin-bottom: 8px !important;
+  gap: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
 }
 
 /* ── 2. DESIGN — Replay scrubber as first-class transport control ── */
@@ -28079,13 +28079,15 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-surface-command-stack {
-  gap: 4px !important;
+  gap: 0 !important;
   margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-region--header .ide-surface-command-stack {
   gap: 0 !important;
   margin: 0 !important;
+  padding-bottom: 8px !important;
 }
 
 /* ── 4. VERIFY — VerifyCommandBar: cleaner right group ── */
@@ -28240,7 +28242,9 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-surface-command-stack,
 [data-ide-mode-marker='verify'] .ide-surface-command-stack {
-  gap: 10px !important;
+  gap: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-status-pill,
@@ -30892,7 +30896,9 @@ button:disabled,
 /* 2026-04-17 design surface reconciliation: reduce stacked chrome, demote
    secondary inventory, and merge the floating canvas widgets into one tool HUD. */
 [data-ide-mode-marker='design'] .ide-surface-command-stack {
-  gap: 10px !important;
+  gap: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 8px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-control-bar {
