@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-04-29
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Design-authority hardening pass** — Slices A–L done. L delivered: Board Resources open by default, Clock→"Sim Clock" disambiguation (Sim Only badge + FPGA redirect to CLK100MHZ Board Resource), RSLatch/DLatch FPGA synthesis warnings, VWP sequential/combinational text fix. Next: **(M) Design palette authority — component registry, symbol geometry, clock model split** — canonical component-registry doc, actual Clock-node split into BoardClockIn vs SimClock primitives, symbol geometry hardening.
+1. **Design-authority hardening pass** — Slices A–M done. M delivered: Clock model role split — `role:'sim'` (palette) vs `role:'board'` (CLK100MHZ Board Resource) at config, IR elaborator, and VHDL export layers. Sim-clocks are now IR primitives (no VHDL entity port); board-clocks remain boundary IRPorts. 12 new contract tests. Next: **(N) Symbol/port geometry hardening** — explicit per-port side/offset geometry for multi-port nodes (FullAdder, register family); wire anchor targeting specific pins, not node body center.
 2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
 
@@ -88,6 +88,7 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 | ✓ Done | Slice J: Map Pins "X / Y REQUIRED MAPPED" progress + product-model description | `cfe55bb7` |
 | ✓ Done | Slice K: Project primary-actions — 3-card visual hero (grid layout, icons, per-type accent) | `4502ba2b` |
 | ✓ Done | Slice L: Board Resources open by default; Clock→Sim Clock (Sim Only); latch FPGA warnings; VWP seq/comb text | `a1ac8d02` |
+| ✓ Done | Slice M: Clock model role split — role:'sim' vs role:'board'; IR elaborator + VHDL filter; 12 contract tests | `0fcd781a` |
 
 ---
 
