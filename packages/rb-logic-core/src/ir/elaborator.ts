@@ -461,7 +461,18 @@ export function elaborateCircuit(
   const primitives: IRPrimitive[] = [];
 
   for (const node of nodes) {
-    if (BOUNDARY_TYPES.has(node.type)) {
+    if (node.type === 'Clock' && node.config?.role === 'sim') {
+      // Sim-only clock (role:'sim'): browser oscillator with no hardware counterpart.
+      // Treated as an internal primitive so it drives DFFs in simulation, but is NOT
+      // promoted to an IRPort → does not become a VHDL top-level entity port.
+      // Students who want board synthesis must replace this with CLK100MHZ (role:'board').
+      primitives.push({
+        id: node.id,
+        sourceNodeId: node.id,
+        type: 'Clock',
+        label: node.label,
+      });
+    } else if (BOUNDARY_TYPES.has(node.type)) {
       // Boundary port → IRPort
       const kind: IRPortKind = PORT_KIND_MAP[node.type] ?? 'input';
       const name = node.label?.trim() || node.id;

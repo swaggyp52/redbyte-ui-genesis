@@ -319,11 +319,28 @@ export function vhdlFromNetlist(
   const lines: string[] = [];
 
   // ---- Classify nodes -------------------------------------------------------
-  const inputNodes  = netlist.nodes.filter((n) => INPUT_NODE_TYPES.has(n.type));
+  // Clock nodes: only those that arrived as IRPort boundary nodes (boundaryKind === 'clock')
+  // are top-level entity ports.  Sim-clock primitives (no boundaryKind) are internal
+  // oscillators with no hardware equivalent — they are excluded from the entity and
+  // will cause DFF clock ports to be "tied low" (with a warning) if present.
+  const inputNodes  = netlist.nodes.filter((n) => {
+    if (n.type === 'Clock') return n.boundaryKind === 'clock'; // board/legacy clocks only
+    return INPUT_NODE_TYPES.has(n.type);
+  });
   const outputNodes = netlist.nodes.filter((n) => OUTPUT_NODE_TYPES.has(n.type));
   const logicNodes  = netlist.nodes.filter(
     (n) => !INPUT_NODE_TYPES.has(n.type) && !OUTPUT_NODE_TYPES.has(n.type),
   );
+
+  // Warn about sim-clock nodes that were excluded from entity ports.
+  netlist.nodes
+    .filter((n) => n.type === 'Clock' && n.boundaryKind !== 'clock')
+    .forEach((n) => {
+      warnings.push(
+        `Sim-only clock "${n.label ?? n.id}" is excluded from the VHDL entity — ` +
+        `use CLK100MHZ from Board Resources for FPGA synthesis.`,
+      );
+    });
 
   // Warn and collect unsupported types
   logicNodes.forEach((n) => {

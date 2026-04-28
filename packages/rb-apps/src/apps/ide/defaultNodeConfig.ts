@@ -4,7 +4,9 @@
  */
 export function defaultNodeConfig(nodeType: string): Record<string, unknown> {
   if (nodeType === 'Clock') {
-    return { period: 10 };
+    // role: 'sim' → simulation-only oscillator. Never a VHDL top-level port.
+    // Board clocks (CLK100MHZ) are created via addDesignBoardIo with role: 'board'.
+    return { period: 10, role: 'sim' };
   }
   if (nodeType === 'Register1') {
     return {

@@ -1259,7 +1259,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             x: roundToMill(position.x),
             y: roundToMill(position.y),
             rotation: 0,
-            config: defaultNodeConfig(nodeType),
+            // Board clock nodes get role:'board' so they are treated as real top-level
+            // VHDL ports — distinct from palette sim-clocks (role:'sim') which are
+            // browser oscillators with no hardware equivalent.
+            config: normalizedKind === 'clock'
+              ? { ...defaultNodeConfig(nodeType), role: 'board' }
+              : defaultNodeConfig(nodeType),
             state: {},
           });
 
