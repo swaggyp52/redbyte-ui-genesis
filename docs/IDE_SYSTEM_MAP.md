@@ -58,6 +58,13 @@
 | `projectHealth.ts` | `packages/rb-apps/src/apps/ide/projectHealth.ts` | Derives structural blocking issues from core state; stale export state is advisory, not a blocking issue |
 | `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Canonical product-truth snapshot for verify state, draft-vs-trusted export state, strict stage completion, primary CTA, and Hardware/Export handoff labels |
 | `simEngine.ts` | `packages/rb-apps/src/apps/ide/sim/simEngine.ts` | Simulation advancement, trace accumulation |
+| `componentSupportRegistry.ts` | `packages/rb-logic-core/src/analysis/componentSupportRegistry.ts` | Canonical component support matrix for Design authoring, Verify mode support, VHDL export support, Import HDL aliases, classroom availability, and sequential metadata |
+
+### Component support authority
+
+- **Single matrix:** `componentSupportRegistry.ts` is the support authority. Design palette filtering, Verify sequential/blocked detection, Import HDL component alias resolution, VHDL supported-node sets, and Basys3 stateful export classification read this matrix instead of maintaining private allowlists.
+- **Student-safe subset:** Counter4Bit and Delay remain recognized as structural/sequential concepts but are not student-authorable, verify-supported, classroom-safe, or VHDL-exportable until their implementations are proven.
+- **Runtime alignment:** NOR and XNOR are registered runtime behaviors so the palette, simulation, IR, and VHDL export all agree for the two-input gate set.
 
 ---
 

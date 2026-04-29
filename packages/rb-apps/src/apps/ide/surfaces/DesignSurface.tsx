@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { TickEngine } from '@redbyte/rb-logic-core';
+import { getComponentSupport, isNodeTypeSupportedFor, TickEngine } from '@redbyte/rb-logic-core';
 import {
   LogicCanvas,
   findSmartSpawnPosition,
@@ -81,6 +81,9 @@ export const CHROME_CONTRACT = {
 
 /** Maps internal node type strings to student-readable labels for toast feedback. */
 function nodeTypeLabel(nodeType: string): string {
+  const supportLabel = getComponentSupport(nodeType)?.label;
+  if (supportLabel) return supportLabel;
+
   const labels: Record<string, string> = {
     AND: 'AND gate',
     OR: 'OR gate',
@@ -298,7 +301,7 @@ function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   );
 }
 
-const PALETTE_ITEMS: PaletteItem[] = [
+const CORE_PALETTE_ITEMS: PaletteItem[] = [
   {
     type: 'AND',
     title: 'AND Gate',
@@ -468,7 +471,7 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
 ];
 
-const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
+const CORE_COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
   {
     type: 'RSLatch',
     title: 'RS Latch',
@@ -515,6 +518,16 @@ const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
   // Counter4Bit removed from palette — stub implementation (no real counting logic).
   // Restore when Counter4Bit composite is properly implemented with flip-flops.
 ];
+
+const PALETTE_ITEMS: PaletteItem[] = CORE_PALETTE_ITEMS.filter((item) =>
+  isNodeTypeSupportedFor(item.type, 'authoring') &&
+  isNodeTypeSupportedFor(item.type, 'classroom')
+);
+
+const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = CORE_COMPOSITE_PALETTE_ITEMS.filter((item) =>
+  isNodeTypeSupportedFor(item.type, 'authoring') &&
+  isNodeTypeSupportedFor(item.type, 'classroom')
+);
 
 const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
   {

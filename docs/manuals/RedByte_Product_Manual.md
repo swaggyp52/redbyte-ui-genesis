@@ -1129,9 +1129,9 @@ submission.rbproj.zip
 | OR | a (in1), b (in2) | out | Output is 1 when at least one input is 1. |
 | NOT | in | out | Output is the complement of the input. |
 | NAND | a (in1), b (in2) | out | Output is 0 only when both inputs are 1. |
+| NOR | a (in1), b (in2) | out | Output is 1 only when both inputs are 0. |
 | XOR | a (in1), b (in2) | out | Output is 1 when inputs differ. |
-
-Note: NOR and XNOR are defined in the type system but are not currently registered in the active component palette. Use NOT + OR or NOT + XOR combinations, or use the three-input NOR3 variant which is registered.
+| XNOR | a (in1), b (in2) | out | Output is 1 when inputs match. |
 
 #### A.2 Three-Input Gates
 

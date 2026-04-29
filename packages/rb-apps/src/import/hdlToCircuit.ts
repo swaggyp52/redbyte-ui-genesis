@@ -2,6 +2,7 @@
 // HDL Import Pipeline — shared types, component mapping, and auto-layout engine.
 
 import type { Circuit, Node, Connection } from '@redbyte/rb-logic-core';
+import { resolveImportedComponentType } from '@redbyte/rb-logic-core';
 
 // ─── Parsed intermediate representation ──────────────────────────────────────
 
@@ -53,53 +54,9 @@ export interface ImportResult {
 
 // ─── Component type mapping ───────────────────────────────────────────────────
 
-/**
- * Maps HDL component names (case-insensitive) → RedByte node type strings.
- * Covers: Vivado primitives, lab-generated names, and common patterns.
- */
-const COMPONENT_MAP: Record<string, string> = {
-  // AND variants
-  and: 'AND', and2: 'AND', and3: 'AND', and4: 'AND',
-  and_gate: 'AND', and2_gate: 'AND',
-  lut2_and: 'AND', lut3_and: 'AND',
-
-  // OR variants
-  or: 'OR', or2: 'OR', or3: 'OR', or4: 'OR',
-  or_gate: 'OR', or2_gate: 'OR',
-
-  // NOT / INV
-  not: 'NOT', inv: 'NOT', inverter: 'NOT',
-  not_gate: 'NOT', inv_gate: 'NOT', buf: 'NOT',
-
-  // NAND
-  nand: 'NAND', nand2: 'NAND', nand3: 'NAND', nand4: 'NAND',
-  nand_gate: 'NAND',
-
-  // NOR
-  nor: 'NOR', nor2: 'NOR', nor3: 'NOR', nor4: 'NOR',
-  nor_gate: 'NOR',
-
-  // XOR
-  xor: 'XOR', xor2: 'XOR', xor3: 'XOR',
-  xor_gate: 'XOR',
-
-  // XNOR
-  xnor: 'XNOR', xnor2: 'XNOR', xnor3: 'XNOR',
-  xnor_gate: 'XNOR', xnor2_gate: 'XNOR',
-
-  // Full adder
-  full_adder: 'FullAdder', fulladder: 'FullAdder',
-  fa: 'FullAdder', full_add: 'FullAdder',
-
-  // Register / D flip-flop family
-  dff: 'DFlipFlop', d_ff: 'DFlipFlop', dflipflop: 'DFlipFlop',
-  d_flip_flop: 'DFlipFlop', fdre: 'Register1', fdce: 'Register1',
-  register1: 'Register1', register: 'Register1', reg: 'Register1',
-  registerbus: 'RegisterBus', register_bank: 'StateBank', statebank: 'StateBank',
-};
-
+/** Resolve HDL component names through the shared component support matrix. */
 function resolveComponentType(raw: string): string | null {
-  return COMPONENT_MAP[raw.toLowerCase()] ?? null;
+  return resolveImportedComponentType(raw);
 }
 
 // ─── Port name normalisation ──────────────────────────────────────────────────

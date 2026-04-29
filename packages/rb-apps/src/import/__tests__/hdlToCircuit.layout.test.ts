@@ -109,6 +109,21 @@ describe('assignPositions — no overlapping nodes', () => {
   });
 });
 
+describe('component support registry aliases', () => {
+  it('uses the shared component matrix to preserve exact 3-input gate reconstruction', () => {
+    const parsed = makeParsed({
+      inputs: ['a', 'b', 'c'],
+      outputs: ['y'],
+      instances: [
+        { id: 'u0', componentType: 'AND3', portMap: { a: 'a', b: 'b', c: 'c', out: 'y' } },
+      ],
+    });
+    const result = parsedHdlToCircuit(parsed);
+    expect(result.unmappedComponents).toEqual([]);
+    expect(result.circuit.nodes.some((node) => node.type === 'AND3')).toBe(true);
+  });
+});
+
 describe('assignPositions — x spread', () => {
   it('3-stage pipeline: nodes are spread across at least 3 distinct x values', () => {
     // a → NOT → AND → output

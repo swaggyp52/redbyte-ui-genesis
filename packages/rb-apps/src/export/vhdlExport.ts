@@ -3,6 +3,11 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import type { Netlist, NetlistNode, NetlistNet } from './netlistExport';
+import {
+  getBoundaryInputNodeTypes,
+  getBoundaryOutputNodeTypes,
+  getVhdlLogicNodeTypes,
+} from '@redbyte/rb-logic-core';
 
 // ---------------------------------------------------------------------------
 // Public API types
@@ -58,27 +63,18 @@ export interface VhdlExportResult {
 /**
  * Node types that are top-level inputs (physical switches/buttons on Basys3)
  */
-const INPUT_NODE_TYPES = new Set(['INPUT', 'Switch', 'Button', 'Clock', 'CLOCK']);
+const INPUT_NODE_TYPES = new Set(getBoundaryInputNodeTypes());
 
 /**
  * Node types that are top-level outputs (physical LEDs on Basys3)
  */
-const OUTPUT_NODE_TYPES = new Set(['OUTPUT', 'Lamp']);
+const OUTPUT_NODE_TYPES = new Set(getBoundaryOutputNodeTypes());
 
 /**
  * Node types handled natively by this generator.
  * All others produce a warning and are skipped.
  */
-const SUPPORTED_LOGIC_TYPES = new Set([
-  'PowerSource',
-  'Ground',
-  'AND', 'OR', 'XOR', 'NOT', 'NAND', 'NOR', 'XNOR',
-  'AND3', 'OR3', 'NAND3', 'NOR3', 'XOR3',
-  'FullAdder',
-  'MUX4',
-  'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank',
-  'DLatch', 'TFlipFlop', 'JKFlipFlop',
-]);
+const SUPPORTED_LOGIC_TYPES = new Set(getVhdlLogicNodeTypes());
 
 // ---------------------------------------------------------------------------
 // Helpers

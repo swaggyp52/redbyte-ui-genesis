@@ -1,4 +1,8 @@
-import { analyzeSequentialLogic } from '@redbyte/rb-logic-core';
+import {
+  analyzeSequentialLogic,
+  getBlockedVerificationNodeTypes,
+  getVerificationSequentialNodeTypes,
+} from '@redbyte/rb-logic-core';
 import type { Circuit } from '@redbyte/rb-logic-core';
 
 /**
@@ -16,11 +20,7 @@ export type VerifyMode = 'combinational' | 'sequential' | 'blocked';
  * Expand this set as additional stateful elements are validated end-to-end.
  */
 export const SUPPORTED_SEQUENTIAL = new Set<string>([
-  'DFlipFlop',
-  'DLatch',
-  'TFlipFlop',
-  'JKFlipFlop',
-  'RSLatch',
+  ...getVerificationSequentialNodeTypes(),
 ]);
 
 /**
@@ -32,7 +32,7 @@ export const SUPPORTED_SEQUENTIAL = new Set<string>([
  * a Counter4Bit is blocked, not sequential, until Counter4Bit is supported.
  */
 export const UNSUPPORTED_SEQUENTIAL = new Set<string>([
-  'Counter4Bit',
+  ...getBlockedVerificationNodeTypes(),
 ]);
 
 /**

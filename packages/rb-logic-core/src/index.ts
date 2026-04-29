@@ -7,6 +7,26 @@ export type { SequentialAnalysis } from './analysis/analyzeSequentialLogic';
 export { analyzeSequentialLogic } from './analysis/analyzeSequentialLogic';
 export type { NodeMeta } from './analysis/nodeMetaRegistry';
 export { getNodeMeta, isSequentialNodeType, getClockPortName, getResetPortName } from './analysis/nodeMetaRegistry';
+export type {
+  ComponentCapability,
+  ComponentCategory,
+  ComponentNodeType,
+  ComponentSupportEntry,
+  VhdlSupportKind,
+} from './analysis/componentSupportRegistry';
+export {
+  COMPONENT_SUPPORT_REGISTRY,
+  getBoundaryInputNodeTypes,
+  getBoundaryOutputNodeTypes,
+  getBlockedVerificationNodeTypes,
+  getComponentSupport,
+  getSupportedNodeTypesFor,
+  getVerificationSequentialNodeTypes,
+  getVhdlLogicNodeTypes,
+  getVhdlStatefulNodeTypes,
+  isNodeTypeSupportedFor,
+  resolveImportedComponentType,
+} from './analysis/componentSupportRegistry';
 export { injectSimClock } from './analysis/injectSimClock';
 export * from './ir';
 
@@ -64,7 +84,9 @@ export {
   ORBehavior,
   NOTBehavior,
   NANDBehavior,
+  NORBehavior,
   XORBehavior,
+  XNORBehavior,
   AND3Behavior,
   OR3Behavior,
   NAND3Behavior,
@@ -104,7 +126,9 @@ import {
   ORBehavior,
   NOTBehavior,
   NANDBehavior,
+  NORBehavior,
   XORBehavior,
+  XNORBehavior,
   AND3Behavior,
   OR3Behavior,
   NAND3Behavior,
@@ -137,7 +161,9 @@ NodeRegistry.register('AND', ANDBehavior);
 NodeRegistry.register('OR', ORBehavior);
 NodeRegistry.register('NOT', NOTBehavior);
 NodeRegistry.register('NAND', NANDBehavior);
+NodeRegistry.register('NOR', NORBehavior);
 NodeRegistry.register('XOR', XORBehavior);
+NodeRegistry.register('XNOR', XNORBehavior);
 NodeRegistry.register('AND3', AND3Behavior);
 NodeRegistry.register('OR3', OR3Behavior);
 NodeRegistry.register('NAND3', NAND3Behavior);

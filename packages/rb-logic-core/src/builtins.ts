@@ -128,6 +128,21 @@ export const NANDBehavior: NodeBehavior = {
 };
 
 /**
+ * NOR gate
+ */
+export const NORBehavior: NodeBehavior = {
+  evaluate(inputs) {
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
+    return {
+      outputs: { out: (in1 || in2 ? 0 : 1) as Signal },
+      state: {},
+    };
+  },
+};
+
+/**
  * XOR gate
  */
 export const XORBehavior: NodeBehavior = {
@@ -143,7 +158,22 @@ export const XORBehavior: NodeBehavior = {
 };
 
 /**
- * AND3 gate — 3-input AND
+ * XNOR gate
+ */
+export const XNORBehavior: NodeBehavior = {
+  evaluate(inputs) {
+    // Support both 'a'/'b' and 'in1'/'in2' naming conventions
+    const in1 = inputs.in1 ?? inputs.a ?? 0;
+    const in2 = inputs.in2 ?? inputs.b ?? 0;
+    return {
+      outputs: { out: (in1 === in2 ? 1 : 0) as Signal },
+      state: {},
+    };
+  },
+};
+
+/**
+ * AND3 gate - 3-input AND
  */
 export const AND3Behavior: NodeBehavior = {
   evaluate(inputs) {
@@ -581,4 +611,3 @@ export const OUTPUTBehavior: NodeBehavior = {
     };
   },
 };
- 

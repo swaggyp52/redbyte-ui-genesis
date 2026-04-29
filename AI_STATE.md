@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-04-28 (Product takeover Phase 1 - component support registry)
+
+**Subsystem:** `componentSupportRegistry.ts`, Design palette, Verify mode detection, Import HDL reconstruction, VHDL/Basys3 export support checks
+
+**Context:** Complete the remaining Phase 1 correctness/truth foundation by replacing per-surface component support allowlists with one canonical support matrix.
+
+**Changes:**
+- Added `packages/rb-logic-core/src/analysis/componentSupportRegistry.ts` as the shared matrix for authoring, simulation, verification, VHDL export, import reconstruction, classroom availability, sequential metadata, and import aliases.
+- Routed `nodeMetaRegistry`, Verify mode support/blocked sets, Import HDL component alias resolution, VHDL supported logic/boundary sets, and Basys3 stateful export classification through that matrix.
+- Made Design palette filtering and student-readable labels consult the registry instead of treating palette entries as their own support source.
+- Registered NOR and XNOR runtime behaviors so Design palette, simulation, IR, and VHDL export agree for the two-input gate set.
+- Added registry and import tests proving exact 3-input gate alias reconstruction, blocked Counter4Bit/Delay semantics, VHDL support sets, and NOR/XNOR runtime behavior.
+- Updated current-truth docs and cockpit status for the completed registry batch.
+
+**Validation:**
+- `pnpm -w exec vitest run componentSupportRegistry verifyMode hdlToCircuit.layout` -> pass
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass / exit 0 (full gate sequence; existing declaration-generation warnings printed during workspace builds)
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment has not been verified in this environment. E2/E3 hardware certification remains blocked on a connected Basys3 bench. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (Product takeover Phase 1 - workflow truth foundation)
 
 **Subsystem:** `projectTruth.ts`, `projectWorkflowAuthority.ts`, `projectHealth.ts`, `ExportSurface`, Hardware/Export/Project docs

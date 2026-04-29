@@ -1,5 +1,5 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { toCircuitV1 } from '@redbyte/rb-logic-core';
+import { getVhdlStatefulNodeTypes, toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
 import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
@@ -91,7 +91,7 @@ function detectSignalGroup(entry: IoMappingEntry): string {
   return 'Other';
 }
 
-const STATEFUL_NODE_TYPES = new Set(['DLatch', 'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'TFlipFlop', 'JKFlipFlop']);
+const STATEFUL_NODE_TYPES = new Set(getVhdlStatefulNodeTypes());
 
 function hasStatefulNodes(netlist: Netlist): boolean {
   return netlist.nodes.some((node) => STATEFUL_NODE_TYPES.has(node.type));

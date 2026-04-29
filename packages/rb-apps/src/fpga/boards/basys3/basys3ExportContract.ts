@@ -18,6 +18,7 @@
  */
 
 import type { Basys3ExportModel } from './basys3ExportModel';
+import { getVhdlStatefulNodeTypes } from '@redbyte/rb-logic-core';
 import {
   BASYS3_CLOCK_PIN,
   BASYS3_DP_PIN,
@@ -228,9 +229,7 @@ function detectTimingRole(
   return 'unconstrained';
 }
 
-const STATEFUL_NODE_TYPES = new Set([
-  'DLatch', 'DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'TFlipFlop', 'JKFlipFlop',
-]);
+const STATEFUL_NODE_TYPES = new Set(getVhdlStatefulNodeTypes());
 
 function detectClockPolicy(
   exportModel: Basys3ExportModel,

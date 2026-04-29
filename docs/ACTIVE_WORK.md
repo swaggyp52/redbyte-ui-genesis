@@ -16,9 +16,9 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Product takeover - Phase 1 correctness/truth foundation** - Old chrome-slice execution is stopped. Current implementation focus is the real workflow truth model: Project/Verify/Hardware/Export must distinguish draft exports from trusted exports, treat Verify completion as a current assertion-backed PASS, and avoid hardware/export handoff claims before proof exists. Next: finish the Phase 1 component support registry so Design, Verify, Export, and Import share one support matrix.
-2. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** — E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
-3. **BUG-003 — testing-library upgrade** — bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
+1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** - E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
+2. **BUG-003 - testing-library upgrade** - bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
+3. **Phase 2A usability audit bundle** - carry Verify mismatch briefs back to Design, make mapping labels label-first across surfaces, and keep pass/fail/mismatch details visible across navigation before starting deeper Export/Import pipeline refactors.
 
 ---
 
@@ -84,11 +84,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Slice N7: Sim Clock removed from palette; CLK100MHZ is canonical clock | `d7ce3929` |
 | ✓ Done | Slice N2: Chrome contract interface - every surface declares top-strip slots, dock policy, and sub-mode exit paths | `7beed429` |
 | ✓ Done | Slice N3: User-controlled chrome toggles - persistent Design toolbar, Verify row, side rail, and console visibility | `2256a9a7` |
 | ✓ Done | Slice N5: 28px chrome waste reclaim - command stacks use 8px bottom padding instead of stacked gap + margin | `1f6e3631` |
-| ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `this commit` |
+| ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
+| ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `this commit` |
 
 ---
 

@@ -6,6 +6,7 @@
  * Metadata registry for node types
  * Single authority for detecting sequential logic, clock ports, and reset ports
  */
+import { getComponentSupport } from './componentSupportRegistry';
 
 export interface NodeMeta {
   isSequential?: boolean;
@@ -14,82 +15,19 @@ export interface NodeMeta {
   note?: string;       // e.g., "clocked_macro v1"
 }
 
-const META_BY_TYPE: Record<string, NodeMeta> = {
-  // Sequential/stateful elements
-  DFlipFlop: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "RST",
-    note: "clocked_macro v2 - rising-edge D flip-flop",
-  },
-  Register1: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "RST",
-    note: "native scalar register (D, CLK, optional EN/RST)",
-  },
-  RegisterBus: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "RST",
-    note: "native bus register (width-configurable)",
-  },
-  StateBank: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "RST",
-    note: "native grouped register/state-bank abstraction",
-  },
-  DLatch: {
-    isSequential: true,
-    clockPort: "EN",
-    note: "level-sensitive D latch; transparent when EN=1, holds when EN=0",
-  },
-  TFlipFlop: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "CLR",
-    note: "clocked_macro v2 - rising-edge T flip-flop with active-high clear",
-  },
-  JKFlipFlop: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "CLR",
-    note: "clocked_macro v2 - rising-edge JK flip-flop with active-high clear",
-  },
-  RSLatch: {
-    isSequential: true,
-    note: "clocked_macro v1 - asynchronous SR latch",
-  },
-  Counter4Bit: {
-    isSequential: true,
-    clockPort: "CLK",
-    resetPort: "RST",
-    note: "clocked_macro v1 - 4-bit counter",
-  },
-  Delay: {
-    isSequential: true,
-    note: "clocked_macro v1 - delay element",
-  },
-  // Combinational elements (explicitly marked as NOT sequential)
-  AND: { isSequential: false },
-  OR: { isSequential: false },
-  NOT: { isSequential: false },
-  NAND: { isSequential: false },
-  NOR: { isSequential: false },
-  XOR: { isSequential: false },
-  XNOR: { isSequential: false },
-  FullAdder: { isSequential: false },
-  Lamp: { isSequential: false },
-  Switch: { isSequential: false },
-};
-
 /**
  * Get metadata for a node type
  * Returns empty object (defaults to non-sequential) if type not found
  */
 export function getNodeMeta(typeString: string): NodeMeta {
-  return META_BY_TYPE[typeString] ?? {};
+  const support = getComponentSupport(typeString);
+  if (!support) return {};
+  return {
+    isSequential: support.isSequential === true,
+    clockPort: support.clockPort,
+    resetPort: support.resetPort,
+    note: support.note,
+  };
 }
 
 /**
