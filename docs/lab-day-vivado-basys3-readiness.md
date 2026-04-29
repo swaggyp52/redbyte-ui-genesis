@@ -20,6 +20,12 @@ The release bar is two real proofs, not just tests:
 - one combinational proof
 - one sequential proof using `CLK100MHZ` on `W5`
 
+Current live-bench truth on 2026-04-29:
+
+- `signal-tour` now has real E2 + E3 proof on Basys3.
+- `golden-basys3-switch-and` now has fresh E1 + E2 after a real fixture blocker fix; final E3 note is still pending.
+- Custom blank-shaped projects now have a repo-owned certification harness and multiple real E1 rows under `out/vivado-cert/custom-projects/`.
+
 ## Supported scope contract
 
 ### Fully supported today

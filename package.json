@@ -156,6 +156,7 @@
         "lab:vivado:cert:example": "pnpm exec tsx ./scripts/vivado-cert-export-ide-example.ts",
         "lab:vivado:cert:from-scratch": "pnpm exec tsx ./scripts/vivado-cert-export-from-scratch.ts",
         "lab:vivado:hw-probe": "node scripts/vivado/run-hw-probe.mjs",
+        "lab:vivado:cert:custom": "pnpm exec tsx ./scripts/vivado-cert-custom-project.ts",
         "classroom:gate": "node ./scripts/classroom-gate.mjs",
         "classroom:signoff": "node ./scripts/classroom-signoff.mjs",
         "classroom:signoff:dev": "node ./scripts/classroom-signoff.mjs --allow-dirty",

@@ -8,14 +8,52 @@
   "circuit": {
     "nodes": [
       {
-        "id": "and1",
+        "id": "sw0_node",
+        "type": "INPUT",
+        "position": { "x": 100, "y": 140 },
+        "label": "SW0",
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "sw1_node",
+        "type": "INPUT",
+        "position": { "x": 100, "y": 280 },
+        "label": "SW1",
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "and_gate",
         "type": "AND",
-        "position": { "x": 120, "y": 80 },
+        "position": { "x": 320, "y": 200 },
+        "label": "AND",
+        "config": {},
+        "state": {}
+      },
+      {
+        "id": "ld0_node",
+        "type": "OUTPUT",
+        "position": { "x": 520, "y": 200 },
+        "label": "LD0",
         "config": {},
         "state": {}
       }
     ],
-    "connections": []
+    "connections": [
+      {
+        "from": { "nodeId": "sw0_node", "portName": "out" },
+        "to": { "nodeId": "and_gate", "portName": "a" }
+      },
+      {
+        "from": { "nodeId": "sw1_node", "portName": "out" },
+        "to": { "nodeId": "and_gate", "portName": "b" }
+      },
+      {
+        "from": { "nodeId": "and_gate", "portName": "out" },
+        "to": { "nodeId": "ld0_node", "portName": "in" }
+      }
+    ]
   },
   "layout": {
     "perspectiveId": "analyze",
@@ -30,12 +68,18 @@
     "board": "basys3",
     "ioMapping": {
       "inputs": [
-        { "id": "in-a", "nodeId": "and1", "port": "in1", "pin": "SW0", "label": "SW0" },
-        { "id": "in-b", "nodeId": "and1", "port": "in2", "pin": "SW1", "label": "SW1" }
+        { "id": "sw0", "nodeId": "sw0_node", "port": "out", "pin": "SW0", "label": "SW0" },
+        { "id": "sw1", "nodeId": "sw1_node", "port": "out", "pin": "SW1", "label": "SW1" }
       ],
       "outputs": [
-        { "id": "out-y", "nodeId": "and1", "port": "out", "pin": "LD0", "label": "LED0" }
+        { "id": "ld0", "nodeId": "ld0_node", "port": "in", "pin": "LD0", "label": "LD0" }
       ]
     }
-  }
+  },
+  "vectors": [
+    { "tick": 0, "inputs": { "sw0_node": 0, "sw1_node": 0 }, "expected": { "ld0_node": 0 } },
+    { "tick": 1, "inputs": { "sw0_node": 1, "sw1_node": 0 }, "expected": { "ld0_node": 0 } },
+    { "tick": 2, "inputs": { "sw0_node": 0, "sw1_node": 1 }, "expected": { "ld0_node": 0 } },
+    { "tick": 3, "inputs": { "sw0_node": 1, "sw1_node": 1 }, "expected": { "ld0_node": 1 } }
+  ]
 }

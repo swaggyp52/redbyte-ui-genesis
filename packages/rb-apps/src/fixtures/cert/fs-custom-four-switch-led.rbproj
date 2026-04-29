@@ -1,0 +1,56 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-04-29T21:30:00.000Z",
+  "updatedAt": "2026-04-29T21:30:00.000Z",
+  "name": "FS Custom: four switches to four LEDs",
+  "description": "Blank-shaped custom project: SW0..SW3 each drive LD0..LD3 directly.",
+  "circuit": {
+    "nodes": [
+      { "id": "sw0_node", "type": "INPUT", "x": 80, "y": 80, "label": "SW0", "config": {}, "state": {} },
+      { "id": "sw1_node", "type": "INPUT", "x": 80, "y": 180, "label": "SW1", "config": {}, "state": {} },
+      { "id": "sw2_node", "type": "INPUT", "x": 80, "y": 280, "label": "SW2", "config": {}, "state": {} },
+      { "id": "sw3_node", "type": "INPUT", "x": 80, "y": 380, "label": "SW3", "config": {}, "state": {} },
+      { "id": "ld0_node", "type": "OUTPUT", "x": 420, "y": 80, "label": "LD0", "config": {}, "state": {} },
+      { "id": "ld1_node", "type": "OUTPUT", "x": 420, "y": 180, "label": "LD1", "config": {}, "state": {} },
+      { "id": "ld2_node", "type": "OUTPUT", "x": 420, "y": 280, "label": "LD2", "config": {}, "state": {} },
+      { "id": "ld3_node", "type": "OUTPUT", "x": 420, "y": 380, "label": "LD3", "config": {}, "state": {} }
+    ],
+    "connections": [
+      { "from": { "nodeId": "sw0_node", "portName": "out" }, "to": { "nodeId": "ld0_node", "portName": "in" } },
+      { "from": { "nodeId": "sw1_node", "portName": "out" }, "to": { "nodeId": "ld1_node", "portName": "in" } },
+      { "from": { "nodeId": "sw2_node", "portName": "out" }, "to": { "nodeId": "ld2_node", "portName": "in" } },
+      { "from": { "nodeId": "sw3_node", "portName": "out" }, "to": { "nodeId": "ld3_node", "portName": "in" } }
+    ]
+  },
+  "ioMapping": {
+    "inputs": [
+      { "id": "sw0", "nodeId": "sw0_node", "port": "out", "label": "SW0", "pin": "SW0" },
+      { "id": "sw1", "nodeId": "sw1_node", "port": "out", "label": "SW1", "pin": "SW1" },
+      { "id": "sw2", "nodeId": "sw2_node", "port": "out", "label": "SW2", "pin": "SW2" },
+      { "id": "sw3", "nodeId": "sw3_node", "port": "out", "label": "SW3", "pin": "SW3" }
+    ],
+    "outputs": [
+      { "id": "ld0", "nodeId": "ld0_node", "port": "in", "label": "LD0", "pin": "LD0" },
+      { "id": "ld1", "nodeId": "ld1_node", "port": "in", "label": "LD1", "pin": "LD1" },
+      { "id": "ld2", "nodeId": "ld2_node", "port": "in", "label": "LD2", "pin": "LD2" },
+      { "id": "ld3", "nodeId": "ld3_node", "port": "in", "label": "LD3", "pin": "LD3" }
+    ]
+  },
+  "vectors": [
+    { "tick": 0, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 0, "ld1_node": 0, "ld2_node": 0, "ld3_node": 0 } },
+    { "tick": 1, "inputs": { "sw0_node": 1, "sw1_node": 0, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 1, "ld1_node": 0, "ld2_node": 0, "ld3_node": 0 } },
+    { "tick": 2, "inputs": { "sw0_node": 0, "sw1_node": 1, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 0, "ld1_node": 1, "ld2_node": 0, "ld3_node": 0 } },
+    { "tick": 3, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 1, "sw3_node": 0 }, "expected": { "ld0_node": 0, "ld1_node": 0, "ld2_node": 1, "ld3_node": 0 } },
+    { "tick": 4, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 0, "sw3_node": 1 }, "expected": { "ld0_node": 0, "ld1_node": 0, "ld2_node": 0, "ld3_node": 1 } },
+    { "tick": 5, "inputs": { "sw0_node": 1, "sw1_node": 1, "sw2_node": 1, "sw3_node": 1 }, "expected": { "ld0_node": 1, "ld1_node": 1, "ld2_node": 1, "ld3_node": 1 } }
+  ],
+  "fpga": { "board": "basys3", "part": "xc7a35tcpg236-1", "top": "top" },
+  "meta": {
+    "projectId": "fs-custom-four-switch-led",
+    "projectKind": "blank",
+    "sourceExampleId": null,
+    "scenarioAuthority": "authored",
+    "tags": ["custom-cert", "blank", "multi-output", "basys3"]
+  }
+}

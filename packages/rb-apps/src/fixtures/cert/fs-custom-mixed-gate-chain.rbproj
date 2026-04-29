@@ -1,0 +1,56 @@
+{
+  "kind": "rb-project",
+  "version": 1,
+  "createdAt": "2026-04-29T21:35:00.000Z",
+  "updatedAt": "2026-04-29T21:35:00.000Z",
+  "name": "FS Custom: mixed gate chain",
+  "description": "Blank-shaped custom project: (SW0 AND SW1) OR (SW2 XOR SW3) -> LD0.",
+  "circuit": {
+    "nodes": [
+      { "id": "sw0_node", "type": "INPUT", "x": 60, "y": 80, "label": "SW0", "config": {}, "state": {} },
+      { "id": "sw1_node", "type": "INPUT", "x": 60, "y": 180, "label": "SW1", "config": {}, "state": {} },
+      { "id": "sw2_node", "type": "INPUT", "x": 60, "y": 280, "label": "SW2", "config": {}, "state": {} },
+      { "id": "sw3_node", "type": "INPUT", "x": 60, "y": 380, "label": "SW3", "config": {}, "state": {} },
+      { "id": "and_gate", "type": "AND", "x": 250, "y": 130, "label": "AND", "config": {}, "state": {} },
+      { "id": "xor_gate", "type": "XOR", "x": 250, "y": 330, "label": "XOR", "config": {}, "state": {} },
+      { "id": "or_gate", "type": "OR", "x": 430, "y": 230, "label": "OR", "config": {}, "state": {} },
+      { "id": "ld0_node", "type": "OUTPUT", "x": 620, "y": 230, "label": "LD0", "config": {}, "state": {} }
+    ],
+    "connections": [
+      { "from": { "nodeId": "sw0_node", "portName": "out" }, "to": { "nodeId": "and_gate", "portName": "a" } },
+      { "from": { "nodeId": "sw1_node", "portName": "out" }, "to": { "nodeId": "and_gate", "portName": "b" } },
+      { "from": { "nodeId": "sw2_node", "portName": "out" }, "to": { "nodeId": "xor_gate", "portName": "a" } },
+      { "from": { "nodeId": "sw3_node", "portName": "out" }, "to": { "nodeId": "xor_gate", "portName": "b" } },
+      { "from": { "nodeId": "and_gate", "portName": "out" }, "to": { "nodeId": "or_gate", "portName": "a" } },
+      { "from": { "nodeId": "xor_gate", "portName": "out" }, "to": { "nodeId": "or_gate", "portName": "b" } },
+      { "from": { "nodeId": "or_gate", "portName": "out" }, "to": { "nodeId": "ld0_node", "portName": "in" } }
+    ]
+  },
+  "ioMapping": {
+    "inputs": [
+      { "id": "sw0", "nodeId": "sw0_node", "port": "out", "label": "SW0", "pin": "SW0" },
+      { "id": "sw1", "nodeId": "sw1_node", "port": "out", "label": "SW1", "pin": "SW1" },
+      { "id": "sw2", "nodeId": "sw2_node", "port": "out", "label": "SW2", "pin": "SW2" },
+      { "id": "sw3", "nodeId": "sw3_node", "port": "out", "label": "SW3", "pin": "SW3" }
+    ],
+    "outputs": [
+      { "id": "ld0", "nodeId": "ld0_node", "port": "in", "label": "LD0", "pin": "LD0" }
+    ]
+  },
+  "vectors": [
+    { "tick": 0, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 0 } },
+    { "tick": 1, "inputs": { "sw0_node": 1, "sw1_node": 0, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 0 } },
+    { "tick": 2, "inputs": { "sw0_node": 1, "sw1_node": 1, "sw2_node": 0, "sw3_node": 0 }, "expected": { "ld0_node": 1 } },
+    { "tick": 3, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 1, "sw3_node": 0 }, "expected": { "ld0_node": 1 } },
+    { "tick": 4, "inputs": { "sw0_node": 0, "sw1_node": 0, "sw2_node": 1, "sw3_node": 1 }, "expected": { "ld0_node": 0 } },
+    { "tick": 5, "inputs": { "sw0_node": 1, "sw1_node": 1, "sw2_node": 1, "sw3_node": 1 }, "expected": { "ld0_node": 1 } }
+  ],
+  "fpga": { "board": "basys3", "part": "xc7a35tcpg236-1", "top": "top" },
+  "meta": {
+    "projectId": "fs-custom-mixed-gate-chain",
+    "projectKind": "blank",
+    "sourceExampleId": null,
+    "scenarioAuthority": "authored",
+    "tags": ["custom-cert", "blank", "mixed-logic", "basys3"]
+  }
+}

@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-04-29 (Basys3 bench closeout + custom-project Vivado hardening harness)
+
+**Subsystem:** `packages/rb-apps/src/fixtures/classroom/golden-basys3-switch-and.rbproj`, `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256`, `scripts/vivado-cert-custom-project.ts`, `package.json`, custom blank-project fixtures/tests, release proof/readiness docs
+
+**Context:** Resume the real Vivado/Basys3 lab session after hardware detection recovered, close the open bench truth for the top-priority matrix rows, and start the failure-driven custom-project hardening campaign with a repeatable repo-owned certification harness instead of one-off manual exports.
+
+**Changes:**
+- Re-ran live bench proof with working hardware detection and captured fresh real-tool evidence for the priority rows.
+- Certified IDE `signal-tour` through real Vivado build + device programming, then recorded user-confirmed E3 board behavior (`SW0..SW3` each drive `LD0..LD3` independently).
+- Found and fixed a real classroom fixture blocker in `golden-basys3-switch-and`: the saved project exported constant-low HDL because the fixture had only a loose `AND` node plus `classroom.ioMapping`, without top-level INPUT/OUTPUT nodes or wires.
+- Rebuilt the `golden-basys3-switch-and` fixture as a true student-shaped circuit, updated its deterministic golden SHA, reran the focused gate, and re-proved fresh E1/E2 on the bench; E3 remains explicitly pending the four-case manual note.
+- Added `scripts/vivado-cert-custom-project.ts` and `pnpm lab:vivado:cert:custom` to generate deterministic Open Project bundles for custom/blank-shaped projects, run the canonical repo Vivado batch/program flows, and preserve case-scoped artifacts under `out/vivado-cert/custom-projects/<case-id>/`.
+- Kept the custom harness terminal-safe by removing dependence on IDE/Vite-only bring-up helpers after the first `tsx` run exposed a real `import.meta.env` failure path on the lab machine.
+- Added tracked blank-project certification fixtures for a custom four-switch/four-LED project and a mixed gate chain, then proved real E1 Vivado success for:
+  - `fs-comb-switch-and`
+  - `fs-seq-two-bit-counter`
+  - `fs-custom-four-switch-led`
+  - `fs-custom-mixed-gate-chain`
+- Added focused fixture/script tests so the new custom harness inputs stay exportable and the harness remains part of the repo-owned certification toolset.
+- Updated release truth/proof docs for the live bench results and the new custom-project campaign ledger.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts` -> pass
+- `pnpm -s rc:e1:golden-basys3-export-gate` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/from-scratch-basys3-cert-fixtures.test.ts packages/rb-apps/src/__tests__/custom-vivado-cert-fixtures.test.ts packages/rb-apps/src/__tests__/vivado-cert-scripts-present-contract.test.ts --pool forks --poolOptions.forks.singleFork` -> pass (10 tests)
+- `pnpm lab:vivado:hw-probe` -> pass / detected live Digilent target
+- `pnpm exec tsx scripts/vivado-cert-export-ide-example.ts signal-tour` + Vivado batch/program -> pass
+- `pnpm exec tsx scripts/vivado-cert-export-open-project.ts` + Vivado batch/program -> pass after fixture fix
+- `pnpm exec tsx scripts/vivado-cert-custom-project.ts --case fs-comb-switch-and --fixture fs-comb-switch-and-basys3 --program false` -> pass
+- `pnpm exec tsx scripts/vivado-cert-custom-project.ts --case fs-seq-two-bit-counter --fixture fs-seq-two-bit-counter-basys3 --program false` -> pass
+- `pnpm exec tsx scripts/vivado-cert-custom-project.ts --case fs-custom-four-switch-led --project packages/rb-apps/src/fixtures/cert/fs-custom-four-switch-led.rbproj --program false` -> pass
+- `pnpm exec tsx scripts/vivado-cert-custom-project.ts --case fs-custom-mixed-gate-chain --project packages/rb-apps/src/fixtures/cert/fs-custom-mixed-gate-chain.rbproj --program false` -> pass
+
+**Manual observation note:** `signal-tour` E3 is now user-confirmed on the live bench. `golden-basys3-switch-and` was reprogrammed after the fixture fix, but its final four-case E3 confirmation is still pending. The fresh browser/manual Verify workbench rehearsal for the 2-bit counter flow was not completed in this batch.
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-29 (Verify workbench stabilization + broad render suite cleanup)
 
 **Subsystem:** `vitest.setup.ts`, `VerifySurface`, `ScenarioBuilderPanel`, `projectWorkflowAuthority.ts`, `ExportSurface`, verify/export render suites

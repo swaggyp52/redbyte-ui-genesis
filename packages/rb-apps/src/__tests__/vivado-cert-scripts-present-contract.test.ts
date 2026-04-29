@@ -27,4 +27,13 @@ describe('Vivado certification helper scripts (repo presence)', () => {
     expect(text).toContain('buildVivadoProjectFolderZip');
     expect(text).not.toContain('IDE_EXAMPLES');
   });
+
+  it('includes a generic custom-project Vivado certification harness', () => {
+    const p = join(repoRoot, 'scripts', 'vivado-cert-custom-project.ts');
+    const text = readFileSync(p, 'utf8');
+    expect(text).toContain('custom-project');
+    expect(text).toContain('buildVivadoProjectFolderZip');
+    expect(text).toContain('redbyte_batch_synth_impl_bitstream.tcl');
+    expect(text).toContain('redbyte_program_device.tcl');
+  });
 });

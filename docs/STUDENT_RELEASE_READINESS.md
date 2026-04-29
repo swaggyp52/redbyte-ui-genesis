@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-23
+last_validated: 2026-04-29
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-04-23  
+**Last updated:** 2026-04-29
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -37,8 +37,8 @@ Proven on this lab machine unless noted:
 
 | Starter / artifact | L0 | E0 | E1 | E2 | E3 | Student note |
 |--------------------|----|----|----|----|----|--------------|
-| Classroom golden `golden-basys3-switch-and` (SW0∧SW1→LED0) | yes | yes | **yes** | **no** — `hw_probe` / program: *no hw_target on RC1 bench* | pending | E2/E3 when `pnpm lab:vivado:hw-probe` exits 0 on your PC. |
-| IDE `signal-tour` (4 SW → 4 LED) | yes | yes | **yes** | **no** (same bench) | pending | Same gate as above. |
+| Classroom golden `golden-basys3-switch-and` (SW0∧SW1→LED0) | yes | yes | **yes** | **yes** (`vivado_program_golden_and_2026-04-29.log`) | pending | Fixture blocker fixed; board was reprogrammed for manual four-case confirmation. |
+| IDE `signal-tour` (4 SW → 4 LED) | yes | yes | **yes** | **yes** (`vivado_program_signal_tour_2026-04-29.log`) | **yes** | User-confirmed bench behavior on 2026-04-29; proof: `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md`. |
 | IDE `two-bit-counter` (Basys3 `CLK100MHZ`→W5, SW0, BTNC, LD0–1) | yes | yes | **yes** (`vivado_batch_two_bit_counter_e2e.log`) | **yes** (`vivado_program_two_bit_counter_e2_2026-04-23.log`; `hw_probe` exit 0 same session) | *pending* — TA runs §3 checklist on hardware | Proof + E2 detail: `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`. |
 
 ### 2b. From-scratch authoring (blank project — not gallery load)
@@ -47,8 +47,10 @@ Proven on this lab machine unless noted:
 |--------------------|---------|-------------------------------------|
 | `fs-comb-switch-and-basys3` | Blank-shaped save: SW0∧SW1→LD0 | `vivado_batch_fs_comb_from_scratch.log`, `vivado_program_fs_comb_from_scratch.log` |
 | `fs-seq-two-bit-counter-basys3` | Blank-shaped save: 2-bit counter + CLK100MHZ | `vivado_batch_fs_seq_from_scratch.log`, `vivado_program_fs_seq_from_scratch.log` |
+| `fs-custom-four-switch-led` | Blank-shaped save: SW0..SW3 each drive LD0..LD3 | `out/vivado-cert/custom-projects/fs-custom-four-switch-led/vivado_batch.log` |
+| `fs-custom-mixed-gate-chain` | Blank-shaped save: `(SW0 AND SW1) OR (SW2 XOR SW3) -> LD0` | `out/vivado-cert/custom-projects/fs-custom-mixed-gate-chain/vivado_batch.log` |
 
-**Reproduce export:** `pnpm lab:vivado:cert:from-scratch <fixture-id>` — see `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md`. **Student procedure:** checklist doc §A–B.
+**Reproduce export:** `pnpm lab:vivado:cert:from-scratch <fixture-id>` for the original blank twins, or `pnpm lab:vivado:cert:custom -- --case <case-id> --project <path.rbproj>` for custom blank-shaped projects. See `docs/release/proof/custom-projects-2026-04-29.md`. **Student procedure:** checklist doc §A–B.
 
 **Honest fences (not blanket-certified):**
 
@@ -92,6 +94,9 @@ Full command reference: `scripts/vivado/README.md`.
 | Evidence | Path |
 |----------|------|
 | RC1 bench closeout (E2/E3 honesty + hw_probe) | `docs/release/proof/rc1-bench-closeout-2026-04-23.md` |
+| `signal-tour` E2/E3 closeout | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
+| `golden-basys3-switch-and` blocker fix + fresh E1/E2 | `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |
+| Custom-project harness + E1 batch | `docs/release/proof/custom-projects-2026-04-29.md`; `docs/release/custom-project-vivado-hardening-2026-04-29.md` |
 | Two-bit counter sequential row (E1 + **E2** + E3 checklist) | `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`; `out/vivado-cert/vivado_program_two_bit_counter_e2_2026-04-23.log` |
 | From-scratch authoring (blank saves → Vivado → board) | `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md`; `docs/release/from-scratch-basys3-authoring-checklist.md` |
 | Earlier E1 matrix slice | `docs/release/proof/student-release-readiness-2026-04-23.md` |

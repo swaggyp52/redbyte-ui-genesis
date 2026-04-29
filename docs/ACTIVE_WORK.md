@@ -16,9 +16,9 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** - E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
-2. **Phase 2A usability audit continuation** - keep improving the student loop around Verify failure explanation, testbench authoring, and Design recovery before deeper Export/Import pipeline refactors.
-3. **Manual student-loop rehearsal for Verify workbench changes** - broad suites are green again, but the 2-bit counter flow still needs a fresh interactive browser pass covering clock insertion, Compare, stale-reason copy, Design mismatch brief, and Export trust messaging.
+1. **Close `golden-basys3-switch-and` E3 and carry the same honesty into custom rows** - `signal-tour` is now E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and the board should next be used for custom-project E2/E3.
+2. **Custom-project hardening campaign** - the new harness is live and has real E1 proof for blank-shaped AND, mixed gate chain, four-switch/four-LED, and 2-bit counter rows. Use those rows to find student-loop failures, not just export regressions.
+3. **Manual student-loop rehearsal for Verify workbench changes** - the 2-bit counter flow still needs a fresh interactive browser pass covering clock insertion, Compare, stale-reason copy, Design mismatch brief, and Export trust messaging.
 
 ---
 
@@ -26,27 +26,22 @@ imported_by: CLAUDE.md
 
 | Blocker | Why | Unblock by |
 |---------|-----|-----------|
-| E2/E3 proof for matrix rows | Requires connected Basys3 + Vivado 2024.2 + Digilent cable | Schedule lab bench session |
+| Final E3 notes for `golden` + custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
 
 ---
 
 ## Next bench / Vivado task
 
-**Target:** `golden-basys3-switch-and` E2 + E3.
+**Target:** custom-project E2/E3 after `golden` E3 closes.
 
 ```powershell
-pnpm lab:vivado:hw-probe   # must exit 0 — confirms target detected
-$Vivado = "C:\Xilinx\Vivado\2024.2\bin\vivado.bat"
-$Bit = "out\vivado-cert\golden-basys3-switch-and-unpacked\golden-basys3-switch-and\golden-basys3-switch-and.runs\impl_1\top.bit"
-& $Vivado -mode batch -source scripts\vivado\redbyte_program_device.tcl -notrace -nojournal -log out\vivado-cert\vivado_program_golden_and.log -tclargs $Bit
+pnpm lab:vivado:cert:custom -- --case fs-custom-four-switch-led --project packages/rb-apps/src/fixtures/cert/fs-custom-four-switch-led.rbproj --program true
 ```
 
-E3 observation: LD0 lights **only** when SW0 ∧ SW1 are both high. Other cases off.
+Planned E3 observation: `SW0..SW3` each drive `LD0..LD3` on the custom blank-shaped row, then re-run the mixed gate chain or custom AND row on hardware.
 
-Then: same flow for `signal-tour` (SW0..SW3 → LD0..LD3 individually).
-
-Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/vivado/README.md`.
+Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-29.md` · `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/vivado/README.md`.
 
 ---
 
@@ -54,7 +49,10 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Evidence | Path |
 |----------|------|
-| Last live-bench E2 proof | `out/vivado-cert/vivado_program_two_bit_counter_e2_2026-04-23.log` |
+| `signal-tour` E2/E3 proof | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
+| `golden-basys3-switch-and` blocker fix + E1/E2 | `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |
+| Custom-project hardening ledger | `docs/release/custom-project-vivado-hardening-2026-04-29.md` |
+| Custom-project proof bundle | `docs/release/proof/custom-projects-2026-04-29.md` |
 | RC1 bench closeout | `docs/release/proof/rc1-bench-closeout-2026-04-23.md` |
 | `two-bit-counter` E1 + E2 + E3 path | `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md` |
 | From-scratch authoring cert | `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md` |
