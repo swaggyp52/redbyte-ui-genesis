@@ -25,13 +25,15 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Assertions** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
-2. **Workspace**: **Stimulus** (scenario library, canvas, workbench) and **waveform** instrument in a lab grid. The stimulus workbench remains visible enough to edit the testbench after a run; the waveform column remains the primary trace stage.
+2. **Workspace**: **Build testbench** (scenario library, clock/timing, stimulus grid, checks, run summary) and **waveform** instrument in a lab grid. The left setup area keeps enough width and height to author the testbench after a run; the waveform column remains the primary trace stage.
 
 3. **Clock / timing panel**: sequential designs show a first-class clock/timing panel inside the stimulus workbench. It distinguishes physical board clock mapping from deterministic Verify stimulus, offers alternating clock, hold-low, hold-high, and single-pulse helpers, and previews the next-run clock row with rising/falling edge labels before the user runs Verify.
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
 5. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail. A selected failed case produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
+
+6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed. This is the pre-run truth students should read before pressing `Run Compare checks`.
 
 ## Empty State
 
@@ -57,6 +59,12 @@ Secondary action: `Open sample vector format`
 Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, but they do not complete the Verify proof stage.
 
 The Verify evidence signature is tied to the same normalized current-project hash that workflow authority compares: circuit, project vectors, custom vectors, and project I/O mapping. Vector UI IDs are ignored for trust so helper-generated clock rows do not create a phantom stale loop after the run completes.
+
+When a current run becomes stale, the copy must say why:
+
+1. `Design changed - rerun Compare`
+2. `Testbench changed - rerun Compare`
+3. Mapping-driven downstream review in Export / Hardware when bindings changed
 
 For sequential circuits, current proof requires useful timing stimulus. A clock row that never produces a rising edge is still visible for inspection, but it does not satisfy the "clock activity" guidance for register updates. Latch-control designs use the same panel but describe the control signal instead of a generic clock.
 

@@ -1,6 +1,6 @@
 import { verifyEvidenceBundle } from '../verifyEvidence';
 import { EvidenceBundle } from '../../evidenceSchema';
-import { canonicalizeEvidence, hashEvidence } from '../evidenceExport';
+import { canonicalizeEvidence, hashEvidence } from '../evidenceHash';
 
 describe('Evidence Verification', () => {
   const validEvidence: EvidenceBundle = {

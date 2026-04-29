@@ -18,7 +18,7 @@ imported_by: CLAUDE.md
 
 1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** - E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
 2. **Phase 2A usability audit continuation** - keep improving the student loop around Verify failure explanation, testbench authoring, and Design recovery before deeper Export/Import pipeline refactors.
-3. **Render harness cleanup for combined surface suites** - focused render tests pass in isolation, but broad combined `vitest run verify` / mixed export render patterns can leave prior DOM in jsdom and produce duplicate `data-testid` failures. Clean this up before relying on broad pattern runs as one signal.
+3. **Manual student-loop rehearsal for Verify workbench changes** - broad suites are green again, but the 2-bit counter flow still needs a fresh interactive browser pass covering clock insertion, Compare, stale-reason copy, Design mismatch brief, and Export trust messaging.
 
 ---
 
@@ -83,7 +83,8 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Done | Verify testbench authority: normalized evidence hash stops helper-vector stale loops; sequential Clock / timing panel previews edge stimulus before run | `this commit` |
+| Done | Verify workbench stabilization: broad render harness cleanup, explicit stale reasons, wider Build testbench workspace, Export stale-evidence wording, and broad `vitest run verify` restored to green | `this commit` |
+| Done | Verify testbench authority: normalized evidence hash stops helper-vector stale loops; sequential Clock / timing panel previews edge stimulus before run | `0b754512` |
 | ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
 | ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `3aa8ba7d` |
 | ✓ Done | BUG-003: testing-library render harness - upgraded to the current React 19-compatible `@testing-library/react@16.3.2` release and added a render smoke test | `010f4ada` |

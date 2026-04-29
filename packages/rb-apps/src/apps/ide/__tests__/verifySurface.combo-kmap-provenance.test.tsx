@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -72,7 +72,7 @@ describe('VerifySurface combo and K-map provenance', () => {
     // Note: combo row elements (ide-truth-table-combo-fail-*) live in a section that requires
     // displaySection="auto", which VerifySurface never passes — those are tested at the
     // TruthTablePane unit level, not here.
-    const { getByTestId, getAllByText } = render(
+    const { getByTestId } = render(
       <VerifySurface
         deterministicHash="det_combo_kmap"
         hasVectors={true}
@@ -96,9 +96,9 @@ describe('VerifySurface combo and K-map provenance', () => {
       />
     );
 
-    // Open drawer and navigate to the Details tab (K-Map is now consolidated inside Details).
+    // Open drawer and navigate to the Vectors tab (truth-table + K-map details live there now).
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
 
     // ld1 at input bits '10' (sw0=1, sw1=0) fails: expected 0, observed 1.
     expect(getByTestId('ide-truth-table-kmap-cell-ld1_10').textContent).toContain('exp 0');

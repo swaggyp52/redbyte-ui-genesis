@@ -792,7 +792,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       case 'verify-not-run':
         return 'Expected-output comparison has not run for this circuit yet.';
       case 'verify-stale':
-        return 'The last Verify evidence is stale for the current circuit.';
+        return 'The last Verify evidence is stale for the current design, testbench, or mapping.';
       case 'assertions-differ':
         return evidenceDiagnostics[0]?.message ?? 'Assertions differ from observed outputs.';
       case 'trace-only':
@@ -2557,7 +2557,7 @@ function buildEvidenceDiagnostics(
   if (dirtySinceVerify) {
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1002',
-      message: 'Design changed since the last Verify run. Export files remain available, but that Verify evidence is stale for the current circuit.',
+      message: 'Design, testbench, or mapping changed since the last Verify run. Export files remain available, but that Verify evidence is stale for the current handoff.',
       fix: 'Open Verify and rerun simulation or compare when you want current evidence for this export.',
       severity: 'warning',
     }));

@@ -758,8 +758,15 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t0');
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
+
+    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '2' } });
+
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 3');
+    expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
+    expect(getByTestId('ide-verify-tick-readout-chip-sw0').textContent).toContain('sw0:1');
+    expect(getByTestId('ide-verify-tick-readout-chip-ld0').textContent).toContain('ld0:1');
 
     fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
 
@@ -1422,7 +1429,7 @@ describe('VerifySurface workstation controls', () => {
     expandVerifyWorkbenchDocks(view);
 
     const workbenchHeader = getByTestId('ide-verify-workbench-toggle');
-    expect(workbenchHeader.textContent).toContain('Stimulus Workbench');
+    expect(workbenchHeader.textContent).toContain('Build testbench');
     expect(workbenchHeader.textContent).not.toContain('Project vectors');
     expect(workbenchHeader.textContent).not.toContain('Show checks');
 
@@ -2120,5 +2127,97 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-pass-hero-open-project-mappins').textContent).toContain('Open Project');
     expect(getByTestId('ide-verify-pass-hero-hardware').textContent).toContain('View on Hardware');
     expect(getByTestId('ide-verify-cta-continue').textContent).toContain('Open Project');
+  });
+
+  it('keeps a compact testbench summary with driven inputs, checked outputs, and compare mode', () => {
+    const passRun = makePassRun();
+    const { getByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={passRun}
+        vectors={passRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-testbench-summary').textContent).toContain('What this testbench will do');
+    expect(getByTestId('ide-verify-testbench-summary-inputs').textContent).toContain('SW0');
+    expect(getByTestId('ide-verify-testbench-summary-outputs').textContent).toContain('LD0');
+    expect(getByTestId('ide-verify-testbench-summary-cases').textContent).toContain('2 cases');
+    expect(getByTestId('ide-verify-testbench-summary-compare').textContent?.toLowerCase()).toContain('compare checks on');
+  });
+
+  it('names stale testbench edits separately from stale design edits', () => {
+    const passRun = makePassRun();
+    const editedVectors = [
+      { id: 'vec-01', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 }, caseIndex: 0 },
+      { id: 'vec-02', tick: 1, inputs: { sw0: 0 }, expected: { ld0: 0 }, caseIndex: 1 },
+    ];
+    const activeScenario = {
+      id: passRun.scenarioId,
+      name: passRun.scenarioName,
+      vectors: editedVectors,
+      version: 2,
+      createdAt: '2026-04-10T00:00:00.000Z',
+      updatedAt: '2026-04-10T00:01:00.000Z',
+    };
+
+    const staleTestbench = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={passRun}
+        vectors={editedVectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        activeScenario={activeScenario}
+        activeScenarioId={activeScenario.id}
+        scenarios={[activeScenario]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(staleTestbench.getByTestId('ide-verify-primary-status').textContent).toContain(
+      'Testbench changed - rerun Compare'
+    );
+    staleTestbench.unmount();
+
+    const waveformRun = makeWaveformOnlyRun();
+    const staleDesign = render(
+      <VerifySurface
+        deterministicHash="new-design-hash"
+        hasVectors={true}
+        lastRun={waveformRun}
+        vectors={waveformRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        activeScenario={{
+          ...activeScenario,
+          version: 1,
+          vectors: waveformRun.report.vectors,
+        }}
+        activeScenarioId={activeScenario.id}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(staleDesign.getByTestId('ide-verify-primary-status').textContent).toContain(
+      'Design changed - rerun Compare'
+    );
   });
 });

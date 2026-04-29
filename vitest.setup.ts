@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { cleanup } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // jsdom does not provide several browser APIs we rely on in UI components.
@@ -154,9 +155,23 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  cleanup();
+
   // Restore original RAF
   globalThis.requestAnimationFrame = originalRAF;
   globalThis.cancelAnimationFrame = originalCAF;
+  vi.useRealTimers();
+  vi.clearAllMocks();
+
+  if (typeof window !== 'undefined') {
+    window.localStorage?.clear();
+    window.sessionStorage?.clear();
+    window.history.replaceState(null, '', '/');
+  }
+
+  if (typeof document !== 'undefined') {
+    document.body.replaceChildren();
+  }
 
   // Stop uiTickStore animation loop and reset state after each test
   try {

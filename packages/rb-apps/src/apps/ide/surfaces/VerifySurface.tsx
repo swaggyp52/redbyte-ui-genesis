@@ -2698,11 +2698,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     handleRunWithPreflight(nextRunUsesAssertions);
   }, [nextRunUsesAssertions, handleRunWithPreflight]);
 
-  const handleRunCurrentTrace = useCallback(() => {
-    setNextRunUsesAssertions(false);
-    handleRunWithPreflight(false);
-  }, [handleRunWithPreflight]);
-
   const handleKeepOlderReference = useCallback(() => {
     setNextRunUsesAssertions(true);
     handleRunWithPreflight(true);
@@ -3619,9 +3614,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (isRunStale) {
       return {
         tone: 'info',
-        title: 'Results are from an older build',
-        message: 'The circuit changed since this run. Re-run to inspect current behavior.',
-        actions: [{ label: 'Run current circuit', onClick: handleRunCurrentTrace, tone: 'primary', testId: 'ide-verify-primary-status-run-current' }],
+        title: 'Design changed - rerun Compare',
+        message: 'The circuit changed since this run. Rerun Compare before trusting these results.',
+        actions: [{ label: 'Run Compare', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-run-current' }],
       };
     }
 
@@ -3642,9 +3637,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (isScenarioStale && !isRunStale) {
       return {
         tone: 'info',
-        title: 'Scenario vectors changed',
-        message: 'Stimulus changed since the last run — re-run to update results.',
-        actions: [{ label: 'Re-run simulation', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
+        title: 'Testbench changed - rerun Compare',
+        message: 'Stimulus or saved checks changed since the last run. Rerun Compare to update the waveform and evidence.',
+        actions: [{ label: 'Run Compare', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
       };
     }
 
@@ -3683,7 +3678,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     canResetToStimulusOnly,
     handleKeepOlderReference,
     handleResetToStimulusOnly,
-    handleRunCurrentTrace,
     handleStaleRecapture,
     hasStaleAuthoredReference,
     isRunStale,
@@ -3713,6 +3707,64 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? primaryStatus.actions?.[0]
       : undefined;
   const verifySessionMetricsRow = Boolean(lastRun) ? ('inline' as const) : ('hidden' as const);
+  const testbenchRunSummary = useMemo<React.ReactNode>(() => {
+    const drivenInputs = editableInputFields
+      .map((field) => field.label ?? field.id)
+      .filter((label) => label.trim().length > 0);
+    const checkedOutputs = outputFields
+      .filter((field) =>
+        totalExpectedCaseCount > 0
+          ? authoredVectors.some((vector) => vector.expected?.[field.id] !== undefined)
+          : false
+      )
+      .map((field) => field.label ?? field.id);
+    const uniqueTicks = Array.from(new Set(effectiveNextRunVectors.map((vector) => vector.tick)));
+    const tickLabel = uniqueTicks.length === 1 ? '1 tick' : `${uniqueTicks.length} ticks`;
+    const caseLabel =
+      totalVectorCount === 1 ? '1 case' : `${totalVectorCount} cases`;
+    const clockLabel = isSequentialRun
+      ? clockActivitySummary.hasTransition
+        ? 'clock activity present'
+        : 'no clock activity yet'
+      : 'not required';
+    const compareLabel =
+      nextRunUsesAssertions && totalExpectedCaseCount > 0
+        ? 'compare checks on'
+        : 'observe only';
+
+    return (
+      <div className="ide-verify-testbench-summary" data-testid="ide-verify-testbench-summary">
+        <span className="ide-verify-testbench-summary-title">What this testbench will do</span>
+        <div className="ide-verify-testbench-summary-grid">
+          <span data-testid="ide-verify-testbench-summary-inputs">
+            <strong>Drives</strong> {drivenInputs.length > 0 ? drivenInputs.join(', ') : 'no inputs'}
+          </span>
+          <span data-testid="ide-verify-testbench-summary-outputs">
+            <strong>Checks</strong> {checkedOutputs.length > 0 ? checkedOutputs.join(', ') : 'no saved outputs'}
+          </span>
+          <span data-testid="ide-verify-testbench-summary-cases">
+            <strong>Run</strong> {caseLabel} / {tickLabel}
+          </span>
+          <span data-testid="ide-verify-testbench-summary-clock">
+            <strong>Clock</strong> {clockLabel}
+          </span>
+          <span data-testid="ide-verify-testbench-summary-compare">
+            <strong>Mode</strong> {compareLabel}
+          </span>
+        </div>
+      </div>
+    );
+  }, [
+    authoredVectors,
+    clockActivitySummary.hasTransition,
+    editableInputFields,
+    effectiveNextRunVectors,
+    isSequentialRun,
+    nextRunUsesAssertions,
+    outputFields,
+    totalExpectedCaseCount,
+    totalVectorCount,
+  ]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -4469,6 +4521,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showExpectedOutputs={showExpectedOutputs}
           onToggleExpectedOutputs={handleToggleExpectedOutputs}
           stimulusAssist={stimulusAssist}
+          runSummary={testbenchRunSummary}
         />
         </VerifyStimulusRegion>
 

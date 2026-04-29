@@ -244,6 +244,38 @@ describe('project workflow authority', () => {
     );
   });
 
+  it('keeps a current compare PASS blocked on Map Pins when required mappings are missing', () => {
+    const authority = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          reportHash: 'verify-report-hash',
+          ranAtIso: '2026-04-06T10:00:00.000Z',
+        },
+      },
+      currentVerifyProjectHash: 'verify-pass-hash',
+      verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
+    });
+
+    expect(authority.verifyCurrent).toBe(true);
+    expect(authority.compareMatches).toBe(true);
+    expect(
+      deriveHardwareExportFailureTruth({
+        workflowAuthority: authority,
+        hasRequiredMappingGap: true,
+        hasOtherBlockingIssue: false,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        condition: 'mapping-incomplete',
+        severity: 'blocked',
+        primaryCtaLabel: 'Open Map Pins',
+        primaryCtaIntent: 'map-pins',
+      })
+    );
+  });
+
   it('maps missing export bundles to a ready-to-build handoff instead of a blocker', () => {
     const authority = deriveAuthority({
       core: {
@@ -345,6 +377,7 @@ describe('project workflow authority', () => {
         condition: 'verify-stale',
         severity: 'advisory',
         statusLabel: 'NEEDS REVIEW',
+        title: 'Verify evidence is stale',
         primaryCtaLabel: 'Open Verify',
         primaryCtaIntent: 'verify',
       })

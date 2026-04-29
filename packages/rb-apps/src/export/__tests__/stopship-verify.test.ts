@@ -15,6 +15,7 @@ import {
 } from '../../fpga/boards/basys3/basys3Bundle';
 import type { IoMapping } from '@redbyte/rb-utils';
 import { IDE_EXAMPLES } from '../../apps/ide/examplesCatalog';
+import { LAB_STARTERS } from '../../apps/ide/labStarters';
 import { runTestVectors } from '../../fpga/boards/basys3/vectorRunner';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -298,10 +299,11 @@ end entity counter;
 `;
     const parsed = parseVhdl(genericVhdl);
     expect(parsed.entityName).toBe('counter');
-    expect(parsed.ports).toHaveLength(3);
+    expect(parsed.ports).toHaveLength(6);
     expect(parsed.ports.map(p => p.name)).toContain('clk');
     expect(parsed.ports.map(p => p.name)).toContain('reset');
-    expect(parsed.ports.map(p => p.name)).toContain('count');
+    expect(parsed.ports.map(p => p.name)).toContain('count[3]');
+    expect(parsed.ports.map(p => p.name)).toContain('count[0]');
     // Should emit a warning about generics being ignored
     expect(parsed.warnings.some(w => w.message.includes('generic'))).toBe(true);
   });
@@ -360,8 +362,9 @@ describe('STOP-SHIP 6 — HDL pane VHDL equals export top.vhd', () => {
 // build the logic themselves. Their pre-populated vectors validate the
 // student's solution, not the starter scaffold.
 
+const LAB_STARTER_IDS = new Set(LAB_STARTERS.map((starter) => starter.example.id));
 const SOLVED_EXAMPLES = IDE_EXAMPLES.filter(
-  (e) => e.circuit.connections.length > 0 || e.vectors.length === 0,
+  (example) => !LAB_STARTER_IDS.has(example.id),
 );
 
 describe('STOP-SHIP 7 — All IDE examples verify clean', () => {

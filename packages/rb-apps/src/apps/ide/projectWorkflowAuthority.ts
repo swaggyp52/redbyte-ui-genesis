@@ -192,8 +192,8 @@ export function deriveHardwareExportFailureTruth(
   if (workflowAuthority.verifyState === 'stale') {
     return advisory(
       'verify-stale',
-      'Refresh Verify evidence',
-      'The design changed after the last Verify run. Refresh Verify before you rely on this handoff.',
+      'Verify evidence is stale',
+      'The design, testbench, or mapping changed after the last Compare run. Open Verify to rerun the current evidence before you rely on this handoff.',
       'Open Verify',
       'verify'
     );

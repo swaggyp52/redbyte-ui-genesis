@@ -63,6 +63,7 @@ Each error must include a direct fix path.
 Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.
 
 Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
+When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.
 
 ## Data Contract (RBProject)
 

@@ -1,5 +1,5 @@
 import { EvidenceBundle } from '../evidenceSchema';
-import { canonicalizeEvidence, hashEvidence } from '../utils/evidenceExport';
+import { canonicalizeEvidence, hashEvidence } from './evidenceHash';
 
 export type VerificationStatus = 'PASS' | 'FAIL' | 'UNVERIFIED' | 'ERROR';
 

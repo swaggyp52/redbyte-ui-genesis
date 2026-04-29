@@ -72,13 +72,13 @@ const baseProps = {
 };
 
 describe('VerifySurface drawer consolidation', () => {
-  it('does not show a Vectors tab in Observe mode', () => {
+  it('shows a Vectors tab in Observe mode', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
-    expect(within(nav).queryByText('Vectors')).toBeNull();
+    expect(within(nav).getByText('Vectors')).toBeTruthy();
   });
 
   it('does not show a Truth Table tab in Observe mode', () => {
@@ -99,13 +99,13 @@ describe('VerifySurface drawer consolidation', () => {
     expect(within(nav).queryByText('K-Map')).toBeNull();
   });
 
-  it('does not show a Vectors tab in Compare mode', () => {
+  it('shows a Vectors tab in Compare mode', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
-    expect(within(nav).queryByText('Vectors')).toBeNull();
+    expect(within(nav).getByText('Vectors')).toBeTruthy();
   });
 
   it('does not show a Truth Table tab in Compare mode', () => {
@@ -126,19 +126,19 @@ describe('VerifySurface drawer consolidation', () => {
     expect(within(nav).queryByText('K-Map')).toBeNull();
   });
 
-  it('Observe mode shows exactly: Inspect + Details tabs', () => {
+  it('Observe mode shows exactly: Inspect + Vectors tabs', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Inspect')).toBeTruthy();
-    expect(within(nav).getByText('Details')).toBeTruthy();
+    expect(within(nav).getByText('Vectors')).toBeTruthy();
     // Checks only appears in Compare mode
     expect(within(nav).queryByText('Checks')).toBeNull();
   });
 
-  it('Compare mode shows exactly: Inspect + Checks + Details tabs', () => {
+  it('Compare mode shows exactly: Inspect + Checks + Vectors tabs', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-cmp" lastRun={makeCompareRun()} />
     );
@@ -146,16 +146,16 @@ describe('VerifySurface drawer consolidation', () => {
     const nav = getByTestId('ide-verify-analysis-tab-nav');
     expect(within(nav).getByText('Inspect')).toBeTruthy();
     expect(within(nav).getByText('Checks')).toBeTruthy();
-    expect(within(nav).getByText('Details')).toBeTruthy();
+    expect(within(nav).getByText('Vectors')).toBeTruthy();
   });
 
-  it('clicking Details tab shows the vectors table', () => {
+  it('clicking Vectors tab shows the vectors table', () => {
     const { getByTestId } = render(
       <VerifySurface {...baseProps} deterministicHash="det-obs" lastRun={makeObserveRun()} />
     );
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     const nav = getByTestId('ide-verify-analysis-tab-nav');
-    fireEvent.click(within(nav).getByText('Details'));
+    fireEvent.click(within(nav).getByText('Vectors'));
     expect(getByTestId('ide-verify-vectors-table')).toBeTruthy();
   });
 });

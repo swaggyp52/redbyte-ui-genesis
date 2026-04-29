@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-04-29 (Verify workbench stabilization + broad render suite cleanup)
+
+**Subsystem:** `vitest.setup.ts`, `VerifySurface`, `ScenarioBuilderPanel`, `projectWorkflowAuthority.ts`, `ExportSurface`, verify/export render suites
+
+**Context:** Continue the Verify stabilization batch after the stale-loop fix by making the broad Verify render harness trustworthy again, tightening the student-facing stale/trust copy, and giving the Verify setup column enough authority to read like a real testbench tool.
+
+**Changes:**
+- Added global `afterEach` test cleanup in `vitest.setup.ts`: DOM cleanup, real-timer restore, mock reset, storage reset, history reset, and body reset. Broad combined `vitest run verify` is no longer polluted by prior mounted DOM or leaked globals.
+- Split pure evidence hashing/canonicalization into `packages/rb-apps/src/utils/evidenceHash.ts` so `verifyEvidence` tests no longer import the heavier `evidenceExport.ts` module and trip the missing `@redbyte/rb-logic-3d` lazy import path.
+- Tightened the stop-ship verify suite to match current source truth: generic VHDL vector ports remain bit-expanded on import, and unsolved `LAB_STARTERS` are no longer treated as solved verification examples just because their scaffold includes wiring.
+- Reframed Verify's left authoring column as **Build testbench**, added a compact run summary (driven inputs, checked outputs, case/tick count, clock activity, Compare armed state), widened the setup/workbench layout, and kept the primary Compare action visually tied to that setup area.
+- Replaced generic stale rerun language with specific student-facing reasons: **Design changed - rerun Compare**, **Testbench changed - rerun Compare**, and Export stale wording that names design/testbench/mapping drift instead of a generic refresh warning.
+- Preserved the existing Verify -> Design mismatch brief behavior and label-first mapping displays while updating the affected render and authority tests to current selectors and workflow copy.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/utils/__tests__/verifyEvidence.test.ts --pool forks --poolOptions.forks.singleFork` -> pass (3 tests)
+- `pnpm -w exec vitest run packages/rb-apps/src/export/__tests__/stopship-verify.test.ts --pool forks --poolOptions.forks.singleFork` -> pass (25 tests)
+- `pnpm -w exec vitest run verify --pool forks --poolOptions.forks.singleFork` -> pass (50 files / 394 tests)
+- `pnpm -w exec vitest run verifyProjectHash verifySurface --pool forks --poolOptions.forks.singleFork` -> pass (21 files / 156 tests)
+- `pnpm -w exec vitest run projectWorkflowAuthority projectHealth --pool forks --poolOptions.forks.singleFork` -> pass (36 tests)
+- `pnpm -w exec vitest run exportSurface --pool forks --poolOptions.forks.singleFork` -> pass (32 tests)
+- `pnpm -w exec vitest run designSurface.workstation --pool forks --poolOptions.forks.singleFork` -> pass (27 tests)
+- `pnpm -w exec vitest run projectSurface hardwareSurface --pool forks --poolOptions.forks.singleFork` -> pass (59 tests)
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass / exit 0
+- `git diff --check` -> pass
+
+**Manual observation note:** An interactive browser/manual 2-bit-counter rehearsal was not rerun in this environment during this batch. The behavior is covered by the broad Verify/render suites and the existing sequential Verify tests, but the cockpit still tracks one fresh manual student-loop pass as follow-up work.
+
+**Residual / release-process caveat:** E2/E3 hardware certification remains bench-blocked. Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-29 (Verify testbench clocking + evidence freshness)
 
 **Subsystem:** `projectRuntime.ts`, `VerifySurface`, Verify clock/testbench UI, workflow evidence freshness

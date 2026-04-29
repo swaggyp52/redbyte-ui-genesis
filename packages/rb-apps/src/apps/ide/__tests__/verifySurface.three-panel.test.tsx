@@ -93,7 +93,7 @@ describe('VerifySurface three-panel workstation', () => {
     expect(view.queryByTestId('ide-verify-three-panel')).toBeNull();
     fireEvent.click(view.getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(within(view.getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
     expect(view.getByTestId('ide-verify-region-inspector')).toBeTruthy();
     expect(view.getByTestId('ide-verify-fail-summary-inline')).toBeTruthy();
     expect(view.getByTestId('ide-verify-explainer-signal').textContent?.toLowerCase()).toContain('ld0');

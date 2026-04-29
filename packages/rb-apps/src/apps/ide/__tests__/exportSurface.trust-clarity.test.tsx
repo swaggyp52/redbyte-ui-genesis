@@ -315,7 +315,7 @@ describe('ExportSurface trust clarity', () => {
     expect(getByTestId('ide-export-trust-reason').textContent?.toLowerCase()).not.toContain(
       'differed at tick'
     );
-    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Refresh Verify');
+    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Open Verify');
     expect(queryByText(/assertions differ from observed outputs/i)).toBeNull();
   });
 

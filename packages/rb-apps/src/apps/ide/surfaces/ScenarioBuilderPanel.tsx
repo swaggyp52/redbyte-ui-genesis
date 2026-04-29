@@ -88,6 +88,8 @@ export interface ScenarioBuilderPanelProps {
   onToggleExpectedOutputs?: () => void;
   /** Compact helper copy/actions that belong inside the stimulus pane. */
   stimulusAssist?: React.ReactNode;
+  /** Compact summary of what the next run will drive/check. */
+  runSummary?: React.ReactNode;
 }
 
 function normalizeFieldId(value: string): string {
@@ -147,6 +149,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   showExpectedOutputs = false,
   onToggleExpectedOutputs,
   stimulusAssist,
+  runSummary,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -492,7 +495,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       >
         {/* ── Testbench zone header ── */}
         <div className="ide-verify-testbench-zone-header">
-          <span className="ide-verify-empty-label">Authored stimulus</span>
+          <span className="ide-verify-empty-label">Build testbench</span>
           {hasVectors && !isUsingFallbackSignals && (
             <span className="ide-verify-testbench-vector-count">
               {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''}
@@ -513,6 +516,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         {stimulusAssist ? (
           <div className="ide-verify-stimulus-assist-slot">
             {stimulusAssist}
+          </div>
+        ) : null}
+        {runSummary ? (
+          <div className="ide-verify-run-summary-slot">
+            {runSummary}
           </div>
         ) : null}
 
@@ -650,9 +658,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {effectiveWorkbenchExpanded ? '▼' : '▸'}
           </span>
           <div className="ide-verify-workbench-title-group">
-            <span className="ide-verify-workbench-toggle-label">Stimulus Workbench</span>
+            <span className="ide-verify-workbench-toggle-label">Build testbench</span>
             <span className="ide-verify-workbench-toggle-copy" data-testid="ide-verify-workbench-summary-copy">
-              Edit authored cases and ticks.
+              Clock, stimulus, checks, then run Compare.
             </span>
           </div>
         </div>
@@ -725,6 +733,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           {stimulusAssist ? (
             <div className="ide-verify-stimulus-assist-slot ide-verify-stimulus-assist-slot--inline">
               {stimulusAssist}
+            </div>
+          ) : null}
+          {runSummary ? (
+            <div className="ide-verify-run-summary-slot ide-verify-run-summary-slot--inline">
+              {runSummary}
             </div>
           ) : null}
           {authoringForm}

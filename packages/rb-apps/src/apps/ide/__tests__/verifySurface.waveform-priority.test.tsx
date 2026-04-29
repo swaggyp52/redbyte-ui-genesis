@@ -292,7 +292,7 @@ describe('VerifySurface waveform lane priority', () => {
   });
 
   it('prioritizes selected failures, peer failures, probes, and manual pins in one ordering model', () => {
-    const { container, getAllByText, getByTestId } = render(
+    const { container, getByText, getByTestId } = render(
       <VerifySurface
         deterministicHash="det_wave_priority"
         hasVectors={true}
@@ -314,8 +314,9 @@ describe('VerifySurface waveform lane priority', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Details')[0]);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t0-t6 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t1');
 
@@ -325,19 +326,21 @@ describe('VerifySurface waveform lane priority', () => {
     expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
     expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 
-    fireEvent.click(getByTestId('ide-verify-pin-signal-flag'));
-    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'flag', 'carry', 'sum']);
-    expect(getWaveformOrder(container).slice(0, 5)).toEqual(['flag', 'carry', 'sum', 'sw0', 'sw1']);
+    fireEvent.click(within(getByTestId('ide-verify-signal-list')).getByText('flag'));
+    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'carry', 'sum', 'flag']);
+    expect(getWaveformOrder(container).slice(0, 5)).toEqual(['carry', 'sum', 'flag', 'sw0', 'sw1']);
 
-    fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
-    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'flag', 'sum', 'carry']);
-    expect(getWaveformOrder(container).slice(0, 5)).toEqual(['flag', 'sum', 'carry', 'sw0', 'sw1']);
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
+    fireEvent.click(getByTestId('ide-verify-mismatch-row-sum_8'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
+    expect(getSignalListOrder(container)).toEqual(['sw0', 'sw1', 'sum', 'carry', 'flag']);
+    expect(getWaveformOrder(container).slice(0, 5)).toEqual(['sum', 'carry', 'flag', 'sw0', 'sw1']);
     expect(getByTestId('ide-verify-run-context-ticks_shown').textContent).toContain('Showing t2-t8 (fail window)');
     expect(getByTestId('ide-verify-run-context-why_these_ticks').textContent).toContain('t8');
   });
 
   it('keeps the secondary assertion grid in sync with the fail-window waveform viewport', () => {
-    const { getAllByText, getByTestId, queryByTestId } = render(
+    const { getByText, getByTestId, queryByTestId } = render(
       <VerifySurface
         deterministicHash="det_wave_priority"
         hasVectors={true}
@@ -360,9 +363,11 @@ describe('VerifySurface waveform lane priority', () => {
     );
 
     expect(queryByTestId('ide-assertion-canvas')).toBeNull();
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
-    fireEvent.click(getAllByText('Details')[0]);
-    fireEvent.click(getByTestId('ide-verify-failure-sum_8'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Checks'));
+    fireEvent.click(getByTestId('ide-verify-mismatch-row-sum_8'));
+    fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByText('Vectors'));
 
     const assertionCanvas = getByTestId('ide-assertion-canvas');
     const assertionScope = within(assertionCanvas);
