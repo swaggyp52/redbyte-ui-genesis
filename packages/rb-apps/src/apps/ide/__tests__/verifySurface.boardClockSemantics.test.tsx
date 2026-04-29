@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 describe('VerifySurface board clock semantics', () => {
@@ -37,6 +37,72 @@ describe('VerifySurface board clock semantics', () => {
     );
     expect(view.getByTestId('ide-verify-insert-clock-pattern').textContent).toContain(
       'board clock pattern'
+    );
+  });
+
+  it('previews the deterministic clock row as soon as the board clock helper inserts stimulus', () => {
+    const onVectorsChange = vi.fn();
+    const view = render(
+      <VerifySurface
+        deterministicHash="board-clock-preview"
+        hasVectors={true}
+        verifyMode="sequential"
+        vectors={[]}
+        mappedInputs={[
+          { id: 'phase_driver', label: 'Phase Driver', pin: 'W5' },
+          { id: 'sw0', label: 'SW0', pin: 'V17' },
+        ]}
+        mappedSignals={[
+          { id: 'phase_driver', label: 'Phase Driver', direction: 'in', pin: 'W5' },
+          { id: 'sw0', label: 'SW0', direction: 'in', pin: 'V17' },
+          { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16' },
+        ]}
+        liveSignalRoles={{ phase_driver: 'clock', sw0: 'input', ld0: 'output' }}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-verify-clock-pattern-summary').textContent).toContain(
+      'No clock row'
+    );
+
+    fireEvent.click(view.getByTestId('ide-verify-insert-clock-pattern'));
+
+    const nextVectors = onVectorsChange.mock.calls.at(-1)?.[0];
+    expect(nextVectors).toEqual([
+      expect.objectContaining({ tick: 0, inputs: { phase_driver: 0 } }),
+      expect.objectContaining({ tick: 1, inputs: { phase_driver: 1 } }),
+      expect.objectContaining({ tick: 2, inputs: { phase_driver: 0 } }),
+      expect.objectContaining({ tick: 3, inputs: { phase_driver: 1 } }),
+    ]);
+
+    view.rerender(
+      <VerifySurface
+        deterministicHash="board-clock-preview"
+        hasVectors={true}
+        verifyMode="sequential"
+        vectors={nextVectors}
+        mappedInputs={[
+          { id: 'phase_driver', label: 'Phase Driver', pin: 'W5' },
+          { id: 'sw0', label: 'SW0', pin: 'V17' },
+        ]}
+        mappedSignals={[
+          { id: 'phase_driver', label: 'Phase Driver', direction: 'in', pin: 'W5' },
+          { id: 'sw0', label: 'SW0', direction: 'in', pin: 'V17' },
+          { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16' },
+        ]}
+        liveSignalRoles={{ phase_driver: 'clock', sw0: 'input', ld0: 'output' }}
+        onVectorsChange={onVectorsChange}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-verify-clock-pattern-summary').textContent).toContain(
+      '2 rising edges'
+    );
+    expect(view.getByTestId('ide-verify-clock-pattern-preview').textContent).toContain(
+      't1=1 rising'
     );
   });
 });

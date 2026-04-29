@@ -1694,17 +1694,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => new Set(clockSignalNames.map((signalName) => normalizeFieldId(signalName))),
     [clockSignalNames]
   );
+  const clockActivitySummary = useMemo(
+    () => buildClockActivitySummary(effectiveNextRunVectors, clockSignalNames),
+    [clockSignalNames, effectiveNextRunVectors]
+  );
 
   const nextRunNeedsClockActivity = useMemo(() => {
     if (effectiveNextRunVectors.length === 0) return false;
     if (verifyMode === 'sequential' && clockSignals.size > 0) {
-      const hasClockActivity = effectiveNextRunVectors.some((vector) =>
-        Object.keys(vector.inputs ?? {}).some((inputKey) => clockSignals.has(normalizeFieldId(inputKey)))
-      );
-      return !hasClockActivity;
+      if (effectiveTimingGuidance.kind === 'latch-control') {
+        return !clockActivitySummary.hasTransition;
+      }
+      return !clockActivitySummary.hasRisingEdge;
     }
     return false;
-  }, [clockSignals, effectiveNextRunVectors, verifyMode]);
+  }, [
+    clockActivitySummary.hasRisingEdge,
+    clockActivitySummary.hasTransition,
+    clockSignals.size,
+    effectiveNextRunVectors.length,
+    effectiveTimingGuidance.kind,
+    verifyMode,
+  ]);
   const boardClockSignalLabel =
     boardClockInputField?.label ??
     boardClockInputField?.id ??
@@ -2810,10 +2821,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : 0;
     const clkVectors = buildAuthoredClockHelperVectors(
       buildClockHelperVectors({
-      clockSignalName: clkKey,
-      startTick,
-      count: 4,
-      pattern: 'alternating',
+        clockSignalName: clkKey,
+        startTick,
+        count: 4,
+        pattern: 'alternating',
       })
     );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
@@ -2828,10 +2839,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : 0;
     const clkVectors = buildAuthoredClockHelperVectors(
       buildClockHelperVectors({
-      clockSignalName: clkKey,
-      startTick,
-      count: 4,
-      pattern: 'hold-low',
+        clockSignalName: clkKey,
+        startTick,
+        count: 4,
+        pattern: 'hold-low',
       })
     );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
@@ -2846,10 +2857,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : 0;
     const clkVectors = buildAuthoredClockHelperVectors(
       buildClockHelperVectors({
-      clockSignalName: clkKey,
-      startTick,
-      count: 4,
-      pattern: 'hold-high',
+        clockSignalName: clkKey,
+        startTick,
+        count: 4,
+        pattern: 'hold-high',
       })
     );
     onVectorsChange?.([...authoredVectors, ...clkVectors]);
@@ -3703,77 +3714,84 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : undefined;
   const verifySessionMetricsRow = Boolean(lastRun) ? ('inline' as const) : ('hidden' as const);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
-    if (verifyMode === 'sequential' && isFirstRunState) {
-      return (
-        <div className="ide-verify-stimulus-assist" data-testid="ide-verify-sequential-helper">
-          <div className="ide-verify-stimulus-assist-copy">
-            <strong className="ide-verify-stimulus-assist-title">{sequentialGuidanceCopy.introTitle}</strong>
-            {boardClockBinding ? (
-              <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-board-clock-source">
-                {boardClockBinding.alias} • {boardClockBinding.packagePin} • simulated board clock source
-              </span>
-            ) : null}
+    if (verifyMode !== 'sequential') return null;
+
+    const isWarn = nextRunNeedsClockActivity;
+    const primaryLabel =
+      effectiveTimingGuidance.kind === 'latch-control'
+        ? 'Insert basic enable pattern'
+        : boardClockBinding
+          ? 'Insert board clock pattern'
+          : 'Alternating clock';
+    const panelTestId =
+      effectiveTimingGuidance.kind === 'latch-control'
+        ? 'ide-verify-sequential-helper'
+        : isWarn
+          ? 'ide-verify-needs-clock'
+          : 'ide-verify-sequential-helper';
+    const missingTimingInstruction =
+      effectiveTimingGuidance.kind === 'latch-control'
+        ? 'Toggle the latch control signal before expecting output changes.'
+        : 'Registers only update on clock edges. Add clock transitions before expecting output changes.';
+
+    return (
+      <div
+        className={`ide-verify-stimulus-assist${isWarn ? ' is-warn' : ''}`}
+        data-testid={panelTestId}
+      >
+        <div className="ide-verify-stimulus-assist-copy">
+          <strong className="ide-verify-stimulus-assist-title">Clock / timing</strong>
+          {boardClockBinding ? (
+            <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-board-clock-source">
+              {boardClockBinding.alias} • {boardClockBinding.packagePin} • simulated board clock source
+            </span>
+          ) : clockSignalNames[0] ? (
+            <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-clock-signal-name">
+              {clockSignalNames[0]}
+            </span>
+          ) : null}
+          {isWarn ? (
+            <span className="ide-verify-stimulus-assist-message">
+              {sequentialGuidanceCopy.introTitle}. {sequentialGuidanceCopy.missingActivity} {missingTimingInstruction}
+            </span>
+          ) : isFirstRunState ? (
             <span className="ide-verify-stimulus-assist-message">
               {sequentialGuidanceCopy.introStep} Run once to inspect state before saving checks.
             </span>
-          </div>
-          <div className="ide-verify-stimulus-assist-actions">
-            <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
-              {effectiveTimingGuidance.kind === 'latch-control'
-                ? 'Insert basic enable pattern'
-                : boardClockBinding
-                  ? 'Insert board clock pattern'
-                  : 'Alternating clock'}
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
-              Hold low
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
-              Hold high
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
-              Single pulse
-            </IdeButton>
-          </div>
-        </div>
-      );
-    }
-
-    if (verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity) {
-      return (
-        <div className="ide-verify-stimulus-assist is-warn" data-testid="ide-verify-needs-clock">
-          <div className="ide-verify-stimulus-assist-copy">
-            <strong className="ide-verify-stimulus-assist-title">Clock activity needed</strong>
-            {boardClockBinding ? (
-              <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-board-clock-source">
-                {boardClockBinding.alias} • {boardClockBinding.packagePin} • simulated board clock source
-              </span>
-            ) : null}
+          ) : (
             <span className="ide-verify-stimulus-assist-message">
-              {sequentialGuidanceCopy.missingActivity} Add a clock pattern, then update the run.
+              {sequentialGuidanceCopy.introTitle}
             </span>
-          </div>
-          <div className="ide-verify-stimulus-assist-actions">
-            <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern-warn">
-              {boardClockBinding ? 'Insert board clock pattern' : 'Alternating clock'}
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low-warn">
-              Hold low
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high-warn">
-              Hold high
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse-warn">
-              Single pulse
-            </IdeButton>
-          </div>
+          )}
+          <span className="ide-verify-stimulus-assist-summary" data-testid="ide-verify-clock-pattern-summary">
+            {clockActivitySummary.summary}
+          </span>
+          {clockActivitySummary.preview.length > 0 ? (
+            <span className="ide-verify-clock-preview" data-testid="ide-verify-clock-pattern-preview">
+              {clockActivitySummary.preview.join('  ')}
+            </span>
+          ) : null}
         </div>
-      );
-    }
-
-    return null;
+        <div className="ide-verify-stimulus-assist-actions">
+          <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
+            {primaryLabel}
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
+            Hold low
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
+            Hold high
+          </IdeButton>
+          <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
+            Single pulse
+          </IdeButton>
+        </div>
+      </div>
+    );
   }, [
     boardClockBinding,
+    clockSignalNames,
+    clockActivitySummary,
     effectiveTimingGuidance.kind,
     handleInsertClockHoldHigh,
     handleInsertClockHoldLow,
@@ -4258,52 +4276,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         
 
         {/* TRACE callout moved to bottom workbench area — canonical position after results zone */}
-
-        {/* Sequential first-run helper strip — shown whenever mode is sequential + first-run */}
-        {false && verifyMode === 'sequential' && isFirstRunState && (
-          <IdeCallout tone="info" testId="ide-verify-sequential-helper">
-            <strong>{sequentialGuidanceCopy.introTitle}</strong>
-            <ul className="ide-copy" style={{ margin: '4px 0 4px 16px', padding: 0 }}>
-              <li>{sequentialGuidanceCopy.introStep}</li>
-              <li>Outputs often depend on prior ticks — trace first, then capture expected values</li>
-            </ul>
-            <div className="ide-inline-actions">
-              <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
-                {effectiveTimingGuidance.kind === 'latch-control' ? 'Insert basic enable pattern' : 'Alternating clock'}
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
-                Hold low
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
-                Hold high
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
-                Single pulse
-              </IdeButton>
-            </div>
-          </IdeCallout>
-        )}
-
-        {/* Sequential clock-missing guidance when vectors exist but no clock activity */}
-        {false && verifyMode === 'sequential' && !isFirstRunState && nextRunNeedsClockActivity && (
-          <IdeCallout tone="warn" testId="ide-verify-needs-clock">
-            {sequentialGuidanceCopy.missingActivity}
-            <div className="ide-inline-actions" style={{ marginTop: 6 }}>
-              <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern-warn">
-                Alternating clock
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low-warn">
-                Hold low
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high-warn">
-                Hold high
-              </IdeButton>
-              <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse-warn">
-                Single pulse
-              </IdeButton>
-            </div>
-          </IdeCallout>
-        )}
 
         {/* Zone label, IO summary, prerun lanes retired — canvas is self-explanatory */}
 
@@ -6079,6 +6051,94 @@ function normalizeBit(value: unknown): 0 | 1 {
 
 function normalizeFieldId(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+}
+
+interface ClockActivitySummary {
+  hasTransition: boolean;
+  hasRisingEdge: boolean;
+  summary: string;
+  preview: string[];
+}
+
+function buildClockActivitySummary(
+  vectors: Array<Pick<VerifyAuthorVector, 'tick' | 'inputs'>>,
+  clockSignalNames: string[]
+): ClockActivitySummary {
+  const clockKeys = new Set(clockSignalNames.map((name) => normalizeFieldId(name)));
+  if (clockKeys.size === 0) {
+    return {
+      hasTransition: false,
+      hasRisingEdge: false,
+      summary: 'No clock signal detected for this testbench yet.',
+      preview: [],
+    };
+  }
+
+  const samples = vectors
+    .map((vector) => {
+      const entry = Object.entries(vector.inputs ?? {}).find(([key]) =>
+        clockKeys.has(normalizeFieldId(key))
+      );
+      if (!entry) return null;
+      return {
+        tick: vector.tick,
+        value: normalizeBit(entry[1]),
+      };
+    })
+    .filter((sample): sample is { tick: number; value: 0 | 1 } => sample != null)
+    .sort((left, right) => left.tick - right.tick);
+
+  if (samples.length === 0) {
+    return {
+      hasTransition: false,
+      hasRisingEdge: false,
+      summary: 'No clock row is present in the next-run stimulus.',
+      preview: [],
+    };
+  }
+
+  let hasTransition = false;
+  let hasRisingEdge = false;
+  let risingCount = 0;
+  let fallingCount = 0;
+  const preview: string[] = [];
+
+  samples.forEach((sample, index) => {
+    const previous = index > 0 ? samples[index - 1] : null;
+    let edgeLabel = '';
+    if (previous && previous.value !== sample.value) {
+      hasTransition = true;
+      if (previous.value === 0 && sample.value === 1) {
+        hasRisingEdge = true;
+        risingCount += 1;
+        edgeLabel = ' rising';
+      } else {
+        fallingCount += 1;
+        edgeLabel = ' falling';
+      }
+    }
+    preview.push(`t${sample.tick}=${sample.value}${edgeLabel}`);
+  });
+
+  const previewWindow = preview.slice(0, 8);
+  const extraCount = preview.length - previewWindow.length;
+  if (extraCount > 0) {
+    previewWindow.push(`+${extraCount} more`);
+  }
+
+  const edgeSummary =
+    risingCount > 0
+      ? `${risingCount} rising edge${risingCount === 1 ? '' : 's'}`
+      : hasTransition
+        ? `${fallingCount} falling edge${fallingCount === 1 ? '' : 's'}, no rising edge`
+        : 'no edges';
+
+  return {
+    hasTransition,
+    hasRisingEdge,
+    summary: `Clock row for next run: ${samples.length} tick${samples.length === 1 ? '' : 's'}, ${edgeSummary}.`,
+    preview: previewWindow,
+  };
 }
 
 function toTestId(value: string): string {

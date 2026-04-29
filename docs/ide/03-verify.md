@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-04-29
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -8,28 +8,30 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
-Status: Phase 2A foundation
+Status: testbench authority update
 Mode ID: `verify`
 
 ## Purpose
 
-Run deterministic vector verification and present clear pass/fail proof for downstream Hardware and Export trust.
+Run deterministic testbench verification and present clear pass/fail proof for downstream Hardware and Export trust.
 
 ## Primary Actions (max 3)
 
 1. Execute vector run.
-2. Inspect failure diffs.
-3. Inspect signal traces and deterministic hash.
+2. Author clock/stimulus cases for the current design.
+3. Inspect failure diffs, signal traces, and deterministic hashes.
 
 ## Layout
 
 1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Assertions** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
-2. **Workspace**: **Stimulus** (scenario library, canvas, workbench) and **waveform** instrument in a lab grid; waveform column is visually framed as the primary trace stage after a run.
+2. **Workspace**: **Stimulus** (scenario library, canvas, workbench) and **waveform** instrument in a lab grid. The stimulus workbench remains visible enough to edit the testbench after a run; the waveform column remains the primary trace stage.
 
-3. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
+3. **Clock / timing panel**: sequential designs show a first-class clock/timing panel inside the stimulus workbench. It distinguishes physical board clock mapping from deterministic Verify stimulus, offers alternating clock, hold-low, hold-high, and single-pulse helpers, and previews the next-run clock row with rising/falling edge labels before the user runs Verify.
 
-4. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail. A selected failed case produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
+4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
+
+5. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail. A selected failed case produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
 
 ## Empty State
 
@@ -53,6 +55,10 @@ Secondary action: `Open sample vector format`
 4. Current assertion-backed PASS status that can authorize trusted Hardware/Export handoff.
 
 Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, but they do not complete the Verify proof stage.
+
+The Verify evidence signature is tied to the same normalized current-project hash that workflow authority compares: circuit, project vectors, custom vectors, and project I/O mapping. Vector UI IDs are ignored for trust so helper-generated clock rows do not create a phantom stale loop after the run completes.
+
+For sequential circuits, current proof requires useful timing stimulus. A clock row that never produces a rising edge is still visible for inspection, but it does not satisfy the "clock activity" guidance for register updates. Latch-control designs use the same panel but describe the control signal instead of a generic clock.
 
 ## Design Handoff
 

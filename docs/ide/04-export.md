@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-04-29
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -61,6 +61,8 @@ Each error must include a direct fix path.
 4. Download actions enabled.
 
 Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.
+
+Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
 
 ## Data Contract (RBProject)
 

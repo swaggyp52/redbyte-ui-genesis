@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-04-29 (Verify testbench clocking + evidence freshness)
+
+**Subsystem:** `projectRuntime.ts`, `VerifySurface`, Verify clock/testbench UI, workflow evidence freshness
+
+**Context:** Continue product takeover on main by making Verify behave like a reliable testbench editor for sequential circuits, and by fixing the manual stale loop where inserting a clock pattern then running Verify immediately asked for another update.
+
+**Changes:**
+- Fixed the phantom Verify stale loop by recording the verify ledger `projectHash` with `buildCurrentVerifyProjectHash()`, the same normalized signature consumed by workflow authority and Export trust checks.
+- Added stale-loop regression coverage for id-bearing vectors, helper-generated clock vectors, compare-pass trust, stimulus changes after a pass, and circuit/testbench hash separation.
+- Promoted sequential clock/testbench guidance into an always-visible `Clock / timing` panel inside the Verify stimulus workbench.
+- Clock helpers now expose the deterministic testbench row clearly: alternating clock, hold low, hold high, and single pulse remain available, and the panel previews clock tick values with rising/falling edge labels before the user runs Verify.
+- Tightened sequential guidance so a held clock value does not satisfy register clock-activity guidance; latch-control cases still use EN/latch language rather than a generic clock.
+- Updated current-truth Verify, Export, system map, and active-work docs.
+
+**Validation:**
+- `pnpm -w exec vitest run verifyProjectHash.stale-loop --pool forks --poolOptions.forks.singleFork` -> pass (5 tests)
+- `pnpm -w exec vitest run verifySurface.boardClockSemantics --pool forks --poolOptions.forks.singleFork` -> pass (2 tests)
+- `pnpm -w exec vitest run verifySurface.workspaceLayout --pool forks --poolOptions.forks.singleFork` -> pass (5 tests)
+- `pnpm -w exec vitest run verifySurface.workstation --pool forks --poolOptions.forks.singleFork` -> pass (39 tests)
+- `pnpm -w exec vitest run projectRuntime.verify-authority verifyProjectHash.stale-loop projectWorkflowAuthority projectHealth --pool forks --poolOptions.forks.singleFork` -> pass (63 tests)
+- `pnpm -w exec vitest run exportSurface.mapping-trust --pool forks --poolOptions.forks.singleFork` -> pass (6 tests)
+- `pnpm -w exec vitest run exportSurface.trust-clarity --pool forks --poolOptions.forks.singleFork` -> pass (17 tests)
+- `pnpm -w exec vitest run exportSurface.workstation --pool forks --poolOptions.forks.singleFork` -> pass (7 tests)
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass / exit 0 (full gate sequence; existing declaration-generation warnings printed during workspace builds)
+- `git diff --check` -> pass
+
+**Residual / release-process caveat:** `pnpm -w exec vitest run verify --pool forks --poolOptions.forks.singleFork` is not a clean signal today: it still includes unrelated `stopship-verify` failures and combined render suites that leave prior jsdom DOM behind, causing duplicate `data-testid` failures. E2/E3 hardware certification remains blocked on a connected Basys3 bench. Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (BUG-003 render harness + Phase 2A usability foundation)
 
 **Subsystem:** `@testing-library/react`, Verify/Design debug bridge, Project/Hardware/Export mapping displays

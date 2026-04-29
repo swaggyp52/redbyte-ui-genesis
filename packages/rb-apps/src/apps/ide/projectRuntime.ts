@@ -9,6 +9,7 @@ import {
   resolveIoMappingFromProjectFields,
 } from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
+import { buildCurrentVerifyProjectHash } from './verifyProjectHash';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
 import {
@@ -1473,12 +1474,17 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
           const vectorsHash = digestValue(stableSerialize(runtimeVectors));
           const mappingHash = digestValue(stableSerialize(ioMapping));
-          const projectSnap = {
+          // Use the same hash function as buildCurrentVerifyProjectHash in IdeApp so that
+          // deriveVerifyCurrent's ledger comparison always resolves correctly.
+          // The prior inline computation included vector `id` fields (via cloneVectors spread)
+          // while buildCurrentVerifyProjectHash strips them — causing a permanent stale loop
+          // whenever vectors carried an `id` (e.g., after inserting a clock pattern).
+          const projectHash = buildCurrentVerifyProjectHash({
             circuit: state.circuit,
-            vectors: runtimeVectors,
-            mapping: ioMapping,
-          };
-          const projectHash = digestValue(stableSerialize(projectSnap));
+            projectVectors: state.projectVectors,
+            customVectors: state.customVectors,
+            projectIoRows: state.projectIoRows,
+          });
           const prevEntry = state.verifyRunHistory[state.verifyRunHistory.length - 1] ?? null;
           const firstFailRow = report.rows.find((row) => row.status === 'fail') ?? null;
           const ledgerEntry: VerifyRunLedgerEntry = {

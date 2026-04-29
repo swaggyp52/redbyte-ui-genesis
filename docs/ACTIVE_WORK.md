@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-04-29
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** - E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
-2. **Phase 2A usability audit continuation** - extend the mismatch-brief foundation into the remaining student-loop affordances before starting deeper Export/Import pipeline refactors.
-3. **Verify UI overhaul phase 1** - split the largest Verify workbench panels only after the Phase 2A student-facing failure path stays stable under component render tests.
+2. **Phase 2A usability audit continuation** - keep improving the student loop around Verify failure explanation, testbench authoring, and Design recovery before deeper Export/Import pipeline refactors.
+3. **Render harness cleanup for combined surface suites** - focused render tests pass in isolation, but broad combined `vitest run verify` / mixed export render patterns can leave prior DOM in jsdom and produce duplicate `data-testid` failures. Clean this up before relying on broad pattern runs as one signal.
 
 ---
 
@@ -83,11 +83,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Slice N5: 28px chrome waste reclaim - command stacks use 8px bottom padding instead of stacked gap + margin | `1f6e3631` |
+| Done | Verify testbench authority: normalized evidence hash stops helper-vector stale loops; sequential Clock / timing panel previews edge stimulus before run | `this commit` |
 | ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
 | ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `3aa8ba7d` |
 | ✓ Done | BUG-003: testing-library render harness - upgraded to the current React 19-compatible `@testing-library/react@16.3.2` release and added a render smoke test | `010f4ada` |
-| ✓ Done | Phase 2A foundation: Verify mismatch brief + label-first mapping cleanup - Design restates failed Verify context and Project/Hardware/Export show board labels before package pins | `this commit` |
+| ✓ Done | Phase 2A foundation: Verify mismatch brief + label-first mapping cleanup - Design restates failed Verify context and Project/Hardware/Export show board labels before package pins | `1d92d5c3` |
 
 ---
 

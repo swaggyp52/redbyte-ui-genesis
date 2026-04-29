@@ -12,7 +12,7 @@
 |---------|------|----------------|
 | Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | **Workflow spine** on Project Home (`ide-project-workflow-spine`): owns Design → Verify → Map Pins → Export → Hardware narrative; multi-file finals start in **Import**. Project identity, I/O mapping, readiness dashboard; **Phase 4:** **Board pin mapping (Map Pins)** block is **above** the Project command strip and session narrative so the pin table is visible without scrolling past “About this project” / starters |
 | Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
-| Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, waveform viewer; **Phase 6:** header now keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`) instead of hiding compare inside **Tools**, and the session strip dedupes repeated labels so students read one state before acting |
+| Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, testbench authoring, waveform viewer; header keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`) and the stimulus workbench now owns first-class **Clock / timing** controls for sequential tests |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
 | Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, inspect an authoritative board resource, click a board control, and see the saved board control plus physical package pin. Hardware now behaves like a simplified Basys3 board planner with clock truth, grouped resource catalog, and an XDC binding preview tied to the same saved mapping Export reads. |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
@@ -46,6 +46,8 @@
 - **Run proof / pass hero** (`VerifySurface.tsx`): on **checks pass**, the hero uses student-facing **What this means** copy (pass/fail reflects the Verify run, not Design edits you have not re-run). When **`incomplete-mapping`**, the primary CTA is **Open Project — Map Pins**; when mapping is complete, **Continue to Hardware** and **Open Export** are first-class. Failure drawer diagnosis is titled **What to fix first** (not “Issues found”).
 - **Mapping preflight (no run yet)**: if pin mapping is incomplete, **`ide-verify-primary-status`** in the command bar offers **Open Project — Map Pins** and optional **View on Hardware (same mapping)**; the old thin pre-run strip banner was removed in favor of this callout.
 - **Lab grid**: Wider **column gap**; **waveform** region gets a stronger **instrument frame** (border, depth shadow); **scenario library** header uses **taller** switcher + **CRUD** buttons; **stimulus tick** **is-selected** state is higher-contrast on Verify; **lab sequencer** meta chips are larger and bordered.
+- **Clock / timing testbench panel**: Sequential Verify keeps a visible clock/timing panel inside the stimulus workbench. It resolves board-backed clocks such as `CLK100MHZ`/`W5` as deterministic testbench stimulus, offers alternating / hold-low / hold-high / single-pulse helpers, and previews the next-run clock row with rising/falling edge labels so students can see the edge pattern before pressing **Run**.
+- **Verify evidence freshness**: `projectRuntime.ts::runVerification()` records the same normalized current-project hash that `buildCurrentVerifyProjectHash()` derives for workflow authority. The signature covers circuit, project vectors, custom vectors, and project I/O mapping while ignoring vector UI IDs, so helper-generated clock rows settle to current evidence after the run instead of immediately going stale.
 
 ---
 
@@ -93,6 +95,8 @@ Gate: `scripts/gates/ide-zip-import-contract.mjs`
 6. Returns `RuntimeVerifyRun` with `report`, `waveform`, and deterministic evidence capsule
 5. VerifySurface renders waveform + PASS/FAIL status
 6. On a failed selected case, Verify builds a compact `VerifyDebugContext`; opening Design preserves the failed signal label, expected/observed bits, tick, input snapshot, and next-inspection hint.
+
+Freshness authority: the verify ledger `projectHash` is produced by `buildCurrentVerifyProjectHash()` so workflow status, Hardware, and Export compare against the same normalized state. A stimulus change after a pass stales Verify as testbench/state drift; a circuit or mapping change stales it as project drift.
 
 Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 
