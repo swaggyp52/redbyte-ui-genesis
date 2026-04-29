@@ -35,9 +35,9 @@ describe('VerifySurface board clock semantics', () => {
     expect(view.getByTestId('ide-verify-sequential-helper').textContent).toContain(
       'not a manual switch-style input lane'
     );
-    expect(view.getByTestId('ide-verify-insert-clock-pattern').textContent).toContain(
-      'board clock pattern'
-    );
+    expect(view.getByTestId('ide-stimulus-clock-badge').textContent).toContain('Board clock');
+    expect(view.getByTestId('ide-stimulus-clock-detail').textContent).toContain('CLK100MHZ');
+    expect(view.getByTestId('ide-stimulus-clock-detail').textContent).toContain('W5');
   });
 
   it('previews the deterministic clock row as soon as the board clock helper inserts stimulus', () => {
@@ -67,14 +67,26 @@ describe('VerifySurface board clock semantics', () => {
       'No clock row'
     );
 
-    fireEvent.click(view.getByTestId('ide-verify-insert-clock-pattern'));
+    fireEvent.click(view.getByTestId('ide-stimulus-clock-pattern-alternating'));
 
     const nextVectors = onVectorsChange.mock.calls.at(-1)?.[0];
     expect(nextVectors).toEqual([
-      expect.objectContaining({ tick: 0, inputs: { phase_driver: 0 } }),
-      expect.objectContaining({ tick: 1, inputs: { phase_driver: 1 } }),
-      expect.objectContaining({ tick: 2, inputs: { phase_driver: 0 } }),
-      expect.objectContaining({ tick: 3, inputs: { phase_driver: 1 } }),
+      expect.objectContaining({
+        tick: 0,
+        inputs: expect.objectContaining({ phase_driver: 0 }),
+      }),
+      expect.objectContaining({
+        tick: 1,
+        inputs: expect.objectContaining({ phase_driver: 1 }),
+      }),
+      expect.objectContaining({
+        tick: 2,
+        inputs: expect.objectContaining({ phase_driver: 0 }),
+      }),
+      expect.objectContaining({
+        tick: 3,
+        inputs: expect.objectContaining({ phase_driver: 1 }),
+      }),
     ]);
 
     view.rerender(

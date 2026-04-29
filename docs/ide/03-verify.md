@@ -23,11 +23,11 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 ## Layout
 
-1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Assertions** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
+1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Checks** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
-2. **Workspace**: **Build testbench** (scenario library, clock/timing, stimulus grid, checks, run summary) and **waveform** instrument in a lab grid. The left setup area keeps enough width and height to author the testbench after a run; the waveform column remains the primary trace stage.
+2. **Workspace**: **Build testbench** (scenario library, clock/timing guidance, unified stimulus/check grid, run summary) and **waveform** instrument in a lab grid. The left setup area keeps enough width and height to author the testbench after a run; the waveform column remains the primary trace stage.
 
-3. **Clock / timing panel**: sequential designs show a first-class clock/timing panel inside the stimulus workbench. It distinguishes physical board clock mapping from deterministic Verify stimulus, offers alternating clock, hold-low, hold-high, and single-pulse helpers, and previews the next-run clock row with rising/falling edge labels before the user runs Verify.
+3. **Clock / timing panel**: sequential designs show a compact guidance banner plus a highlighted clock lane inside the main stimulus grid. The lane distinguishes physical board clock mapping from deterministic Verify stimulus, exposes inline `Alternating`, `Add pulse`, `Hold low`, and `Hold high` actions with a shared row count, and keeps normal direct cell editing available.
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
@@ -35,11 +35,13 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed. This is the pre-run truth students should read before pressing `Run Compare checks`.
 
+Rows and cases in Verify are authored **ticks/testbench steps**, not whole clock cycles. Sequential progress requires an authored rising edge in the active clock lane, so a usable pulse is multiple cases such as `0 -> 1 -> 0`.
+
 ## Empty State
 
-Headline: `No test vectors yet`
-Primary CTA: `Add vectors in Project Mode`
-Secondary action: `Open sample vector format`
+Headline: `No testbench cases yet`
+Primary CTA: `Generate starter testbench`
+Secondary action: `Open Project vectors`
 
 ## Error State
 
@@ -54,7 +56,7 @@ Secondary action: `Open sample vector format`
 1. Stable hash.
 2. Zero failing rows.
 3. Timestamp-free deterministic run metadata.
-4. Current assertion-backed PASS status that can authorize trusted Hardware/Export handoff.
+4. Current Compare PASS with saved checks that can authorize trusted Hardware/Export handoff.
 
 Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, but they do not complete the Verify proof stage.
 

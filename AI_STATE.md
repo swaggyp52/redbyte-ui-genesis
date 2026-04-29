@@ -37,6 +37,30 @@
 
 **Residual / release-process caveat:** Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
 
+## Change Log 2026-04-29 (Verify clock-first testbench authoring revamp)
+
+**Subsystem:** `VerifySurface`, `ScenarioBuilderPanel`, `StimulusCanvas`, Verify CSS, Verify docs
+
+**Context:** Implement the Verify hardening slice that makes sequential testbench authoring clock-first, removes the split hidden drawers, and documents the real tick-based authoring model without changing verify-engine semantics.
+
+**Changes:**
+- Reworked Verify authoring around one visible stimulus/check grid: `StimulusCanvas` now always shows expected-output lanes inline, `ScenarioBuilderPanel` removes the student-facing manual-entry and output-assertions disclosures, and advanced generators live behind one `Advanced tools` disclosure.
+- Moved sequential clock authoring into the highlighted clock/control lane inside the grid instead of a detached helper strip. The lane now shows board-clock or latch-control badges, a shared row-count input, inline `Alternating`, `Add pulse`, `Hold low`, and `Hold high` actions, and still supports direct hand-editing of clock cells.
+- Kept the compact `Clock / timing` banner in `VerifySurface` as guidance plus summary only. It now points students to the highlighted lane, reports rising-edge state honestly (`no rising edge yet`, `N rising edges`), and preserves board-clock labeling such as `CLK100MHZ` on `W5`.
+- Preserved non-clock authoring semantics while fixing board-clock visibility: generic sweep/starter generation still uses non-clock inputs, but the stimulus grid includes the authoritative board-backed clock lane so sequential work is visible and editable.
+- Updated Verify layout ratios and styling so the testbench panel keeps real width beside the waveform, with explicit split thresholds for wide, standard, and compact layouts.
+- Updated focused Verify interaction suites to the new UI contract, including board-clock semantics, unified expected outputs, direct clock-lane actions, progressive disclosure, workspace layout, and workstation guidance/copy.
+- Updated the Verify spec, system map, product manual, and the 2026-04-29 hardening ticket to describe the unified tick-based testbench flow, inline clock lane, expected-output checks terminology, and the current acceptance proof for this slice.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.authoring.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockSemantics.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/StimulusCanvas.rowAuthoringClarity.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass (72 tests)
+- `pnpm -s build:unified` -> pass
+- `git diff --check` -> pass
+
+**Manual observation note:** A fresh interactive browser/manual two-bit-counter rehearsal was not rerun in this environment for this slice. The requested manual clock/testbench path is covered by focused Verify interaction tests, but one live student-loop pass remains desirable release evidence.
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment has not been verified in this environment. E2/E3 hardware certification remains bench-blocked on a connected Basys3. No claim about student-live delivery should be made until the commit is pushed and any downstream deploy pipeline actually ships it.
+
 **Attribution:** Connor Angiel (agent)
 
 ## Change Log 2026-04-29 (Verify workbench stabilization + broad render suite cleanup)

@@ -198,12 +198,12 @@ For **sequential circuits** (circuits containing flip-flops), the engine detects
 
 ### 4.4 Verification Model
 
-Verification compares the circuit's actual outputs against expected outputs defined in **test vectors**. Each test vector specifies a set of input values and the corresponding expected output values.
+Verification compares the circuit's actual outputs against expected outputs defined in an authored testbench. Each authored row specifies a set of input values and the corresponding expected output values for one tick or test step.
 
 RedByte supports two verification schedules:
 
 - **Combinational schedule.** For circuits without sequential elements. The engine applies inputs, ticks once to let signals propagate, and reads outputs.
-- **Clocked-macro schedule.** For circuits containing flip-flops. The engine applies inputs, then executes a three-tick clock sequence (CLK=0, CLK=1, CLK=0) to produce a clean rising edge, then reads outputs.
+- **Clocked / sequential schedule.** For circuits containing flip-flops or latch controls. Students author the active clock/control lane tick by tick, and state only advances when that authored lane produces the required activity, typically a rising edge such as `0 -> 1 -> 0` across multiple rows.
 
 The verification engine automatically detects which schedule to use based on the presence of flip-flop nodes in the circuit.
 
@@ -297,8 +297,8 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 5. Wire the output of each Switch to one input of the AND gate.
 6. Wire the output of the AND gate to the input of the Lamp.
 7. Navigate to the **Verify** surface.
-8. Add test vectors or load the default truth table for AND logic.
-9. Click **Run Verify**. Observe PASS/FAIL results per row.
+8. Build a small testbench or load the starter rows for AND logic.
+9. Click **Run Compare checks**. Observe PASS/FAIL results per row.
 10. Navigate to the **Hardware** surface.
 11. Assign each Switch port to a Basys 3 slide switch (e.g., SW0, SW1).
 12. Assign the Lamp port to an LED (e.g., LD0).
@@ -317,7 +317,7 @@ Result: A complete Vivado-ready project. See Section 11 for instructions on impo
 
 The RedByte IDE shell is present on every surface and consists of four persistent regions:
 
-**Top Bar.** Displays the RedByte product mark on the left, the current project name and save state in the center, and contextual action buttons on the right (Run Verify, Export, Help).
+**Top Bar.** Displays the RedByte product mark on the left, the current project name and save state in the center, and contextual action buttons on the right (Run, Export, Help).
 
 **Left Rail.** Contains five mode entries corresponding to the primary surfaces: Project, Design, Verify, Hardware, and Export, plus the Import surface. An active marker indicates the current surface. A simple progress indicator shows which workflow stages have been completed.
 
@@ -441,44 +441,42 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Mode ID:** `verify`
 
-**Purpose.** The Verify surface runs the student's circuit against test vectors and presents a clear pass/fail verdict with detailed failure analysis.
+**Purpose.** The Verify surface runs the student's circuit against an authored testbench and presents a clear pass/fail verdict with detailed failure analysis.
 
 **When to Use.** After building or modifying a circuit, before proceeding to hardware mapping or export. Verification confirms that the circuit produces the correct outputs for all test inputs.
 
 **Major UI Regions.**
 
-- *Top banner:* Large PASS/FAIL verdict, run summary (vectors passed/failed), and a deterministic run hash.
-- *Main center:* Truth table results showing each test vector row with tick number, input values, expected outputs, actual outputs, and a pass/fail status column. Failing rows are highlighted.
-- *Right inspector:* Signal picker and lightweight waveform preview.
-- *Testbench Preview panel:* Displays a summary of the testbench configuration including tick count, output assertion count, clock policy, and individual signal pills with direction and assertion status.
+- *Command deck:* Run controls, Observe-only versus Compare-checks selector, session status, and deterministic run metadata.
+- *Build testbench panel:* Unified authoring surface for stimulus inputs, expected output checks, clock/timing guidance, and a compact summary of what the next run will do.
+- *Waveform and evidence region:* Observed waveform, mismatch details, and failure analysis after a run.
+- *Signal rail / inspector:* Signal selection plus supporting drill-down when the waveform or a failure is in focus.
 
 **Primary Controls.**
 
-- **Run Verify:** Execute all test vectors against the current circuit.
+- **Run Observe only / Run Compare checks:** Execute the current testbench against the circuit.
 - **Jump to failing node:** From a failing row, navigate directly to the Design surface with the relevant gate highlighted and a diagnostic callout.
 - **Inspect failure diffs:** View expected versus actual values for each failing signal.
-- **Edit test vectors:** Modify input/output values in the truth table or use the Scenario Builder panel.
+- **Edit testbench:** Click directly in the unified grid to change stimulus inputs or expected outputs.
+- **Edit the clock lane:** In sequential designs, use the highlighted clock/control lane actions (`Alternating`, `Add pulse`, `Hold low`, `Hold high`) or hand-edit cells directly.
 
-**Verification Schedules.** The verification engine automatically selects the appropriate schedule:
+**Testbench Authoring Model.** Verify rows are authored ticks or steps, not whole clock cycles. For sequential circuits, the clock/control lane is part of the same grid as the other inputs. Expected output cells are always visible in the lower half of the grid. Leaving an expected-output cell blank means "observe only" for that signal on that tick.
 
-- *Combinational:* For circuits without flip-flops. One tick per vector row.
-- *Clocked macro:* For circuits with flip-flops. Three-tick clock sequence (CLK=0, CLK=1, CLK=0) per vector row to produce a clean rising edge.
-
-**Testbench Preview.** Before running verification, the Testbench Preview panel displays the testbench structure: total ticks, number of asserted outputs, clock policy, and color-coded signal pills (blue for inputs, green for asserted outputs, amber for stimulus-only outputs).
+**Clock / timing guidance.** Sequential designs show an inline clock/timing banner above the grid. It names the active clock or latch-control signal, warns when no rising edge is present yet, and highlights the authoritative lane in the table. If the active clock is the Basys 3 oscillator, the lane is labeled as a simulated board clock source (`CLK100MHZ` on `W5`) rather than a manual switch-style input.
 
 **Hint System.** On a FAIL result, the system evaluates 14 diagnostic conditions and displays matching fact-grounded hints to guide the student toward the error. Hints reference specific circuit behaviors — such as unconnected outputs, inverted logic, or missing clock connections — rather than generic advice.
 
 **PASS waveform visibility.** On PASS runs with mapped I/O, the waveform viewport auto-expands mapped stimulus inputs alongside observed outputs by default, so students can read input-to-output cause/effect without expanding hidden signal groups. On FAIL runs, mismatch-focused output lanes remain the default emphasis.
 
-**Sequential Circuit Banner.** When the circuit contains D flip-flops or other sequential elements, a banner displays indicating that clocked verification is active.
+**Sequential Circuit Banner.** When the circuit contains D flip-flops, latches, or other sequential elements, the inline guidance banner explains what timing activity is needed before state can advance.
 
 **Freshness Tracking.** The Verify surface tracks whether the circuit has been modified since the last verification run. If the circuit changes, the previous verification result is marked stale. Renaming or re-describing a project does not stale the verification — only changes that affect circuit truth (topology, node types, scenario authority) trigger staleness.
 
 **Common Mistakes.**
 
-- Running verification without any test vectors defined. The surface displays an empty state directing the user to add vectors.
+- Running verification without any testbench rows defined. The surface displays an empty state directing the user to add cases.
 - Ignoring the stale indicator after modifying the circuit. Always re-verify after design changes.
-- Expecting sequential circuits to pass with a combinational schedule. The system handles this automatically, but understanding the distinction helps interpret results.
+- Expecting sequential circuits to advance without an authored clock edge or latch-enable change. Add the required timing activity before checking outputs.
 
 ---
 
@@ -692,31 +690,33 @@ Projects are auto-saved to browser local storage. The save state indicator in th
 
 ## 9. Verification Workflow
 
-### 9.1 Adding Test Vectors
+### 9.1 Building The Testbench
 
-Test vectors define the expected behavior of the circuit. Each vector specifies a set of input values and the corresponding expected output values.
+The Verify surface uses a tick-based testbench. Each row is one authored step. Inputs are edited in the top half of the grid and expected output checks are edited in the lower half of the same grid.
 
-Navigate to the Verify surface. The truth table displays one row per test vector. For each row:
+Navigate to the Verify surface. The Build testbench grid displays one row per authored tick. For each row:
 
 1. Set the input values (0 or 1) for each input signal.
-2. Set the expected output values for each output signal. Leave a cell blank to skip assertion for that signal on that row.
+2. Set the expected output values for each output signal. Leave a cell blank to skip checking that signal on that row.
+3. For sequential circuits, add the required activity in the highlighted clock/control lane. A usable pulse is multiple rows such as `0 -> 1 -> 0`.
 
-Starter examples include pre-defined test vectors. For custom circuits, the user authors vectors manually or uses the Scenario Builder panel.
+Starter examples include pre-defined testbench rows. For custom circuits, the user authors rows directly in the grid or uses the advanced starter and sweep tools.
 
 ### 9.2 Running Verification
 
 1. Navigate to the Verify surface.
-2. Click **Run Verify**.
-3. The engine runs all test vectors against the current circuit.
-4. Results appear in the truth table: each row shows input values, expected outputs, actual outputs, and a pass/fail indicator.
+2. Choose **Observe only** or **Compare checks**.
+3. Click **Run**.
+4. The engine runs the current testbench against the circuit.
+5. Results appear in the waveform and evidence panels. Each row shows the authored inputs, the saved expected outputs, the observed outputs, and a pass/fail indicator where checks were saved.
 
-Result: A PASS verdict if all asserted outputs match across all vectors. A FAIL verdict if any output mismatch is detected.
+Result: A PASS verdict if all saved checks match. A FAIL verdict if any saved check mismatches.
 
 ### 9.3 Interpreting Results
 
-**PASS.** All test vectors produced the expected outputs. The circuit behaves correctly for the tested input combinations.
+**PASS.** All saved checks produced the expected outputs. The circuit behaves correctly for the tested cases.
 
-**FAIL.** One or more test vectors produced incorrect outputs. The Verify surface highlights failing rows in the truth table and identifies which output signals did not match. The hint system evaluates 14 diagnostic conditions and displays matching fact-grounded suggestions for diagnosing the failure.
+**FAIL.** One or more saved checks produced incorrect outputs. The Verify surface highlights failing rows and identifies which output signals did not match. The hint system evaluates 14 diagnostic conditions and displays matching fact-grounded suggestions for diagnosing the failure.
 
 ### 9.4 Navigating from Failure to Design
 
@@ -724,7 +724,7 @@ From a failing verification row, click "Jump to failing node" to navigate direct
 
 ### 9.5 Verification Determinism
 
-Verification results are deterministic. Running the same circuit with the same test vectors produces the same pass/fail results every time, on every machine. The Verify surface displays a deterministic run hash to confirm reproducibility.
+Verification results are deterministic. Running the same circuit with the same authored testbench produces the same pass/fail results every time, on every machine. The Verify surface displays a deterministic run hash to confirm reproducibility.
 
 ---
 
@@ -1009,7 +1009,7 @@ submission.rbproj.zip
 | Symptom | Cause | Resolution |
 |---------|-------|------------|
 | All vectors fail | Circuit not wired correctly | Return to Design and trace signal paths from inputs to outputs. |
-| Sequential circuit fails unexpectedly | Missing clock connection | Ensure the clock signal is connected to all flip-flops and that the verification schedule includes clock edges. |
+| Sequential circuit fails unexpectedly | Missing clock activity in the authored testbench | Ensure the active clock/control lane contains the required edge or enable activity before checking outputs. |
 | Stale verification indicator | Circuit modified after last verify | Re-run verification to update results. |
 
 ### 15.4 Hardware Mapping
@@ -1050,7 +1050,7 @@ submission.rbproj.zip
 
 - Define test vectors before building complex circuits. Having a clear specification of expected behavior guides the design process.
 - Test edge cases: all-zero inputs, all-one inputs, and boundary conditions.
-- For sequential circuits, test multiple clock cycles to verify state transitions.
+- For sequential circuits, author multiple ticks and deliberately place rising edges where state should advance.
 - Re-verify after every design change. The stale indicator reminds users when results are outdated.
 
 ### 16.3 Hardware Mapping
@@ -1079,7 +1079,7 @@ submission.rbproj.zip
 
 **Circuit.** A collection of nodes and connections representing a digital logic design. The circuit is the single source of truth in RedByte; all surfaces render projections of it.
 
-**Clocked-macro schedule.** The verification schedule used for sequential circuits. Applies a three-tick clock sequence (CLK=0, CLK=1, CLK=0) for each test vector row.
+**Clocked / sequential schedule.** The verification schedule used for sequential circuits. Students author the clock or control lane tick by tick, and state advances only when the authored activity includes the required edge or level change.
 
 **Combinational circuit.** A circuit whose outputs depend only on current inputs, with no memory or feedback. Contains no flip-flops or latches.
 

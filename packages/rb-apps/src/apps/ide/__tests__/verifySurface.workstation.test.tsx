@@ -251,10 +251,10 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId, queryByText } = view;
 
     expect(getByTestId('ide-verify-empty-state').textContent).toContain(
-      'Outputs are observed on the waveform'
+      'Edit input stimulus, clock edges, and expected outputs in one table'
     );
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
-      'Assertion verification only checks output cells you explicitly saved'
+      'Compare only checks the expected-output cells you filled in'
     );
     expect(queryByTestId('ide-verify-generate-all-combos')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain('saved checks');
@@ -265,7 +265,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
     expect(queryByTestId('ide-verify-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
-    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open vectors');
+    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
     expandVerifyWorkbenchDocks(view);
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
@@ -295,7 +295,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
-      'Outputs are observed on the waveform'
+      'Edit input stimulus, clock edges, and expected outputs in one table'
     );
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
@@ -375,15 +375,13 @@ describe('VerifySurface workstation controls', () => {
 
     expect(queryByTestId('ide-verify-prerun-clock-chip')).toBeNull();
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
-    expect(getByTestId('ide-verify-insert-clock-pattern').textContent).toContain('Insert basic enable pattern');
+    expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('highlighted control lane');
     expect(queryByTestId('ide-verify-io-summary')).toBeNull();
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
       'Waveform inspection and capture tools stay available after you have real evidence'
     );
     expect(queryByTestId('ide-verify-guided-clock-pattern')).toBeNull();
-    expect(getByTestId('ide-verify-sequential-context').textContent).toContain(
-      'clock ticks in your stimulus'
-    );
+    expect(queryByTestId('ide-verify-sequential-context')).toBeNull();
   });
 
   it('uses the active schedule contract clock name and absolute tick parity for helper clock insertion', () => {
@@ -428,7 +426,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-insert-clock-pattern'));
+    fireEvent.click(getByTestId('ide-stimulus-clock-pattern-alternating'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     expect(
@@ -1541,6 +1539,7 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
     fireEvent.change(getByTestId('ide-verify-sweep-preset'), { target: { value: 'binary-count' } });
     fireEvent.change(getByTestId('ide-verify-sweep-seed'), { target: { value: '3' } });
     fireEvent.change(getByTestId('ide-verify-sweep-hold'), { target: { value: '2' } });

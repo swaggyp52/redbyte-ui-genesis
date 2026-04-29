@@ -130,4 +130,88 @@ describe('StimulusCanvas row authoring clarity', () => {
     expect(queryByRole('button', { name: 'Copy TSV' })).toBeTruthy();
     expect(queryByRole('button', { name: 'Paste TSV' })).toBeTruthy();
   });
+
+  it('shows expected-output lanes inline without a separate checks toggle', () => {
+    const { getByText, queryByText, getByTestId } = render(
+      <StimulusCanvas
+        inputFields={INPUTS}
+        outputFields={OUTPUTS}
+        authoredVectors={VECTORS}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    expect(getByText('Expected outputs')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-expected-ld0-t0')).toBeTruthy();
+    expect(queryByText('Show checks')).toBeNull();
+    expect(queryByText('Output assertions')).toBeNull();
+  });
+
+  it('renders a dedicated clock lane with inline pattern actions', () => {
+    const { getByTestId } = render(
+      <StimulusCanvas
+        inputFields={[
+          { id: 'clk', label: 'CLK' },
+          { id: 'sw0', label: 'SW0' },
+        ]}
+        outputFields={OUTPUTS}
+        authoredVectors={[
+          { id: 'v0', tick: 0, inputs: { clk: 0, sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'v1', tick: 1, inputs: { clk: 1, sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        onVectorsChange={vi.fn()}
+        clockLane={{
+          fieldId: 'clk',
+          badge: 'Clock',
+          detail: 'Add a rising edge directly in this lane.',
+          count: 4,
+          onCountChange: vi.fn(),
+          onApplyPattern: vi.fn(),
+        }}
+      />
+    );
+
+    expect(getByTestId('ide-stimulus-clock-row')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-badge').textContent).toContain('Clock');
+    expect(getByTestId('ide-stimulus-clock-detail').textContent).toContain('rising edge');
+    expect(getByTestId('ide-stimulus-clock-pattern-count')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-alternating')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-pulse').textContent).toContain('Add pulse');
+    expect(getByTestId('ide-stimulus-clock-pattern-hold-low')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-hold-high')).toBeTruthy();
+  });
+
+  it('lets students hand-edit clock cells directly in the highlighted lane', () => {
+    const onVectorsChange = vi.fn();
+    const { getByTestId } = render(
+      <StimulusCanvas
+        inputFields={[
+          { id: 'clk', label: 'CLK' },
+          { id: 'sw0', label: 'SW0' },
+        ]}
+        outputFields={OUTPUTS}
+        authoredVectors={[
+          { id: 'v0', tick: 0, inputs: { clk: 0, sw0: 0 }, expected: {} },
+        ]}
+        onVectorsChange={onVectorsChange}
+        clockLane={{
+          fieldId: 'clk',
+          badge: 'Clock',
+          count: 4,
+          onCountChange: vi.fn(),
+          onApplyPattern: vi.fn(),
+        }}
+      />
+    );
+
+    fireEvent.pointerDown(getByTestId('ide-stimulus-cell-clk-t0'));
+
+    const nextVectors = onVectorsChange.mock.calls.at(-1)?.[0];
+    expect(nextVectors).toEqual([
+      expect.objectContaining({
+        tick: 0,
+        inputs: expect.objectContaining({ clk: 1 }),
+      }),
+    ]);
+  });
 });

@@ -55,7 +55,7 @@ function makePassRun(): RuntimeVerifyRun {
 // ─── Add Case — expected output authoring ────────────────────────────────────
 
 describe('VerifySurface authoring — Add Case expected outputs', () => {
-  it('shows expected output select for each output signal in Add Case form', () => {
+  it('shows expected output lanes inline for each mapped output signal', () => {
     const { getByTestId } = render(
       <VerifySurface
         deterministicHash="abc123"
@@ -69,15 +69,10 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    // Open the checks view first — expected-output lanes are hidden by default in the stimulus-first model
-    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
-
-    const expectedSelect = getByTestId('ide-verify-add-vector-expected-ld0');
-    expect(expectedSelect).toBeTruthy();
-    expect((expectedSelect as HTMLSelectElement).value).toBe('');
+    expect(getByTestId('ide-stimulus-expected-ld0-t0')).toBeTruthy();
   });
 
-  it('keeps expected unset when Add Case is submitted without changing expected', () => {
+  it('keeps expected unset when Add case is added without editing any checks', () => {
     const onVectorsChange = vi.fn();
     const { getByTestId } = render(
       <VerifySurface
@@ -92,7 +87,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-add-vector-submit'));
+    fireEvent.click(getByTestId('ide-stimulus-add-tick'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const newVectors = onVectorsChange.mock.calls[0]?.[0] as Array<{
@@ -115,9 +110,6 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
         onVectorsChange={onVectorsChange}
       />
     );
-
-    // Open the checks view first — expected-output lanes are hidden by default in the stimulus-first model
-    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
 
     fireEvent.pointerDown(getByTestId('ide-stimulus-expected-ld0-t0'));
 
@@ -150,8 +142,6 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
     expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
       'using project checks'
     );
-    // Open the checks view so expected-output lanes render in the canvas
-    fireEvent.click(getByTestId('ide-stimulus-checks-toggle'));
     expect(getByTestId('ide-stimulus-expected-ld0-t0').getAttribute('title')).toContain(
       '1'
     );
@@ -171,7 +161,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    expect(queryByTestId('ide-verify-add-vector-expected-ld0')).toBeNull();
+    expect(queryByTestId('ide-stimulus-expected-ld0-t0')).toBeNull();
   });
 
   it('does not invent fallback input ports when no authoritative inputs exist', () => {

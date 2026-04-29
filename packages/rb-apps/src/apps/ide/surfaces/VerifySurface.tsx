@@ -44,6 +44,7 @@ import {
   type SweepPreset,
 } from './ScenarioBuilderPanel';
 import { AssertionCanvas, type AssertionCanvasProps } from '../components/AssertionCanvas';
+import type { StimulusClockPattern } from '../components/StimulusCanvas';
 import { ScenarioLibraryHeader } from './ScenarioLibraryHeader';
 import {
   computeScenarioContentHash,
@@ -69,7 +70,6 @@ import {
 } from '../../../fpga/boards/basys3/verifySchedule';
 import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
 import {
-  buildClockHelperVectors,
   resolveActiveScheduleContract,
 } from '../clockAuthority';
 import type {
@@ -408,6 +408,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ),
     [inputFieldBoardBindings, inputFields]
   );
+  const stimulusInputFields = useMemo(
+    () =>
+      boardClockInputField
+        ? [
+            boardClockInputField,
+            ...editableInputFields.filter((field) => field.id !== boardClockInputField.id),
+          ]
+        : inputFields,
+    [boardClockInputField, editableInputFields, inputFields]
+  );
   const inputFieldAliases = useMemo(
     () => buildVerifyFieldAliasMap(inputFields, inputFieldSeed),
     [inputFieldSeed, inputFields]
@@ -468,7 +478,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [nextRunUsesAssertions, setNextRunUsesAssertions] = useState(
     () => getRuntimeVerifyRunKind(lastRun) === 'verify'
   );
-  const [showExpectedOutputs, setShowExpectedOutputs] = useState(false);
   const [oracleApplied, setOracleApplied] = useState(false);
   const [selectedFailureKey, setSelectedFailureKey] = useState<string | null>(null);
   // selectedVectorId: pinpoints the specific authored row when a failure has vectorId.
@@ -493,6 +502,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [sweepPreset, setSweepPreset] = useState<SweepPreset>('binary-count');
   const [sweepSeed, setSweepSeed] = useState('0');
   const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
+  const [clockPatternCount, setClockPatternCount] = useState(4);
   // ─── Timeline authoring helpers ──────────────────────────────────────────
   const [holdN, setHoldN] = useState(3);
   const [pulseSignal, setPulseSignal] = useState<string>(() => editableInputFields[0]?.id ?? '');
@@ -1089,22 +1099,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Used by compare/failure CTAs to route students into the secondary checks path.
   const handleEditExpectedOutputs = useCallback(() => {
     setNextRunUsesAssertions(true);
-    setShowExpectedOutputs(true);
     setScenarioWorkbenchExpanded(true);
     const details = scenarioBuilderDetailsRef.current;
     if (details) {
       details.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, []);
-  const handleToggleExpectedOutputs = useCallback(() => {
-    setShowExpectedOutputs((previous) => {
-      const next = !previous;
-      if (next) {
-        setNextRunUsesAssertions(true);
-        setScenarioWorkbenchExpanded(true);
-      }
-      return next;
-    });
   }, []);
 
   const selectFailureAtTick = useCallback(
@@ -1752,7 +1751,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       noTraceHint: 'No clock activity detected — the simulation may not have advanced past tick 0',
     };
   }, [boardClockBinding, boardClockSignalLabel, effectiveTimingGuidance]);
-
   // Schema-change detection: show banner when inputFields or outputFields IDs change across renders
   const prevInputFieldIdsRef = useRef<string>('');
   const prevOutputFieldIdsRef = useRef<string>('');
@@ -2808,76 +2806,97 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, draftTick, draftInputs, draftExpected, editableInputFields, outputFields, onVectorsChange]
   );
 
-  const handleInsertClockPattern = useCallback(() => {
-    const clkKey = clockSignalNames[0];
-    if (!clkKey) return;
-    const startTick = authoredVectors.length > 0
-      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
-      : 0;
-    const clkVectors = buildAuthoredClockHelperVectors(
-      buildClockHelperVectors({
-        clockSignalName: clkKey,
-        startTick,
-        count: 4,
-        pattern: 'alternating',
-      })
-    );
-    onVectorsChange?.([...authoredVectors, ...clkVectors]);
-    setOracleApplied(false);
-  }, [authoredVectors, clockSignalNames, onVectorsChange]);
+  const appendClockPattern = useCallback(
+    (pattern: StimulusClockPattern) => {
+      const clkKey = clockSignalNames[0];
+      if (!clkKey) return;
 
-  const handleInsertClockHoldLow = useCallback(() => {
-    const clkKey = clockSignalNames[0];
-    if (!clkKey) return;
-    const startTick = authoredVectors.length > 0
-      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
-      : 0;
-    const clkVectors = buildAuthoredClockHelperVectors(
-      buildClockHelperVectors({
-        clockSignalName: clkKey,
-        startTick,
-        count: 4,
-        pattern: 'hold-low',
-      })
-    );
-    onVectorsChange?.([...authoredVectors, ...clkVectors]);
-    setOracleApplied(false);
-  }, [authoredVectors, clockSignalNames, onVectorsChange]);
+      const sortedVectors = [...authoredVectors].sort((left, right) => left.tick - right.tick);
+      const lastVector = sortedVectors.at(-1);
+      const startTick = lastVector ? lastVector.tick + 1 : 0;
+      const baseInputs = editableInputFields.reduce<Record<string, 0 | 1>>((acc, field) => {
+        const lastValue = lastVector?.inputs?.[field.id];
+        acc[field.id] = lastValue === 1 ? 1 : 0;
+        return acc;
+      }, {});
+      const lastClockValue = normalizeBit(lastVector?.inputs?.[clkKey] ?? 0);
+      const appendedValues: Array<0 | 1> =
+        pattern === 'pulse'
+          ? [0, 1, 0]
+          : pattern === 'hold-low'
+            ? Array.from({ length: clockPatternCount }, () => 0 as const)
+            : pattern === 'hold-high'
+              ? Array.from({ length: clockPatternCount }, () => 1 as const)
+              : Array.from({ length: clockPatternCount }, (_, index) =>
+                  (
+                    lastVector
+                      ? ((lastClockValue + index + 1) % 2 === 1 ? 1 : 0)
+                      : index % 2 === 0
+                        ? 0
+                        : 1
+                  ) as 0 | 1
+                );
 
-  const handleInsertClockHoldHigh = useCallback(() => {
-    const clkKey = clockSignalNames[0];
-    if (!clkKey) return;
-    const startTick = authoredVectors.length > 0
-      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
-      : 0;
-    const clkVectors = buildAuthoredClockHelperVectors(
-      buildClockHelperVectors({
-        clockSignalName: clkKey,
-        startTick,
-        count: 4,
-        pattern: 'hold-high',
-      })
-    );
-    onVectorsChange?.([...authoredVectors, ...clkVectors]);
-    setOracleApplied(false);
-  }, [authoredVectors, clockSignalNames, onVectorsChange]);
+      const nextVectors = [
+        ...sortedVectors,
+        ...appendedValues.map((value, index) => ({
+          id: `vec-clk-${String(startTick + index).padStart(2, '0')}`,
+          tick: startTick + index,
+          inputs: { ...baseInputs, [clkKey]: value },
+          expected: {},
+        })),
+      ];
+      onVectorsChange?.(nextVectors);
+      setOracleApplied(false);
+    },
+    [authoredVectors, clockPatternCount, clockSignalNames, editableInputFields, onVectorsChange]
+  );
+  const clockLaneField = useMemo(() => {
+    const candidateNames =
+      effectiveTimingGuidance.kind === 'latch-control'
+        ? [effectiveTimingGuidance.signalName ?? '']
+        : clockSignalNames;
 
-  const handleInsertClockPulse = useCallback(() => {
-    const clkKey = clockSignalNames[0];
-    if (!clkKey) return;
-    const startTick = authoredVectors.length > 0
-      ? Math.max(...authoredVectors.map((v) => v.tick)) + 1
-      : 0;
-    const pulseValues: Array<0 | 1> = [0, 1, 0];
-    const clkVectors: typeof authoredVectors = pulseValues.map((val, offset) => ({
-      id: `vec-clk-${String(startTick + offset).padStart(2, '0')}`,
-      tick: startTick + offset,
-      inputs: { [clkKey]: val },
-      expected: {},
-    }));
-    onVectorsChange?.([...authoredVectors, ...clkVectors]);
-    setOracleApplied(false);
-  }, [authoredVectors, clockSignalNames, onVectorsChange]);
+    return (
+      stimulusInputFields.find((field) =>
+        candidateNames.some(
+          (candidate) =>
+            normalizeFieldId(candidate) === normalizeFieldId(field.id) ||
+            normalizeFieldId(candidate) === normalizeFieldId(field.label)
+        )
+      ) ?? null
+    );
+  }, [clockSignalNames, effectiveTimingGuidance, stimulusInputFields]);
+  const clockLaneConfig = useMemo(
+    () =>
+      clockLaneField
+        ? {
+            fieldId: clockLaneField.id,
+            badge:
+              effectiveTimingGuidance.kind === 'latch-control'
+                ? 'Latch control'
+                : boardClockBinding
+                  ? 'Board clock'
+                  : 'Clock',
+            detail:
+              effectiveTimingGuidance.kind === 'latch-control'
+                ? 'Toggle transparency directly in this lane.'
+                : boardClockBinding
+                  ? `${boardClockBinding.alias} • ${boardClockBinding.packagePin}`
+                  : 'Add a rising edge directly in this lane.',
+            count: clockPatternCount,
+            onCountChange: setClockPatternCount,
+            onApplyPattern: appendClockPattern,
+          }
+        : undefined,
+    [
+      appendClockPattern,
+      boardClockBinding,
+      clockLaneField,
+      clockPatternCount,
+      effectiveTimingGuidance.kind,
+    ]
+  );
 
   const handleGenerateBasicVectors = () => {
     if (onGenerateBasicVectors) {
@@ -3723,9 +3742,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const caseLabel =
       totalVectorCount === 1 ? '1 case' : `${totalVectorCount} cases`;
     const clockLabel = isSequentialRun
-      ? clockActivitySummary.hasTransition
-        ? 'clock activity present'
-        : 'no clock activity yet'
+      ? clockActivitySummary.risingCount > 0
+        ? `${clockActivitySummary.risingCount} rising edge${clockActivitySummary.risingCount === 1 ? '' : 's'}`
+        : 'no rising edge yet'
       : 'not required';
     const compareLabel =
       nextRunUsesAssertions && totalExpectedCaseCount > 0
@@ -3756,7 +3775,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     );
   }, [
     authoredVectors,
-    clockActivitySummary.hasTransition,
+    clockActivitySummary.risingCount,
     editableInputFields,
     effectiveNextRunVectors,
     isSequentialRun,
@@ -3769,12 +3788,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (verifyMode !== 'sequential') return null;
 
     const isWarn = nextRunNeedsClockActivity;
-    const primaryLabel =
-      effectiveTimingGuidance.kind === 'latch-control'
-        ? 'Insert basic enable pattern'
-        : boardClockBinding
-          ? 'Insert board clock pattern'
-          : 'Alternating clock';
     const panelTestId =
       effectiveTimingGuidance.kind === 'latch-control'
         ? 'ide-verify-sequential-helper'
@@ -3783,8 +3796,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'ide-verify-sequential-helper';
     const missingTimingInstruction =
       effectiveTimingGuidance.kind === 'latch-control'
-        ? 'Toggle the latch control signal before expecting output changes.'
-        : 'Registers only update on clock edges. Add clock transitions before expecting output changes.';
+        ? 'Use the highlighted control lane below to toggle transparency before expecting output changes.'
+        : 'Use the highlighted clock lane below to add a rising edge before expecting output changes.';
+    const lanePrompt =
+      effectiveTimingGuidance.kind === 'latch-control'
+        ? 'The control lane is part of the main stimulus grid below.'
+        : 'The clock lane is part of the main stimulus grid below.';
 
     return (
       <div
@@ -3808,11 +3825,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </span>
           ) : isFirstRunState ? (
             <span className="ide-verify-stimulus-assist-message">
-              {sequentialGuidanceCopy.introStep} Run once to inspect state before saving checks.
+              {sequentialGuidanceCopy.introStep} {lanePrompt} Run once to inspect state before saving checks.
             </span>
           ) : (
             <span className="ide-verify-stimulus-assist-message">
-              {sequentialGuidanceCopy.introTitle}
+              {sequentialGuidanceCopy.introTitle}. {lanePrompt}
             </span>
           )}
           <span className="ide-verify-stimulus-assist-summary" data-testid="ide-verify-clock-pattern-summary">
@@ -3824,20 +3841,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </span>
           ) : null}
         </div>
-        <div className="ide-verify-stimulus-assist-actions">
-          <IdeButton tone="secondary" onClick={handleInsertClockPattern} testId="ide-verify-insert-clock-pattern">
-            {primaryLabel}
-          </IdeButton>
-          <IdeButton tone="ghost" onClick={handleInsertClockHoldLow} testId="ide-verify-insert-clock-hold-low">
-            Hold low
-          </IdeButton>
-          <IdeButton tone="ghost" onClick={handleInsertClockHoldHigh} testId="ide-verify-insert-clock-hold-high">
-            Hold high
-          </IdeButton>
-          <IdeButton tone="ghost" onClick={handleInsertClockPulse} testId="ide-verify-insert-clock-pulse">
-            Single pulse
-          </IdeButton>
-        </div>
       </div>
     );
   }, [
@@ -3845,10 +3848,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     clockSignalNames,
     clockActivitySummary,
     effectiveTimingGuidance.kind,
-    handleInsertClockHoldHigh,
-    handleInsertClockHoldLow,
-    handleInsertClockPattern,
-    handleInsertClockPulse,
     isFirstRunState,
     nextRunNeedsClockActivity,
     sequentialGuidanceCopy.introStep,
@@ -4300,7 +4299,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           className="ide-verify-lab-grid"
           data-testid="ide-verify-lab-grid"
           data-stimulus-layout={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}
-          data-workspace-mode={Boolean(lastRun) ? (scenarioWorkbenchExpanded ? 'split' : 'waveform-focus') : 'stimulus-focus'}
+          data-workspace-mode={
+            layoutMode === 'compact'
+              ? 'stimulus-focus'
+              : Boolean(lastRun) && !scenarioWorkbenchExpanded
+                ? 'waveform-focus'
+                : 'split'
+          }
         >
         <VerifyStimulusRegion data-panel-state={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}>
 
@@ -4474,7 +4479,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
-          inputFields={editableInputFields}
+          inputFields={stimulusInputFields}
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           totalVectorCount={totalVectorCount}
@@ -4518,8 +4523,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           workbenchExpanded={scenarioWorkbenchExpanded}
           onWorkbenchExpandedChange={setScenarioWorkbenchExpanded}
           allowWorkbenchCollapse={false}
-          showExpectedOutputs={showExpectedOutputs}
-          onToggleExpectedOutputs={handleToggleExpectedOutputs}
+          clockLane={clockLaneConfig}
           stimulusAssist={stimulusAssist}
           runSummary={testbenchRunSummary}
         />
@@ -4528,7 +4532,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <VerifyWaveformRegion>
           {isDraftSession ? (
             <VerifyWaveformPlaceholder
-              inputNames={editableInputFields.map((f) => f.label ?? f.id)}
+              inputNames={stimulusInputFields.map((f) => f.label ?? f.id)}
               outputNames={outputFields.map((f) => f.label ?? f.id)}
               clockName={clockSignalNames[0]}
               isSequential={isSequentialRun}
@@ -5584,19 +5588,6 @@ function normalizeVectors(
     .sort((left, right) => left.tick - right.tick);
 }
 
-function buildAuthoredClockHelperVectors(vectors: TestVector[]): VerifyAuthorVector[] {
-  return vectors.map((vector, index) => ({
-    id: `vec-clk-${String(vector.tick ?? index).padStart(2, '0')}`,
-    tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
-    inputs: Object.fromEntries(
-      Object.entries(vector.inputs ?? {}).map(([key, value]) => [key, normalizeBit(value)] as [string, 0 | 1])
-    ),
-    expected: Object.fromEntries(
-      Object.entries(vector.expected ?? {}).map(([key, value]) => [key, normalizeBit(value)] as [string, 0 | 1])
-    ),
-  }));
-}
-
 function normalizeVerifyFields(
   seed: Array<{ id: string; label?: string; pin?: string }>
 ): VerifyVectorDraftInput[] {
@@ -6109,6 +6100,9 @@ function normalizeFieldId(value: string): string {
 interface ClockActivitySummary {
   hasTransition: boolean;
   hasRisingEdge: boolean;
+  risingCount: number;
+  fallingCount: number;
+  sampleCount: number;
   summary: string;
   preview: string[];
 }
@@ -6122,6 +6116,9 @@ function buildClockActivitySummary(
     return {
       hasTransition: false,
       hasRisingEdge: false,
+      risingCount: 0,
+      fallingCount: 0,
+      sampleCount: 0,
       summary: 'No clock signal detected for this testbench yet.',
       preview: [],
     };
@@ -6145,6 +6142,9 @@ function buildClockActivitySummary(
     return {
       hasTransition: false,
       hasRisingEdge: false,
+      risingCount: 0,
+      fallingCount: 0,
+      sampleCount: 0,
       summary: 'No clock row is present in the next-run stimulus.',
       preview: [],
     };
@@ -6189,6 +6189,9 @@ function buildClockActivitySummary(
   return {
     hasTransition,
     hasRisingEdge,
+    risingCount,
+    fallingCount,
+    sampleCount: samples.length,
     summary: `Clock row for next run: ${samples.length} tick${samples.length === 1 ? '' : 's'}, ${edgeSummary}.`,
     preview: previewWindow,
   };
@@ -6289,7 +6292,7 @@ function resolveVerifyLayoutMode(width?: number): VerifyLayoutMode {
         ? window.innerWidth
         : 1440;
   if (nextWidth >= 1280) return 'wide';
-  if (nextWidth >= 1080) return 'standard';
+  if (nextWidth >= 960) return 'standard';
   return 'compact';
 }
 

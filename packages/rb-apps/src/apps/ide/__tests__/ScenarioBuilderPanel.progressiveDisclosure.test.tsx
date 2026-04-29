@@ -49,31 +49,29 @@ function renderPanel() {
 }
 
 describe('ScenarioBuilderPanel progressive disclosure', () => {
-  it('keeps advanced authoring helpers hidden until More options opens', () => {
-    const { getByText, getByTestId } = renderPanel();
-    const moreActionsDetails = getByText('More options').closest('details');
+  it('keeps advanced authoring helpers hidden until Advanced tools opens', () => {
+    const { getByTestId, queryByTestId, queryByText } = renderPanel();
 
-    expect(moreActionsDetails?.hasAttribute('open')).toBe(false);
+    expect(queryByText('More options')).toBeNull();
+    expect(queryByTestId('ide-stimulus-sweep-tools')).toBeNull();
+    expect(queryByTestId('ide-stimulus-project-vectors-tools')).toBeNull();
 
-    fireEvent.click(getByText('More options'));
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
 
-    expect(moreActionsDetails?.hasAttribute('open')).toBe(true);
-    expect(getByTestId('ide-verify-hold-n-controls')).toBeTruthy();
-    expect(getByTestId('ide-verify-pulse-controls')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-sweep-tools')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-project-vectors-tools')).toBeTruthy();
   });
 
-  it('keeps the sweep generator tucked inside More options until explicitly opened', () => {
-    const { getByText, getByTestId } = renderPanel();
-    const moreActionsDetails = getByText('More options').closest('details');
+  it('keeps the starter footer visible while project vectors and sweep stay in Advanced tools', () => {
+    const { getByTestId, queryByTestId } = renderPanel();
 
-    fireEvent.click(getByText('More options'));
-    expect(moreActionsDetails?.hasAttribute('open')).toBe(true);
-    const sweepDetails = getByText('Sweep generator').closest('details');
-    expect(sweepDetails?.hasAttribute('open')).toBe(false);
+    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(queryByTestId('ide-verify-open-project-vectors')).toBeNull();
 
-    fireEvent.click(getByText('Sweep generator'));
+    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
 
-    expect(sweepDetails?.hasAttribute('open')).toBe(true);
-    expect(getByTestId('ide-verify-sweep-controls')).toBeTruthy();
+    expect(getByTestId('ide-verify-open-project-vectors')).toBeTruthy();
+    expect(getByTestId('ide-verify-sweep-preset')).toBeTruthy();
+    expect(getByTestId('ide-verify-generate-sweep-vectors')).toBeTruthy();
   });
 });

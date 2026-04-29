@@ -24870,6 +24870,130 @@ button:disabled,
   cursor: pointer;
 }
 
+[data-ide-mode-marker='verify'] .ide-stimulus-advanced-tools-panel {
+  align-items: flex-start;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-label-wrap {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-label-wrap.is-clock {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-label-cell.is-clock {
+  font-weight: 700;
+  color: #e0f2fe;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-row--clock {
+  background: linear-gradient(90deg, rgba(14, 33, 52, 0.92), rgba(9, 20, 32, 0.82));
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-tools {
+  display: grid;
+  gap: 6px;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-tools-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  color: #dbeafe;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-detail {
+  font-size: 11px;
+  color: rgba(191, 219, 254, 0.72);
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-tools-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-count-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(191, 219, 254, 0.78);
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-clock-count-input {
+  width: 56px;
+  min-height: 28px;
+  padding: 0.28rem 0.4rem;
+  border: 1px solid rgba(96, 165, 250, 0.2);
+  border-radius: 0.45rem;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-value-cell-button.is-clock {
+  background: rgba(2, 8, 16, 0.28);
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-cell.is-clock {
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.14);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
+  flex: 0 0 43% !important;
+  min-width: 460px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
+  flex: 1 1 57% !important;
+}
+
+@media (max-width: 1279px) {
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+    grid-template-columns: minmax(420px, 1.06fr) minmax(0, 1.14fr) !important;
+  }
+
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--stimulus {
+    flex-basis: 46% !important;
+    min-width: 420px !important;
+  }
+
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] .ide-verify-region--waveform {
+    flex-basis: 54% !important;
+  }
+}
+
+@media (max-width: 959px) {
+  [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
+  [data-ide-mode-marker='verify'] .ide-verify-region--waveform {
+    min-width: 0 !important;
+  }
+}
+
 .ide-stimulus-mini-btn:hover:not(:disabled) {
   border-color: rgba(96, 165, 250, 0.38);
   background: rgba(30, 41, 59, 0.92);
@@ -32670,16 +32794,8 @@ button:disabled,
   color: rgba(163, 206, 238, 0.88);
   overflow-wrap: anywhere;
 }
-
-[data-ide-mode-marker='verify'] .ide-verify-stimulus-assist-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 6px;
-}
-
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
-  grid-template-columns: minmax(460px, 1.08fr) minmax(0, 1.22fr) !important;
+  grid-template-columns: minmax(460px, 1.02fr) minmax(0, 1.34fr) !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-workbench-body {
