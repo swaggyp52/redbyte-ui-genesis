@@ -8,7 +8,7 @@ role: Verify surface spec
 
 # Verify Mode Spec
 
-Status: Phase 1 v1
+Status: Phase 2A foundation
 Mode ID: `verify`
 
 ## Purpose
@@ -29,7 +29,7 @@ Run deterministic vector verification and present clear pass/fail proof for down
 
 3. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
-4. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail (details vary by session state).
+4. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail. A selected failed case produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
 
 ## Empty State
 
@@ -53,6 +53,10 @@ Secondary action: `Open sample vector format`
 4. Current assertion-backed PASS status that can authorize trusted Hardware/Export handoff.
 
 Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, but they do not complete the Verify proof stage.
+
+## Design Handoff
+
+`Open in Design` for a failed comparison must preserve the selected mismatch brief. Design should be able to say, for example: `Verify failed on LD0: expected 1, observed 0 at tick 4. Inputs: SW0=1, SW1=1. Inspect the logic path feeding LD0.`
 
 ## Data Contract (RBProject)
 

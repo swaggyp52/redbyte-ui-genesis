@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-04-28 (BUG-003 render harness + Phase 2A usability foundation)
+
+**Subsystem:** `@testing-library/react`, Verify/Design debug bridge, Project/Hardware/Export mapping displays
+
+**Context:** Clear the component render harness blocker first, then land the smallest Phase 2A student-usability foundation without starting the larger Export/Import pipeline refactors.
+
+**Changes:**
+- Upgraded the workspace and `@redbyte/rb-logic-view` test harness to `@testing-library/react@^16.3.2`, the current React 19-compatible release available from npm; no `17.x` package exists.
+- Added a render-harness smoke test so component rendering stays covered under the workspace testing-library version.
+- Extended `VerifyDebugContext` with student-facing signal labels, vector/case context fields, and shared mismatch formatting helpers.
+- Routed selected Verify failures into Design with the failed signal label, expected/observed values, tick, input snapshot, pattern summary, and next-inspection hint.
+- Updated Design’s frozen debug/replay copy to say what failed and where to inspect in student-facing language.
+- Changed visible mapping rows in Project, Hardware, and Export to show Basys3 board labels before package pins, while preserving saved mapping authority and XDC/package-pin generation.
+- Updated current cockpit/system/surface docs for the fixed BUG-003 state and Phase 2A foundation behavior.
+
+**Validation:**
+- `pnpm -w exec vitest run renderHarness designSurface.workstation projectSurface.mapping-legitimacy hardwareSurface.readiness exportSurface.mapping-trust` -> pass (59 tests)
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass / exit 0 (full gate sequence; existing declaration-generation warnings printed during workspace builds)
+
+**Residual / release-process caveat:** E2/E3 hardware certification remains blocked on a connected Basys3 bench. Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (Product takeover Phase 1 - component support registry)
 
 **Subsystem:** `componentSupportRegistry.ts`, Design palette, Verify mode detection, Import HDL reconstruction, VHDL/Basys3 export support checks

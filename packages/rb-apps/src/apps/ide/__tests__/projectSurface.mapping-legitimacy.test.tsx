@@ -130,6 +130,8 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     expect(getByTestId('ide-project-map-req-clk_in').textContent).toContain('Required');
     expect(getByTestId('ide-project-map-req-dbg').textContent).toContain('Optional');
     expect(getByTestId('ide-project-role-clk_in').textContent).toContain('Clock');
+    expect(getByTestId('ide-project-alias-dbg').textContent).toContain('LD0 (pin U16)');
+    expect(getByTestId('ide-project-pin-field-dbg').textContent).toContain('LD0 (pin U16)');
 
     const actionRow = container.querySelector('tr.ide-project-map-row--action');
     expect(actionRow).toBeTruthy();

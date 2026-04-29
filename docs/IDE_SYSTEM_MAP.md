@@ -25,12 +25,13 @@
 
 - **Workbench header**: `ide-design-workspace-header` is the top owner. It carries the `Design` label, mode headline (Canvas / Code / Split / replay-linked variants), and the existing primary / secondary CTAs. The old standalone Design command strip does not exist anymore.
 - **Control bar**: one tools row plus compact status ownership. The expanded tool cluster (`ide-design-toolbar-expanded`) is an anchored popup, not a stacked band. Verify-linked sessions still surface `Verify focus …` via `data-testid="ide-design-verify-focus"` in the simulation strip when that story is active.
+- **Verify mismatch brief**: when Verify opens Design on a failed comparison, `VerifyDebugContext` carries the signal key, student label, expected/observed bits, tick/case context, input snapshot, and next-inspection hint. Design renders that as a student-facing brief instead of a generic replay note.
 - **Workbench**: support rails are narrower, and code / split default both rails to collapsed overlay handles so the workspace keeps its full width. The left palette order is `Board -> IO -> Logic -> Sequential -> Reusable`; `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately available. The idle inspector falls back to the small `Canvas ready` state.
 
 ### Hardware chrome (layout system)
 
 - **Map Pins-first workspace**: Hardware opens on a plain signal-to-board binding job. The command strip is mapping-only in map mode; export/program state moves below the board so the first-view center of gravity is the signal list plus clickable Basys3 visual.
-- **Board assignment loop**: Rows show friendly signal labels, board control aliases, physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Selecting a row now drives a visible signal -> board control -> physical pin confirmation strip and highlights valid board targets. Board clicks write through the same saved mapping authority that Export reads.
+- **Board assignment loop**: Rows show friendly signal labels, board control aliases before physical package pins, and simple `Mapped` / `Missing` / `Conflict` state. Selecting a row now drives a visible signal -> board control -> physical pin confirmation strip and highlights valid board targets. Board clicks write through the same saved mapping authority that Export reads.
 - **Authoritative board planner model**: `basys3Pins.ts` owns the shared Basys3 resource catalog for planner-visible resources (clock, switches, buttons, LEDs, seven-segment controls) plus extended official XDC references (Pmods, XADC, VGA, USB-UART, PS/2, QSPI). Hardware summary cards, the board visual, the inspector, and Export/XDC binding truth all consume that same source.
 - **Clock truth is explicit**: the 100 MHz oscillator is surfaced as `CLK100MHZ` on package pin `W5`, and Hardware exposes the 10 ns `create_clock` relationship that Export emits for the mapped top-level clock port.
 - **Catalog + XDC traceability**: Hardware now makes the chain explicit: project signal -> board resource -> package pin -> XDC binding preview. The preview stays secondary detail inside Hardware, but students can inspect it without dropping into a schema editor or leaving the planner.
@@ -91,6 +92,7 @@ Gate: `scripts/gates/ide-zip-import-contract.mjs`
 5. `projectRuntime.ts::runVerification()` → calls `runDeterministicVerifyFromModel(circuit, simModel, ioRows, vectors, scheduleContract)`
 6. Returns `RuntimeVerifyRun` with `report`, `waveform`, and deterministic evidence capsule
 5. VerifySurface renders waveform + PASS/FAIL status
+6. On a failed selected case, Verify builds a compact `VerifyDebugContext`; opening Design preserves the failed signal label, expected/observed bits, tick, input snapshot, and next-inspection hint.
 
 Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 
@@ -102,6 +104,7 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 2. ExportSurface → `buildEvidenceDiagnostics()` → no errors
 3. User clicks "Download Vivado Pack" → `onExportBundle()` → ZIP with top.vhd + top.xdc + BRINGUP.md
 4. **Handoff copy:** Project “Export readiness” and the command strip distinguish **no bundle yet** vs **stale bundle** (via `hasSuccessfulExportBundle` / `exportPackageCurrent`); the Export “Open in Vivado” block (`ide-export-vivado-zip-contents`) names **top.vhd / top.xdc / .xpr / tcl + README** and that synthesis or bitstream still run in Vivado locally.
+5. Export mapping rows and debug reports render Basys3 board labels before package pins (for example `SW0 (pin V17)`) while XDC generation still consumes the resolved package pin.
 
 Gate: `scripts/gates/ide-export-generates-hdl.mjs`
 Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `<details>`; artifact list uses `ide-export-artifact-preview`)

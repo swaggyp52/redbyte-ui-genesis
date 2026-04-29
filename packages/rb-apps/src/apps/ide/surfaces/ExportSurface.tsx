@@ -19,7 +19,7 @@ import {
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
-import { resolveBasys3PackagePin } from '../../../fpga/boards/basys3/basys3Pins';
+import { resolveBasys3BoardAlias, resolveBasys3PackagePin } from '../../../fpga/boards/basys3/basys3Pins';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { resolveActiveScheduleContract } from '../clockAuthority';
 import {
@@ -1005,7 +1005,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       .map((row) => {
         const portKey = toPortKey(row.port);
         const pinValue = (effectivePinsByPortKey[portKey] ?? row.pin ?? '').trim();
-        const resolvedPin = pinValue.length > 0 ? pinValue : 'UNMAPPED';
+        const resolvedPin = pinValue.length > 0 ? formatLabelFirstPinBinding(pinValue) : 'UNMAPPED';
         const requiredTag = row.required ? ' required' : ' optional';
         return `${row.port} (${row.direction}, ${row.status}${requiredTag}) -> ${resolvedPin}`;
       })
@@ -2265,7 +2265,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <tr>
                         <th>Port</th>
                         <th>Direction</th>
-                        <th>Bound Pin</th>
+                        <th>Board label (pin)</th>
                         <th>Status</th>
                         <th>Conf</th>
                         <th>Notes</th>
@@ -2302,7 +2302,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                             <td>
                               <div className="ide-project-pin-field ide-project-pin-field--locked">
                                 <span className="ide-project-pin-locked-copy">
-                                  {pinValue.trim().length > 0 ? pinValue : 'Assign in Map Pins'}
+                                  {pinValue.trim().length > 0 ? formatLabelFirstPinBinding(pinValue) : 'Assign in Map Pins'}
                                 </span>
                               </div>
                               {isPinInvalid && (
@@ -2694,6 +2694,15 @@ function normalizePinForExportDisplay(pin: string): string {
   const trimmed = pin.trim();
   if (trimmed.length === 0) return '';
   return resolveBasys3PackagePin(trimmed) ?? trimmed;
+}
+
+function formatLabelFirstPinBinding(pin: string): string {
+  const trimmed = pin.trim();
+  if (trimmed.length === 0) return '';
+  const packagePin = resolveBasys3PackagePin(trimmed);
+  if (!packagePin) return trimmed.toUpperCase();
+  const alias = resolveBasys3BoardAlias(trimmed);
+  return alias ? `${alias} (pin ${packagePin})` : packagePin;
 }
 
 function buildInvalidPinSet(

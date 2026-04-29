@@ -32,6 +32,7 @@ Provide project truth and readiness overview before design, verify, map pins, an
 2. Secondary content
 - File manifest panel.
 - IO mapping completeness panel.
+- Mapping summaries are read-only and label-first: board/resource labels appear before package pins, with Map Pins as the editing authority.
 - Vector summary panel.
 - Starter examples panel (tags, expected behavior, open action).
 

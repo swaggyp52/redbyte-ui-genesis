@@ -1919,14 +1919,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     return {
       signal: selectedFailureCase.signal,
+      signalLabel: studentSelectedFailure?.signalLabel ?? selectedFailureCase.signal,
       tick: selectedFailureCase.tick,
       expected: selectedFailureCase.expected,
       actual: selectedFailureCase.actual,
+      vectorId: selectedFailureCase.vectorId ?? null,
+      caseIndex: selectedFailureCase.caseIndex ?? null,
       inputSnapshot: selectedFailureInputs ?? [],
       patternSummary: selectedFailurePattern?.summary ?? null,
       nextInspect: selectedFailurePattern?.nextInspect ?? null,
     };
-  }, [selectedFailureCase, selectedFailureInputs, selectedFailurePattern]);
+  }, [selectedFailureCase, selectedFailureInputs, selectedFailurePattern, studentSelectedFailure?.signalLabel]);
   const outputSignalOrder = useMemo(() => {
     const ordered = new Map<string, string>();
     for (const signal of mappedSignals ?? []) {

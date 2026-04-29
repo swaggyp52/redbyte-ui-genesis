@@ -7,6 +7,7 @@ import {
   BASYS3_LED_PINS,
   BASYS3_SEGMENT_PINS,
   BASYS3_SWITCH_PINS,
+  resolveBasys3BoardAlias,
   resolveBasys3PackagePin,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import {
@@ -654,13 +655,13 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             }`}
             data-testid={`ide-project-pin-field-${mappingKey}`}
             title={
-              row.pin.trim().length > 0
-                ? `Saved Basys3 binding: ${row.pin}`
+              mappingView.bindingDisplay !== '-'
+                ? `Saved Basys3 binding: ${mappingView.bindingDisplay}`
                 : `Assign this port in Map Pins. Suggested board resource: ${suggestBasys3Pin(row, index)}`
             }
           >
             <span className="ide-project-pin-locked-copy">
-              {row.pin.trim().length > 0 ? row.pin.trim().toUpperCase() : 'Assign in Map Pins'}
+              {mappingView.bindingDisplay !== '-' ? mappingView.bindingDisplay : 'Assign in Map Pins'}
             </span>
           </div>
         ) : (
@@ -1262,7 +1263,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </span>
               </div>
               <IdeDataTable
-                columns={['Port', 'Role', 'Alias → package pin', 'Saved binding', 'Dir', 'Status']}
+                columns={['Port', 'Role', 'Board label (pin)', 'Saved binding', 'Dir', 'Status']}
                 rows={mappingRowsUi}
                 testId="ide-project-mapping-table"
                 getRowClassName={(rowIndex) => mappingRowClassNames[rowIndex]}
@@ -1535,6 +1536,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
 interface MappingView {
   aliasDisplay: string;
+  bindingDisplay: string;
   statusTone: 'ok' | 'warn' | 'error';
   statusLabel: string;
 }
@@ -1547,6 +1549,7 @@ function toMappingView(
   if (normalizedPin.length === 0) {
     return {
       aliasDisplay: '-',
+      bindingDisplay: '-',
       statusTone: 'warn',
       statusLabel: 'Missing',
     };
@@ -1556,18 +1559,22 @@ function toMappingView(
   if (!resolvedPin) {
     return {
       aliasDisplay: normalizedPin,
+      bindingDisplay: normalizedPin,
       statusTone: 'error',
       statusLabel: 'Invalid',
     };
   }
 
   const alias =
-    normalizedPin === resolvedPin
+    resolveBasys3BoardAlias(normalizedPin) ??
+    (normalizedPin === resolvedPin
       ? inferAliasFromPackagePin(resolvedPin, row.direction, index)
-      : normalizedPin;
+      : normalizedPin);
+  const labelFirst = `${alias} (pin ${resolvedPin})`;
 
   return {
-    aliasDisplay: `${alias} -> ${resolvedPin}`,
+    aliasDisplay: labelFirst,
+    bindingDisplay: labelFirst,
     statusTone: 'ok',
     statusLabel: 'Mapped',
   };

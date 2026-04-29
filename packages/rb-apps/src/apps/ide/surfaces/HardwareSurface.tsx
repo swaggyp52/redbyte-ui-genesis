@@ -3212,8 +3212,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                               <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
                             )}
                             <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
-                              <span>Board: <strong>{boardControl}</strong></span>
-                              <span>Pin: <strong>{packagePin}</strong></span>
+                              <span>Board: <strong>{boardControl}</strong> (pin <strong>{packagePin}</strong>)</span>
                             </span>
                           </span>
                         </button>

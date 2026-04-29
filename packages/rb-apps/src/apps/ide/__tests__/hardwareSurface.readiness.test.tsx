@@ -132,6 +132,8 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
     expect(queryByTestId('ide-hw-callout')).toBeNull();
     expect(getByTestId('ide-inspector')).toBeTruthy();
+    expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('LD0');
+    expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('pin U16');
     expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });

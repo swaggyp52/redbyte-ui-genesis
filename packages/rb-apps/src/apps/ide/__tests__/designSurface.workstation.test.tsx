@@ -546,7 +546,8 @@ describe('DesignSurface workstation redesign', () => {
         ['ld0_node.in', 0],
       ]),
       externalDebugContext: {
-        signal: 'LD0',
+        signal: 'ld0',
+        signalLabel: 'LD0',
         tick: 6,
         expected: '1',
         actual: '0',
@@ -560,12 +561,15 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('LD0');
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('1');
     expect(view.getByTestId('ide-design-failure-brief').textContent).toContain('0');
+    expect(view.getByTestId('ide-design-failure-brief').textContent).toContain(
+      'Verify failed on LD0: expected 1, observed 0 at tick 6.'
+    );
     expect(view.getByTestId('ide-design-failure-brief-inputs').textContent).toContain('SW0=1');
     expect(view.getByTestId('ide-design-failure-brief-next').textContent).toContain('Inspect the wire between SW0 and LD0.');
     expect(view.getByTestId('ide-design-failure-brief-pattern').textContent).toContain('Output stayed low while the selected input was high.');
     expect(view.getByTestId('ide-design-active-trace').textContent).toContain('Debug: what drives LD0 · in');
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Debug focus');
-    expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify expected LD0=1 but sampled 0 at tick 6.');
+    expect(view.getByTestId('ide-design-sim-story-summary').textContent).toContain('Verify failed on LD0: expected 1, observed 0 at tick 6.');
   });
 
   it('auto-demotes cramped split view into stacked mode', async () => {

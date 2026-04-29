@@ -33,7 +33,12 @@ import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../p
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { TimingGuidance } from '../timingGuidance';
-import type { VerifyDebugContext } from '../verifyDebug';
+import {
+  formatVerifyDebugInputSnapshot,
+  formatVerifyMismatchBrief,
+  getVerifyDebugDisplaySignal,
+  type VerifyDebugContext,
+} from '../verifyDebug';
 import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
@@ -4570,7 +4575,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-design-replay-idle-guide" data-testid="ide-design-replay-idle-guide">
             {activeDebugContext ? (
               <div className="ide-design-replay-failure-context" data-testid="ide-design-replay-failure-context">
-                <span className="ide-design-replay-failure-signal">{activeDebugContext.signal}</span>
+                <span className="ide-design-replay-failure-signal">{getVerifyDebugDisplaySignal(activeDebugContext)}</span>
                 <span className="ide-design-replay-failure-verdict">expected&nbsp;<code>{activeDebugContext.expected}</code>&nbsp;got&nbsp;<code>{activeDebugContext.actual}</code></span>
               </div>
             ) : activeVerifySignal ? (
@@ -6820,8 +6825,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         {activeDebugContext && (
                           <div className="ide-design-failure-brief" data-testid="ide-design-failure-brief">
                             <span className="ide-design-failure-brief-summary">
-                              Verify expected <code>{activeDebugContext.signal}</code>=<code>{activeDebugContext.expected}</code>{' '}
-                              but Design sampled <code>{activeDebugContext.actual}</code>.
+                              {formatVerifyMismatchBrief(activeDebugContext)}
                             </span>
                             {debugInputSummary && (
                               <span className="ide-design-failure-brief-inputs" data-testid="ide-design-failure-brief-inputs">
@@ -7464,14 +7468,6 @@ function describeSimulationStory(
   };
 }
 
-function formatVerifyDebugInputSnapshot(
-  snapshot: Array<{ label: string; value: string }>
-): string {
-  return snapshot
-    .map((entry) => `${entry.label}=${entry.value}`)
-    .join(', ');
-}
-
 function formatReplaySelectionLabel(
   caseIndex: number | null,
   caseCount: number | null,
@@ -7497,7 +7493,8 @@ function formatReplayTimingHint(meta: RuntimeVerifyRun['meta'] | null | undefine
 }
 
 function describeVerifyDebugSummary(context: VerifyDebugContext): string {
-  const base = `Verify expected ${context.signal}=${context.expected} but sampled ${context.actual} at tick ${context.tick}.`;
+  const signal = getVerifyDebugDisplaySignal(context);
+  const base = `Verify failed on ${signal}: expected ${context.expected}, observed ${context.actual} at tick ${context.tick}.`;
   if (context.patternSummary) {
     return `${base} ${context.patternSummary}`;
   }

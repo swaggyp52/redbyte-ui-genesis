@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **E2/E3 matrix completion for `golden-basys3-switch-and` and `signal-tour`** - E1 certified. Blocked on connected bench; do when hardware is available. Program `.bit`, observe LED behavior, log to `out/vivado-cert/`.
-2. **BUG-003 - testing-library upgrade** - bump `@testing-library/react` to `^17.0.0`. Pre-existing; unblocks component render test harness.
-3. **Phase 2A usability audit bundle** - carry Verify mismatch briefs back to Design, make mapping labels label-first across surfaces, and keep pass/fail/mismatch details visible across navigation before starting deeper Export/Import pipeline refactors.
+2. **Phase 2A usability audit continuation** - extend the mismatch-brief foundation into the remaining student-loop affordances before starting deeper Export/Import pipeline refactors.
+3. **Verify UI overhaul phase 1** - split the largest Verify workbench panels only after the Phase 2A student-facing failure path stays stable under component render tests.
 
 ---
 
@@ -28,7 +28,6 @@ imported_by: CLAUDE.md
 |---------|-----|-----------|
 | E2/E3 proof for matrix rows | Requires connected Basys3 + Vivado 2024.2 + Digilent cable | Schedule lab bench session |
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
-| Component render harness | React 19 / `@testing-library/react@16.1` mismatch | Priority 2 above |
 
 ---
 
@@ -84,11 +83,11 @@ Full reproduce sequence: `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/viv
 
 | Status | Item | Commit |
 |--------|------|--------|
-| ✓ Done | Slice N2: Chrome contract interface - every surface declares top-strip slots, dock policy, and sub-mode exit paths | `7beed429` |
-| ✓ Done | Slice N3: User-controlled chrome toggles - persistent Design toolbar, Verify row, side rail, and console visibility | `2256a9a7` |
 | ✓ Done | Slice N5: 28px chrome waste reclaim - command stacks use 8px bottom padding instead of stacked gap + margin | `1f6e3631` |
 | ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
-| ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `this commit` |
+| ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `3aa8ba7d` |
+| ✓ Done | BUG-003: testing-library render harness - upgraded to the current React 19-compatible `@testing-library/react@16.3.2` release and added a render smoke test | `010f4ada` |
+| ✓ Done | Phase 2A foundation: Verify mismatch brief + label-first mapping cleanup - Design restates failed Verify context and Project/Hardware/Export show board labels before package pins | `this commit` |
 
 ---
 

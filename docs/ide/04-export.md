@@ -33,6 +33,7 @@ Act as compiler-like export authority for Basys3 Vivado artifacts while distingu
 3. Right inspector
 - Pin table.
 - Validation and warning list.
+- Mapping rows are read-only and display board labels before package pins, for example `SW0 (pin V17)`, while generated constraints still use the resolved package pin.
 
 ## Empty State
 

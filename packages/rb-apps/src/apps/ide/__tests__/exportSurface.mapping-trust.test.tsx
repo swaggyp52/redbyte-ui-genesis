@@ -157,7 +157,7 @@ describe('ExportSurface mapping trust', () => {
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('PACKAGE_PIN W16');
 
     const sw0Row = view.getByTestId('ide-export-map-row-sw0');
-    expect(within(sw0Row).getByText('W16')).toBeTruthy();
+    expect(sw0Row.textContent).toContain('SW2 (pin W16)');
   });
 
   it('renders the pin table as read-only even when a parent updater exists', () => {
@@ -172,7 +172,7 @@ describe('ExportSurface mapping trust', () => {
 
     const sw0Row = view.getByTestId('ide-export-map-row-sw0');
     expect(within(sw0Row).queryByRole('textbox')).toBeNull();
-    expect(within(sw0Row).getByText('V17')).toBeTruthy();
+    expect(sw0Row.textContent).toContain('SW0 (pin V17)');
     expect(onUpdateMappingPin).not.toHaveBeenCalled();
   });
 
@@ -228,8 +228,8 @@ describe('ExportSurface mapping trust', () => {
     const enableRow = view.getByTestId('ide-export-map-row-en');
     const resetRow = view.getByTestId('ide-export-map-row-rst');
 
-    expect(within(enableRow).getByText('V17')).toBeTruthy();
-    expect(within(resetRow).getByText('U18')).toBeTruthy();
+    expect(enableRow.textContent).toContain('SW0 (pin V17)');
+    expect(resetRow.textContent).toContain('BTNC (pin U18)');
     expect(within(enableRow).queryByRole('textbox')).toBeNull();
     expect(within(resetRow).queryByRole('textbox')).toBeNull();
   });

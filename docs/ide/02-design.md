@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-21
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -8,7 +8,7 @@ role: Design surface spec
 
 # Design Mode Spec
 
-Status: Surface reconciliation v2
+Status: Phase 2A foundation
 Mode ID: `design`
 
 ## Purpose
@@ -39,6 +39,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - The tools row stays attached to the workbench header; expanded tool options open as a compact popup instead of adding another horizontal band.
 - The compact authoring card is the readiness owner for design issues.
 - The simulation strip is contextual and appears only when replay, stale replay, verify-linked focus, active simulation, or another real simulation story exists.
+- When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect.
 
 4. Right inspector
 - Owns selection, focused-asset, mapping, and signal context.
@@ -59,6 +60,7 @@ Use non-blocking callouts and the compact authoring owner for design truth:
 2. Floating outputs.
 3. Missing required IO nodes.
 4. Replay invalidated after a circuit edit during replay.
+5. Verify mismatch context must stay visible while the replay/debug view is active; if no mismatch context exists, Design falls back to the generic Verify focus copy.
 
 ## Data Contract (RBProject)
 
