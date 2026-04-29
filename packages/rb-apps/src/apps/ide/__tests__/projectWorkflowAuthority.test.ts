@@ -45,6 +45,8 @@ describe('project workflow authority', () => {
     expect(authority.compareCurrent).toBe(false);
     expect(authority.exportAvailable).toBe(true);
     expect(authority.exportTrusted).toBe(false);
+    expect(authority.truthState).toBe('needs-verify');
+    expect(authority.draftExportAvailable).toBe(true);
     expect(authority.hardwareReady).toBe(false);
     expect(authority.primaryCta).toEqual({
       label: 'Verify',
@@ -118,6 +120,8 @@ describe('project workflow authority', () => {
     expect(authority.exportCurrent).toBe(true);
     expect(authority.exportPackageCurrent).toBe(true);
     expect(authority.exportTrusted).toBe(true);
+    expect(authority.truthState).toBe('hardware-proof-required');
+    expect(authority.trustedVerifyCurrent).toBe(true);
     expect(authority.hardwareReady).toBe(true);
     expect(authority.stageCompletion).toEqual({
       design: true,
@@ -181,7 +185,8 @@ describe('project workflow authority', () => {
     expect(authority.compareMatches).toBe(true);
     expect(authority.exportCurrent).toBe(false);
     expect(authority.exportPackageCurrent).toBe(false);
-    expect(authority.exportTrusted).toBe(true);
+    expect(authority.exportTrusted).toBe(false);
+    expect(authority.truthState).toBe('trusted-export-ready');
     expect(authority.hardwareReady).toBe(false);
     expect(authority.statusBarGateStatus).toBe('warn');
   });

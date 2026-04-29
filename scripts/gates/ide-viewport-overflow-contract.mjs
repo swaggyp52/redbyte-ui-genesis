@@ -2,7 +2,7 @@
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 
 await runIdeGate('IDE viewport overflow contract satisfied', async ({ page, baseUrl }) => {
   // Set a standard classroom viewport
@@ -36,4 +36,23 @@ await runIdeGate('IDE viewport overflow contract satisfied', async ({ page, base
       `mode=${mode} surface has insufficient bounds: ${JSON.stringify(bbox)}`
     );
   }
+
+  await page.locator('[data-testid="mode-button-project"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+  await page.locator('[data-testid="ide-project-import-primary"]').first().click();
+  await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
+  const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  assert(
+    scrollWidth <= clientWidth,
+    `mode=import has horizontal overflow: scrollWidth=${scrollWidth} > clientWidth=${clientWidth}`
+  );
+  const importRoot = page.locator('[data-testid="ide-mode-import"]').first();
+  const bbox = await importRoot.boundingBox();
+  assert(
+    bbox !== null && bbox.width > 100 && bbox.height > 100,
+    `mode=import surface has insufficient bounds: ${JSON.stringify(bbox)}`
+  );
 });

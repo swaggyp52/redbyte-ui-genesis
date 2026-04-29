@@ -69,7 +69,7 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   // trust/advisory state, and debug report UI rendered on the Export surface.
   const evidenceState = await text(page.locator('[data-testid="ide-export-capsule-build-state"] span:last-child'));
   assert(
-    /Blocked|Available|Verified|Downloaded|Building/i.test(evidenceState),
+    /Blocked|Available|Verified|Downloaded|Building|Needs Review/i.test(evidenceState),
     `export evidence state must be materialized, got "${evidenceState}"`
   );
 
@@ -105,7 +105,7 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   assert(
     blockersVisible ||
       unverifiedCalloutVisible ||
-      /Available|Verified|Downloaded/i.test(evidenceState),
+      /Available|Verified|Downloaded|Needs Review/i.test(evidenceState),
     'export evidence surface must show blockers, an advisory, or a materialized available/aligned state'
   );
 });

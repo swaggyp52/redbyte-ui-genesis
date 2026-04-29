@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-01
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 role: target-state product blueprint
@@ -112,7 +112,7 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 ### 4.6 Export Surface
 **Promise:** Generate a Vivado Kit that works in Vivado without modification.
 
-**Must do:** Produce valid VHDL, XDC, testbench, TCL, and README. Verify cross-artifact consistency. Show preview of generated artifacts. Provide clear Vivado import instructions. Warn when exporting without verify pass. Validate clock/reset contracts for sequential circuits.
+**Must do:** Produce valid VHDL, XDC, testbench, TCL, and README. Verify cross-artifact consistency. Show preview of generated artifacts. Provide clear Vivado import instructions. Label exports without a current assertion-backed Verify PASS as draft/debug, not trusted. Validate clock/reset contracts for sequential circuits.
 
 **Screenshot-worthy when:** Rebuild pipeline is clear, artifacts are previewable, Vivado instructions are self-explanatory.
 
@@ -245,7 +245,7 @@ Done when: Pass/fail has precise meaning. Failing guidance is grounded. Sequenti
 Done when: All detected-but-unsupported boundaries (falling-edge, multi-clock, active-low reset) are explicitly blocked or warned. Clock language is consistent across Design, Verify, Export, and docs.
 
 ### 9.5 Export / Vivado
-Done when: Export warns when verify has not passed. Pin overrides reconcile with HardwareSurface. Fallback testbench is validated. Generated artifacts work in Vivado without modification.
+Done when: Export distinguishes draft buildable artifacts from trusted verified handoff. Pin overrides reconcile with HardwareSurface. Fallback testbench is validated. Generated artifacts work in Vivado without modification.
 
 ### 9.6 Hardware mapping
 Done when: Live Basys3 rehearsal completed. Clean-tree signoff validated. Pin mapping is intuitive enough for students.

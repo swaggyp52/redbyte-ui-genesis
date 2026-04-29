@@ -9,11 +9,19 @@ import {
   type ProjectVerifyState,
 } from './projectHealth';
 import type { VerifyRunLedgerEntry } from './projectRuntime';
+import {
+  deriveProjectTruthSnapshot,
+  type ProjectTruthSnapshot,
+  type ProjectTruthState,
+} from './projectTruth';
 import type { IdeWorkflowRouteMode } from './workflowStages';
 
 export interface ProjectWorkflowAuthority {
+  truth: ProjectTruthSnapshot;
+  truthState: ProjectTruthState;
   verifyState: ProjectVerifyState;
   verifyCurrent: boolean;
+  trustedVerifyCurrent: boolean;
   compareCurrent: boolean;
   comparePassCurrent: boolean;
   comparePassIncomplete: boolean;
@@ -25,6 +33,7 @@ export interface ProjectWorkflowAuthority {
   exportAvailable: boolean;
   exportPackageCurrent: boolean;
   exportTrusted: boolean;
+  draftExportAvailable: boolean;
   designReady: boolean;
   hardwareReady: boolean;
   stageCompletion: Record<IdeWorkflowRouteMode, boolean>;
@@ -84,6 +93,7 @@ export interface HardwareExportFailureTruthInput {
     | 'exportCurrent'
     | 'exportPackageCurrent'
     | 'hasSuccessfulExportBundle'
+    | 'trustedVerifyCurrent'
   >;
   hasRequiredMappingGap: boolean;
   hasOtherBlockingIssue: boolean;
@@ -169,37 +179,11 @@ export function deriveHardwareExportFailureTruth(
     );
   }
 
-  if (workflowAuthority.hasSuccessfulExportBundle && !workflowAuthority.exportCurrent) {
-    return {
-      condition: 'export-stale',
-      severity: 'advisory',
-      statusLabel: 'STALE',
-      title: 'Rebuild the current bundle',
-      message:
-        'A successful bundle exists, but it no longer matches the current circuit. Rebuild it in Export so the ZIP matches the current design.',
-      primaryCtaLabel: 'Rebuild Current Bundle',
-      primaryCtaIntent: 're-export-current-bundle',
-    };
-  }
-
-  if (!workflowAuthority.hasSuccessfulExportBundle) {
-    return {
-      condition: 'export-missing',
-      severity: 'advisory',
-      statusLabel: 'READY TO BUILD',
-      title: 'Build the current bundle',
-      message:
-        'Mapping and design inputs are ready for Export. Build the current Vivado project ZIP, then continue to the hardware handoff.',
-      primaryCtaLabel: 'Build Current Bundle',
-      primaryCtaIntent: 'build-current-bundle',
-    };
-  }
-
   if (workflowAuthority.verifyState === 'not-run') {
     return advisory(
       'verify-not-run',
       'Run Verify before relying on this handoff',
-      'The bundle exists, but no expected-output comparison has been recorded for this design state yet. Open Verify before you rely on the handoff.',
+      'No expected-output comparison has been recorded for this design state yet. Open Verify before you rely on the hardware or export handoff.',
       'Open Verify',
       'verify'
     );
@@ -245,6 +229,32 @@ export function deriveHardwareExportFailureTruth(
     );
   }
 
+  if (workflowAuthority.hasSuccessfulExportBundle && !workflowAuthority.exportCurrent) {
+    return {
+      condition: 'export-stale',
+      severity: 'advisory',
+      statusLabel: 'STALE',
+      title: 'Rebuild the current bundle',
+      message:
+        'Verify is current and passing, but the successful bundle no longer matches the current circuit. Rebuild it in Export so the ZIP matches the current design.',
+      primaryCtaLabel: 'Rebuild Current Bundle',
+      primaryCtaIntent: 're-export-current-bundle',
+    };
+  }
+
+  if (!workflowAuthority.hasSuccessfulExportBundle) {
+    return {
+      condition: 'export-missing',
+      severity: 'advisory',
+      statusLabel: 'READY TO BUILD',
+      title: 'Build the current bundle',
+      message:
+        'Verify, mapping, and design inputs are ready for Export. Build the current Vivado project ZIP, then continue to the hardware handoff.',
+      primaryCtaLabel: 'Build Current Bundle',
+      primaryCtaIntent: 'build-current-bundle',
+    };
+  }
+
   if (workflowAuthority.exportPackageCurrent && workflowAuthority.compareMatches) {
     return {
       condition: 'ready',
@@ -282,14 +292,14 @@ export function deriveProjectWorkflowAuthority(
     !verifyCurrent && input.projectHealthCore.lastVerify
       ? 'stale'
       : rawVerifyState;
-  const comparePassCurrent = verifyState === 'assertions-match';
+  const comparePassCurrent = verifyCurrent && verifyState === 'assertions-match';
   const comparePassIncomplete =
     comparePassCurrent && input.readiness.verifyQualification === 'incomplete-mapping';
   const compareMatches = comparePassCurrent && !comparePassIncomplete;
   const compareDiffers =
-    verifyState === 'assertions-differ' || verifyState === 'verify-error';
-  const compareTraceOnly = verifyState === 'trace';
-  const compareCurrent = comparePassCurrent || compareDiffers;
+    verifyCurrent && (verifyState === 'assertions-differ' || verifyState === 'verify-error');
+  const compareTraceOnly = verifyCurrent && verifyState === 'trace';
+  const compareCurrent = verifyCurrent && (comparePassCurrent || compareDiffers);
   const designReady = input.readiness.hasCircuit && input.readiness.hasIoMapping;
   const exportCurrent = deriveExportCurrent({
     lastExport: input.projectHealthCore.lastExport,
@@ -303,14 +313,33 @@ export function deriveProjectWorkflowAuthority(
     exportAvailable &&
     input.projectHealthCore.lastExport?.status === 'ok' &&
     exportCurrent;
-  const exportTrusted = exportAvailable && compareMatches;
-  const hardwareReady = exportPackageCurrent;
-  const stageCompletion = deriveStageCompletion(projectHealth, input.readiness);
+  const trustedVerifyCurrent = compareMatches;
+  const exportTrusted = exportPackageCurrent && trustedVerifyCurrent;
+  const hardwareReady = exportTrusted;
+  const baseStageCompletion = deriveStageCompletion(projectHealth, input.readiness);
+  const stageCompletion = {
+    ...baseStageCompletion,
+    verify: trustedVerifyCurrent,
+    export: exportTrusted,
+  };
   const primaryCta = choosePrimaryProjectCta(projectHealth, input.readiness);
+  const truth = deriveProjectTruthSnapshot({
+    hasCircuit: input.readiness.hasCircuit,
+    hasIoMapping: input.readiness.hasIoMapping,
+    hasBlockingIssue: projectHealth.blockingIssues.length > 0,
+    verifyState,
+    verifyCurrent,
+    compareMatches,
+    comparePassIncomplete,
+    exportAvailable,
+    exportPackageCurrent,
+  });
   const statusBarGateStatus: ProjectWorkflowAuthority['statusBarGateStatus'] =
     projectHealth.blockingIssues.length > 0
       ? 'fail'
-      : compareDiffers || compareTraceOnly || projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport
+      : truth.state === 'hardware-proof-required'
+        ? 'pass'
+        : compareDiffers || compareTraceOnly || projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport
         ? 'warn'
         : !verifyCurrent && Boolean(input.projectHealthCore.lastVerify)
           ? 'warn'
@@ -319,8 +348,11 @@ export function deriveProjectWorkflowAuthority(
             : 'pass';
 
   return {
+    truth,
+    truthState: truth.state,
     verifyState,
     verifyCurrent,
+    trustedVerifyCurrent,
     compareCurrent,
     comparePassCurrent,
     comparePassIncomplete,
@@ -332,6 +364,7 @@ export function deriveProjectWorkflowAuthority(
     exportAvailable,
     exportPackageCurrent,
     exportTrusted,
+    draftExportAvailable: truth.draftExportAvailable,
     designReady,
     hardwareReady,
     stageCompletion,

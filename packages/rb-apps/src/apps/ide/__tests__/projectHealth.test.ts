@@ -331,7 +331,7 @@ describe('deriveStageCompletion — unified progress signal for all three nav sy
     expect(completion.design).toBe(true);
   });
 
-  it('marks verify as complete for any current run (assertions-match, trace, assertions-differ)', () => {
+  it('marks verify complete only for a current passing comparison', () => {
     // assertions-match: pass verify run, not stale → complete
     const passCurrent = deriveProjectHealth(
       { lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
@@ -351,14 +351,14 @@ describe('deriveStageCompletion — unified progress signal for all three nav sy
       { lastVerify: { status: 'fail', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
       { hasCircuit: true, hasIoMapping: true, hasVectors: true }
     );
-    expect(deriveStageCompletion(failed, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
+    expect(deriveStageCompletion(failed, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
 
     // trace: observation-only run → complete (student observed behavior)
     const traceRun = deriveProjectHealth(
       { lastVerify: { status: 'pass', hash: 'h2', runKind: 'trace', ranAtIso: '2026-04-01T00:00:00Z' }, lastExport: undefined, dirtySinceVerify: false, dirtySinceExport: false },
       { hasCircuit: true, hasIoMapping: true, hasVectors: true }
     );
-    expect(deriveStageCompletion(traceRun, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(true);
+    expect(deriveStageCompletion(traceRun, { hasCircuit: true, hasIoMapping: true, hasVectors: true }).verify).toBe(false);
 
     // not-run: no verify at all → incomplete
     const noRun = deriveProjectHealth(

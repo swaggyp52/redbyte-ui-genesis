@@ -42,7 +42,7 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
                              dirtySinceVerify: false, dirtySinceExport: false },
         customComponents: [],
       },
-      version: 4,
+      version: 5,
     };
     localStorage.setItem('rb.ide.project-runtime.v1', JSON.stringify(empty));
   });
@@ -86,30 +86,14 @@ await runIdeGate('IDE design build-fast contract satisfied', async ({ page, base
   await toggles.nth(0).click();
   await toggles.nth(1).click();
 
-  // Live simulation is tucked behind a collapsible inspector section in the current
-  // workspace; open it before validating the live output table and stepping controls.
-  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
+  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
+    await liveInputsToggle.click();
+  }
+  const quickInputCount = await page.locator('[data-testid^="ide-design-input-toggle-"]').count();
+  assert(quickInputCount >= 2, `expected at least two quick input toggles, got ${quickInputCount}`);
 
-  // LD0 (Lamp) creates a live-output entry in the live simulation table as soon as it is placed.
-  await page.waitForSelector('[data-testid^="ide-design-live-output-"]', { timeout: 10000 });
-
-  const tickBeforeStep = Number.parseInt(await text(page.locator('[data-testid="ide-design-sim-tick"]')), 10);
-  await page.locator('[data-testid="ide-design-sim-step"]').click();
-  const tickAfterStep = Number.parseInt(await text(page.locator('[data-testid="ide-design-sim-tick"]')), 10);
-  assert(
-    Number.isFinite(tickBeforeStep) && Number.isFinite(tickAfterStep),
-    `simulation tick should remain numeric (before=${tickBeforeStep}, after=${tickAfterStep})`
-  );
-  assert(
-    tickAfterStep >= tickBeforeStep,
-    `simulation tick should not regress after step (before=${tickBeforeStep}, after=${tickAfterStep})`
-  );
-
-  const lastChange = await text(page.locator('[data-testid="ide-design-last-change"]'));
-  const normalizedLastChange = lastChange.toLowerCase();
-  assert(lastChange.length > 0, 'last-change summary should be present after step');
-  assert(
-    /tick\s+\d+/i.test(lastChange) || normalizedLastChange.includes('no runtime samples yet'),
-    `last-change should report tick context or explicit no-samples state (actual: "${lastChange}")`
-  );
+  const firstQuickInput = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
+  const pressed = await firstQuickInput.getAttribute('aria-pressed');
+  assert(pressed === 'true' || pressed === 'false', 'quick input toggle must expose binary state');
 });

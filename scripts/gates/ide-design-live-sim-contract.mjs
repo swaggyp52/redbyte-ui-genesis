@@ -42,7 +42,7 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
                              dirtySinceVerify: false, dirtySinceExport: false },
         customComponents: [],
       },
-      version: 4,
+      version: 5,
     };
     localStorage.setItem('rb.ide.project-runtime.v1', JSON.stringify(empty));
   });
@@ -51,7 +51,6 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
 
   const boardPalette = page.locator('[data-testid="ide-design-board-io-palette"]').first();
   const boardPaletteVisible = await boardPalette.isVisible().catch(() => false);
@@ -66,24 +65,14 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await placeBoardInput(page, '[data-testid="ide-design-board-input-sw1"]', 0.24, 0.58);
   await page.waitForSelector('[data-testid^="switch-toggle-"]', { timeout: 10000 });
 
-  const tickBeforeRaw = await text(page.locator('[data-testid="ide-design-sim-tick"]'));
-  const tickBefore = Number.parseInt(tickBeforeRaw || '0', 10);
-  await page.locator('[data-testid="ide-design-sim-step"]').click();
-  await page.waitForFunction(
-    (before) => {
-      const element = document.querySelector('[data-testid="ide-design-sim-tick"]');
-      if (!element) return false;
-      const current = Number.parseInt((element.textContent || '0').trim(), 10);
-      return Number.isFinite(current) && current > before;
-    },
-    tickBefore,
-    { timeout: 10000 }
-  );
-
-  await page.locator('[data-testid^="ide-design-live-input-"]').first().waitFor({ state: 'visible', timeout: 10000 });
-  const liveInputIds = await page.$$eval('[data-testid^="ide-design-live-input-"]', (rows) =>
+  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
+    await liveInputsToggle.click();
+  }
+  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const liveInputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
     rows
-      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-live-input-/, ''))
+      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
       .filter((entry) => entry.length > 0)
   );
   assert(liveInputIds.length > 0, 'expected live input rows before toggle');
@@ -101,7 +90,8 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   const toggleSelector = `[data-testid="switch-toggle-${targetId}"]`;
   const targetToggle = page.locator(toggleSelector).first();
   await targetToggle.waitFor({ state: 'visible', timeout: 10000 });
-  const beforeValue = await text(page.locator(`[data-testid="ide-design-live-input-${targetId}"] code`).first());
+  const beforePressed = await page.locator(`[data-testid="ide-design-input-toggle-${targetId}"]`).first().getAttribute('aria-pressed');
+  const beforeValue = beforePressed === 'true' ? '1' : beforePressed === 'false' ? '0' : beforePressed;
   assert(beforeValue === '0' || beforeValue === '1', `expected binary live input value, got "${beforeValue}"`);
 
   await page.$eval(toggleSelector, (entry) => {
@@ -110,6 +100,11 @@ await runIdeGate('IDE design live sim contract satisfied', async ({ page, baseUr
   await page.waitForFunction(
     ({ id, previous }) => {
       const row = document.querySelector(`[data-testid="ide-design-live-input-${id}"] code`);
+      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
+      if (button) {
+        const value = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
+        return value !== previous;
+      }
       if (!row) return false;
       const value = (row.textContent || '').trim();
       if (value !== '0' && value !== '1') return false;

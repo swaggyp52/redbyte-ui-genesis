@@ -2,7 +2,7 @@
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
-const MODES = ['project', 'design', 'verify', 'hardware', 'export', 'import'];
+const MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
@@ -105,16 +105,22 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       );
       continue;
     }
-    if (mode === 'import') {
-      const startPrimary = modeRoot.locator('[data-testid="ide-import-start-primary"]').first();
-      const process = modeRoot.locator('[data-testid="ide-import-process-design"]').first();
-      const startPrimaryVisible = await startPrimary.isVisible().catch(() => false);
-      const processVisible = await process.isVisible().catch(() => false);
-      assert(
-        startPrimaryVisible || processVisible,
-        'mode=import expected import start primary CTA or process-design CTA to be visible'
-      );
-      continue;
-    }
   }
+
+  await page.locator('[data-testid="mode-button-project"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  const projectRoot = page.locator('[data-testid="ide-mode-project"]').first();
+  const importLauncher = projectRoot.locator('[data-testid="ide-project-import-primary"]').first();
+  assert(await importLauncher.isVisible().catch(() => false), 'project surface must expose Import as a utility CTA');
+  await importLauncher.click();
+  await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
+  const importRoot = page.locator('[data-testid="ide-mode-import"]').first();
+  const startPrimary = importRoot.locator('[data-testid="ide-import-start-primary"]').first();
+  const process = importRoot.locator('[data-testid="ide-import-process-design"]').first();
+  const startPrimaryVisible = await startPrimary.isVisible().catch(() => false);
+  const processVisible = await process.isVisible().catch(() => false);
+  assert(
+    startPrimaryVisible || processVisible,
+    'mode=import expected import start primary CTA or process-design CTA to be visible'
+  );
 });

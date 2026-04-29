@@ -6,27 +6,17 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
-async function setBinaryInput(page, nodeId, target) {
-  const rowValueLocator = page.locator(`[data-testid="ide-design-live-input-${nodeId}"] code`).first();
-  await page.waitForSelector(`[data-testid="switch-toggle-${nodeId}"]`, { timeout: 10000 });
-  const before = await text(rowValueLocator);
-  if (before === String(target)) return;
-  await page.evaluate((id) => {
-    const toggle = document.querySelector(`[data-testid="switch-toggle-${id}"]`);
-    if (!toggle) return;
-    toggle.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, cancelable: true, view: window })
-    );
-  }, nodeId);
-  await page.waitForFunction(
-    ({ id, value }) => {
-      const row = document.querySelector(`[data-testid="ide-design-live-input-${id}"] code`);
-      if (!row) return false;
-      return (row.textContent || '').trim() === String(value);
-    },
-    { id: nodeId, value: target },
-    { timeout: 10000 }
-  );
+async function openQuickInputs(page) {
+  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
+    await liveInputsToggle.click();
+  }
+  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
+async function quickInputValue(page, nodeId) {
+  const pressed = await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).first().getAttribute('aria-pressed');
+  return pressed === 'true' ? '1' : pressed === 'false' ? '0' : '';
 }
 
 await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUrl }) => {
@@ -41,40 +31,34 @@ await runIdeGate('IDE live simulation contract satisfied', async ({ page, baseUr
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
-  await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 
   // Fit the circuit into view so that viewport-culled switch nodes become visible.
   const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
   await fitButton.evaluate((button) => button.click());
 
-  const inputCount = await page.locator('[data-testid^="ide-design-live-input-"]').count();
-  const outputCount = await page.locator('[data-testid^="ide-design-live-output-"]').count();
-  assert(inputCount >= 1, `expected at least 1 live input row, found ${inputCount}`);
-  assert(outputCount >= 1, `expected at least 1 live output row, found ${outputCount}`);
-
-  const tickBefore = Number.parseInt(
-    (await text(page.locator('[data-testid="ide-design-sim-tick"]'))) || '0',
-    10
+  await openQuickInputs(page);
+  const inputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
+    rows
+      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
+      .filter((entry) => entry.length > 0)
   );
-  await page.locator('[data-testid="ide-design-sim-step"]').click();
+  assert(inputIds.length >= 1, `expected at least 1 quick input toggle, found ${inputIds.length}`);
+
+  const targetId = inputIds[0];
+  const before = await quickInputValue(page, targetId);
+  assert(before === '0' || before === '1', `expected binary quick input value, got "${before}"`);
+  await page.locator(`[data-testid="ide-design-input-toggle-${targetId}"]`).first().click();
   await page.waitForFunction(
-    (before) => {
-      const node = document.querySelector('[data-testid="ide-design-sim-tick"]');
-      if (!node) return false;
-      const tick = Number.parseInt((node.textContent || '0').trim(), 10);
-      return Number.isFinite(tick) && tick >= before;
+    ({ id, previous }) => {
+      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
+      if (!button) return false;
+      const value = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
+      return value !== previous;
     },
-    tickBefore,
+    { id: targetId, previous: before },
     { timeout: 10000 }
   );
 
-  const tickAfter = Number.parseInt(
-    (await text(page.locator('[data-testid="ide-design-sim-tick"]'))) || '0',
-    10
-  );
-  assert(Number.isFinite(tickAfter), 'simulation tick should remain numeric after step');
-
-  const lastChange = await text(page.locator('[data-testid="ide-design-last-change"]'));
-  assert(lastChange.length > 0, 'live simulation should provide a last-change summary');
+  const after = await quickInputValue(page, targetId);
+  assert(after === '0' || after === '1', `expected binary quick input value after toggle, got "${after}"`);
 });

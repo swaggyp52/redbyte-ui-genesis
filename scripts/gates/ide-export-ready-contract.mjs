@@ -104,11 +104,16 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   const summaryDownloadButton = page.locator('[data-testid="ide-export-rebuild-btn"]').first();
   assert(await visible(summaryDownloadButton), 'summary download button must be visible in export hero');
   const summaryDownloadEnabled = await summaryDownloadButton.isEnabled().catch(() => false);
-  assert(summaryDownloadEnabled, 'summary download button must be enabled once export is current');
+  assert(summaryDownloadEnabled, 'summary primary button must be enabled once export has no blockers');
 
-  await summaryDownloadButton.scrollIntoViewIfNeeded();
+  const secondaryDownloadButton = page.locator('[data-testid="ide-export-dock-download"]').first();
+  const downloadButton = await visible(secondaryDownloadButton).catch(() => false)
+    ? secondaryDownloadButton
+    : summaryDownloadButton;
 
-  const summaryButtonOwnsCenterHit = await summaryDownloadButton.evaluate((button) => {
+  await downloadButton.scrollIntoViewIfNeeded();
+
+  const summaryButtonOwnsCenterHit = await downloadButton.evaluate((button) => {
     const rect = button.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
@@ -122,7 +127,7 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 10000 }),
-    summaryDownloadButton.click(),
+    downloadButton.click(),
   ]);
   const suggestedName = (download.suggestedFilename?.() ?? '').toLowerCase();
   assert(

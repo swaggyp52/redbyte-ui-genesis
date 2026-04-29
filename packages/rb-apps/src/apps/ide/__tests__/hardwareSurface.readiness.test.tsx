@@ -695,7 +695,7 @@ describe('HardwareSurface readiness', () => {
     expect(advanced.querySelector('summary')?.textContent).toContain('Advanced mapping editor');
   });
 
-  it('points students to Export first without calling a missing bundle blocked', () => {
+  it('points students to Verify first without calling a missing bundle blocked', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -729,10 +729,10 @@ describe('HardwareSurface readiness', () => {
     expect(commandText).not.toContain('Build the current bundle');
     expect(commandText).not.toContain('BLOCKED');
     expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Build the current bundle'
+      'Run Verify before relying on this handoff'
     );
     expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Mapping and design inputs are ready for Export'
+      'Open Verify before you rely on the hardware or export handoff'
     );
     expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).not.toContain('BLOCKED');
   });

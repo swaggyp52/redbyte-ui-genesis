@@ -314,13 +314,14 @@ describe('ExportSurface workstation redesign', () => {
   });
 
   it('hero has exactly one primary handoff CTA — no competing secondary download in the hero zone', () => {
+    const onOpenVerify = vi.fn();
     const { getByTestId, queryByTestId } = render(
-      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+      <ExportSurface project={buildProject()} determinismHash="ide-hash" onOpenVerify={onOpenVerify} />
     );
 
     // The primary CTA wrapper must exist in the hero
     expect(getByTestId('ide-export-primary-handoff-cta')).toBeTruthy();
-    // The primary rebuild button inside the hero must be enabled (no blockers in this project)
+    // The primary handoff button inside the hero must be enabled (no structural blockers in this project)
     expect(getByTestId('ide-export-rebuild-btn').hasAttribute('disabled')).toBe(false);
 
     // The kit download is absent from the summary hero — it lives in the right-column

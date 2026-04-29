@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-21
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -13,7 +13,7 @@ Mode ID: `project`
 
 ## Purpose
 
-Provide project truth and readiness overview before design, verify, and export.
+Provide project truth and readiness overview before design, verify, map pins, and export.
 
 ## Primary Actions (max 3)
 
@@ -57,11 +57,11 @@ Destructive action guard:
 
 ## Success State
 
-`Project Ready` badge shown when:
+`Project Ready` / completed stage state is shown only when:
 
 1. IO mapping is complete.
-2. Vectors exist.
-3. No blocking export errors.
+2. Verify has a current assertion-backed PASS.
+3. The current export package is trusted, or the next action clearly says what proof is still missing.
 
 ## Data Contract (RBProject)
 

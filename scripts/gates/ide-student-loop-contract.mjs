@@ -29,7 +29,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-project-start-dock"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-project-import-primary"], [data-testid="ide-project-continue-cta"], [data-testid^="ide-project-landing-example-"]', { timeout: 10000 });
 
   await loadStarterProject(page, { preferredLabStarterTestId: 'ide-project-landing-example-signal-tour' });
 
@@ -93,6 +93,10 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const exportPanel = page.locator('[data-testid="ide-export-panel"]').first();
   assert(await visible(exportPanel), 'export panel must be visible');
 
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-testid="ide-export-gate-details"]');
+    if (el && 'open' in el) el.open = true;
+  });
   const gateStack = page.locator('[data-testid="ide-export-gate-stack"]').first();
   assert(await visible(gateStack), 'export gate stack must be visible');
 
@@ -133,10 +137,11 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     `export Vivado command/status must have non-empty text, got "${readinessLabel}"`,
   );
 
-  const downloadBlock = page.locator('[data-testid="ide-export-download-block"]').first();
+  const primaryHandoff = page.locator('[data-testid="ide-export-primary-handoff-cta"]').first();
+  const secondaryDownload = page.locator('[data-testid="ide-export-dock-download"]').first();
   assert(
-    await visible(downloadBlock),
-    'export download block must be visible',
+    (await visible(primaryHandoff).catch(() => false)) || (await visible(secondaryDownload).catch(() => false)),
+    'export primary handoff or download action must be visible',
   );
 
   // 4. Hardware: panel + mode controls

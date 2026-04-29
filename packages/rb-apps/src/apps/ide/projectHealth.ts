@@ -163,13 +163,11 @@ export function deriveProjectHealth(
 
 /**
  * Single source of truth for workflow stage completion.
- * All progress indicators (IdeLeftRail, ProjectSurface dock)
- * must consume this to avoid contradictory done/pass signals.
+ * Completion means the stage produced trusted downstream evidence, not just that
+ * the student interacted with it.
  *
- * Verify is marked complete whenever the student has a current (non-stale) run —
- * trace (observe-only), assertions-match, or assertions-differ all count.
- * Only 'not-run', 'stale', and 'verify-error' leave it incomplete, because
- * those states mean verify has not been meaningfully engaged with.
+ * Trace-only and failing runs remain useful Verify activity, but they do not
+ * complete the proof stage.
  */
 export function deriveStageCompletion(
   health: ProjectHealth,
@@ -178,9 +176,12 @@ export function deriveStageCompletion(
   const verifyState = deriveProjectVerifyState(health);
   return {
     design: readiness.hasCircuit,
-    verify: verifyState === 'assertions-match' || verifyState === 'trace' || verifyState === 'assertions-differ',
+    verify: verifyState === 'assertions-match',
     hardware: readiness.hasIoMapping,
-    export: health.lastExport?.status === 'ok' && !health.dirtySinceExport,
+    export:
+      verifyState === 'assertions-match' &&
+      health.lastExport?.status === 'ok' &&
+      !health.dirtySinceExport,
   };
 }
 
@@ -197,10 +198,11 @@ export function choosePrimaryProjectCta(
   }
   const verifyState = deriveProjectVerifyState(health);
   const needsVerify =
+    verifyState === 'not-run' ||
     verifyState === 'stale' ||
     verifyState === 'trace' ||
-    (readiness.hasVectors &&
-      verifyState !== 'assertions-match');
+    verifyState === 'assertions-differ' ||
+    verifyState === 'verify-error';
   if (needsVerify) {
     return { label: 'Verify', mode: 'verify', code: 'RBP1004' };
   }

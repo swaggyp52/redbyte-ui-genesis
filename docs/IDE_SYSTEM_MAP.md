@@ -25,7 +25,7 @@
 
 - **Workbench header**: `ide-design-workspace-header` is the top owner. It carries the `Design` label, mode headline (Canvas / Code / Split / replay-linked variants), and the existing primary / secondary CTAs. The old standalone Design command strip does not exist anymore.
 - **Control bar**: one tools row plus compact status ownership. The expanded tool cluster (`ide-design-toolbar-expanded`) is an anchored popup, not a stacked band. Verify-linked sessions still surface `Verify focus …` via `data-testid="ide-design-verify-focus"` in the simulation strip when that story is active.
-- **Workbench**: support rails are narrower, and code / split default both rails to collapsed overlay handles so the workspace keeps its full width. The left palette order is `Logic -> Sequential -> IO -> Reusable -> Board`; `Board` and `Quick Inputs` start collapsed. The idle inspector falls back to the small `Canvas ready` state.
+- **Workbench**: support rails are narrower, and code / split default both rails to collapsed overlay handles so the workspace keeps its full width. The left palette order is `Board -> IO -> Logic -> Sequential -> Reusable`; `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately available. The idle inspector falls back to the small `Canvas ready` state.
 
 ### Hardware chrome (layout system)
 
@@ -56,7 +56,7 @@
 | `circuitStore.ts` | `packages/rb-apps/src/stores/circuitStore.ts` | Circuit graph mutations |
 | `unifiedProjectStore.ts` | `packages/rb-lab-engine/src/stores/unifiedProjectStore.ts` | Single source of truth for RBProject |
 | `projectHealth.ts` | `packages/rb-apps/src/apps/ide/projectHealth.ts` | Derives structural blocking issues from core state; stale export state is advisory, not a blocking issue |
-| `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Shared workflow truth for verify state, export current/missing/stale state, stage completion, primary CTA, and Hardware/Export handoff labels |
+| `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Canonical product-truth snapshot for verify state, draft-vs-trusted export state, strict stage completion, primary CTA, and Hardware/Export handoff labels |
 | `simEngine.ts` | `packages/rb-apps/src/apps/ide/sim/simEngine.ts` | Simulation advancement, trace accumulation |
 
 ---
@@ -91,7 +91,7 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 
 ### Path 3: Export → Vivado Pack
 
-1. Project must have: IO mapping complete + verify PASS
+1. Project must have: IO mapping complete + current assertion-backed Verify PASS for a trusted export. Structurally buildable but unverified packages are labeled draft/debug, not trusted handoff.
 2. ExportSurface → `buildEvidenceDiagnostics()` → no errors
 3. User clicks "Download Vivado Pack" → `onExportBundle()` → ZIP with top.vhd + top.xdc + BRINGUP.md
 4. **Handoff copy:** Project “Export readiness” and the command strip distinguish **no bundle yet** vs **stale bundle** (via `hasSuccessfulExportBundle` / `exportPackageCurrent`); the Export “Open in Vivado” block (`ide-export-vivado-zip-contents`) names **top.vhd / top.xdc / .xpr / tcl + README** and that synthesis or bitstream still run in Vivado locally.
@@ -99,7 +99,7 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 Gate: `scripts/gates/ide-export-generates-hdl.mjs`
 Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `<details>`; artifact list uses `ide-export-artifact-preview`)
 
-**Blocker truth:** Project / Hardware / Export consume `ProjectWorkflowAuthority`. **No bundle yet** is **READY TO BUILD** when design + mapping are satisfied; **stale bundle** is **STALE / rebuild current bundle**; **blocked** is reserved for real prerequisite failures (mapping gap, design/export diagnostics, blocked export attempt).
+**Blocker truth:** Project / Hardware / Export consume `ProjectWorkflowAuthority`. Verify must be current and passing before Hardware/Export present a trusted build/program handoff. **No bundle yet** is **READY TO BUILD** only after design, mapping, and Verify proof are satisfied; unverified buildable packages remain draft. **Blocked** is reserved for real prerequisite failures (mapping gap, design/export diagnostics, blocked export attempt).
 
 ---
 
@@ -113,7 +113,7 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (opens **Readiness gates** `
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
 
-**Blocker truth:** Hardware routes missing/stale bundles to Build/Rebuild in Export without calling those buildable states `BLOCKED`.
+**Blocker truth:** Hardware routes missing/stale bundles to Build/Rebuild in Export only after current Verify proof exists. Otherwise Hardware routes to Verify without calling the structurally buildable export state `BLOCKED`.
 
 ---
 

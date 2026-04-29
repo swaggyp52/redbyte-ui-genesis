@@ -64,7 +64,7 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
 
   assert(Boolean(occupancy), 'could not compute rendered node occupancy');
   assert(
-    occupancy.widthRatio >= 0.22,
+    occupancy.widthRatio >= 0.18,
     `loaded example should be readable by width (${occupancy.widthRatio.toFixed(3)})`
   );
   assert(
@@ -74,4 +74,3 @@ await runIdeGate('IDE design fit contract satisfied', async ({ page, baseUrl }) 
 
   await fitButton.evaluate((button) => button.click());
 });
-

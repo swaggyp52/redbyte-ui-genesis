@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-04-28 (Product takeover Phase 1 - workflow truth foundation)
+
+**Subsystem:** `projectTruth.ts`, `projectWorkflowAuthority.ts`, `projectHealth.ts`, `ExportSurface`, Hardware/Export/Project docs
+
+**Context:** Stop executing the old chrome-focused slice plan and begin implementing the product takeover plan around correctness, workflow truth, and export trust.
+
+**Changes:**
+- Added a canonical `ProjectTruthSnapshot` model that distinguishes blocked, needs-design, needs-verify, needs-mapping, draft-export-valid, trusted-export-ready, and hardware-proof-required states.
+- Tightened workflow authority so Verify completion requires a current assertion-backed PASS, trusted export requires that PASS plus a current export package, and Hardware no longer presents build/program handoff before Verify proof exists.
+- Kept structurally valid unverified exports available, but labeled them as draft Vivado packages and added an explicit draft warning in Export.
+- Normalized Basys3 board aliases to package pins in Export pin display/preview so Map Pins aliases such as `SW0` render as the actual package pin used by XDC.
+- Aligned stale IDE gate contracts with the current product workflow: Import is a Project utility, mapping is Hardware-owned, Design live sim uses quick inputs, and Export separates primary trust handoff from secondary downloads.
+- Updated product/system/surface docs to reflect draft-vs-trusted export behavior and the new Phase 1 product takeover direction.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectHealth.test.ts` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.mapping-legitimacy.test.tsx --pool forks --poolOptions.forks.singleFork` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/chromeContract.test.ts` -> pass
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass / exit 0
+- `pnpm -s ide:gate:design-build-fast-contract` -> pass
+- `pnpm -s ide:gate:design-live-sim-contract` -> pass
+- `pnpm -s ide:gate:live-sim-contract` -> pass
+- `pnpm -s ide:gate:seq-sim-contract` -> pass
+- `pnpm -s ide:gate:primary-cta-contract` -> pass
+- `pnpm -s ide:gate:diagnostics-jump-contract` -> pass
+- `pnpm -s ide:gate:evidence-capsule-contract` -> pass
+- `pnpm -s ide:gate:export-ready-contract` -> pass
+- `pnpm -s ide:gate:student-loop-contract` -> pass
+- `pnpm -s ide:gate:viewport-overflow-contract` -> pass
+- `pnpm repo:status` was rerun up to the final `IDE Viewport Overflow Contract` blocker; after the direct viewport fix, the user explicitly asked not to rerun the long command again before commit/push.
+
+**Residual / release-process caveat:** Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-28 (Slice N5 - reclaim surface chrome spacing)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/ide-root.css`, `docs/ACTIVE_WORK.md`

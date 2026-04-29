@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-21
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -13,11 +13,11 @@ Mode ID: `export`
 
 ## Purpose
 
-Act as compiler-like export authority for Basys3 Vivado artifacts.
+Act as compiler-like export authority for Basys3 Vivado artifacts while distinguishing draft artifacts from trusted verified handoff.
 
 ## Primary Actions (max 3)
 
-1. Validate export readiness.
+1. Validate export readiness and trust tier.
 2. Preview generated artifacts.
 3. Export deterministic artifacts.
 
@@ -52,11 +52,14 @@ Each error must include a direct fix path.
 
 ## Success State
 
-`Export Ready` with:
+`Export Ready` / trusted handoff with:
 
 1. Artifact count.
 2. Deterministic export hash.
-3. Download actions enabled.
+3. Current assertion-backed Verify PASS.
+4. Download actions enabled.
+
+Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.
 
 ## Data Contract (RBProject)
 

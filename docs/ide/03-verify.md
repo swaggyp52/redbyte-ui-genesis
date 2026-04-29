@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-21
+last_validated: 2026-04-28
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -13,7 +13,7 @@ Mode ID: `verify`
 
 ## Purpose
 
-Run deterministic vector verification and present clear pass/fail proof.
+Run deterministic vector verification and present clear pass/fail proof for downstream Hardware and Export trust.
 
 ## Primary Actions (max 3)
 
@@ -50,6 +50,9 @@ Secondary action: `Open sample vector format`
 1. Stable hash.
 2. Zero failing rows.
 3. Timestamp-free deterministic run metadata.
+4. Current assertion-backed PASS status that can authorize trusted Hardware/Export handoff.
+
+Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, but they do not complete the Verify proof stage.
 
 ## Data Contract (RBProject)
 

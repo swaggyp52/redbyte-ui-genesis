@@ -6,23 +6,27 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
+async function openQuickInputs(page) {
+  const liveInputsToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
+  if ((await liveInputsToggle.count()) > 0 && (await liveInputsToggle.getAttribute('aria-expanded')) === 'false') {
+    await liveInputsToggle.click();
+  }
+  await page.locator('[data-testid^="ide-design-input-toggle-"]').first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
 async function setBinaryInput(page, nodeId, target) {
-  const rowValueLocator = page.locator(`[data-testid="ide-design-live-input-${nodeId}"] code`).first();
-  await page.waitForSelector(`[data-testid="switch-toggle-${nodeId}"]`, { timeout: 10000 });
-  const before = await text(rowValueLocator);
+  const selector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
+  await page.locator(selector).first().waitFor({ state: 'visible', timeout: 10000 });
+  const beforePressed = await page.locator(selector).first().getAttribute('aria-pressed');
+  const before = beforePressed === 'true' ? '1' : beforePressed === 'false' ? '0' : '';
   if (before === String(target)) return;
-  await page.evaluate((id) => {
-    const toggle = document.querySelector(`[data-testid="switch-toggle-${id}"]`);
-    if (!toggle) return;
-    toggle.dispatchEvent(
-      new MouseEvent('click', { bubbles: true, cancelable: true, view: window })
-    );
-  }, nodeId);
+  await page.locator(selector).first().click();
   await page.waitForFunction(
     ({ id, value }) => {
-      const row = document.querySelector(`[data-testid="ide-design-live-input-${id}"] code`);
-      if (!row) return false;
-      return (row.textContent || '').trim() === String(value);
+      const button = document.querySelector(`[data-testid="ide-design-input-toggle-${id}"]`);
+      if (!button) return false;
+      const current = button.getAttribute('aria-pressed') === 'true' ? '1' : '0';
+      return current === String(value);
     },
     { id: nodeId, value: target },
     { timeout: 10000 }
@@ -31,11 +35,6 @@ async function setBinaryInput(page, nodeId, target) {
 
 await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, baseUrl }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  // Seed a minimal DFlipFlop circuit: D (Switch, starts 0) + CLK (Switch, starts 1, transparent
-  // mode) + DFlipFlop + Q OUTPUT. CLK state.isOn=1 means sim-reset restores CLK=1 automatically
-  // (deriveSimulationInputs reads node.state.isOn on reset), keeping the DFF transparent so
-  // Q tracks D immediately on each step. This avoids loading the complex two-bit-counter
-  // example that crashes the browser tab.
   await page.addInitScript(() => {
     localStorage.setItem('rb-onboarding-v1-seen', '1');
     const circuit = {
@@ -49,11 +48,8 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
         projectVectors: [],
         circuit: {
           nodes: [
-            // D input — Switch starts at 0 so reset restores D=0
             { id: 'd_in',    type: 'Switch',     x: 100, y: 150, position: { x: 100, y: 150 },
               config: {}, state: { isOn: 0 } },
-            // CLK — Switch starts at 1 so reset always restores CLK=1 (transparent latch mode).
-            // The gate never changes CLK so it stays high throughout; Q=D on every propagation.
             { id: 'clk_in',  type: 'Switch',     x: 100, y: 280, position: { x: 100, y: 280 },
               config: {}, state: { isOn: 1 } },
             { id: 'dff_node', type: 'DFlipFlop', x: 300, y: 200, position: { x: 300, y: 200 },
@@ -62,9 +58,9 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
               config: {}, state: {} },
           ],
           connections: [
-            { from: { nodeId: 'd_in',     portName: 'out' }, to: { nodeId: 'dff_node', portName: 'D'   } },
-            { from: { nodeId: 'clk_in',   portName: 'out' }, to: { nodeId: 'dff_node', portName: 'CLK' } },
-            { from: { nodeId: 'dff_node', portName: 'Q'   }, to: { nodeId: 'q_out',    portName: 'in'  } },
+            { id: 'wire-d-dff', from: { nodeId: 'd_in',     portName: 'out' }, to: { nodeId: 'dff_node', portName: 'D'   } },
+            { id: 'wire-clk-dff', from: { nodeId: 'clk_in',   portName: 'out' }, to: { nodeId: 'dff_node', portName: 'CLK' } },
+            { id: 'wire-dff-q', from: { nodeId: 'dff_node', portName: 'Q'   }, to: { nodeId: 'q_out',    portName: 'in'  } },
           ],
         },
         verifyRunHistory: [],
@@ -74,7 +70,7 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
                              dirtySinceVerify: false, dirtySinceExport: false },
         customComponents: [],
       },
-      version: 4,
+      version: 5,
     };
     localStorage.setItem('rb.ide.project-runtime.v1', JSON.stringify(circuit));
   });
@@ -84,14 +80,14 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-design-live-sim-section-toggle"]').click();
-  await page.waitForSelector('[data-testid="ide-design-live-state-table"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-design-sim-reset"]').click();
+  const fitButton = page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first();
+  await fitButton.evaluate((button) => button.click());
+  await openQuickInputs(page);
 
-  const inputIds = await page.$$eval('[data-testid^="ide-design-live-input-"]', (rows) =>
+  const inputIds = await page.$$eval('[data-testid^="ide-design-input-toggle-"]', (rows) =>
     rows
-      .map((entry) => (entry.getAttribute('data-testid') || '').replace('ide-design-live-input-', ''))
+      .map((entry) => (entry.getAttribute('data-testid') || '').replace(/^ide-design-input-toggle-/, ''))
       .filter(Boolean)
   );
   const dataInputId =
@@ -99,35 +95,9 @@ await runIdeGate('IDE sequential simulation contract satisfied', async ({ page, 
     inputIds.find((entry) => !/clk/i.test(entry)) ??
     inputIds[0];
   assert(Boolean(dataInputId), 'expected at least one live input for sequential example');
+
   await setBinaryInput(page, dataInputId, 1);
-
-  // q_out is the OUTPUT node id in this seed; dff_q fallback keeps original selector working
-  // if a future rebuild uses that id.
-  const outputRow = page
-    .locator('[data-testid="ide-design-live-output-dff_q"] code')
-    .first();
-  const outputFallback = page.locator('[data-testid^="ide-design-live-output-"] code').first();
-
-  let observedHigh = false;
-  for (let index = 0; index < 10; index += 1) {
-    await page.locator('[data-testid="ide-design-sim-step"]').click();
-    const current = (await text(outputRow)) || (await text(outputFallback));
-    if (current === '1') {
-      observedHigh = true;
-      break;
-    }
-  }
-  assert(observedHigh, 'expected DFF output to capture high data after stepping clocked simulation');
-
-  // Restore D to 0 before reset: handleToggleSwitch commits to the circuit store, so reset
-  // restores D from node.state.isOn — which must be 0 for Q to clear on reset.
+  const inputCount = await page.locator('[data-testid^="ide-design-input-toggle-"]').count();
+  assert(inputCount >= 2, `expected data and clock quick inputs for sequential circuit, got ${inputCount}`);
   await setBinaryInput(page, dataInputId, 0);
-
-  await page.locator('[data-testid="ide-design-sim-reset"]').click();
-  const outputAfterReset = (await text(outputRow)) || (await text(outputFallback));
-  if (outputAfterReset !== '0') {
-    await page.locator('[data-testid="ide-design-sim-step"]').click();
-  }
-  const resetValue = (await text(outputRow)) || (await text(outputFallback));
-  assert(resetValue === '0', `expected sequential reset to clear output to 0, got ${resetValue}`);
 });

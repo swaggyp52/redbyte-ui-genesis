@@ -14,21 +14,15 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
   await loadStarterProject(page);
-  await page.locator('[data-testid="mode-button-project"]').click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
-  await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
+  await page.locator('[data-testid="mode-button-hardware"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-hw-map-table"]', { timeout: 10000 });
 
-  const firstMappingInput = page.locator('[data-testid^="ide-project-map-input-"]').first();
-  const firstMappingExists = (await firstMappingInput.count()) > 0;
-  assert(firstMappingExists, 'expected project mapping input to exist');
-
-  await firstMappingInput.fill('');
-  const dirtySinceExport = await text(page.locator('[data-testid="ide-project-dirty-since-export"]'));
-  assert(
-    dirtySinceExport === 'DIRTY',
-    `expected dirty-since-export indicator to become DIRTY, got "${dirtySinceExport}"`
-  );
+  const firstMappingRow = page.locator('[data-testid^="ide-hw-map-row-"]').first();
+  assert(await firstMappingRow.isVisible().catch(() => false), 'expected Hardware map row to exist');
+  await firstMappingRow.click();
+  const rowSelected = await firstMappingRow.getAttribute('aria-pressed');
+  assert(rowSelected === 'true', 'Hardware map row should be selectable without creating Design diagnostics');
 
   await page.locator('[data-testid="mode-button-design"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });

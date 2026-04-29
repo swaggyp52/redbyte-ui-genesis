@@ -19,6 +19,7 @@ import {
   resolveVivadoPart,
 } from '../../../fpga/vivado/vivadoProjectFolder';
 import { deriveVerifySchedule, type VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
+import { resolveBasys3PackagePin } from '../../../fpga/boards/basys3/basys3Pins';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { resolveActiveScheduleContract } from '../clockAuthority';
 import {
@@ -357,7 +358,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     const pins: Record<string, string> = {};
     for (const row of viewModel.pinTable) {
       const portKey = toPortKey(row.port);
-      const authoritativePin = row.pin ?? '';
+      const authoritativePin = normalizePinForExportDisplay(row.pin ?? '');
       // GAP-008 authority rule:
       // - when a parent mapping updater exists, the project prop is the only source of truth;
       // - otherwise, local drafts can drive preview edits for standalone contexts.
@@ -743,6 +744,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const exportBlocked = handoffTruth.severity === 'blocked';
   const downloadReady = !hasBlockingErrors && resolvedWorkflowAuthority.designReady;
   const exportTrusted = handoffTruth.condition === 'ready';
+  const isDraftExport = downloadReady && !exportTrusted;
   const packageHandoffSummary = useMemo(
     () =>
       derivePackageHandoffSummary({
@@ -831,7 +833,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ? 'Rebuild Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
-      : 'Download Vivado Project (Open Project)';
+      : isDraftExport
+        ? 'Download Draft Vivado Project'
+        : 'Download Vivado Project (Open Project)';
   const projectDownloadCompactLabel = isRebuilding
     ? 'Building...'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
@@ -840,6 +844,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ? 'Rebuild Current Bundle'
     : downloadDone && lastDownloadKind === 'project'
       ? 'Re-download'
+      : isDraftExport
+        ? 'Download Draft Project ZIP'
       : isStaleButPassBefore
         ? 'Download Project ZIP (previous build)'
         : isStarterScenarioFail
@@ -849,7 +855,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     ? 'Building...'
     : downloadDone && lastDownloadKind === 'kit'
       ? 'Re-download'
-      : 'Download Vivado Kit';
+      : isDraftExport
+        ? 'Download Draft Vivado Kit'
+        : 'Download Vivado Kit';
   const dominantActionTitle = downloadDone
     ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
     : handoffTruth.title;
@@ -982,6 +990,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         {hasVerifyEvidenceWarning && downloadReady && (
           <IdeCallout tone="warn" testId="ide-export-vivado-unverified-callout" className="ide-mt-1">
             Run Verify before relying on this handoff. Without a comparison run, the testbench vectors have no confirmed match against live outputs.
+          </IdeCallout>
+        )}
+        {isDraftExport && (
+          <IdeCallout tone="warn" testId="ide-export-draft-callout" className="ide-mt-1">
+            This download is a draft Vivado package. Buildable files can still be useful for debugging, but RedByte will not call the handoff trusted until Verify passes and this package is current.
           </IdeCallout>
         )}
       </div>
@@ -2477,7 +2490,7 @@ function createPinOverrideMap(
 ): Record<string, string> {
   const overrides: Record<string, string> = {};
   for (const row of rows) {
-    overrides[toPortKey(row.port)] = row.pin ?? '';
+    overrides[toPortKey(row.port)] = normalizePinForExportDisplay(row.pin ?? '');
   }
   return overrides;
 }
@@ -2671,8 +2684,16 @@ function getPinConfidence(
   pinValue: string
 ): 'exact' | 'likely' | 'unknown' {
   if (!suggestedPin) return 'unknown';
-  if (pinValue.trim().toUpperCase() === suggestedPin.toUpperCase()) return 'exact';
+  const suggestedPackagePin = resolveBasys3PackagePin(suggestedPin) ?? suggestedPin.trim().toUpperCase();
+  const actualPackagePin = resolveBasys3PackagePin(pinValue) ?? pinValue.trim().toUpperCase();
+  if (actualPackagePin === suggestedPackagePin) return 'exact';
   return 'likely';
+}
+
+function normalizePinForExportDisplay(pin: string): string {
+  const trimmed = pin.trim();
+  if (trimmed.length === 0) return '';
+  return resolveBasys3PackagePin(trimmed) ?? trimmed;
 }
 
 function buildInvalidPinSet(

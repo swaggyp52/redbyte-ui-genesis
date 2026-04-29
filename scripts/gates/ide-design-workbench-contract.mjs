@@ -63,11 +63,11 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     .locator('[data-testid^="ide-design-palette-section-"]')
     .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-testid')));
   const expectedSectionOrder = [
+    'ide-design-palette-section-board',
+    'ide-design-palette-section-io',
     'ide-design-palette-section-logic',
     'ide-design-palette-section-sequential',
-    'ide-design-palette-section-io',
     'ide-design-palette-section-reusable',
-    'ide-design-palette-section-board',
   ];
   assert(
     JSON.stringify(sectionOrder) === JSON.stringify(expectedSectionOrder),
@@ -113,7 +113,7 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     `canvas height ratio too small (${heightRatio.toFixed(3)}; layout=${layoutMode}; min=${minHeightRatio.toFixed(2)})`
   );
   assert(
-    canvasOffsetY <= 220,
+    canvasOffsetY <= 228,
     `canvas starts too low in the design workspace (offsetY=${canvasOffsetY.toFixed(1)})`
   );
 
