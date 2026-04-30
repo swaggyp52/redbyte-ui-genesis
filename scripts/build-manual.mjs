@@ -18,8 +18,8 @@
  *   4. Reports output file size.
  */
 
-import { execSync, spawnSync } from 'child_process';
-import { existsSync, statSync } from 'fs';
+import { spawnSync } from 'child_process';
+import { existsSync, readFileSync, statSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -55,26 +55,30 @@ function checkExists(file, label) {
 }
 
 function checkStaleStrings(file, label) {
-  const { readFileSync } = await import('fs');
-  // Use synchronous read for simplicity
-  const { readFileSync: rfs } = await import('fs').then(m => m).catch(() => ({ readFileSync: require('fs').readFileSync }));
-
-  // Pure sync approach:
-  const { execSync: es } = await import('child_process').then(m => m).catch(() => ({ execSync: require('child_process').execSync }));
   let hadError = false;
   for (const { pattern, reason } of STALE_STRINGS) {
-    try {
-      const result = execSync(`grep -n "${pattern}" "${file}" 2>/dev/null || true`, { encoding: 'utf8' }).trim();
-      if (result) {
-        console.error(`\n  ✗  STALE CONTENT in ${label}:`);
-        console.error(`     Pattern: "${pattern}"`);
-        console.error(`     Reason:  ${reason}`);
-        console.error(`     Found at:\n${result.split('\n').map(l => '       ' + l).join('\n')}`);
-        hadError = true;
-      }
-    } catch { /* grep returns non-zero on no match; already handled */ }
+    const result = findPatternLines(file, pattern);
+    if (result.length > 0) {
+      console.error(`\n  ✗  STALE CONTENT in ${label}:`);
+      console.error(`     Pattern: "${pattern}"`);
+      console.error(`     Reason:  ${reason}`);
+      console.error(`     Found at:\n${result.map(l => '       ' + l).join('\n')}`);
+      hadError = true;
+    }
   }
   return hadError;
+}
+
+function findPatternLines(file, pattern, options = {}) {
+  const needle = options.caseInsensitive ? pattern.toLowerCase() : pattern;
+  return readFileSync(file, 'utf8')
+    .split(/\r?\n/)
+    .map((line, index) => ({ line, number: index + 1 }))
+    .filter(({ line }) => {
+      const haystack = options.caseInsensitive ? line.toLowerCase() : line;
+      return haystack.includes(needle);
+    })
+    .map(({ line, number }) => `${number}:${line}`);
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────
@@ -93,19 +97,14 @@ if (!PDF_ONLY) {
 
   for (const { pattern, reason } of STALE_STRINGS) {
     for (const [file, label] of [[MD_SRC, 'Markdown'], [HTML_SRC, 'HTML']]) {
-      try {
-        const result = execSync(
-          `grep -in "${pattern}" "${file}" 2>/dev/null || true`,
-          { encoding: 'utf8' }
-        ).trim();
-        if (result) {
-          console.error(`\n  ✗  STALE CONTENT in ${label}:`);
-          console.error(`     Pattern: "${pattern}"`);
-          console.error(`     Reason:  ${reason}`);
-          console.error(`     Lines:\n${result.split('\n').map(l => '       ' + l).join('\n')}`);
-          anyError = true;
-        }
-      } catch { /* no-op */ }
+      const result = findPatternLines(file, pattern, { caseInsensitive: true });
+      if (result.length > 0) {
+        console.error(`\n  ✗  STALE CONTENT in ${label}:`);
+        console.error(`     Pattern: "${pattern}"`);
+        console.error(`     Reason:  ${reason}`);
+        console.error(`     Lines:\n${result.map(l => '       ' + l).join('\n')}`);
+        anyError = true;
+      }
     }
   }
 

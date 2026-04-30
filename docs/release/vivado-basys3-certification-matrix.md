@@ -1,6 +1,6 @@
 # Vivado + Basys3 certification matrix (RedByte)
 
-**Date:** 2026-04-23  
+**Date:** 2026-04-30
 **Purpose:** Separate **export-valid** artifacts from **tool-certified** and **board-certified** outcomes. This is the working matrix for the real lab machine; update cells only with evidence (logs, bit paths, observation notes).
 
 ---
@@ -66,9 +66,9 @@ pnpm lab:vivado:cert:from-scratch fs-seq-two-bit-counter-basys3
 | **From-scratch** `fs-comb-switch-and-basys3` | Combinational (blank save) | yes | yes | **yes** (`vivado_batch_fs_comb_from_scratch.log`) | **yes** (`vivado_program_fs_comb_from_scratch.log`) | *checklist* | **Authoring path** | SW(0)∧SW(1)→LED; alias pins. Checklist: `docs/release/from-scratch-basys3-authoring-checklist.md` |
 | **From-scratch** `fs-seq-two-bit-counter-basys3` | Sequential (blank save) | yes | yes | **yes** (`vivado_batch_fs_seq_from_scratch.log`) | **yes** (`vivado_program_fs_seq_from_scratch.log`) | *checklist* | **Authoring path** | Same IO story as IDE counter row; gate-level twin without example id. |
 | Custom `fs-custom-four-switch-led` | Multi-output (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-custom-four-switch-led/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | Recreates signal-tour as a blank-shaped custom project. Vivado warns about an "empty top module" after optimization, but bitstream generation succeeds. |
-| Custom `fs-custom-mixed-gate-chain` | Mixed combinational (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-custom-mixed-gate-chain/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | `(SW0 AND SW1) OR (SW2 XOR SW3) -> LD0` via custom project harness. |
+| Custom `fs-custom-mixed-gate-chain` | Mixed combinational (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-custom-mixed-gate-chain/vivado_batch.log`; refreshed `out/vivado-cert/custom-projects/b1-mixed/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | `(SW0 AND SW1) OR (SW2 XOR SW3) -> LD0` via custom project harness. Batch 1 also found that long dated case IDs can exceed practical Windows/Vivado run-path limits. |
 | Custom `fs-comb-switch-and` | Basic combinational (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-comb-switch-and/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | Harness replay of the blank-shaped AND row. |
-| Custom `fs-seq-two-bit-counter` | Sequential (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-seq-two-bit-counter/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | Harness replay of the blank-shaped counter row. |
+| Custom `fs-seq-two-bit-counter` | Sequential (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-seq-two-bit-counter/vivado_batch.log`; refreshed `out/vivado-cert/custom-projects/b1-counter/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | Harness replay of the blank-shaped counter row; includes `CLK100MHZ` / W5 clock constraint path. |
 | Golden ALU classroom export | Combinational / MUX | yes | repo gates | *pending* | | | | `pnpm classroom:golden-basys3-alu` |
 | Lab 4 smoke (`classroom:smoke:lab4`) | ALU slice | yes | repo gates | *pending* | | | | |
 | `lab8-vivado-export.ts` security lock | Sequential FSM | yes | repo + script | *pending* | | | | Manual switch clock policy per prior proof |

@@ -2,7 +2,7 @@
 
 **Version 1.0** · March 2026
 **Platform Version:** RedByte IDE v1
-**Copyright © 2025–2026 Connor Angiel. All rights reserved.**
+**Attribution:** Connor Angiel
 **License:** RedByte Proprietary License (RPL-1.0)
 
 ---
@@ -81,9 +81,9 @@ Throughout this manual, the following conventions apply:
 
 ### 2.1 What RedByte Is
 
-RedByte is an interactive digital logic circuit design and verification environment that runs entirely in a web browser. It provides a unified workspace where users design combinational and sequential circuits from primitive logic gates, verify their behavior against test vectors, map circuit ports to physical FPGA board pins, and export a complete file set for synthesis and programming in AMD Vivado.
+RedByte is a deterministic FPGA learning and project-building environment that runs entirely in a web browser. It provides a unified workspace where users create supported combinational and sequential projects, verify behavior with authored testbench checks, map top-level ports to physical FPGA board pins, export a complete file set for AMD Vivado, and record proof when Vivado or board behavior matters.
 
-RedByte targets the **Digilent Basys 3** development board (Xilinx Artix-7 XC7A35T FPGA). It replaces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring with a single integrated environment.
+RedByte targets the **Digilent Basys 3** development board (Xilinx Artix-7 XC7A35T FPGA). It reduces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring, but it does not replace Vivado, perform timing closure, or guarantee arbitrary HDL/hardware success. Vivado remains the tool that synthesizes, implements, generates bitstreams, and programs hardware.
 
 ### 2.2 The Problem RedByte Solves
 
@@ -158,23 +158,43 @@ The IdeApp is the primary context documented in this manual. The SubmissionInspe
 
 ### 4.1 The Canonical Workflow
 
-RedByte organizes work into a linear progression of six surfaces, each representing a stage in the design-to-hardware pipeline:
+RedByte organizes work into a product spine that carries a project from browser authoring to real FPGA evidence:
 
 ```
-Project → Design → Verify → Hardware → Export
+Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe
 ```
 
-A sixth surface, **Import**, is available at any time for bringing external HDL or previously exported projects into the environment.
+The IDE surfaces cover the RedByte-owned portion of that spine: Project, Design, Verify, Hardware / Map Pins, Export, and Import. Vivado build, board programming, and physical observation happen outside RedByte but are part of the product proof model.
 
 The workflow proceeds as follows:
 
 1. **Project.** The user creates or opens a project, reviews its metadata, and selects a starter example if desired.
 2. **Design.** The user constructs a digital circuit on the visual canvas by placing logic primitives and wiring them together.
 3. **Verify.** The user runs the circuit against test vectors. The verification engine reports pass or fail for each vector row and highlights failures.
-4. **Hardware.** The user maps each circuit input and output port to a physical pin on the Basys 3 board (switches, LEDs, buttons, clock).
-5. **Export.** The system generates synthesizable VHDL, pin constraints, and a testbench. The user downloads a ZIP file for use in Vivado.
+4. **Map Pins / Hardware.** The user maps each circuit input and output port to a physical Basys 3 board resource and package pin (switches, LEDs, buttons, clock).
+5. **Export.** The system generates synthesizable VHDL, pin constraints, a testbench, Tcl, README/bring-up files, and the project manifest. The user downloads a ZIP file for use in Vivado.
+6. **Vivado.** The user opens/builds the exported project in Vivado; synthesis, implementation, and bitstream generation are Vivado responsibilities.
+7. **Program Board.** The user programs a Basys 3 target with the Vivado-generated bitstream when E2 proof is required.
+8. **Observe.** The user records board behavior against an explicit procedure when E3 proof is required.
 
 Users may navigate between surfaces freely. The system tracks which stages have been completed and displays readiness indicators.
+
+### 4.1.1 Draft, Trusted, and Proven States
+
+RedByte intentionally separates readiness levels:
+
+| State | What it means |
+|-------|---------------|
+| **Draft design** | A circuit exists, but it may not have current testbench, mapping, or export proof. |
+| **Simulated** | The design has been observed in RedByte simulation; this is useful inspection, not a pass/fail claim. |
+| **Testbench configured** | Stimulus and expected output checks exist for the current design intent. |
+| **Compare passed** | Current observed outputs match current expected outputs. This is the Verify proof needed for trusted handoff. |
+| **Pins mapped** | Required top-level ports are assigned to board resources/package pins. |
+| **Draft export** | A structurally valid Vivado package can be generated or downloaded, but proof is missing or stale. |
+| **Trusted export** | Current Compare PASS, current mapping, and current export bundle all describe the same project state. |
+| **Vivado built** | Vivado synth/implementation/bitstream completed for the exported project. |
+| **Board programmed** | A Basys 3 board was programmed with the generated bitstream. |
+| **Board observed** | Physical behavior was recorded against an agreed observation procedure. |
 
 ### 4.2 Circuits and Nodes
 
@@ -307,7 +327,7 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 15. Click **Download Vivado Kit**.
 16. Extract the downloaded ZIP. It contains `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts, and documentation files (see Section 11.2 for the complete file list).
 
-Result: A complete Vivado-ready project. See Section 11 for instructions on importing these files into Vivado and programming the board.
+Result: A draft or trusted Vivado-ready project, depending on whether Compare and mapping proof are current. See Section 11 for instructions on importing these files into Vivado and programming the board.
 
 ---
 
@@ -545,7 +565,7 @@ See Appendix B for the complete pin reference table.
 
 **Primary Controls.**
 
-- **Download Vivado Kit:** Primary action button. Downloads the ZIP file containing all generated artifacts. Available only when status is READY.
+- **Download Vivado Kit:** Primary action button. Downloads the ZIP file containing all generated artifacts. A structurally valid project may download as a draft package; RedByte labels the handoff as trusted only when Compare, mapping, and export evidence are current.
 - **Copy to clipboard:** Available for each generated file individually.
 - **View generated HDL:** Always-on preview of the exact VHDL that will appear in the ZIP.
 
@@ -775,7 +795,7 @@ Top-level entity ports in the generated VHDL follow these naming rules:
 
 ### 11.1 Overview
 
-RedByte generates a complete file set for AMD Vivado. The student downloads a ZIP file, creates a Vivado project, imports the files, and runs the standard synthesis/implementation/bitstream flow to program the Basys 3 board.
+RedByte generates a complete file set for AMD Vivado. The student downloads a ZIP file, opens or creates the Vivado project from the exported artifacts, and runs the standard synthesis/implementation/bitstream flow to program the Basys 3 board. The Vivado flow and hardware programming boundary follows AMD Vivado project-mode Tcl and Hardware Manager guidance; RedByte documents that boundary rather than pretending the browser generated a bitstream.
 
 ### 11.2 Generated Files
 
@@ -795,7 +815,7 @@ The `top.vhd` entity is always named `top`. The `testbench.vhd` entity is always
 
 ### 11.3 Step-by-Step: Importing into Vivado
 
-Prerequisites: Vivado 2024.1 or later installed. Basys 3 board available.
+Prerequisites: Vivado 2024.2 or later installed for the current lab proof path. Basys 3 board available for programming/observation proof.
 
 1. **Download the Vivado Kit** from the Export surface.
 2. **Extract the ZIP** to a working directory.
@@ -843,6 +863,15 @@ The testbench exercises all truth table rows in sequence. A simulation that comp
 | "Multiple drivers on net" | Combinational loop in circuit | Fix the loop in the Design surface, re-verify, and re-export. |
 | "No valid object(s) found for PACKAGE_PIN" | Incorrect pin number in XDC | Check Hardware surface mapping against Basys 3 pin reference. |
 | "Timing not met" | Excessive combinational logic depth | Simplify the circuit or add pipeline registers. |
+
+### 11.6 Official References Used for Vivado Truth
+
+RedByte's Vivado and Basys 3 language should stay aligned with official sources:
+
+- AMD UG903, Vivado Design Suite User Guide: Using Constraints, for XDC and timing constraints including primary clock constraints: https://docs.amd.com/r/en-US/ug903-vivado-using-constraints/Timing-Constraints
+- AMD UG892/UG895 family guidance for Vivado project-mode Tcl commands: https://docs.amd.com/r/2023.2-English/ug892-vivado-design-flows-overview/Using-Project-Mode-Tcl-Commands
+- AMD UG908, Vivado Design Suite User Guide: Programming and Debugging, for hardware device programming flow: https://docs.amd.com/r/en-US/ug908-vivado-programming-debugging/Programming-the-Hardware-Device
+- Digilent Basys 3 master XDC for board labels, package pins, and the `CLK100MHZ` / `W5` board constraint reference: https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc
 
 ---
 
@@ -1313,5 +1342,5 @@ submission.rbproj.zip
 
 *End of RedByte Product Manual*
 
-*Copyright © 2025–2026 Connor Angiel. All rights reserved.*
+*Attribution: Connor Angiel.*
 *RedByte Proprietary License (RPL-1.0)*

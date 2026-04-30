@@ -27,6 +27,19 @@ Each claim is rated:
 
 ## Findings
 
+### Batch 1 Addendum (2026-04-30)
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Manual now states that RedByte is a deterministic FPGA learning/project-building environment with draft, trusted, and external proof states. |
+| **Sections** | Â§2.1, Â§4.1, Â§11 |
+| **Status** | **VERIFIED** |
+| **Source** | `docs/contracts/RedByte_Product_Contract.md`, `docs/IDE_SYSTEM_MAP.md`, `projectWorkflowAuthority.ts`, `projectTruth.ts`, `docs/release/vivado-basys3-certification-matrix.md` |
+| **Proof** | `pnpm lab:vivado:cert:custom -- --case b1-mixed ...` and `--case b1-counter ...` passed E1; browser gate drift is tracked separately in `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md`. |
+| **Correction** | Replaced old linear workflow wording with the full Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe spine, and removed "all rights reserved" boilerplate per legal attribution rules. |
+
+---
+
 ### 1. XDC Filename
 
 | Field | Value |

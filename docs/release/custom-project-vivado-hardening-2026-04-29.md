@@ -35,12 +35,16 @@ This is the live custom-project campaign ledger for real RedByte -> Vivado -> Ba
   - one custom mixed combinational project
   - one custom multi-output project
   - one custom sequential project with clock
+- Batch 1 refreshed E1 proof on 2026-04-30 for:
+  - mixed gate chain: `out/vivado-cert/custom-projects/b1-mixed/result.md`
+  - two-bit counter: `out/vivado-cert/custom-projects/b1-counter/result.md`
 
 ## What is still caveated
 
 - Custom board-program/E3 proof is not complete yet for the new harness rows.
 - The browser-authored blank-project student loop has not yet been replayed end-to-end in this session.
 - Verify/testbench evidence for these custom rows still comes from fixture vectors, not a fresh manual Verify rehearsal.
+- Long Windows/Vivado output paths are a real harness risk. The dated case id `fs-custom-mixed-gate-chain-2026-04-30` failed synthesis with RTD file-access errors under `.runs/synth_1/.Xil/...`; the same source passed with short case id `b1-mixed`.
 
 ## What is unsupported for RC1 today
 
@@ -58,3 +62,4 @@ This is the live custom-project campaign ledger for real RedByte -> Vivado -> Ba
 2. Program `fs-custom-four-switch-led` and record custom-project E2/E3.
 3. Replay a true browser-authored blank-project student loop through Design -> Verify -> Map Pins -> Export -> Vivado -> Program Board.
 4. Run the 2-bit counter Verify workbench rehearsal with the updated clock/testbench flow.
+5. Shorten harness output paths or document a supported `subst`/short-root workflow before relying on dated case IDs for certification.

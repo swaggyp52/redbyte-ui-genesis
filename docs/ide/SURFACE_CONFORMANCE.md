@@ -152,6 +152,8 @@ These rules apply across all surfaces:
 3. Status, CTA language, and stage ownership must agree across surfaces.
 4. Visual cleanup without proof does not count as hardening.
 5. Historical shell / OS narratives are not current product truth.
+6. Batch 1 product-state vocabulary is canonical across surfaces: draft design, simulated, testbench configured, Compare passed, pins mapped, draft export, trusted export, Vivado built, board programmed, board observed.
+7. Observe runs may explain behavior, but only current Compare PASS can complete the Verify proof stage for trusted Export/Hardware handoff.
 
 ---
 

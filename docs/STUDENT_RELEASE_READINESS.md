@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-29
+last_validated: 2026-04-30
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-04-29
+**Last updated:** 2026-04-30
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -48,9 +48,12 @@ Proven on this lab machine unless noted:
 | `fs-comb-switch-and-basys3` | Blank-shaped save: SW0∧SW1→LD0 | `vivado_batch_fs_comb_from_scratch.log`, `vivado_program_fs_comb_from_scratch.log` |
 | `fs-seq-two-bit-counter-basys3` | Blank-shaped save: 2-bit counter + CLK100MHZ | `vivado_batch_fs_seq_from_scratch.log`, `vivado_program_fs_seq_from_scratch.log` |
 | `fs-custom-four-switch-led` | Blank-shaped save: SW0..SW3 each drive LD0..LD3 | `out/vivado-cert/custom-projects/fs-custom-four-switch-led/vivado_batch.log` |
-| `fs-custom-mixed-gate-chain` | Blank-shaped save: `(SW0 AND SW1) OR (SW2 XOR SW3) -> LD0` | `out/vivado-cert/custom-projects/fs-custom-mixed-gate-chain/vivado_batch.log` |
+| `fs-custom-mixed-gate-chain` | Blank-shaped save: `(SW0 AND SW1) OR (SW2 XOR SW3) -> LD0` | `out/vivado-cert/custom-projects/fs-custom-mixed-gate-chain/vivado_batch.log`; refreshed Batch 1 proof: `out/vivado-cert/custom-projects/b1-mixed/vivado_batch.log` |
+| `fs-seq-two-bit-counter-basys3` | Blank-shaped save: 2-bit counter + `CLK100MHZ` | Refreshed Batch 1 proof: `out/vivado-cert/custom-projects/b1-counter/vivado_batch.log` |
 
 **Reproduce export:** `pnpm lab:vivado:cert:from-scratch <fixture-id>` for the original blank twins, or `pnpm lab:vivado:cert:custom -- --case <case-id> --project <path.rbproj>` for custom blank-shaped projects. See `docs/release/proof/custom-projects-2026-04-29.md`. **Student procedure:** checklist doc §A–B.
+
+**Batch 1 browser proof caveat (2026-04-30):** the real Vivado E1 rows above are current, but several browser rehearsal gates still encode old Observe/Compare and Project-owned mapping assumptions. Do not treat those gate failures as hardware proof failures; track them through `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md`.
 
 **Honest fences (not blanket-certified):**
 

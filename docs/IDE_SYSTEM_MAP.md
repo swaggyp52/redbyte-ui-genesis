@@ -6,6 +6,27 @@
 
 ---
 
+## 0. Documentation Authority Map
+
+This section routes product truth to existing canonical docs so RedByte does not grow parallel dated definitions for the same promise.
+
+| Truth type | Canonical owner | Update when |
+|------------|-----------------|-------------|
+| Current working state, latest bench result, immediate priorities | `AI_STATE.md` for session history; `docs/ACTIVE_WORK.md` for the cockpit | Any meaningful agent batch, proof run, blocker, or priority change |
+| Product promise, product boundaries, non-goals, target readiness vocabulary | `docs/contracts/RedByte_Product_Contract.md` | RedByte's promise, workflow spine, supported/caveated scope, or proof obligation changes |
+| Surface responsibilities, runtime authorities, state-flow ownership, gate inventory | This file plus `docs/ide/SURFACE_CONFORMANCE.md` | Surface ownership, runtime authority, workflow-state language, or required gates change |
+| User-facing instructions and current product behavior | `docs/manuals/RedByte_Product_Manual.md` | Student-visible workflow, terms, export/hardware instructions, or supported behavior changes |
+| Manual claim governance | `docs/manuals/MANUAL_TRACEABILITY_MATRIX.md`, `docs/manuals/MANUAL_CLAIM_AUDIT.md`, `docs/manuals/MANUAL_CONFORMANCE.md` | Manual claims are added, removed, softened, or newly proven |
+| Release readiness | `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, `docs/lab-day-vivado-basys3-readiness.md` | Student-safe posture, class assignment advice, or RC/lab-day limits change |
+| Certification/support matrix | `docs/release/vivado-basys3-certification-matrix.md` | L0/E0/E1/E2/E3 status, support posture, or log paths change |
+| Actual proof logs and board observations | `docs/release/proof/*.md` plus `out/vivado-cert/` logs | Vivado build, programming, or board observation evidence is produced |
+| Hardening tickets | `docs/release/product-hardening-ticket-*.md` or GitHub product-hardening issues | A concrete product bug/blocker has repro, violated truth source, and acceptance proof |
+| Historical/reference docs | `docs/DOC_INDEX.md` decides which stale or OS-era docs are excluded from default context | Only historical cleanup or legacy-shell work should edit or rely on them |
+
+Do not create a new product-definition, whole-app-audit, or proof-matrix doc when one of the owners above can hold the truth cleanly. New dated docs are appropriate only for a concrete proof record, hardening ticket, or topic with no canonical home.
+
+---
+
 ## 1. Surfaces and Responsibilities
 
 | Surface | File | Responsibility |
@@ -64,6 +85,27 @@
 | `projectWorkflowAuthority.ts` | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts` | Canonical product-truth snapshot for verify state, draft-vs-trusted export state, strict stage completion, primary CTA, and Hardware/Export handoff labels |
 | `simEngine.ts` | `packages/rb-apps/src/apps/ide/sim/simEngine.ts` | Simulation advancement, trace accumulation |
 | `componentSupportRegistry.ts` | `packages/rb-logic-core/src/analysis/componentSupportRegistry.ts` | Canonical component support matrix for Design authoring, Verify mode support, VHDL export support, Import HDL aliases, classroom availability, and sequential metadata |
+
+### Product state truth audit
+
+`projectWorkflowAuthority.ts` and `projectTruth.ts` already provide the shared truth language consumed by Project, Verify, Hardware, and Export for draft-vs-trusted handoff decisions.
+
+| Question | Current owner / status |
+|----------|------------------------|
+| Is there a design? | Covered by `ProjectReadinessState.hasCircuit` and `ProjectTruthState.needs-design`. |
+| Is the design structurally valid? | Partially covered by `projectHealth.blockingIssues`; detailed Design diagnostics remain separate and should be folded into future acceptance tests. |
+| Is simulation possible? | Partially covered by Verify readiness and support diagnostics; no single product-state boolean yet. |
+| Is the testbench configured? | Partially covered by `readiness.hasVectors` and Verify vector/check state; needs clearer product-state naming. |
+| Is Compare current? | Covered by `verifyCurrent`, `compareCurrent`, and the normalized verify project hash. |
+| Did Compare pass? | Covered by `trustedVerifyCurrent`, `comparePassCurrent`, `compareMatches`, and `comparePassIncomplete`. |
+| Are pins mapped? | Covered by `readiness.hasIoMapping` and Map Pins / Hardware mapping rows. |
+| Is draft export possible? | Covered by `exportAvailable` and `draftExportAvailable`. |
+| Is trusted export possible/current? | Covered by `exportPackageCurrent`, `exportTrusted`, `trustedVerifyCurrent`, and `ProjectTruthState.hardware-proof-required`. |
+| Has Vivado build proof been recorded? | Not represented in runtime state; tracked in release/certification docs and `out/vivado-cert/`. |
+| Has board programming proof been recorded? | Not represented in runtime state; tracked as E2 proof docs/logs. |
+| Has board observation proof been recorded? | Not represented in runtime state; tracked as E3 proof notes. |
+
+Batch 1 decision: do not add a broad new state model yet. The next coding batch should add focused acceptance tests and, only where needed, small state fields for Vivado/E2/E3 proof recording without weakening the existing draft-vs-trusted export distinction.
 
 ### Component support authority
 

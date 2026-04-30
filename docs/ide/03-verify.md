@@ -70,6 +70,13 @@ When a current run becomes stale, the copy must say why:
 
 For sequential circuits, current proof requires useful timing stimulus. A clock row that never produces a rising edge is still visible for inspection, but it does not satisfy the "clock activity" guidance for register updates. Latch-control designs use the same panel but describe the control signal instead of a generic clock.
 
+## Batch 1 Product Audit Notes (2026-04-30)
+
+- Supposed to do: be a testbench authoring surface with Observe, Expected Outputs, and Compare checks as distinct concepts.
+- Current truth: the product has moved toward Observe-first language, inline clock lanes, and Compare-backed trusted evidence.
+- Determinism change needed: gates and surface copy must consistently treat Observe as inspection only and Compare PASS as the trusted proof boundary.
+- Friction found: `ide:gate:verify-workbench-contract`, `ide:gate:verify-reality-contract`, and `ide:gate:export-e2e-contract` still expect older assertion/verify semantics and fail when the UI honestly remains in "Observation only" or "Checks need review". Those gates need to be rewritten around Observe -> Save expected outputs -> Compare rather than forcing the old assertion path.
+
 ## Design Handoff
 
 `Open in Design` for a failed comparison must preserve the selected mismatch brief. Design should be able to say, for example: `Verify failed on LD0: expected 1, observed 0 at tick 4. Inputs: SW0=1, SW1=1. Inspect the logic path feeding LD0.`

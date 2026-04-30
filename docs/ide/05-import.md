@@ -58,6 +58,13 @@ Show deterministic diagnostics:
 2. Mapping completeness percent.
 3. Apply action enabled.
 
+## Batch 1 Product Audit Notes (2026-04-30)
+
+- Supposed to do: import HDL/XDC/ZIP input with honest reconstruction fidelity instead of implying arbitrary HDL becomes a perfect RedByte schematic.
+- Current truth: Import is a utility alongside the main product spine, not the primary start point for new FPGA projects.
+- Determinism change needed: every import result should keep parsed, skipped, approximated, and blocked details visible enough that downstream Design/Verify/Export trust is not overclaimed.
+- Friction found: no new Import proof was run in Batch 1; keep Import out of student-safe hardware claims until a row exists in the proof matrix.
+
 ## Data Contract (RBProject)
 
 Reads:

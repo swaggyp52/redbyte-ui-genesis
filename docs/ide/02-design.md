@@ -75,3 +75,10 @@ Writes (guarded):
 1. `circuit`
 2. `layout`
 3. `submodules`
+
+## Batch 1 Product Audit Notes (2026-04-30)
+
+- Supposed to do: let a user create a supported FPGA design from scratch and understand what will become top-level HDL ports versus internal wires.
+- Current truth: the canvas, live diagnostics, and support registry are real, but the first proof loop still leans on starter projects and fixtures more than a fully manual blank-canvas browser rehearsal.
+- Determinism change needed: surface export-support truth, top-level port naming, and unsupported component warnings close to authoring so Vivado blockers are caught before Export.
+- Friction found: mixed-gate custom project E1 is proven through a blank-shaped `.rbproj` fixture and real Vivado, but a fully hand-authored browser path remains the next product proof.

@@ -1,5 +1,56 @@
 # AI State
 
+## Change Log 2026-04-30 (Batch 1 product truth consolidation + Vivado rehearsal refresh)
+
+**Subsystem:** `docs/IDE_SYSTEM_MAP.md`, `docs/contracts/RedByte_Product_Contract.md`, `docs/manuals/RedByte_Product_Manual.md`, `docs/manuals/RedByte_Product_Manual_print.html`, `docs/ACTIVE_WORK.md`, surface specs, release readiness/proof docs, `scripts/build-manual.mjs`
+
+**Context:** Implement Batch 1 of turning RedByte into a deterministic FPGA product without creating overlapping product-definition/audit/proof-matrix docs. The work mapped the existing documentation authority hierarchy, updated canonical docs in place, ran baseline gates, ran browser rehearsal gates, and refreshed real Vivado E1 proof for one mixed combinational and one clocked custom row.
+
+**Baseline / environment:**
+- Starting commit: `d6d75aae4b79712f7c77bad02619a60672073f96`; `git pull --ff-only origin main` reported already up to date.
+- `node -v` -> `v24.13.0`; `pnpm -v` -> `10.24.0`.
+- `where.exe vivado` found `C:\Xilinx\Vivado\2024.2\bin\vivado` and `vivado.bat`.
+- `C:\Xilinx\Vivado\2024.2\bin\vivado.bat -version` printed Vivado v2024.2 / SW Build 5239630 / IP Build 5239520 / SharedData Build 5239561, but exited `1` after printing version information.
+- `pnpm lab:vivado:hw-probe` -> pass / JTAG chain visible.
+- `pnpm -s build:unified` -> pass.
+- `pnpm verify:gates` -> pass / exit 0 with existing workspace declaration-generation and Vite CJS warning noise.
+- Baseline `git diff --check` -> pass.
+
+**Changes:**
+- Added a Documentation Authority Map to `docs/IDE_SYSTEM_MAP.md` so current state, product contract, manual truth, release readiness, proof logs, hardening tickets, and historical/reference docs route to existing canonical owners.
+- Updated `docs/contracts/RedByte_Product_Contract.md` with the RedByte product promise, non-goals, full Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe spine, product-state vocabulary, and official Vivado/Basys3 references.
+- Updated `docs/manuals/RedByte_Product_Manual.md` and its print HTML companion with student-facing draft/trusted/proven state language, Vivado boundary language, and official source links; removed "all rights reserved" boilerplate from touched manual attribution.
+- Updated `docs/ACTIVE_WORK.md`, `docs/ide/*.md`, `docs/ide/SURFACE_CONFORMANCE.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/release/custom-project-vivado-hardening-2026-04-29.md`, and `docs/release/proof/custom-projects-2026-04-29.md` with Batch 1 audit/proof truth.
+- Added one concrete hardening ticket: `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md` for browser proof gates that still encode old assertion-language and Project-owned pin-edit assumptions.
+- Fixed a small docs-generation script syntax blocker in `scripts/build-manual.mjs`: removed `await import(...)` from a non-async function and replaced shell `grep` stale-string scanning with Node-native file reads.
+
+**Browser rehearsal results:**
+- `pnpm --filter @redbyte/playground build` -> pass.
+- `pnpm -s ide:gate:student-loop-contract` -> pass.
+- `pnpm -s ide:gate:seq-sim-contract` -> pass.
+- `pnpm -s ide:gate:export-e2e-contract` -> fail: Verify stayed at `Checks need review` instead of the gate's older `assertions-match` expectation.
+- `pnpm -s ide:gate:verify-workbench-contract` -> fail: after expected-cell edit, current UI stayed `OBSERVATION ONLY`, exposing stale gate assumptions around Observe/Compare.
+- `pnpm -s ide:gate:verify-reality-contract` -> fail: current UI reported `Observation only`, while the gate expected older completed-verify wording.
+- `$env:CI='1'; $env:PW_MODE='ci'; pnpm -s e2e:test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project=chromium` timed out; snapshot showed Project now routes mapping through Map Pins and reports observation trace current, while the test still expects old Project pin inputs.
+
+**Vivado proof results:**
+- First long-path run `pnpm lab:vivado:cert:custom -- --case fs-custom-mixed-gate-chain-2026-04-30 --project packages/rb-apps/src/fixtures/cert/fs-custom-mixed-gate-chain.rbproj --program false` failed in Vivado synthesis with RTD file-access errors under a long `.runs/synth_1/.Xil/...` path.
+- Short-path rerun `pnpm lab:vivado:cert:custom -- --case b1-mixed --project packages/rb-apps/src/fixtures/cert/fs-custom-mixed-gate-chain.rbproj --program false` -> pass E1; logs under `out/vivado-cert/custom-projects/b1-mixed/`.
+- Clocked rerun `pnpm lab:vivado:cert:custom -- --case b1-counter --fixture fs-seq-two-bit-counter-basys3 --program false` -> pass E1; logs under `out/vivado-cert/custom-projects/b1-counter/`.
+- Board programming was intentionally skipped for both Batch 1 rows (`--program false`); E2/E3 remain pending.
+
+**Final validation:**
+- `node --check scripts/build-manual.mjs` -> pass.
+- `pnpm docs:manual` now gets past Node parsing/stale-string validation but fails at environment dependency check because `weasyprint` is not installed/available via `python3` on this lab image.
+- `pnpm -s build:unified` -> pass.
+- `pnpm verify:gates` -> pass / exit 0 with existing declaration-generation and Vite CJS warning noise.
+- `pnpm lab:vivado:hw-probe` -> pass / JTAG chain visible.
+- `git diff --check` -> pass after removing one trailing-space line in the certification matrix.
+
+**Residual / release-process caveat:** Browser proof gates need a focused Batch 2 update before they can be treated as current product rehearsal evidence. Production/live Cloudflare deployment has not been verified in this environment. Existing branch-protection debt remains unless GitHub reports otherwise on push: required status check `Classroom Truth Gates` has previously been bypassed.
+
+**Attribution:** Connor Angiel (agent)
+
 ## Change Log 2026-04-29 (Basys3 bench closeout + custom-project Vivado hardening harness)
 
 **Subsystem:** `packages/rb-apps/src/fixtures/classroom/golden-basys3-switch-and.rbproj`, `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256`, `scripts/vivado-cert-custom-project.ts`, `package.json`, custom blank-project fixtures/tests, release proof/readiness docs

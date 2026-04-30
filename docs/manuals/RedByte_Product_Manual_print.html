@@ -498,7 +498,7 @@ ul li { margin-bottom: 0.3rem; }
   <div class="cover-meta">
     Target Platform: Digilent Basys 3 (Artix-7 XC7A35T)<br>
     Toolchain: AMD Vivado ML Standard Edition<br>
-    Copyright © 2025–2026 Connor Angiel. All rights reserved.
+    Attribution: Connor Angiel
   </div>
 </div>
 
@@ -585,9 +585,9 @@ ul li { margin-bottom: 0.3rem; }
 
 <h2 id="s2-1">2.1 What RedByte Is</h2>
 
-<p>RedByte is an interactive digital logic circuit design and verification environment that runs entirely in a web browser. It provides a unified workspace where users design combinational and sequential circuits from primitive logic gates, verify their behavior against test vectors, map circuit ports to physical FPGA board pins, and export a complete file set for synthesis and programming in AMD Vivado.</p>
+<p>RedByte is a deterministic FPGA learning and project-building environment that runs entirely in a web browser. It provides a unified workspace where users create supported combinational and sequential projects, verify behavior with authored testbench checks, map top-level ports to physical FPGA board pins, export a complete file set for AMD Vivado, and record proof when Vivado or board behavior matters.</p>
 
-<p>RedByte targets the <strong>Digilent Basys 3</strong> development board (Xilinx Artix-7 XC7A35T FPGA). It replaces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring with a single integrated environment.</p>
+<p>RedByte targets the <strong>Digilent Basys 3</strong> development board (Xilinx Artix-7 XC7A35T FPGA). It reduces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring, but it does not replace Vivado, perform timing closure, or guarantee arbitrary HDL/hardware success. Vivado remains the tool that synthesizes, implements, generates bitstreams, and programs hardware.</p>
 
 <h2 id="s2-2">2.2 Core Capabilities</h2>
 
@@ -664,7 +664,25 @@ ul li { margin-bottom: 0.3rem; }
   <div class="workflow-stage">Export</div>
 </div>
 
-<p>RedByte organizes work into a linear progression of six surfaces. A sixth surface, <strong>Import</strong>, is available at any time for bringing external HDL or previously exported projects into the environment. Users may navigate between surfaces freely; the system tracks completion status for each stage.</p>
+<p>RedByte organizes work into the product spine: <strong>Project -&gt; Design -&gt; Verify -&gt; Map Pins / Hardware -&gt; Export -&gt; Vivado -&gt; Program Board -&gt; Observe</strong>. Import remains available as a utility for bringing external HDL or previously exported projects into the environment. Users may navigate between surfaces freely; the system tracks completion status for each stage.</p>
+
+<h2>4.1.1 Draft, Trusted, and Proven States</h2>
+
+<table>
+  <thead><tr><th>State</th><th>What it means</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Draft design</strong></td><td>A circuit exists, but it may not have current testbench, mapping, or export proof.</td></tr>
+    <tr><td><strong>Simulated</strong></td><td>The design has been observed in RedByte simulation; this is useful inspection, not a pass/fail claim.</td></tr>
+    <tr><td><strong>Testbench configured</strong></td><td>Stimulus and expected output checks exist for the current design intent.</td></tr>
+    <tr><td><strong>Compare passed</strong></td><td>Current observed outputs match current expected outputs. This is the Verify proof needed for trusted handoff.</td></tr>
+    <tr><td><strong>Pins mapped</strong></td><td>Required top-level ports are assigned to board resources/package pins.</td></tr>
+    <tr><td><strong>Draft export</strong></td><td>A structurally valid Vivado package can be generated or downloaded, but proof is missing or stale.</td></tr>
+    <tr><td><strong>Trusted export</strong></td><td>Current Compare PASS, current mapping, and current export bundle all describe the same project state.</td></tr>
+    <tr><td><strong>Vivado built</strong></td><td>Vivado synth/implementation/bitstream completed for the exported project.</td></tr>
+    <tr><td><strong>Board programmed</strong></td><td>A Basys 3 board was programmed with the generated bitstream.</td></tr>
+    <tr><td><strong>Board observed</strong></td><td>Physical behavior was recorded against an agreed observation procedure.</td></tr>
+  </tbody>
+</table>
 
 <h2 id="s4-2">4.2 Simulation Model</h2>
 
@@ -751,7 +769,7 @@ pnpm dev</code></pre>
   <li>Navigate to <strong>Export</strong>. Click <strong>Download Vivado Kit</strong>.</li>
 </ol>
 
-<div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>, automation scripts, and documentation files, ready for Vivado import. See Section 11.1 for the complete file list.</div>
+<div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>, automation scripts, and documentation files. RedByte may label this as a draft package or a trusted handoff depending on whether Compare, mapping, and export evidence are current. See Section 11.1 for the complete file list.</div>
 </div>
 
 <!-- ═══════════════════════ SECTION 6 ═══════════════════════ -->
@@ -851,7 +869,7 @@ pnpm dev</code></pre>
     <tr><td><strong>Purpose</strong></td><td>Validate readiness, preview generated artifacts, produce Vivado Kit ZIP.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After design, verification, and complete pin mapping.</td></tr>
     <tr><td><strong>Main Area</strong></td><td>Top: READY/WARNING/BLOCKED status. Center: artifact preview for primary files (<code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>). Right: pin table, validation.</td></tr>
-    <tr><td><strong>Primary CTA</strong></td><td><strong>Download Vivado Kit</strong> — downloads ZIP. Enabled only at READY status.</td></tr>
+    <tr><td><strong>Primary CTA</strong></td><td><strong>Download Vivado Kit</strong> — downloads the ZIP file containing generated artifacts. A structurally valid project may download as a draft package; RedByte labels the handoff as trusted only when Compare, mapping, and export evidence are current.</td></tr>
     <tr><td><strong>Single Path</strong></td><td>One generation path. Preview shows exact bytes that appear in the ZIP.</td></tr>
     <tr><td><strong>Scaffold Warnings</strong></td><td>HDL/XDC port mismatch warnings for projection-only exports are informational, not blocking.</td></tr>
   </tbody>
@@ -994,6 +1012,15 @@ pnpm dev</code></pre>
     <tr><td>"Timing not met"</td><td>Excessive logic depth</td><td>Simplify combinational path or add pipeline registers.</td></tr>
   </tbody>
 </table>
+
+<h2>11.4 Official References Used for Vivado Truth</h2>
+
+<ul>
+  <li>AMD Vivado Design Suite User Guide: Using Constraints (UG903), Timing Constraints: <a href="https://docs.amd.com/r/en-US/ug903-vivado-using-constraints/Timing-Constraints">https://docs.amd.com/r/en-US/ug903-vivado-using-constraints/Timing-Constraints</a></li>
+  <li>AMD Vivado Design Flows Overview (UG892/UG895), Project Mode Tcl Commands: <a href="https://docs.amd.com/r/2023.2-English/ug892-vivado-design-flows-overview/Using-Project-Mode-Tcl-Commands">https://docs.amd.com/r/2023.2-English/ug892-vivado-design-flows-overview/Using-Project-Mode-Tcl-Commands</a></li>
+  <li>AMD Vivado Programming and Debugging (UG908), Programming the Hardware Device: <a href="https://docs.amd.com/r/en-US/ug908-vivado-programming-debugging/Programming-the-Hardware-Device">https://docs.amd.com/r/en-US/ug908-vivado-programming-debugging/Programming-the-Hardware-Device</a></li>
+  <li>Digilent Basys 3 Master XDC for board labels, package pins, and the 100 MHz clock: <a href="https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc">https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc</a></li>
+</ul>
 </div>
 
 <!-- ═══════════════════════ SECTION 12 ═══════════════════════ -->
@@ -1317,7 +1344,7 @@ pnpm dev</code></pre>
     <span style="font-size: 1.5rem; font-weight: 900; color: var(--rb-slate-900);"><span style="color: var(--rb-red);">Red</span>Byte</span>
   </div>
   <p>Product Manual · Version 1.0 · March 2026</p>
-  <p>Copyright © 2025–2026 Connor Angiel. All rights reserved.</p>
+  <p>Attribution: Connor Angiel</p>
   <p>RedByte Proprietary License (RPL-1.0)</p>
 </div>
 

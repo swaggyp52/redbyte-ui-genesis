@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-29
+last_validated: 2026-04-30
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -16,9 +16,9 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Close `golden-basys3-switch-and` E3 and carry the same honesty into custom rows** - `signal-tour` is now E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and the board should next be used for custom-project E2/E3.
-2. **Custom-project hardening campaign** - the new harness is live and has real E1 proof for blank-shaped AND, mixed gate chain, four-switch/four-LED, and 2-bit counter rows. Use those rows to find student-loop failures, not just export regressions.
-3. **Manual student-loop rehearsal for Verify workbench changes** - the 2-bit counter flow still needs a fresh interactive browser pass covering clock insertion, Compare, stale-reason copy, Design mismatch brief, and Export trust messaging.
+1. **Browser rehearsal gates must catch up to the product truth model** - Batch 1 proved the student loop can run, but export/verify/mapping gates still expect older assertion-language and Project-owned pin editing. Update them around Observe -> Expected Outputs -> Compare and Map Pins authority.
+2. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
+3. **From-scratch UX proof still needs a true blank-canvas browser pass** - real Vivado E1 is refreshed for mixed-gate and clocked custom rows, but manual browser authoring still leans on starters/fixtures instead of fully hand-authored canvas proof.
 
 ---
 
@@ -27,19 +27,22 @@ imported_by: CLAUDE.md
 | Blocker | Why | Unblock by |
 |---------|-----|-----------|
 | Final E3 notes for `golden` + custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
+| Browser product-proof gates stale after Observe/Compare and Map Pins changes | `ide:gate:export-e2e-contract`, `ide:gate:verify-workbench-contract`, `ide:gate:verify-reality-contract`, and mapping-pipeline Playwright proof encode old assumptions | Rewrite gates to exercise Observe -> Save expected outputs -> Compare and the Map Pins / Hardware authority |
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
 
 ---
 
 ## Next bench / Vivado task
 
-**Target:** custom-project E2/E3 after `golden` E3 closes.
+**Target:** fix browser proof gates, then custom-project E2/E3 after `golden` E3 closes.
 
 ```powershell
-pnpm lab:vivado:cert:custom -- --case fs-custom-four-switch-led --project packages/rb-apps/src/fixtures/cert/fs-custom-four-switch-led.rbproj --program true
+pnpm -s ide:gate:export-e2e-contract
+pnpm -s ide:gate:verify-workbench-contract
+pnpm -s ide:gate:verify-reality-contract
 ```
 
-Planned E3 observation: `SW0..SW3` each drive `LD0..LD3` on the custom blank-shaped row, then re-run the mixed gate chain or custom AND row on hardware.
+After those gates match current truth, program `fs-custom-four-switch-led` and record E3: `SW0..SW3` each drive `LD0..LD3` on the custom blank-shaped row, then re-run the mixed gate chain or custom AND row on hardware.
 
 Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-29.md` · `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/vivado/README.md`.
 
@@ -49,6 +52,9 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Batch 1 custom mixed-gate E1 refresh | `out/vivado-cert/custom-projects/b1-mixed/result.md` |
+| Batch 1 custom counter E1 refresh | `out/vivado-cert/custom-projects/b1-counter/result.md` |
+| Batch 1 browser/gate hardening ticket | `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md` |
 | `signal-tour` E2/E3 proof | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
 | `golden-basys3-switch-and` blocker fix + E1/E2 | `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |
 | Custom-project hardening ledger | `docs/release/custom-project-vivado-hardening-2026-04-29.md` |
@@ -81,6 +87,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | Batch 1 product truth consolidation: documentation authority map, product spine/state vocabulary, whole-app audit notes, browser rehearsal friction, and refreshed custom mixed/counter E1 Vivado proof | `this commit` |
 | Done | Verify workbench stabilization: broad render harness cleanup, explicit stale reasons, wider Build testbench workspace, Export stale-evidence wording, and broad `vitest run verify` restored to green | `this commit` |
 | Done | Verify testbench authority: normalized evidence hash stops helper-vector stale loops; sequential Clock / timing panel previews edge stimulus before run | `0b754512` |
 | ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
@@ -98,6 +105,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 | Surface behavior changes (Design/Verify/Hardware/Export) | `docs/ide/0{N}-{surface}.md`, **this file** (Top 3 priorities, In-flight) |
 | Architecture changes (layer/schema/contract) | `docs/ARCHITECTURE.md`, `docs/contracts/RedByte_Product_Contract.md` if target-state shifts, **this file** |
 | Bug status flip | `05 Bugs/BUG-NNN.md` in vault, **this file** (Top 3 priorities, Blocked) |
+| Documentation authority/routing changes | `docs/IDE_SYSTEM_MAP.md`, `docs/ide/SURFACE_CONFORMANCE.md`, **this file** |
 
 ---
 

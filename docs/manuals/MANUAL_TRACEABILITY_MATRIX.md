@@ -31,6 +31,7 @@
 | Deterministic simulation via topological sort | `simulationEngine.ts` | Kahn's algorithm | `simulation.test.ts` | VERIFIED |
 | Local-first, no server required | `README.md`, architecture | — | — | VERIFIED |
 | SHA-256 submission hashing | `submissionBundle.ts` | L114-120, L284-291 | submission tests | VERIFIED |
+| RedByte is a deterministic FPGA learning/project-building environment with Vivado and board proof boundaries | `docs/contracts/RedByte_Product_Contract.md`, `docs/IDE_SYSTEM_MAP.md`, `scripts/vivado-cert-custom-project.ts` | product statement, authority map, harness | `pnpm lab:vivado:cert:custom -- --case b1-mixed ...`; `--case b1-counter ...` | VERIFIED |
 
 ---
 
@@ -58,6 +59,8 @@
 | Import fidelity: Full / Reconstructed / Partial (UI layer) | `IdeApp.tsx` | L101 | — | VERIFIED |
 | Internal reconstruction levels: full / ports-only / empty | `hdlToCircuit.ts` | L43 | import tests | VERIFIED |
 | Five-layer architecture (A–E) | `docs/ARCHITECTURE.md` | Layer definitions | — | VERIFIED |
+| Product spine distinguishes RedByte-owned stages from Vivado/program/observe proof tiers | `docs/contracts/RedByte_Product_Contract.md`, `docs/release/vivado-basys3-certification-matrix.md` | product state vocabulary, L0/E0/E1/E2/E3 tiers | Vivado custom harness logs under `out/vivado-cert/custom-projects/` | VERIFIED |
+| Draft export is allowed while trusted export requires current Compare PASS + mapping + export bundle | `projectWorkflowAuthority.ts`, `projectTruth.ts`, `ExportSurface.tsx` | `draftExportAvailable`, `exportTrusted`, `trustedVerifyCurrent` | workflow authority/export tests; Batch 1 browser proof ticket | VERIFIED |
 
 ---
 
@@ -123,6 +126,7 @@
 | LVCMOS33 I/O standard | `basys3Bundle.ts` | L158 | basys3 tests | VERIFIED |
 | CLOCK_BUFFER_TYPE NONE for switch/button inputs | `basys3Bundle.ts` | L145-165 | basys3 tests | VERIFIED |
 | Port name sanitization (not keyword validation) | `basys3Bundle.ts` | sanitize logic | — | CORRECTED |
+| Basys3 board labels/package pins trace to official board constraints | `basys3Pins.ts`, Digilent Basys 3 master XDC | board catalog | Basys3 export tests; Vivado E1 logs | VERIFIED |
 
 ---
 
@@ -135,6 +139,7 @@
 | testbench.vhd entity named `tb_top` | `testbenchGenerator.ts`, `vivadoProjectFolder.ts` | L292-293, L36 | testbench tests | CORRECTED (was "top_tb") |
 | Testbench simulation top module: tb_top | `vivadoProjectFolder.ts` | L36 | — | CORRECTED |
 | ZIP contains 9 files (3 primary + 6 support) | `vivadoProjectFolder.ts` | ZIP construction | export tests | CORRECTED |
+| Vivado project/build/program flow is an external proof boundary, not a browser-generated bitstream | `scripts/vivado/redbyte_batch_synth_impl_bitstream.tcl`, `scripts/vivado/redbyte_program_device.tcl`, AMD UG892/UG908 | Vivado Tcl / programming docs | `b1-mixed`, `b1-counter` E1 logs | VERIFIED |
 
 ---
 
@@ -193,10 +198,10 @@
 
 | Status | Count |
 |--------|-------|
-| VERIFIED | 38 |
+| VERIFIED | 43 |
 | CORRECTED (was wrong, now fixed) | 11 |
 | PARTIAL | 0 |
-| **Total claims traced** | **49** |
+| **Total claims traced** | **54** |
 
 All CORRECTED items have been updated in both `RedByte_Product_Manual.md` and `RedByte_Product_Manual_print.html`. See `MANUAL_CLAIM_AUDIT.md` for the detailed audit record.
 

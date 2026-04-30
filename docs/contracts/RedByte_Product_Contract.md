@@ -22,23 +22,53 @@ role: target-state product blueprint
 ## 1. Product Identity
 
 ### 1.1 Product statement
-RedByte is a deterministic, local-first FPGA educational IDE for teaching digital logic and computer architecture to university students using the Digilent Basys3 board.
+RedByte is a deterministic FPGA learning and project-building environment for creating, verifying, mapping, exporting, and proving FPGA projects. Its first hardware target is the Digilent Basys3 board, but the product promise is not ECE141-only: the spine must support serious from-scratch digital-logic work within the supported component and board boundaries.
 
 ### 1.2 Product promise
 RedByte must enable a user to:
-1. Design a digital circuit with confidence
-2. Verify its behavior with trustworthy feedback
-3. Understand its mapping to real hardware
-4. Export a real, coherent Vivado-ready package
-5. Move through the workflow without contradictory signals or fake readiness
+1. Create a supported digital logic / FPGA project from scratch
+2. Understand which parts of the design are real hardware concepts
+3. Configure inputs, outputs, clocks, resets, and board pins honestly
+4. Verify behavior with an authored testbench and meaningful output checks
+5. Export a real, coherent Vivado-ready package
+6. Build the exported project in Vivado, then program and observe a Basys3 board when proof is required
+7. Move through the workflow without contradictory signals or fake readiness
 
 ### 1.3 What RedByte is not
 - Not a replacement for Vivado (it generates artifacts for Vivado, does not replace it)
-- Not a general-purpose HDL editor
+- Not a timing closure tool
+- Not a universal HDL IDE for every possible VHDL/Verilog design
 - Not a cloud service
 - Not a game or toy
+- Not a black-box "make hardware work" button
 - Not a dumbed-down tool that hides real engineering
+- Not limited to ECE141-specific lab flows
 - Not a docs-first illusion that pretends to be more than it is
+
+### 1.4 Supported product spine
+
+The product spine is:
+
+```text
+Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe
+```
+
+Draft export is allowed when the design is structurally exportable. Trusted export requires current proof: design current, mapping current, testbench current, Compare checks passing, and the export bundle current. Vivado build, board programming, and board observation remain external proof tiers until recorded.
+
+### 1.5 Product state vocabulary
+
+| State | Meaning |
+|-------|---------|
+| Draft design | A circuit exists, but downstream proof may be missing or stale. |
+| Simulated | The design has been observed in the simulator without necessarily comparing expected outputs. |
+| Testbench configured | Stimulus and expected output checks exist for the current intent. |
+| Compare passed | Current observed outputs match current expected outputs. This is the Verify proof used for trusted handoff. |
+| Pins mapped | Required top-level ports are bound to board resources/package pins. |
+| Draft export | A structurally valid Vivado package exists or can be generated, but trusted proof is missing or stale. |
+| Trusted export | Current Compare PASS, mapping, and export bundle agree for the same project state. |
+| Vivado built | Vivado synth, implementation, and bitstream generation passed for the exported project. |
+| Board programmed | The generated bitstream was programmed onto a Basys3 target. |
+| Board observed | Board behavior was recorded against an explicit observation procedure. |
 
 ---
 
@@ -58,7 +88,10 @@ RedByte must enable a user to:
 | Update triggers | `docs/manuals/MANUAL_CONFORMANCE.md` |
 | Product target standard | This document |
 | Gap assessment | `docs/roadmap/RedByte_Gap_Audit.md` |
-| Working memory / architecture / bugs | Obsidian brain |
+| Documentation routing / authority map | `docs/IDE_SYSTEM_MAP.md` |
+| Working state / current priorities | `AI_STATE.md`, `docs/ACTIVE_WORK.md` |
+| Release readiness and proof tiers | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/release/proof/*.md` |
+| Hardening bugs / blockers | `docs/release/product-hardening-ticket-*.md` or GitHub product-hardening issues |
 
 ---
 
@@ -155,6 +188,10 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 - Testbench ports must match entity ports (cross-artifact consistency)
 - Preview must show exact bytes that go into the ZIP
 - Clock constraint must be correct for 100MHz W5 pin
+- XDC and timing language must follow AMD Vivado constraints guidance (UG903), including `create_clock` use for primary clocks: https://docs.amd.com/r/en-US/ug903-vivado-using-constraints/Timing-Constraints
+- Vivado project handoff must follow supported project-mode Tcl flow guidance (AMD UG892/UG895 family): https://docs.amd.com/r/2023.2-English/ug892-vivado-design-flows-overview/Using-Project-Mode-Tcl-Commands
+- Board programming proof must use Vivado Hardware Manager / programming flow guidance (AMD UG908) or equivalent GUI evidence: https://docs.amd.com/r/en-US/ug908-vivado-programming-debugging/Programming-the-Hardware-Device
+- Basys3 board labels and package pins must trace back to the Digilent Basys3 master XDC when RedByte treats a pin as product truth: https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc
 
 ### 5.4 Integrity Trust
 - SHA-256 content-addressed hashing for all submissions
@@ -219,14 +256,14 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 
 | Area | What must be proven | Evidence type | Status |
 |---|---|---|---|
-| Combinational path | Design → Verify → Export → Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven (6-case matrix, 2026-03-30) |
-| Sequential path | Rising-edge DFF/TFF/JKFF path works end-to-end | runtime + Vivado validation | proven (2026-03-30) |
-| Sequential boundaries | Falling-edge/multi-clock/reset are blocked or warned | code inspection + runtime | **not proven** |
-| Design-time feedback | Driver conflicts, loops, floating drivers caught during design | runtime | **not proven** |
+| Combinational path | Design -> Verify -> Export -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
+| Sequential path | Rising-edge single-clock path works end-to-end | runtime + Vivado validation | proven for matrix rows; board observation remains per-row |
+| Sequential boundaries | Falling-edge/multi-clock/reset are blocked or warned | code inspection + runtime | enforced for known boundary rows; keep regression coverage current |
+| Design-time feedback | Driver conflicts, loops, floating drivers caught during design | runtime | implemented; still needs periodic runtime audit |
 | Export integrity | Preview = ZIP bytes | code inspection | proven (single codepath) |
-| Hardware rehearsal | Real Basys3 programming from exported kit | hardware test | **not proven** |
-| Manual accuracy | Zero overclaims | doc audit | **not proven** (6+ overclaims found) |
-| README accuracy | Matches current product | doc audit | **not proven** (OS-era claims) |
+| Hardware rehearsal | Real Basys3 programming from exported kit | hardware test | per-row E2/E3 only; no blanket product claim |
+| Manual accuracy | Zero overclaims | doc audit | ongoing; traceability docs are the enforcement layer |
+| README accuracy | Matches current product | doc audit | ongoing; must stay aligned with current IDE spine |
 
 ---
 

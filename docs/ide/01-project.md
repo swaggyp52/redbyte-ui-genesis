@@ -64,6 +64,13 @@ Destructive action guard:
 2. Verify has a current assertion-backed PASS.
 3. The current export package is trusted, or the next action clearly says what proof is still missing.
 
+## Batch 1 Product Audit Notes (2026-04-30)
+
+- Supposed to do: explain the full product spine, project identity, current readiness, examples, and the next honest action.
+- Current truth: Project now shows board mapping truth and export readiness, but it still relies heavily on starter/gallery paths for proof and can show "available export" before trusted Compare evidence.
+- Determinism change needed: keep Project language explicitly split between draft export, trusted export, Vivado build proof, board programming proof, and board observation proof.
+- Friction found: a browser mapping rehearsal still expected Project to own editable pin inputs even though Map Pins / Hardware is now the mapping authority. The gate must be updated to click the Map Pins path instead of old Project edit controls.
+
 ## Data Contract (RBProject)
 
 Reads:
