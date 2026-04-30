@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
-import { waitForVerifyResult } from './_verifyStatus.mjs';
+import {
+  assert,
+  clickVerifyRun,
+  loadStarterProject,
+  runIdeGate,
+  setVerifyRunMode,
+  visible,
+} from './_gateHarness.mjs';
+import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function ensureVerifyVectorsReady(page) {
   const candidates = [
@@ -45,16 +52,24 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
 
   const runBtn = page.locator('[data-testid="ide-vcb-run"]').first();
   assert(!(await runBtn.isDisabled().catch(() => false)), 'run button must be enabled once vectors exist');
+  assert(
+    await page.locator('[data-testid="ide-vcb-observe-only"]').first().isVisible().catch(() => false),
+    'Verify must expose Observe only in the student run-mode selector'
+  );
+  assert(
+    await setVerifyRunMode(page, 'compare'),
+    'Verify must expose Compare checks for deterministic student proof runs'
+  );
 
-  await runBtn.click();
+  await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 15000 });
 
-  const statusLabel = (
+  const compareStatus = (
     await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')
   )?.trim() ?? '';
   assert(
-    /ASSERTIONS|STIMULUS|PASS|FAIL|TRACE/i.test(statusLabel),
-    `status must reflect a completed verify state, got "${statusLabel}"`
+    isVerifyPass(compareStatus),
+    `starter Compare run must produce a PASS state, got "${compareStatus}"`
   );
 
   const noTraceGuard = page.locator('[data-testid="ide-verify-no-trace-guard"]').first();

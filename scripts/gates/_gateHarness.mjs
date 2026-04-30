@@ -81,6 +81,76 @@ export async function ensureVerifyVectorsReady(page) {
   throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
 }
 
+export async function clickVerifyRun(page) {
+  const selectors = [
+    '[data-testid="ide-vcb-run"]',
+    '[data-testid="ide-verify-run"]',
+    '[data-testid="ide-verify-run-secondary"]',
+    '[data-testid="ide-verify-empty-run"]',
+    '[data-testid="ide-verify-stale-primary-rerun"]',
+  ];
+  for (const selector of selectors) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (!isVisible) continue;
+    await button.click();
+    return selector;
+  }
+  throw new Error('verify run button was not visible in any supported state');
+}
+
+export async function setVerifyRunMode(page, mode) {
+  const selector =
+    mode === 'compare'
+      ? '[data-testid="ide-vcb-use-saved-checks"]'
+      : '[data-testid="ide-vcb-observe-only"]';
+  const button = page.locator(selector).first();
+  const isVisible = await button.isVisible().catch(() => false);
+  if (!isVisible) return false;
+  const isDisabled = await button.isDisabled().catch(() => true);
+  if (isDisabled) return false;
+  const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
+  if (!isPressed) {
+    await button.click();
+  }
+  return true;
+}
+
+export async function saveObservedOutputs(page) {
+  const directSelectors = [
+    '[data-testid="ide-vcb-save-expected"]',
+    '[data-testid="ide-verify-run-proof-oracle"]',
+    '[data-testid="ide-verify-stale-recapture-reauthor"]',
+    '[data-testid="ide-verify-set-oracle"]',
+  ];
+
+  for (const selector of directSelectors) {
+    const button = page.locator(selector).first();
+    const isVisible = await button.isVisible().catch(() => false);
+    if (!isVisible) continue;
+    const isDisabled = await button.isDisabled().catch(() => false);
+    if (isDisabled) continue;
+    await button.click();
+    return selector;
+  }
+
+  const utilitiesToggle = page.locator('[data-testid="ide-vcb-utilities-toggle"]').first();
+  const toggleVisible = await utilitiesToggle.isVisible().catch(() => false);
+  if (toggleVisible) {
+    await utilitiesToggle.click();
+    const saveButton = page.locator('[data-testid="ide-vcb-save-expected"]').first();
+    const saveVisible = await saveButton.isVisible().catch(() => false);
+    const saveDisabled = await saveButton.isDisabled().catch(() => false);
+    if (saveVisible && !saveDisabled) {
+      await saveButton.click();
+      return '[data-testid="ide-vcb-save-expected"]';
+    }
+    await utilitiesToggle.click();
+  }
+
+  return null;
+}
+
 export async function runIdeGate(name, runScenario) {
   let browser;
   let context;

@@ -94,19 +94,14 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="ide-project-mapping-expand-btn"]').click();
   await page.waitForSelector('[data-testid="ide-project-mapping-table"]', { timeout: 10000 });
-  const firstMappingInput = page.locator('[data-testid^="ide-project-map-input-"]').first();
-  await firstMappingInput.fill('');
-  await firstMappingInput.blur();
-
-  await page.waitForFunction(() => {
-    const statusCell = document.querySelector(
-      '[data-testid="ide-project-mapping-table"] tbody tr td:nth-child(5)'
-    );
-    return Boolean(statusCell && /missing/i.test(statusCell.textContent || ''));
-  });
-
-  const nextUnmappedText = await text(page.locator('[data-testid="ide-project-unmapped-count"]'));
-  const match = /^(\d+)/.exec(nextUnmappedText);
-  const count = match ? Number.parseInt(match[1] ?? '0', 10) : 0;
-  assert(count >= 1, `project unmapped count should increase after clearing a mapping, got "${nextUnmappedText}"`);
+  assert(
+    await page.locator('[data-testid="ide-project-open-map-pins"]').first().isVisible().catch(() => false),
+    'project must route mapping edits to Map Pins'
+  );
+  assert(
+    await page.locator('[data-testid^="ide-project-pin-field-"]').first().isVisible().catch(() => false),
+    'project must show read-only mapping summaries in the loaded state'
+  );
+  const projectMapInputCount = await page.locator('[data-testid^="ide-project-map-input-"]').count().catch(() => 0);
+  assert(projectMapInputCount === 0, 'project must not expose direct editable pin inputs in the loaded state');
 });

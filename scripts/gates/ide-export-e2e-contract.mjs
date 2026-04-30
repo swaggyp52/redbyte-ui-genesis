@@ -13,7 +13,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { assert, ensureVerifyVectorsReady, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import {
+  assert,
+  clickVerifyRun,
+  ensureVerifyVectorsReady,
+  loadStarterProject,
+  runIdeGate,
+  setVerifyRunMode,
+} from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,47 +37,6 @@ const README_PATH_PATTERN = /(^|\/)readme\.txt$/i;
 const VIVADO_IMPORT_TCL_PATTERN = /(^|\/)vivado_import\.tcl$/i;
 const PROJECT_RBPROJ_PATTERN = /(^|\/)project\.rbproj\.json$/i;
 
-async function applyObservedRunAsOracle(page) {
-  const utilitiesToggle = page.locator('[data-testid="ide-vcb-utilities-toggle"]').first();
-  const toggleVisible = await utilitiesToggle.isVisible().catch(() => false);
-  if (toggleVisible) {
-    await utilitiesToggle.click();
-    const saveAsChecks = page.locator('[data-testid="ide-vcb-save-expected"]').first();
-    const saveVisible = await saveAsChecks.isVisible().catch(() => false);
-    const saveDisabled = saveVisible ? await saveAsChecks.isDisabled().catch(() => true) : true;
-    if (saveVisible && !saveDisabled) {
-      await saveAsChecks.click();
-      return true;
-    }
-    await utilitiesToggle.click();
-  }
-
-  const selectors = [
-    '[data-testid="ide-verify-run-proof-oracle"]',
-    '[data-testid="ide-verify-stale-recapture-reauthor"]',
-    '[data-testid="ide-verify-set-oracle"]',
-  ];
-  for (const selector of selectors) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (isVisible) {
-      await button.click();
-      return true;
-    }
-  }
-  return false;
-}
-
-async function enableCompareMode(page) {
-  const compareButton = page.locator('[data-testid="ide-vcb-mode-compare"]').first();
-  const isVisible = await compareButton.isVisible().catch(() => false);
-  if (!isVisible) return false;
-  const isDisabled = await compareButton.isDisabled().catch(() => true);
-  if (isDisabled) return false;
-  await compareButton.click();
-  return true;
-}
-
 await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -83,24 +49,21 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
-  await enableCompareMode(page);
+  assert(
+    await page.locator('[data-testid="ide-vcb-observe-only"]').first().isVisible().catch(() => false),
+    'Verify must expose Observe only in the student run-mode selector'
+  );
+  assert(
+    await setVerifyRunMode(page, 'compare'),
+    'trusted export proof requires Verify to expose Compare checks'
+  );
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
-  let verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-  if (!isVerifyPass(verifyStatus)) {
-    const oracleApplied = await applyObservedRunAsOracle(page);
-    await enableCompareMode(page);
-    if (oracleApplied) {
-      await clickVerifyRun(page);
-      await waitForVerifyResult(page, { timeout: 10000 });
-    }
-  }
-
-  verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
+  const verifyStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
   assert(
     isVerifyPass(verifyStatus),
-    `verify must be assertions-match before export download, got "${verifyStatus}"`
+    `trusted export must require a current Compare PASS, got "${verifyStatus}"`
   );
 
   await page.locator('[data-testid="mode-button-export"]').click();
@@ -225,24 +188,6 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function clickVerifyRun(page) {
-  const selectors = [
-    '[data-testid="ide-vcb-run"]',
-    '[data-testid="ide-verify-run"]',
-    '[data-testid="ide-verify-run-secondary"]',
-    '[data-testid="ide-verify-empty-run"]',
-    '[data-testid="ide-verify-stale-primary-rerun"]',
-  ];
-  for (const selector of selectors) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (!isVisible) continue;
-    await button.click();
-    return;
-  }
-  throw new Error('verify run button was not visible in any supported state');
 }
 
 async function readPreviewByPath(page, artifactPath) {

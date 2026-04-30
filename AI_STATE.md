@@ -1,5 +1,48 @@
 # AI State
 
+## Change Log 2026-04-30 (Browser gate reconciliation: Observe / Compare / Map Pins truth)
+
+**Subsystem:** `scripts/gates/_gateHarness.mjs`, `scripts/gates/ide-export-e2e-contract.mjs`, `scripts/gates/ide-export-ready-contract.mjs`, `scripts/gates/ide-project-overview-contract.mjs`, `scripts/gates/ide-verify-reality-contract.mjs`, `scripts/gates/ide-verify-workbench-contract.mjs`, `tests/e2e/ide-mapping-pipeline-coherence.spec.ts`, release/work docs
+
+**Context:** Reconcile stale browser proof gates after Batch 1 product truth consolidation so browser coverage proves the current student workflow instead of legacy assertion wording, Project-owned pin editing, or observation-only export trust assumptions.
+
+**Changes:**
+- Reproduced the stale gate failures first:
+  - `pnpm -s ide:gate:export-e2e-contract` -> fail (`verify must be assertions-match before export download, got "Checks need review"`)
+  - `pnpm -s ide:gate:verify-workbench-contract` -> fail (`rerunning after changing an expected cell must surface a failed compare state, got "OBSERVATION ONLY"`)
+  - `pnpm -s ide:gate:verify-reality-contract` -> fail (`status must reflect a completed verify state, got "Observation only"`)
+- Added shared Verify gate helpers for the current command deck truth: explicit Observe vs Compare mode switching plus the current `Save observed outputs` utility path.
+- Updated trusted-export browser gates to use the real Compare-ready starter path: they now assert the student-visible Observe/Compare selector exists, switch to `Compare checks`, and require a current Compare PASS before trusted export proof.
+- Updated the Verify workbench browser gate to prove the current student flow directly:
+  - observation-first run
+  - `Save observed outputs`
+  - visible `Expected outputs`
+  - visible `Compare checks`
+  - no primary student-path wording like `manual assertions`, `assertion-backed`, or `Output assertions (optional)`
+  - compare rerun surfaces `Checks need review` after an expected-output edit
+- Tightened `ide-export-ready-contract` to use the current Compare-mode selector instead of assuming observation-only evidence is export-ready.
+- Replaced stale Project pin-edit assumptions in browser coverage:
+  - `ide-project-overview-contract` now proves Project mapping rows are read-only mirrors with `Open Map Pins`
+  - `ide-mapping-pipeline-coherence.spec.ts` now routes assignment through Hardware / Map Pins board interaction, then re-checks Project + Export for the same mapping truth
+- Kept the work focused to browser proof scripts/specs and docs; no product-model rewrite or hardware-proof claims changed in this batch.
+
+**Validation:**
+- `pnpm -s ide:gate:export-e2e-contract` -> pass
+- `pnpm -s ide:gate:verify-workbench-contract` -> pass
+- `pnpm -s ide:gate:verify-reality-contract` -> pass
+- `pnpm -s ide:gate:student-loop-contract` -> pass
+- `pnpm -s ide:gate:export-ready-contract` -> pass
+- `pnpm -s ide:gate:primary-cta-contract` -> pass
+- `pnpm -s ide:gate:project-overview-contract` -> pass
+- `pnpm -w exec playwright test tests/e2e/ide-mapping-pipeline-coherence.spec.ts --project chromium` -> pass
+- `pnpm -s build:unified` -> pass
+- `pnpm verify:gates` -> pass
+- `git diff --check` -> pass
+
+**Residual / release-process caveat:** `pnpm verify:gates` still prints pre-existing workspace TypeScript / Vite deprecation diagnostics during recursive package builds, but the command exits 0 in this environment and the browser proof slice completed without product-code changes. Production/live deployment was not verified here.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-04-30 (Batch 1 product truth consolidation + Vivado rehearsal refresh)
 
 **Subsystem:** `docs/IDE_SYSTEM_MAP.md`, `docs/contracts/RedByte_Product_Contract.md`, `docs/manuals/RedByte_Product_Manual.md`, `docs/manuals/RedByte_Product_Manual_print.html`, `docs/ACTIVE_WORK.md`, surface specs, release readiness/proof docs, `scripts/build-manual.mjs`

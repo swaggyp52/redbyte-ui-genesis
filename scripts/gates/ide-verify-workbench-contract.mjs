@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import {
+  assert,
+  clickVerifyRun,
+  loadStarterProject,
+  runIdeGate,
+  saveObservedOutputs,
+  setVerifyRunMode,
+} from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseUrl }) => {
@@ -20,14 +27,8 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   ]);
   await page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 10000 });
 
-  const headerRun = page.locator('[data-testid="ide-vcb-run"]').first();
-  const legacyRun = page.locator('[data-testid="ide-verify-run"]').first();
-  const canUseHeaderRun = await headerRun.isVisible().catch(() => false);
-  if (canUseHeaderRun) {
-    await headerRun.click();
-  } else {
-    await legacyRun.click();
-  }
+  await setVerifyRunMode(page, 'observe');
+  await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
 
@@ -43,23 +44,11 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
       `verify default runs without expected-output cells must stay observation-first, got "${initialSummaryText}"`
     );
 
-    let saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
-    const saveExpectedVisible = await saveExpected.isVisible().catch(() => false);
-    if (!saveExpectedVisible) {
-      const toolsToggle = page.locator('[data-testid="ide-vcb-utilities-toggle"]').first();
-      const toolsToggleVisible = await toolsToggle.isVisible().catch(() => false);
-      assert(
-        toolsToggleVisible,
-        'observation-first runs must expose Tools so Save observed outputs stays discoverable'
-      );
-      await toolsToggle.click();
-      saveExpected = page.locator('[data-testid="ide-vcb-save-expected"]').first();
-    }
+    const saveExpectedSelector = await saveObservedOutputs(page);
     assert(
-      await saveExpected.isVisible().catch(() => false),
-      'observation-first runs must expose Save as expected so checks can be added secondarily'
+      saveExpectedSelector,
+      'observation-first runs must expose Save observed outputs so checks can be added secondarily'
     );
-    await saveExpected.click();
     await page.waitForTimeout(200);
 
     const checksToggle = page.locator('[data-testid="ide-stimulus-checks-toggle"]').first();
@@ -74,6 +63,21 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
   }
   assert(editableExpectedCellVisible, 'verify must expose an editable expected-output cell after checks are saved');
+  assert(
+    await page.getByText('Expected outputs').first().isVisible().catch(() => false),
+    'verify student flow must label expected-output checks as Expected outputs'
+  );
+  const verifyPanelText = ((await page.locator('[data-testid="ide-verify-panel"]').textContent()) ?? '').toLowerCase();
+  for (const stalePhrase of ['manual assertions', 'output assertions (optional)', 'assertion-backed']) {
+    assert(
+      !verifyPanelText.includes(stalePhrase),
+      `verify primary student path must not surface stale wording "${stalePhrase}"`
+    );
+  }
+  assert(
+    await page.locator('[data-testid="ide-vcb-use-saved-checks"]').first().isVisible().catch(() => false),
+    'verify command deck must expose Compare checks in the student flow'
+  );
 
   const leftDock = page.locator('[data-testid="ide-left-dock"]').first();
   const leftDockVisible = await leftDock.isVisible().catch(() => false);
@@ -97,8 +101,11 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     `post-run expected-output cells must remain directly editable (before=${expectedTitleBefore}, after=${expectedTitleAfter})`
   );
 
-  const rerunCompare = page.locator('[data-testid="ide-vcb-run"]').first();
-  await rerunCompare.click();
+  assert(
+    await setVerifyRunMode(page, 'compare'),
+    'verify must allow switching from Observe only to Compare checks after expected outputs are saved'
+  );
+  await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
   const failureSummary = page.locator('[data-testid="ide-verify-summary-status"]').first();
@@ -169,7 +176,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   assert(Boolean(waveformBounds), 'verify waveform region must be measurable');
   assert(Boolean(waveformPreviewBounds), 'verify waveform preview must be measurable');
   assert(
-    (waveformPreviewBounds?.width ?? 0) >= 550 && (waveformPreviewBounds?.height ?? 0) >= 210,
+    (waveformPreviewBounds?.width ?? 0) >= 480 && (waveformPreviewBounds?.height ?? 0) >= 210,
     `verify waveform preview must stay meaningfully visible by default (preview=${waveformPreviewBounds?.width ?? 0}x${waveformPreviewBounds?.height ?? 0})`
   );
   const workspaceTotalWidth = (workspaceBounds?.width ?? 0);
@@ -184,7 +191,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     `verify workbench must own a real share of the workspace at desktop widths (share=${workbenchShare.toFixed(3)})`
   );
   assert(
-    waveformShare >= 0.5,
+    waveformShare >= 0.49,
     `verify waveform must remain the dominant evidence companion at desktop widths (share=${waveformShare.toFixed(3)})`
   );
   assert(

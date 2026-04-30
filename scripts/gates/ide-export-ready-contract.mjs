@@ -1,29 +1,17 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import {
+  assert,
+  clickVerifyRun,
+  loadStarterProject,
+  runIdeGate,
+  setVerifyRunMode,
+  visible,
+} from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function clickVerifyRun(page) {
-  const candidates = [
-    '[data-testid="ide-vcb-run"]',
-    '[data-testid="ide-verify-run"]',
-    '[data-testid="ide-verify-run-secondary"]',
-    '[data-testid="ide-verify-empty-run"]',
-    '[data-testid="ide-verify-stale-primary-rerun"]',
-  ];
-  for (const selector of candidates) {
-    const button = page.locator(selector).first();
-    const visible = await button.isVisible().catch(() => false);
-    if (visible) {
-      await button.click();
-      return;
-    }
-  }
-  throw new Error('verify run button was not visible in any supported state');
 }
 
 async function ensureVerifyVectorsReady(page) {
@@ -65,6 +53,10 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await ensureVerifyVectorsReady(page);
+  assert(
+    await setVerifyRunMode(page, 'compare'),
+    'export ready proof requires Verify to expose Compare checks'
+  );
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 
