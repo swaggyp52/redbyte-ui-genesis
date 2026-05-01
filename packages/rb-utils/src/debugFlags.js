@@ -42,6 +42,7 @@ export const WINDOW_DEBUG_APIS = [
     '__RB_FATAL_CAPTURE_INSTALLED__', // error boundary flag
     '__RB_ERROR_BOUNDARY_HIT__', // error boundary log
     '__RB_CIRCUIT_STORE__', // circuit store debug ref
+    '__RB_PROJECT_RUNTIME__', // project runtime store debug ref (dev/test only)
     '__RB_CLASSROOM_MODE_STORE__', // classroom mode store debug ref
     '__RB_AUDIT__', // audit flag
     // Note: __RB_FLAGS__ is env-injected; may be prod-safe

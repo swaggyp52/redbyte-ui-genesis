@@ -60,7 +60,8 @@ export async function ensureVerifyVectorsReady(page) {
   const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
   const runBarVisible = await runBar.isVisible().catch(() => false);
   const runBarText = runBarVisible ? ((await runBar.textContent()) ?? '').trim() : '';
-  if (/vector/i.test(runBarText)) return 'existing';
+  // Use \d+\s+vector to distinguish "4 vectors ready" from "Open Project vectors" button text.
+  if (/\d+\s+vector/i.test(runBarText)) return 'existing';
 
   const selectors = [
     '[data-testid="ide-verify-generate-basic-vectors"]',
@@ -74,6 +75,16 @@ export async function ensureVerifyVectorsReady(page) {
     const isVisible = await button.isVisible().catch(() => false);
     if (isVisible) {
       await button.click();
+      // Wait for vectors to be committed to runtime (run bar shows "N vectors ready").
+      await page
+        .waitForFunction(
+          () => {
+            const rb = document.querySelector('[data-testid="ide-verify-workstation-run-bar"]');
+            return rb && /\d+\s+vector/i.test(rb.textContent || '');
+          },
+          { timeout: 10000 }
+        )
+        .catch(() => null);
       return 'generated';
     }
   }

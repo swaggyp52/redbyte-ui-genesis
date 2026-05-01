@@ -3957,3 +3957,8 @@ function createProjectId(seed: string): string {
   const suffix = Date.now().toString(36).slice(-6);
   return `rb-${normalizedSeed}-${suffix}`;
 }
+
+// E2E test hook: expose project runtime store for programmatic access (gates/dev/test).
+if (typeof window !== 'undefined') {
+  (window as any).__RB_PROJECT_RUNTIME__ = useProjectRuntime;
+}

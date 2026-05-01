@@ -219,6 +219,7 @@
         "ide:gate:export-e2e-contract": "node ./scripts/gates/ide-export-e2e-contract.mjs",
         "ide:gate:hardware-checklist-contract": "node ./scripts/gates/ide-hardware-checklist-contract.mjs",
         "ide:gate:student-loop-contract": "node ./scripts/gates/ide-student-loop-contract.mjs",
+        "ide:gate:blank-canvas-product-proof": "node ./scripts/gates/ide-blank-canvas-product-proof.mjs",
         "ide:gate:viewport-overflow-contract": "node ./scripts/gates/ide-viewport-overflow-contract.mjs",
         "ide:gate:zoom-presets-contract": "node ./scripts/gates/ide-zoom-presets-contract.mjs",
         "ide:gate:verify-reality-contract": "node ./scripts/gates/ide-verify-reality-contract.mjs",

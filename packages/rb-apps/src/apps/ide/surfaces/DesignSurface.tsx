@@ -2045,7 +2045,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
-    if (onRuntimeAddNode && onRuntimeConnect) {
+    if (onRuntimeAddIo && onRuntimeAddNode && onRuntimeConnect) {
       const center = {
         x: (canvasSize.width / 2 - camera.x) / camera.zoom,
         y: (canvasSize.height / 2 - camera.y) / camera.zoom,
@@ -2053,10 +2053,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
       const [inputAId, inputBId, andId, outputId] = predictNextNodeIds(editorCircuit, 4);
 
-      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y - 72 });
-      onRuntimeAddNode('INPUT', { x: basePosition.x - 170, y: basePosition.y + 24 });
+      onRuntimeAddIo('input', { x: basePosition.x - 170, y: basePosition.y - 72 });
+      onRuntimeAddIo('input', { x: basePosition.x - 170, y: basePosition.y + 24 });
       onRuntimeAddNode('AND', { x: basePosition.x, y: basePosition.y - 24 });
-      onRuntimeAddNode('OUTPUT', { x: basePosition.x + 170, y: basePosition.y - 24 });
+      onRuntimeAddIo('output', { x: basePosition.x + 170, y: basePosition.y - 24 });
 
       onRuntimeConnect({ fromNodeId: inputAId, fromPort: 'out', toNodeId: andId, toPort: 'a' });
       onRuntimeConnect({ fromNodeId: inputBId, fromPort: 'out', toNodeId: andId, toPort: 'b' });
@@ -2075,6 +2075,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     canvasSize.height,
     canvasSize.width,
     editorCircuit,
+    onRuntimeAddIo,
     onRuntimeAddNode,
     onRuntimeConnect,
     spawnAtCanvasCenter,

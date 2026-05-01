@@ -342,8 +342,12 @@ export function runDeterministicVerifyFromModel(
   );
   const traceByTick = new Map<number, RuntimeSimTraceSample>();
   for (const entry of cases) {
-    traceByTick.set(entry.sample.tick, {
-      tick: entry.sample.tick,
+    // Use vector tick (entry.tick) as the key so the waveform is indexed by
+    // the same tick space that vectors use.  The engine tick (entry.sample.tick)
+    // starts at 1 while vector ticks start at 0 — using the engine tick here
+    // would create an off-by-one that breaks observe→capture→compare.
+    traceByTick.set(entry.tick, {
+      tick: entry.tick,
       signals: { ...entry.sample.signals },
     });
   }
