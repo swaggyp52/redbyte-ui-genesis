@@ -81,7 +81,7 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     );
 
     expect(getByTestId('ide-project-map-pins-header').textContent).toContain('Board pin mapping');
-    expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('export and hardware handoff');
+    expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('building the Vivado package');
     expect(getByTestId('ide-project-map-export-alignment').textContent).toMatch(/Export/i);
     expect(getByTestId('ide-project-mapping-post-verify-hint').textContent).toContain('verified');
   });

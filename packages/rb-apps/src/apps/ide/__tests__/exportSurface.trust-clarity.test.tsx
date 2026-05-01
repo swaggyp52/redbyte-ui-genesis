@@ -296,7 +296,7 @@ describe('ExportSurface trust clarity', () => {
 
     expect(getByTestId('ide-export-provenance-verify').textContent).toContain('Trace only');
     expect(getByTestId('ide-export-trust-reason').textContent).toContain('trace-only run');
-    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('assertion-backed evidence');
+    expect(getByTestId('ide-export-trust-consequence').textContent).toContain('Compare checks');
   });
 
   it('surfaces stale verify evidence instead of old comparison failure after the design changes', () => {

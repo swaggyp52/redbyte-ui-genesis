@@ -212,8 +212,8 @@ export function deriveHardwareExportFailureTruth(
   if (workflowAuthority.compareTraceOnly) {
     return advisory(
       'trace-only',
-      'Complete assertion-backed Verify',
-      'Only a trace run is current. Open Verify to run Compare when you want assertion-backed evidence for this handoff.',
+      'Run Compare checks for current evidence',
+      'Only a trace run is current. Open Verify and run Compare checks when you want current evidence for the export package.',
       'Open Verify',
       'verify'
     );

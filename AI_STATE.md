@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log (state language unification: draft / trusted / proven copy)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `projectTruth.ts`, `exportPackageHandoffModel.ts`, `surfaces/ExportSurface.tsx`, `surfaces/ProjectSurface.tsx`, `__tests__/exportSurface.trust-clarity.test.tsx`, `__tests__/projectSurface.mapping-legitimacy.test.tsx`
+
+**Context:** Unify draft/trusted/proven product-state language so a student never sees contradictory readiness states across surfaces. Phase 1 audit found `assertion-backed evidence`, `graded handoff`, `hardware handoff`, and `Hardware ready` leaking into student-facing copy at six locations. Phase 3 fixed all occurrences in-place; no new helper file was needed. Phase 4 updated two tests whose assertions hardcoded the old wording.
+
+**Changes:**
+- `projectWorkflowAuthority.ts` — trace-only advisory title: `'Complete assertion-backed Verify'` → `'Run Compare checks for current evidence'`; message drops "assertion-backed evidence" in favour of "current evidence for the export package"
+- `projectTruth.ts` — needs-verify detail for trace state: drops "assertion-backed evidence", now says "current evidence before treating any export as trusted"
+- `ExportSurface.tsx` — `verifyPlain` for trace-only, starter scenario, and no-run-yet cases reworded to use canonical vocabulary; RBEV1004 `fix` string drops "assertion-backed evidence"
+- `exportPackageHandoffModel.ts` — PARTIAL subline drops "assertion-backed confidence for Vivado", now says "current evidence for trusted export"
+- `ProjectSurface.tsx` — `heroStatusLabel` when `hardwareReady`: `'Hardware ready'` → `'Trusted export ready'`; `nextStepReason` export/hardware cases drop "hardware handoff" in favour of "open Export to download the trusted Vivado package"; heroStatusMessage stale-export copy and `projectSummary` import-kind copy drop "hardware handoff"; map-pins sub-header drops "export and hardware handoff" → "building the Vivado package"
+- `exportSurface.trust-clarity.test.tsx` — updated assertion to match new trace-only consequence wording (`'Compare checks'` instead of `'assertion-backed evidence'`)
+- `projectSurface.mapping-legitimacy.test.tsx` — updated assertion to match new map-pins sub-header wording (`'building the Vivado package'`)
+
+**Validation:**
+- `pnpm -w exec vitest run projectWorkflowAuthority projectTruth exportSurface` → 45/45 pass
+- `pnpm -w exec vitest run projectHealth projectSurface hardwareSurface exportPackage` → 90/90 pass
+- `pnpm -s build:unified` → pass
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-04-30 (Browser gate reconciliation: Observe / Compare / Map Pins truth)
 
 **Subsystem:** `scripts/gates/_gateHarness.mjs`, `scripts/gates/ide-export-e2e-contract.mjs`, `scripts/gates/ide-export-ready-contract.mjs`, `scripts/gates/ide-project-overview-contract.mjs`, `scripts/gates/ide-verify-reality-contract.mjs`, `scripts/gates/ide-verify-workbench-contract.mjs`, `tests/e2e/ide-mapping-pipeline-coherence.spec.ts`, release/work docs

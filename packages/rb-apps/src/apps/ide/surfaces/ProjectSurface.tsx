@@ -407,7 +407,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       if (!hasSuccessfulExportBundle) {
         return 'No successful export bundle yet. Open Export and use Build Current Bundle when Verify and Map Pins are satisfied.';
       }
-      return 'Your last export no longer matches the current circuit. Open Export to re-export a fresh bundle before hardware handoff.';
+      return 'Your last export no longer matches the current circuit. Open Export to re-export a fresh bundle before downloading the Vivado package.';
     }
     return 'All stages complete - bring up on hardware.';
   }, [
@@ -437,7 +437,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return 'This is your authored circuit. Continue mapping, verify the current behavior, and refresh export when ready.';
     }
     if (projectKind === 'import') {
-      return 'Imported circuit loaded. Review pins, verify the live behavior, and refresh export before hardware handoff.';
+      return 'Imported circuit loaded. Review pins, verify the live behavior, and refresh export before downloading the Vivado package.';
     }
     if (projectKind === 'saved') {
       return 'Saved circuit restored. Pick up at the next required stage before exporting or programming hardware.';
@@ -464,7 +464,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const heroStatusLabel = hardBlockingIssue
     ? 'Action needed'
     : hardwareReady
-      ? 'Hardware ready'
+      ? 'Trusted export ready'
       : exportAvailable
         ? compareDiffers
           ? 'Review compare'
@@ -517,10 +517,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           : 'Add or rerun verification vectors so the current circuit has trusted comparison evidence.';
       case 'export':
         return exportPackageCurrent
-          ? 'Export artifacts already match the current mapped design. Review them or move forward to hardware handoff.'
+          ? 'Export artifacts already match the current mapped design. Review them or open Export to download the trusted Vivado package.'
           : 'Build or refresh the current export bundle before moving to hardware.';
       case 'hardware':
-        return 'Mapping, compare evidence, and export artifacts are current. Continue to hardware handoff from here.';
+        return 'Mapping, compare evidence, and export artifacts are current. Open Export to download the trusted Vivado package.';
       case 'import':
         return 'Bring in HDL or a Vivado ZIP, then continue through Design, Verify, Export, and Hardware from one project record.';
       default:
@@ -1133,7 +1133,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
               <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
                 <strong>Map Pins is the authoritative editing stage.</strong> Project mirrors the saved board binding so
-                you can confirm which top-level ports are ready before export and hardware handoff.
+                you can confirm which top-level ports are ready before building the Vivado package.
               </p>
             </div>
             <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">

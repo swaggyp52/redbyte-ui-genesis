@@ -438,10 +438,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       return 'Checks match, but pin mapping still needs attention before hardware.';
     }
     if (isVerifyStale) return 'Verification is stale - rerun Verify after design edits.';
-    if (isTraceOnly) return 'Observation-only run - save checks if you need assertion-backed evidence.';
-    if (isStarterScenarioFail) return 'Starter scenario only - author vectors for a graded handoff.';
+    if (isTraceOnly) return 'Observation-only run — save observed outputs and run Compare checks for trusted export evidence.';
+    if (isStarterScenarioFail) return 'Auto-generated vectors only — author your own checks in Verify for Compare evidence.';
     if (isNoRunYet) {
-      return 'Verify has not run yet - export is available, but the handoff is still unconfirmed.';
+      return 'Verify has not run yet — draft export is available, but no Compare evidence exists.';
     }
     if (verifyResult?.status === 'fail') {
       return 'Checks differ - saved outputs do not match the live design.';
@@ -2565,7 +2565,7 @@ function buildEvidenceDiagnostics(
     diagnostics.push(createEvidenceDiagnostic({
       code: 'RBEV1004',
       message: 'Latest Verify activity recorded a trace-only run. Export files are still available, but expected-output comparison has not been confirmed yet.',
-      fix: 'Open Verify and run Compare when you want assertion-backed evidence for this export.',
+      fix: 'Open Verify and run Compare checks when you want current evidence for trusted export.',
       severity: 'warning',
     }));
   }

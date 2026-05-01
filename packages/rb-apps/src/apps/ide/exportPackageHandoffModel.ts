@@ -105,7 +105,7 @@ export function derivePackageHandoffSummary(input: {
       ? 'Top RTL, constraints, bench, and manifest were emitted together from the same design and mapping state.'
       : status === 'blocked'
         ? 'Each blocker names what broke, why it matters, and which surface owns the fix.'
-        : 'Re-run Compare or complete mapping when you need assertion-backed confidence for Vivado.';
+        : 'Run Compare checks or complete mapping when you need current evidence for trusted export.';
 
   if (!blocked && input.handoffCondition === 'export-missing') {
     statusLabel = 'READY TO BUILD';

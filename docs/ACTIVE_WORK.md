@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Product-state language unification (draft/trusted/proven copy) | `AI_STATE.md` — Change Log (state language unification) |
 | Batch 1 custom mixed-gate E1 refresh | `out/vivado-cert/custom-projects/b1-mixed/result.md` |
 | Batch 1 custom counter E1 refresh | `out/vivado-cert/custom-projects/b1-counter/result.md` |
 | Batch 1 browser/gate hardening ticket | `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md` |

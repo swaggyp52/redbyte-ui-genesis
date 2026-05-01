@@ -88,7 +88,7 @@ export function deriveProjectTruthSnapshot(
       label: 'Needs Verify',
       detail:
         input.verifyState === 'trace'
-          ? 'The current run is observation-only. Run Compare checks for assertion-backed evidence.'
+          ? 'The current run is observation-only. Run Compare checks for current evidence before treating any export as trusted.'
           : input.verifyState === 'assertions-differ' || input.verifyState === 'verify-error'
             ? 'The latest comparison is not passing. Fix the design or checks, then rerun Verify.'
             : input.verifyState === 'stale'
