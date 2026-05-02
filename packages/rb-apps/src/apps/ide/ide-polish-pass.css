@@ -1127,6 +1127,53 @@
   align-self: flex-start;
 }
 
+/* ───────── §11.5. Project — bridge disclosure (audit pass 2026-05-02) ────────── */
+/* The ProjectBridgePanel was rendering inline below the new dashboard, leaking
+   determinism / fidelity / hardware-ready internals into the home view. It's
+   now wrapped in <details> so it reads as a deliberately-tucked-away section. */
+.ide-root .ide-project-bridge-disclosure {
+  margin-top: 4px;
+  border: 1px solid rgba(120, 156, 196, 0.18);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.015);
+  overflow: hidden;
+}
+.ide-root .ide-project-bridge-disclosure > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 11px 16px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--rb-text-3);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  user-select: none;
+  transition: background 120ms ease, color 120ms ease;
+}
+.ide-root .ide-project-bridge-disclosure > summary::-webkit-details-marker { display: none; }
+.ide-root .ide-project-bridge-disclosure > summary::before {
+  content: '▸';
+  font-size: 9px;
+  color: var(--rb-text-3);
+  transition: transform 120ms ease, color 120ms ease;
+}
+.ide-root .ide-project-bridge-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+  color: var(--rb-accent);
+}
+.ide-root .ide-project-bridge-disclosure > summary:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--rb-text-2);
+}
+.ide-root .ide-project-bridge-disclosure[open] > .ide-project-bridge {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0 0 10px 10px;
+  margin-bottom: 0;
+}
+
 /* ───────── §11. Accessibility / preferences ────────── */
 .ide-root :is(button, a, [role='button'], [role='tab'], [role='link']):focus-visible {
   outline: none;

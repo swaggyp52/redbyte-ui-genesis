@@ -1203,27 +1203,43 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             ]}
           />
         </div>
-        <ProjectBridgePanel
-          projectName={projectName}
-          projectKind={projectKind}
-          sourceExampleId={sourceExampleId}
-          determinismHash={determinismHash}
-          topModuleName={topModuleName || 'top'}
-          simulationTopName={`${topModuleName || 'top'}_tb`}
-          fpgaBoard={fpgaConfig?.board ?? 'Basys3'}
-          fpgaPart={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
-          importFidelity={bridgeFidelity}
-          scenarioAuthority={scenarioAuthority}
-          health={health}
-          readiness={{
-            hasCircuit: readiness.hasCircuit,
-            hasIoMapping: readiness.hasIoMapping,
-            hasVectors: readiness.hasVectors,
-            missingRequiredCount: unmappedRequiredCount,
-          }}
-          hardwareReady={hardwareReady}
-          blockingIssueCount={blockingIssues.length}
-        />
+        {/*
+          Audit pass (2026-05-02): the ProjectBridgePanel is project-internals
+          (hash, fidelity, scenarioAuthority, hardwareReady flag, blocking-
+          issue count). Students should not see a wall of internals on the
+          home surface. Tuck it inside a collapsed disclosure so its testids
+          remain in the DOM (tests are unaffected) but the surface reads as
+          a project home, not a diagnostics dump.
+        */}
+        <details
+          className="ide-project-bridge-disclosure"
+          data-testid="ide-project-bridge-disclosure"
+        >
+          <summary className="ide-project-bridge-disclosure-summary">
+            Project bridge &amp; determinism
+          </summary>
+          <ProjectBridgePanel
+            projectName={projectName}
+            projectKind={projectKind}
+            sourceExampleId={sourceExampleId}
+            determinismHash={determinismHash}
+            topModuleName={topModuleName || 'top'}
+            simulationTopName={`${topModuleName || 'top'}_tb`}
+            fpgaBoard={fpgaConfig?.board ?? 'Basys3'}
+            fpgaPart={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+            importFidelity={bridgeFidelity}
+            scenarioAuthority={scenarioAuthority}
+            health={health}
+            readiness={{
+              hasCircuit: readiness.hasCircuit,
+              hasIoMapping: readiness.hasIoMapping,
+              hasVectors: readiness.hasVectors,
+              missingRequiredCount: unmappedRequiredCount,
+            }}
+            hardwareReady={hardwareReady}
+            blockingIssueCount={blockingIssues.length}
+          />
+        </details>
         <ProjectWarningsPanel
           issues={blockingIssues}
           onNavigateFix={handleProjectModeAction}
@@ -1245,10 +1261,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
           <header className="ide-project-map-pins-header" data-testid="ide-project-map-pins-header">
             <div>
-              <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping (Basys3)</h3>
+              <h3 className="ide-export-section-header-title ide-project-map-pins-title">Board pin mapping</h3>
               <p className="ide-project-map-pins-sub" data-testid="ide-project-map-pipeline-copy">
-                <strong>Map Pins is the authoritative editing stage.</strong> Project mirrors the saved board binding so
-                you can confirm which top-level ports are ready before building the Vivado package.
+                Project mirrors the saved board binding before building the Vivado package.
+                Use Map Pins to assign or change pins.
               </p>
             </div>
             <div className="ide-project-map-pins-export-note" data-testid="ide-project-map-export-alignment">
