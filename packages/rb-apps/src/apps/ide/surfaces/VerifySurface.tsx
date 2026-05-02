@@ -4089,6 +4089,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     verifyMode,
   ]);
 
+  const scenarioBuilderModeSummary = useMemo(() => {
+    if (!isSequentialRun || !effectiveClockPolicy) {
+      return 'Combinational no clock';
+    }
+    if (effectiveClockPolicy.overrideMode === 'auto') {
+      return effectiveClockPolicy.sourceType === 'board-clock' ? 'Auto board clock' : 'Auto clock';
+    }
+    return effectiveClockPolicy.overrideMode === 'manual-pulses' ? 'Manual pulses' : 'Custom pattern';
+  }, [effectiveClockPolicy, isSequentialRun]);
+
+  const scenarioBuilderModeHint = useMemo(() => {
+    if (!isSequentialRun || !effectiveClockPolicy) {
+      return 'Combinational checks use data inputs only; no clock edits are required.';
+    }
+    if (effectiveClockPolicy.overrideMode === 'auto') {
+      if (effectiveClockPolicy.sourceType === 'board-clock' && boardClockBinding) {
+        return `${boardClockBinding.alias} runs automatically during Verify and stays out of the editable stimulus rows.`;
+      }
+      return 'Clock cycles are generated automatically during Verify and do not require manual painting.';
+    }
+    if (effectiveClockPolicy.overrideMode === 'manual-pulses') {
+      return 'Manual pulses mode exposes the clock lane for explicit debug pulses and hand-edited edges.';
+    }
+    return 'Custom pattern mode uses the clock lane so you can paint the exact timing sequence.';
+  }, [boardClockBinding, effectiveClockPolicy, isSequentialRun]);
+
   return (
     <IdeSurfaceLayout
       mode="verify"
@@ -4771,6 +4797,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
+          authoringModeSummary={scenarioBuilderModeSummary}
+          authoringModeHint={scenarioBuilderModeHint}
           inputFields={stimulusPanelInputFields}
           outputFields={outputFields}
           authoredVectors={authoredVectors}

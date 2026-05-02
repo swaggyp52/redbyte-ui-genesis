@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup — UI-only clarity pass)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, targeted Verify tests
+
+**Context:** Focused readability pass for Verify stimulus authoring. Scope was intentionally UI-only and constrained to preserve clock/runtime/export semantics: no changes to clock policy detection/materialization behavior, manual override semantics, Verify execution semantics, observe/compare semantics, or deterministic export evidence.
+
+**Changes:**
+- Added a compact stimulus header titled `Test stimulus` in first-run and post-run workbench states.
+- Added mode-aware summary copy (`Auto board clock`, `Manual pulses`, `Custom pattern`, `Combinational no clock`) sourced from `VerifySurface` display-only derivation.
+- Added explicit section guidance in `ScenarioBuilderPanel`: Clock / timing, Inputs you drive, Expected outputs, Cases / ticks, Advanced tools.
+- Added Compare-check explanation copy in the expected-outputs guidance block.
+- Added scoped Verify styling for the new header/guidance primitives in `ide-polish-pass.css`.
+- Added/updated tests:
+  - `ScenarioBuilderPanel.progressiveDisclosure.test.tsx`
+  - `verifySurface.boardClockAutoMode.test.tsx`
+- Minor accessibility tidy in `ScenarioBuilderPanel`: labeled sweep preset select and conditional ARIA prop spread on workbench toggle.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx` -> 6 / 6 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts` -> 11 / 11 pass
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` -> 1 / 1 pass
+- `pnpm -w exec vitest run --reporter=basic packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts` -> 22 / 22 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm -s build:unified` -> build/merge ran, but final root `dist/` verification failed because Windows held a lock on `dist/`; merge output was written to `dist.staged`
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (Board-clock browser gate hardening — Playwright proof spec)
 
 **Subsystem:** `tests/e2e/board-clock-browser-proof.spec.ts`

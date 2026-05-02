@@ -70,6 +70,8 @@ export interface ScenarioBuilderPanelProps {
   clockLane?: StimulusClockLaneConfig;
   stimulusAssist?: React.ReactNode;
   runSummary?: React.ReactNode;
+  authoringModeSummary?: string;
+  authoringModeHint?: string;
 }
 
 export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
@@ -95,6 +97,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   autoVectorBannerDismissed,
   onDismissAutoVectorBanner,
   isFirstRun,
+  isSequential = false,
   isUsingFallbackSignals = false,
   onGoToHardware,
   detailsRef,
@@ -105,6 +108,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   clockLane,
   stimulusAssist,
   runSummary,
+  authoringModeSummary,
+  authoringModeHint,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -115,6 +120,68 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   const canAutoGenerate = starterInputCount > 0 && starterInputCount <= 6;
   const selectedTickLabel = selectedTick != null ? `t${selectedTick}` : 'No case selected';
   const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
+  const effectiveModeSummary = authoringModeSummary ?? (isSequential ? 'Clocked stimulus' : 'Combinational no clock');
+  const compareCheckCopy = showsAssertedExpectedCells
+    ? 'Expected outputs are active Compare checks.'
+    : 'Add expected outputs to turn on Compare checks. Empty cells stay Observe-only.';
+  const inputSummary =
+    starterInputCount > 0
+      ? `${starterInputCount} signal${starterInputCount === 1 ? '' : 's'} editable in the table.`
+      : 'No data inputs are currently mapped.';
+  const outputSummary =
+    outputFields.length > 0
+      ? `${outputFields.length} output signal${outputFields.length === 1 ? '' : 's'} available for checks.`
+      : 'No outputs are currently mapped.';
+
+  const renderStimulusHeader = (isWorkbench: boolean) => (
+    <div
+      className={`ide-verify-stimulus-header${isWorkbench ? ' ide-verify-stimulus-header--workbench' : ''}`}
+      data-testid="ide-verify-stimulus-header"
+    >
+      <div className="ide-verify-stimulus-header-main">
+        <h3 className="ide-verify-stimulus-header-title" data-testid="ide-verify-stimulus-title">
+          Test stimulus
+        </h3>
+        <p className="ide-verify-stimulus-header-copy" data-testid="ide-verify-stimulus-summary">
+          Author cases by setting input values, then add expected outputs only where Compare should check behavior.
+        </p>
+      </div>
+      <div className="ide-verify-stimulus-mode-summary" data-testid="ide-verify-stimulus-mode-summary">
+        <span className="ide-verify-stimulus-mode-label">Mode</span>
+        <span className="ide-verify-stimulus-mode-value">{effectiveModeSummary}</span>
+      </div>
+      {authoringModeHint ? (
+        <p className="ide-verify-stimulus-mode-hint" data-testid="ide-verify-stimulus-mode-hint">
+          {authoringModeHint}
+        </p>
+      ) : null}
+      <div className="ide-verify-stimulus-guidance" data-testid="ide-verify-stimulus-guidance">
+        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-clock">
+          <strong>Clock / timing</strong>
+          <span>{isSequential ? 'Clock behavior is authored in the highlighted timing lane.' : 'No clock lane is required for combinational checks.'}</span>
+        </div>
+        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-inputs">
+          <strong>Inputs you drive</strong>
+          <span>{inputSummary}</span>
+        </div>
+        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-expected">
+          <strong>Expected outputs</strong>
+          <span data-testid="ide-verify-stimulus-compare-checks-copy">{compareCheckCopy}</span>
+        </div>
+        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-cases">
+          <strong>Cases / ticks</strong>
+          <span>Use case headers to select, duplicate, or remove rows while preserving tick order.</span>
+        </div>
+        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-advanced">
+          <strong>Advanced tools</strong>
+          <span>Project vectors, sweep presets, and TSV tools stay collapsed until you open Advanced tools.</span>
+        </div>
+      </div>
+      <p className="ide-verify-stimulus-outputs-summary" data-testid="ide-verify-stimulus-outputs-summary">
+        {outputSummary}
+      </p>
+    </div>
+  );
 
   const secondaryTools = (
     <>
@@ -147,6 +214,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         <select
           className="ide-stimulus-target-select"
           value={sweepPreset}
+          aria-label="Sweep preset"
           onChange={(event) =>
             onSweepPresetChange(
               event.target.value === 'toggle-sw0'
@@ -239,8 +307,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         className="ide-verify-scenario-builder-details ide-verify-scenario-builder-details--first-run"
         data-testid="ide-verify-empty-state"
       >
+        {renderStimulusHeader(false)}
         <div className="ide-verify-testbench-zone-header">
-          <span className="ide-verify-empty-label">Build testbench</span>
+          <span className="ide-verify-empty-label">Test stimulus</span>
           {hasVectors && !isUsingFallbackSignals ? (
             <span className="ide-verify-testbench-vector-count">
               {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''}
@@ -251,7 +320,9 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
               ? 'Map your circuit I/O before authoring a real testbench.'
               : hasVectors
                 ? 'Edit input stimulus, clock edges, and expected outputs in one table.'
-                : 'Click cells to build input stimulus, add a rising edge, and set expected outputs inline.'}
+                : effectiveModeSummary === 'Auto board clock'
+                  ? 'Set data inputs and expected outputs first. The board clock runs automatically during Verify.'
+                  : 'Click cells to build input stimulus, add a rising edge, and set expected outputs inline.'}
           </span>
         </div>
 
@@ -368,6 +439,14 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     handleWorkbenchHeaderToggle();
   };
 
+  const workbenchHeaderA11yProps = allowWorkbenchCollapse
+    ? ({
+        role: 'button' as const,
+        tabIndex: 0,
+        'aria-expanded': effectiveWorkbenchExpanded,
+      } as const)
+    : {};
+
   const collapsedWorkbenchSummary = showsAssertedExpectedCells
     ? 'Stimulus is tucked away. Reopen to edit cases, clock edges, or saved checks.'
     : 'Stimulus is tucked away. Reopen to edit cases or bring in project vectors without leaving the waveform.';
@@ -382,9 +461,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       <div
         className="ide-verify-scenario-builder-summary ide-verify-workbench-header"
         data-testid="ide-verify-workbench-toggle"
-        role={allowWorkbenchCollapse ? 'button' : undefined}
-        tabIndex={allowWorkbenchCollapse ? 0 : undefined}
-        aria-expanded={allowWorkbenchCollapse ? effectiveWorkbenchExpanded : undefined}
+        {...workbenchHeaderA11yProps}
         onClick={(event) => {
           event.preventDefault();
           if (allowWorkbenchCollapse) {
@@ -398,7 +475,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
             {effectiveWorkbenchExpanded ? '▼' : '▸'}
           </span>
           <div className="ide-verify-workbench-title-group">
-            <span className="ide-verify-workbench-toggle-label">Build testbench</span>
+            <span className="ide-verify-workbench-toggle-label">Test stimulus</span>
             <span
               className="ide-verify-workbench-toggle-copy"
               data-testid="ide-verify-workbench-summary-copy"
@@ -475,6 +552,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
 
       {effectiveWorkbenchExpanded ? (
         <div className="ide-verify-workbench-body" data-testid="ide-verify-workbench-body">
+          {renderStimulusHeader(true)}
           {stimulusAssist ? (
             <div className="ide-verify-stimulus-assist-slot ide-verify-stimulus-assist-slot--inline">
               {stimulusAssist}

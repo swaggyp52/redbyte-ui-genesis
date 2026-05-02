@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Verify stimulus usability cleanup (UI-only): compact `Test stimulus` header, mode summary, section guidance, and compare-check explainer with board-clock/browser/export proof rerun | `AI_STATE.md` — Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup) |
 | Board-clock browser proof: auto `CLK100MHZ`/`W5` detected, no manual CLK row, counter waveform advances, manual-pulses override works, `clock_gen` process in exported VHDL | `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md` |
 | Board-clock Verify fidelity pass: auto `CLK100MHZ` / `W5` runtime policy, Verify UI clock mode, free-running VHDL clock process, targeted regressions | `AI_STATE.md` — Change Log 2026-05-02 (Board-clock verify fidelity pass) |
 | UI audit pass: Project bridge disclosure, Design idle inspector overview, Verify mode explainer, CSS debt note | `AI_STATE.md` — Change Log 2026-05-02 (UI audit pass) |
@@ -88,11 +89,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | Verify ScenarioBuilderPanel UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | local (uncommitted) |
 | Done | Board-clock Verify now auto-runs Basys3 `CLK100MHZ` / `W5`, preserves manual overrides, and exports a free-running VHDL board-clock process | `2e47abf9..6907453c` |
 | Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
 | Done | Verify command bar now carries the inline Observe / Compare mode explainer beside the next-run selector | `713d7037` |
 | Done | Design idle inspector now uses a Design overview card with live Inputs / Outputs / Nodes / Wires counts and empty-canvas branch | `7d88f927` |
-| Done | Project tucks bridge internals behind a collapsed disclosure so the dashboard/home surface stays primary | `5af8f041` |
 
 ---
 

@@ -4,14 +4,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import { ScenarioBuilderPanel } from '../surfaces/ScenarioBuilderPanel';
 
-function renderPanel() {
+type RenderPanelOptions = {
+  authoringModeSummary?: string;
+  authoringModeHint?: string;
+  clockLane?: {
+    fieldId: string;
+    badge: string;
+    detail?: string;
+    count: number;
+    onCountChange: (count: number) => void;
+    onApplyPattern: (pattern: 'alternating' | 'pulse' | 'hold-low' | 'hold-high') => void;
+  };
+  inputFields?: Array<{ id: string; label: string }>;
+  authoredVectors?: Array<{ id: string; tick: number; inputs: Record<string, 0 | 1>; expected: Record<string, 0 | 1> }>;
+};
+
+function renderPanel(options: RenderPanelOptions = {}) {
   return render(
     <ScenarioBuilderPanel
-      inputFields={[{ id: 'sw0', label: 'SW0' }]}
+      inputFields={options.inputFields ?? [{ id: 'sw0', label: 'SW0' }]}
       outputFields={[{ id: 'ld0', label: 'LD0' }]}
-      authoredVectors={[
-        { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: {} },
-      ]}
+      authoredVectors={
+        options.authoredVectors ?? [
+          { id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: {} },
+        ]
+      }
       totalVectorCount={1}
       hasAssertedExpectedCells={false}
       draftTick={0}
@@ -44,11 +61,39 @@ function renderPanel() {
       isFirstRun={false}
       initialExpanded={true}
       onVectorsChange={vi.fn()}
+      authoringModeSummary={options.authoringModeSummary}
+      authoringModeHint={options.authoringModeHint}
+      clockLane={options.clockLane}
     />
   );
 }
 
 describe('ScenarioBuilderPanel progressive disclosure', () => {
+  it('shows the Test stimulus header, mode summary, and authoring guidance sections', () => {
+    const { getByTestId } = renderPanel({
+      authoringModeSummary: 'Auto board clock',
+      authoringModeHint:
+        'CLK100MHZ runs automatically during Verify and stays out of the editable stimulus rows.',
+    });
+
+    expect(getByTestId('ide-verify-stimulus-title').textContent).toBe('Test stimulus');
+    expect(getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain(
+      'Auto board clock'
+    );
+    expect(getByTestId('ide-verify-stimulus-guide-clock').textContent).toContain('Clock / timing');
+    expect(getByTestId('ide-verify-stimulus-guide-inputs').textContent).toContain('Inputs you drive');
+    expect(getByTestId('ide-verify-stimulus-guide-expected').textContent).toContain(
+      'Expected outputs'
+    );
+    expect(getByTestId('ide-verify-stimulus-guide-cases').textContent).toContain('Cases / ticks');
+    expect(getByTestId('ide-verify-stimulus-guide-advanced').textContent).toContain(
+      'Advanced tools'
+    );
+    expect(getByTestId('ide-verify-stimulus-compare-checks-copy').textContent).toContain(
+      'Compare checks'
+    );
+  });
+
   it('keeps advanced authoring helpers hidden until Advanced tools opens', () => {
     const { getByTestId, queryByTestId, queryByText } = renderPanel();
 
@@ -73,5 +118,33 @@ describe('ScenarioBuilderPanel progressive disclosure', () => {
     expect(getByTestId('ide-verify-open-project-vectors')).toBeTruthy();
     expect(getByTestId('ide-verify-sweep-preset')).toBeTruthy();
     expect(getByTestId('ide-verify-generate-sweep-vectors')).toBeTruthy();
+  });
+
+  it('shows a manual clock row only when a clock lane config is provided', () => {
+    const autoView = renderPanel({
+      authoringModeSummary: 'Auto board clock',
+      authoredVectors: [{ id: 'vec-0', tick: 0, inputs: { sw0: 0 }, expected: {} }],
+    });
+    expect(autoView.queryByTestId('ide-stimulus-clock-row')).toBeNull();
+    autoView.unmount();
+
+    const manualView = renderPanel({
+      authoringModeSummary: 'Manual pulses',
+      inputFields: [
+        { id: 'clk', label: 'CLK' },
+        { id: 'sw0', label: 'SW0' },
+      ],
+      authoredVectors: [{ id: 'vec-0', tick: 0, inputs: { clk: 0, sw0: 0 }, expected: {} }],
+      clockLane: {
+        fieldId: 'clk',
+        badge: 'Clock',
+        count: 4,
+        onCountChange: vi.fn(),
+        onApplyPattern: vi.fn(),
+      },
+    });
+
+    expect(manualView.getByTestId('ide-stimulus-clock-row')).toBeTruthy();
+    expect(manualView.getByTestId('ide-stimulus-clock-pattern-pulse')).toBeTruthy();
   });
 });

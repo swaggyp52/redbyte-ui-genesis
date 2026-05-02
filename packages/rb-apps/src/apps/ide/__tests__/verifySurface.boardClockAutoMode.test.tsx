@@ -56,6 +56,8 @@ describe('VerifySurface board clock auto mode', () => {
     );
 
     expect(view.getByTestId('ide-verify-clock-mode-summary').textContent).toContain('Auto board clock');
+    expect(view.getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain('Auto board clock');
+    expect(view.getByTestId('ide-verify-stimulus-title').textContent).toContain('Test stimulus');
     expect(view.getByTestId('ide-verify-clock-policy-copy').textContent).toContain(
       'auto-toggle the Basys3 board clock'
     );
@@ -106,6 +108,7 @@ describe('VerifySurface board clock auto mode', () => {
     fireEvent.click(view.getByTestId('ide-verify-clock-mode-manual'));
 
     expect(view.getByTestId('ide-verify-clock-mode-summary').textContent).toContain('Manual pulses');
+    expect(view.getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain('Manual pulses');
     expect(view.getByTestId('ide-verify-clock-manual-warning').textContent).toContain(
       'Manual clock source'
     );
