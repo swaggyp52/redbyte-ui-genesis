@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: other
-updated: 2026-04-13
+updated: 2026-05-02
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Project Surface]]"
@@ -32,7 +32,7 @@ The inner RedByte workflow is:
 4. Design receives selected run context back when the student needs to explain what happened
 5. Hardware and Export sit downstream of that loop; they summarize readiness and handoff, not the core debug interaction itself
 
-The Design ↔ Verify handoff contract is:
+The Design â†” Verify handoff contract is:
 
 - Verify sends Design the currently selected tick plus the strongest available signal focus or failure context
 - Design treats that handoff as authoritative replay context until the circuit actually changes
@@ -49,9 +49,10 @@ The student-facing questions are intentionally split:
 
 - Do not make students rebuild structural context in Verify or waveform context in Design.
 - Verify is stimulus-first and evidence-first; compare authoring is an explicit branch, not the default identity of the loop.
+- Board-backed clocks such as `CLK100MHZ` / `W5` are Verify-owned timing policy by default, not ordinary manual stimulus rows. Manual pulses stay available only as an explicit override for switch/button-clocked designs.
 - Design must visibly acknowledge arrival from Verify when replay context exists.
 - Replay authority ends on real circuit mutation. Stale breadcrumbs may remain for orientation, but live Design truth retakes ownership immediately.
-- Project, Hardware, and Export may report loop freshness and next actions, but they must not duplicate the inner Design ↔ Verify control model.
+- Project, Hardware, and Export may report loop freshness and next actions, but they must not duplicate the inner Design â†” Verify control model.
 - If screen space is constrained, preserve the loop's core authorities first: Design canvas/selection and Verify stimulus/waveform/tick context.
 
 ## Consumption Sites

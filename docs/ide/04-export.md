@@ -65,6 +65,8 @@ Structurally valid packages may still be downloaded as draft Vivado packages, bu
 Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
 When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.
 
+For Basys3 board-clock exports, generated `testbench.vhd` now includes a dedicated free-running clock process for the detected board clock port (for example `CLK100MHZ` on `W5`) and samples stimulus against `rising_edge(...)` waits instead of requiring manual clock assignments in every vector. The current repo only ships the VHDL testbench generation path; there is no separate Verilog testbench generator to update in this slice.
+
 ## Batch 1 Product Audit Notes (2026-04-30)
 
 - Supposed to do: generate real Vivado artifacts while making draft vs trusted handoff impossible to confuse.

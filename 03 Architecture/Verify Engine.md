@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: verify
-updated: 2026-04-15
+updated: 2026-05-02
 related:
   - "[[Design Surface]]"
   - "[[Verify Design Loop]]"
@@ -32,6 +32,14 @@ Verify currently spans three layers:
 3. `IdeApp.tsx` + `surfaces/VerifySurface.tsx` decide which hash, vectors, and banners the student actually sees.
 
 The deterministic engine itself does run against a fresh circuit + IO snapshot. The weak spots are the layers above it: freshness is still computed in multiple ways and the scenario/session model is only partially live outside the normal shell path. The latest Phase 6 slice made the remaining local Verify toggle explicit authoring intent: `VerifySurface` now uses `nextRunUsesAssertions` for next-run copy/preflight/wiring, while current-run meaning stays on `VerifySessionStatus` plus persisted `runKind`. `READY` / `BLOCKED` now survive only as a draft-only presentation shim.
+
+The latest board-clock fidelity slice formalized clock execution as a shared `VerifyClockPolicy` instead of leaving Basys3 board clocks to UI heuristics or manual pulse rows:
+
+- `detectVerifyClockPolicy(...)` now treats Basys3 `CLK100MHZ` / `W5` as an authoritative board clock, keeps switch/button-driven timing rows in manual mode, and preserves explicit clock-component detection.
+- `projectRuntime.runVerification(...)` materializes runtime vectors from authored data inputs plus the effective clock policy before the deterministic runner executes, so board-clocked sequential designs now advance without requiring authored `CLK100MHZ` pulses.
+- Auto board-clock runs still keep one authority chain: authored data inputs -> materialized runtime vectors -> deterministic report -> waveform -> Verify → Design replay.
+- Manual pulses and custom patterns remain an explicit override/debug path for labs that intentionally clock from a switch or button.
+- The empty-vector/default-state path is now covered directly: auto board-clock mode can generate deterministic startup cycles and reset sequencing even before the student authors manual pulse rows.
 
 The latest manual-event sequencer-authority slice made step intent first-class in the runtime workflow:
 

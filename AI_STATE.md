@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-02 (Board-clock verify fidelity pass — auto CLK100MHZ/W5)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/verifyClockPolicy.ts`, `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`, targeted Verify/export tests, Verify/export docs
+
+**Context:** Sequential Basys3 designs mapped to the real board clock were still flat in Verify unless the student hand-authored `CLK100MHZ` pulse rows. That contradicted the Basys3 hardware truth (`CLK100MHZ` on `W5` is a free-running 100 MHz oscillator) and also diverged from normal Vivado testbench practice. This slice makes board-clocked Verify runs auto-toggle by default while preserving manual pulses as an explicit override/debug mode.
+
+**Changes:**
+- Added `verifyClockPolicy.ts` as the shared contract for clock detection and execution policy: signal id/label, source type (`board-clock`, `explicit-clock-component`, `manual`, `inferred`), override mode (`auto`, `manual-pulses`, `custom-pattern`), edge, duty cycle, run cycles, frequency/period, and reset behavior.
+- Clock detection now treats Basys3 `CLK100MHZ` / `W5` as the authoritative board clock, keeps switch/button-driven timing rows in manual mode, and formalizes explicit clock-component detection instead of leaving the UI/runtime on separate heuristics.
+- `projectRuntime.runVerification(...)` now detects/materializes the effective clock policy before deterministic Verify executes. In auto board-clock mode it synthesizes the runtime vectors from the student-authored data inputs plus an alternating clock pattern, carries data inputs forward across cycles, applies the reset hint sequence when available, and records the chosen policy on the persisted verify run.
+- `VerifySurface.tsx` now presents a real clock-policy panel for sequential runs: detected clock identity, mode, reset summary, cycle count, and explicit Auto board clock / Manual pulses / Custom pattern controls. In auto board-clock mode the board clock is no longer treated as a manual stimulus row and the guidance copy tells students RedByte will toggle it for them.
+- Basys3 VHDL testbench generation now emits a dedicated free-running `clock_gen` process for sequential board-clock ports and changes per-vector sequential stimulus to `wait until rising_edge(...)` sampling, rather than reassigning the clock inside every vector row.
+- Updated the fixture-03 sequential parity contract to the new free-running clock truth and added targeted tests for detection, auto-clock materialization, empty-vector default runs, Verify UI auto/manual mode behavior, runtime counter/DFF advancement, and exported board-clock testbench generation.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts packages/rb-apps/src/__tests__/from-scratch-basys3-cert-fixtures.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockSemantics.test.tsx` -> 42 / 42 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm -s build:unified` -> app build + merge staging succeeded, but final root `dist/` verification failed because Windows had `dist/` locked by another process; no compile/type error was reported in the touched slice itself
+
+**Behavior preserved:** combinational Verify still runs without inventing a clock policy, switch/button-driven clock labs still have manual pulse authoring as the supported path, and existing Basys3 export/XDC clock-constraint tests still pass.
+
+**Remaining limitations:** the repo currently ships only the VHDL testbench generator path (no separate Verilog generator to update), browser/manual bench rehearsal of the new auto-board-clock student flow was not rerun in this slice, and the unified build wrapper still depends on releasing the locked root `dist/` directory.
+
+**Code commits in this slice:** `2e47abf9`, `4236d431`, `dac91c45`, `6907453c`
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (UI audit pass — Project bridge tuck, Design idle inspector, Verify mode explainer)
 
 **Subsystem:** `surfaces/ProjectSurface.tsx`, `surfaces/DesignSurface.tsx`, `surfaces/verify/VerifyCommandBar.tsx`, `ide-polish-pass.css`

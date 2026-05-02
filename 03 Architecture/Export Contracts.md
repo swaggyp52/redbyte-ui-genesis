@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: export
-updated: 2026-04-16
+updated: 2026-05-02
 related:
   - "[[Connection Model]]"
   - "[[Hardware Surface]]"
@@ -46,6 +46,7 @@ Export is the deterministic handoff surface.
 - Export should read as the end of the workflow, not as another authoring surface
 
 - `top.vhd` entity ports are the naming authority for `testbench.vhd` component ports and signal declarations.
+- For board-clocked sequential rows, `testbench.vhd` owns the free-running clock process. Per-vector stimulus must wait on `rising_edge(...)` for the resolved board-clock port instead of reassigning the clock inside every vector body.
 - Basys3 top-level port names derived from labels must already be legal VHDL basic identifiers before they reach `top.vhd`, `top.xdc`, or downstream Vivado packaging.
 - `testbench.vhd` may come from either:
   - the runtime-backed scenario path in `buildExportViewModel.ts`

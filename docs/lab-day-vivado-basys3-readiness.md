@@ -34,6 +34,7 @@ Current live-bench truth on 2026-04-29:
 - Deterministic Verify for:
   - combinational circuits
   - `DFlipFlop`-based clocked circuits using the existing `clocked_macro` path
+  - Basys3 board-clocked sequential runs that map the active clock to `CLK100MHZ` / `W5`; Verify now auto-toggles that board clock by default, while manual pulse rows remain an explicit override for switch/button-clocked labs
 - Basys3 IO mapping and export for:
   - `CLK100MHZ`
   - `SW*`
@@ -98,7 +99,7 @@ Reference ZIP inspected from `C:\Users\conno\Downloads\swaggy.zip`.
 | Root project file | `swaggy/swaggy.xpr` | `<slug>/<slug>.xpr` | Must match pattern only; current RedByte pattern is correct |
 | `.srcs` HDL path | `swaggy.srcs/sources_1/new/top.vhd` | `<slug>.srcs/sources_1/new/top.vhd` | Must match; current RedByte export matches |
 | `.srcs` constraints path | `swaggy.srcs/constrs_1/new/basys3.xdc` | `<slug>.srcs/constrs_1/new/top.xdc` | Keep `top.xdc` canonical across the flat kit, `.xpr`, and `vivado_import.tcl` |
-| Simulation files | empty `sim_1` file set in `.xpr`; no bundled simulation source | optional `sim_1/new/testbench.vhd` when vectors exist | Allowed difference |
+| Simulation files | empty `sim_1` file set in `.xpr`; no bundled simulation source | optional `sim_1/new/testbench.vhd` when vectors exist; Basys3 board-clock rows now emit a free-running clock process plus `rising_edge(...)` waits | Allowed difference |
 | `.xpr` metadata | large Vivado-generated file with absolute machine paths | deterministic file using `$PPRDIR/$PSRCDIR` macros | RedByte behavior is preferred; do not regress to machine paths |
 | `.xpr` part/top | `xc7a35tcpg236-1`, `TopModule=top` | same by default, now student-overridable from Project | Must remain explicit and consistent |
 | `.xpr` board part | empty `<BoardPart>` | explicit Basys3 board part | Allowed difference |
@@ -180,6 +181,6 @@ Run this on the actual lab machine:
 8. Run Synthesis, Implementation, and Generate Bitstream.
 9. Program the Basys3 and confirm hardware behavior.
 10. Import the same ZIP back into RedByte and confirm the fidelity badge and project content are correct.
-11. Repeat with one sequential design using `CLK100MHZ` so `create_clock` is emitted for `W5`.
+11. Repeat with one sequential design using `CLK100MHZ` so Verify auto-runs the board clock without manual pulse rows, `create_clock` is emitted for `W5`, and the exported `testbench.vhd` shows the free-running board-clock process.
 
 Lab-day release is blocked until both the combinational and sequential proofs pass on real Vivado + Basys3.

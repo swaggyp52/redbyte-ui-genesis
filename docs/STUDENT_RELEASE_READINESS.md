@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-30
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-04-30
+**Last updated:** 2026-05-02
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -39,7 +39,7 @@ Proven on this lab machine unless noted:
 |--------------------|----|----|----|----|----|--------------|
 | Classroom golden `golden-basys3-switch-and` (SW0∧SW1→LED0) | yes | yes | **yes** | **yes** (`vivado_program_golden_and_2026-04-29.log`) | pending | Fixture blocker fixed; board was reprogrammed for manual four-case confirmation. |
 | IDE `signal-tour` (4 SW → 4 LED) | yes | yes | **yes** | **yes** (`vivado_program_signal_tour_2026-04-29.log`) | **yes** | User-confirmed bench behavior on 2026-04-29; proof: `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md`. |
-| IDE `two-bit-counter` (Basys3 `CLK100MHZ`→W5, SW0, BTNC, LD0–1) | yes | yes | **yes** (`vivado_batch_two_bit_counter_e2e.log`) | **yes** (`vivado_program_two_bit_counter_e2_2026-04-23.log`; `hw_probe` exit 0 same session) | *pending* — TA runs §3 checklist on hardware | Proof + E2 detail: `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`. |
+| IDE `two-bit-counter` (Basys3 `CLK100MHZ`→W5, SW0, BTNC, LD0–1) | yes | yes | **yes** (`vivado_batch_two_bit_counter_e2e.log`) | **yes** (`vivado_program_two_bit_counter_e2_2026-04-23.log`; `hw_probe` exit 0 same session) | *pending* — TA runs §3 checklist on hardware | Proof + E2 detail: `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`. Verify now auto-runs `CLK100MHZ` in the IDE and exported `testbench.vhd` drives the board clock automatically. |
 
 ### 2b. From-scratch authoring (blank project — not gallery load)
 
@@ -110,7 +110,7 @@ Full command reference: `scripts/vivado/README.md`.
 
 ## 5. Exact claim after this slice
 
-**Safe to say:** For **combinational** and **sequential** reference rows **and** for **blank-shaped** certification fixtures (`fs-comb-*`, `fs-seq-*`), RedByte-generated Open Project exports complete **real Vivado synthesis, implementation, and bitstream generation** on Vivado 2024.2 for Basys3 (`xc7a35tcpg236-1`), with logs under `out/vivado-cert/`. **From-scratch** student authoring is **checklist-aligned** with those fixtures; arbitrary student complexity remains fenced.
+**Safe to say:** For **combinational** and **sequential** reference rows **and** for **blank-shaped** certification fixtures (`fs-comb-*`, `fs-seq-*`), RedByte-generated Open Project exports complete **real Vivado synthesis, implementation, and bitstream generation** on Vivado 2024.2 for Basys3 (`xc7a35tcpg236-1`), with logs under `out/vivado-cert/`. In the IDE, Basys3 board-clocked Verify runs now auto-toggle `CLK100MHZ` / `W5` by default, and exported `testbench.vhd` includes a matching free-running board-clock process for those sequential rows. **From-scratch** student authoring is **checklist-aligned** with those fixtures; arbitrary student complexity remains fenced.
 
 **Not yet safe to say:** “Every starter in the gallery is board-certified” or “Lab 8 / SSD-heavy labs are turnkey” without filling matrix rows and E2/E3 proof.
 

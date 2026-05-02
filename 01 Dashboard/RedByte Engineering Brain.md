@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-26
+updated: 2026-05-02
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -87,12 +87,13 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 | Status | Item |
 |--------|------|
 | **Now** | E2/E3 matrix completion — needs connected Basys3 bench |
-| **Now** | UI continuity hardening — keep Project / Design / Verify docs and tests aligned with the latest dashboard/workbench/evidence pass |
+| **Now** | Board-clock Verify rehearsal — keep docs/tests aligned with the new `CLK100MHZ` / `W5` auto-board-clock path and capture explicit browser/bench evidence |
 | **Next** | Fill certification matrix for `golden-basys3-switch-and` and custom rows (E2+E3) |
 | **Next** | Add snapshot regression coverage before `ide-root.css` pruning or broader density cleanup |
 | **Blocked** | E2/E3 proof requires connected bench (Vivado 2024.2 + Digilent cable) |
 | **Waiting** | Hardware / Export density follow-up after coverage exists |
 | **Waiting** | ScenarioBuilderPanel density follow-up after coverage exists |
+| **Done** | Board-clock Verify fidelity — Basys3 `CLK100MHZ` / `W5` now auto-runs in Verify and exported VHDL testbenches own a free-running board-clock process |
 | **Done** | Security-lock import/export spine hardening (`845cffdd`) |
 | **Done** | Vivado export fidelity hardening (`be52fb09`) |
 | **Done** | Board clock semantics — CLK100MHZ→W5 canonical (`69e89999`) |
