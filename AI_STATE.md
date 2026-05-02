@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-05-02 (Board-clock browser proof — Verify auto clock + Export testbench)
+
+**Subsystem:** Browser workflow / `artifacts/browser-proof-clock/`
+
+**Context:** Validation-only pass. No code changed. All commits in the board-clock slice (`2e47abf9`–`65ec9e39`) were already committed. This pass ran the full student workflow in the live dev-server browser and confirmed the implementation is real, not just unit-tested.
+
+**Proof scenarios completed:**
+
+1. **Auto board clock drives Verify** — loaded "2-Bit Up Counter (Basys3)", opened Verify, clock policy panel showed `CLK100MHZ · W5 · 100 MHz / Auto board clock`. CLK100MHZ row was absent from the manual stimulus table. Ran Verify. Counter advanced: (q0,q1) = (0,0) → (0,0) → (0,0) → (1,0) → (1,0) → (0,1) → (0,1). No student-authored clock pulses.
+2. **Manual pulses override** — clicked "Manual pulses" button, CLK100MHZ row appeared in stimulus table with Alternating / Add pulse / Hold controls, warning shown. Reverted to auto: CLK row disappeared, "8 auto cycles" restored.
+3. **Export testbench free-running clock** — navigated to Export, opened `testbench.vhd` tab, confirmed `clock_gen` free-running process with `CLK_HALF_PERIOD = 5 ns` and `wait until rising_edge(CLK100MHZ)` between all subsequent stimulus vectors. Pin map includes CLK100MHZ/W5.
+
+**Artifacts:** `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md`, `scenario1-counter-verify-prerun.png`, `scenario1-counter-verify-postrun.png`, `scenario5-export-testbench.png`
+
+**Known tooling friction:** Playwright `locator.click()` is intercepted by the fixed `ide-status-bar` / `ide-layout-shell` stacking. Workaround: `el.evaluate((el) => el.click())` (DOM-level click). Classified as **mixed (C)** — normal browser tab clicks work, but automation using center-coordinate synthetic click hits the overlay. Needs investigation in the next slice before browser gates go flaky.
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log 2026-05-02 (Board-clock verify fidelity pass — auto CLK100MHZ/W5)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/verifyClockPolicy.ts`, `packages/rb-apps/src/apps/ide/projectRuntime.ts`, `packages/rb-apps/src/apps/ide/sim/simEngineCore.ts`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`, targeted Verify/export tests, Verify/export docs

@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Rehearse the new board-clock Verify path in browser and on bench** - Basys3 `CLK100MHZ` / `W5` now auto-runs in Verify and the exported VHDL testbench now owns a free-running board-clock process, but the student-loop/browser proof and fresh bench observation of that specific flow still need explicit evidence.
+2. **Harden browser automation click path** - Browser proof confirmed `CLK100MHZ / W5 / Auto board clock` works end-to-end in the live app. Playwright `locator.click()` hits fixed shell overlay; `el.evaluate((el) => el.click())` workaround used. Add browser gate test with robust locator strategy and classify/fix overlay interception before CI gates rely on synthetic clicks.
 3. **Add snapshot-backed safety before more CSS pruning or density passes** - `ide-root.css` remains legacy debt, `ide-polish-pass.css` is the scoped overlay, and further pruning or ScenarioBuilderPanel / Hardware / Export density work should wait for stronger screenshot regression coverage.
 
 ---
@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Board-clock browser proof: auto `CLK100MHZ`/`W5` detected, no manual CLK row, counter waveform advances, manual-pulses override works, `clock_gen` process in exported VHDL | `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md` |
 | Board-clock Verify fidelity pass: auto `CLK100MHZ` / `W5` runtime policy, Verify UI clock mode, free-running VHDL clock process, targeted regressions | `AI_STATE.md` — Change Log 2026-05-02 (Board-clock verify fidelity pass) |
 | UI audit pass: Project bridge disclosure, Design idle inspector overview, Verify mode explainer, CSS debt note | `AI_STATE.md` — Change Log 2026-05-02 (UI audit pass) |
 | Product-state language unification (draft/trusted/proven copy) | `AI_STATE.md` — Change Log (state language unification) |
