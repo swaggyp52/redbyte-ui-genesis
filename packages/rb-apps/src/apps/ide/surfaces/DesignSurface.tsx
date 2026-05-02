@@ -5948,25 +5948,82 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {(() => {
                 const totalErrors = authoringIssueCounts.errorCount + compilerErrorCount;
                 const totalWarnings = authoringIssueCounts.warningCount + compilerWarningCount;
+                const inputCountIdle = circuit.nodes.filter(
+                  (n) => n.type === 'INPUT' || n.type === 'Switch'
+                ).length;
+                const outputCountIdle = circuit.nodes.filter(
+                  (n) => n.type === 'OUTPUT' || n.type === 'Lamp'
+                ).length;
+                const nodeCountIdle = circuit.nodes.length;
+                const connectionCountIdle = circuit.connections.length;
+                const isEmptyCanvas = nodeCountIdle === 0;
                 return (
                   <div
                     className="ide-design-inspector-canvas-default"
                     data-testid="ide-design-inspector-canvas-default"
                   >
-                    {totalErrors > 0 || totalWarnings > 0 ? (
-                      <p className="ide-copy">
-                        {totalErrors > 0
-                          ? `${totalErrors} error${totalErrors !== 1 ? 's' : ''}`
-                          : null}
-                        {totalErrors > 0 && totalWarnings > 0 ? ', ' : null}
-                        {totalWarnings > 0
-                          ? `${totalWarnings} warning${totalWarnings !== 1 ? 's' : ''}`
-                          : null}
-                        {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
-                      </p>
-                    ) : (
-                      <p className="ide-copy">Select a part, a wire, or a Verify-linked signal to open actions and live state.</p>
-                    )}
+                    <div
+                      className="ide-design-inspector-idle-card"
+                      data-testid="ide-design-inspector-idle-card"
+                    >
+                      <span className="ide-design-inspector-idle-eyebrow">
+                        Design overview
+                      </span>
+                      {isEmptyCanvas ? (
+                        <p className="ide-copy ide-design-inspector-idle-empty-line">
+                          Empty canvas. Drop a gate, an input, or load an example to begin.
+                        </p>
+                      ) : (
+                        <dl
+                          className="ide-design-inspector-idle-stats"
+                          data-testid="ide-design-inspector-idle-stats"
+                        >
+                          <div className="ide-design-inspector-idle-stat">
+                            <dt>Inputs</dt>
+                            <dd data-testid="ide-design-inspector-idle-inputs">
+                              {inputCountIdle}
+                            </dd>
+                          </div>
+                          <div className="ide-design-inspector-idle-stat">
+                            <dt>Outputs</dt>
+                            <dd data-testid="ide-design-inspector-idle-outputs">
+                              {outputCountIdle}
+                            </dd>
+                          </div>
+                          <div className="ide-design-inspector-idle-stat">
+                            <dt>Nodes</dt>
+                            <dd data-testid="ide-design-inspector-idle-nodes">
+                              {nodeCountIdle}
+                            </dd>
+                          </div>
+                          <div className="ide-design-inspector-idle-stat">
+                            <dt>Wires</dt>
+                            <dd data-testid="ide-design-inspector-idle-wires">
+                              {connectionCountIdle}
+                            </dd>
+                          </div>
+                        </dl>
+                      )}
+                      {totalErrors > 0 || totalWarnings > 0 ? (
+                        <p
+                          className="ide-copy ide-design-inspector-idle-issues"
+                          data-testid="ide-design-inspector-idle-issues"
+                        >
+                          {totalErrors > 0
+                            ? `${totalErrors} error${totalErrors !== 1 ? 's' : ''}`
+                            : null}
+                          {totalErrors > 0 && totalWarnings > 0 ? ', ' : null}
+                          {totalWarnings > 0
+                            ? `${totalWarnings} warning${totalWarnings !== 1 ? 's' : ''}`
+                            : null}
+                          {' '}waiting in build status. Select a part or jump from the top status deck to resolve them.
+                        </p>
+                      ) : !isEmptyCanvas ? (
+                        <p className="ide-copy ide-design-inspector-idle-tip">
+                          Select a part, a wire, or a Verify-linked signal to open actions and live state.
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })()}

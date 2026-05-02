@@ -757,6 +757,76 @@
 }
 
 /* ──────────────────────────────────────────────────────────
+   §9b. Design surface — idle inspector overview card
+   Audit pass (2026-05-02): the idle inspector previously rendered a
+   single instructional sentence. Now shows a real Design overview card
+   with input/output/node/wire counts and a quick prompt — making the
+   right dock useful even when nothing is selected.
+   ────────────────────────────────────────────────────────── */
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 0;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--rb-text-3);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 14px;
+  margin: 0;
+  padding: 0;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(140, 168, 196, 0.16);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stat dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rb-text-3);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-stat dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rb-text-1);
+  font-variant-numeric: tabular-nums;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-tip,
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-empty-line,
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-issues {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--rb-text-2);
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-idle-issues {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--rbp-state-warning-bg);
+  border-left: 2px solid #f4b942;
+}
+
+/* ──────────────────────────────────────────────────────────
    §9. Design surface — right-inspector idle-state framing
    When nothing is selected, the inspector previously rendered a
    single sentence ("Select a part…") inside a 320–420px column.
