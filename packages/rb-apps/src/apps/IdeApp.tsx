@@ -14,6 +14,7 @@ import { decodeRBProject, type RBProject } from '../export/projectFormat';
 import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import './ide/ide-root.css';
+import './ide/ide-polish-pass.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
@@ -1593,6 +1594,13 @@ export const IdeApp: React.FC = () => {
                 });
                 isRestoringRef.current = false;
               }}
+              saveState={saveState}
+              onRenameProject={(nextName) => {
+                const trimmed = nextName.trim();
+                if (trimmed.length === 0 || trimmed === projectName) return;
+                setProjectIdentity({ projectName: trimmed });
+                setLastSavedAt('Unsaved changes — project renamed');
+              }}
               onResetProject={() => {
                 if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
                 const backup = createRecoveryBackup();
@@ -1690,6 +1698,8 @@ export const IdeApp: React.FC = () => {
             <VerifySurface
               circuitGraph={circuit}
               deterministicHash={currentVerifyReplayHash}
+              projectName={projectName}
+              board={fpgaConfig?.board ?? 'Basys3'}
               hasVectors={hasVectors}
               vectors={authoritativeProjectVectors}
               lastRun={verifyLastRun}

@@ -1,0 +1,1155 @@
+/* ============================================================
+   RedByte IDE — Polish Pass v2 (focused, scoped, no substring sel.)
+   ============================================================
+   This file replaces the v1 polish-pass overlay. Key principles:
+
+   • Loads on top of ide-root.css (one core file remains the
+     legacy style system; no second giant overlay).
+   • Scoped under :root[data-redbyte-mode='ide'] / .ide-root only.
+   • Targets explicit classes only — NO `[class*='...']` substring
+     selectors. Anything that wanted those is moved into proper
+     class rules in this file.
+   • Deliberately small surface area. The big-win contrast/focus/
+     button-affordance lifts stay; the rest is dropped.
+
+   Sections:
+     §1  Token tweaks (additive only, not duplicates)
+     §2  Body / typography baseline
+     §3  Top bar polish
+     §4  Left rail polish (rail label legibility)
+     §5  Buttons (clear hierarchy + focus)
+     §6  Inputs / selects / segmented
+     §7  Custom scrollbars (discoverable)
+     §8  Project surface — new structural primitives
+     §9  Design surface — right-dock collapse polish
+     §10 Accessibility / motion / contrast preferences
+   ============================================================ */
+
+/* ───────── §1. Token tweaks (additive only) ────────── */
+:root[data-redbyte-mode='ide'] {
+  /* Slightly lifted muted text contrast */
+  --rb-text-2: #cfdbeb;
+  --rb-text-3: #9eb4cb;
+
+  /* Reusable focus ring */
+  --rbp-focus-ring: 0 0 0 2px #060c14, 0 0 0 4px rgba(46, 196, 182, 0.55);
+
+  /* Status backgrounds (used by chips and metrics) */
+  --rbp-state-success-bg: rgba(82, 210, 115, 0.10);
+  --rbp-state-warning-bg: rgba(244, 185, 66, 0.10);
+  --rbp-state-error-bg:   rgba(255, 107, 107, 0.10);
+  --rbp-state-info-bg:    rgba(142, 199, 255, 0.10);
+  --rbp-state-neutral-bg: rgba(168, 189, 212, 0.06);
+
+  /* Surface elevations for new primitives */
+  --rbp-surface-card:    #0e1a28;
+  --rbp-surface-card-hi: #132538;
+  --rbp-surface-elev-1: 0 1px 2px rgba(0,0,0,0.32), 0 0 0 1px rgba(255,255,255,0.04);
+  --rbp-surface-elev-2: 0 6px 18px rgba(0,0,0,0.34), 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+/* ───────── §2. Typography baseline ────────── */
+.ide-root {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ───────── §3. Top bar polish ────────── */
+.ide-root .ide-top-bar {
+  background: linear-gradient(180deg, #0d1c2e 0%, #0a1624 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+.ide-root .ide-brand-wordmark { letter-spacing: -0.01em; font-weight: 700; }
+.ide-root .ide-breadcrumb-sep { color: rgba(140, 168, 196, 0.35); margin: 0 4px; }
+.ide-root .ide-mode-breadcrumb {
+  background: rgba(46, 196, 182, 0.12);
+  color: #c9f6ee;
+  border: 1px solid rgba(46, 196, 182, 0.28);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.ide-root .ide-board-chip,
+.ide-root .ide-build-badge {
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: rgba(140, 168, 196, 0.06);
+  border: 1px solid rgba(140, 168, 196, 0.22);
+  color: var(--rb-text-2);
+}
+.ide-root .ide-build-badge-sha {
+  font-family: var(--rb-font-mono);
+  color: var(--rb-text-2);
+  letter-spacing: 0;
+}
+.ide-root .ide-save-label { color: var(--rb-text-2); font-size: 12px; }
+.ide-root .ide-save-dot--ok      { background: #52d273; box-shadow: 0 0 6px rgba(82, 210, 115, 0.55); }
+.ide-root .ide-save-dot--saving  { background: #f4b942; box-shadow: 0 0 6px rgba(244, 185, 66, 0.55); }
+.ide-root .ide-save-dot--unsaved { background: #ff9090; box-shadow: 0 0 6px rgba(255, 107, 107, 0.55); }
+.ide-root .ide-topbar-help-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--rb-text-2);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.ide-root .ide-topbar-help-btn:hover {
+  background: rgba(46, 196, 182, 0.10);
+  border-color: rgba(46, 196, 182, 0.30);
+  color: var(--rb-accent);
+}
+
+/* ───────── §4. Left rail polish (label legibility) ────────── */
+.ide-root .ide-left-rail {
+  width: 76px;
+  background: linear-gradient(180deg, #060c14 0%, #050a12 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 10px 0;
+}
+.ide-root .ide-mode-button {
+  border-radius: 8px;
+  padding: 10px 4px 8px;
+  min-height: 56px;
+  gap: 4px;
+  color: rgba(168, 192, 218, 0.72);
+}
+.ide-root .ide-mode-button:hover {
+  background: rgba(46, 196, 182, 0.07);
+  color: rgba(220, 240, 252, 0.96);
+}
+.ide-root .ide-mode-button .ide-mode-icon { width: 22px; height: 22px; }
+/* The 9px label was too small. Lift to 11px with proper letter-spacing. */
+.ide-root .ide-mode-button .ide-mode-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  max-width: 68px;
+}
+.ide-root .ide-mode-button .ide-step-num {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(122, 158, 192, 0.55);
+}
+.ide-root .ide-mode-button--step.is-active {
+  background: rgba(46, 196, 182, 0.12);
+  color: #d4fff7;
+}
+.ide-root .ide-mode-button--step.is-active::before {
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--rb-accent);
+  box-shadow: 0 0 6px rgba(46, 196, 182, 0.6);
+}
+.ide-root .ide-mode-button--step.is-active .ide-step-num {
+  color: rgba(46, 196, 182, 0.9);
+}
+.ide-root .ide-mode-button--step.is-complete:not(.is-active) .ide-step-num {
+  color: rgba(82, 210, 115, 0.95);
+  font-size: 11px;
+}
+.ide-root .ide-mode-button:focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+}
+
+/* ───────── §5. Buttons ────────── */
+.ide-root .ide-button {
+  border-radius: 8px;
+  padding: 9px 16px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease,
+    transform 90ms ease;
+}
+.ide-root .ide-button.ide-button-primary {
+  background: linear-gradient(180deg, #36d4c5 0%, #1eb4a5 100%);
+  color: #02201e;
+  border: 1px solid rgba(46, 196, 182, 0.7);
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 4px 14px rgba(46, 196, 182, 0.20);
+}
+.ide-root .ide-button.ide-button-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #43e0d1 0%, #25c2b3 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 6px 20px rgba(46, 196, 182, 0.32);
+  transform: translateY(-1px);
+}
+.ide-root .ide-button.ide-button-primary:active:not(:disabled) {
+  transform: translateY(0);
+  background: #1eb4a5;
+}
+.ide-root .ide-button.ide-button-primary.is-large {
+  padding: 12px 26px;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+.ide-root .ide-button.ide-button-secondary {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--rb-text-1);
+  border: 1px solid rgba(140, 168, 196, 0.30);
+}
+.ide-root .ide-button.ide-button-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(140, 168, 196, 0.50);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.ide-root .ide-button.ide-button-ghost {
+  background: transparent;
+  color: var(--rb-text-2);
+  border: 1px solid transparent;
+}
+.ide-root .ide-button.ide-button-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--rb-text-1);
+  border-color: rgba(255, 255, 255, 0.10);
+}
+.ide-root .ide-button.ide-button-danger {
+  background: rgba(255, 107, 107, 0.14);
+  color: #ffadad;
+  border: 1px solid rgba(255, 107, 107, 0.40);
+}
+.ide-root .ide-button.ide-button-danger:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.22);
+  color: #ffd0d0;
+  border-color: rgba(255, 107, 107, 0.60);
+}
+.ide-root .ide-button:disabled {
+  background: rgba(140, 168, 196, 0.06);
+  color: rgba(180, 200, 220, 0.40);
+  border-color: rgba(140, 168, 196, 0.12);
+  box-shadow: none;
+  transform: none;
+}
+.ide-root .ide-button:focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+}
+
+/* ───────── §6. Inputs / selects / segmented ────────── */
+.ide-root input[type='text'],
+.ide-root input[type='search'],
+.ide-root input[type='number'],
+.ide-root textarea,
+.ide-root select {
+  background: rgba(8, 16, 26, 0.72);
+  border: 1px solid rgba(140, 168, 196, 0.22);
+  border-radius: 7px;
+  color: var(--rb-text-1);
+  padding: 7px 11px;
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+.ide-root input::placeholder,
+.ide-root textarea::placeholder {
+  color: rgba(168, 189, 212, 0.45);
+}
+.ide-root input:hover:not(:disabled),
+.ide-root textarea:hover:not(:disabled),
+.ide-root select:hover:not(:disabled) {
+  border-color: rgba(140, 168, 196, 0.40);
+}
+.ide-root input:focus-visible,
+.ide-root textarea:focus-visible,
+.ide-root select:focus-visible {
+  outline: none;
+  border-color: rgba(46, 196, 182, 0.55);
+  box-shadow: 0 0 0 3px rgba(46, 196, 182, 0.16);
+  background: rgba(8, 16, 26, 0.88);
+}
+
+/* ───────── §7. Custom scrollbars (discoverable) ────────── */
+.ide-root *::-webkit-scrollbar { width: 10px; height: 10px; }
+.ide-root *::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.18); }
+.ide-root *::-webkit-scrollbar-thumb {
+  background: rgba(140, 168, 196, 0.18);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.ide-root *::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 168, 196, 0.32);
+  background-clip: padding-box;
+}
+.ide-root * {
+  scrollbar-color: rgba(140, 168, 196, 0.22) rgba(0, 0, 0, 0.18);
+  scrollbar-width: thin;
+}
+
+/* ──────────────────────────────────────────────────────────
+   §8. Project surface — new structural primitives
+   These styles back the components in ProjectSurfacePrimitives.tsx:
+   • ProjectIdentityHeader   .ide-projectx-identity
+   • ProjectNextActionCard   .ide-projectx-next
+   • ProjectMetricsRow       .ide-projectx-metrics
+   • ProjectSessionCard      .ide-projectx-session
+   • ExamplesBrowser         .ide-projectx-examples
+   ────────────────────────────────────────────────────────── */
+.ide-root .ide-projectx-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* — Identity header — */
+.ide-root .ide-projectx-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 22px;
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #11202f 0%, #0c1623 100%);
+  box-shadow: var(--rbp-surface-elev-2);
+}
+.ide-root .ide-projectx-identity-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ide-root .ide-projectx-identity-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #f3f8ff;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-root .ide-projectx-identity-name-input {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: #f3f8ff;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+  background: rgba(8, 14, 22, 0.7);
+  border: 1px solid rgba(46, 196, 182, 0.55);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+}
+.ide-root .ide-projectx-identity-rename {
+  background: transparent;
+  border: 1px solid rgba(140, 168, 196, 0.28);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-text-2);
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  flex-shrink: 0;
+}
+.ide-root .ide-projectx-identity-rename:hover {
+  background: rgba(46, 196, 182, 0.08);
+  border-color: rgba(46, 196, 182, 0.35);
+  color: var(--rb-accent);
+}
+.ide-root .ide-projectx-identity-rename:focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+}
+.ide-root .ide-projectx-identity-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ide-root .ide-projectx-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(168, 189, 212, 0.06);
+  border: 1px solid rgba(140, 168, 196, 0.22);
+  color: var(--rb-text-2);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.ide-root .ide-projectx-meta-chip.is-ok {
+  background: var(--rbp-state-success-bg);
+  border-color: rgba(82, 210, 115, 0.40);
+  color: #b5f3c8;
+}
+.ide-root .ide-projectx-meta-chip.is-busy {
+  background: var(--rbp-state-warning-bg);
+  border-color: rgba(244, 185, 66, 0.40);
+  color: #fbe2a0;
+}
+.ide-root .ide-projectx-meta-chip.is-attention {
+  background: var(--rbp-state-error-bg);
+  border-color: rgba(255, 107, 107, 0.40);
+  color: #ffb5b5;
+}
+.ide-root .ide-projectx-meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+}
+.ide-root .ide-projectx-meta-note {
+  font-size: 11.5px;
+  color: var(--rb-text-3);
+  letter-spacing: 0.01em;
+}
+
+/* — Next action card — */
+.ide-root .ide-projectx-next {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 196, 182, 0.32);
+  background:
+    linear-gradient(180deg, rgba(46, 196, 182, 0.06) 0%, rgba(46, 196, 182, 0.0) 60%),
+    linear-gradient(180deg, #0e1a28 0%, #0a1624 100%);
+  box-shadow: var(--rbp-surface-elev-2);
+}
+.ide-root .ide-projectx-next.is-attention {
+  border-color: rgba(244, 185, 66, 0.40);
+  background:
+    linear-gradient(180deg, rgba(244, 185, 66, 0.05) 0%, rgba(244, 185, 66, 0.0) 60%),
+    linear-gradient(180deg, #1a1809 0%, #0a1624 90%);
+}
+.ide-root .ide-projectx-next.is-blocked {
+  border-color: rgba(255, 107, 107, 0.40);
+  background:
+    linear-gradient(180deg, rgba(255, 107, 107, 0.05) 0%, rgba(255, 107, 107, 0.0) 60%),
+    linear-gradient(180deg, #1a0c0c 0%, #0a1624 90%);
+}
+.ide-root .ide-projectx-next.is-success {
+  border-color: rgba(82, 210, 115, 0.40);
+  background:
+    linear-gradient(180deg, rgba(82, 210, 115, 0.06) 0%, rgba(82, 210, 115, 0.0) 60%),
+    linear-gradient(180deg, #0e1a28 0%, #0a1624 100%);
+}
+.ide-root .ide-projectx-next-status {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(120, 156, 196, 0.85);
+}
+.ide-root .ide-projectx-next.is-attention .ide-projectx-next-status { color: #fbe2a0; }
+.ide-root .ide-projectx-next.is-blocked   .ide-projectx-next-status { color: #ffb5b5; }
+.ide-root .ide-projectx-next.is-success   .ide-projectx-next-status { color: #b5f3c8; }
+.ide-root .ide-projectx-next.is-ready     .ide-projectx-next-status { color: #c9f6ee; }
+.ide-root .ide-projectx-next-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f3f8ff;
+}
+.ide-root .ide-projectx-next-subline {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--rb-text-3);
+  letter-spacing: 0;
+}
+.ide-root .ide-projectx-next-reason {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--rb-text-2);
+  max-width: 80ch;
+}
+.ide-root .ide-projectx-next-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* — Metrics row — */
+.ide-root .ide-projectx-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.ide-root .ide-projectx-metric {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--rbp-surface-card);
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--rbp-surface-elev-1);
+}
+.ide-root .ide-projectx-metric.is-ok {
+  border-color: rgba(82, 210, 115, 0.32);
+  background: linear-gradient(180deg, rgba(82, 210, 115, 0.04), rgba(82, 210, 115, 0)) , var(--rbp-surface-card);
+}
+.ide-root .ide-projectx-metric.is-attention {
+  border-color: rgba(244, 185, 66, 0.40);
+  background: linear-gradient(180deg, rgba(244, 185, 66, 0.04), rgba(244, 185, 66, 0)) , var(--rbp-surface-card);
+}
+.ide-root .ide-projectx-metric.is-blocked {
+  border-color: rgba(255, 107, 107, 0.40);
+  background: linear-gradient(180deg, rgba(255, 107, 107, 0.04), rgba(255, 107, 107, 0)) , var(--rbp-surface-card);
+}
+.ide-root .ide-projectx-metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rb-text-3);
+}
+.ide-root .ide-projectx-metric-value {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--rb-text-1);
+  font-variant-numeric: tabular-nums;
+}
+.ide-root .ide-projectx-metric.is-ok .ide-projectx-metric-value       { color: #b5f3c8; }
+.ide-root .ide-projectx-metric.is-attention .ide-projectx-metric-value { color: #fbe2a0; }
+.ide-root .ide-projectx-metric.is-blocked .ide-projectx-metric-value  { color: #ffb5b5; }
+
+/* — Session card — */
+.ide-root .ide-projectx-session {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  background: var(--rbp-surface-card);
+  box-shadow: var(--rbp-surface-elev-1);
+}
+.ide-root .ide-projectx-session-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ide-root .ide-projectx-session-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rb-text-1);
+}
+.ide-root .ide-projectx-session-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rb-text-3);
+  line-height: 1.4;
+}
+.ide-root .ide-projectx-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* — Examples browser — */
+.ide-root .ide-projectx-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  background: var(--rbp-surface-card);
+  box-shadow: var(--rbp-surface-elev-1);
+}
+.ide-root .ide-projectx-examples-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ide-root .ide-projectx-examples-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--rb-text-1);
+}
+.ide-root .ide-projectx-examples-sub {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: var(--rb-text-3);
+  line-height: 1.4;
+}
+.ide-root .ide-projectx-examples-toggle {
+  background: transparent;
+  border: 1px solid rgba(140, 168, 196, 0.28);
+  color: var(--rb-text-2);
+  border-radius: 6px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.ide-root .ide-projectx-examples-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--rb-text-1);
+  border-color: rgba(140, 168, 196, 0.45);
+}
+.ide-root .ide-projectx-examples-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+}
+.ide-root .ide-projectx-examples-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.ide-root .ide-projectx-examples-search {
+  width: 100%;
+}
+.ide-root .ide-projectx-examples-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ide-root .ide-projectx-tag {
+  background: rgba(168, 189, 212, 0.06);
+  border: 1px solid rgba(140, 168, 196, 0.22);
+  color: var(--rb-text-2);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.ide-root .ide-projectx-tag:hover {
+  background: rgba(46, 196, 182, 0.10);
+  border-color: rgba(46, 196, 182, 0.32);
+  color: var(--rb-accent);
+}
+.ide-root .ide-projectx-tag.is-active {
+  background: rgba(46, 196, 182, 0.18);
+  border-color: rgba(46, 196, 182, 0.55);
+  color: #d4fff7;
+}
+.ide-root .ide-projectx-tag:focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+}
+.ide-root .ide-projectx-examples-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.ide-root .ide-projectx-examples-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  color: var(--rb-text-3);
+  font-size: 13px;
+}
+.ide-root .ide-projectx-example-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  background: var(--rbp-surface-card);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+.ide-root .ide-projectx-example-card:hover {
+  background: var(--rbp-surface-card-hi);
+  border-color: rgba(46, 196, 182, 0.32);
+  transform: translateY(-1px);
+}
+.ide-root .ide-projectx-example-card.is-active {
+  border-color: rgba(46, 196, 182, 0.55);
+  box-shadow: 0 0 0 1px rgba(46, 196, 182, 0.32);
+}
+.ide-root .ide-projectx-example-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ide-root .ide-projectx-example-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rb-text-1);
+}
+.ide-root .ide-projectx-example-recommended {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c9f6ee;
+  background: rgba(46, 196, 182, 0.18);
+  border: 1px solid rgba(46, 196, 182, 0.40);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.ide-root .ide-projectx-example-card-concept {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--rb-text-2);
+  line-height: 1.45;
+}
+.ide-root .ide-projectx-example-card-learn {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rb-text-3);
+  line-height: 1.45;
+}
+.ide-root .ide-projectx-example-card-learn-label {
+  font-weight: 700;
+  color: var(--rb-text-2);
+}
+.ide-root .ide-projectx-example-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.ide-root .ide-projectx-example-card-tag {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-3);
+  background: rgba(168, 189, 212, 0.06);
+  border: 1px solid rgba(140, 168, 196, 0.22);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+.ide-root .ide-projectx-example-card-actions {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ──────────────────────────────────────────────────────────
+   §9. Design surface — right-inspector idle-state framing
+   When nothing is selected, the inspector previously rendered a
+   single sentence ("Select a part…") inside a 320–420px column.
+   That looked like cropped blank space. We frame the idle copy as
+   a proper "no selection" empty-state card so the visible space
+   reads as intentional, not as broken layout.
+   ────────────────────────────────────────────────────────── */
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-canvas-default {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 28px 22px;
+  margin: 16px 12px 0 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(140, 168, 196, 0.22);
+  background: rgba(255, 255, 255, 0.015);
+  min-height: 240px;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-canvas-default::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 32px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' fill='none' stroke='rgba(140,168,196,0.5)' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'><circle cx='16' cy='16' r='10'/><path d='M16 12v5l3 2'/></svg>");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0.85;
+}
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-canvas-default .ide-copy {
+  margin: 0;
+  font-size: 13px;
+  color: var(--rb-text-2);
+  line-height: 1.55;
+  max-width: 32ch;
+}
+
+/* Inspector container styling — calmer, clearer separation from canvas */
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  background: #0a1624;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ───────── §10. Verify surface — new structural primitives ────────── */
+
+/* VerifyContextHeader — slim identity + state row at top of Verify */
+.ide-root .ide-verify-context-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 14px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11.5px;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-context-identity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--rb-text-2);
+  font-weight: 500;
+  overflow: hidden;
+}
+.ide-root .ide-verify-context-project {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e2eef8;
+  font-weight: 600;
+}
+.ide-root .ide-verify-context-board {
+  color: var(--rb-text-3);
+}
+.ide-root .ide-verify-context-scenario {
+  color: var(--rb-text-3);
+  font-style: italic;
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ide-root .ide-verify-context-sep {
+  color: rgba(255, 255, 255, 0.18);
+}
+.ide-root .ide-verify-context-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-context-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+}
+.ide-root .ide-verify-context-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+/* Tone variants */
+.ide-root .ide-verify-context-state.is-idle    { color: var(--rb-text-3); }
+.ide-root .ide-verify-context-state.is-running { color: #93c5fd; }
+.ide-root .ide-verify-context-state.is-pass    { color: #4ade80; }
+.ide-root .ide-verify-context-state.is-fail    { color: #f87171; }
+.ide-root .ide-verify-context-state.is-stale   { color: #fbbf24; }
+.ide-root .ide-verify-context-state.is-attention { color: #fb923c; }
+.ide-root .ide-verify-context-mode {
+  color: var(--rb-text-3);
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+.ide-root .ide-verify-context-next {
+  color: var(--rb-text-3);
+  font-size: 10.5px;
+  max-width: 42ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: italic;
+}
+
+/* VerifyResultsSummary — compact post-run "what happened" card */
+.ide-root .ide-verify-results-summary {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-results-summary.is-pass {
+  border-left: 3px solid rgba(74, 222, 128, 0.6);
+  background: rgba(74, 222, 128, 0.04);
+}
+.ide-root .ide-verify-results-summary.is-fail {
+  border-left: 3px solid rgba(248, 113, 113, 0.6);
+  background: rgba(248, 113, 113, 0.04);
+}
+.ide-root .ide-verify-results-summary.is-stale {
+  border-left: 3px solid rgba(251, 191, 36, 0.6);
+  background: rgba(251, 191, 36, 0.03);
+}
+.ide-root .ide-verify-results-summary.is-idle {
+  border-left: 3px solid rgba(148, 163, 184, 0.25);
+}
+.ide-root .ide-verify-results-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.ide-root .ide-verify-results-summary-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.ide-root .ide-verify-results-summary.is-pass   .ide-verify-results-summary-state { color: #4ade80; }
+.ide-root .ide-verify-results-summary.is-fail   .ide-verify-results-summary-state { color: #f87171; }
+.ide-root .ide-verify-results-summary.is-stale  .ide-verify-results-summary-state { color: #fbbf24; }
+.ide-root .ide-verify-results-summary.is-idle   .ide-verify-results-summary-state { color: var(--rb-text-3); }
+.ide-root .ide-verify-results-summary-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-results-summary-headline {
+  font-size: 12px;
+  color: var(--rb-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-root .ide-verify-results-summary-subline {
+  font-size: 11px;
+  color: var(--rb-text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-root .ide-verify-results-summary-metrics {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-results-summary-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 10.5px;
+  gap: 1px;
+}
+.ide-root .ide-verify-results-summary-metric-label {
+  color: var(--rb-text-3);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ide-root .ide-verify-results-summary-metric-value {
+  font-weight: 700;
+  font-size: 13px;
+}
+.ide-root .ide-verify-results-summary-metric.is-ok       .ide-verify-results-summary-metric-value { color: #4ade80; }
+.ide-root .ide-verify-results-summary-metric.is-blocked  .ide-verify-results-summary-metric-value { color: #f87171; }
+.ide-root .ide-verify-results-summary-metric.is-attention .ide-verify-results-summary-metric-value { color: #fbbf24; }
+.ide-root .ide-verify-results-summary-metric.is-neutral   .ide-verify-results-summary-metric-value { color: var(--rb-text-2); }
+.ide-root .ide-verify-results-summary-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ide-root .ide-verify-results-summary-action {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  border: none;
+  transition: background 0.12s, color 0.12s;
+}
+.ide-root .ide-verify-results-summary-action.is-primary {
+  background: rgba(46, 196, 182, 0.15);
+  color: #2ec4b6;
+  border: 1px solid rgba(46, 196, 182, 0.3);
+}
+.ide-root .ide-verify-results-summary-action.is-primary:hover {
+  background: rgba(46, 196, 182, 0.25);
+}
+.ide-root .ide-verify-results-summary-action.is-ghost {
+  background: transparent;
+  color: var(--rb-text-3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.ide-root .ide-verify-results-summary-action.is-ghost:hover {
+  color: var(--rb-text-2);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* vwp new hero states (ready + seed CTA) */
+.ide-root .ide-vwp-ready-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+.ide-root .ide-vwp-ready-hero-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--rb-text-2);
+  margin: 0;
+}
+.ide-root .ide-vwp-ready-hero-desc {
+  font-size: 12px;
+  color: var(--rb-text-3);
+  max-width: 52ch;
+  margin: 0;
+  line-height: 1.5;
+}
+.ide-root .ide-vwp-ready-hero-run {
+  margin-top: 4px;
+  padding: 7px 18px;
+  border-radius: 6px;
+  background: rgba(46, 196, 182, 0.15);
+  color: #2ec4b6;
+  border: 1px solid rgba(46, 196, 182, 0.35);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 0.12s;
+}
+.ide-root .ide-vwp-ready-hero-run:hover:not(:disabled) {
+  background: rgba(46, 196, 182, 0.26);
+}
+.ide-root .ide-vwp-ready-hero-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.ide-root .ide-vwp-empty-hero-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ide-root .ide-vwp-empty-hero-seed {
+  padding: 6px 14px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--rb-text-2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ide-root .ide-vwp-empty-hero-seed:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.ide-root .ide-vwp-summary {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ide-root .ide-vwp-header-note {
+  font-size: 12px;
+  color: var(--rb-text-3);
+  margin: 0;
+}
+.ide-root .ide-vwp-header-meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ide-root .ide-vwp-header-chip {
+  font-size: 10.5px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--rb-text-3);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.ide-root .ide-vwp-observe-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #5eead4;
+  background: rgba(20, 184, 166, 0.1);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+  align-self: flex-start;
+}
+
+/* ───────── §11. Accessibility / preferences ────────── */
+.ide-root :is(button, a, [role='button'], [role='tab'], [role='link']):focus-visible {
+  outline: none;
+  box-shadow: var(--rbp-focus-ring);
+  border-radius: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ide-root *,
+  .ide-root *::before,
+  .ide-root *::after {
+    animation-duration: 0.001s !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.001s !important;
+  }
+}
+@media (prefers-contrast: more) {
+  :root[data-redbyte-mode='ide'] {
+    --rb-text-1: #ffffff;
+    --rb-text-2: #e3edf8;
+    --rb-text-3: #c2d3e6;
+  }
+}
+.ide-root ::selection {
+  background: rgba(46, 196, 182, 0.32);
+  color: #ffffff;
+}

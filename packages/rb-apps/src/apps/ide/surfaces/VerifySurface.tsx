@@ -90,6 +90,13 @@ import {
   VerifyPrimaryStatusArea,
   type VerifyPrimaryStatusAreaProps,
 } from './verify/VerifyPrimaryStatusArea';
+import {
+  VerifyContextHeader,
+  VerifyResultsSummary,
+  type VerifyResultsKind,
+  type VerifyResultsMetric,
+  type VerifyStateTone,
+} from './verify/VerifySurfacePrimitives';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
@@ -169,6 +176,10 @@ interface VerifyMappedInput {
 
 export interface VerifySurfaceProps {
   deterministicHash: string;
+  /** Current project display name — fed into the Verify context header. */
+  projectName?: string;
+  /** Board target (e.g. "Basys3") — fed into the Verify context header. */
+  board?: string;
   hasVectors: boolean;
   vectors?: TestVector[];
   lastRun?: RuntimeVerifyRun;
@@ -297,6 +308,8 @@ const VERIFY_WAVEFORM_LABEL_ALLOWANCE = 104;
 
 export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   deterministicHash,
+  projectName,
+  board,
   hasVectors,
   vectors,
   lastRun,
@@ -4019,6 +4032,65 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         testId="ide-verify-panel"
       >
         <VerifyHeaderRegion>
+        {verifyMode !== 'blocked' ? (
+          <VerifyContextHeader
+            projectName={projectName?.trim() ? projectName.trim() : 'Untitled project'}
+            board={board?.trim() ? board.trim() : 'Basys3'}
+            stateLabel={
+              runState === 'running'
+                ? 'Running'
+                : verifyMode === 'blocked'
+                  ? 'Blocked'
+                  : isRunStale
+                    ? 'Stale'
+                    : sessionShowsAssertionMatch
+                      ? 'Pass'
+                      : sessionSignalsAssertionFailure
+                        ? 'Fail'
+                        : sessionShowsTraceEvidence
+                          ? 'Observation only'
+                          : isDraftSession && totalVectorCount === 0
+                            ? 'Not started'
+                            : 'Not run'
+            }
+            stateTone={
+              runState === 'running'
+                ? 'running'
+                : isRunStale
+                  ? 'stale'
+                  : sessionShowsAssertionMatch
+                    ? 'pass'
+                    : sessionSignalsAssertionFailure
+                      ? 'fail'
+                      : sessionShowsTraceEvidence
+                        ? 'idle'
+                        : isDraftSession && totalVectorCount === 0
+                          ? 'attention'
+                          : 'idle'
+            }
+            modeLabel={nextRunIsCompare ? 'Compare checks' : 'Observe only'}
+            nextActionHint={
+              runState === 'running'
+                ? 'Verifying the current circuit…'
+                : verifyMode === 'blocked'
+                  ? 'Blocked — fix Design or Map Pins first.'
+                  : sessionSignalsAssertionFailure
+                    ? 'Open the first failing check, then update Design or expected outputs.'
+                    : sessionShowsAssertionMatch
+                      ? 'Trusted comparison evidence. Continue to Map Pins or Export when ready.'
+                      : isRunStale
+                        ? 'This result is stale because the design changed. Re-run Verify.'
+                        : isDraftSession && totalVectorCount === 0
+                          ? 'Add stimulus rows or seed a starter set, then Run Verify.'
+                          : 'Press Run to record observed outputs for the current stimulus.'
+            }
+            scenarioName={
+              activeScenario?.name?.trim()
+                ? activeScenario.name.trim()
+                : lastRun?.scenarioName ?? null
+            }
+          />
+        ) : null}
         <div className="ide-surface-command-stack ide-verify-chrome-stack">
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && (
@@ -4538,6 +4610,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               isSequential={isSequentialRun}
               hasVectors={totalVectorCount > 0}
               runLabel={emptyStateRunLabel}
+              onRun={totalVectorCount > 0 ? () => handleRunWithPreflight() : undefined}
+              runDisabled={runState === 'running'}
+              onSeed={
+                totalVectorCount === 0 && (isFirstRunState || totalVectorCount === 0)
+                  ? handleGenerateBasicVectors
+                  : undefined
+              }
+              seedLabel={isSequentialRun ? 'Generate starter stimulus' : 'Seed stimulus'}
             />
           ) : <div
             className="ide-verify-workbench ide-verify-workbench-v2"
@@ -4571,6 +4651,89 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               centerPanel={(
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
+            {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
+            {lastRun ? (
+              <VerifyResultsSummary
+                kind={
+                  isRunStale
+                    ? 'stale'
+                    : sessionShowsAssertionMatch
+                      ? 'pass'
+                      : sessionSignalsAssertionFailure
+                        ? 'fail'
+                        : sessionShowsTraceEvidence
+                          ? 'observe-done'
+                          : 'not-run'
+                }
+                headline={
+                  isRunStale
+                    ? 'This result is stale because the design changed.'
+                    : sessionShowsAssertionMatch
+                      ? lastRun.qualification === 'incomplete-mapping'
+                        ? 'Checks aligned (mapping incomplete).'
+                        : 'All checks aligned with the observed run.'
+                      : sessionSignalsAssertionFailure
+                        ? failingRows.length === 1
+                          ? '1 check failed in the last run.'
+                          : `${failingRows.length} checks failed in the last run.`
+                        : sessionShowsTraceEvidence
+                          ? 'Observed outputs recorded — no expected checks compared.'
+                          : 'Run recorded.'
+                }
+                subline={
+                  lastRun.scenarioName
+                    ? `Scenario: ${lastRun.scenarioName}`
+                    : undefined
+                }
+                metrics={(() => {
+                  const list: VerifyResultsMetric[] = [];
+                  if (sessionShowsCompareEvidence) {
+                    list.push({
+                      id: 'passed',
+                      label: 'Passed',
+                      value: String(Math.max(0, totalExpectedCaseCount - failingRows.length)),
+                      tone: 'ok',
+                    });
+                    list.push({
+                      id: 'failed',
+                      label: 'Failed',
+                      value: String(failingRows.length),
+                      tone: failingRows.length > 0 ? 'blocked' : 'neutral',
+                    });
+                  }
+                  if (typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
+                    list.push({
+                      id: 'coverage',
+                      label: 'Coverage',
+                      value: commandBarCoverageLabel.trim(),
+                      tone: 'neutral',
+                    });
+                  }
+                  return list;
+                })()}
+                primaryActionLabel={
+                  isRunStale
+                    ? 'Re-run Verify'
+                    : sessionSignalsAssertionFailure
+                      ? 'Open first failing check'
+                      : undefined
+                }
+                onPrimaryAction={
+                  isRunStale
+                    ? () => handleRunWithPreflight()
+                    : sessionSignalsAssertionFailure
+                      ? handleJumpToFirstFailure
+                      : undefined
+                }
+                primaryActionTestId={
+                  isRunStale
+                    ? 'ide-verify-results-summary-rerun'
+                    : sessionSignalsAssertionFailure
+                      ? 'ide-verify-results-summary-open-fail'
+                      : undefined
+                }
+              />
+            ) : null}
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">

@@ -10,6 +10,17 @@ export interface VerifyWaveformPlaceholderProps {
   readonly isSequential: boolean;
   readonly hasVectors: boolean;
   readonly runLabel: string;
+  /**
+   * Primary "Run Verify" handler shown in the empty-state hero when vectors
+   * are ready. NOTE: this CTA must NOT use the testid `ide-vwp-run` — the
+   * canonical Run is `ide-vcb-run` in the command bar header. This CTA uses
+   * `ide-verify-waveform-placeholder-run-cta` so the dedup contract holds.
+   */
+  readonly onRun?: () => void;
+  readonly runDisabled?: boolean;
+  /** Secondary "Seed stimulus" handler shown when no vectors are authored. */
+  readonly onSeed?: () => void;
+  readonly seedLabel?: string;
 }
 
 export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps> = ({
@@ -19,6 +30,10 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
   isSequential,
   hasVectors,
   runLabel,
+  onRun,
+  runDisabled,
+  onSeed,
+  seedLabel,
 }) => {
   const allSignals: Array<{ name: string; kind: 'clk' | 'in' | 'out' }> = [];
   const seenSignals = new Set<string>();
@@ -45,13 +60,23 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
         /* ── Empty state: no vectors authored yet ── */
         <div className="ide-vwp-empty-hero" data-testid="ide-verify-waveform-placeholder-cta">
           <div className="ide-vwp-empty-hero-icon" aria-hidden="true">◈</div>
-          <h4 className="ide-vwp-empty-hero-title">No test vectors yet</h4>
+          <h4 className="ide-vwp-empty-hero-title">Run Verify to see waveforms</h4>
           <p className="ide-vwp-empty-hero-desc">
-            Build your first stimulus in the pane on the left, or use{' '}
-            <strong>{isSequential ? 'Generate starter stimulus' : 'Seed stimulus'}</strong>{' '}
-            in the toolbar above to auto-generate a starter set.
-            The waveform appears here after the first run.
+            Stimulus rows will drive the inputs. Observed outputs will appear here after Run.
+            Build your first stimulus in the pane on the left, or seed a starter set below.
           </p>
+          {onSeed ? (
+            <div className="ide-vwp-empty-hero-actions">
+              <button
+                type="button"
+                className="ide-vwp-empty-hero-seed"
+                onClick={onSeed}
+                data-testid="ide-verify-waveform-placeholder-seed-cta"
+              >
+                {seedLabel ?? (isSequential ? 'Generate starter stimulus' : 'Seed stimulus')}
+              </button>
+            </div>
+          ) : null}
           <div className="ide-vwp-empty-hero-signals">
             {allSignals.length > 0 ? (
               <>
@@ -76,7 +101,7 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
           </div>
         </div>
       ) : (
-        /* ── Vectors exist: show lane preview ── */
+        /* ── Vectors exist: show lane preview + a strong "ready to run" hero ── */
         <>
           <div className="ide-vwp-summary" data-testid="ide-vwp-header">
             <span className="ide-vwp-observe-chip" data-testid="ide-vwp-observe-chip">
@@ -93,6 +118,24 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
                 {isSequential ? 'Sequential lab' : 'Combinational lab'}
               </span>
             </div>
+          </div>
+
+          <div className="ide-vwp-ready-hero" data-testid="ide-verify-waveform-placeholder-ready">
+            <h4 className="ide-vwp-ready-hero-title">Run Verify to see waveforms</h4>
+            <p className="ide-vwp-ready-hero-desc">
+              Stimulus rows will drive the inputs. Observed outputs will appear here after Run.
+            </p>
+            {onRun ? (
+              <button
+                type="button"
+                className="ide-vwp-ready-hero-run"
+                onClick={onRun}
+                disabled={runDisabled}
+                data-testid="ide-verify-waveform-placeholder-run-cta"
+              >
+                {runLabel}
+              </button>
+            ) : null}
           </div>
 
           <div className="ide-vwp-lanes" data-testid="ide-vwp-lanes">
