@@ -887,16 +887,15 @@ describe('HardwareSurface readiness', () => {
     expect(onGoToDesign).toHaveBeenCalled();
   });
 
-  it('shows Map Pins authority callout when onGoToProject is wired', () => {
-    const onGoToProject = vi.fn();
+  it('shows mapping orientation header and guide above the board workspace, workflow ribbon below', () => {
     const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
-          projectName="Authority UX"
+          projectName="Layout Structure"
           expectedBehavior="Test"
           mappingRows={[
-            { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true, port: 'out' },
+            { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true },
           ]}
           expectedIoRows={[]}
           vectorsCount={0}
@@ -908,14 +907,18 @@ describe('HardwareSurface readiness', () => {
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
-          onGoToProject={onGoToProject}
         />
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-authority-callout').textContent).toMatch(/Map Pins owns board binding/);
-    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/saved board bindings live here/i);
-    expect(getByTestId('ide-hw-map-dock-authority-sub').textContent).toMatch(/export reads these pins/i);
-    expect(onGoToProject).not.toHaveBeenCalled();
+    const header = getByTestId('ide-hw-mapping-header');
+    const guide = getByTestId('ide-hw-mapping-guide');
+    const workspace = getByTestId('ide-hw-board-workspace');
+    const ribbon = getByTestId('ide-hw-workflow-ribbon');
+
+    // Verify structural order: header → guide → workspace → ribbon
+    expect(header.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(guide.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(workspace.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

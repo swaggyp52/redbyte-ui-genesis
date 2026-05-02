@@ -2284,7 +2284,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </span>
           </div>
         ) : null}
-        {hardwareWorkflowRibbon}
         {/* ── Connection callout strip ── */}
         {false && <div className="ide-hw-callout" data-testid="ide-hw-callout">
           <span className="ide-hw-callout-label">Project:</span>
@@ -2308,7 +2307,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         {/* ── Stage rail: workflow caption + primary stage tabs ── */}
         <div className="ide-hw-map-reset-header" data-testid="ide-hw-map-reset-header">
           <div>
-            <span className="ide-hw-map-reset-kicker">Map Pins</span>
+            <span className="ide-hw-map-reset-kicker" data-testid="ide-hw-board-chrome-stage">Map Pins</span>
             <h3>Bind project signals to the Basys3 board</h3>
             <p data-testid="ide-hw-stage-caption">
               {hasNoBoundaryRows
@@ -2521,13 +2520,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* ── Board / Map — framed workspace ── */}
-        {hwMode === 'map' ? (
-          <div
-            className="ide-hw-board-workspace ide-hw-board-workspace--map"
-            data-testid="ide-hw-board-workspace"
-          >
-            {/* Mapping context header — board, count, state, next action hint */}
+        {/* ── Mapping orientation: header + 3-step guide — visible before the work area ── */}
+        {hwMode === 'map' && (
+          <>
             <HardwareMappingHeader
               board="Basys3"
               mappedCount={mappedRequiredCount}
@@ -2541,25 +2536,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     : `Map ${unresolvedRequiredCount} remaining required signal${unresolvedRequiredCount === 1 ? '' : 's'}.`
               }
             />
-            <header className="ide-hw-board-chrome">
-              <div className="ide-hw-board-chrome-text">
-                <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
-                <strong className="ide-hw-board-chrome-title" data-testid="ide-hw-board-chrome-stage">
-                  {hardwareBoardChromeStage}
-                </strong>
-              </div>
-              <div className="ide-hw-board-chrome-trail">
-                <span className="ide-hw-board-chrome-pill">Basys3</span>
-                <span className="ide-hw-board-chrome-pill ide-hw-board-chrome-pill--muted">
-                  {explicitTimingMode === 'synchronous_board_clock'
-                    ? 'Board clock'
-                    : explicitTimingMode === 'manual_event_driven_lab'
-                      ? 'Manual event'
-                      : 'Combinational'}
-                </span>
-              </div>
-            </header>
-            {/* 3-step mapping guide — replaces the flat loop card, keeps its testid */}
             <div data-testid="ide-hw-map-loop-card">
               <HardwareMappingGuide
                 activeStep={activeGuideStep}
@@ -2568,16 +2544,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 packagePin={selectedMappingPackagePin}
               />
             </div>
-            <IdeCallout
-              tone="info"
-              title="Map Pins owns board binding"
-              testId="ide-hw-map-authority-callout"
-            >
-              <p className="ide-copy ide-copy--flush">
-                Use this stage to connect each logical port to a Basys3 resource and inspect the matching package pin.
-                Export reads the same saved mapping when it generates `top.xdc`.
-              </p>
-            </IdeCallout>
+          </>
+        )}
+
+        {/* ── Board / Map — framed workspace ── */}
+        {hwMode === 'map' ? (
+          <div
+            className="ide-hw-board-workspace ide-hw-board-workspace--map"
+            data-testid="ide-hw-board-workspace"
+          >
             <div className="ide-hw-board-planner-summary" data-testid="ide-hw-board-resource-summary">
               <button
                 type="button"
@@ -3154,13 +3129,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </details>
                 </details>
               ) : null}
-              <p className="ide-copy ide-hw-map-instructions">
-                {hasNoBoundaryRows
-                  ? 'Add inputs and outputs in Design, then return here to map Basys3 pins.'
-                  : selectedMappingRowId
-                  ? 'Click a board region to assign the pin.'
-                  : 'Click a signal row, then click a board region to assign its pin.'}
-              </p>
               {mapModeGroups.length === 0 ? (
                 <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                   <p className="ide-copy ide-copy--flush">
@@ -3255,7 +3223,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   }
                 }}
               />
-              <details className="ide-hw-resource-catalog" data-testid="ide-hw-resource-catalog" open>
+              <details className="ide-hw-resource-catalog" data-testid="ide-hw-resource-catalog">
                 <summary>Supported Basys3 resource catalog</summary>
                 <div className="ide-hw-resource-catalog-grid">
                   {resourcePlannerGroups.map((group) => (
@@ -3371,6 +3339,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         </div>
         )}
+        {/* ── Workflow ribbon: Verify → Export → Program — below the mapping work area ── */}
+        {hardwareWorkflowRibbon}
       </IdePanel>
     </IdeSurfaceLayout>
   );

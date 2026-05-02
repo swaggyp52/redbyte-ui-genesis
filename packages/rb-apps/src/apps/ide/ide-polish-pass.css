@@ -1297,3 +1297,39 @@
   font-style: normal;
   font-weight: 500;
 }
+
+/* ───────── §13. Hardware — mapping workspace structural layout ────────── */
+
+/* Guide now lives ABOVE the board workspace — no gap between guide and workspace */
+[data-testid="ide-hw-map-loop-card"] {
+  border-bottom: 1px solid var(--rb-border-1, #2a3a50);
+}
+
+/* Board workspace in map mode starts with the resource summary, no extra chrome header */
+.ide-hw-board-workspace--map .ide-hw-board-planner-summary {
+  padding: 8px 12px;
+  background: var(--rb-surface-2, #1a2233);
+  border-bottom: 1px solid var(--rb-border-1, #2a3a50);
+}
+
+/* Resource catalog collapsed by default — summary only shows */
+.ide-hw-resource-catalog > summary {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-3, #637d96);
+  text-transform: uppercase;
+  padding: 6px 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Workflow ribbon sits below the work area — reduce top margin */
+.ide-hw-workflow-ribbon {
+  margin-top: var(--ide-space-3, 12px);
+}
+
+/* Map Pins authority text removed — dock sub keeps its smaller style */
+.ide-hw-map-instructions--hidden {
+  display: none;
+}
