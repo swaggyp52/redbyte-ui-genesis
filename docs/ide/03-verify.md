@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-29
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -23,7 +23,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 ## Layout
 
-1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Checks** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), utilities (**More actions**, **Analysis**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
+1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Checks** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), explicit **Observe only** vs **Compare checks** selector with inline explainer (`ide-vcb-mode-explainer`), then utilities (**Tools**, **Details**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
 2. **Workspace**: **Build testbench** (scenario library, clock/timing guidance, unified stimulus/check grid, run summary) and **waveform** instrument in a lab grid. The left setup area keeps enough width and height to author the testbench after a run; the waveform column remains the primary trace stage.
 
@@ -73,9 +73,9 @@ For sequential circuits, current proof requires useful timing stimulus. A clock 
 ## Batch 1 Product Audit Notes (2026-04-30)
 
 - Supposed to do: be a testbench authoring surface with Observe, Expected Outputs, and Compare checks as distinct concepts.
-- Current truth: the product has moved toward Observe-first language, inline clock lanes, and Compare-backed trusted evidence.
+- Current truth: the product uses Observe-first language, inline clock lanes, and Compare-backed trusted evidence. The mode selector now carries its own plain-language explainer so Observe is not mistaken for Compare.
 - Determinism change needed: gates and surface copy must consistently treat Observe as inspection only and Compare PASS as the trusted proof boundary.
-- Friction found: `ide:gate:verify-workbench-contract`, `ide:gate:verify-reality-contract`, and `ide:gate:export-e2e-contract` still expect older assertion/verify semantics and fail when the UI honestly remains in "Observation only" or "Checks need review". Those gates need to be rewritten around Observe -> Save expected outputs -> Compare rather than forcing the old assertion path.
+- Friction found: additive UI contracts like the inline mode explainer need direct tests so later chrome cleanup does not collapse Observe/Compare truth back into an unlabeled toggle.
 
 ## Design Handoff
 

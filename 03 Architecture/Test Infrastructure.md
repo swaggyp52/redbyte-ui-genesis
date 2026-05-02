@@ -16,7 +16,7 @@ related:
 
 **Runner:** Vitest 2.1.8
 **Config:** `vitest.config.ts` (root)
-**Status:** Pure-logic tests green. React component render tests are usable under the current React 19 harness.
+**Status:** Pure-logic tests are green. React component render tests are usable under the current React 19 harness, but the full IDE suite still carries a pre-existing BUG-003-family baseline tracked in `AI_STATE.md`.
 
 ---
 
@@ -90,7 +90,7 @@ Current gate-maintenance rules:
 
 ## React Render Harness Status
 
-[[BUG-003 React.act Infrastructure Failure]] is now a closed audit note, not a live blocker.
+[[BUG-003 React.act Infrastructure Failure]] is now a closed audit note, not the live failure shape. The current repo still uses "BUG-003 family" as shorthand for the pre-existing full-suite render-family baseline recorded in `AI_STATE.md`.
 
 What the 2026-03-25 audit confirmed:
 
@@ -102,15 +102,11 @@ What the 2026-03-25 audit confirmed:
 
 Important harness facts:
 
-- installed versions are `react@19.2.1`, `react-dom@19.2.1`, and `@testing-library/react@16.1.0`
+- installed versions are `react@19.2.1`, `react-dom@19.2.1`, and `@testing-library/react@16.3.2`
 - the installed `@testing-library/react/dist/act-compat.js` already prefers `React.act` when present
 - `vitest.config.ts` aliases React and ReactDOM to a single instance, which is the current repo invariant that keeps render suites stable
 
-Current non-green suite in this area:
-
-- `verifySurface.hints-bridge.test.tsx` fails because `ide-verify-hint-callout` is rendered only when the analysis drawer is open, while the test expects it immediately
-
-Do not treat that suite as evidence that the React render harness is broken.
+Do not treat the active full-suite BUG-003-family baseline as evidence that the React render harness has regressed back to the old `React.act` crash.
 
 ---
 
@@ -136,7 +132,7 @@ All pure-logic suites passing:
 
 ---
 
-## Render Baseline (audit slice on 2026-03-25)
+## Render Baseline (historical audit slices)
 
 These VerifySurface render suites passed under the current harness:
 
@@ -149,7 +145,7 @@ These VerifySurface render suites passed under the current harness:
 | `verifySurface.workstation` | 23 PASS |
 | **Total** | **42 PASS** |
 
-**Render baseline as of 2026-03-26 (final):** 52 PASS across 9 suites. All suites green.
+**Historical render baseline as of 2026-03-26 (final):** 52 PASS across 9 suites. All suites green in that slice.
 
 | Suite | Tests | Notes |
 |---|---|---|
@@ -162,6 +158,8 @@ These VerifySurface render suites passed under the current harness:
 | `verifySurface.waveform-priority` | 1 PASS | Fixed: expanded Inputs group in test; `laneGroupPriority` out-before-in in production |
 | `verifySurface.hints-bridge` | 3 PASS | Resolved as side effect of UX polish Pass A |
 | `verifySurface.combo-kmap-provenance` | 1 PASS | Narrowed to kmap-cell-only (see ADR-002); combo rows require TruthTablePane unit test |
+
+Current live full-suite counts belong in `AI_STATE.md`, not this note.
 
 **`combo-kmap-provenance` — resolved (2026-03-26)**
 

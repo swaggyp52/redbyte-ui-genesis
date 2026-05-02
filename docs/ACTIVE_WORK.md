@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-30
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -10,15 +10,15 @@ imported_by: CLAUDE.md
 
 **Branch:** main · **Release:** RC1 (frozen 2026-04-23) · **Vivado:** 2024.2 · **Board:** Basys3 (`xc7a35tcpg236-1`)
 
-> **What RedByte is right now:** an FPGA educational IDE. Student spine is **Design → Verify → Map Pins → Export**. Import is a utility. Board programming is an external handoff after Export. Primary package: `packages/rb-apps`.
+> **What RedByte is right now:** an FPGA educational IDE. **Project** is the dashboard/home surface that routes the product spine **Project -> Design -> Verify -> Map Pins / Hardware -> Export**. Import is a utility. Board programming is an external handoff after Export. Primary package: `packages/rb-apps`.
 
 ---
 
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **From-scratch UX proof still needs a true blank-canvas browser pass** - real Vivado E1 is refreshed for mixed-gate and clocked custom rows, but manual browser authoring still leans on starters/fixtures instead of fully hand-authored canvas proof.
-3. **Carry the browser-gate truth discipline into the next student-loop slice** - browser rehearsal gates now match Observe -> Expected outputs -> Compare and Map Pins authority; keep future student-path work aligned to that wording and ownership model.
+2. **Lock UI continuity around the latest Project / Design / Verify polish pass** - keep docs and direct tests aligned with Project as dashboard/home, Design as workbench/canvas, Verify as Observe-vs-Compare evidence, Hardware / Map Pins as board binding, and Export as Vivado handoff truth.
+3. **Add snapshot-backed safety before more CSS pruning or density passes** - `ide-root.css` remains legacy debt, `ide-polish-pass.css` is the scoped overlay, and further pruning or ScenarioBuilderPanel / Hardware / Export density work should wait for stronger screenshot regression coverage.
 
 ---
 
@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| UI audit pass: Project bridge disclosure, Design idle inspector overview, Verify mode explainer, CSS debt note | `AI_STATE.md` — Change Log 2026-05-02 (UI audit pass) |
 | Product-state language unification (draft/trusted/proven copy) | `AI_STATE.md` — Change Log (state language unification) |
 | Batch 1 custom mixed-gate E1 refresh | `out/vivado-cert/custom-projects/b1-mixed/result.md` |
 | Batch 1 custom counter E1 refresh | `out/vivado-cert/custom-projects/b1-counter/result.md` |
@@ -85,14 +86,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Done | Batch 1 product truth consolidation: documentation authority map, product spine/state vocabulary, whole-app audit notes, browser rehearsal friction, and refreshed custom mixed/counter E1 Vivado proof | `this commit` |
-| Done | Browser rehearsal gate reconciliation: current browser proof now matches Observe → Expected outputs → Compare, trusted export gate truth, and Map Pins authority instead of Project-side pin editing | `this commit` |
-| Done | Verify workbench stabilization: broad render harness cleanup, explicit stale reasons, wider Build testbench workspace, Export stale-evidence wording, and broad `vitest run verify` restored to green | `this commit` |
-| Done | Verify testbench authority: normalized evidence hash stops helper-vector stale loops; sequential Clock / timing panel previews edge stimulus before run | `0b754512` |
-| ✓ Done | Product takeover Phase 1: canonical workflow truth - strict Verify/export trust, draft export labeling, Hardware Verify-first handoff, stale gate contracts aligned | `ff1cccfe` |
-| ✓ Done | Product takeover Phase 1: component support registry - Design, Verify, Export, Import, and Basys3 export stateful checks share one support matrix | `3aa8ba7d` |
-| ✓ Done | BUG-003: testing-library render harness - upgraded to the current React 19-compatible `@testing-library/react@16.3.2` release and added a render smoke test | `010f4ada` |
-| ✓ Done | Phase 2A foundation: Verify mismatch brief + label-first mapping cleanup - Design restates failed Verify context and Project/Hardware/Export show board labels before package pins | `1d92d5c3` |
+| Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
+| Done | Verify command bar now carries the inline Observe / Compare mode explainer beside the next-run selector | `713d7037` |
+| Done | Design idle inspector now uses a Design overview card with live Inputs / Outputs / Nodes / Wires counts and empty-canvas branch | `7d88f927` |
+| Done | Project tucks bridge internals behind a collapsed disclosure so the dashboard/home surface stays primary | `5af8f041` |
+| Done | Blank-canvas browser product proof now passes end-to-end through Design -> Verify -> Map Pins -> Export | `54ee413b` |
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -30,8 +30,8 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 2. Left library
 - Search and the core build categories stay first.
-- Default palette order is `Logic -> Sequential -> IO -> Reusable -> Board`.
-- `Board` and `Quick Inputs` are secondary helpers and start collapsed.
+- Default palette order is `Board -> IO -> Logic -> Sequential -> Reusable`.
+- `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately reachable; it remains a helper layer, not the primary dashboard story.
 - In code and split modes the library collapses to an overlay rail by default so it does not reserve workspace width while idle.
 
 3. Center workspace
@@ -43,7 +43,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 4. Right inspector
 - Owns selection, focused-asset, mapping, and signal context.
-- Idle fallback is the calm `Canvas ready` state, not a large empty coaching card.
+- Idle fallback stays secondary, but it is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts plus an empty-canvas branch.
 - In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.
 
 ## Empty / Idle State

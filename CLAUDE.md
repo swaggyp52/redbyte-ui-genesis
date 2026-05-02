@@ -1,8 +1,8 @@
 # RedByte — Agent Operating Manual
 
-RedByte is an **FPGA educational IDE**. Students design circuits, verify behavior against test vectors, map ports to Basys3 pins, and export Vivado-ready ZIPs. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado 2024.2.
+RedByte is an **FPGA educational IDE**. Project is the dashboard/home surface; students then design circuits, verify behavior against test vectors, bind ports to Basys3 resources in Map Pins / Hardware, and export Vivado-ready packages. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado 2024.2.
 
-The canonical student path is: **Design → Verify → Map Pins → Export.** Import is a utility action. Board programming is an external handoff after Export.
+The canonical product hierarchy is: **Project -> Design -> Verify -> Map Pins / Hardware -> Export.** Import is a utility action. Board programming is an external handoff after Export.
 
 ---
 
@@ -49,7 +49,7 @@ pnpm -w exec vitest run [pattern]
 
 Run from: `C:\Users\conno\redbyte-ui`
 
-**Green baseline (2026-03-25):** 168 pure-logic tests across 12 suites. Component render tests are broken by a pre-existing React 19 / `@testing-library/react` incompatibility — do not treat as regressions.
+**Current suite baseline:** use `AI_STATE.md` as the live source for focused/full-suite counts and known pre-existing failures. Do not treat the known BUG-003 render-family baseline as a regression unless the failure count or shape changes.
 
 ### Connection Format
 
@@ -74,7 +74,7 @@ The flat shape (`fromNodeId`, `toNodeId`, etc.) is **never valid**. `normalizePo
 
 ## Known Issues
 
-- **BUG-003**: React 19 / `@testing-library/react@16.1` breaks component render tests. Pre-existing. Fix: upgrade to `@testing-library/react@^17.0.0`.
+- **BUG-003 family**: the full IDE suite still carries pre-existing React 19 / testing-library render-family failures. Installed `@testing-library/react` is `16.3.2`; do not assume a simple version bump is the fix.
 - Vitest Windows-only constraint (see Runtime Constraints above).
 
 ---

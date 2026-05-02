@@ -32983,3 +32983,59 @@ Key details:
 - `ProjectSurface.tsx` still contains some retired Project-side mapping edit plumbing that is now dead-path and should be removed during a focused cleanup pass.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-05-02 (IDE additive UI contract hardening + continuity audit)
+
+**Subsystem**
+
+- IDE Project / Design / Verify additive UI contracts
+- Documentation continuity and project-memory alignment
+
+**Problem**
+
+- The recent UI audit landed additive Project, Design, and Verify affordances, but those contracts were still covered only indirectly.
+- Core repo docs and the mounted Obsidian brain had drifted on surface hierarchy, current UI structure, and BUG-003 baseline framing.
+- The repo needed direct proof that the current product hierarchy remains `Project -> Design -> Verify -> Map Pins / Hardware -> Export` while the current documentation truth stays synchronized with shipped behavior.
+
+**Files changed**
+
+- `README.md`
+- `CLAUDE.md`
+- `docs/ACTIVE_WORK.md`
+- `docs/IDE_SYSTEM_MAP.md`
+- `docs/ide/00-ide-layout.md`
+- `docs/ide/01-project.md`
+- `docs/ide/02-design.md`
+- `docs/ide/03-verify.md`
+- `docs/ide/04-export.md`
+- `01 Dashboard/RedByte Engineering Brain.md`
+- `03 Architecture/Test Infrastructure.md`
+- `packages/rb-apps/src/apps/ide/__tests__/projectSurface.bridgeDisclosure.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/designSurface.idleInspector.test.tsx`
+- `packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.modeExplainer.test.tsx`
+
+**What changed**
+
+- Added direct Project coverage for the bridge disclosure so the dashboard/home surface still proves identity, next-action, metrics, closed-by-default bridge state, and disclosure reveal behavior.
+- Added direct Design coverage for the idle inspector overview card so the workbench inspector proves its idle stats contract and preserves the `ide-design-inspector-canvas-default` empty-canvas contract.
+- Added direct Verify coverage for the inline Observe / Compare explainer so mode text changes are explicit while existing mode-toggle behavior remains intact.
+- Audited repo docs plus the mounted Obsidian brain and corrected stale descriptions of surface hierarchy, Project’s dashboard/home role, Design’s idle inspector, Verify’s command-bar explainer, Hardware ownership, Export handoff truth, and the current BUG-003 baseline framing.
+- Left product behavior unchanged; this slice hardened coverage and continuity only.
+
+**Validation**
+
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.bridgeDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx` -> PASS (`25 passed`)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.idleInspector.test.tsx packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing.test.tsx` -> PASS (`30 passed`)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.modeExplainer.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx` -> PASS (`10 passed`)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/` -> baseline preserved at `1126 passed / 28 failed / 1 skipped`; failure count unchanged from the known BUG-003 family baseline while pass count increased by the new direct coverage
+- `pnpm --filter @redbyte/playground build` -> PASS
+- `pnpm -s build:unified` -> functional build steps completed, but final canonical `dist/` verification failed because Windows was holding a lock on `C:\Users\conno\redbyte-ui\dist`
+
+**Remaining weakness**
+
+- The pre-existing BUG-003 failure family still blocks a fully green IDE suite; this slice confirmed no regression in the `28 failed / 1 skipped` baseline but did not resolve those tests.
+- `ide-root.css` still carries legacy layout debt, and `ide-polish-pass.css` remains an overlay rather than a pruned canonical replacement.
+- Verify’s `ScenarioBuilderPanel` still runs denser than the rest of the surface, and Hardware / Export still need a follow-on density pass.
+- Snapshot-style regression coverage should be added before any serious CSS pruning or overlay collapse work.
+
+- **Attribution**: Connor Angiel

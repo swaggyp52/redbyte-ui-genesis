@@ -24,7 +24,7 @@ related:
 
 ## What is broken right now
 
-BUG-003 render-harness variant is pre-existing: `@testing-library/react@16.1` incompatibility breaks component render tests. Do not treat as a regression from new work. Fix: upgrade to `^17.0.0`.
+BUG-003 is now project shorthand for the pre-existing render-family baseline, not just the older literal `React.act` crash note. Current workspace version is `@testing-library/react@16.3.2`; use `AI_STATE.md` for the live full-suite counts and failure shape, and do not treat those failures as regressions from new work unless the baseline moves.
 
 ```dataview
 TABLE area, priority, status
@@ -87,11 +87,12 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 | Status | Item |
 |--------|------|
 | **Now** | E2/E3 matrix completion — needs connected Basys3 bench |
-| **Next** | Fill certification matrix for `golden-basys3-switch-and` and `signal-tour` (E2+E3) |
-| **Next** | BUG-003: upgrade `@testing-library/react` to `^17.0.0` |
+| **Now** | UI continuity hardening — keep Project / Design / Verify docs and tests aligned with the latest dashboard/workbench/evidence pass |
+| **Next** | Fill certification matrix for `golden-basys3-switch-and` and custom rows (E2+E3) |
+| **Next** | Add snapshot regression coverage before `ide-root.css` pruning or broader density cleanup |
 | **Blocked** | E2/E3 proof requires connected bench (Vivado 2024.2 + Digilent cable) |
-| **Waiting** | `golden-basys3-switch-and` E2 + E3 |
-| **Waiting** | `signal-tour` E2 + E3 |
+| **Waiting** | Hardware / Export density follow-up after coverage exists |
+| **Waiting** | ScenarioBuilderPanel density follow-up after coverage exists |
 | **Done** | Security-lock import/export spine hardening (`845cffdd`) |
 | **Done** | Vivado export fidelity hardening (`be52fb09`) |
 | **Done** | Board clock semantics — CLK100MHZ→W5 canonical (`69e89999`) |
@@ -138,7 +139,11 @@ Full install order: [[Operational Readiness Review]]
 
 ---
 
-## Test baseline (2026-03-26) — 168 pure-logic passing
+## Test baseline references
+
+Current full-suite baseline lives in `AI_STATE.md`. That file is the live source for focused counts, full IDE counts, and the current BUG-003-family baseline.
+
+Historical pure-logic milestone (2026-03-26) — 168 pure-logic passing
 
 ```
 export-authority-chain-contract  49   signal-inventory-contract   18
@@ -149,7 +154,7 @@ basys3-port-lint                  2   basys3-port-naming-phase1   10
 audit-determinism                 1   verifyContract.reset         8
 ```
 
-Component render tests: pre-existing failures due to React 19 / `@testing-library/react` incompatibility. Do not treat as regressions.
+Component render coverage is usable under the current harness, but the broader pre-existing BUG-003 family baseline is still tracked at the full-suite level in `AI_STATE.md`.
 
 Key milestones preserved in test naming:
 - B-13 Phase 3 (`b89959c0`): `ide-vcb-run` is the only Run action in Verify

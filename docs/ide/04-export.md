@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-29
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -38,7 +38,7 @@ Act as compiler-like export authority for Basys3 Vivado artifacts while distingu
 ## Empty State
 
 Headline: `Project is not export-ready`
-Primary CTA: `Fix IO mapping in Project Mode`
+Primary CTA: `Open Project - Map Pins`
 Secondary action: `Open validation details`
 
 ## Error State
@@ -57,7 +57,7 @@ Each error must include a direct fix path.
 
 1. Artifact count.
 2. Deterministic export hash.
-3. Current assertion-backed Verify PASS.
+3. Current Compare PASS with saved checks.
 4. Download actions enabled.
 
 Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.

@@ -60,10 +60,10 @@ RedByte uses a six-surface workflow inside a single IDE shell:
 
 | Surface | Purpose |
 |---------|---------|
-| **Project** | Student identity, lab metadata, starter examples, readiness checklist |
+| **Project** | Dashboard/home surface for project identity, readiness, next action, and starter/load routes |
 | **Design** | Schematic editor — place, wire, and configure circuit components |
 | **Verify** | Run test scenarios, view pass/fail results, inspect waveforms |
-| **Hardware** | Map circuit I/O to Basys3 pins (switches, LEDs, buttons, 7-segment) |
+| **Hardware** | Map Pins / physical board-binding surface for Basys3 resources and package-pin truth |
 | **Export** | Generate and download a Vivado Kit ZIP for synthesis and programming |
 | **Import** | Paste VHDL to import circuits with fidelity reporting |
 
@@ -71,11 +71,11 @@ RedByte uses a six-surface workflow inside a single IDE shell:
 
 ## Student Workflow
 
-1. Open or create a project on the **Project** surface
-2. Build a circuit on the **Design** surface
-3. Verify behavior on the **Verify** surface
-4. Map I/O to Basys3 pins on the **Hardware** surface
-5. Export a Vivado Kit ZIP on the **Export** surface
+1. Start on the **Project** dashboard/home surface
+2. Build or revise the circuit on the **Design** surface
+3. Capture evidence on the **Verify** surface
+4. Bind project I/O on the **Hardware / Map Pins** surface
+5. Build and download the handoff package on the **Export** surface
 6. Open the exported project in AMD Vivado, synthesize, and program the board
 
 RedByte generates the Vivado project files. Synthesis and board programming happen inside Vivado (requires AMD Vivado WebPACK, free for Basys3).
@@ -155,7 +155,7 @@ The primary package under active development is `packages/rb-apps`.
 - **TypeScript 5** — Strict mode throughout
 - **Vite** — Build tooling
 - **Zustand** — State management
-- **Vitest** — Testing (220 tests across 21 suites)
+- **Vitest** — Unit, render, and contract coverage for IDE and toolchain behavior
 
 ---
 
@@ -167,7 +167,7 @@ pnpm --filter rb-apps test           # Run rb-apps tests only
 pnpm rc:check                        # Release candidate gate (tests + verify:gates)
 ```
 
-Test baseline: 168 pure-logic tests + 52 render tests = 220 total, all green.
+Current suite baselines and known pre-existing failures are tracked in `AI_STATE.md`.
 
 ---
 

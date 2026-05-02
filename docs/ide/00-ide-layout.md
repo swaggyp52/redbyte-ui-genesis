@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-21
+last_validated: 2026-05-02
 owner: Connor Angiel
 used_by_claude: true
 role: IDE shell layout contract
@@ -15,9 +15,12 @@ Scope: `packages/rb-apps/src/apps/IdeApp.tsx` default `/` IDE surface
 
 RedByte IDE is a deterministic Basys3 FPGA workflow surface:
 
-1. Design
-2. Verify
-3. Export
+1. Project
+2. Design
+3. Verify
+4. Hardware / Map Pins
+5. Export
+6. Import
 
 No launcher chrome, no OS metaphors, no template carousel on default route.
 
@@ -29,7 +32,7 @@ No launcher chrome, no OS metaphors, no template carousel on default route.
 - Right: contextual actions (`Run Verify`, `Export`, `Help`).
 
 2. Left Rail (always visible)
-- Five mode entries: Project, Design, Verify, Export, Import.
+- Six mode entries: Project, Design, Verify, Hardware, Export, Import.
 - Active marker and simple progress indicator.
 
 3. Main Content (mode-specific)
