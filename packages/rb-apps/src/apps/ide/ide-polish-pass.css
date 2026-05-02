@@ -1153,3 +1153,147 @@
   background: rgba(46, 196, 182, 0.32);
   color: #ffffff;
 }
+
+/* ───────── §12. Hardware surface — mapping workflow primitives ────────── */
+
+/* HardwareMappingHeader */
+.ide-hw-mapping-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--rb-surface-2, #1a2233);
+  border-bottom: 1px solid var(--rb-border-1, #2a3a50);
+  min-height: 34px;
+  gap: 8px;
+}
+.ide-hw-mapping-header-identity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ide-hw-mapping-header-board {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rb-text-1, #e3edf8);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ide-hw-mapping-header-sep {
+  font-size: 11px;
+  color: var(--rb-text-3, #637d96);
+}
+.ide-hw-mapping-header-count {
+  font-size: 11px;
+  color: var(--rb-text-2, #a8bdd0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ide-hw-mapping-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.ide-hw-mapping-header-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.ide-hw-mapping-header-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.ide-hw-mapping-header-state.is-ok    { color: #2ec4b6; }
+.ide-hw-mapping-header-state.is-warn  { color: #f5a623; }
+.ide-hw-mapping-header-state.is-idle  { color: var(--rb-text-3, #637d96); }
+.ide-hw-mapping-header-state.is-error { color: #e05252; }
+.ide-hw-mapping-header-hint {
+  font-size: 11px;
+  color: var(--rb-text-3, #637d96);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/* HardwareMappingGuide */
+.ide-hw-mapping-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 8px 12px;
+}
+.ide-hw-guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  opacity: 0.45;
+  transition: opacity 0.12s;
+}
+.ide-hw-guide-step.is-active {
+  opacity: 1;
+}
+.ide-hw-guide-step.is-done {
+  opacity: 0.6;
+}
+.ide-hw-guide-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--rb-surface-3, #243045);
+  color: var(--rb-text-3, #637d96);
+  margin-top: 1px;
+}
+.ide-hw-guide-step.is-active .ide-hw-guide-step-num {
+  background: #2ec4b6;
+  color: #0d1520;
+}
+.ide-hw-guide-step.is-done .ide-hw-guide-step-num {
+  background: rgba(46, 196, 182, 0.18);
+  color: #2ec4b6;
+}
+.ide-hw-guide-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ide-hw-guide-step-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-text-1, #e3edf8);
+  line-height: 1.3;
+}
+.ide-hw-guide-step-helper {
+  font-size: 11px;
+  color: var(--rb-text-3, #637d96);
+  line-height: 1.4;
+}
+.ide-hw-guide-step-value {
+  font-size: 11px;
+  color: var(--rb-text-3, #637d96);
+  font-style: italic;
+}
+.ide-hw-guide-step-value.has-value {
+  color: #2ec4b6;
+  font-style: normal;
+  font-weight: 500;
+}

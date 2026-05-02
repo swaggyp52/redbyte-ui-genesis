@@ -55,6 +55,12 @@ import {
   type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import type { IdeChromeContract } from '../chromeContract';
+import {
+  HardwareMappingHeader,
+  HardwareMappingGuide,
+  type HardwareMappingState,
+  type MappingGuideStep,
+} from './hardware/HardwareSurfacePrimitives';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'hardware',
@@ -1061,6 +1067,19 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const mappedRequiredCount = totalRequiredCount - unmappedRequiredPins.length;
   const mappingReady = hasRequiredMappingRows && hasClockMapping && hasOutputMapping && unresolvedRequiredCount === 0;
+
+  const mappingHeaderState: HardwareMappingState = hasNoBoundaryRows
+    ? 'design-first'
+    : mappingReady
+      ? 'complete'
+      : 'incomplete';
+
+  const activeGuideStep: MappingGuideStep = !selectedMappingRow
+    ? 1
+    : !selectedMappingBoardControl
+      ? 2
+      : 3;
+
   const hasOtherBlockingIssue = useMemo(
     () =>
       effectiveBlockingIssues.some(
@@ -2508,6 +2527,20 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             className="ide-hw-board-workspace ide-hw-board-workspace--map"
             data-testid="ide-hw-board-workspace"
           >
+            {/* Mapping context header — board, count, state, next action hint */}
+            <HardwareMappingHeader
+              board="Basys3"
+              mappedCount={mappedRequiredCount}
+              requiredCount={totalRequiredCount}
+              state={mappingHeaderState}
+              nextActionHint={
+                hasNoBoundaryRows
+                  ? 'Add inputs and outputs in Design first.'
+                  : mappingReady
+                    ? 'Mapping is complete. Run Verify or open Export.'
+                    : `Map ${unresolvedRequiredCount} remaining required signal${unresolvedRequiredCount === 1 ? '' : 's'}.`
+              }
+            />
             <header className="ide-hw-board-chrome">
               <div className="ide-hw-board-chrome-text">
                 <span className="ide-hw-board-chrome-eyebrow">Board workspace</span>
@@ -2526,28 +2559,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </span>
               </div>
             </header>
-            <div
-              className={`ide-hw-map-loop-card${selectedMappingRow ? ' is-selected' : ' is-empty'}`}
-              data-testid="ide-hw-map-loop-card"
-            >
-              <div className="ide-hw-map-loop-card__item">
-                <span>Signal</span>
-                <strong>{selectedMappingLabel ?? 'Select a signal row'}</strong>
-              </div>
-              <div className="ide-hw-map-loop-card__arrow" aria-hidden="true">
-                {'->'}
-              </div>
-              <div className="ide-hw-map-loop-card__item">
-                <span>Board control</span>
-                <strong>{selectedMappingBoardControl ?? 'Click a valid control'}</strong>
-              </div>
-              <div className="ide-hw-map-loop-card__arrow" aria-hidden="true">
-                {'->'}
-              </div>
-              <div className="ide-hw-map-loop-card__item">
-                <span>Physical pin</span>
-                <strong>{selectedMappingPackagePin ?? 'Shown in the row'}</strong>
-              </div>
+            {/* 3-step mapping guide — replaces the flat loop card, keeps its testid */}
+            <div data-testid="ide-hw-map-loop-card">
+              <HardwareMappingGuide
+                activeStep={activeGuideStep}
+                signalLabel={selectedMappingLabel}
+                boardControlLabel={selectedMappingBoardControl}
+                packagePin={selectedMappingPackagePin}
+              />
             </div>
             <IdeCallout
               tone="info"
