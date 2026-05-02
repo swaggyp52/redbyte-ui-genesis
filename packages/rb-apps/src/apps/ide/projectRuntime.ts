@@ -108,6 +108,11 @@ import {
   normalizePersistedImportMeta,
   type IdeImportMeta,
 } from './projectImportMeta';
+import {
+  detectVerifyClockPolicy,
+  materializeVectorsForClockPolicy,
+  type VerifyClockPolicy,
+} from './verifyClockPolicy';
 
 export type { IdeImportMeta } from './projectImportMeta';
 
@@ -203,6 +208,7 @@ export interface RuntimeVerifyRun {
   generatedAtIso: string;
   schedule: 'combinational' | 'clocked_macro';
   scheduleContract?: VerifyScheduleContract;
+  clockPolicy?: VerifyClockPolicy;
   meta: VerifyRunMeta;
   report: VerifyReport;
   waveform: VerifyWaveSample[];
@@ -244,6 +250,7 @@ export interface RunVerificationInput {
   deterministicHash: string;
   scheduleContract?: VerifyScheduleContract;
   vectors?: TestVector[];
+  clockPolicy?: VerifyClockPolicy | null;
   assertionMode?: boolean;
   rows: Array<{
     tick: number;
@@ -1388,10 +1395,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ? cloneVerifyScheduleContract(input.scheduleContract)
             : verifyContext.schedule;
           const model = verifyContext.simModel;
-          const runtimeVectors = normalizeVectorsForLiveIo(
+          const authoredVectors = normalizeVectorsForLiveIo(
             cloneVectors(input.vectors ?? resolveActiveScenarioVectors(state)),
             state.projectIoRows
           );
+          const clockPolicy =
+            input.clockPolicy ??
+            detectVerifyClockPolicy({
+              circuit: state.circuit,
+              ioRows: state.projectIoRows,
+              scheduleContract,
+            });
+          const runtimeVectors = materializeVectorsForClockPolicy({
+            vectors: authoredVectors,
+            ioRows: state.projectIoRows,
+            policy: clockPolicy,
+          });
           const requestedVerifyRows = (input.rows ?? []).length > 0;
           const hasExpectedVectorAssertions = runtimeVectors.some(
             (vector) => Object.keys(vector.expected ?? {}).length > 0
@@ -1418,7 +1437,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   model,
                   state.projectIoRows,
                   deterministicVectors,
-                  scheduleContract
+                  scheduleContract,
+                  clockPolicy
                 )
               : null;
           const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
@@ -1465,6 +1485,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             generatedAtIso: report.generatedAtIso,
             schedule: scheduleContract.schedule,
             scheduleContract: cloneVerifyScheduleContract(scheduleContract),
+            clockPolicy: clockPolicy ? { ...clockPolicy } : undefined,
             meta: buildVerifyRunMeta(scheduleContract),
             report,
             waveform,
@@ -3219,6 +3240,7 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
     scheduleContract: run.scheduleContract
       ? cloneVerifyScheduleContract(run.scheduleContract)
       : undefined,
+    clockPolicy: run.clockPolicy ? { ...run.clockPolicy } : undefined,
     meta: { ...run.meta },
     report: {
       ...run.report,

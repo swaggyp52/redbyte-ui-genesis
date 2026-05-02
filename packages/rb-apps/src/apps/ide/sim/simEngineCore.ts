@@ -23,6 +23,7 @@ import {
   getIoSignalLookupKeys,
   normalizeIoSignalKey,
 } from '../ioLabels';
+import type { VerifyClockPolicy } from '../verifyClockPolicy';
 import type {
   VerifyEvidenceCapsule,
   VerifyEvidenceFailure,
@@ -322,7 +323,8 @@ export function runDeterministicVerifyFromModel(
   model: SimulationModel,
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
-  scheduleContract?: VerifyScheduleContract
+  scheduleContract?: VerifyScheduleContract,
+  _clockPolicy?: VerifyClockPolicy
 ): DeterministicVerifyResult {
   if (!model.isRunnable) {
     return buildInvalidIrResult(model, ioRows, vectors);
@@ -545,6 +547,7 @@ export function simulateExpectedIoRowsFromModel(params: {
   ioRows: SimulationIoRow[];
   vectors: TestVector[];
   scheduleContract?: VerifyScheduleContract;
+  clockPolicy?: VerifyClockPolicy;
 }): SimulatedExpectedIoRow[] {
   if (!params.model.isRunnable || params.vectors.length === 0) {
     return [];
