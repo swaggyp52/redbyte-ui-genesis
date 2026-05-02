@@ -335,6 +335,14 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 Compare checks
               </button>
             </div>
+            <span
+              className="ide-vcb-mode-explainer"
+              data-testid="ide-vcb-mode-explainer"
+            >
+              {observeModeActive
+                ? 'Run the stimulus and record observed outputs. No comparison.'
+                : 'Compare the run against saved expected outputs.'}
+            </span>
           </div>
         )}
 

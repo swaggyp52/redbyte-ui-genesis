@@ -1197,6 +1197,27 @@
   align-self: flex-start;
 }
 
+/* ───────── §10b. Verify — inline mode explainer (audit pass 2026-05-02) ────────── */
+/* The Observe / Compare toggle had no inline explanation. Students could read
+   the buttons but not what each mode actually does. Adding a one-line
+   explainer beside the toggle so the mental model is unambiguous. */
+.ide-root .ide-verify-command-bar .ide-vcb-mode-explainer {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--rb-text-3);
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  max-width: 38ch;
+}
+@media (max-width: 1200px) {
+  .ide-root .ide-verify-command-bar .ide-vcb-mode-explainer {
+    display: none;
+  }
+}
+
 /* ───────── §11.5. Project — bridge disclosure (audit pass 2026-05-02) ────────── */
 /* The ProjectBridgePanel was rendering inline below the new dashboard, leaking
    determinism / fidelity / hardware-ready internals into the home view. It's
