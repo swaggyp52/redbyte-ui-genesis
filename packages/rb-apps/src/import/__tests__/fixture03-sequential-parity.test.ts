@@ -84,10 +84,17 @@ describe('fixture03 sequential verify/export parity', () => {
 
     const generatedTestbench = generateTestbenchVhdl(project, vectors);
     expect(generatedTestbench).toContain('-- schedule=clocked_macro');
-    expect(generatedTestbench).toContain('-- sequence=0->1->0');
-    const macroSchedulePattern = /([A-Za-z_][A-Za-z0-9_]*) <= '0';\s+wait for CLK_HALF_PERIOD;\s+\1 <= '1';\s+wait for CLK_HALF_PERIOD;\s+\1 <= '0';\s+wait for CLK_HALF_PERIOD;\s+wait for 0 ns;/g;
-    const macroScheduleMatches = generatedTestbench.match(macroSchedulePattern) ?? [];
-    expect(macroScheduleMatches.length).toBe(vectors.length);
+    expect(generatedTestbench).toContain('clock_gen: process');
+    expect(generatedTestbench).toContain("constant CLK_HALF_PERIOD : time := 5 ns;");
+    expect(generatedTestbench).toContain("clk <= '0';");
+    expect(generatedTestbench).toContain("clk <= '1';");
+    expect(generatedTestbench).toContain('wait until rising_edge(clk);');
+
+    const stimulusBlock = generatedTestbench.split('stim: process')[1] ?? '';
+    const risingEdgeMatches = stimulusBlock.match(/wait until rising_edge\(clk\);/g) ?? [];
+    expect(risingEdgeMatches.length).toBe(Math.max(0, vectors.length - 1));
+    expect(stimulusBlock).not.toContain("clk <= '1';");
+    expect(stimulusBlock).not.toContain("clk <= '0';");
 
     const exportResult = exportProjectAsBasys3(project);
     expect(exportResult.bundle?.testbench).toBe(generatedTestbench);

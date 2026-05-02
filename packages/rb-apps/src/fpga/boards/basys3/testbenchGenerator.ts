@@ -306,6 +306,7 @@ export function generateTestbenchVhdl(
   ].join(',\n');
 
   const stimulus = generateStimulus(vectors, scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
+  const clockProcess = buildClockProcess(scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
 
   return `library ieee;
 use ieee.std_logic_1164.all;
@@ -332,6 +333,7 @@ begin
 ${portMapEntries}
     );
 
+${clockProcess}
   stim: process
   begin
 ${stimulus}
@@ -416,6 +418,7 @@ function generateTestbenchFromEntity(
     labelToRef,
     entityPorts,
   );
+  const clockProcess = buildEntityClockProcess(scheduleContract.schedule, clockPortRef);
 
   return `library ieee;
 use ieee.std_logic_1164.all;
@@ -442,6 +445,7 @@ begin
 ${portMapEntries}
     );
 
+${clockProcess}
   stim: process
   begin
 ${stimulus}
@@ -474,9 +478,11 @@ function generateEntityStimulus(
     }
 
     if (schedule === 'clocked_macro' && clockPortRef) {
-      for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
-        lines.push(`    ${clockPortRef} <= '${clockValue}';`);
-        lines.push('    wait for CLK_HALF_PERIOD;');
+      if (index === 0) {
+        lines.push('    wait for 0 ns;');
+      } else {
+        lines.push(`    wait until rising_edge(${clockPortRef});`);
+        lines.push('    wait for 0 ns;');
       }
       lines.push('    wait for 0 ns;');
     } else {
@@ -522,9 +528,11 @@ function generateStimulus(
     }
 
     if (schedule === 'clocked_macro' && safeClock) {
-      for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
-        lines.push(`    ${safeClock} <= '${clockValue}';`);
-        lines.push('    wait for CLK_HALF_PERIOD;');
+      if (index === 0) {
+        lines.push('    wait for 0 ns;');
+      } else {
+        lines.push(`    wait until rising_edge(${safeClock});`);
+        lines.push('    wait for 0 ns;');
       }
       lines.push('    wait for 0 ns;');
     } else {
@@ -546,6 +554,51 @@ function generateStimulus(
   });
 
   return lines.join('\n');
+}
+
+function buildClockProcess(
+  schedule: 'combinational' | 'clocked_macro',
+  logicalClockName: string | undefined,
+  nameMap: Map<string, string>
+): string {
+  if (schedule !== 'clocked_macro' || !logicalClockName) return '';
+  const clockRef = nameMap.get(logicalClockName);
+  if (!clockRef) return '';
+  return [
+    '  clock_gen: process',
+    '  begin',
+    `    ${clockRef} <= '0';`,
+    '    wait for CLK_HALF_PERIOD;',
+    '    loop',
+    `      ${clockRef} <= '1';`,
+    '      wait for CLK_HALF_PERIOD;',
+    `      ${clockRef} <= '0';`,
+    '      wait for CLK_HALF_PERIOD;',
+    '    end loop;',
+    '  end process;',
+    '',
+  ].join('\n');
+}
+
+function buildEntityClockProcess(
+  schedule: 'combinational' | 'clocked_macro',
+  clockPortRef: string | undefined
+): string {
+  if (schedule !== 'clocked_macro' || !clockPortRef) return '';
+  return [
+    '  clock_gen: process',
+    '  begin',
+    `    ${clockPortRef} <= '0';`,
+    '    wait for CLK_HALF_PERIOD;',
+    '    loop',
+    `      ${clockPortRef} <= '1';`,
+    '      wait for CLK_HALF_PERIOD;',
+    `      ${clockPortRef} <= '0';`,
+    '      wait for CLK_HALF_PERIOD;',
+    '    end loop;',
+    '  end process;',
+    '',
+  ].join('\n');
 }
 
 function collectSignals(
