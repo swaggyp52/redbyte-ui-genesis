@@ -53,6 +53,15 @@ import {
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip } from '../components/SurfaceLayoutPrimitives';
 import type { IdeChromeContract } from '../chromeContract';
+import {
+  ExportReadinessHero,
+  ExportVivadoInstructions,
+  ExportAdvancedDetails,
+  type ExportTrustCondition,
+  type ExportVerifyProvenance,
+  type ExportBuildProvenance,
+  type ExportDebugCopyState,
+} from './export/ExportSurfacePrimitives';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'export',
@@ -908,98 +917,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       </div>
     </div>
   );
-  const vivadoSection = (
-    <section className="ide-export-section" data-testid="ide-export-vivado-ready">
-      <header className="ide-export-section-header">
-        <div>
-          <h3>Open in Vivado</h3>
-          <p className="ide-export-section-subcopy">
-            Use this only after the handoff summary above is honest for your current design (mapping, gates, Verify).
-          </p>
-          {downloadReady ? (
-            <p
-              className="ide-export-section-subcopy"
-              data-testid="ide-export-vivado-zip-contents"
-              style={{ marginTop: 'var(--ide-space-2)' }}
-            >
-              The project ZIP includes <code>top.vhd</code> (your generated top), <code>top.xdc</code> (Basys3 pin
-              constraints), <code>{projectSlug}.xpr</code> (Vivado project), <code>vivado_import.tcl</code>, and a README
-              with bring-up notes. &quot;Ready for Vivado&quot; in RedByte means those files line up with your mapped ports and
-              the export build completed without hard blockers — you still run synthesis, implementation, and bitstream
-              on your computer in Vivado.
-            </p>
-          ) : null}
-        </div>
-      </header>
-
-      <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
-        <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-          <li>Open Vivado {'->'} <strong>File {'->'} Open Project</strong></li>
-          <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-          <li>Run Synthesis {'->'} Implementation {'->'} Generate Bitstream {'->'} Program Device</li>
-        </ol>
-        <details className="ide-export-advanced-steps">
-          <summary>Advanced / full checklist</summary>
-          <div className="ide-kv-list" style={{ marginTop: 'var(--ide-space-2)', marginBottom: 'var(--ide-space-2)' }}>
-            <div className="ide-kv-row">
-              <span>Board</span>
-              <span><code>Basys3</code></span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Part</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
-                <code data-testid="ide-export-part-number">{vivadoPart}</code>
-                <IdeButton
-                  tone="ghost"
-                  onClick={() => void copyToClipboard(vivadoPart, 'part-number')}
-                >
-                  {copiedTarget === 'part-number' ? 'Copied!' : 'Copy'}
-                </IdeButton>
-              </span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Top Module</span>
-              <span><code data-testid="ide-export-top-module">{topModule}</code></span>
-            </div>
-            <div className="ide-kv-row">
-              <span>Tool</span>
-              <span><code>Vivado 2024.2+</code></span>
-            </div>
-          </div>
-          <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-2)', marginBottom: 0 }}>
-            Unzip the download and keep the <code>{projectSlug}</code> folder intact before opening the project.
-          </p>
-          <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)', marginTop: 'var(--ide-space-1)', marginBottom: 0 }}>
-            Batch fallback: run <code>{vivadoCommand}</code> from the extracted folder.
-          </p>
-        </details>
-        {downloadReady ? (
-          <div data-testid="ide-export-readme-preview" className="ide-mt-1">
-            <p className="ide-copy" style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-muted)', margin: 0 }}
-               data-testid="ide-export-vivado-command">
-              Batch import command: <code>{vivadoCommand}</code>
-            </p>
-          </div>
-        ) : (
-          <p
-            className="ide-copy ide-export-vivado-blocked-hint"
-          >
-            Resolve the handoff blockers above before importing to Vivado.
-          </p>
-        )}
-        {hasVerifyEvidenceWarning && downloadReady && (
-          <IdeCallout tone="warn" testId="ide-export-vivado-unverified-callout" className="ide-mt-1">
-            Run Verify before relying on this handoff. Without a comparison run, the testbench vectors have no confirmed match against live outputs.
-          </IdeCallout>
-        )}
-        {isDraftExport && (
-          <IdeCallout tone="warn" testId="ide-export-draft-callout" className="ide-mt-1">
-            This download is a draft Vivado package. Buildable files can still be useful for debugging, but RedByte will not call the handoff trusted until Verify passes and this package is current.
-          </IdeCallout>
-        )}
-      </div>
-    </section>
-  );
   const quickDebugReport = useMemo(() => {
     const mappingLines = [...viewModel.pinTable]
       .map((row) => {
@@ -1249,6 +1166,54 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       setCopyError(true);
     }
   };
+
+  // ── ExportReadinessHero derived props ────────────────────────────────────────
+  const trustCondition: ExportTrustCondition = exportTrusted
+    ? 'trusted'
+    : handoffTruth.severity === 'advisory'
+      ? 'advisory'
+      : 'blocked';
+
+  const verifyProvenance: ExportVerifyProvenance = !verifyResult
+    ? 'not-run'
+    : dirtySinceVerify
+      ? 'stale'
+      : verifyState === 'trace'
+        ? 'trace'
+        : verifyResult.status === 'pass'
+          ? 'pass'
+          : 'fail';
+
+  const buildProvenance: ExportBuildProvenance = !viewModel.exportHash
+    ? 'not-built'
+    : viewModel.exportHash !== determinismHash
+      ? 'previous'
+      : 'current';
+
+  const heroFirstBlocker = exportBlocked && viewModel.errors.length > 0
+    ? (() => {
+        const err = viewModel.errors[0];
+        return {
+          code: err.code,
+          title: err.title,
+          fix: err.fix,
+          ownerText: formatExportDiagnosticOwner(err.owner),
+          isHardwareIssue: err.code.startsWith('RBEX1'),
+          isDesignIssue: err.code.startsWith('RBEX4'),
+        };
+      })()
+    : undefined;
+
+  const showPrimaryDownloadSpinner =
+    isRebuilding &&
+    (handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
+      handoffTruth.primaryCtaIntent === 're-export-current-bundle');
+
+  const downloadDisabled = !downloadReady || isRebuilding;
+
+  const partNumberCopied = copiedTarget === 'part-number';
+  const debugReportCopyState: ExportDebugCopyState =
+    copiedTarget === 'report' ? 'copied' : copyError ? 'error' : 'idle';
 
   return (
     <IdeSurfaceLayout
@@ -1515,328 +1480,57 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </IdeCallout>
           )}
 
-          <section
-            ref={surfaceRef}
-            className="ide-export-summary-hero"
-            data-layout-mode={layoutMode}
-            data-testid="ide-export-readiness-hero"
-          >
-            <div className="ide-export-summary-hero-main">
-              <div className="ide-export-summary-copy" data-testid="ide-export-summary-card">
-                <div className="ide-export-summary-eyebrow">
-                  <span>Handoff summary</span>
-                </div>
-                <h3>{dominantActionTitle}</h3>
-                <p>{dominantActionDetail}</p>
-                {exportBlocked && viewModel.errors.length > 0 && (() => {
-                  const err = viewModel.errors[0];
-                  const isHardwareIssue = err.code.startsWith('RBEX1');
-                  const isDesignIssue = err.code.startsWith('RBEX4');
-                  return (
-                    <div className="ide-export-first-blocker" data-testid="ide-export-first-blocker">
-                      <span className="ide-export-blocker-code">{err.code}</span>
-                      <strong className="ide-export-blocker-title">{err.title}</strong>
-                      {err.fix && <span className="ide-export-blocker-fix">{err.fix}</span>}
-                      <p className="ide-export-blocker-owner" data-testid="ide-export-first-blocker-owner">
-                        <strong>Fix on:</strong> {formatExportDiagnosticOwner(err.owner)}
-                      </p>
-                      {isHardwareIssue && onGoToHardware && (
-                        <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
-                          Fix in Map Pins
-                        </IdeButton>
-                      )}
-                      {isDesignIssue && onGoToDesign && (
-                        <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-export-blocker-goto-design">
-                          Fix in Design
-                        </IdeButton>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-              <section
-                className="ide-export-sidecard ide-export-buildCard ide-export-action-card"
-                data-testid="ide-export-checks-dock"
-              >
-                <div className="ide-export-buildCardTop">
-                  <div className="ide-export-action-card-copy">
-                    <span className="ide-export-buildTitle">Next action</span>
-                    <p className="ide-copy ide-copy--flush">{nextActionTitle}</p>
-                  </div>
-                  <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
-                </div>
-                <p className="ide-copy ide-copy--flush ide-export-action-card-detail">
-                  {nextActionDetail}
-                </p>
-                <div className="ide-kv-list ide-export-action-card-provenance">
-                  <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-design">
-                    <span>Design</span>
-                    <span className="ide-status-mono" title={`Current circuit: ${determinismHash}`}>
-                      {determinismHash.slice(0, 8)}
-                    </span>
-                  </div>
-                  <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-verify">
-                    <span>Verification</span>
-                    <span>
-                      {!verifyResult
-                        ? <span className="ide-export-provenance-none">Not run</span>
-                        : dirtySinceVerify
-                          ? <span className="ide-export-provenance-stale" title="Circuit changed since the last checked run">Previous build</span>
-                          : verifyState === 'trace'
-                            ? <span className="ide-export-provenance-none">Trace only</span>
-                            : <span className={`ide-export-provenance-${verifyResult.status === 'pass' ? 'pass' : 'fail'}`}>
-                                {verifyResult.status === 'pass' ? 'Checks match' : 'Checks differ'}
-                              </span>
-                      }
-                    </span>
-                  </div>
-                  <div className="ide-kv-row ide-export-provenance-row" data-testid="ide-export-provenance-build">
-                    <span>Build</span>
-                    <span>
-                      {!viewModel.exportHash
-                        ? <span className="ide-export-provenance-none">Not built</span>
-                        : viewModel.exportHash !== determinismHash
-                          ? <span className="ide-export-provenance-stale" title="Build is from a previous circuit version">Previous</span>
-                          : <span className="ide-export-provenance-pass">Current</span>
-                      }
-                    </span>
-                  </div>
-                </div>
-                <div className="ide-inline-actions ide-export-action-buttons">
-                  <span data-testid="ide-export-primary-handoff-cta">
-                    <span data-testid="ide-primary-cta">
-                      <IdeButton
-                        tone="primary"
-                        onClick={handlePrimaryHandoff}
-                        disabled={primaryHandoffDisabled}
-                        testId="ide-export-rebuild-btn"
-                      >
-                        {isRebuilding &&
-                        (handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
-                          handoffTruth.primaryCtaIntent === 're-export-current-bundle') ? (
-                          <>
-                            <IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building...
-                          </>
-                        ) : (
-                          handoffTruth.primaryCtaLabel
-                        )}
-                      </IdeButton>
-                    </span>
-                  </span>
-                  {showSecondaryProjectDownload && (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={() => void handleDownloadExport('project')}
-                      disabled={!downloadReady || isRebuilding}
-                      testId="ide-export-dock-download"
-                    >
-                      {projectDownloadLabel}
-                    </IdeButton>
-                  )}
-                </div>
-                <details className="ide-export-other-outputs ide-mt-1" data-testid="ide-export-other-outputs">
-                  <summary className="ide-summary-toggle">Other outputs</summary>
-                  <div className="ide-inline-actions ide-mt-1">
-                    <IdeButton
-                      tone="secondary"
-                      onClick={() => void handleDownloadExport('kit')}
-                      disabled={!downloadReady || isRebuilding}
-                      testId="ide-export-download-kit-btn"
-                    >
-                      {kitDownloadLabel}
-                    </IdeButton>
-                  </div>
-                </details>
-                <details className="ide-export-pipeline-details ide-mt-1" data-testid="ide-export-pipeline-details">
-                  <summary>Build details</summary>
-                  <ol className="ide-export-buildSteps" data-testid="ide-export-rebuild-steps">
-                    {rebuildSteps.map((s) => (
-                      <li
-                        key={s.id}
-                        className={`ide-export-step ide-export-step--${s.state}`}
-                        data-testid={`ide-export-rebuild-step-${s.id}`}
-                      >
-                        <span className="ide-export-stepMark">
-                          {s.state === 'done'
-                            ? '[OK]'
-                            : s.state === 'running'
-                              ? '[..]'
-                              : s.state === 'error'
-                                ? '[X]'
-                                : s.state === 'skipped'
-                                  ? '[-]'
-                                  : '[ ]'}
-                        </span>
-                        <span className="ide-export-stepLabel">{s.label}</span>
-                        {s.detail && <span className="ide-export-stepDetail">{s.detail}</span>}
-                      </li>
-                    ))}
-                  </ol>
-                  <div className="ide-inline-actions ide-mt-2">
-                    {onGoToHardware && (
-                      <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-go-hardware">
-                        Back to Map Pins
-                      </IdeButton>
-                    )}
-                    {onGoToProject && (
-                      <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-go-project">
-                        Go to Project
-                      </IdeButton>
-                    )}
-                  </div>
-                </details>
-              </section>
-            </div>
-            <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
-              <SummaryStat label="Board" value="Basys3" />
-              <SummaryStat label="Top Module" value={topModule} mono />
-              <SummaryStat label="Mapped Pins" value={`${mappedCount}/${viewModel.pinTable.length}`} />
-              <SummaryStat label="Artifacts" value={`${readyArtifactCount}/${viewModel.artifacts.length}`} />
-            </div>
-            <div className="ide-export-summary-support">
-              <details className="ide-export-handoff-advanced">
-                <summary className="ide-summary-toggle">Handoff details</summary>
-              <section
-                className="ide-export-package-handoff"
-                data-testid="ide-export-package-handoff"
-                aria-label="Package handoff summary"
-              >
-                <header className="ide-export-section-header ide-export-package-handoff-header">
-                  <div>
-                    <h3>Current handoff</h3>
-                    <p className="ide-export-section-subcopy">
-                      One owner for state, fix direction, board target, timing, mapping, verify evidence, and file agreement.
-                    </p>
-                  </div>
-                </header>
-                <div className="ide-export-handoff-status" data-testid="ide-export-package-handoff-status">
-                  <IdeStatusPill
-                    tone={
-                      packageHandoffSummary.status === 'ready'
-                        ? 'ok'
-                        : packageHandoffSummary.status === 'blocked'
-                          ? 'error'
-                          : 'warn'
-                    }
-                  >
-                    {packageHandoffSummary.statusLabel}
-                  </IdeStatusPill>
-                  <div>
-                    <p className="ide-copy ide-copy--flush ide-export-handoff-headline">
-                      {packageHandoffSummary.headline}
-                    </p>
-                    <p className="ide-copy ide-copy--flush ide-export-handoff-subline">
-                      {packageHandoffSummary.subline}
-                    </p>
-                  </div>
-                </div>
-                <div className="ide-export-trust-banner ide-export-trust-banner--inline" data-testid="ide-export-trust-banner">
-                  {exportTrusted ? (
-                    <div className="ide-export-trust-row ide-export-trust-row--trusted">
-                      <IdeStatusPill tone="ok">READY</IdeStatusPill>
-                      <span className="ide-export-trust-message" data-testid="ide-export-trust-consequence">
-                        {handoffTruth.message}
-                      </span>
-                    </div>
-                  ) : handoffTruth.severity === 'advisory' ? (
-                    <div className="ide-export-trust-row ide-export-trust-row--available">
-                      <div className="ide-export-trust-header">
-                        <IdeStatusPill tone="warn">{handoffTruth.statusLabel}</IdeStatusPill>
-                      </div>
-                      <div className="ide-export-trust-body">
-                        <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
-                          {trustReason}
-                        </p>
-                        <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                          {handoffTruth.message}
-                        </p>
-                        {handoffTruth.primaryCtaIntent === 'verify' && onOpenVerify && (
-                          <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                            Open Verify
-                          </IdeButton>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="ide-export-trust-row ide-export-trust-row--blocked">
-                      <div className="ide-export-trust-header">
-                        <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
-                        <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
-                          <span
-                            className={`ide-export-readiness-axis ${resolvedWorkflowAuthority.designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
-                            data-testid="ide-export-readiness-design"
-                          >
-                            {resolvedWorkflowAuthority.designReady ? 'Design valid' : 'Design incomplete'}
-                          </span>
-                          {unmappedRequiredPorts.length > 0 && (
-                            <span className="ide-export-readiness-axis ide-export-readiness-axis--fail" data-testid="ide-export-readiness-mapping">
-                              {unmappedRequiredPorts.length} pin{unmappedRequiredPorts.length !== 1 ? 's' : ''} unmapped
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="ide-export-trust-body">
-                        <p className="ide-export-trust-consequence" data-testid="ide-export-trust-consequence">
-                          {handoffTruth.message}
-                        </p>
-                        {onGoToHardware && (
-                          <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                            Open Map Pins
-                          </IdeButton>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <dl className="ide-export-handoff-facts" data-testid="ide-export-handoff-facts">
-                  <div>
-                    <dt>Board target</dt>
-                    <dd data-testid="ide-export-handoff-board">{packageHandoffSummary.boardTarget}</dd>
-                  </div>
-                  <div>
-                    <dt>Timing mode</dt>
-                    <dd data-testid="ide-export-handoff-timing">{packageHandoffSummary.timingPlain}</dd>
-                  </div>
-                  <div>
-                    <dt>Mapping completeness</dt>
-                    <dd data-testid="ide-export-handoff-mapping">{packageHandoffSummary.mappingPlain}</dd>
-                  </div>
-                  <div>
-                    <dt>Verify / scenario</dt>
-                    <dd data-testid="ide-export-handoff-verify">{packageHandoffSummary.verifyPlain}</dd>
-                  </div>
-                  <div>
-                    <dt>Cross-artifact agreement</dt>
-                    <dd data-testid="ide-export-handoff-artifacts">{packageHandoffSummary.artifactsPlain}</dd>
-                  </div>
-                </dl>
-                <details className="ide-export-agreement-details" data-testid="ide-export-agreement-details">
-                  <summary className="ide-summary-toggle">Artifact agreement</summary>
-                  <p className="ide-export-section-subcopy ide-export-agreement-intro">
-                    Top RTL, testbench, XDC, README, and Vivado import script should tell the same story on entity names, ports, widths, and bindings.
-                  </p>
-                  <table className="ide-export-agreement-table" data-testid="ide-export-artifact-agreement">
-                    <tbody>
-                      {artifactAgreementRows.map((row) => (
-                        <tr key={row.id} data-testid={`ide-export-agreement-row-${row.id}`}>
-                          <th scope="row">{row.label}</th>
-                          <td>
-                            <span
-                              className={`ide-export-agreement-tone ide-export-agreement-tone--${row.tone}`}
-                              data-testid={`ide-export-agreement-tone-${row.id}`}
-                            >
-                              {row.detail}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </details>
-              </section>
-              </details>
-            </div>
-          </section>
+          <ExportReadinessHero
+            sectionRef={surfaceRef}
+            layoutMode={layoutMode}
+            dominantActionTitle={dominantActionTitle}
+            dominantActionDetail={dominantActionDetail}
+            firstBlocker={heroFirstBlocker}
+            handoffTone={handoffTone}
+            handoffStatusLabel={handoffTruth.statusLabel}
+            nextActionTitle={nextActionTitle}
+            nextActionDetail={nextActionDetail}
+            verifyProvenance={verifyProvenance}
+            buildProvenance={buildProvenance}
+            determinismHashShort={determinismHash.slice(0, 8)}
+            isRebuilding={isRebuilding}
+            primaryHandoffDisabled={primaryHandoffDisabled}
+            primaryCtaLabel={handoffTruth.primaryCtaLabel}
+            showPrimaryDownloadSpinner={showPrimaryDownloadSpinner}
+            showSecondaryProjectDownload={showSecondaryProjectDownload}
+            projectDownloadLabel={projectDownloadLabel}
+            kitDownloadLabel={kitDownloadLabel}
+            downloadDisabled={downloadDisabled}
+            rebuildSteps={rebuildSteps}
+            topModule={topModule}
+            mappedPinsLabel={`${mappedCount}/${viewModel.pinTable.length}`}
+            artifactsLabel={`${readyArtifactCount}/${viewModel.artifacts.length}`}
+            packageStatusTone={packageHandoffSummary.status === 'ready' ? 'ok' : packageHandoffSummary.status === 'blocked' ? 'error' : 'warn'}
+            packageStatusLabel={packageHandoffSummary.statusLabel}
+            packageHeadline={packageHandoffSummary.headline}
+            packageSubline={packageHandoffSummary.subline}
+            boardTarget={packageHandoffSummary.boardTarget}
+            timingPlain={packageHandoffSummary.timingPlain}
+            mappingPlain={packageHandoffSummary.mappingPlain}
+            verifyPlain={packageHandoffSummary.verifyPlain}
+            artifactsPlain={packageHandoffSummary.artifactsPlain}
+            trustCondition={trustCondition}
+            trustReason={trustReason}
+            trustConsequence={handoffTruth.message}
+            trustPrimaryCtaIsVerify={handoffTruth.primaryCtaIntent === 'verify'}
+            trustPrimaryCtaIsHardware={trustCondition === 'blocked'}
+            designReady={resolvedWorkflowAuthority.designReady}
+            unmappedRequiredCount={unmappedRequiredPorts.length}
+            artifactAgreementRows={artifactAgreementRows}
+            onGoToHardware={onGoToHardware}
+            onGoToProject={onGoToProject}
+            onGoToDesign={onGoToDesign}
+            onOpenVerify={onOpenVerify}
+            onPrimaryHandoff={handlePrimaryHandoff}
+            onDownloadProject={() => void handleDownloadExport('project')}
+            onDownloadKit={() => void handleDownloadExport('kit')}
+          />
+
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
               <section className="ide-export-section" data-testid="ide-export-artifact-preview">
@@ -2356,53 +2050,23 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
 
             <div className="ide-export-right-col">
-              {vivadoSection}
+              <ExportVivadoInstructions
+                projectSlug={projectSlug}
+                vivadoPart={vivadoPart}
+                vivadoCommand={vivadoCommand}
+                topModule={topModule}
+                downloadReady={downloadReady}
+                isDraftExport={isDraftExport}
+                hasVerifyEvidenceWarning={hasVerifyEvidenceWarning}
+                partNumberCopied={partNumberCopied}
+                onCopyPartNumber={() => void copyToClipboard(vivadoPart, 'part-number')}
+              />
 
-              <details className="ide-export-advanced-details ide-mt-2" data-testid="ide-export-advanced-details">
-                <summary className="ide-summary-toggle">Advanced details</summary>
-              <section className="ide-export-determinismChecks ide-export-aside-panel" data-testid="ide-export-determinism-checks">
-                <div className="ide-export-determinismHeader">DETERMINISM</div>
-                <div className="ide-export-determinismLegend">OK satisfied | CHECK required</div>
-                {deterministicChecks.map((check) => (
-                  <div
-                    key={check.id}
-                    className={`ide-export-determinismRow ${check.pass ? 'is-pass' : 'is-fail'}`}
-                    data-testid={`ide-export-determinism-${check.id}`}
-                    title={check.tooltip}
-                  >
-                    <span className="ide-export-determinismIcon">{check.pass ? 'OK' : 'CHECK'}</span>
-                    <span className="ide-export-determinismLabel">{check.label}</span>
-                  </div>
-                ))}
-              </section>
-
-              <details className="ide-export-evidence-details ide-mt-2" data-testid="ide-export-evidence-details">
-                <summary>Debug report</summary>
-                <div className="ide-export-capsuleSlab ide-mt-1">
-                  <div className="ide-inline-actions">
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => void copyToClipboard(quickDebugReport, 'report')}
-                      testId="ide-export-copy-debug-report"
-                    >
-                      Copy debug report
-                    </IdeButton>
-                  </div>
-                  <p
-                    className="ide-copy"
-                    style={{ fontSize: 10, marginTop: 0 }}
-                    data-testid="ide-export-copy-state"
-                  >
-                    {copiedTarget === 'report'
-                      ? 'Copied.'
-                      : copyError
-                        ? 'Clipboard error.'
-                        : 'Export hash and mapping snapshot for debugging.'}
-                  </p>
-                </div>
-              </details>
-              </details>
-
+              <ExportAdvancedDetails
+                deterministicChecks={deterministicChecks}
+                debugReportCopyState={debugReportCopyState}
+                onCopyDebugReport={() => void copyToClipboard(quickDebugReport, 'report')}
+              />
 
             </div>
           </div>
@@ -2410,17 +2074,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
-
-const SummaryStat: React.FC<{ label: string; value: string; mono?: boolean }> = ({
-  label,
-  value,
-  mono = false,
-}) => (
-  <div className="ide-export-summary-stat">
-    <span className="ide-export-summary-stat-label">{label}</span>
-    <span className={`ide-export-summary-stat-value${mono ? ' is-mono' : ''}`}>{value}</span>
-  </div>
-);
 
 function pickArtifactStatus(
   map: Map<string, ExportArtifactView>,
