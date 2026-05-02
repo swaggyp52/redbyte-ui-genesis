@@ -484,7 +484,7 @@ describe('ExportSurface trust clarity', () => {
         workflowAuthority={makeWorkflowAuthority({ verifyResult: passResult })}
       />
     );
-    expect(getTrusted('ide-export-summary-card').textContent).toContain('READY');
+    expect(getTrusted('ide-export-readiness-hero').textContent).toContain('READY');
 
     cleanup();
 
@@ -495,7 +495,7 @@ describe('ExportSurface trust clarity', () => {
         workflowAuthority={makeWorkflowAuthority()}
       />
     );
-    expect(getAdvisory('ide-export-summary-card').textContent).toContain('NEEDS REVIEW');
+    expect(getAdvisory('ide-export-readiness-hero').textContent).toContain('NEEDS REVIEW');
   });
 
   it('inspector uses READY for trusted export (not jargon Comparison aligned)', () => {

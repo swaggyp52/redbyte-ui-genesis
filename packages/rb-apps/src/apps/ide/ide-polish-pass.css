@@ -1333,3 +1333,41 @@
 .ide-hw-map-instructions--hidden {
   display: none;
 }
+
+/* ───────── §14. Export handoff surface ────────── */
+
+/* Left column: flex column so CSS order can reposition sections */
+.ide-export-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ide-space-3, 12px);
+}
+
+/* Blockers first, artifact preview second, mapping collapsed last */
+.ide-export-left-col > [data-testid="ide-export-build-output"] { order: 1; }
+.ide-export-left-col > [data-testid="ide-export-artifact-preview"] { order: 2; }
+.ide-export-mapping-section { order: 3; }
+
+/* Collapsed section toggle — shared across Export */
+.ide-summary-toggle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-3, #637d96);
+  text-transform: uppercase;
+  padding: 6px 0;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.ide-summary-toggle::-webkit-details-marker { display: none; }
+
+/* Readiness hero: single dominant card with clear hierarchy */
+.ide-export-summary-hero { margin-bottom: var(--ide-space-4, 16px); }
+
+/* Handoff details: collapsed by default, slightly muted */
+.ide-export-handoff-advanced { margin-top: var(--ide-space-2, 8px); }
+.ide-export-handoff-advanced > summary { font-size: 11px; color: var(--rb-text-3, #637d96); }
+
+/* Advanced details in right col: collapsed developer noise */
+.ide-export-advanced-details { margin-top: var(--ide-space-2, 8px); }

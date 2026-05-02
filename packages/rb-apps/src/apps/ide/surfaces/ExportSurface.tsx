@@ -1519,13 +1519,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             ref={surfaceRef}
             className="ide-export-summary-hero"
             data-layout-mode={layoutMode}
+            data-testid="ide-export-readiness-hero"
           >
             <div className="ide-export-summary-hero-main">
               <div className="ide-export-summary-copy" data-testid="ide-export-summary-card">
                 <div className="ide-export-summary-eyebrow">
-                  <IdeStatusPill tone={handoffTone}>
-                    {handoffTruth.statusLabel}
-                  </IdeStatusPill>
                   <span>Handoff summary</span>
                 </div>
                 <h3>{dominantActionTitle}</h3>
@@ -1696,6 +1694,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <SummaryStat label="Artifacts" value={`${readyArtifactCount}/${viewModel.artifacts.length}`} />
             </div>
             <div className="ide-export-summary-support">
+              <details className="ide-export-handoff-advanced">
+                <summary className="ide-summary-toggle">Handoff details</summary>
               <section
                 className="ide-export-package-handoff"
                 data-testid="ide-export-package-handoff"
@@ -1834,6 +1834,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </table>
                 </details>
               </section>
+              </details>
             </div>
           </section>
           <div className="ide-export-layout">
@@ -2010,8 +2011,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 )}
               </section>
 
-              <div className="ide-export-support-grid">
-                <section className="ide-export-section" data-testid="ide-export-build-output">
+              <section className="ide-export-section" data-testid="ide-export-build-output">
                 <header className="ide-export-section-header">
                   <h3>Blockers and advisories</h3>
                   {visibleDiagnosticsList.length > 0 && (
@@ -2227,6 +2227,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </details>
               </section>
 
+              <details className="ide-export-mapping-section ide-mt-2">
+                <summary className="ide-summary-toggle">Pin binding ({mappedCount}/{viewModel.pinTable.length} mapped)</summary>
               <section
                 ref={mapSectionRef}
                 className="ide-export-section"
@@ -2349,13 +2351,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </table>
                 </div>
               </section>
-              </div>
+              </details>
 
             </div>
 
             <div className="ide-export-right-col">
               {vivadoSection}
 
+              <details className="ide-export-advanced-details ide-mt-2" data-testid="ide-export-advanced-details">
+                <summary className="ide-summary-toggle">Advanced details</summary>
               <section className="ide-export-determinismChecks ide-export-aside-panel" data-testid="ide-export-determinism-checks">
                 <div className="ide-export-determinismHeader">DETERMINISM</div>
                 <div className="ide-export-determinismLegend">OK satisfied | CHECK required</div>
@@ -2396,6 +2400,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         : 'Export hash and mapping snapshot for debugging.'}
                   </p>
                 </div>
+              </details>
               </details>
 
 
