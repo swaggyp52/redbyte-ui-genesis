@@ -12,6 +12,20 @@
    • Deliberately small surface area. The big-win contrast/focus/
      button-affordance lifts stay; the rest is dropped.
 
+   ────────────────────────────────────────────────────────────
+   CSS debt audit (2026-05-02):
+     ide-root.css      = 32,874 lines / 3,826 distinct selectors
+     ide-polish-pass   = 1,400+ lines / ~250 distinct selectors
+     overlap of class names = 4 selectors only:
+       .ide-root, .ide-export-left-col,
+       .ide-export-summary-hero, .ide-hw-workflow-ribbon
+   The polish file is ~95% additive (new primitive styles and
+   token tweaks). The actual debt is ide-root.css itself, which is
+   geological strata of 129+ named "phases / slices" stacked since
+   2026-03 (Teal Detox, Canvas Immersion, Workstation Reset, etc.).
+   Pruning ide-root.css safely requires snapshot regression coverage
+   first — do not attempt blind deletion. Out of scope here.
+
    Sections:
      §1  Token tweaks (additive only, not duplicates)
      §2  Body / typography baseline

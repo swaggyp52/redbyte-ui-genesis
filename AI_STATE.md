@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-05-02 (UI audit pass — Project bridge tuck, Design idle inspector, Verify mode explainer)
+
+**Subsystem:** `surfaces/ProjectSurface.tsx`, `surfaces/DesignSurface.tsx`, `surfaces/verify/VerifyCommandBar.tsx`, `ide-polish-pass.css`
+
+**Context:** Post-refactor UI audit pass after Project / Verify / Hardware / Export structural rebuilds had landed (commits `8441826e`, `5f668f01`, `dd581401`, `78490f69`, `4ccc77c5`, `42880a23`, `759dfb2d`, `f99e0d1d`, `f13cf2d3`, `382fce6d`, `03a70a7a`). User feedback: dashboards were better but each surface still had residual debug-panel dominance — Project had bridge internals leaking below the new dashboard, Design had a thin one-sentence idle inspector, Verify's mode toggle had no inline explainer. Hardware and Export were left out of scope this pass since they each received recent dedicated structural work and another pass without screenshot regression coverage would risk regressions.
+
+**Changes:**
+- `ProjectSurface.tsx` — wrapped `ProjectBridgePanel` (hash, fidelity, scenarioAuthority, hardwareReady, blocking-issue count) inside a collapsed `<details data-testid="ide-project-bridge-disclosure">`. The bridge testids stay in DOM so tests are unaffected; visually the home surface no longer leads with internals.
+- `ProjectSurface.tsx` — tightened `ide-project-map-pipeline-copy` from two prescriptive sentences to one factual sentence + one CTA. Preserves the "building the Vivado package" substring `projectSurface.continuity.test.tsx` asserts.
+- `DesignSurface.tsx` — replaced the single-sentence idle right inspector with a Design overview card that renders Inputs / Outputs / Nodes / Wires counts (live from `circuit.nodes` / `circuit.connections`), an empty-canvas branch, the existing build-status issues callout, and the existing "select something to inspect" tip. New additive testids: `ide-design-inspector-idle-card`, `ide-design-inspector-idle-stats`, `ide-design-inspector-idle-inputs/-outputs/-nodes/-wires`, `ide-design-inspector-idle-issues`.
+- `VerifyCommandBar.tsx` — added a one-line mode explainer beside the Observe / Compare toggle that flips with the active mode ("Run the stimulus and record observed outputs. No comparison." vs "Compare the run against saved expected outputs."). Hidden under 1200px viewport via media query so it doesn't crowd narrow screens. New testid: `ide-vcb-mode-explainer`.
+- `ide-polish-pass.css` — added scoped styles for the three new section markers above. Documented current CSS debt in the file header (ide-root.css = 32,874 lines / 3,826 selectors of geological strata; polish overlay = ~250 selectors; only 4 selectors overlap with root). Did **not** prune ide-root.css — pruning safely needs snapshot regression coverage first.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.*` → 32/32 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.continuedEditing/.blankState/.inspectorHierarchy/.workstation` → 63/63 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation/.frontend-dedup/.entryState/.observeFirst` → 65/67 pass (2 pre-existing baseline failures, identical to `main`)
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/` → 1120/1149 pass, 28 fail, 1 skipped (identical to baseline on `main`; all 28 failures are pre-existing per BUG-003 React 19 / @testing-library/react family)
+- `npx vite build` (rb-apps) → ✓ built in 22.11s, no errors
+
+**Behavior preserved:** project save/load, project rename, examples browser, workflow gating, verify execution, observe/compare logic, stale verify detection, hardware pin mapping, Basys3 board behavior, XDC generation, Vivado export package, deterministic proof/export metadata.
+
+**Out of scope (acknowledged for future passes):**
+- Hardware/Export surfaces — both received heavy dedicated passes recently; another pass without screenshot regression coverage = risk.
+- Pruning `ide-root.css` (32k lines, 129+ named phase blocks). Needs snapshot regression coverage before any deletion.
+- Verify stimulus editor density — the `ScenarioBuilderPanel` is a separate component and a structural rebuild there is its own scope.
+
+**Commits:** `5af8f041` (project), `7d88f927` (design), `713d7037` (verify) on `main`. Not pushed.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-01 (Blank-canvas browser proof gate — all phases PASS)
 
 **Subsystem:** `scripts/gates/ide-blank-canvas-product-proof.mjs`, `package.json`, `simEngineCore.ts`, `DesignSurface.tsx`, `projectRuntime.ts`, `debugFlags.ts/js`, `scripts/gates/_gateHarness.mjs`
