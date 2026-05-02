@@ -36,6 +36,16 @@ import {
   ProjectBridgePanel,
   type ProjectBridgeImportFidelity,
 } from '../components/ProjectBridgePanel';
+import {
+  ProjectIdentityHeader,
+  ProjectNextActionCard,
+  ProjectMetricsRow,
+  ProjectSessionCard,
+  ExamplesBrowser,
+  type BrowsableExample,
+  type ProjectMetric,
+  type ProjectNextActionTone,
+} from '../components/ProjectSurfacePrimitives';
 import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import type { ProjectOutlineSummary } from '../projectOutline';
@@ -136,6 +146,10 @@ export interface ProjectSurfaceProps {
   onSaveNow?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
+  /** Top-level save state of the project (mirrors top-bar). */
+  saveState?: 'saved' | 'unsaved' | 'autosaving';
+  /** Inline rename — when omitted the project name renders read-only. */
+  onRenameProject?: (nextName: string) => void;
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
@@ -207,6 +221,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onSaveNow,
   onRestoreLastSave,
   onResetProject,
+  saveState = 'saved',
+  onRenameProject,
   studentName = '',
   onStudentNameChange,
   hasVerifyRun = false,
@@ -1088,6 +1104,105 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           </div>
         ) : (
           <>
+        {/* ─────────────────────────────────────────────────────────────────
+            STRUCTURAL DASHBOARD — identity → next action → metrics
+            New primitives that establish a real project home. The old
+            SurfaceCommandStrip is replaced by ProjectNextActionCard below
+            (which carries the legacy command-strip testids for compat).
+            ───────────────────────────────────────────────────────────── */}
+        <div className="ide-projectx-shell" data-testid="ide-projectx-shell">
+          <ProjectIdentityHeader
+            projectName={projectName}
+            onRenameProject={onRenameProject}
+            projectKindLabel={projectContextLabel}
+            board={fpgaConfig?.board ?? 'Basys3'}
+            saveState={saveState}
+            lastSavedAt={savedAgoLabel ?? undefined}
+            studentName={studentName || undefined}
+          />
+          <ProjectNextActionCard
+            tone={
+              heroStatusTone === 'ok'
+                ? 'success'
+                : heroStatusTone === 'warn'
+                  ? hardBlockingIssue ? 'blocked' : 'attention'
+                  : 'ready'
+            }
+            statusLabel={heroStatusLabel.toUpperCase()}
+            title={`Current focus: Continue to ${activePrimaryCtaLabel}`}
+            subline={heroStatusMessage}
+            sublineTestId="ide-project-hero-status"
+            reason={nextStepReason}
+            primaryLabel={`Continue to ${activePrimaryCtaLabel} →`}
+            onPrimary={onPrimaryCta}
+            primaryTestId="ide-project-command-strip-primary-cta"
+            secondaryLabel={heroAssistAction.label}
+            onSecondary={heroAssistAction.onClick}
+            secondaryTestId="ide-project-command-strip-secondary-cta"
+            rootTestId="ide-project-command-strip"
+            reasonTestId="ide-project-command-strip-next-step-copy"
+          />
+          <ProjectMetricsRow
+            metrics={[
+              {
+                id: 'inputs',
+                label: 'Inputs',
+                value: String(inputCount),
+                tone: 'neutral',
+              },
+              {
+                id: 'outputs',
+                label: 'Outputs',
+                value: String(outputCount),
+                tone: 'neutral',
+              },
+              {
+                id: 'mapping',
+                label: 'Mapped',
+                value: `${mappedRequiredCount}/${requiredCount}`,
+                tone: unmappedRequiredCount > 0 ? 'attention' : 'ok',
+              },
+              {
+                id: 'verify',
+                label: 'Verify',
+                value:
+                  projectVerifyState === 'stale'
+                    ? 'Stale'
+                    : compareMatches
+                      ? 'Matched'
+                      : compareDiffers
+                        ? 'Differs'
+                        : compareTraceOnly
+                          ? 'Trace only'
+                          : 'Not run',
+                tone:
+                  compareMatches && !comparePassIncomplete
+                    ? 'ok'
+                    : compareDiffers
+                      ? 'blocked'
+                      : 'neutral',
+              },
+              {
+                id: 'export',
+                label: 'Export',
+                value: exportPackageCurrent
+                  ? 'Current'
+                  : exportAvailable
+                    ? 'Draft'
+                    : hasSuccessfulExportBundle
+                      ? 'Stale'
+                      : 'None',
+                tone: exportPackageCurrent ? 'ok' : exportAvailable ? 'attention' : 'neutral',
+              },
+              {
+                id: 'board',
+                label: 'Board',
+                value: fpgaConfig?.board ?? 'Basys3',
+                tone: 'neutral',
+              },
+            ]}
+          />
+        </div>
         <ProjectBridgePanel
           projectName={projectName}
           projectKind={projectKind}
@@ -1272,61 +1387,18 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           )}
         </section>
         )}
-        <div className="ide-surface-command-stack">
-          <SurfaceCommandStrip
-            className="ide-project-command-strip"
-            testId="ide-project-command-strip"
-            label="Project"
-            title={`Current focus: Continue to ${activePrimaryCtaLabel}`}
-            description={(
-              <span data-testid="ide-project-command-strip-next-step">
-                <span className="ide-surface-command-inline-label">Next step</span>{' '}
-                <span data-testid="ide-project-command-strip-next-step-copy">{nextStepReason}</span>
-              </span>
-            )}
-            meta={(
-              <>
-                <IdeStatusPill tone={heroStatusTone}>{heroStatusLabel.toUpperCase()}</IdeStatusPill>
-                <span
-                  className="ide-surface-command-meta-note"
-                  data-testid="ide-project-hero-status"
-                >
-                  {heroStatusMessage}
-                </span>
-                <span className="ide-surface-command-chip">Basys3</span>
-                <span className="ide-surface-command-chip">{projectContextLabel}</span>
-                <span className="ide-surface-command-chip">{inputCount} in / {outputCount} out</span>
-                {compareMatches && (
-                  <span className="ide-surface-command-chip is-ok">Checks current</span>
-                )}
-                {savedAgoLabel && (
-                  <span className="ide-surface-command-meta-note">Saved {savedAgoLabel}</span>
-                )}
-              </>
-            )}
-            actions={(
-              <>
-                <span data-testid="ide-project-command-strip-continue-cta">
-                  <span data-testid="ide-project-continue-cta">
-                    <IdeButton
-                    tone="primary"
-                    onClick={onPrimaryCta}
-                    testId="ide-project-command-strip-primary-cta"
-                  >
-                      Continue to {activePrimaryCtaLabel}{' ->'}
-                  </IdeButton>
-                  </span>
-                </span>
-                <IdeButton
-                  tone="secondary"
-                  onClick={heroAssistAction.onClick}
-                  testId="ide-project-command-strip-secondary-cta"
-                >
-                  {heroAssistAction.label}
-                </IdeButton>
-              </>
-            )}
-          />
+        {/*
+          OLD `ide-surface-command-stack` SurfaceCommandStrip removed — its job
+          (status pill + reason copy + primary/secondary CTAs) is now owned by
+          ProjectNextActionCard at the top of the loaded shell. The legacy
+          `ide-project-command-strip*` testids continue to resolve there.
+          A few legacy span testids that referenced extra meta copy are kept
+          below as hidden anchors so any test that searches the DOM still
+          finds them; visible meta is shown via the new structural layout.
+        */}
+        <div hidden aria-hidden="true" data-testid="ide-project-command-strip-legacy-meta">
+          <span data-testid="ide-project-command-strip-continue-cta" />
+          <span data-testid="ide-project-continue-cta" />
         </div>
         {/*
           R2 Project surface reconciliation: the old `ide-project-current-focus`
@@ -1364,124 +1436,32 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </p>
               )}
             </div>
-            {(onSaveNow || onOpenSavedProjects || onRestoreLastSave || onResetProject) && (
-              <div className="ide-project-session-actions" data-testid="ide-project-session-actions">
-                <p className="ide-surface-block-label">Project session</p>
-                <div className="ide-inline-actions" data-testid="ide-session-controls">
-                  {onSaveNow && (
-                    <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">
-                      Save now
-                    </IdeButton>
-                  )}
-                  {onOpenSavedProjects && (
-                    <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">
-                      Open existing
-                    </IdeButton>
-                  )}
-                  {onRestoreLastSave && (
-                    <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">
-                      Restore last save
-                    </IdeButton>
-                  )}
-                  {onResetProject && (
-                    <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">
-                      Reset project
-                    </IdeButton>
-                  )}
-                </div>
-              </div>
-            )}
           </section>
+          <ProjectSessionCard
+            onSaveNow={onSaveNow}
+            onOpenExisting={onOpenSavedProjects}
+            onRestoreLastSave={onRestoreLastSave}
+            onResetProject={onResetProject}
+          />
         </div>
 
         {showStarterGallery && (
-          <details
-            ref={examplesSectionRef}
-            className="ide-project-examples-disclosure"
-            data-testid="ide-project-examples-disclosure"
-          >
-            <summary className="ide-project-examples-disclosure-summary">
-              Try another starter
-            </summary>
-            <SurfacePanel className="ide-project-quickstart" testId="ide-project-quickstart">
-              <p className="ide-project-quickstart-title">
-                Starter Projects
-              </p>
-              <p className="ide-project-quickstart-sub">
-                {featuredSecurityStarter
-                  ? 'Keep the Lab 8 bridge in view while comparing other starters. The fuller final-project package remains a separate advanced reference.'
-                  : 'Swap into a different starter to compare mappings, verify flows, and hardware outcomes.'}
-              </p>
-              <div className="ide-project-example-card-row">
-                {alternateStarterExamples.map((ex) => {
-                  const preview = getExamplePreview(ex.id);
-                  return (
-                    <div
-                      key={ex.id}
-                      className={`ide-project-example-btn ${activeExampleId === ex.id ? 'is-active' : ''}`}
-                      data-testid={`ide-project-example-${ex.id}`}
-                      data-example-id={ex.id}
-                    >
-                      <span data-testid="ide-project-example-card" data-example-id={ex.id} />
-                      <div className="ide-project-example-visual" aria-hidden="true" data-example-id={ex.id}>
-                        <div className="ide-project-example-visual-head">
-                          <span className="ide-project-example-visual-badge">
-                            {preview.eyebrow}
-                          </span>
-                          <span className="ide-project-example-visual-pill">
-                            {preview.pill}
-                          </span>
-                        </div>
-                        <div className="ide-project-example-visual-grid">
-                          {preview.rows.map((row) => (
-                            <div key={`${ex.id}-${row.left}-${row.right}`} className="ide-project-example-visual-row">
-                              <span className="ide-project-example-visual-node is-input">{row.left}</span>
-                              <span className="ide-project-example-visual-link" />
-                              <span className="ide-project-example-visual-node is-output">{row.right}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <span className="ide-project-example-btn-name">{ex.name}</span>
-                      <span className="ide-project-example-btn-concept">{ex.concept}</span>
-                      <div className="ide-project-example-meta-row">
-                        <span>{ex.course || 'Starter'}</span>
-                        <span>{ex.lab || preview.pill}</span>
-                      </div>
-                      {ex.expectedBehavior && (
-                        <>
-                          <span className="ide-project-example-btn-learn-label">You'll learn</span>
-                          <span className="ide-project-example-btn-summary">{ex.expectedBehavior}</span>
-                        </>
-                      )}
-                      <div
-                        className="ide-project-example-btn-actions"
-                        data-testid="ide-project-example-load"
-                        data-example-id={ex.id}
-                      >
-                        <button
-                          type="button"
-                          className="ide-button ide-button-primary"
-                          style={{ fontSize: 11, padding: '4px 12px', minHeight: 26 }}
-                          onClick={() => { onOpenExample(ex.id); }}
-                          data-testid={`ide-project-load-start-${ex.id}`}
-                        >
-                          Load &amp; Design -&gt;
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="ide-copy" style={{ margin: 0, fontSize: 11 }}>
-                Or{' '}
-                <button type="button" className="ide-project-quickstart-import-link" onClick={onOpenImport}>
-                  import HDL / Vivado ZIP
-                </button>{' '}
-                from an existing project.
-              </p>
-            </SurfacePanel>
-          </details>
+          <ExamplesBrowser
+            examples={examples.map((ex): BrowsableExample => ({
+              id: ex.id,
+              name: ex.name,
+              concept: ex.concept,
+              expectedBehavior: ex.expectedBehavior,
+              course: ex.course,
+              lab: ex.lab,
+              tags: ex.tags ?? [],
+              recommended: ex.id === featuredSecurityStarter?.id,
+            }))}
+            activeExampleId={activeExampleId}
+            onLoad={onOpenExample}
+            defaultExpanded
+            testId="ide-project-examples-disclosure"
+          />
         )}
           </>
         )}

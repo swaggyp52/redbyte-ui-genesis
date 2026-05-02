@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-05-01 (Blank-canvas browser proof gate — all phases PASS)
+
+**Subsystem:** `scripts/gates/ide-blank-canvas-product-proof.mjs`, `package.json`, `simEngineCore.ts`, `DesignSurface.tsx`, `projectRuntime.ts`, `debugFlags.ts/js`, `scripts/gates/_gateHarness.mjs`
+
+**Context:** Prove Design→Verify→Hardware→Export from a blank canvas in the real Chromium browser. All 5 gate phases now PASS.
+
+**Changes:**
+- `scripts/gates/ide-blank-canvas-product-proof.mjs` — new gate: blank canvas → quick-add AND starter → Verify Compare PASS → Hardware map table visible + pin assignment attempted → Export primary action button visible
+- `package.json` — added `ide:gate:blank-canvas-product-proof` script
+- `simEngineCore.ts` — fix tick off-by-one in `runDeterministicVerifyFromModel`: `traceByTick` now keyed by `entry.tick` (vector tick, 0-based) instead of `entry.sample.tick` (engine tick, 1-based); prevents compare run from reading the previous vector's simulation result
+- `DesignSurface.tsx` — `addAndGateStarter` uses `onRuntimeAddIo` for INPUT/OUTPUT nodes so IO rows register in projectRuntime
+- `projectRuntime.ts` — `window.__RB_PROJECT_RUNTIME__` exposed unconditionally at EOF
+- `debugFlags.ts/js` — `__RB_PROJECT_RUNTIME__` added to `WINDOW_DEBUG_APIS`
+- `scripts/gates/_gateHarness.mjs` — minor harness updates supporting the new gate
+
+**Commit:** `54ee413b` on `main`. Pushed to `origin` (github.com:swaggyp52/redbyte-ui-genesis.git). Branch protection requires "Classroom Truth Gates" CI check to pass before merge to protected contexts.
+
+**Validation:** All 5 phases PASS clean (no diagnostics). 229/231 logic-core tests pass; 2 failures are pre-existing analog-domain tests unrelated to this slice.
+
+**Attribution:** Connor Angiel
+
+## Change Log 2026-05-01 (Blank-canvas from-scratch browser proof gate)
+
+**Subsystem:** `scripts/gates/ide-blank-canvas-product-proof.mjs`, `package.json`
+
+**Context:** Priority 2 from `docs/ACTIVE_WORK.md` — prove a student can create a project from scratch in the actual browser (Design → Verify → Map Pins → Export) without any starter loaded. Previous proof used TypeScript fixtures, not real GUI interaction. This gate uses `runIdeGate` + Chromium with real clicks and store API calls. Hardware beyond Map Pins (E2/E3 board proof) is blocked by physical hardware and is out of scope this session.
+
+**Session note (pre-coding):** Starting from commit `c795efca` (state language unification push). Branch `main`. Working tree clean. `addAndGateStarter` already wires INPUT_A.out→AND.a, INPUT_B.out→AND.b, AND.out→OUTPUT.in — no manual wiring needed in gate. AND gate port names: 'a', 'b' (confirmed from nodes.ts). Board slot test IDs confirmed: `ide-hw-map-sw-{N}`, `ide-hw-map-ld-{N}`. Proof level target: L0 (UX valid) + E0 (export reachable). E1/E2/E3 hardware-gated.
+
+**Changes:**
+- `scripts/gates/ide-blank-canvas-product-proof.mjs` — new gate: blank canvas → Design (quick-add AND starter) → Verify (Observe → save → Compare PASS) → Hardware (map table rows visible, first input/output row assigned) → Export (panel visible, download button present)
+- `package.json` — added `ide:gate:blank-canvas-product-proof` script entry
+
+**Validation:** (filled in after run)
+
+**Attribution:** Connor Angiel
+
 ## Change Log (state language unification: draft / trusted / proven copy)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`, `projectTruth.ts`, `exportPackageHandoffModel.ts`, `surfaces/ExportSurface.tsx`, `surfaces/ProjectSurface.tsx`, `__tests__/exportSurface.trust-clarity.test.tsx`, `__tests__/projectSurface.mapping-legitimacy.test.tsx`

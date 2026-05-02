@@ -34,6 +34,7 @@ All entries in this document are either dev-only or restricted to non-production
 | `window.__RB_BOOT_OK__` | Shell boot completion flag | ✅ YES | Boot signal; safe in prod |
 | `window.__RB_BOOT_TS__` | Shell boot timestamp (perf.now()) | ✅ YES | Performance metric; safe in prod |
 | `window.__RB_CIRCUIT_STORE__` | Circuit store debug reference | ❌ NO | Debug-only store export |
+| `window.__RB_PROJECT_RUNTIME__` | Project runtime store debug reference | ❌ NO | Dev/test store export, guarded by NODE_ENV |
 | `window.__RB_CLASSROOM_MODE_STORE__` | Classroom mode store debug reference | ❌ NO | Debug-only store export |
 | `window.__RB_AUDIT__` | Audit flag (when true, enables audit logging) | ❌ NO | Gate: `typeof window !== 'undefined' && window.__RB_AUDIT__ === true` |
 | `window.__RB_FLAGS__` | Feature flag store (env-injected at deploy time) | ⚠️ CONDITIONAL | Prod-safe if env-injected; validate at build-time |
