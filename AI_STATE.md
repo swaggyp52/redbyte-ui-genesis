@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-02 (Board-clock browser gate hardening — Playwright proof spec)
+
+**Subsystem:** `tests/e2e/board-clock-browser-proof.spec.ts`
+
+**Context:** Follow-up to the manual browser proof commit. Added a deterministic Playwright gate that validates the same board-clock student workflow in preview runtime (`/?e2e=1`) and avoids the prior click-interception friction by pre-seeding onboarding dismissal.
+
+**Changes:**
+- Added `tests/e2e/board-clock-browser-proof.spec.ts` with one end-to-end proof test that covers:
+  1. load `2-Bit Up Counter (Basys3)` from landing
+  2. open Verify and assert board clock policy (`CLK100MHZ`, auto mode)
+  3. assert no manual clock lane in auto mode (`ide-stimulus-clock-row` absent)
+  4. run Verify and assert waveform scope appears
+  5. switch to Manual pulses and assert clock lane appears
+  6. switch back to Auto board clock and assert clock lane disappears
+  7. open Export `testbench.vhd` and assert `clock_gen`, `CLK_HALF_PERIOD`, and `rising_edge(CLK100MHZ)`
+- Added onboarding suppression helper via `page.addInitScript` setting `localStorage['rb-onboarding-v1-seen'] = '1'` so first-load overlays do not intercept automated clicks.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts` -> 11 / 11 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` -> 1 / 1 pass
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (Board-clock browser proof — Verify auto clock + Export testbench)
 
 **Subsystem:** Browser workflow / `artifacts/browser-proof-clock/`
