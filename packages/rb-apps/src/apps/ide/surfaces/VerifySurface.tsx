@@ -72,6 +72,11 @@ import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3Si
 import {
   resolveActiveScheduleContract,
 } from '../clockAuthority';
+import {
+  detectVerifyClockPolicy,
+  type VerifyClockOverrideMode,
+  type VerifyClockPolicy,
+} from '../verifyClockPolicy';
 import type {
   TruthTableComboRow,
   TruthTableKMap,
@@ -516,6 +521,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [sweepSeed, setSweepSeed] = useState('0');
   const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
   const [clockPatternCount, setClockPatternCount] = useState(4);
+  const [clockOverrideMode, setClockOverrideMode] =
+    useState<VerifyClockOverrideMode>('manual-pulses');
+  const [clockRunCycles, setClockRunCycles] = useState(8);
   // ─── Timeline authoring helpers ──────────────────────────────────────────
   const [holdN, setHoldN] = useState(3);
   const [pulseSignal, setPulseSignal] = useState<string>(() => editableInputFields[0]?.id ?? '');
@@ -1619,6 +1627,94 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }),
     [deterministicHash, liveScheduleContract, lastRun]
   );
+  const detectedClockPolicy = useMemo(
+    () =>
+      detectVerifyClockPolicy({
+        circuit: circuitGraph ? { nodes: [...circuitGraph.nodes] } : undefined,
+        ioRows:
+          mappedSignals && mappedSignals.length > 0
+            ? mappedSignals.map((signal) => ({
+                id: signal.id,
+                label: signal.label ?? signal.id,
+                direction: signal.direction,
+                pin: signal.pin,
+                nodeId: signal.nodeId,
+              }))
+            : [
+                ...inputFields.map((field) => ({
+                  id: field.id,
+                  label: field.label,
+                  direction: 'in' as const,
+                  pin: inputFieldSeed.find((entry) => entry.id === field.id)?.pin,
+                  nodeId: inputFieldSeed.find((entry) => entry.id === field.id)?.nodeId,
+                })),
+                ...outputFields.map((field) => ({
+                  id: field.id,
+                  label: field.label,
+                  direction: 'out' as const,
+                  pin: outputFieldSeed.find((entry) => entry.id === field.id)?.pin,
+                  nodeId: outputFieldSeed.find((entry) => entry.id === field.id)?.nodeId,
+                })),
+              ],
+        scheduleContract: activeScheduleContract,
+      }),
+    [
+      activeScheduleContract,
+      circuitGraph,
+      inputFieldSeed,
+      inputFields,
+      mappedSignals,
+      outputFieldSeed,
+      outputFields,
+    ]
+  );
+  useEffect(() => {
+    if (!detectedClockPolicy) return;
+    setClockOverrideMode(detectedClockPolicy.overrideMode);
+    setClockRunCycles(detectedClockPolicy.runCycles);
+  }, [
+    detectedClockPolicy?.boardAlias,
+    detectedClockPolicy?.overrideMode,
+    detectedClockPolicy?.runCycles,
+    detectedClockPolicy?.signalId,
+    detectedClockPolicy?.sourceType,
+  ]);
+  const effectiveClockPolicy = useMemo<VerifyClockPolicy | null>(() => {
+    if (!detectedClockPolicy) return null;
+    const autoRunEnabled =
+      clockOverrideMode === 'auto' ? detectedClockPolicy.autoRunEnabled : false;
+    return {
+      ...detectedClockPolicy,
+      overrideMode: clockOverrideMode,
+      autoRunEnabled,
+      executionModel:
+        clockOverrideMode === 'auto'
+          ? detectedClockPolicy.executionModel
+          : 'manual',
+      runCycles: Math.max(1, totalVectorCount, clockRunCycles, detectedClockPolicy.runCycles),
+      resetBehavior:
+        clockOverrideMode === 'auto'
+          ? detectedClockPolicy.resetBehavior
+          : detectedClockPolicy.resetSignalName
+            ? 'custom'
+            : 'none',
+      manualWarning:
+        clockOverrideMode === 'auto'
+          ? detectedClockPolicy.manualWarning
+          : detectedClockPolicy.manualWarning ??
+            'Manual clock source — use this only if your hardware design really clocks from a switch or button.',
+    };
+  }, [clockOverrideMode, clockRunCycles, detectedClockPolicy, totalVectorCount]);
+  const autoClockModeActive = Boolean(
+    effectiveClockPolicy?.overrideMode === 'auto' && effectiveClockPolicy.autoRunEnabled
+  );
+  const autoExternalClockMode = Boolean(
+    autoClockModeActive && effectiveClockPolicy?.executionModel === 'external-input-auto-toggle'
+  );
+  const stimulusPanelInputFields = useMemo(
+    () => (autoExternalClockMode ? editableInputFields : stimulusInputFields),
+    [autoExternalClockMode, editableInputFields, stimulusInputFields]
+  );
 
   // Manual-event / lab-style timing: after each verify run, default to stepping one case at a time
   // (Prev/Next + snapshot grid). Other timing modes default step UI off; users can opt in via toggle.
@@ -1713,6 +1809,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const nextRunNeedsClockActivity = useMemo(() => {
     if (effectiveNextRunVectors.length === 0) return false;
+    if (autoClockModeActive) return false;
     if (verifyMode === 'sequential' && clockSignals.size > 0) {
       if (effectiveTimingGuidance.kind === 'latch-control') {
         return !clockActivitySummary.hasTransition;
@@ -1721,6 +1818,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return false;
   }, [
+    autoClockModeActive,
     clockActivitySummary.hasRisingEdge,
     clockActivitySummary.hasTransition,
     clockSignals.size,
@@ -1746,6 +1844,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
     if (boardClockBinding) {
+      if (autoClockModeActive) {
+        return {
+          introTitle: 'Basys3 board clock source',
+          introStep:
+            `${boardClockSignalLabel} is bound to the Basys3 100 MHz oscillator ${boardClockBinding.alias} on ${boardClockBinding.packagePin}. RedByte will auto-toggle this board clock during Verify.`,
+          missingActivity:
+            'Auto board clock mode is active. Use manual pulses only when your design intentionally clocks from a switch or button.',
+          noTraceHint:
+            `Auto board clock mode is active for ${boardClockBinding.alias}.`,
+        };
+      }
       return {
         introTitle: 'Basys3 board clock source',
         introStep:
@@ -1763,7 +1872,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         'No clock transitions found in your vectors. Add at least one rising edge on the clock signal so the circuit advances to the next state.',
       noTraceHint: 'No clock activity detected — the simulation may not have advanced past tick 0',
     };
-  }, [boardClockBinding, boardClockSignalLabel, effectiveTimingGuidance]);
+  }, [autoClockModeActive, boardClockBinding, boardClockSignalLabel, effectiveTimingGuidance]);
   // Schema-change detection: show banner when inputFields or outputFields IDs change across renders
   const prevInputFieldIdsRef = useRef<string>('');
   const prevOutputFieldIdsRef = useRef<string>('');
@@ -2682,6 +2791,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         deterministicHash,
         assertionMode: useAssertionsForNextRun,
         vectors: allVectors,
+        clockPolicy: effectiveClockPolicy,
         rows,
       });
     },
@@ -2689,6 +2799,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       activeScenario,
       buildAllVectors,
       deterministicHash,
+      effectiveClockPolicy,
       onRunVerification,
       verifyScenarioName,
     ]
@@ -2865,13 +2976,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, clockPatternCount, clockSignalNames, editableInputFields, onVectorsChange]
   );
   const clockLaneField = useMemo(() => {
+    if (autoExternalClockMode) return null;
     const candidateNames =
       effectiveTimingGuidance.kind === 'latch-control'
         ? [effectiveTimingGuidance.signalName ?? '']
         : clockSignalNames;
 
     return (
-      stimulusInputFields.find((field) =>
+      stimulusPanelInputFields.find((field) =>
         candidateNames.some(
           (candidate) =>
             normalizeFieldId(candidate) === normalizeFieldId(field.id) ||
@@ -2879,7 +2991,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )
       ) ?? null
     );
-  }, [clockSignalNames, effectiveTimingGuidance, stimulusInputFields]);
+  }, [autoExternalClockMode, clockSignalNames, effectiveTimingGuidance, stimulusPanelInputFields]);
   const clockLaneConfig = useMemo(
     () =>
       clockLaneField
@@ -3751,11 +3863,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       )
       .map((field) => field.label ?? field.id);
     const uniqueTicks = Array.from(new Set(effectiveNextRunVectors.map((vector) => vector.tick)));
-    const tickLabel = uniqueTicks.length === 1 ? '1 tick' : `${uniqueTicks.length} ticks`;
-    const caseLabel =
-      totalVectorCount === 1 ? '1 case' : `${totalVectorCount} cases`;
+    const effectiveTickCount =
+      uniqueTicks.length > 0
+        ? uniqueTicks.length
+        : autoClockModeActive && effectiveClockPolicy
+          ? effectiveClockPolicy.runCycles
+          : 0;
+    const tickLabel = effectiveTickCount === 1 ? '1 tick' : `${effectiveTickCount} ticks`;
+    const effectiveCaseCount =
+      totalVectorCount > 0
+        ? totalVectorCount
+        : autoClockModeActive && effectiveClockPolicy
+          ? effectiveClockPolicy.runCycles
+          : 0;
+    const caseLabel = effectiveCaseCount === 1 ? '1 case' : `${effectiveCaseCount} cases`;
     const clockLabel = isSequentialRun
-      ? clockActivitySummary.risingCount > 0
+      ? autoClockModeActive && effectiveClockPolicy
+        ? `${effectiveClockPolicy.runCycles} auto cycle${effectiveClockPolicy.runCycles === 1 ? '' : 's'}`
+        : clockActivitySummary.risingCount > 0
         ? `${clockActivitySummary.risingCount} rising edge${clockActivitySummary.risingCount === 1 ? '' : 's'}`
         : 'no rising edge yet'
       : 'not required';
@@ -3787,9 +3912,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       </div>
     );
   }, [
+    autoClockModeActive,
     authoredVectors,
     clockActivitySummary.risingCount,
     editableInputFields,
+    effectiveClockPolicy,
     effectiveNextRunVectors,
     isSequentialRun,
     nextRunUsesAssertions,
@@ -3810,11 +3937,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const missingTimingInstruction =
       effectiveTimingGuidance.kind === 'latch-control'
         ? 'Use the highlighted control lane below to toggle transparency before expecting output changes.'
-        : 'Use the highlighted clock lane below to add a rising edge before expecting output changes.';
+        : autoClockModeActive
+          ? 'RedByte will auto-toggle the clock during Verify.'
+          : 'Use the highlighted clock lane below to add a rising edge before expecting output changes.';
     const lanePrompt =
       effectiveTimingGuidance.kind === 'latch-control'
         ? 'The control lane is part of the main stimulus grid below.'
-        : 'The clock lane is part of the main stimulus grid below.';
+        : autoClockModeActive
+          ? 'Clock timing is managed below; the board clock is not treated like a manual switch row.'
+          : 'The clock lane is part of the main stimulus grid below.';
+    const clockSummaryText =
+      autoClockModeActive && effectiveClockPolicy
+        ? `Auto ${effectiveClockPolicy.sourceType === 'board-clock' ? 'board clock' : 'clock'}: ${effectiveClockPolicy.runCycles} cycle${effectiveClockPolicy.runCycles === 1 ? '' : 's'}, ${effectiveClockPolicy.activeEdge} edge, ${effectiveClockPolicy.resetBehavior === 'auto-sequence' ? 'reset sequence applied' : effectiveClockPolicy.resetBehavior === 'custom' ? 'custom reset' : 'no reset detected'}.`
+        : clockActivitySummary.summary;
+    const manualClockWarning =
+      effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
+      effectiveClockPolicy?.overrideMode === 'custom-pattern'
+        ? effectiveClockPolicy.manualWarning
+        : null;
 
     return (
       <div
@@ -3825,7 +3965,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <strong className="ide-verify-stimulus-assist-title">Clock / timing</strong>
           {boardClockBinding ? (
             <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-board-clock-source">
-              {boardClockBinding.alias} • {boardClockBinding.packagePin} • simulated board clock source
+              {boardClockBinding.alias} • {boardClockBinding.packagePin} • auto board clock source
             </span>
           ) : clockSignalNames[0] ? (
             <span className="ide-verify-stimulus-assist-meta" data-testid="ide-verify-clock-signal-name">
@@ -3846,8 +3986,84 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </span>
           )}
           <span className="ide-verify-stimulus-assist-summary" data-testid="ide-verify-clock-pattern-summary">
-            {clockActivitySummary.summary}
+            {clockSummaryText}
           </span>
+          {effectiveClockPolicy ? (
+            <div className="ide-verify-clock-policy-panel" data-testid="ide-verify-clock-policy-panel">
+              <span className="ide-verify-clock-policy-line" data-testid="ide-verify-clock-detected">
+                Detected clock: {effectiveClockPolicy.signalLabel}
+                {effectiveClockPolicy.boardAlias ? ` · ${effectiveClockPolicy.boardAlias}` : ''}
+                {effectiveClockPolicy.packagePin ? ` · ${effectiveClockPolicy.packagePin}` : ''}
+                {effectiveClockPolicy.frequencyMHz ? ` · ${effectiveClockPolicy.frequencyMHz} MHz` : ''}
+              </span>
+              <span className="ide-verify-clock-policy-line" data-testid="ide-verify-clock-mode-summary">
+                Mode: {effectiveClockPolicy.overrideMode === 'auto'
+                  ? effectiveClockPolicy.sourceType === 'board-clock'
+                    ? 'Auto board clock'
+                    : 'Auto clock'
+                  : effectiveClockPolicy.overrideMode === 'manual-pulses'
+                    ? 'Manual pulses'
+                    : 'Custom pattern'}
+              </span>
+              <span className="ide-verify-clock-policy-line" data-testid="ide-verify-clock-reset-summary">
+                Reset: {effectiveClockPolicy.resetBehavior === 'auto-sequence'
+                  ? 'reset sequence applied'
+                  : effectiveClockPolicy.resetBehavior === 'custom'
+                    ? 'custom reset'
+                    : 'no reset detected'}
+              </span>
+              <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
+                <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
+                  RedByte will auto-toggle the Basys3 board clock during Verify. Use manual pulses only when your design intentionally clocks from a switch or button.
+                </span>
+                <div className="ide-verify-clock-policy-mode-buttons">
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${clockOverrideMode === 'auto' ? ' is-active' : ''}`}
+                    onClick={() => setClockOverrideMode('auto')}
+                    data-testid="ide-verify-clock-mode-auto"
+                  >
+                    Auto board clock
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${clockOverrideMode === 'manual-pulses' ? ' is-active' : ''}`}
+                    onClick={() => setClockOverrideMode('manual-pulses')}
+                    data-testid="ide-verify-clock-mode-manual"
+                  >
+                    Manual pulses
+                  </button>
+                  <button
+                    type="button"
+                    className={`ide-verify-clock-policy-btn${clockOverrideMode === 'custom-pattern' ? ' is-active' : ''}`}
+                    onClick={() => setClockOverrideMode('custom-pattern')}
+                    data-testid="ide-verify-clock-mode-custom"
+                  >
+                    Custom pattern
+                  </button>
+                </div>
+                <label className="ide-verify-clock-policy-cycles" data-testid="ide-verify-clock-run-cycles">
+                  Run length
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={clockRunCycles}
+                    onChange={(event) =>
+                      setClockRunCycles(Math.max(1, Number(event.target.value || '1')))
+                    }
+                    data-testid="ide-verify-clock-run-cycles-input"
+                  />
+                  <span>cycles</span>
+                </label>
+                {manualClockWarning ? (
+                  <span className="ide-verify-clock-policy-warning" data-testid="ide-verify-clock-manual-warning">
+                    {manualClockWarning}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
           {clockActivitySummary.preview.length > 0 ? (
             <span className="ide-verify-clock-preview" data-testid="ide-verify-clock-pattern-preview">
               {clockActivitySummary.preview.join('  ')}
@@ -3857,9 +4073,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       </div>
     );
   }, [
+    autoClockModeActive,
     boardClockBinding,
+    clockOverrideMode,
+    clockRunCycles,
     clockSignalNames,
     clockActivitySummary,
+    effectiveClockPolicy,
     effectiveTimingGuidance.kind,
     isFirstRunState,
     nextRunNeedsClockActivity,
@@ -4551,7 +4771,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
-          inputFields={stimulusInputFields}
+          inputFields={stimulusPanelInputFields}
           outputFields={outputFields}
           authoredVectors={authoredVectors}
           totalVectorCount={totalVectorCount}
@@ -4604,13 +4824,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <VerifyWaveformRegion>
           {isDraftSession ? (
             <VerifyWaveformPlaceholder
-              inputNames={stimulusInputFields.map((f) => f.label ?? f.id)}
+              inputNames={stimulusPanelInputFields.map((f) => f.label ?? f.id)}
               outputNames={outputFields.map((f) => f.label ?? f.id)}
-              clockName={clockSignalNames[0]}
+              clockName={effectiveClockPolicy?.signalLabel ?? clockSignalNames[0]}
               isSequential={isSequentialRun}
               hasVectors={totalVectorCount > 0}
               runLabel={emptyStateRunLabel}
-              onRun={totalVectorCount > 0 ? () => handleRunWithPreflight() : undefined}
+              onRun={totalVectorCount > 0 || autoClockModeActive ? () => handleRunWithPreflight() : undefined}
               runDisabled={runState === 'running'}
               onSeed={
                 totalVectorCount === 0 && (isFirstRunState || totalVectorCount === 0)
