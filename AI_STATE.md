@@ -1,5 +1,79 @@
 # AI State
 
+## Change Log 2026-05-03 (Verify visual reset hardening — RB-DEBT-003)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, Verify tests.
+
+**Context:** Follow-up strict visual reset pass for Verify workbench composition. Scope remained UI/composition-only while preserving board-clock policy/runtime semantics, Verify compare semantics, and Export testbench semantics. This batch also fixed two runtime blockers revealed by browser proof: command-row hit interception and a first-run -> post-run hook-order crash.
+
+**Changes:**
+- Compact Verify composition reset:
+  - stimulus header converted to dense summary strip (mode + quick stats chips)
+  - bulky guidance moved behind explicit `How this works` disclosure
+  - run summary reduced to compact evidence chips
+  - signal rail defaults collapsed to reduce left-side visual noise
+  - clock policy copy and controls compacted for faster scan
+  - waveform pre-run placeholder kept intentional and concise
+- Command bar hardening:
+  - removed non-essential experiment inline block that physically intercepted `Run` clicks in browser proof
+  - kept experiment/case context in compact summary chips instead of command-row overlay
+- Runtime stability fix:
+  - resolved React hook-order violation in `ScenarioBuilderPanel` by hoisting workbench state hooks above `isFirstRun` early-return branch.
+- Tests updated for the reset defaults:
+  - collapsed-by-default guidance and compact stats in `ScenarioBuilderPanel.progressiveDisclosure`
+  - collapsed-by-default signal rail in `verifySurface.workspaceLayout`
+  - explicit clock summary row assertions in `verifySurface.boardClockAutoMode`
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.modeExplainer.test.tsx` -> 23 / 23 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` -> 1 / 1 pass
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` -> 2 / 2 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts packages/rb-apps/src/__tests__/vivado-clean-export-gate.test.ts` -> 33 / 33 pass
+- `pnpm css:audit:ide` -> pass (warning-only overlap increase reported)
+- `git diff --check` -> clean
+
+**Behavior preserved:** board-clock detection and override policy semantics, Verify execution/compare semantics, and export testbench board-clock process semantics remain unchanged.
+
+**Attribution:** Connor Angiel
+
+## Change Log 2026-05-03 (Verify workbench layout cleanup — RB-DEBT-003)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx`
+
+**Context:** Layout-only Verify workbench cleanup pass after CSS guardrail/gate wiring. Scope was explicitly restricted to Verify composition and visual hierarchy (command bar, stimulus framing, clock panel readability, signal rail ergonomics, waveform empty-state guidance) with strict semantic locks: no board-clock policy/runtime behavior changes, no Verify compare semantics changes, and no Export/Hardware contract changes.
+
+**Changes:**
+- Rebalanced Verify command-bar hierarchy:
+  - kept Run and Next run mode selector primary
+  - moved experiment scenario/case/timing context into a dedicated primary-row group
+  - kept session strip compact and metrics intact
+- Added a student-facing signal-rail collapse/expand control in Verify (`ide-verify-signal-rail-toggle`) with dock state on `data-collapsed`.
+- Updated command-bar case label copy from raw tick token to explicit case context (`Case tN` / `No case selected`).
+- Improved pre-run waveform placeholder hierarchy with concise 3-step authoring checklist.
+- Added Verify-only polish styles for:
+  - command hierarchy spacing and experiment block
+  - compact stimulus header/guidance density
+  - segmented clock-mode control styling in the timing panel
+  - collapsible signal-rail visual state
+  - balanced split grid proportions for desktop workbench
+  - improved waveform empty-state checklist styling
+- Added layout test coverage for signal-rail collapse/expand behavior.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.actionRowHierarchy.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifyCommandBar.modeExplainer.test.tsx packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx` -> 20 / 20 pass
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` -> 2 / 2 pass
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` -> 1 / 1 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts` -> 11 / 11 pass
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts` -> 14 / 14 pass
+- `pnpm css:audit:ide` -> pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `git diff --check` -> clean
+
+**Behavior preserved:** board-clock detection/auto mode/manual overrides, verify execution semantics, compare freshness semantics, export testbench clock process semantics, and export readiness authority remain unchanged.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (CSS audit CI wiring — RB-DEBT-006)
 
 **Subsystem:** `package.json`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`

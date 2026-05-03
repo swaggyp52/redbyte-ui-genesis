@@ -18,7 +18,7 @@ imported_by: CLAUDE.md
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
 2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is in place (`pnpm css:audit:ide`), polish broad selector guardrails are enforced, and the audit is now wired into `pnpm verify:gates` for fail-fast protection.
-3. **Use the debt register to sequence visual follow-ups** - Keep follow-ups narrow: small Export/Hardware balance polish only when evidence shows drift. Keep board-clock truth and Verify runtime semantics locked.
+3. **Use the debt register to sequence visual follow-ups** - Verify workbench layout cleanup is now in place (command hierarchy, compact stimulus framing, cleaner clock panel grouping, collapsible signal rail). Next follow-ups remain narrow and evidence-driven.
 
 ---
 
@@ -50,6 +50,8 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Verify visual reset hardening: compact stimulus strip, collapsed-by-default guidance and signal rail, command-row hit-target fix, hook-order stability fix, and full board-clock/export validation matrix | `AI_STATE.md` - Change Log 2026-05-03 (Verify visual reset hardening) |
+| Verify workbench layout cleanup pass: command-bar hierarchy rebalance, compact stimulus framing, segmented clock panel controls, collapsible signal rail, waveform pre-run guidance polish; board-clock/export semantics revalidated | `AI_STATE.md` - Change Log 2026-05-03 (Verify workbench layout cleanup) |
 | CSS audit gate wiring: `pnpm verify:gates` now runs `pnpm css:audit:ide` first so polish broad substring regressions block normal gate runs | `AI_STATE.md` - Change Log 2026-05-03 (CSS audit CI wiring) |
 | CSS selector guardrail policy: audit now fails on broad substring selectors in polish, reports root broad selectors as legacy warnings, and monitors overlap growth as warning-only (baseline overlap = 5) | `AI_STATE.md` - Change Log 2026-05-03 (CSS selector guardrail enforcement) |
 | CSS debt strategy instrumentation: reproducible IDE stylesheet inventory + overlap/risk metrics via `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`) | `AI_STATE.md` - Change Log 2026-05-03 (CSS debt strategy instrumentation) |
@@ -95,13 +97,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | Verify visual reset hardening (RB-DEBT-003): compact stimulus strip defaults, guidance disclosure, command-row click interception fix, hook-order runtime fix, and board-clock/export proof rerun | `pending` |
+| Done | Verify workbench layout cleanup (RB-DEBT-003): command hierarchy, compact stimulus framing, segmented clock controls, collapsible signal rail, waveform empty-state guidance, and board-clock/export proof rerun | `pending` |
 | Done | CSS guardrail enforcement (RB-DEBT-006): `pnpm css:audit:ide` now blocks broad substring selectors in polish and warns on root legacy selectors/overlap growth | `pending` |
 | Done | CSS debt strategy instrumentation (RB-DEBT-006): added `pnpm css:audit:ide`, captured baseline inventory/risk map, and updated strategy docs without behavior changes | `pending` |
 | Done | Export readiness-density cleanup (RB-DEBT-002): trust/draft hierarchy, calmer default diagnostics, numbered Vivado handoff, and post-edit gates | `pending` |
-| Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | `95692723` |
-| Done | Verify ScenarioBuilder UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | `826a4f92` |
-| Done | Board-clock Verify now auto-runs Basys3 `CLK100MHZ` / `W5`, preserves manual overrides, and exports a free-running VHDL board-clock process | `2e47abf9..6907453c` |
-| Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
 
 ---
 

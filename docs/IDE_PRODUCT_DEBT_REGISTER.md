@@ -57,14 +57,14 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Severity: Medium
 - Category: UI/UX
 - Surface: Verify
-- Current evidence: Commit `826a4f92` added a real `Test stimulus` header, authoring sections, mode-aware copy, and compare-check explanation text. That fixed the first-read problem, but the workbench still reads as a dense table-heavy editor after the initial clarity pass.
+- Current evidence: Commit `826a4f92` added a real `Test stimulus` header, authoring sections, mode-aware copy, and compare-check explanation text. A 2026-05-03 follow-up layout pass then tightened command hierarchy, compacted stimulus framing, improved clock-policy control grouping, added a collapsible signal rail, and improved waveform pre-run guidance while preserving board-clock and export semantics. A second hardening slice on 2026-05-03 fixed command-row hit interception (`Run` click blocker) and a first-run -> post-run hook-order crash, then revalidated browser + board-clock + export gates.
 - How to reproduce or inspect: Load a sequential project such as `2-Bit Up Counter (Basys3)`, open Verify, and compare first-run readability against the underlying grid density once the student starts editing rows.
 - Why it matters: Verify is the proof-authoring surface. Students still need a clearer visual path from clock policy to driven inputs to checked outputs without breaking the deterministic semantics that are now proven.
 - Risk if touched: Very high if semantics drift. Board-clock policy detection, manual overrides, waveform behavior, Compare freshness, and export testbench generation must not change casually.
-- Suggested next pass: Layout-only Verify workbench follow-up after screenshot coverage exists, keeping the proven clock/export semantics locked.
+- Suggested next pass: Minor visual tuning only (spacing and copy), plus screenshot-proof hardening before any broader Verify CSS cleanup.
 - Tests/browser proof needed: ScenarioBuilder focused tests, board-clock browser proof gate rerun, and full-surface screenshots before broader CSS pruning in Verify.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifySurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/board-clock-browser-proof.spec.ts`.
-- Status: Open
+- Status: **Partially resolved (2026-05-03)** - Verify now presents a clearer two-column workbench (compact stimulus strip, collapsed-by-default guidance + rail, cleaner clock panel grouping, stronger waveform pre-run guidance) with command-row/runtime stability fixes and board-clock/browser/export proof gates rerun green. Remaining debt: small visual polish only, no semantic changes.
 
 ### RB-DEBT-004 - Design workbench still needs a screenshot-backed polish pass
 
