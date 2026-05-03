@@ -91,6 +91,7 @@
         "ops:student-export:pass": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\student-export-pass.rb-lab.zip -ExpectExitCodes 0 -JsonOut .\\ops-liveness.json",
         "ops:student-export:fail": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-liveness.ps1 -StartServer -ZipPath .\\packages\\ops\\labs\\fixtures\\student-export-fail.rb-lab.zip -ExpectExitCodes 1 -JsonOut .\\ops-liveness.json",
         "ops:student-export:ci": "pnpm ops:student-export:pass && pnpm ops:student-export:fail",
+        "css:audit:ide": "node ./scripts/ide-css-audit.mjs",
         "cloudflare:purge": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/cloudflare-purge-cache.ps1",
         "redbyte:preclass": "node scripts/preclass-check.mjs",
         "ops:diff-gate": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/ops-diff-test.ps1",
