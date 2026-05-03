@@ -109,6 +109,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - `ide-polish-pass.css` broad substring selectors (for example `[class*='...']`, `[class^='...']`) are **forbidden** and fail the audit (non-zero exit).
 - `ide-root.css` broad substring selectors remain **legacy-warning only** in this phase (reported, not failing).
 - Root/polish overlap is **warning-only** in this phase; baseline expected overlap is documented as `5`, and audit warns when this increases.
+- Guardrail wiring status: `pnpm css:audit:ide` is now part of `pnpm verify:gates` so normal gate runs fail fast on polish selector regressions.
 - How to reproduce or inspect: Read the header block in `packages/rb-apps/src/apps/ide/ide-polish-pass.css` and inspect the size and section strata in `packages/rb-apps/src/apps/ide/ide-root.css`.
 - Why it matters: CSS debt is the main reason future UI passes are risky. Blind deletion will almost certainly regress one of the authority surfaces.
 - Risk if touched: Very high. This is the most dangerous cleanup area in the repo without surface baselines.

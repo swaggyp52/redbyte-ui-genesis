@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-05-03 (CSS audit CI wiring — RB-DEBT-006)
+
+**Subsystem:** `package.json`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`
+
+**Context:** Follow-up after selector guardrail enforcement. Goal was to make `pnpm css:audit:ide` hard to skip by wiring it into the normal verification gate path without changing product behavior or touching browser-only flows.
+
+**Changes:**
+- Wired `pnpm css:audit:ide` into `pnpm verify:gates` as the first step (fail-fast before broader gate execution).
+- Updated debt/cockpit docs to explicitly state that normal gate runs now include the CSS selector guardrail check.
+- Kept policy unchanged: polish broad substring selectors fail; root broad substring selectors remain legacy warnings; overlap growth remains warning-only.
+
+**Validation:**
+- `pnpm css:audit:ide` -> pass
+- `pnpm verify:gates` -> pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm rb:doc:validate` -> pass
+- `git diff --check` -> clean
+
+**Behavior preserved:** no CSS deletion, no style refactor, no product behavior changes.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (CSS selector guardrail enforcement — RB-DEBT-006)
 
 **Subsystem:** `scripts/ide-css-audit.mjs`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`

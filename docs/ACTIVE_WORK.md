@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is in place (`pnpm css:audit:ide`) and now enforces no broad substring selectors in `ide-polish-pass.css`; root broad selectors/overlap growth remain warning-only until cleanup phases.
+2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is in place (`pnpm css:audit:ide`), polish broad selector guardrails are enforced, and the audit is now wired into `pnpm verify:gates` for fail-fast protection.
 3. **Use the debt register to sequence visual follow-ups** - Keep follow-ups narrow: small Export/Hardware balance polish only when evidence shows drift. Keep board-clock truth and Verify runtime semantics locked.
 
 ---
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| CSS audit gate wiring: `pnpm verify:gates` now runs `pnpm css:audit:ide` first so polish broad substring regressions block normal gate runs | `AI_STATE.md` - Change Log 2026-05-03 (CSS audit CI wiring) |
 | CSS selector guardrail policy: audit now fails on broad substring selectors in polish, reports root broad selectors as legacy warnings, and monitors overlap growth as warning-only (baseline overlap = 5) | `AI_STATE.md` - Change Log 2026-05-03 (CSS selector guardrail enforcement) |
 | CSS debt strategy instrumentation: reproducible IDE stylesheet inventory + overlap/risk metrics via `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`) | `AI_STATE.md` - Change Log 2026-05-03 (CSS debt strategy instrumentation) |
 | Export readiness-density cleanup pass: stronger trust/draft hero, explicit handoff summary rows, 8-step Vivado checklist, collapsed generated previews, and demoted detailed diagnostics/proof metadata with required gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Export density cleanup) |
