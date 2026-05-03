@@ -1310,7 +1310,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </>
           )}
 
-          <IdeInspectorSection title="Build Context" defaultOpen>
+          <IdeInspectorSection title="Build/debug context" defaultOpen={false}>
             <div className="ide-kv-list">
               <div className="ide-kv-row">
                 <span>Board</span>
@@ -1517,6 +1517,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             trustCondition={trustCondition}
             trustReason={trustReason}
             trustConsequence={handoffTruth.message}
+            isDraftExport={isDraftExport}
             trustPrimaryCtaIsVerify={handoffTruth.primaryCtaIntent === 'verify'}
             trustPrimaryCtaIsHardware={trustCondition === 'blocked'}
             designReady={resolvedWorkflowAuthority.designReady}
@@ -1630,6 +1631,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 >
                                   <span className="ide-export-artifact-tab-name">{artifact.path}</span>
                                   <span className="ide-export-artifact-tab-note">{artifact.note}</span>
+                                  <span className="ide-export-artifact-tab-action">Preview</span>
                                   <IdeStatusPill
                                     tone={
                                       artifact.status === 'ready'
@@ -1652,53 +1654,56 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         ))}
                       </div>
                       {selectedArtifact && (
-                        <div className="ide-export-artifact-preview ide-export-artifact-preview-v2">
-                          <div className="ide-export-artifact-preview-header">
-                            <div className="ide-export-artifact-preview-title">
-                              <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
-                              <span>{selectedArtifact.note}</span>
+                        <details className="ide-export-generated-previews" data-testid="ide-export-generated-previews">
+                          <summary className="ide-summary-toggle">Generated file previews</summary>
+                          <div className="ide-export-artifact-preview ide-export-artifact-preview-v2">
+                            <div className="ide-export-artifact-preview-header">
+                              <div className="ide-export-artifact-preview-title">
+                                <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
+                                <span>{selectedArtifact.note}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={() =>
+                                    void copyToClipboard(
+                                      selectedArtifact.content,
+                                      `current:${selectedArtifact.path}`
+                                    )
+                                  }
+                                  disabled={selectedArtifact.content.trim().length === 0}
+                                >
+                                  {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
+                                </IdeButton>
+                                <IdeButton
+                                  tone="secondary"
+                                  onClick={() => handleDownloadArtifact(selectedArtifact)}
+                                  disabled={selectedArtifact.preview.trim().length === 0}
+                                >
+                                  Download
+                                </IdeButton>
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
-                              <IdeButton
-                                tone="ghost"
-                                onClick={() =>
-                                  void copyToClipboard(
-                                    selectedArtifact.content,
-                                    `current:${selectedArtifact.path}`
-                                  )
-                                }
-                                disabled={selectedArtifact.content.trim().length === 0}
-                              >
-                                {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
-                              </IdeButton>
-                              <IdeButton
-                                tone="secondary"
-                                onClick={() => handleDownloadArtifact(selectedArtifact)}
-                                disabled={selectedArtifact.preview.trim().length === 0}
-                              >
-                                Download
-                              </IdeButton>
+                            <div className="ide-export-artifact-preview-body">
+                              {selectedArtifact.preview.trim().length > 0 ? (
+                                <pre
+                                  className="ide-export-artifact-code"
+                                  data-testid="ide-export-preview-code"
+                                  dangerouslySetInnerHTML={{
+                                    __html: syntaxHighlight(
+                                      selectedArtifact.preview ?? '',
+                                      selectedArtifact.kind ?? ''
+                                    ),
+                                  }}
+                                />
+                              ) : (
+                                <p className="ide-export-artifact-empty">
+                                  File content will appear once the circuit and pin mapping are complete.
+                                </p>
+                              )}
                             </div>
                           </div>
-                          <div className="ide-export-artifact-preview-body">
-                            {selectedArtifact.preview.trim().length > 0 ? (
-                              <pre
-                                className="ide-export-artifact-code"
-                                data-testid="ide-export-preview-code"
-                                dangerouslySetInnerHTML={{
-                                  __html: syntaxHighlight(
-                                    selectedArtifact.preview ?? '',
-                                    selectedArtifact.kind ?? ''
-                                  ),
-                                }}
-                              />
-                            ) : (
-                              <p className="ide-export-artifact-empty">
-                                File content will appear once the circuit and pin mapping are complete.
-                              </p>
-                            )}
-                          </div>
-                        </div>
+                        </details>
                       )}
                     </div>
                   </>
@@ -1707,7 +1712,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
               <section className="ide-export-section" data-testid="ide-export-build-output">
                 <header className="ide-export-section-header">
-                  <h3>Blockers and advisories</h3>
+                  <h3>Export diagnostics</h3>
                   {visibleDiagnosticsList.length > 0 && (
                     <span className="ide-export-section-meta">
                       {visibleDiagnosticsList.filter(d => d.severity === 'error').length > 0
@@ -1785,8 +1790,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   </IdeCallout>
                 )}
 
-                <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
-                  {visibleDiagnosticsList.map((entry) => {
+                <details className="ide-export-diagnostics-details" data-testid="ide-export-diagnostics-details">
+                  <summary className="ide-summary-toggle">Detailed diagnostics and fix paths</summary>
+                  <div className="ide-export-diagnostic-list" data-testid="ide-export-blockers-list">
+                    {visibleDiagnosticsList.map((entry) => {
                     const portKey = entry.port ? toPortKey(entry.port) : undefined;
                     const mappingRow = portKey ? mappingIndex.get(portKey) : undefined;
                     const hasSuggestion =
@@ -1911,8 +1918,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         )}
                       </article>
                     );
-                  })}
-                </div>
+                    })}
+                  </div>
+                </details>
                 <details className="ide-export-gate-details ide-mt-2" data-testid="ide-export-gate-details">
                   <summary>Readiness gates</summary>
                   <div className="ide-mt-2">

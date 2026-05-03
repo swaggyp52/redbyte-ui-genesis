@@ -1564,6 +1564,69 @@
 /* Advanced details in right col: collapsed developer noise */
 .ide-export-advanced-details { margin-top: var(--ide-space-2, 8px); }
 
+.ide-export-trust-draft-note {
+  margin-top: 6px;
+  color: var(--rb-text-2, #cfdbeb);
+}
+
+.ide-export-handoff-summary {
+  margin-top: var(--ide-space-2, 8px);
+  border: 1px solid rgba(140, 168, 196, 0.2);
+  border-radius: 10px;
+  background: rgba(11, 20, 31, 0.45);
+  overflow: hidden;
+}
+
+.ide-export-handoff-summary-row {
+  display: grid;
+  grid-template-columns: minmax(90px, 110px) minmax(160px, 1fr);
+  gap: 6px 12px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(140, 168, 196, 0.12);
+}
+
+.ide-export-handoff-summary-row:first-child {
+  border-top: none;
+}
+
+.ide-export-handoff-summary-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-3, #9eb4cb);
+}
+
+.ide-export-handoff-summary-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--rb-text-1, #e3edf8);
+}
+
+.ide-export-handoff-summary-detail {
+  grid-column: 2;
+  font-size: 11px;
+  color: var(--rb-text-2, #cfdbeb);
+}
+
+.ide-export-artifact-tab-action {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rb-text-3, #9eb4cb);
+}
+
+.ide-export-generated-previews {
+  margin-top: var(--ide-space-2, 8px);
+}
+
+.ide-export-diagnostics-details {
+  margin-top: var(--ide-space-2, 8px);
+}
+
+.ide-export-vivado-draft-warning {
+  margin-bottom: var(--ide-space-2, 8px);
+}
+
 /* ───────── §15. Verify stimulus authoring clarity ────────── */
 
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-header {

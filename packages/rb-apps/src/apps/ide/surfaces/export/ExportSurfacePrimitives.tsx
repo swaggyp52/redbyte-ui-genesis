@@ -122,6 +122,7 @@ export interface ExportReadinessHeroProps {
   readonly trustCondition: ExportTrustCondition;
   readonly trustReason?: string;
   readonly trustConsequence: string;
+  readonly isDraftExport: boolean;
   readonly trustPrimaryCtaIsVerify: boolean;
   readonly trustPrimaryCtaIsHardware: boolean;
 
@@ -179,6 +180,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
   trustCondition,
   trustReason,
   trustConsequence,
+  isDraftExport,
   trustPrimaryCtaIsVerify,
   trustPrimaryCtaIsHardware,
   designReady,
@@ -432,6 +434,11 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
               <div className="ide-export-trust-row ide-export-trust-row--available">
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="warn">NEEDS REVIEW</IdeStatusPill>
+                  {isDraftExport && (
+                    <IdeStatusPill tone="warn" testId="ide-export-trust-draft-pill">
+                      DRAFT AVAILABLE
+                    </IdeStatusPill>
+                  )}
                 </div>
                 <div className="ide-export-trust-body">
                   <p className="ide-export-trust-reason" data-testid="ide-export-trust-reason">
@@ -451,6 +458,11 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
               <div className="ide-export-trust-row ide-export-trust-row--blocked">
                 <div className="ide-export-trust-header">
                   <IdeStatusPill tone="error">BLOCKED</IdeStatusPill>
+                  {isDraftExport && (
+                    <IdeStatusPill tone="warn" testId="ide-export-trust-draft-pill">
+                      DRAFT AVAILABLE
+                    </IdeStatusPill>
+                  )}
                   <div className="ide-export-readiness-strip" data-testid="ide-export-readiness-strip">
                     <span
                       className={`ide-export-readiness-axis ${designReady ? 'ide-export-readiness-axis--ok' : 'ide-export-readiness-axis--fail'}`}
@@ -480,6 +492,51 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                 </div>
               </div>
             )}
+            {isDraftExport && (
+              <p className="ide-copy ide-copy--flush ide-export-trust-draft-note" data-testid="ide-export-trust-draft-note">
+                Draft only - run Verify before relying on this handoff.
+              </p>
+            )}
+          </div>
+
+          {/* Handoff summary rows */}
+          <div className="ide-export-handoff-summary" data-testid="ide-export-handoff-summary">
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-design">
+              <span className="ide-export-handoff-summary-label">Design</span>
+              <span className="ide-export-handoff-summary-value">{topModule}</span>
+              <span className="ide-export-handoff-summary-detail">Top module in this package</span>
+            </div>
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-board">
+              <span className="ide-export-handoff-summary-label">Board</span>
+              <span className="ide-export-handoff-summary-value">{boardTarget}</span>
+              <span className="ide-export-handoff-summary-detail">Target FPGA board for Vivado build</span>
+            </div>
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-mapping">
+              <span className="ide-export-handoff-summary-label">Pin mapping</span>
+              <span className="ide-export-handoff-summary-value">{mappingPlain}</span>
+              <span className="ide-export-handoff-summary-detail">Board controls bound to package pins</span>
+            </div>
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-verify">
+              <span className="ide-export-handoff-summary-label">Verification</span>
+              <span className="ide-export-handoff-summary-value">{verifyPlain}</span>
+              <span className="ide-export-handoff-summary-detail">Most recent scenario evidence status</span>
+            </div>
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-artifacts">
+              <span className="ide-export-handoff-summary-label">Artifacts</span>
+              <span className="ide-export-handoff-summary-value">{artifactsPlain}</span>
+              <span className="ide-export-handoff-summary-detail">Generated files align for handoff</span>
+            </div>
+            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-state">
+              <span className="ide-export-handoff-summary-label">Export state</span>
+              <span className="ide-export-handoff-summary-value">{handoffStatusLabel}</span>
+              <span className="ide-export-handoff-summary-detail">
+                {trustCondition === 'trusted'
+                  ? 'Trusted package available for Vivado handoff'
+                  : isDraftExport
+                    ? 'Draft package available; trusted evidence still pending'
+                    : 'Resolve blockers before treating package as handoff-ready'}
+              </span>
+            </div>
           </div>
 
           {/* Handoff facts */}
@@ -593,13 +650,22 @@ export const ExportVivadoInstructions: React.FC<ExportVivadoInstructionsProps> =
     </header>
 
     <div className="ide-export-next-steps" data-testid="ide-export-vivado-steps">
-      {/* 3-step quick checklist */}
+      {isDraftExport && (
+        <IdeCallout tone="warn" testId="ide-export-vivado-draft-warning" className="ide-mb-2">
+          Draft package only - run Verify compare before relying on this handoff.
+        </IdeCallout>
+      )}
+
+      {/* Numbered Vivado handoff checklist */}
       <ol className="ide-export-checklist" data-testid="ide-export-vivado-checklist">
-        <li>Open Vivado {'->'} <strong>File {'->'} Open Project</strong></li>
-        <li>Select <code>{projectSlug}.xpr</code> inside the unzipped folder</li>
-        <li>
-          Run Synthesis {'->'} Implementation {'->'} Generate Bitstream {'->'} Program Device
-        </li>
+        <li>Download the current package from this page.</li>
+        <li>Unzip to a short local path (for example <code>C:\\rb\\{projectSlug}</code>).</li>
+        <li>Open Vivado and choose <strong>File {'->'} Open Project</strong>.</li>
+        <li>Select <code>{projectSlug}.xpr</code> from the extracted folder, or run <code>vivado_import.tcl</code>.</li>
+        <li>Run Synthesis and fix any reported synthesis blockers.</li>
+        <li>Run Implementation and review timing/messages.</li>
+        <li>Generate Bitstream after implementation succeeds.</li>
+        <li>Open Hardware Manager and program the connected Basys3 board.</li>
       </ol>
 
       {/* Advanced / full checklist (collapsed) */}
@@ -710,7 +776,7 @@ export const ExportAdvancedDetails: React.FC<ExportAdvancedDetailsProps> = ({
   onCopyDebugReport,
 }) => (
   <details className="ide-export-advanced-details ide-mt-2" data-testid="ide-export-advanced-details">
-    <summary className="ide-summary-toggle">Advanced details</summary>
+    <summary className="ide-summary-toggle">Advanced proof metadata</summary>
 
     {/* Determinism checks */}
     <section
@@ -734,7 +800,7 @@ export const ExportAdvancedDetails: React.FC<ExportAdvancedDetailsProps> = ({
 
     {/* Debug report */}
     <details className="ide-export-evidence-details ide-mt-2" data-testid="ide-export-evidence-details">
-      <summary>Debug report</summary>
+      <summary>Build/debug context</summary>
       <div className="ide-export-capsuleSlab ide-mt-1">
         <div className="ide-inline-actions">
           <IdeButton tone="ghost" onClick={onCopyDebugReport} testId="ide-export-copy-debug-report">
