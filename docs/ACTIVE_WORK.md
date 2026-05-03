@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-05-03
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Hardware / Map Pins density cleanup** - `tests/e2e/ide-surface-baselines.spec.ts` (added 2026-05-02) now covers all 5 authority surfaces at `1366x768` and `1920x1080` with DOM-landmark assertions. The baseline safety net exists. Next pass is screenshot-backed Hardware density cleanup per `docs/IDE_PRODUCT_DEBT_REGISTER.md` RB-DEBT-001.
-3. **Use the debt register to sequence the next UI slice** - Hardware / Map Pins and Export are the highest-leverage open density problems. ScenarioBuilder deeper layout remains optional and must not touch the now-proven board-clock truth casually.
+2. **Export density cleanup** - Hardware / Map Pins density pass landed on 2026-05-03 with calmer map-mode defaults (collapsed advanced inspector sections, clearer board-task framing, action-oriented mapping rows). Export is now the highest-leverage open density slice.
+3. **Use the debt register to sequence visual follow-ups** - Complete Export readiness-density cleanup first, then only do a small Hardware follow-up polish if cross-surface balance drifts. Keep board-clock truth and Verify runtime semantics locked.
 
 ---
 
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Hardware / Map Pins density cleanup pass: calmer no-selection inspector, collapsed advanced map details by default, explicit board task framing, row action affordances, and required regression gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Hardware density cleanup) |
 | Verify stimulus usability cleanup (UI-only): compact `Test stimulus` header, mode summary, section guidance, and compare-check explainer with board-clock/browser/export proof rerun | `AI_STATE.md` — Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup) |
 | Board-clock browser proof: auto `CLK100MHZ`/`W5` detected, no manual CLK row, counter waveform advances, manual-pulses override works, `clock_gen` process in exported VHDL | `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md` |
 | Board-clock Verify fidelity pass: auto `CLK100MHZ` / `W5` runtime policy, Verify UI clock mode, free-running VHDL clock process, targeted regressions | `AI_STATE.md` — Change Log 2026-05-02 (Board-clock verify fidelity pass) |

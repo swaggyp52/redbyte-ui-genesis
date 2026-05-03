@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-05-03 (Hardware / Map Pins density cleanup — RB-DEBT-001)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
+
+**Context:** Screenshot/browser baseline gate had already landed, so this pass targeted map-mode density only (RB-DEBT-001). Scope was layout/composition and inspector hierarchy; no mapping semantics, export logic, verify runtime, board-clock policy, or generated testbench behavior changes.
+
+**Changes:**
+- Map inspector default is now calm/task-first: when no row/control is selected, it shows concise mapping guidance instead of dense data.
+- Right-inspector advanced content moved behind collapsed sections by default:
+  - `Advanced XDC preview`
+  - `Mapping diagnostics`
+  - `Preflight details`
+- Selected signal card now includes explicit student-facing fields: direction, required/optional, status, board control, package pin, target type, and next action.
+- Board workspace gained explicit task framing copy for three states:
+  - no selection
+  - selected but unmapped signal
+  - mapped selected signal
+- Mapping table grouping tuned for readability (`Clock / reset`, `Inputs`, `Outputs`, `Optional`) and per-row action affordances added (`Choose control`, `Edit mapping`, `Resolve conflict`).
+- Existing workflow ribbon, map authority chain, and advanced structured mapping editor remain intact.
+- Tests updated to codify the new defaults (collapsed advanced inspector sections, calm no-selection help, board-task copy state messaging).
+
+**Validation:**
+- Pre-edit baseline:
+  - `pnpm -w exec vitest run ...hardware*.test...` -> 65 / 65 pass
+  - `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` -> 2 / 2 pass
+- Post-edit:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.modeExitTrap.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.mappingWorkflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareMappingV2EditorModel.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareMappingGuidance.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareMappingBridge.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareBringup.plain-language.test.ts packages/rb-apps/src/apps/ide/__tests__/hardwareBoard2D.interaction.test.tsx` -> 67 / 67 pass
+  - `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts --reporter=line` -> 2 / 2 pass
+  - `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts --reporter=line` -> 1 / 1 pass
+  - `pnpm --filter @redbyte/playground build` -> pass
+
+**Behavior preserved:**
+- Pin mapping authority and saved mapping model unchanged.
+- Export/XDC generation contracts unchanged.
+- Verify clock-policy behavior and board-clock auto mode unchanged.
+- Board-clock browser proof unchanged and still passing.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (IDE surface baseline gate)
 
 **Subsystem:** `tests/e2e/ide-surface-baselines.spec.ts`

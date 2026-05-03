@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-05-03
 owner: Connor Angiel
 used_by_claude: true
 role: canonical IDE product debt register
@@ -29,14 +29,14 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Severity: High
 - Category: UI/UX
 - Surface: Hardware
-- Current evidence: Live browser audit on 2026-05-02 at `1366x768` still shows a strong left rail plus a dense right inspector/XDC stack while the center workspace has too little visual authority. The canonical Hardware note already warns that the page can read as too dense when readiness, mapping, and artifact summaries compete.
+- Current evidence: Initial 2026-05-02 audit showed right-inspector/XDC dominance at `1366x768`. A 2026-05-03 layout pass reduced default inspector density, added explicit board-task framing, and moved XDC/diagnostics/preflight details behind collapsed sections. Remaining debt is now mostly visual balance tuning, not workflow ambiguity.
 - How to reproduce or inspect: Start the playground, load `2-Bit Up Counter (Basys3)`, open `Map Pins`, inspect the default layout at `1366x768`, then compare center-board prominence against the left mapping rail and right-side selected-signal / board-resource / XDC sections.
 - Why it matters: Hardware is supposed to feel like the student's pin-binding job, not a split diagnostics page with a narrow mapping strip.
 - Risk if touched: High. Hardware shares workflow truth and mapping authority with Export; layout changes can easily hide board truth or break the mapping -> XDC explanation chain.
 - Suggested next pass: Screenshot-backed Hardware density cleanup focused on board/table/inspector hierarchy and stage emphasis, not mapping semantics.
 - Tests/browser proof needed: Enforced hardware screenshots at `1366x768` and `1920x1080`, plus a browser proof that row selection, board highlight, and XDC preview stay coherent.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/hardware/HardwareSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: **Browser landmark gate added** — `tests/e2e/ide-surface-baselines.spec.ts` now covers Hardware at both `1366x768` and `1920x1080`. Density cleanup may proceed.
+- Status: **Partially resolved (2026-05-03)** — map-mode default is now task-first (concise no-selection inspector, collapsed advanced sections, clearer row action affordances, and explicit board-task copy). Hardware no longer reads like a permanent debug panel. Remaining work: minor visual tuning after Export density pass.
 
 ### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
 
@@ -167,7 +167,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 ## Next High-Leverage Passes
 
 1. ~~Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.~~ **Done** (`tests/e2e/ide-surface-baselines.spec.ts`, 2026-05-02)
-2. Do a screenshot-backed Hardware / Map Pins density pass. (**Now unblocked — baseline gate exists.**)
-3. Do a screenshot-backed Export readiness-density pass. (**Now unblocked — baseline gate exists.**)
+2. Do a screenshot-backed Export readiness-density pass. (**Now highest-priority UI debt.**)
+3. Do a short Hardware follow-up polish pass only if Export changes reveal new cross-surface balance drift.
 4. Revisit Verify workbench layout only after those surface baselines exist, while keeping board-clock truth locked.
 5. Triage the Windows `dist/` lock so canonical build verification stops failing for environment reasons.
