@@ -1894,7 +1894,10 @@
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-clock-policy-line {
-  font-size: 11px;
+  /* Detected/Mode/Reset text is redundant: headline already shows signal·pin·source,
+     summary already shows cycles·edge·reset, and the mode buttons show the active mode.
+     Keep in DOM for tests; suppress visually. */
+  display: none;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-clock-policy-controls {
