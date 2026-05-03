@@ -190,8 +190,8 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-copy-current')).toBeTruthy();
 
     const checklist = within(getByTestId('ide-export-vivado-checklist')).getAllByRole('listitem');
-    expect(checklist).toHaveLength(3);
-    expect(checklist[0].textContent).toContain('Open Vivado');
+    expect(checklist).toHaveLength(8);
+    expect(checklist[0].textContent).toContain('Download the current package');
     expect(getByText('Advanced / full checklist')).toBeTruthy();
     expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/top\.vhd/);
     expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/Ready for Vivado/);
@@ -214,7 +214,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
       'Open Verify when you want to compare expected outputs against the live design'
     );
-    expect(getByText('Blockers and advisories')).toBeTruthy();
+    expect(getByText('Export diagnostics')).toBeTruthy();
     expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
   });
 

@@ -209,7 +209,7 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-vivado-ready')).toBeTruthy();
   });
 
-  it('ide-export-vivado-checklist has 3 items', () => {
+  it('ide-export-vivado-checklist has 8 numbered steps', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -218,7 +218,7 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const checklist = getByTestId('ide-export-vivado-checklist');
-    expect(checklist.querySelectorAll('li')).toHaveLength(3);
+    expect(checklist.querySelectorAll('li')).toHaveLength(8);
   });
 
   // ── ExportAdvancedDetails ─────────────────────────────────────────────────────
