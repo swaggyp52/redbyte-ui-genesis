@@ -58,8 +58,12 @@ describe('VerifySurface board clock auto mode', () => {
     expect(view.getByTestId('ide-verify-clock-mode-summary').textContent).toContain('Auto board clock');
     expect(view.getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain('Auto board clock');
     expect(view.getByTestId('ide-verify-stimulus-title').textContent).toContain('Test stimulus');
+    expect(view.getByTestId('ide-verify-clock-detected').textContent).toContain('CLK100MHZ');
+    expect(view.getByTestId('ide-verify-clock-detected').textContent).toContain('W5');
+    expect(view.getByTestId('ide-verify-clock-reset-summary').textContent).toContain('reset sequence applied');
+    expect(view.getByTestId('ide-verify-clock-run-cycles')).toBeTruthy();
     expect(view.getByTestId('ide-verify-clock-policy-copy').textContent).toContain(
-      'auto-toggle the Basys3 board clock'
+      'Auto mode generates the board clock'
     );
     expect(view.getByTestId('ide-verify-clock-pattern-summary').textContent).toContain(
       'Auto board clock: 8 cycles'

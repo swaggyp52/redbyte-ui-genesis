@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, within } from '@testing-library/react';
 import { ScenarioBuilderPanel } from '../surfaces/ScenarioBuilderPanel';
 
 type RenderPanelOptions = {
@@ -69,28 +69,38 @@ function renderPanel(options: RenderPanelOptions = {}) {
 }
 
 describe('ScenarioBuilderPanel progressive disclosure', () => {
-  it('shows the Test stimulus header, mode summary, and authoring guidance sections', () => {
-    const { getByTestId } = renderPanel({
+  it('shows compact Test stimulus header with mode and quick stats', () => {
+    const { getByTestId, queryByTestId } = renderPanel({
       authoringModeSummary: 'Auto board clock',
       authoringModeHint:
         'CLK100MHZ runs automatically during Verify and stays out of the editable stimulus rows.',
     });
 
     expect(getByTestId('ide-verify-stimulus-title').textContent).toBe('Test stimulus');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
+      'CLK100MHZ runs automatically'
+    );
     expect(getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain(
       'Auto board clock'
     );
-    expect(getByTestId('ide-verify-stimulus-guide-clock').textContent).toContain('Clock / timing');
-    expect(getByTestId('ide-verify-stimulus-guide-inputs').textContent).toContain('Inputs you drive');
-    expect(getByTestId('ide-verify-stimulus-guide-expected').textContent).toContain(
-      'Expected outputs'
+    expect(getByTestId('ide-verify-stimulus-stat-inputs').textContent).toContain('Inputs:');
+    expect(getByTestId('ide-verify-stimulus-stat-checks').textContent).toContain('Checks:');
+    expect(getByTestId('ide-verify-stimulus-stat-cases').textContent).toContain('Cases:');
+    expect(getByTestId('ide-verify-stimulus-stat-ticks').textContent).toContain('Ticks:');
+    expect(queryByTestId('ide-verify-stimulus-guidance')).toBeNull();
+  });
+
+  it('keeps bulky instruction cards collapsed until How this works is opened', () => {
+    const { getByText, getByTestId, queryByTestId } = renderPanel();
+
+    expect(queryByTestId('ide-verify-stimulus-guidance')).toBeNull();
+    fireEvent.click(getByText('How this works'));
+    const guidance = getByTestId('ide-verify-stimulus-guidance');
+    expect(within(guidance).getByTestId('ide-verify-stimulus-guide-clock').textContent).toContain(
+      'Clock / timing'
     );
-    expect(getByTestId('ide-verify-stimulus-guide-cases').textContent).toContain('Cases / ticks');
-    expect(getByTestId('ide-verify-stimulus-guide-advanced').textContent).toContain(
+    expect(within(guidance).getByTestId('ide-verify-stimulus-guide-advanced').textContent).toContain(
       'Advanced tools'
-    );
-    expect(getByTestId('ide-verify-stimulus-compare-checks-copy').textContent).toContain(
-      'Compare checks'
     );
   });
 

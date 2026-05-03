@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -60,6 +60,22 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-workspace')).toBeTruthy();
   });
 
+  it('lets students collapse and expand the signal rail without leaving Verify', () => {
+    const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
+    const showSignalsToggle = queryByTestId('ide-workbench-dock-toggle-left');
+    if (showSignalsToggle && showSignalsToggle.getAttribute('title') === 'Show signals') {
+      fireEvent.click(showSignalsToggle);
+    }
+    const dock = getByTestId('ide-verify-left-dock');
+    const toggle = getByTestId('ide-verify-signal-rail-toggle');
+
+    expect(dock.getAttribute('data-collapsed')).toBe('true');
+    fireEvent.click(toggle);
+    expect(dock.getAttribute('data-collapsed')).toBe('false');
+    fireEvent.click(toggle);
+    expect(dock.getAttribute('data-collapsed')).toBe('true');
+  });
+
   it('keeps the workspace container focused on the paired lab regions without a story banner', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
     const workspace = getByTestId('ide-verify-workspace');
@@ -74,6 +90,8 @@ describe('VerifySurface workspace layout', () => {
     const labGrid = getByTestId('ide-verify-lab-grid');
     expect(labGrid.contains(getByTestId('ide-verify-region-stimulus'))).toBe(true);
     expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
+    expect(getByTestId('ide-verify-waveform-placeholder')).toBeTruthy();
+    expect(getByTestId('ide-verify-waveform-placeholder-ready')).toBeTruthy();
   });
 
   it('keeps the header and result regions outside the workspace container', () => {
