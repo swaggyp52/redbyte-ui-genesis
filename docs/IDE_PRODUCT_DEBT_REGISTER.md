@@ -36,7 +36,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Suggested next pass: Screenshot-backed Hardware density cleanup focused on board/table/inspector hierarchy and stage emphasis, not mapping semantics.
 - Tests/browser proof needed: Enforced hardware screenshots at `1366x768` and `1920x1080`, plus a browser proof that row selection, board highlight, and XDC preview stay coherent.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/hardware/HardwareSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: Needs screenshot coverage
+- Status: **Browser landmark gate added** — `tests/e2e/ide-surface-baselines.spec.ts` now covers Hardware at both `1366x768` and `1920x1080`. Density cleanup may proceed.
 
 ### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
 
@@ -50,7 +50,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Suggested next pass: Screenshot-backed Export density cleanup that strengthens the readiness hero, trims duplicated summary copy, and demotes advanced diagnostics until after the dominant next action is clear.
 - Tests/browser proof needed: Enforced export screenshots at `1366x768` and `1920x1080`, plus focused browser proof that the primary CTA and artifact workspace remain reachable and honest.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: Needs screenshot coverage
+- Status: **Browser landmark gate added** — `tests/e2e/ide-surface-baselines.spec.ts` now covers Export at both viewports. Density cleanup may proceed.
 
 ### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
 
@@ -119,8 +119,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Risk if touched: Medium. The infrastructure exists; the main risk is adding flaky visual gates without deterministic setup.
 - Suggested next pass: Promote screenshot baselines from optional evidence to a deliberate gate for the authority surfaces, with deterministic setup and agreed viewport coverage.
 - Tests/browser proof needed: Enforced screenshots for all authority surfaces, explicit `1366x768` coverage, and at least one stable browser proof per risky workflow slice.
-- Files likely involved: `tests/e2e/ide-screenshot-baseline.spec.ts`, `tests/e2e/board-clock-browser-proof.spec.ts`, `scripts/verify-gates-classroom.ts`, `playwright.config.ts`, `playwright.dev.config.ts`.
-- Status: Open
+- Files likely involved: `tests/e2e/ide-surface-baselines.spec.ts`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `tests/e2e/board-clock-browser-proof.spec.ts`, `scripts/verify-gates-classroom.ts`, `playwright.config.ts`, `playwright.dev.config.ts`.
+- Status: **Resolved** — `tests/e2e/ide-surface-baselines.spec.ts` added 2026-05-02. DOM-landmark gate covers all 5 authority surfaces (Project, Design, Verify, Hardware, Export) at `1366x768` and `1920x1080`. 2/2 pass. Screenshots saved as test artifacts. Pixel-diff baselines remain optional via `SCREENSHOT_STRICT=1`. Hardware and Export density cleanup may now proceed.
 
 ### RB-DEBT-008 - BUG-003 naming is still easy to misread even though the literal `React.act` failure is closed
 
@@ -166,8 +166,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 ## Next High-Leverage Passes
 
-1. Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.
-2. Do a screenshot-backed Hardware / Map Pins density pass.
-3. Do a screenshot-backed Export readiness-density pass.
+1. ~~Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.~~ **Done** (`tests/e2e/ide-surface-baselines.spec.ts`, 2026-05-02)
+2. Do a screenshot-backed Hardware / Map Pins density pass. (**Now unblocked — baseline gate exists.**)
+3. Do a screenshot-backed Export readiness-density pass. (**Now unblocked — baseline gate exists.**)
 4. Revisit Verify workbench layout only after those surface baselines exist, while keeping board-clock truth locked.
 5. Triage the Windows `dist/` lock so canonical build verification stops failing for environment reasons.

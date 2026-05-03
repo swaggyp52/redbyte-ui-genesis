@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Turn screenshot coverage into a real safety net before more UI cleanup** - `docs/IDE_PRODUCT_DEBT_REGISTER.md` is now the canonical owner for open surface debt. The next cross-surface infrastructure task is enforcing authority-surface screenshots at `1366x768` and `1920x1080` before any serious CSS pruning or density cleanup.
+2. **Hardware / Map Pins density cleanup** - `tests/e2e/ide-surface-baselines.spec.ts` (added 2026-05-02) now covers all 5 authority surfaces at `1366x768` and `1920x1080` with DOM-landmark assertions. The baseline safety net exists. Next pass is screenshot-backed Hardware density cleanup per `docs/IDE_PRODUCT_DEBT_REGISTER.md` RB-DEBT-001.
 3. **Use the debt register to sequence the next UI slice** - Hardware / Map Pins and Export are the highest-leverage open density problems. ScenarioBuilder deeper layout remains optional and must not touch the now-proven board-clock truth casually.
 
 ---

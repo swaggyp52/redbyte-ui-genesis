@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-02 (IDE surface baseline gate)
+
+**Subsystem:** `tests/e2e/ide-surface-baselines.spec.ts`
+
+**Context:** Added a mandatory DOM-landmark browser gate for all 5 authority IDE surfaces before beginning Hardware / Export density cleanup. Gate follows the `board-clock-browser-proof.spec.ts` pattern exactly: suppress onboarding, load 2-bit counter, navigate surfaces via mode-button testids, assert stable high-level landmarks, capture screenshots as test artifacts (not committed PNGs).
+
+**Changes:**
+- Added `tests/e2e/ide-surface-baselines.spec.ts` covering Project, Design, Verify, Hardware, Export.
+- Two viewports per test: `1366x768` and `1920x1080`.
+- Verify: asserts `ide-verify-clock-policy-panel`, `CLK100MHZ` source, `Auto board clock` mode, `ide-verify-stimulus-header`, zero `ide-stimulus-clock-row` in auto mode.
+- Design: asserts `ide-design-canvas`, `ide-design-toolbar`.
+- Hardware: asserts `ide-hw-workflow-ribbon`, `ide-hardware-dep-chain`; optionally enters Map mode for `ide-hw-board-workspace` + `ide-hw-map-table`.
+- Export: asserts `ide-export-build-output`. Notes: `ide-export-readiness-details` is rendered but CSS-hidden in default state — current product behavior, documented in test.
+- Project: navigates back after project is loaded; asserts `ide-project-map-pins-header` (proven stable in coherence test).
+- Screenshots saved to `artifacts/surface-baselines/` and attached to Playwright HTML report.
+- Updated `docs/IDE_PRODUCT_DEBT_REGISTER.md` (RB-DEBT-007 resolved, RB-DEBT-001/002 unblocked, next-passes updated).
+- Updated `docs/ACTIVE_WORK.md` priority #2 from "add baseline" to "Hardware density cleanup".
+
+**Validation:**
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` -> 2 / 2 pass (1366x768 + 1920x1080)
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` -> 1 / 1 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (Persistent IDE debt audit + brain alignment)
 
 **Subsystem:** repo docs, Obsidian engineering brain, browser audit only
