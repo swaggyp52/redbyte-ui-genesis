@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-03 (Verify clock section density cleanup — RB-DEBT-003)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/ide-polish-pass.css`
+
+**Context:** Live browser visual feedback loop per standing protocol. Inspect-first pass on Verify only. Identified that `.ide-verify-clock-policy-line` spans (Detected/Mode/Reset) duplicated information already visible in the clock section headline and summary line. No change to DOM or test structure.
+
+**Changes:**
+- `ide-polish-pass.css`: changed `.ide-verify-clock-policy-line` from `font-size: 11px` to `display: none`
+- Removes ~65px of redundant height from the clock/timing section
+- Full cases grid (EN/RST stimulus + LD0/LD1 expected outputs) now visible without scrolling in the default viewport
+
+**Validation:**
+- Verify unit tests: 23/23 pass (boardClockAutoMode tests that query hidden elements still pass in jsdom)
+- Board-clock/export semantic suite: 33/33 pass
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` → 2/2 pass
+- `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts` → 1/1 pass
+- `pnpm css:audit:ide` → exit 0 (warnings unchanged: overlap 10, 2 broad substring in root)
+- `pnpm --filter @redbyte/playground build` → pass
+- `git diff --check` → clean
+- Browser inspection: dev server at 1366x768 range, full cases grid visible without scrolling
+
+**Behavior preserved:** Board-clock detection, auto mode, manual override, Verify semantics, export testbench generation — all unchanged. CSS-only change.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (Verify visual reset hardening — RB-DEBT-003)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyCommandBar.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifyWaveformPlaceholder.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, Verify tests.
