@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is in place (`pnpm css:audit:ide`), polish broad selector guardrails are enforced, and the audit is now wired into `pnpm verify:gates` for fail-fast protection.
-3. **Use the debt register to sequence visual follow-ups** - Verify workbench layout cleanup is now in place (command hierarchy, compact stimulus framing, cleaner clock panel grouping, collapsible signal rail). Next follow-ups remain narrow and evidence-driven.
+2. **Fix first-load Project black screen (F-P2)** - Navigating to `/` renders a black main content area until the user explicitly clicks "Project" in the left rail. This is the first impression. See `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` §8 Slice 1.
+3. **Use the product flow model to sequence visual follow-ups** - Full product UX audit completed 2026-05-03 and captured in `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`. Next follow-ups are now ordered by student impact per §8. CSS debt strategy and selector guardrails remain in place (see `pnpm css:audit:ide`).
 
 ---
 
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Whole-product UX audit + flow model: all 5 surfaces inspected in browser at 1366x768 and 1920x1080; friction codes F-P1–F-P5, F-V1–F-V3, F-H1–F-H5, F-E1–F-E4 catalogued; implementation slices ordered by student impact; 3/3 browser gates reconfirmed green | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` |
 | Verify clock section density cleanup (live browser pass): redundant Detected/Mode/Reset lines hidden, full cases grid now visible without scrolling; 23+33 tests pass, 3 browser gates pass | `AI_STATE.md` - Change Log 2026-05-03 (Verify clock section density cleanup) |
 | Verify visual reset hardening: compact stimulus strip, collapsed-by-default guidance and signal rail, command-row hit-target fix, hook-order stability fix, and full board-clock/export validation matrix | `AI_STATE.md` - Change Log 2026-05-03 (Verify visual reset hardening) |
 | Verify workbench layout cleanup pass: command-bar hierarchy rebalance, compact stimulus framing, segmented clock panel controls, collapsible signal rail, waveform pre-run guidance polish; board-clock/export semantics revalidated | `AI_STATE.md` - Change Log 2026-05-03 (Verify workbench layout cleanup) |

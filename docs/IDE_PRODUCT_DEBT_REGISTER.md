@@ -186,3 +186,31 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 3. Execute the CSS strategy instrumentation pass first (inventory + risk map + guardrail docs), then run one surface-scoped cleanup at a time with proof.
 4. Do a short Hardware follow-up polish pass only if Export changes reveal cross-surface drift.
 5. Revisit Verify workbench layout only after screenshot-gated CSS strategy is in place, while keeping board-clock truth locked.
+
+### RB-DEBT-011 - Project first-load renders black main content area (F-P2)
+
+- Severity: High
+- Category: UI/UX - Routing/render
+- Surface: Project
+- Current evidence: Browser audit 2026-05-03 — navigating to `/` shows the top bar and left rail but a completely black main content region. Clicking "Project" in the left rail causes the dashboard to render correctly. DOM snapshot confirms all content exists (heading, next-action card, status chips); the problem is activation/visibility, not missing data.
+- How to reproduce or inspect: Navigate to `http://localhost:5173/` in dev or `http://127.0.0.1:4173/os/` in preview. Main content area is black. Click "Project" in the left rail — content appears.
+- Why it matters: First screen a student sees looks like a crash. Destroys first-impression trust.
+- Risk if touched: Low to medium. Likely an initial-mode initialization issue in the IDE root component.
+- Suggested next pass: Check `IdeApp.tsx` (or equivalent) for how the initial active mode is set on mount. Confirm that `/` or `/os/` routes initialize to `project` mode immediately so the Project surface renders without user interaction.
+- Tests/browser proof needed: Browser proof: navigate to `/`, confirm Project content visible without any click. Rerun `ide-surface-baselines.spec.ts` (2/2) and `board-clock-browser-proof.spec.ts` (1/1).
+- Files likely involved: `packages/rb-apps/src/apps/IdeApp.tsx`, route initialization logic, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`.
+- Status: Open (confirmed in browser 2026-05-03)
+
+### RB-DEBT-012 - Developer chrome toggles (Rails/Console/Toolbar) visible on student surfaces (global)
+
+- Severity: Low
+- Category: UI/UX - Chrome visibility
+- Surface: All
+- Current evidence: Browser audit 2026-05-03 — "Rails On", "Console On", "Toolbar On", "Verify rows On" toggles appear in the top-right of all surfaces including Project (which has no concept of rails or console). They appear with different subsets per surface but are always visible. These are debug/developer controls, not student-facing.
+- How to reproduce or inspect: Open any surface. Top-right area shows toggle buttons next to BUILD badge.
+- Why it matters: Adds visual noise; if a student accidentally toggles "Rails Off" or "Console Off" they get an unexpected layout change with no recovery path shown.
+- Risk if touched: Medium. Tests may depend on toggled panel DOM accessibility. Confirm all tests use data-testid selectors before gating the toggles.
+- Suggested next pass: Gate behind a developer/instructor mode (e.g. `?dev=true` query param). In default mode, hide entirely. Do not attempt until Slice 1 and Slice 2 from the product flow model are done.
+- Tests/browser proof needed: Confirm all tests that interact with rail/console/toolbar panels still pass after the toggle buttons are hidden (tests should use data-testid, not toggle button visibility).
+- Files likely involved: Chrome toggle host component in `packages/rb-apps/src/apps/ide/`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`.
+- Status: Open (confirmed in browser 2026-05-03)

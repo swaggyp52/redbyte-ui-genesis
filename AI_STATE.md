@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-03 (Whole-product UX audit + IDE product flow model — docs only)
+
+**Subsystem:** `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/ACTIVE_WORK.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`
+
+**Context:** Planning/modeling pass only. No product code changed. All 5 surfaces (Project, Design, Verify, Map Pins, Export) inspected in the browser at 1366×768 and 1920×1080. 3/3 browser gates (board-clock-browser-proof, ide-surface-baselines ×2) reconfirmed green. CSS audit exit 0.
+
+**Findings (no code changes — documented as debt):**
+- F-P2 (Project): First-load at `/` renders black main content until user clicks "Project" button. DOM has content; issue is activation/mode-init. → RB-DEBT-011
+- F-P1 (Project): "AVAILABLE EXPORT" label frames next-action card when focus is "Continue to Verify" — contradictory messaging.
+- F-E1 (Export): "Run Verify before relying on this handoff" appears 3× in one screen.
+- F-E2 (Export): HANDOFF SUMMARY + NEXT ACTION two-column layout has redundant content.
+- F-H2 (Map Pins): 3-step guide persists when mapping is 100% complete.
+- F-H3 (Map Pins): "NEEDS REVIEW" chip persists after all signals are mapped — no resolution path shown.
+- Global: Developer chrome toggles (Rails/Console/Toolbar/Verify rows) visible on all surfaces including Project. → RB-DEBT-012
+
+**Documents created/updated:**
+- `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` — created: full 9-section product flow model with per-surface contracts, information ownership matrix, status badge semantics, locked stable truths, open debt with friction codes, and prioritized implementation slices.
+- `docs/ACTIVE_WORK.md` — updated: top-3 priority 2 changed to F-P2 fix, priority 3 updated to reference flow model; new evidence row added.
+- `docs/IDE_PRODUCT_DEBT_REGISTER.md` — appended: RB-DEBT-011 (Project black screen), RB-DEBT-012 (developer chrome visibility); Next High-Leverage Passes list updated.
+
+**Gates at close:**
+- `pnpm css:audit:ide` exit 0 (overlap 10 warning-only, 2 root broad-substring legacy warnings)
+- `pnpm -w exec playwright test ...board-clock-browser-proof.spec.ts` 1/1
+- `pnpm -w exec playwright test ...ide-surface-baselines.spec.ts` 2/2
+
+**Commit state:** docs-only changes, not yet committed (docs pass pending gate confirmation)
+
 ## Change Log 2026-05-03 (Verify clock section density cleanup — RB-DEBT-003)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/ide-polish-pass.css`
