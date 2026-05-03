@@ -1,0 +1,173 @@
+---
+doc_status: current
+last_validated: 2026-05-02
+owner: Connor Angiel
+used_by_claude: true
+role: canonical IDE product debt register
+---
+
+# RedByte IDE Product Debt Register
+
+This file is the canonical owner for current IDE product debt: what is proven, what remains unsatisfying, what is risky to touch, and what needs browser or screenshot proof before cleanup.
+
+## Current Stable Truths
+
+- Project is the front-door dashboard for the product spine `Project -> Design -> Verify -> Map Pins / Hardware -> Export`, and that workflow ownership is documented in [docs/IDE_SYSTEM_MAP.md](./IDE_SYSTEM_MAP.md) and the surface specs under `docs/ide/`.
+- Project dashboard / continuity behavior has direct tests, and the low-level bridge no longer owns the top of the home surface.
+- Design idle inspector overview exists and has direct tests; the canvas remains the primary structural-authoring surface.
+- Verify Observe vs Compare language is explicit in the UI, and the stimulus workbench now has a first authoring-clarity pass (`Test stimulus`, mode summary, section guidance, compare-check explainer).
+- Basys3 `CLK100MHZ` on `W5` is the authoritative board clock. Verify auto-runs it by default, manual pulses remain an explicit override, and exported `testbench.vhd` owns a free-running `clock_gen` process for the board clock.
+- The board-clock browser proof gate exists in `tests/e2e/board-clock-browser-proof.spec.ts` and was already committed on `origin/main` before this pass.
+- Hardware and Export both received structural passes that improved workflow shape, but neither surface is clean enough to call finished; both still carry density debt.
+- `ide-root.css` is still the primary legacy style system, and `ide-polish-pass.css` is still an additive overlay. Neither file should be pruned casually.
+- Screenshot tooling and IDE screenshot baseline tests already exist, but they are optional by default and are not yet strong enough to authorize broad CSS deletion.
+
+## Open Issues by Priority
+
+### RB-DEBT-001 - Hardware / Map Pins workspace still reads too dense
+
+- Severity: High
+- Category: UI/UX
+- Surface: Hardware
+- Current evidence: Live browser audit on 2026-05-02 at `1366x768` still shows a strong left rail plus a dense right inspector/XDC stack while the center workspace has too little visual authority. The canonical Hardware note already warns that the page can read as too dense when readiness, mapping, and artifact summaries compete.
+- How to reproduce or inspect: Start the playground, load `2-Bit Up Counter (Basys3)`, open `Map Pins`, inspect the default layout at `1366x768`, then compare center-board prominence against the left mapping rail and right-side selected-signal / board-resource / XDC sections.
+- Why it matters: Hardware is supposed to feel like the student's pin-binding job, not a split diagnostics page with a narrow mapping strip.
+- Risk if touched: High. Hardware shares workflow truth and mapping authority with Export; layout changes can easily hide board truth or break the mapping -> XDC explanation chain.
+- Suggested next pass: Screenshot-backed Hardware density cleanup focused on board/table/inspector hierarchy and stage emphasis, not mapping semantics.
+- Tests/browser proof needed: Enforced hardware screenshots at `1366x768` and `1920x1080`, plus a browser proof that row selection, board highlight, and XDC preview stay coherent.
+- Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/hardware/HardwareSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
+- Status: Needs screenshot coverage
+
+### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
+
+- Severity: High
+- Category: Product flow
+- Surface: Export
+- Current evidence: Live browser audit on 2026-05-02 at `1366x768` still shows duplicated readiness language (`Run Verify before relying on this handoff`) across the hero and handoff summary while a dense right rail competes with the main handoff story. The surface is improved, but it still reads half like a readiness page and half like a diagnostics console.
+- How to reproduce or inspect: Load `2-Bit Up Counter (Basys3)`, open `Export`, and inspect the first screen before scrolling into artifact previews.
+- Why it matters: Export is the final handoff surface. If the first screen does not make the dominant next action and package trust story obvious, students will treat the page like a generic diagnostics dump.
+- Risk if touched: High. Export owns submission/program handoff truth and shares readiness language with Hardware.
+- Suggested next pass: Screenshot-backed Export density cleanup that strengthens the readiness hero, trims duplicated summary copy, and demotes advanced diagnostics until after the dominant next action is clear.
+- Tests/browser proof needed: Enforced export screenshots at `1366x768` and `1920x1080`, plus focused browser proof that the primary CTA and artifact workspace remain reachable and honest.
+- Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
+- Status: Needs screenshot coverage
+
+### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
+
+- Severity: Medium
+- Category: UI/UX
+- Surface: Verify
+- Current evidence: Commit `826a4f92` added a real `Test stimulus` header, authoring sections, mode-aware copy, and compare-check explanation text. That fixed the first-read problem, but the workbench still reads as a dense table-heavy editor after the initial clarity pass.
+- How to reproduce or inspect: Load a sequential project such as `2-Bit Up Counter (Basys3)`, open Verify, and compare first-run readability against the underlying grid density once the student starts editing rows.
+- Why it matters: Verify is the proof-authoring surface. Students still need a clearer visual path from clock policy to driven inputs to checked outputs without breaking the deterministic semantics that are now proven.
+- Risk if touched: Very high if semantics drift. Board-clock policy detection, manual overrides, waveform behavior, Compare freshness, and export testbench generation must not change casually.
+- Suggested next pass: Layout-only Verify workbench follow-up after screenshot coverage exists, keeping the proven clock/export semantics locked.
+- Tests/browser proof needed: ScenarioBuilder focused tests, board-clock browser proof gate rerun, and full-surface screenshots before broader CSS pruning in Verify.
+- Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifySurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/board-clock-browser-proof.spec.ts`.
+- Status: Open
+
+### RB-DEBT-004 - Design workbench still needs a screenshot-backed polish pass
+
+- Severity: Medium
+- Category: UI/UX
+- Surface: Design
+- Current evidence: The idle inspector overview and Verify-linked messaging are materially better, but the live browser surface still reads visually flat in calm state and the overall workbench composition needs a screenshot-backed review before any CSS simplification.
+- How to reproduce or inspect: Open Design on a starter project, inspect the calm/default workspace state, then compare how much visual hierarchy the canvas, tool row, and idle inspector actually communicate.
+- Why it matters: Design is the core authoring surface. If it feels spatially weak or generic, later cleanup passes tend to reintroduce extra chrome instead of strengthening the existing hierarchy.
+- Risk if touched: Medium. Design has strong test coverage, but broad CSS edits still risk replay, inspector, or tool-row regressions.
+- Suggested next pass: Browser-backed Design polish review after screenshot baselines are enforceable, with emphasis on canvas primacy and calm-state hierarchy.
+- Tests/browser proof needed: Enforced Design screenshots at `1366x768` and `1920x1080`; rerun Design workstation suites after any UI pass.
+- Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
+- Status: Needs browser proof
+
+### RB-DEBT-005 - Project home is improved but still needs a low-risk continuity audit
+
+- Severity: Low
+- Category: Product flow
+- Surface: Project
+- Current evidence: Project is now a proper dashboard/home surface with a collapsed bridge disclosure, but examples / recent-work / advanced-detail hierarchy still needs periodic browser review so low-level details do not leak back into the top story.
+- How to reproduce or inspect: Open Project Home and a loaded project at desktop viewports, then verify that the dominant hero, next action, and secondary details still read as one coherent front-door story.
+- Why it matters: Project is the product's orientation surface. Drift here misroutes students before they ever reach Design or Verify.
+- Risk if touched: Low to medium. Project has direct tests, but wording or hierarchy regressions can still reintroduce dashboard clutter.
+- Suggested next pass: Keep this as a screenshot-backed continuity check, not a styling sprint.
+- Tests/browser proof needed: Enforced Project screenshots and existing project surface suites.
+- Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/components/ProjectSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
+- Status: Needs browser proof
+
+### RB-DEBT-006 - Global CSS remains geological debt
+
+- Severity: High
+- Category: CSS debt
+- Surface: Global CSS
+- Current evidence: `ide-root.css` remains `32,874` lines with `3,826` distinct selectors per the current polish-pass audit header. `ide-polish-pass.css` is still `1,400+` lines of additive overlay. The project does not yet have screenshot coverage strong enough to justify blind pruning.
+- How to reproduce or inspect: Read the header block in `packages/rb-apps/src/apps/ide/ide-polish-pass.css` and inspect the size and section strata in `packages/rb-apps/src/apps/ide/ide-root.css`.
+- Why it matters: CSS debt is the main reason future UI passes are risky. Blind deletion will almost certainly regress one of the authority surfaces.
+- Risk if touched: Very high. This is the most dangerous cleanup area in the repo without surface baselines.
+- Suggested next pass: Do not prune globally first. Add enforced screenshots, then prune phase-by-phase by surface with focused diffs.
+- Tests/browser proof needed: Mandatory screenshot baselines for Project / Design / Verify / Hardware / Export at at least `1366x768` and `1920x1080` before any serious deletion.
+- Files likely involved: `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `scripts/verify-gates-classroom.ts`.
+- Status: Open
+
+### RB-DEBT-007 - Screenshot and browser proof coverage exists, but it is not yet a trusted safety net
+
+- Severity: High
+- Category: Testing debt
+- Surface: Tests
+- Current evidence: `tests/e2e/ide-screenshot-baseline.spec.ts` already covers all six IDE modes, but it is skipped by default unless `SCREENSHOT_STRICT=1` and `CI_FAST` is unset. `tests/e2e/board-clock-browser-proof.spec.ts` proves the board-clock flow, but there is no equivalent mandatory browser or screenshot safety net for the next Hardware / Export density pass.
+- How to reproduce or inspect: Read `tests/e2e/ide-screenshot-baseline.spec.ts`, `tests/e2e/board-clock-browser-proof.spec.ts`, and `scripts/verify-gates-classroom.ts`.
+- Why it matters: The repo already has the beginnings of the right safety net. The current problem is that future agents can still skip it and then claim CSS or density cleanup is safe.
+- Risk if touched: Medium. The infrastructure exists; the main risk is adding flaky visual gates without deterministic setup.
+- Suggested next pass: Promote screenshot baselines from optional evidence to a deliberate gate for the authority surfaces, with deterministic setup and agreed viewport coverage.
+- Tests/browser proof needed: Enforced screenshots for all authority surfaces, explicit `1366x768` coverage, and at least one stable browser proof per risky workflow slice.
+- Files likely involved: `tests/e2e/ide-screenshot-baseline.spec.ts`, `tests/e2e/board-clock-browser-proof.spec.ts`, `scripts/verify-gates-classroom.ts`, `playwright.config.ts`, `playwright.dev.config.ts`.
+- Status: Open
+
+### RB-DEBT-008 - BUG-003 naming is still easy to misread even though the literal `React.act` failure is closed
+
+- Severity: High
+- Category: Docs/brain
+- Surface: Tests
+- Current evidence: `05 Bugs/BUG-003 React.act Infrastructure Failure.md` is a closed audit note, but repo docs and working memory still use `BUG-003 family` as shorthand for the broader pre-existing render-suite baseline. `AI_STATE.md` remains the live owner for the current baseline counts (`1120 / 1149` pass, `28` fail, `1` skipped in the 2026-05-02 UI audit entry), while older notes still carry historical framing.
+- How to reproduce or inspect: Read `05 Bugs/BUG-003 React.act Infrastructure Failure.md`, `AI_STATE.md`, `03 Architecture/Test Infrastructure.md`, `CLAUDE.md`, and the Obsidian engineering brain.
+- Why it matters: This is a repo-truth problem, not just a test problem. Agents can easily misread the closed literal bug as a reason to ignore the still-open render-family baseline, or vice versa.
+- Risk if touched: Low if documentation only; high if someone tries to "fix BUG-003" by blindly bumping dependencies.
+- Suggested next pass: Keep the literal bug closed, keep the broader baseline tracked separately, and only change the naming once the render-family baseline is actually retired.
+- Tests/browser proof needed: Focused failing-suite inventory if the baseline changes; do not use blanket dependency churn as proof.
+- Files likely involved: `05 Bugs/BUG-003 React.act Infrastructure Failure.md`, `AI_STATE.md`, `03 Architecture/Test Infrastructure.md`, `01 Dashboard/RedByte Engineering Brain.md`, `CLAUDE.md`.
+- Status: Open
+
+### RB-DEBT-009 - `build:unified` still has a Windows `dist/` lock failure mode
+
+- Severity: Medium
+- Category: Build/deploy
+- Surface: Build/deploy
+- Current evidence: Multiple 2026-05-02 `AI_STATE.md` entries record that the app build and merge complete, but the final root `dist/` verification can fail because Windows is holding the directory lock. Output is still written to `dist.staged`.
+- How to reproduce or inspect: Run `pnpm -s build:unified` from Windows after normal product work and inspect whether the final root `dist/` handoff step can clear the existing directory.
+- Why it matters: This is the canonical root build path. If it intermittently fails for environment reasons, it weakens final signoff and encourages incomplete verification claims.
+- Risk if touched: Medium. The fix is probably process/script handling, not product code, but it affects canonical verification language.
+- Suggested next pass: Isolate the exact lock owner and harden `scripts/unified-build.mjs` or the surrounding workflow so environment failures are explicit and recoverable.
+- Tests/browser proof needed: A reproducible script-level check or documented recovery path; no product UI tests required.
+- Files likely involved: `scripts/unified-build.mjs`, `package.json`, `AI_STATE.md`, any build handoff docs that claim `build:unified` is canonical.
+- Status: Blocked by dist lock
+
+### RB-DEBT-010 - Browser gate setup still needs clearer onboarding and click-path doctrine
+
+- Severity: Medium
+- Category: Testing debt
+- Surface: Docs
+- Current evidence: The board-clock browser proof gate suppresses onboarding with `localStorage['rb-onboarding-v1-seen'] = '1'`. Earlier manual browser proof notes also recorded overlay click interception when synthetic center clicks hit the shell/status layer instead of the intended element.
+- How to reproduce or inspect: Read `tests/e2e/board-clock-browser-proof.spec.ts` and the 2026-05-02 board-clock browser proof entries in `AI_STATE.md`.
+- Why it matters: Browser gates become flaky when each pass rediscovers its own startup state and click strategy.
+- Risk if touched: Medium. Gate determinism needs a standard approach, but ad hoc workarounds can hide real product issues if applied too broadly.
+- Suggested next pass: Standardize deterministic startup helpers for onboarding and shell readiness, then investigate remaining overlay-interception cases before expanding browser-gate coverage.
+- Tests/browser proof needed: Keep the board-clock browser proof passing while introducing shared helper utilities for startup determinism.
+- Files likely involved: `tests/e2e/board-clock-browser-proof.spec.ts`, `tests/e2e/ide-screenshot-baseline.spec.ts`, shared Playwright helpers, `AI_STATE.md`.
+- Status: Open
+
+## Next High-Leverage Passes
+
+1. Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.
+2. Do a screenshot-backed Hardware / Map Pins density pass.
+3. Do a screenshot-backed Export readiness-density pass.
+4. Revisit Verify workbench layout only after those surface baselines exist, while keeping board-clock truth locked.
+5. Triage the Windows `dist/` lock so canonical build verification stops failing for environment reasons.

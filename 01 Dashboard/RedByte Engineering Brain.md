@@ -26,6 +26,14 @@ related:
 
 BUG-003 is now project shorthand for the pre-existing render-family baseline, not just the older literal `React.act` crash note. Current workspace version is `@testing-library/react@16.3.2`; use `AI_STATE.md` for the live full-suite counts and failure shape, and do not treat those failures as regressions from new work unless the baseline moves.
 
+Current product-debt owner: `docs/IDE_PRODUCT_DEBT_REGISTER.md`.
+
+Current as of 2026-05-02:
+
+- Proven stable: Basys3 `CLK100MHZ` / `W5` auto-board-clock behavior, board-clock browser proof gate, exported VHDL `clock_gen`, and the first Verify ScenarioBuilder clarity pass.
+- Still open: Hardware / Map Pins density, Export readiness-density competition, global CSS geological debt, optional screenshot baselines, BUG-003-family naming drift, and the Windows `build:unified` `dist/` lock caveat.
+- Do not casually reopen board-clock semantics during UI cleanup. Treat that slice as proven unless new executable proof says otherwise.
+
 ```dataview
 TABLE area, priority, status
 FROM "05 Bugs"
@@ -87,12 +95,14 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 | Status | Item |
 |--------|------|
 | **Now** | E2/E3 matrix completion — needs connected Basys3 bench |
-| **Now** | Board-clock Verify rehearsal — keep docs/tests aligned with the new `CLK100MHZ` / `W5` auto-board-clock path and capture explicit browser/bench evidence |
+| **Now** | Use `docs/IDE_PRODUCT_DEBT_REGISTER.md` as the canonical owner for open IDE debt and sequence next UI slices from that file |
 | **Next** | Fill certification matrix for `golden-basys3-switch-and` and custom rows (E2+E3) |
-| **Next** | Add snapshot regression coverage before `ide-root.css` pruning or broader density cleanup |
+| **Next** | Turn screenshot baselines into a real safety net before `ide-root.css` pruning or broader density cleanup |
 | **Blocked** | E2/E3 proof requires connected bench (Vivado 2024.2 + Digilent cable) |
+| **Blocked** | `build:unified` can fail final root `dist/` verification on Windows due to an environment lock even when build + merge succeed |
 | **Waiting** | Hardware / Export density follow-up after coverage exists |
 | **Waiting** | ScenarioBuilderPanel density follow-up after coverage exists |
+| **Done** | ScenarioBuilderPanel authoring clarity pass (`826a4f92`) |
 | **Done** | Board-clock Verify fidelity — Basys3 `CLK100MHZ` / `W5` now auto-runs in Verify and exported VHDL testbenches own a free-running board-clock process |
 | **Done** | Security-lock import/export spine hardening (`845cffdd`) |
 | **Done** | Vivado export fidelity hardening (`be52fb09`) |
@@ -143,6 +153,8 @@ Full install order: [[Operational Readiness Review]]
 ## Test baseline references
 
 Current full-suite baseline lives in `AI_STATE.md`. That file is the live source for focused counts, full IDE counts, and the current BUG-003-family baseline.
+
+Screenshot/browser proof truth now lives alongside that baseline in `docs/IDE_PRODUCT_DEBT_REGISTER.md`. Read both before proposing CSS cleanup or another cross-surface UI pass.
 
 Historical pure-logic milestone (2026-03-26) — 168 pure-logic passing
 

@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Harden browser automation click path** - Browser proof confirmed `CLK100MHZ / W5 / Auto board clock` works end-to-end in the live app. Playwright `locator.click()` hits fixed shell overlay; `el.evaluate((el) => el.click())` workaround used. Add browser gate test with robust locator strategy and classify/fix overlay interception before CI gates rely on synthetic clicks.
-3. **Add snapshot-backed safety before more CSS pruning or density passes** - `ide-root.css` remains legacy debt, `ide-polish-pass.css` is the scoped overlay, and further pruning or ScenarioBuilderPanel / Hardware / Export density work should wait for stronger screenshot regression coverage.
+2. **Turn screenshot coverage into a real safety net before more UI cleanup** - `docs/IDE_PRODUCT_DEBT_REGISTER.md` is now the canonical owner for open surface debt. The next cross-surface infrastructure task is enforcing authority-surface screenshots at `1366x768` and `1920x1080` before any serious CSS pruning or density cleanup.
+3. **Use the debt register to sequence the next UI slice** - Hardware / Map Pins and Export are the highest-leverage open density problems. ScenarioBuilder deeper layout remains optional and must not touch the now-proven board-clock truth casually.
 
 ---
 
@@ -27,6 +27,7 @@ imported_by: CLAUDE.md
 | Blocker | Why | Unblock by |
 |---------|-----|-----------|
 | Final E3 notes for `golden` + custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
+| `build:unified` root `dist/` verification | Windows can hold the root `dist/` directory lock even after build + merge succeed | Identify the locking process and harden the unified-build handoff or recovery path |
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
 
 ---
@@ -89,11 +90,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Done | Verify ScenarioBuilderPanel UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | local (uncommitted) |
+| Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | local docs pass (2026-05-02) |
+| Done | Verify ScenarioBuilder UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | `826a4f92` |
 | Done | Board-clock Verify now auto-runs Basys3 `CLK100MHZ` / `W5`, preserves manual overrides, and exports a free-running VHDL board-clock process | `2e47abf9..6907453c` |
 | Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
 | Done | Verify command bar now carries the inline Observe / Compare mode explainer beside the next-run selector | `713d7037` |
-| Done | Design idle inspector now uses a Design overview card with live Inputs / Outputs / Nodes / Wires counts and empty-canvas branch | `7d88f927` |
 
 ---
 

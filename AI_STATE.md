@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-05-02 (Persistent IDE debt audit + brain alignment)
+
+**Subsystem:** repo docs, Obsidian engineering brain, browser audit only
+
+**Context:** This was a documentation and audit pass, not a product implementation pass. Goal: stop relying on recent chat history for open debt truth by creating one canonical, evidence-based register for stable truths, major surface debt, CSS risk, testing gaps, and build/documentation caveats.
+
+**Changes:**
+- Added `docs/IDE_PRODUCT_DEBT_REGISTER.md` as the canonical owner for IDE stable truths and open product debt.
+- Audited current repo docs, architecture notes, and live browser surfaces (Project, Design, Verify, Hardware, Export).
+- Confirmed board-clock proof docs and browser proof gate are already committed on `origin/main`; confirmed ScenarioBuilder clarity commit `826a4f92` is present locally on `main` but was not pushed in this pass.
+- Updated repo docs (`docs/ACTIVE_WORK.md`, `docs/IDE_SYSTEM_MAP.md`) to point future work at the debt register instead of scattered session notes.
+- Updated Obsidian working-memory notes (`01 Dashboard/RedByte Engineering Brain.md`, `03 Architecture/Test Infrastructure.md`) so the current stable truths, screenshot-proof needs, BUG-003-family framing, and `build:unified` `dist/` lock caveat are visible in the same places future agents already read.
+
+**Browser audit summary:**
+- Project: improved dashboard/front-door shape; still needs screenshot-backed continuity review, but no urgent blocker found.
+- Design: improved calm-state inspector/card; still needs a screenshot-backed spatial polish pass.
+- Verify: ScenarioBuilder clarity pass is real; deeper layout follow-up is still optional and must not touch board-clock semantics casually.
+- Hardware: still reads too dense at `1366x768`; left mapping rail and right inspector/XDC stack compete with the center workspace.
+- Export: still splits attention between readiness hero, duplicated summary text, and dense right-rail diagnostics at `1366x768`.
+
+**Validation:**
+- Live browser inspection on local dev server for Project / Design / Verify / Hardware / Export
+- Additional narrow viewport screenshots captured for Hardware and Export at `1366x768`
+- `pnpm rb:doc:validate` -> 36 passed, 0 failed
+- `git diff --check` -> clean
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup — UI-only clarity pass)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, targeted Verify tests

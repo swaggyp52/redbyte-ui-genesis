@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-04-14
+updated: 2026-05-02
 related:
   - "[[BUG-003 React.act Infrastructure Failure]]"
   - "[[BUG-018 Lab Hardware Strict Readiness Blocked by Missing djtgcfg]]"
@@ -107,6 +107,19 @@ Important harness facts:
 - `vitest.config.ts` aliases React and ReactDOM to a single instance, which is the current repo invariant that keeps render suites stable
 
 Do not treat the active full-suite BUG-003-family baseline as evidence that the React render harness has regressed back to the old `React.act` crash.
+
+## Browser proof and screenshot coverage status (2026-05-02)
+
+- The board-clock browser proof gate is real and current: `tests/e2e/board-clock-browser-proof.spec.ts` proves auto board clock, manual override, and exported `clock_gen` evidence.
+- IDE screenshot baselines also exist in `tests/e2e/ide-screenshot-baseline.spec.ts`, but they are optional by default. They are skipped unless `SCREENSHOT_STRICT=1` and `CI_FAST` is unset.
+- That means RedByte has screenshot tooling, but not yet a trustworthy mandatory screenshot safety net for broad CSS pruning or the next Hardware / Export density pass.
+- Current product-debt owner for that gap is `docs/IDE_PRODUCT_DEBT_REGISTER.md`.
+
+## Canonical build-validation caveat
+
+- `pnpm -s build:unified` is still the canonical root build path, but current 2026-05-02 validation notes show a Windows `dist/` lock failure mode after build + merge succeed.
+- Treat that as an environment/process blocker, not immediate proof of a product compile regression in the touched slice.
+- When this caveat changes, update `AI_STATE.md`, `docs/ACTIVE_WORK.md`, and the product debt register together.
 
 ---
 

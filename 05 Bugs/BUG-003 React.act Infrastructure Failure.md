@@ -4,7 +4,7 @@ status: fixed
 area: infrastructure
 priority: medium
 source: audit
-updated: 2026-03-25
+updated: 2026-05-02
 related:
   - "[[Test Infrastructure]]"
   - "[[Verify Engine]]"
@@ -12,7 +12,9 @@ related:
 
 # BUG-003 - React.act Infrastructure Failure
 
-**Status:** Closed on 2026-03-25 after audit. The documented failure no longer reproduces in the current repo state.
+**Status:** Closed on 2026-03-25 after audit. The documented literal `React.act is not a function` failure no longer reproduces in the current repo state.
+
+Current as of 2026-05-02: this note stays closed, but the repo still uses **BUG-003 family** as shorthand for the broader pre-existing render-suite baseline tracked in `AI_STATE.md`. Do not reopen this bug unless the literal `React.act` failure returns.
 
 ---
 
