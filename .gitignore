@@ -140,6 +140,9 @@ codex_laneA_*.bundle
 # Local browser-boot triage output (scripts/diag/browser-boot-*.mjs)
 /artifacts/browser-boot-*
 
+# Generated screenshots from ide-surface-baselines e2e gate (artifact-only)
+/artifacts/surface-baselines/
+
 # Accidental artifacts
 ersconnoredbyte-ui
 ops-liveness*.json
