@@ -9,7 +9,7 @@
 **Changes:**
 - Added `docs/IDE_PRODUCT_DEBT_REGISTER.md` as the canonical owner for IDE stable truths and open product debt.
 - Audited current repo docs, architecture notes, and live browser surfaces (Project, Design, Verify, Hardware, Export).
-- Confirmed board-clock proof docs and browser proof gate are already committed on `origin/main`; confirmed ScenarioBuilder clarity commit `826a4f92` is present locally on `main` but was not pushed in this pass.
+- Confirmed board-clock proof docs, browser proof gate, and ScenarioBuilder clarity commit `826a4f92` are already present on `origin/main`.
 - Updated repo docs (`docs/ACTIVE_WORK.md`, `docs/IDE_SYSTEM_MAP.md`) to point future work at the debt register instead of scattered session notes.
 - Updated Obsidian working-memory notes (`01 Dashboard/RedByte Engineering Brain.md`, `03 Architecture/Test Infrastructure.md`) so the current stable truths, screenshot-proof needs, BUG-003-family framing, and `build:unified` `dist/` lock caveat are visible in the same places future agents already read.
 

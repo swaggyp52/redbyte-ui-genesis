@@ -90,7 +90,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | local docs pass (2026-05-02) |
+| Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | `95692723` |
 | Done | Verify ScenarioBuilder UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | `826a4f92` |
 | Done | Board-clock Verify now auto-runs Basys3 `CLK100MHZ` / `W5`, preserves manual overrides, and exports a free-running VHDL board-clock process | `2e47abf9..6907453c` |
 | Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
