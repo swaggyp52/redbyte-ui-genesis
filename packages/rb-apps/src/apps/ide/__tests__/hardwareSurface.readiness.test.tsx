@@ -609,6 +609,7 @@ describe('HardwareSurface readiness', () => {
     expect(row.textContent).toContain('V17');
     expect(queryByText('iom-in0')).toBeNull();
     expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('Select a signal row');
+    expect(getByTestId('ide-hw-map-row-action-iom-in0').textContent).toContain('Edit mapping');
 
     fireEvent.click(row);
     expect(row.getAttribute('aria-pressed')).toBe('true');
@@ -621,7 +622,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('shows board planner clock truth, supported resources, and xdc preview in Hardware', () => {
-    const { getByTestId } = render(
+    const { getByTestId, getByText } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Clock planner"
@@ -641,16 +642,77 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
+    // No inspector-heavy defaults until the user picks a signal or board control.
+    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Ready to map');
+    fireEvent.click(getByTestId('ide-hw-clock-resource-card'));
+
     expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('CLK100MHZ');
     expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('W5');
     expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('SW0-SW15');
     expect(getByTestId('ide-hw-selected-resource-card').textContent).toContain('100 MHz oscillator');
     expect(getByTestId('ide-hw-clock-truth').textContent).toContain('W5');
     expect(getByTestId('ide-hw-clock-truth').textContent).toContain('10 ns');
+    fireEvent.click(getByText('Advanced XDC preview'));
     expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('PACKAGE_PIN W5');
     expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('create_clock -period 10.000');
     expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Supported Basys3 resource catalog');
     expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Expanded official XDC catalog');
+  });
+
+  it('keeps advanced map inspector sections collapsed by default', () => {
+    const { getByText, getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Collapsed map inspector"
+          expectedBehavior="Inspect advanced details only on demand."
+          mappingRows={[
+            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, boardResourceType: 'switch' },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Select a signal row');
+    expect(queryByTestId('ide-hw-xdc-preview')).toBeNull();
+    expect(queryByTestId('ide-hw-map-preflight-details')).toBeNull();
+
+    fireEvent.click(getByText('Advanced XDC preview'));
+    expect(getByTestId('ide-hw-xdc-preview')).toBeTruthy();
+  });
+
+  it('uses board workspace task copy to state next action by selection state', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Board framing"
+          expectedBehavior="Task copy should guide mapping flow."
+          mappingRows={[
+            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, boardResourceType: 'switch' },
+            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Select a signal row');
+    fireEvent.click(getByTestId('ide-hw-map-row-sw0'));
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Choose a Basys3 control for SW0');
+    fireEvent.click(getByTestId('ide-hw-map-row-ld0'));
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('This signal is mapped to LD0 / U16');
   });
 
   it('keeps the structured mapping editor collapsed behind an advanced affordance', () => {
