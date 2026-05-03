@@ -17,8 +17,8 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Export density cleanup** - Hardware / Map Pins density pass landed on 2026-05-03 with calmer map-mode defaults (collapsed advanced inspector sections, clearer board-task framing, action-oriented mapping rows). Export is now the highest-leverage open density slice.
-3. **Use the debt register to sequence visual follow-ups** - Complete Export readiness-density cleanup first, then only do a small Hardware follow-up polish if cross-surface balance drifts. Keep board-clock truth and Verify runtime semantics locked.
+2. **CSS debt strategy (not deletion-first cleanup)** - Hardware and Export density passes are both now in the "improved, not perfect" state. The next serious pass should define a screenshot-backed, phase-by-surface CSS pruning strategy before touching `ide-root.css` globally.
+3. **Use the debt register to sequence visual follow-ups** - Keep follow-ups narrow: small Export/Hardware balance polish only when evidence shows drift. Keep board-clock truth and Verify runtime semantics locked.
 
 ---
 
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Export readiness-density cleanup pass: stronger trust/draft hero, explicit handoff summary rows, 8-step Vivado checklist, collapsed generated previews, and demoted detailed diagnostics/proof metadata with required gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Export density cleanup) |
 | Hardware / Map Pins density cleanup pass: calmer no-selection inspector, collapsed advanced map details by default, explicit board task framing, row action affordances, and required regression gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Hardware density cleanup) |
 | Verify stimulus usability cleanup (UI-only): compact `Test stimulus` header, mode summary, section guidance, and compare-check explainer with board-clock/browser/export proof rerun | `AI_STATE.md` — Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup) |
 | Board-clock browser proof: auto `CLK100MHZ`/`W5` detected, no manual CLK row, counter waveform advances, manual-pulses override works, `clock_gen` process in exported VHDL | `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md` |
@@ -91,11 +92,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | Export readiness-density cleanup (RB-DEBT-002): trust/draft hierarchy, calmer default diagnostics, numbered Vivado handoff, and post-edit gates | `pending` |
 | Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | `95692723` |
 | Done | Verify ScenarioBuilder UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | `826a4f92` |
 | Done | Board-clock Verify now auto-runs Basys3 `CLK100MHZ` / `W5`, preserves manual overrides, and exports a free-running VHDL board-clock process | `2e47abf9..6907453c` |
 | Done | UI audit follow-up docs note: CSS debt documented in `ide-polish-pass.css`, no pruning without snapshot regression coverage | `fecabe35` |
-| Done | Verify command bar now carries the inline Observe / Compare mode explainer beside the next-run selector | `713d7037` |
 
 ---
 

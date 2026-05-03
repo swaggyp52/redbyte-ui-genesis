@@ -50,7 +50,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Suggested next pass: Screenshot-backed Export density cleanup that strengthens the readiness hero, trims duplicated summary copy, and demotes advanced diagnostics until after the dominant next action is clear.
 - Tests/browser proof needed: Enforced export screenshots at `1366x768` and `1920x1080`, plus focused browser proof that the primary CTA and artifact workspace remain reachable and honest.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: **Browser landmark gate added** — `tests/e2e/ide-surface-baselines.spec.ts` now covers Export at both viewports. Density cleanup may proceed.
+- Status: **Partially resolved (2026-05-03)** — Export now leads with a stronger trust/draft readiness hero, explicit handoff summary rows (Design/Board/Mapping/Verification/Artifacts/Export state), a numbered Vivado handoff path, collapsed generated previews, and demoted detailed diagnostics/proof metadata. Remaining debt: final visual balance pass plus deliberate screenshot strategy before any global CSS pruning.
 
 ### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
 
@@ -167,7 +167,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 ## Next High-Leverage Passes
 
 1. ~~Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.~~ **Done** (`tests/e2e/ide-surface-baselines.spec.ts`, 2026-05-02)
-2. Do a screenshot-backed Export readiness-density pass. (**Now highest-priority UI debt.**)
-3. Do a short Hardware follow-up polish pass only if Export changes reveal new cross-surface balance drift.
-4. Revisit Verify workbench layout only after those surface baselines exist, while keeping board-clock truth locked.
-5. Triage the Windows `dist/` lock so canonical build verification stops failing for environment reasons.
+2. ~~Do a screenshot-backed Export readiness-density pass.~~ **Partially done** (2026-05-03) - finish with a small visual balance/polish check only.
+3. Define CSS debt strategy (phase-by-surface, screenshot-backed), then execute only targeted deletions with proof.
+4. Do a short Hardware follow-up polish pass only if Export changes reveal cross-surface drift.
+5. Revisit Verify workbench layout only after screenshot-gated CSS strategy is in place, while keeping board-clock truth locked.

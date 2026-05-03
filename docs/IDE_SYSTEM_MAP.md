@@ -63,6 +63,14 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 - **Advanced editor containment**: Structured `hardwareMappingV2` entry editing remains available behind an explicit `Advanced mapping editor` disclosure and is not part of the default student path.
 - **Dock / inspector**: Left dock panels use **stage-colored left borders**; hardware inspector tables are **not** opacity-dimmed so live state and assertions stay legible.
 
+### Export chrome (layout system)
+
+- **Trust-first hero**: Export now opens with one dominant readiness hero and explicit trust language (`READY`, `NEEDS REVIEW`, `BLOCKED`, plus `DRAFT AVAILABLE` when a buildable but untrusted package exists).
+- **Single handoff summary rail**: The hero surfaces a compact row model for Design, Board, Pin mapping, Verification, Artifacts, and Export state so students can answer handoff trust questions before opening diagnostics.
+- **Draft/trusted separation**: Download copy and warning tone now make draft packages visibly distinct from trusted handoff packages; draft guidance stays near both trust and Vivado instruction regions.
+- **Vivado path clarity**: `Open in Vivado` now presents an 8-step numbered handoff flow (download, unzip, open project/import TCL, synth, impl, bitstream, program board) instead of a compressed 3-step sentence.
+- **Secondary detail containment**: detailed diagnostics/fix paths and generated file previews are still available but moved behind collapsed disclosures (`Detailed diagnostics and fix paths`, `Generated file previews`, `Advanced proof metadata`) so default view emphasizes trust/action over internals.
+
 ### Verify chrome (layout system)
 
 - **Command deck** (`VerifyCommandBar.tsx`, `ide-root.css`): **Two rows** — primary: **Run** / **Generate**, explicit **Next run** mode selector (`ide-vcb-run-mode`: **Observe only** / **Compare checks**) with inline explainer (`ide-vcb-mode-explainer`) that states the Observe-vs-Compare contract in plain language, **Experiment** block (`data-testid="ide-vcb-experiment-context"`: scenario headline, **Case tN** vs **No case selected**, timing / lab mode line from `sequencerModeLabel`), then **Tools** / **Details** / **Open in Design**. Second row: **session** strip (status pill + deduped session meta + evidence / coverage). Scenario headline is **`activeScenario.name` -> `lastRun.scenarioName` -> vector-bucket label** (no Verify-only invented names). **Run** text is mode-specific (observe vs compare) via `buildVerifySessionViewModel.runLabel`.

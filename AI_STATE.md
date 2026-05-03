@@ -1,5 +1,42 @@
 # AI State
 
+## Change Log 2026-05-03 (Export readiness-density cleanup — RB-DEBT-002)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, Export surface tests.
+
+**Context:** Follow-up after Hardware density pass. Scope was Export composition and readability only: improve trust hierarchy, draft/trusted clarity, and default visual density. No export generation semantics, Verify runtime semantics, board-clock policy, Hardware mapping semantics, or testbench generation logic changes.
+
+**Changes:**
+- Strengthened trust-first hero:
+  - preserved `READY` / `NEEDS REVIEW` / `BLOCKED`
+  - added explicit `DRAFT AVAILABLE` marker when package is buildable but not trusted
+  - added draft warning copy: "Draft only - run Verify before relying on this handoff."
+- Added explicit handoff summary rows in the hero (Design, Board, Pin mapping, Verification, Artifacts, Export state) with value + detail text.
+- Clarified artifact workspace rows with explicit preview affordance and moved large generated previews behind a collapsed `Generated file previews` disclosure.
+- Renamed blockers region to `Export diagnostics` and moved detailed fix-path diagnostics behind collapsed `Detailed diagnostics and fix paths`.
+- Renamed right inspector section from `Build Context` to `Build/debug context` and defaulted it closed.
+- Updated `Open in Vivado` checklist from a compressed 3-step list to a numbered 8-step handoff path and added draft warning near these steps.
+- Updated tests to enforce the new checklist and diagnostics heading.
+
+**Validation:**
+- Pre-edit:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.handoff-states.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportPackageHandoffModel.test.ts` -> 61 / 61 pass
+  - `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts --reporter=line` -> 2 / 2 pass
+- Post-edit:
+  - `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.timing-authority.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.mapping-trust.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.handoff-states.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportPackageHandoffModel.test.ts` -> 61 / 61 pass
+  - `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts --reporter=line` -> 2 / 2 pass
+  - `pnpm -w exec playwright test tests/e2e/board-clock-browser-proof.spec.ts --reporter=line` -> 1 / 1 pass
+  - `pnpm -w exec vitest run packages/rb-apps/src/__tests__/testbench.board-clock-process.test.ts packages/rb-apps/src/export/__tests__/vhdlExport.test.ts` -> 14 / 14 pass
+  - `pnpm --filter @redbyte/playground build` -> pass
+
+**Behavior preserved:**
+- Export artifact generation and packaging semantics unchanged.
+- Verify runtime and board-clock policy unchanged.
+- Hardware mapping authority chain unchanged.
+- Board-clock browser proof and export testbench checks remain green.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (Hardware / Map Pins density cleanup — RB-DEBT-001)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx`
