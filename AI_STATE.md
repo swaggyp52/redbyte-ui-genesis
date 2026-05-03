@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-05-03 (CSS debt strategy instrumentation — RB-DEBT-006)
+
+**Subsystem:** `scripts/ide-css-audit.mjs`, `package.json`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`, `docs/IDE_SYSTEM_MAP.md`
+
+**Context:** Strategy-only CSS debt pass requested after Hardware and Export density checkpoints. Scope explicitly excluded product redesign, CSS mass deletion, and any Hardware/Export/Verify behavior changes. Goal was to create enforceable inventory + risk metrics and wire them into canonical docs.
+
+**Changes:**
+- Added dependency-free audit tool: `scripts/ide-css-audit.mjs`.
+  - Reports line counts, selector counts, unique selectors, phase-marker comments, repeated selectors, root/polish selector overlap, broad substring selectors, and repeated raw color literals.
+- Added workspace command: `pnpm css:audit:ide`.
+- Captured baseline inventory from tool output and updated RB-DEBT-006 with measured values and guardrails in `docs/IDE_PRODUCT_DEBT_REGISTER.md`.
+- Updated `docs/ACTIVE_WORK.md` to mark CSS strategy instrumentation as completed in-flight work and latest evidence.
+- Updated `docs/IDE_SYSTEM_MAP.md` documentation authority map to include the CSS inventory owner (`scripts/ide-css-audit.mjs` + `pnpm css:audit:ide`).
+
+**Measured baseline (from `pnpm css:audit:ide`):**
+- `ide-root.css`: 32,875 lines, 5,522 selector entries, 4,086 unique selectors.
+- `ide-polish-pass.css`: 1,715 lines, 286 selector entries, 282 unique selectors.
+- Exact root/polish selector overlap: 5 selectors.
+- Broad substring selectors in root: 2.
+- High repeated raw literal signal remains (e.g. `rgba(255,255,255,0.06)` appears 44 times).
+
+**Validation:**
+- `pnpm css:audit:ide` -> pass (JSON metrics emitted)
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts --reporter=line` -> 2 / 2 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm rb:doc:validate` -> 36 passed, 0 failed
+
+**Behavior preserved:** no changes to UI behavior, simulation/runtime policy, mapping authority, export semantics, or board-clock flow.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (Export readiness-density cleanup — RB-DEBT-002)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, Export surface tests.

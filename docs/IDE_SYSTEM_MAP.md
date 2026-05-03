@@ -14,6 +14,7 @@ This section routes product truth to existing canonical docs so RedByte does not
 |------------|-----------------|-------------|
 | Current working state, latest bench result, immediate priorities | `AI_STATE.md` for session history; `docs/ACTIVE_WORK.md` for the cockpit | Any meaningful agent batch, proof run, blocker, or priority change |
 | Current stable truths and open IDE product debt | `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Stable proofs land, open surface debt changes, browser audits change the ranking, or cleanup preconditions change |
+| CSS debt inventory and overlap/risk metrics | `scripts/ide-css-audit.mjs` via `pnpm css:audit:ide`; summarized in `AI_STATE.md` and `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Any CSS strategy pass, selector-pruning plan, or surface cleanup where deletion risk must be measured before edits |
 | Product promise, product boundaries, non-goals, target readiness vocabulary | `docs/contracts/RedByte_Product_Contract.md` | RedByte's promise, workflow spine, supported/caveated scope, or proof obligation changes |
 | Surface responsibilities, runtime authorities, state-flow ownership, gate inventory | This file plus `docs/ide/SURFACE_CONFORMANCE.md` | Surface ownership, runtime authority, workflow-state language, or required gates change |
 | User-facing instructions and current product behavior | `docs/manuals/RedByte_Product_Manual.md` | Student-visible workflow, terms, export/hardware instructions, or supported behavior changes |

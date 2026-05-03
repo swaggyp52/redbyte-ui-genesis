@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **CSS debt strategy (not deletion-first cleanup)** - Hardware and Export density passes are both now in the "improved, not perfect" state. The next serious pass should define a screenshot-backed, phase-by-surface CSS pruning strategy before touching `ide-root.css` globally.
+2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is now in place (`pnpm css:audit:ide`). Next passes must stay surface-scoped and screenshot-backed; no global `ide-root.css` pruning.
 3. **Use the debt register to sequence visual follow-ups** - Keep follow-ups narrow: small Export/Hardware balance polish only when evidence shows drift. Keep board-clock truth and Verify runtime semantics locked.
 
 ---
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| CSS debt strategy instrumentation: reproducible IDE stylesheet inventory + overlap/risk metrics via `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`) | `AI_STATE.md` - Change Log 2026-05-03 (CSS debt strategy instrumentation) |
 | Export readiness-density cleanup pass: stronger trust/draft hero, explicit handoff summary rows, 8-step Vivado checklist, collapsed generated previews, and demoted detailed diagnostics/proof metadata with required gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Export density cleanup) |
 | Hardware / Map Pins density cleanup pass: calmer no-selection inspector, collapsed advanced map details by default, explicit board task framing, row action affordances, and required regression gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Hardware density cleanup) |
 | Verify stimulus usability cleanup (UI-only): compact `Test stimulus` header, mode summary, section guidance, and compare-check explainer with board-clock/browser/export proof rerun | `AI_STATE.md` — Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup) |
@@ -92,6 +93,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | CSS debt strategy instrumentation (RB-DEBT-006): added `pnpm css:audit:ide`, captured baseline inventory/risk map, and updated strategy docs without behavior changes | `pending` |
 | Done | Export readiness-density cleanup (RB-DEBT-002): trust/draft hierarchy, calmer default diagnostics, numbered Vivado handoff, and post-edit gates | `pending` |
 | Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | `95692723` |
 | Done | Verify ScenarioBuilder UI-only clarity pass: `Test stimulus` header, explicit authoring sections, mode summary, compare-check explainer, and targeted regression proof rerun | `826a4f92` |

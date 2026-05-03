@@ -94,19 +94,28 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/components/ProjectSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
 - Status: Needs browser proof
 
-### RB-DEBT-006 - Global CSS remains geological debt
+### RB-DEBT-006 - Global CSS remains geological debt (strategy-first)
 
 - Severity: High
 - Category: CSS debt
 - Surface: Global CSS
-- Current evidence: `ide-root.css` remains `32,874` lines with `3,826` distinct selectors per the current polish-pass audit header. `ide-polish-pass.css` is still `1,400+` lines of additive overlay. The project does not yet have screenshot coverage strong enough to justify blind pruning.
+- Current evidence: measured inventory now comes from `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`), not handwritten header notes.
+- `ide-root.css`: `32,875` lines, `5,522` selector entries, `4,086` unique selectors.
+- `ide-polish-pass.css`: `1,715` lines, `286` selector entries, `282` unique selectors.
+- Exact selector overlap between root/polish: `5` selectors (`:root[data-redbyte-mode='ide']`, `.ide-root`, `.ide-hw-workflow-ribbon`, `.ide-export-left-col`, `.ide-export-summary-hero`).
+- Broad substring selectors in root: `2` (`[class*="ide-verify-"][class*="-banner"]`, `[class*="ide-verify-"][class*="-notice"]`).
+- Repeated raw color literals are still high in root (for example `rgba(255,255,255,0.06)` appears `44` times), confirming token drift risk.
 - How to reproduce or inspect: Read the header block in `packages/rb-apps/src/apps/ide/ide-polish-pass.css` and inspect the size and section strata in `packages/rb-apps/src/apps/ide/ide-root.css`.
 - Why it matters: CSS debt is the main reason future UI passes are risky. Blind deletion will almost certainly regress one of the authority surfaces.
 - Risk if touched: Very high. This is the most dangerous cleanup area in the repo without surface baselines.
-- Suggested next pass: Do not prune globally first. Add enforced screenshots, then prune phase-by-phase by surface with focused diffs.
+- Suggested next pass: Keep strategy-first sequencing.
+- 1. Lock metrics and risk map with `pnpm css:audit:ide` before each CSS slice.
+- 2. Restrict every cleanup batch to one surface scope (Project, Design, Verify, Hardware, Export) with no cross-surface deletions.
+- 3. Require baseline browser proof (`tests/e2e/ide-surface-baselines.spec.ts`) before/after each slice.
+- 4. Prefer tokenization + selector dedupe over large deletions; delete only selectors proven dead inside the scoped slice.
 - Tests/browser proof needed: Mandatory screenshot baselines for Project / Design / Verify / Hardware / Export at at least `1366x768` and `1920x1080` before any serious deletion.
 - Files likely involved: `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `scripts/verify-gates-classroom.ts`.
-- Status: Open
+- Status: In progress (instrumented) — strategy tooling and measurable baseline now exist; deletion-first cleanup remains blocked.
 
 ### RB-DEBT-007 - Screenshot and browser proof coverage exists, but it is not yet a trusted safety net
 
@@ -168,6 +177,6 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 1. ~~Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.~~ **Done** (`tests/e2e/ide-surface-baselines.spec.ts`, 2026-05-02)
 2. ~~Do a screenshot-backed Export readiness-density pass.~~ **Partially done** (2026-05-03) - finish with a small visual balance/polish check only.
-3. Define CSS debt strategy (phase-by-surface, screenshot-backed), then execute only targeted deletions with proof.
+3. Execute the CSS strategy instrumentation pass first (inventory + risk map + guardrail docs), then run one surface-scoped cleanup at a time with proof.
 4. Do a short Hardware follow-up polish pass only if Export changes reveal cross-surface drift.
 5. Revisit Verify workbench layout only after screenshot-gated CSS strategy is in place, while keeping board-clock truth locked.
