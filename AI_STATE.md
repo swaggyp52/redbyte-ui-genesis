@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-03 (feat(import): navigate to Design after successful project import)
+
+**Subsystem:** `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/__tests__/ideApp.import-navigates-to-design.test.tsx`
+
+**Context:** Pre-pass gap analysis (2026-05-03) confirmed that the research brief's claim "Import only logs but doesn't open the circuit" was stale — `handleImportProject` already calls `handleSafeLoadIntoIde(project)` which calls `loadFromProject(project)` and updates the runtime state. The real, narrow gap was that `handleImportProject` did **not** pass `nextMode` to `handleSafeLoadIntoIde`, so the user remained on the Import surface after a successful import. A TA or instructor importing a student `.rbx.zip` proof bundle could not tell the project actually loaded — the import felt invisible.
+
+**Changes:**
+- `IdeApp.tsx` — added `nextMode: 'design'` to the `handleSafeLoadIntoIde` options inside `handleImportProject`. After a successful import, the IDE now routes to Design so the imported circuit is immediately visible. All other handler behavior (`importMeta`, `setProjectIdentity({ projectKind: 'import' })`, recovery backup, status message) is preserved exactly.
+- `ideApp.import-navigates-to-design.test.tsx` — new Vitest. Mocks the `ImportSurface` module with a thin test stub that exposes `onImportProject` as a click target, then renders `<IdeApp />` seeded to `?mode=import`, fires the callback with a fixture `RBProject`, and asserts (a) the runtime store holds the imported circuit and (b) the topbar mode label transitions to "Design". Proves the wiring at the seam without driving the full ImportSurface UI (which has many transitional states and a `window.confirm` modal).
+
+**Validation:**
+- `pnpm -w exec vitest run ideApp.import-navigates-to-design` → **1/1 pass** (455 ms)
+- `pnpm -w exec vitest run ideApp.labday-wiring + ideApp.import-navigates-to-design + importSurface.workstation + importSurface.honesty` → **20/20 pass + 1 skipped** (skipped is the legacy "ports-only rescue CTA" test, unrelated and pre-existing)
+- `npx vite build` (rb-apps) → **✓ built in 19.08s, no errors**
+
+**Behavior preserved (verified):** project save/load, project rename, examples browser, workflow gating, verify execution, observe/compare logic, stale verify detection, hardware pin mapping, Basys3 board behavior, XDC generation, Vivado export package, deterministic proof/export metadata. The change is one-prop wide and only affects post-import UI navigation; `loadFromProject`, `importMeta`, `setProjectIdentity`, and recovery-backup behavior are all unchanged.
+
+**Out of scope (intentionally not done):**
+- Post-import success card primitive — would be cosmetic over the navigation behavior.
+- Auto-running Verify after import — deterministic-state risk; left for a separate scoped change.
+- The five flagship example projects from the research brief — most of them already exist as lab starters (`lab1-gates`…`lab8-security-lock-fsm`); what's missing is curated learning-note copy, separate scope.
+- `apps/lab3-webapp`, `apps/studio`, `apps/manual-site`, `packages/rb-shell` cleanup — already done on `main` (commits `57725dce`, `9f31efe9`); the brief was stale on this.
+- `?launcher=1` removal — never existed in the first place; the brief was stale.
+- `rb-lab-engine` TS errors — separate scope, unrelated to BUG-003.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (Whole-product UX audit + IDE product flow model — docs only)
 
 **Subsystem:** `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/ACTIVE_WORK.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`
