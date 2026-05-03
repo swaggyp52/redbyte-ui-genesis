@@ -241,7 +241,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
         ) : null}
       </span>
     ) : null;
-  const compactMetaNodes = [...sessionMetaParts, experimentInline].filter(Boolean);
+  const compactMetaNodes = [...sessionMetaParts].filter(Boolean);
   const showMetricsRow =
     sessionMetricsRow === 'inline' &&
     (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
@@ -345,6 +345,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             </span>
           </div>
         )}
+
+        {null}
 
         <div className="ide-vcb-group ide-vcb-group--status">
           {showAnalysisToggle && onToggleAnalysis && (

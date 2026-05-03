@@ -65,6 +65,11 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
             Stimulus rows will drive the inputs. Observed outputs will appear here after Run.
             Build your first stimulus in the pane on the left, or seed a starter set below.
           </p>
+          <ol className="ide-vwp-empty-hero-steps" data-testid="ide-verify-waveform-placeholder-steps">
+            <li>Set input stimulus in the grid.</li>
+            <li>Add expected outputs only where checks are needed.</li>
+            <li>Run Verify to populate lanes and mismatches.</li>
+          </ol>
           {onSeed ? (
             <div className="ide-vwp-empty-hero-actions">
               <button

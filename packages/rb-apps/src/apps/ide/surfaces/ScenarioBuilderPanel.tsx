@@ -111,6 +111,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   authoringModeSummary,
   authoringModeHint,
 }) => {
+  const [showHowItWorks, setShowHowItWorks] = React.useState(false);
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
   const starterInputCount = inputFields.filter((field) => field.id !== clockLane?.fieldId).length;
@@ -121,6 +122,32 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   const selectedTickLabel = selectedTick != null ? `t${selectedTick}` : 'No case selected';
   const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
   const effectiveModeSummary = authoringModeSummary ?? (isSequential ? 'Clocked stimulus' : 'Combinational no clock');
+  const [uncontrolledWorkbenchExpanded, setUncontrolledWorkbenchExpanded] = React.useState(
+    () => initialExpanded ?? !isFirstRun
+  );
+  const usesControlledWorkbenchState = typeof workbenchExpanded === 'boolean';
+  const controlledWorkbenchExpanded = usesControlledWorkbenchState
+    ? workbenchExpanded
+    : uncontrolledWorkbenchExpanded;
+  const effectiveWorkbenchExpanded = allowWorkbenchCollapse
+    ? controlledWorkbenchExpanded
+    : true;
+
+  const updateWorkbenchExpanded = React.useCallback(
+    (expanded: boolean) => {
+      if (!usesControlledWorkbenchState) {
+        setUncontrolledWorkbenchExpanded(expanded);
+      }
+      onWorkbenchExpandedChange?.(expanded);
+    },
+    [onWorkbenchExpandedChange, usesControlledWorkbenchState]
+  );
+
+  React.useEffect(() => {
+    if (!usesControlledWorkbenchState) {
+      setUncontrolledWorkbenchExpanded(initialExpanded ?? !isFirstRun);
+    }
+  }, [initialExpanded, isFirstRun, usesControlledWorkbenchState]);
   const compareCheckCopy = showsAssertedExpectedCells
     ? 'Expected outputs are active Compare checks.'
     : 'Add expected outputs to turn on Compare checks. Empty cells stay Observe-only.';
@@ -132,54 +159,81 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     outputFields.length > 0
       ? `${outputFields.length} output signal${outputFields.length === 1 ? '' : 's'} available for checks.`
       : 'No outputs are currently mapped.';
+  const uniqueTickCount = new Set(authoredVectors.map((vector) => vector.tick)).size;
+  const compactCaseCount = effectiveVectorCount;
+  const compactTickCount = uniqueTickCount > 0 ? uniqueTickCount : effectiveVectorCount;
+  const compactHelper =
+    effectiveModeSummary === 'Auto board clock'
+      ? 'Drive inputs and add expected outputs. CLK100MHZ runs automatically.'
+      : isSequential
+        ? 'Drive inputs, set timing, then add expected outputs for checks.'
+        : 'Drive inputs and add expected outputs where Compare should check behavior.';
 
   const renderStimulusHeader = (isWorkbench: boolean) => (
     <div
       className={`ide-verify-stimulus-header${isWorkbench ? ' ide-verify-stimulus-header--workbench' : ''}`}
       data-testid="ide-verify-stimulus-header"
     >
-      <div className="ide-verify-stimulus-header-main">
+      <div className="ide-verify-stimulus-header-main ide-verify-stimulus-header-main--compact">
         <h3 className="ide-verify-stimulus-header-title" data-testid="ide-verify-stimulus-title">
           Test stimulus
         </h3>
         <p className="ide-verify-stimulus-header-copy" data-testid="ide-verify-stimulus-summary">
-          Author cases by setting input values, then add expected outputs only where Compare should check behavior.
+          {compactHelper}
         </p>
       </div>
       <div className="ide-verify-stimulus-mode-summary" data-testid="ide-verify-stimulus-mode-summary">
         <span className="ide-verify-stimulus-mode-label">Mode</span>
         <span className="ide-verify-stimulus-mode-value">{effectiveModeSummary}</span>
       </div>
-      {authoringModeHint ? (
-        <p className="ide-verify-stimulus-mode-hint" data-testid="ide-verify-stimulus-mode-hint">
-          {authoringModeHint}
-        </p>
-      ) : null}
-      <div className="ide-verify-stimulus-guidance" data-testid="ide-verify-stimulus-guidance">
-        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-clock">
-          <strong>Clock / timing</strong>
-          <span>{isSequential ? 'Clock behavior is authored in the highlighted timing lane.' : 'No clock lane is required for combinational checks.'}</span>
-        </div>
-        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-inputs">
-          <strong>Inputs you drive</strong>
-          <span>{inputSummary}</span>
-        </div>
-        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-expected">
-          <strong>Expected outputs</strong>
-          <span data-testid="ide-verify-stimulus-compare-checks-copy">{compareCheckCopy}</span>
-        </div>
-        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-cases">
-          <strong>Cases / ticks</strong>
-          <span>Use case headers to select, duplicate, or remove rows while preserving tick order.</span>
-        </div>
-        <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-advanced">
-          <strong>Advanced tools</strong>
-          <span>Project vectors, sweep presets, and TSV tools stay collapsed until you open Advanced tools.</span>
-        </div>
+      <div className="ide-verify-stimulus-compact-stats" data-testid="ide-verify-stimulus-compact-stats">
+        <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-inputs">Inputs: {starterInputCount}</span>
+        <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-checks">Checks: {outputFields.length}</span>
+        <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-cases">Cases: {compactCaseCount}</span>
+        <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-ticks">Ticks: {compactTickCount}</span>
       </div>
-      <p className="ide-verify-stimulus-outputs-summary" data-testid="ide-verify-stimulus-outputs-summary">
-        {outputSummary}
-      </p>
+      <div className="ide-verify-stimulus-how" data-testid="ide-verify-stimulus-how">
+        <button
+          type="button"
+          className="ide-verify-stimulus-how-summary"
+          aria-expanded={showHowItWorks}
+          onClick={() => setShowHowItWorks((value) => !value)}
+        >
+          How this works
+        </button>
+        {showHowItWorks ? (
+          <div className="ide-verify-stimulus-guidance" data-testid="ide-verify-stimulus-guidance">
+          <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-clock">
+            <strong>Clock / timing</strong>
+            <span>{isSequential ? 'Clock behavior is authored in the timing lane when manual/custom mode is selected.' : 'No clock lane is required for combinational checks.'}</span>
+          </div>
+          <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-inputs">
+            <strong>Inputs you drive</strong>
+            <span>{inputSummary}</span>
+          </div>
+          <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-expected">
+            <strong>Expected outputs</strong>
+            <span data-testid="ide-verify-stimulus-compare-checks-copy">{compareCheckCopy}</span>
+          </div>
+          <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-cases">
+            <strong>Cases / ticks</strong>
+            <span>Use case headers to select, duplicate, or remove rows while preserving tick order.</span>
+          </div>
+          <div className="ide-verify-stimulus-guidance-item" data-testid="ide-verify-stimulus-guide-advanced">
+            <strong>Advanced tools</strong>
+            <span>Project vectors, sweep presets, and TSV tools stay collapsed until you open Advanced tools.</span>
+          </div>
+          <p className="ide-verify-stimulus-outputs-summary" data-testid="ide-verify-stimulus-outputs-summary">
+            {outputSummary}
+          </p>
+          {authoringModeHint ? (
+            <p className="ide-verify-stimulus-mode-hint" data-testid="ide-verify-stimulus-mode-hint">
+              {authoringModeHint}
+            </p>
+          ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -400,33 +454,6 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       </div>
     );
   }
-
-  const [uncontrolledWorkbenchExpanded, setUncontrolledWorkbenchExpanded] = React.useState(
-    () => initialExpanded ?? !isFirstRun
-  );
-  const usesControlledWorkbenchState = typeof workbenchExpanded === 'boolean';
-  const controlledWorkbenchExpanded = usesControlledWorkbenchState
-    ? workbenchExpanded
-    : uncontrolledWorkbenchExpanded;
-  const effectiveWorkbenchExpanded = allowWorkbenchCollapse
-    ? controlledWorkbenchExpanded
-    : true;
-
-  const updateWorkbenchExpanded = React.useCallback(
-    (expanded: boolean) => {
-      if (!usesControlledWorkbenchState) {
-        setUncontrolledWorkbenchExpanded(expanded);
-      }
-      onWorkbenchExpandedChange?.(expanded);
-    },
-    [onWorkbenchExpandedChange, usesControlledWorkbenchState]
-  );
-
-  React.useEffect(() => {
-    if (!usesControlledWorkbenchState) {
-      setUncontrolledWorkbenchExpanded(initialExpanded ?? !isFirstRun);
-    }
-  }, [initialExpanded, isFirstRun, usesControlledWorkbenchState]);
 
   const handleWorkbenchHeaderToggle = () => {
     if (!allowWorkbenchCollapse) return;

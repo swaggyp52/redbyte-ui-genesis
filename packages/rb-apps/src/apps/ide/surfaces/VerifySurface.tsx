@@ -926,6 +926,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [failingSignalKeys, mappedSignalKeys, matchedProbeSignalKeys, selectedFailureCase, signalTimeline]);
   const [showAllSignals, setShowAllSignals] = useState(false);
   const [showMismatchOnlySignals, setShowMismatchOnlySignals] = useState(false);
+  const [signalsRailCollapsed, setSignalsRailCollapsed] = useState(true);
   const mismatchOnlyTimeline = useMemo(() => {
     const filtered = signalTimeline.filter((entry) =>
       failingSignalKeys.has(normalizeFieldId(entry.signal))
@@ -3891,23 +3892,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     return (
       <div className="ide-verify-testbench-summary" data-testid="ide-verify-testbench-summary">
-        <span className="ide-verify-testbench-summary-title">What this testbench will do</span>
-        <div className="ide-verify-testbench-summary-grid">
-          <span data-testid="ide-verify-testbench-summary-inputs">
-            <strong>Drives</strong> {drivenInputs.length > 0 ? drivenInputs.join(', ') : 'no inputs'}
+        <div className="ide-verify-testbench-summary-grid ide-verify-testbench-summary-grid--compact">
+          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-inputs">
+            Inputs: {drivenInputs.length}
           </span>
-          <span data-testid="ide-verify-testbench-summary-outputs">
-            <strong>Checks</strong> {checkedOutputs.length > 0 ? checkedOutputs.join(', ') : 'no saved outputs'}
+          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-outputs">
+            Checks: {checkedOutputs.length}
           </span>
-          <span data-testid="ide-verify-testbench-summary-cases">
-            <strong>Run</strong> {caseLabel} / {tickLabel}
+          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-cases">
+            {caseLabel}
           </span>
-          <span data-testid="ide-verify-testbench-summary-clock">
-            <strong>Clock</strong> {clockLabel}
+          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-clock">
+            {tickLabel}
           </span>
-          <span data-testid="ide-verify-testbench-summary-compare">
-            <strong>Mode</strong> {compareLabel}
+          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-compare">
+            {compareLabel}
           </span>
+          <span className="ide-verify-testbench-summary-chip is-muted">{clockLabel}</span>
         </div>
       </div>
     );
@@ -3936,16 +3937,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'ide-verify-sequential-helper';
     const missingTimingInstruction =
       effectiveTimingGuidance.kind === 'latch-control'
-        ? 'Use the highlighted control lane below to toggle transparency before expecting output changes.'
+        ? 'Use the highlighted control lane before expecting output changes.'
         : autoClockModeActive
-          ? 'RedByte will auto-toggle the clock during Verify.'
-          : 'Use the highlighted clock lane below to add a rising edge before expecting output changes.';
+          ? 'Clock runs automatically during Verify.'
+          : 'Use the highlighted clock lane to add a rising edge.';
     const lanePrompt =
       effectiveTimingGuidance.kind === 'latch-control'
-        ? 'The control lane is part of the main stimulus grid below.'
+        ? 'Control lane is in the main grid.'
         : autoClockModeActive
-          ? 'Clock timing is managed below; the board clock is not treated like a manual switch row.'
-          : 'The clock lane is part of the main stimulus grid below.';
+          ? 'Board clock is generated automatically and is not edited in the grid.'
+          : 'Clock lane is part of the main grid.';
     const clockSummaryText =
       autoClockModeActive && effectiveClockPolicy
         ? `Auto ${effectiveClockPolicy.sourceType === 'board-clock' ? 'board clock' : 'clock'}: ${effectiveClockPolicy.runCycles} cycle${effectiveClockPolicy.runCycles === 1 ? '' : 's'}, ${effectiveClockPolicy.activeEdge} edge, ${effectiveClockPolicy.resetBehavior === 'auto-sequence' ? 'reset sequence applied' : effectiveClockPolicy.resetBehavior === 'custom' ? 'custom reset' : 'no reset detected'}.`
@@ -3978,11 +3979,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </span>
           ) : isFirstRunState ? (
             <span className="ide-verify-stimulus-assist-message">
-              {sequentialGuidanceCopy.introStep} {lanePrompt} Run once to inspect state before saving checks.
+              {sequentialGuidanceCopy.introStep} {lanePrompt}
             </span>
           ) : (
             <span className="ide-verify-stimulus-assist-message">
-              {sequentialGuidanceCopy.introTitle}. {lanePrompt}
+              {lanePrompt}
             </span>
           )}
           <span className="ide-verify-stimulus-assist-summary" data-testid="ide-verify-clock-pattern-summary">
@@ -4014,7 +4015,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
               <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
                 <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
-                  RedByte will auto-toggle the Basys3 board clock during Verify. Use manual pulses only when your design intentionally clocks from a switch or button.
+                  Auto mode generates the board clock. Manual/custom modes expose an editable clock lane.
                 </span>
                 <div className="ide-verify-clock-policy-mode-buttons">
                   <button
@@ -4128,7 +4129,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       dock={
-        <section className="ide-verify-left-dock" data-testid="ide-verify-left-dock">
+        <section
+          className="ide-verify-left-dock"
+          data-testid="ide-verify-left-dock"
+          data-collapsed={signalsRailCollapsed ? 'true' : 'false'}
+        >
           <header
             className="ide-verify-signal-rail-header"
             data-testid="ide-verify-signal-rail-header"
@@ -4145,6 +4150,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </span>
               </div>
               <div className="ide-verify-signal-rail-actions">
+                <button
+                  type="button"
+                  className="ide-verify-signal-rail-action-btn ide-verify-signal-rail-toggle"
+                  onClick={() => setSignalsRailCollapsed((previous) => !previous)}
+                  data-testid="ide-verify-signal-rail-toggle"
+                  aria-expanded={signalsRailCollapsed ? 'false' : 'true'}
+                >
+                  {signalsRailCollapsed ? 'Expand' : 'Collapse'}
+                </button>
                 {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
                   <button
                     type="button"
@@ -4401,7 +4415,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           onGoToDesign={handleGoToDesignFromVerify}
           goToDesignTick={selectedTick}
           experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-          experimentCaseLabel={lastRun && selectedTick != null && !sessionSignalsAssertionFailure ? `t${selectedTick}` : null}
+          experimentCaseLabel={lastRun && !sessionSignalsAssertionFailure ? (selectedTick != null ? `Case t${selectedTick}` : 'No case selected') : null}
           experimentTimingHint={lastRun && !sessionSignalsAssertionFailure && isSequentialRun ? sequencerModeLabel : null}
         />
         )}
