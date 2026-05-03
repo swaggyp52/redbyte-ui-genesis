@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-03 (CSS selector guardrail enforcement — RB-DEBT-006)
+
+**Subsystem:** `scripts/ide-css-audit.mjs`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`
+
+**Context:** Follow-up tooling-only guardrail pass after CSS strategy instrumentation landed. Scope explicitly excluded product CSS deletion, style refactors, and any Hardware/Export/Verify behavior changes. Goal was to block new dangerous selector debt in polish while keeping existing root debt visible.
+
+**Changes:**
+- Updated `pnpm css:audit:ide` policy behavior in `scripts/ide-css-audit.mjs`:
+  - **Fail (non-zero)** when `ide-polish-pass.css` contains broad substring selectors (for example `[class*='...']`, `[class^='...']`).
+  - Keep `ide-root.css` broad substring selectors as **legacy warnings only** (reported, not failing).
+  - Continue reporting exact root/polish overlap selectors; overlap is **warning-only** in this phase.
+  - Added documented overlap baseline (`expectedRootPolishOverlapCount = 5`) and warning when overlap grows beyond this baseline.
+- Updated debt/cockpit docs to record this guardrail policy and warning/failure split.
+
+**Validation:**
+- `pnpm css:audit:ide` -> pass
+- `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` -> 2 / 2 pass
+- `pnpm --filter @redbyte/playground build` -> pass
+- `pnpm rb:doc:validate` -> pass
+- `git diff --check` -> clean
+
+**Behavior preserved:** no product code changes; no Hardware/Export/Verify behavior changes.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (CSS debt strategy instrumentation — RB-DEBT-006)
 
 **Subsystem:** `scripts/ide-css-audit.mjs`, `package.json`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/ACTIVE_WORK.md`, `docs/IDE_SYSTEM_MAP.md`

@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is now in place (`pnpm css:audit:ide`). Next passes must stay surface-scoped and screenshot-backed; no global `ide-root.css` pruning.
+2. **CSS debt strategy (not deletion-first cleanup)** - Inventory instrumentation is in place (`pnpm css:audit:ide`) and now enforces no broad substring selectors in `ide-polish-pass.css`; root broad selectors/overlap growth remain warning-only until cleanup phases.
 3. **Use the debt register to sequence visual follow-ups** - Keep follow-ups narrow: small Export/Hardware balance polish only when evidence shows drift. Keep board-clock truth and Verify runtime semantics locked.
 
 ---
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| CSS selector guardrail policy: audit now fails on broad substring selectors in polish, reports root broad selectors as legacy warnings, and monitors overlap growth as warning-only (baseline overlap = 5) | `AI_STATE.md` - Change Log 2026-05-03 (CSS selector guardrail enforcement) |
 | CSS debt strategy instrumentation: reproducible IDE stylesheet inventory + overlap/risk metrics via `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`) | `AI_STATE.md` - Change Log 2026-05-03 (CSS debt strategy instrumentation) |
 | Export readiness-density cleanup pass: stronger trust/draft hero, explicit handoff summary rows, 8-step Vivado checklist, collapsed generated previews, and demoted detailed diagnostics/proof metadata with required gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Export density cleanup) |
 | Hardware / Map Pins density cleanup pass: calmer no-selection inspector, collapsed advanced map details by default, explicit board task framing, row action affordances, and required regression gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Hardware density cleanup) |
@@ -93,6 +94,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | CSS guardrail enforcement (RB-DEBT-006): `pnpm css:audit:ide` now blocks broad substring selectors in polish and warns on root legacy selectors/overlap growth | `pending` |
 | Done | CSS debt strategy instrumentation (RB-DEBT-006): added `pnpm css:audit:ide`, captured baseline inventory/risk map, and updated strategy docs without behavior changes | `pending` |
 | Done | Export readiness-density cleanup (RB-DEBT-002): trust/draft hierarchy, calmer default diagnostics, numbered Vivado handoff, and post-edit gates | `pending` |
 | Done | Persistent IDE debt audit: canonical debt register, live browser review, and repo/brain alignment for stable truths vs open debt | `95692723` |

@@ -105,6 +105,10 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Exact selector overlap between root/polish: `5` selectors (`:root[data-redbyte-mode='ide']`, `.ide-root`, `.ide-hw-workflow-ribbon`, `.ide-export-left-col`, `.ide-export-summary-hero`).
 - Broad substring selectors in root: `2` (`[class*="ide-verify-"][class*="-banner"]`, `[class*="ide-verify-"][class*="-notice"]`).
 - Repeated raw color literals are still high in root (for example `rgba(255,255,255,0.06)` appears `44` times), confirming token drift risk.
+- Guardrail policy now enforced in `pnpm css:audit:ide`:
+- `ide-polish-pass.css` broad substring selectors (for example `[class*='...']`, `[class^='...']`) are **forbidden** and fail the audit (non-zero exit).
+- `ide-root.css` broad substring selectors remain **legacy-warning only** in this phase (reported, not failing).
+- Root/polish overlap is **warning-only** in this phase; baseline expected overlap is documented as `5`, and audit warns when this increases.
 - How to reproduce or inspect: Read the header block in `packages/rb-apps/src/apps/ide/ide-polish-pass.css` and inspect the size and section strata in `packages/rb-apps/src/apps/ide/ide-root.css`.
 - Why it matters: CSS debt is the main reason future UI passes are risky. Blind deletion will almost certainly regress one of the authority surfaces.
 - Risk if touched: Very high. This is the most dangerous cleanup area in the repo without surface baselines.
@@ -113,6 +117,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - 2. Restrict every cleanup batch to one surface scope (Project, Design, Verify, Hardware, Export) with no cross-surface deletions.
 - 3. Require baseline browser proof (`tests/e2e/ide-surface-baselines.spec.ts`) before/after each slice.
 - 4. Prefer tokenization + selector dedupe over large deletions; delete only selectors proven dead inside the scoped slice.
+- 5. Keep guardrails strict: no new broad substring selectors in polish; treat root broad selectors and overlap growth as explicit debt warnings until the cleanup phase upgrades those checks.
 - Tests/browser proof needed: Mandatory screenshot baselines for Project / Design / Verify / Hardware / Export at at least `1366x768` and `1920x1080` before any serious deletion.
 - Files likely involved: `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `scripts/verify-gates-classroom.ts`.
 - Status: In progress (instrumented) — strategy tooling and measurable baseline now exist; deletion-first cleanup remains blocked.
