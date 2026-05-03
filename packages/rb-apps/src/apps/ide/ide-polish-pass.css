@@ -1464,6 +1464,46 @@
   border-bottom: 1px solid var(--rb-border-1, #2a3a50);
 }
 
+.ide-hw-board-task-copy {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--rb-text-2, #cfdbeb);
+  border-bottom: 1px solid rgba(140, 168, 196, 0.22);
+  background: rgba(11, 18, 28, 0.72);
+}
+
+.ide-hw-map-row-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #bdebe5;
+  background: rgba(46, 196, 182, 0.16);
+  border: 1px solid rgba(46, 196, 182, 0.28);
+}
+
+.ide-hw-map-row.is-required-missing .ide-hw-map-row-action {
+  color: #ffd8ad;
+  border-color: rgba(245, 166, 35, 0.36);
+  background: rgba(245, 166, 35, 0.14);
+}
+
+.ide-hw-map-row.is-conflict .ide-hw-map-row-action {
+  color: #ffd0d0;
+  border-color: rgba(224, 82, 82, 0.4);
+  background: rgba(224, 82, 82, 0.15);
+}
+
+.ide-hw-selected-signal-card[data-testid='ide-hw-map-inspector-help'] {
+  background: rgba(18, 35, 52, 0.72);
+}
+
 /* Resource catalog collapsed by default — summary only shows */
 .ide-hw-resource-catalog > summary {
   font-size: 11px;

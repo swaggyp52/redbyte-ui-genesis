@@ -451,7 +451,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [hwMode]);
-  const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string>('CLK100MHZ');
+  const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string | null>(null);
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
   const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
@@ -689,8 +689,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   }, [plannerResources]);
   const selectedBoardResource =
     selectedMappedBoardResource ??
-    getBasys3BoardResource(selectedBoardResourceAlias) ??
-    getBasys3BoardResource('CLK100MHZ');
+    (selectedBoardResourceAlias ? getBasys3BoardResource(selectedBoardResourceAlias) : null);
   const selectedBoardResourceRows = selectedBoardResource
     ? mappedRowsByPackagePin.get(selectedBoardResource.packagePin) ?? []
     : [];
@@ -723,7 +722,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       { label: 'Clock / reset', rows: [] },
       { label: 'Inputs', rows: [] },
       { label: 'Outputs', rows: [] },
-      { label: 'Other', rows: [] },
+      { label: 'Optional', rows: [] },
     ];
     for (const row of mappingRows) {
       const lbl = formatProjectSignalName(row);
@@ -734,6 +733,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         groups[0].rows.push(row);
       } else if (/CLK|CLOCK/.test(lbl)) {
         groups[0].rows.push(row);
+      } else if (!row.required) {
+        groups[3].rows.push(row);
       } else if (row.direction === 'in') {
         groups[1].rows.push(row);
       } else if (row.direction === 'out') {
@@ -1079,6 +1080,30 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     : !selectedMappingBoardControl
       ? 2
       : 3;
+  const selectedSignalHasPin = Boolean(selectedMappingRow?.pin.trim().length);
+  const selectedSignalConflict = Boolean(
+    selectedMappingRow &&
+      (() => {
+        const key = mappingPinConflictKey(selectedMappingRow.pin);
+        return key.length > 0 && (pinUsageCounts.get(key) ?? 0) > 1;
+      })()
+  );
+  const selectedSignalStatus = !selectedMappingRow
+    ? null
+    : selectedSignalConflict
+      ? 'Conflict'
+      : selectedSignalHasPin
+        ? 'Mapped'
+        : selectedMappingRow.required
+          ? 'Missing required'
+          : 'Optional';
+  const boardWorkspacePrompt = hasNoBoundaryRows
+    ? 'Add boundary inputs and outputs in Design, then return to assign Basys3 controls.'
+    : !selectedMappingRow
+      ? 'Select a signal row to choose a matching Basys3 control.'
+      : selectedSignalHasPin
+        ? `This signal is mapped to ${selectedMappingBoardControl} / ${selectedMappingPackagePin}.`
+        : `Choose a Basys3 control for ${selectedMappingLabel}.`;
 
   const hasOtherBlockingIssue = useMemo(
     () =>
@@ -1929,35 +1954,58 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   );
   const mapInspector = (
     <>
-      <IdeInspectorSection title="Selected Signal" defaultOpen>
-        {selectedMappingRow ? (
+      <IdeInspectorSection title="Mapping focus" defaultOpen>
+        {!selectedMappingRow && !selectedBoardResourceAlias ? (
+          <div className="ide-hw-selected-signal-card" data-testid="ide-hw-map-inspector-help">
+            <strong>Ready to map</strong>
+            <p className="ide-copy ide-copy--flush" data-testid="ide-hw-selected-signal-empty">
+              Select a signal row in the mapping table, then click a matching Basys3 control.
+            </p>
+            <p className="ide-copy ide-copy--flush">
+              The inspector will show signal status, board control, package pin, and the next action.
+            </p>
+          </div>
+        ) : selectedMappingRow ? (
           <div className="ide-hw-selected-signal-card" data-testid="ide-hw-selected-signal-card">
             <strong>{selectedMappingLabel}</strong>
             <div className="ide-kv-list">
+              <div className="ide-kv-row">
+                <span>Direction</span>
+                <span>{selectedMappingRow.direction === 'in' ? 'Input' : 'Output'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Required</span>
+                <span>{selectedMappingRow.required ? 'Required' : 'Optional'}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Status</span>
+                <span>{selectedSignalStatus}</span>
+              </div>
               <div className="ide-kv-row">
                 <span>Board control</span>
                 <span>{selectedMappingBoardControl}</span>
               </div>
               <div className="ide-kv-row">
-                <span>Physical pin</span>
+                <span>Package pin</span>
                 <span>{selectedMappingPackagePin}</span>
               </div>
               <div className="ide-kv-row">
                 <span>Target type</span>
                 <span>{selectedMappingResource}</span>
               </div>
+              <div className="ide-kv-row">
+                <span>Next action</span>
+                <span>{selectedSignalHasPin ? 'Edit mapping on board' : 'Choose control on board'}</span>
+              </div>
             </div>
-            <p className="ide-copy ide-copy--flush">
-              Click a highlighted valid control on the board to save this signal's binding.
-            </p>
           </div>
         ) : (
           <p className="ide-copy" data-testid="ide-hw-selected-signal-empty">
-            Select a signal row to show its board control and physical package pin here.
+            Select a signal row to inspect mapping details.
           </p>
         )}
       </IdeInspectorSection>
-      <IdeInspectorSection title="Board Resource" defaultOpen>
+      <IdeInspectorSection title="Selected board control" defaultOpen>
         {selectedBoardResource ? (
           <div className="ide-hw-selected-signal-card" data-testid="ide-hw-selected-resource-card">
             <strong>{selectedBoardResource.alias}</strong>
@@ -1991,10 +2039,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             ) : null}
           </div>
         ) : (
-          <p className="ide-copy">Select a board resource to inspect its package pin and mapping state.</p>
+          <p className="ide-copy">Choose a board control to inspect its package pin and mapping state.</p>
         )}
       </IdeInspectorSection>
-      <IdeInspectorSection title="XDC Binding Preview" defaultOpen>
+      <IdeInspectorSection title="Advanced XDC preview" defaultOpen={false}>
         <p className="ide-copy ide-copy--flush">
           Export uses the same saved Map Pins binding when generating <code>top.xdc</code>.
         </p>
@@ -2002,7 +2050,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           {selectedBoardResourceXdc || 'Select a board resource to preview its XDC binding.'}
         </pre>
       </IdeInspectorSection>
-      <IdeInspectorSection title="Mapping Status" defaultOpen={false}>
+      <IdeInspectorSection title="Mapping diagnostics" defaultOpen={false}>
         {hasNoBoundaryRows ? (
           <p className="ide-copy" data-testid="ide-hw-map-empty">
             Add inputs and outputs in Design, then return here to assign board pins.
@@ -2020,13 +2068,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             testId="ide-hw-map-missing-table"
           />
         )}
-      </IdeInspectorSection>
-      <IdeInspectorSection title="Selection Help" defaultOpen={false}>
-        <p className="ide-copy">
+        <p className="ide-copy" style={{ marginTop: 'var(--ide-space-2)' }}>
           {selectedMappingRow
             ? `Selected ${getStudentFacingIoLabel(selectedMappingRow)}. Click the highlighted Basys3 control or edit the pin entry on the left to finish the binding.`
             : 'Select a signal row, then click the highlighted Basys3 control to bind it to a board pin.'}
         </p>
+      </IdeInspectorSection>
+      <IdeInspectorSection title="Preflight details" defaultOpen={false}>
+        <div className="ide-kv-list" data-testid="ide-hw-map-preflight-details">
+          <div className="ide-kv-row">
+            <span>Verify status</span>
+            <span>{verifyStatus}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Export status</span>
+            <span>{exportStatus}</span>
+          </div>
+          <div className="ide-kv-row">
+            <span>Required mapped</span>
+            <span>{mappedRequiredCount}/{totalRequiredCount}</span>
+          </div>
+        </div>
       </IdeInspectorSection>
     </>
   );
@@ -2588,6 +2650,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 <em>CA-CG, DP, AN0-AN3</em>
               </div>
             </div>
+            <p className="ide-copy ide-copy--flush ide-hw-board-task-copy" data-testid="ide-hw-board-task-copy">
+              {boardWorkspacePrompt}
+            </p>
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
@@ -3136,7 +3201,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   </p>
                 </IdeCallout>
               ) : mapModeGroups.map((group) => (
-                <details key={group.label} open>
+                <details key={group.label} open data-testid={`ide-hw-map-group-${group.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
                   <summary className="ide-hw-map-group-label">{group.label}</summary>
                   <div className="ide-hw-map-group">
                     {group.rows.map((row) => {
@@ -3168,7 +3233,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             const nextSelected = row.id === selectedMappingRowId ? null : row.id;
                             setSelectedMappingRowId(nextSelected);
                             if (nextSelected) {
-                              setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin) ?? selectedBoardResourceAlias);
+                              setSelectedBoardResourceAlias(resolveBoardControlAlias(row.pin));
                             }
                           }}
                         >
@@ -3200,6 +3265,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             )}
                             <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
                               <span>Board: <strong>{boardControl}</strong> (pin <strong>{packagePin}</strong>)</span>
+                            </span>
+                            <span className="ide-hw-map-row-action" data-testid={`ide-hw-map-row-action-${row.id}`}>
+                              {isMissing
+                                ? 'Choose control'
+                                : hasConflict
+                                  ? 'Resolve conflict'
+                                  : 'Edit mapping'}
                             </span>
                           </span>
                         </button>
