@@ -22,6 +22,9 @@ const polishCssPath = path.join(
   'ide-polish-pass.css'
 );
 
+// Baseline overlap captured during the strategy instrumentation checkpoint.
+const EXPECTED_ROOT_POLISH_OVERLAP_COUNT = 5;
+
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
 }
@@ -172,8 +175,35 @@ const overlapSelectors = [...rootSelectorSet]
   .filter((selector) => polishSelectorSet.has(selector))
   .sort((a, b) => a.localeCompare(b));
 
+const warnings = [];
+const errors = [];
+
+if (rootSummary.substringSelectors.length > 0) {
+  warnings.push(
+    `Legacy warning: ide-root.css contains ${rootSummary.substringSelectors.length} broad substring selector(s).`
+  );
+}
+
+if (overlapSelectors.length > EXPECTED_ROOT_POLISH_OVERLAP_COUNT) {
+  warnings.push(
+    `Warning: root/polish overlap increased to ${overlapSelectors.length} (baseline ${EXPECTED_ROOT_POLISH_OVERLAP_COUNT}).`
+  );
+}
+
+if (polishSummary.substringSelectors.length > 0) {
+  errors.push(
+    `Guardrail violation: ide-polish-pass.css contains ${polishSummary.substringSelectors.length} broad substring selector(s).`
+  );
+}
+
 const report = {
   generatedAtIso: new Date().toISOString(),
+  policy: {
+    noBroadSubstringSelectorsInPolish: true,
+    rootBroadSubstringSelectorsMode: 'legacy-warning',
+    overlapMode: 'warning',
+    expectedRootPolishOverlapCount: EXPECTED_ROOT_POLISH_OVERLAP_COUNT,
+  },
   files: {
     root: rootSummary,
     polish: polishSummary,
@@ -186,6 +216,21 @@ const report = {
     root: rootSummary.substringSelectors,
     polish: polishSummary.substringSelectors,
   },
+  diagnostics: {
+    warnings,
+    errors,
+  },
 };
 
 console.log(JSON.stringify(report, null, 2));
+
+for (const warning of warnings) {
+  console.error(`[css-audit:warning] ${warning}`);
+}
+
+if (errors.length > 0) {
+  for (const error of errors) {
+    console.error(`[css-audit:error] ${error}`);
+  }
+  process.exitCode = 1;
+}
