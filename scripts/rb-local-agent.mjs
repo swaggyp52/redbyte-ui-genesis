@@ -125,6 +125,30 @@ function readPrompt(name) {
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
+function getOllamaCliInfo() {
+  try {
+    const version = execSync('ollama --version', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    return { found: true, version };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return { found: false, version: '', reason };
+  }
+}
+
+async function getOllamaTags() {
+  const url = `${OLLAMA_BASE_URL}/api/tags`;
+  const res = await fetch(url, { method: 'GET' });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ''}`);
+  }
+  return res.json();
+}
+
 // â”€â”€â”€ Ollama client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
@@ -174,41 +198,90 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
 async function cmdDoctor() {
   info('Running RedByte Local Agent doctor...\n');
 
+  info('Environment summary:');
+  info(`  OLLAMA_BASE_URL=${OLLAMA_BASE_URL}`);
+  info(`  REDBYTE_AGENT_MODEL=${MODEL}`);
+  info(`  REDBYTE_AGENT_FORMAT=${FORMAT}`);
+  info(`  REDBYTE_AGENT_TEMPERATURE=${TEMPERATURE}`);
+  info(`  REDBYTE_AGENT_CTX_LIMIT=${CTX_LIMIT}`);
+
   // 1. Repo root
-  info(`âœ“ Repo root: ${ROOT}`);
+  info(`[ok] Repo root: ${ROOT}`);
 
   // 2. Work driver packet
   const packet = path.join(WORK_DIR, 'NEXT_WORK_PACKET.md');
   if (fs.existsSync(packet)) {
-    info(`âœ“ Work driver packet: ${packet}`);
+    info(`[ok] Work driver packet: ${packet}`);
   } else {
-    info(`âœ— Work driver packet not found â€” run: pnpm rb:work:next`);
+    info(`[missing] Work driver packet not found - run: pnpm rb:work:next`);
   }
 
   // 3. Control docs
   for (const doc of CONTROL_DOCS) {
     const abs = path.join(ROOT, doc);
     if (fs.existsSync(abs)) {
-      info(`âœ“ Control doc: ${doc}`);
+      info(`[ok] Control doc: ${doc}`);
     } else {
-      info(`âœ— Missing control doc: ${doc}`);
+      info(`[missing] Control doc: ${doc}`);
     }
   }
 
   // 4. Prompts
   const promptsExist = fs.existsSync(PROMPTS_DIR);
-  info(promptsExist ? `âœ“ Prompts dir: ${PROMPTS_DIR}` : `âœ— Prompts dir missing: ${PROMPTS_DIR}`);
+  info(promptsExist ? `[ok] Prompts dir: ${PROMPTS_DIR}` : `[missing] Prompts dir: ${PROMPTS_DIR}`);
 
   // 5. Git status
   const status = gitStatus();
   if (status === '') {
-    info(`âœ“ Git working tree: clean`);
+    info('[ok] Git working tree: clean');
   } else {
-    info(`âš  Git working tree has uncommitted changes:\n${status}`);
+    info(`[warn] Git working tree has uncommitted changes:\n${status}`);
   }
 
-  // 6. Ollama smoke test
-  info(`\nSmoking Ollama at ${OLLAMA_BASE_URL} with model ${MODEL}...`);
+  // 6. Ollama CLI check
+  const cli = getOllamaCliInfo();
+  if (cli.found) {
+    info(`[ok] Ollama CLI found: ${cli.version}`);
+  } else {
+    fatal(
+      `Ollama CLI not found in PATH.\n` +
+      `  Reason: ${cli.reason}\n` +
+      `  Install: https://ollama.com/download/windows\n` +
+      `  Then verify with: ollama --version`
+    );
+  }
+
+  // 7. Ollama API check
+  let tags;
+  try {
+    tags = await getOllamaTags();
+    info(`[ok] Ollama API reachable: ${OLLAMA_BASE_URL}/api/tags`);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    fatal(
+      `Ollama API is unreachable at ${OLLAMA_BASE_URL}.\n` +
+      `  Reason: ${reason}\n` +
+      `  PowerShell start command: Start-Process ollama\n` +
+      `  Alternative foreground command: ollama serve\n` +
+      `  Re-check with: Invoke-RestMethod -Uri \"${OLLAMA_BASE_URL}/api/tags\" -Method Get`
+    );
+  }
+
+  const models = Array.isArray(tags?.models) ? tags.models : [];
+  const modelNames = models.map((m) => m?.name).filter(Boolean);
+  const modelInstalled = modelNames.includes(MODEL);
+  info(`[ok] Installed models (${models.length}): ${modelNames.join(', ') || 'none'}`);
+  if (!modelInstalled) {
+    fatal(
+      `Configured model is not installed: ${MODEL}\n` +
+      `  Suggested pull: ollama pull ${MODEL}\n` +
+      `  Or set an installed model, for example:\n` +
+      `  $env:REDBYTE_AGENT_MODEL=\"${modelNames[0] ?? 'qwen2.5-coder:1.5b-base'}\"`
+    );
+  }
+
+  // 8. Ollama smoke test
+  info(`\nSmoke-testing Ollama chat with model ${MODEL}...`);
   try {
     const reply = await ollamaChat(
       'You are a smoke test. Respond with exactly: REDBYTE_AGENT_OK',
@@ -216,15 +289,24 @@ async function cmdDoctor() {
     );
     const trimmed = reply.trim();
     if (trimmed.includes('REDBYTE_AGENT_OK')) {
-      info(`âœ“ Ollama responded: ${trimmed}`);
+      info(`[ok] Ollama responded: ${trimmed}`);
     } else {
-      info(`âš  Ollama responded (unexpected): ${trimmed.slice(0, 120)}`);
+      info(`[warn] Ollama responded (unexpected): ${trimmed.slice(0, 120)}`);
     }
-  } catch {
-    // fatal() already called inside ollamaChat
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    if (reason.includes('memory layout cannot be allocated')) {
+      fatal(
+        `Model failed to start due to memory limits: ${MODEL}\n` +
+        `  Use a smaller model for local smoke tests, for example:\n` +
+        `  ollama pull qwen2.5-coder:1.5b-base\n` +
+        `  $env:REDBYTE_AGENT_MODEL=\"qwen2.5-coder:1.5b-base\"`
+      );
+    }
+    throw err;
   }
 
-  info('\n[rb-local-agent] doctor complete.');
+  info('doctor complete.');
 }
 
 async function cmdContext() {
@@ -265,7 +347,7 @@ async function cmdContext() {
 
   const bundle = parts.join('\n\n---\n\n');
   const dest = writeRun('context-latest.md', bundle);
-  info(`âœ“ Context bundle written to: ${dest}`);
+  info(`[ok] Context bundle written to: ${dest}`);
   info(`  Size: ${(bundle.length / 1024).toFixed(1)} KB`);
 }
 

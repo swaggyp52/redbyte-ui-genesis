@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(agent): document and verify local Ollama workflow)
+
+**Subsystem:** `.github/copilot-instructions.md`, `.github/instructions/agent-tools.instructions.md`, `.github/prompts/*`, `scripts/rb-local-agent.mjs`, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md`, `docs/DOC_INDEX.md`
+
+**Context:** Practical terminal enablement slice for RedByte Local Agent Lab. Goal was to verify real Windows terminal/Ollama behavior and make failures actionable instead of assumed.
+
+**Terminal evidence:**
+- `pnpm rb:work:status` showed clean tree and latest commit `58723b8c`.
+- `pnpm rb:work:next` and `pnpm rb:agent:context` executed successfully.
+- `ollama --version` confirmed CLI installed (`0.20.2`) but API initially down.
+- `Start-Process ollama` brought API up (`/api/tags` reachable).
+- Installed models observed: `claude-sonnet-4-6:latest`, `gemma4-local:latest`, `gemma4:e4b`.
+- `pnpm rb:agent:doctor` and `pnpm rb:agent:next` failed with Ollama API 500 `memory layout cannot be allocated` using the installed large model.
+
+**Changes:**
+- `.github/copilot-instructions.md`: added explicit terminal-first verification rules and failure-reporting requirements.
+- `.github/instructions/agent-tools.instructions.md`: added terminal verification contract for local agent work (`pnpm rb:agent:*`, exact failed command/error reporting).
+- `.github/prompts/redbyte-start-slice.prompt.md`: added terminal-first proof and failure-reporting rules.
+- `.github/prompts/redbyte-review-diff.prompt.md`: added terminal evidence checks in validation section.
+- `scripts/rb-local-agent.mjs`: improved `doctor` diagnostics with environment summary, explicit CLI check, API reachability check, installed model check, actionable PowerShell start commands, missing-model guidance, and memory-allocation failure guidance.
+- `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`: documented new env vars (`REDBYTE_AGENT_FORMAT`, `REDBYTE_AGENT_TEMPERATURE`, `REDBYTE_AGENT_CTX_LIMIT`) and Windows quickstart steps.
+- `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md`: new dedicated local Ollama setup/operations guide for Windows terminal usage, model recommendations, failure modes, and RedByte command flow.
+- `docs/DOC_INDEX.md`: added index entry for `RED_BYTE_OLLAMA_LOCAL_SETUP.md`.
+
+**Validation plan for this slice:**
+- `pnpm rb:work:status`
+- `pnpm rb:work:next`
+- `pnpm rb:agent:context`
+- `pnpm rb:agent:doc-sync`
+- `pnpm rb:agent:handoff`
+- `pnpm rb:doc:validate`
+- `git diff --check`
+- Ollama-path checks plus `pnpm rb:agent:doctor` and `pnpm rb:agent:next` with explicit failure output if model cannot allocate memory.
+
+---
+
 ## Change Log 2026-05-05 (chore(agent): align Copilot and local agent control plane)
 
 **Subsystem:** `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `scripts/rb-local-agent.mjs`, `docs/product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md`, `docs/DOC_INDEX.md`

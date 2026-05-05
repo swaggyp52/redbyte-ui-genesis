@@ -8,7 +8,7 @@ role: specification and operating guide for the RedByte Local Agent Lab infrastr
 
 # RedByte Local Agent Lab
 
-This document describes the **RedByte Local Agent Lab** — a deterministic, Ollama-backed local assistant harness that reads control docs, work-driver packets, git state, and session context, then produces grounded prompts, reviews, and handoff reports.
+This document describes the **RedByte Local Agent Lab** â€” a deterministic, Ollama-backed local assistant harness that reads control docs, work-driver packets, git state, and session context, then produces grounded prompts, reviews, and handoff reports.
 
 The agent lab is **not** an autonomous code editor. It is a read-only analysis and prompt-generation harness that earns trust across phases.
 
@@ -19,27 +19,27 @@ The agent lab is **not** an autonomous code editor. It is a read-only analysis a
 ```
 .redbyte/
   agent/
-    config.example.json     — Configuration template (copy to config.json, gitignored)
+    config.example.json     â€” Configuration template (copy to config.json, gitignored)
     prompts/
-      system.md             — Core system prompt for the local agent
-      reviewer.md           — Diff review prompt and checklist
-      planner.md            — Implementation plan generation prompt
-      doc-sync.md           — Doc/Obsidian sync gap checker prompt
-      implementation.md     — Next-task prompt generation template
+      system.md             â€” Core system prompt for the local agent
+      reviewer.md           â€” Diff review prompt and checklist
+      planner.md            â€” Implementation plan generation prompt
+      doc-sync.md           â€” Doc/Obsidian sync gap checker prompt
+      implementation.md     â€” Next-task prompt generation template
     continue/
-      config.example.yaml   — Continue.dev config template for VS Code
-    runs/                   — All run outputs (gitignored, contents excluded)
+      config.example.yaml   â€” Continue.dev config template for VS Code
+    runs/                   â€” All run outputs (gitignored, contents excluded)
       context-latest.md
       next-prompt.md
       review-latest.md
       doc-sync-latest.md
       handoff-latest.md
-  work/                     — Work driver outputs (separate from agent runs)
+  work/                     â€” Work driver outputs (separate from agent runs)
     NEXT_WORK_PACKET.md
     HANDOFF_DRAFT.md
 
 scripts/
-  rb-local-agent.mjs        — Main CLI entry point
+  rb-local-agent.mjs        â€” Main CLI entry point
 ```
 
 ---
@@ -67,6 +67,9 @@ All commands are available via pnpm scripts:
 |----------|---------|---------|
 | `REDBYTE_AGENT_MODEL` | `qwen2.5-coder:7b` | Ollama model for chat/review/planning |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API base URL |
+| `REDBYTE_AGENT_FORMAT` | `markdown` | Output format (`markdown` or `json`) for `next`, `review`, and `doc-sync` |
+| `REDBYTE_AGENT_TEMPERATURE` | `0.2` | Sampling temperature sent to Ollama |
+| `REDBYTE_AGENT_CTX_LIMIT` | `10000` | Max context characters sent to Ollama prompts |
 
 ### Model tiers
 
@@ -103,21 +106,71 @@ The local agent **always**:
 
 ---
 
+## Terminal-first execution contract
+
+The local agent lab is validated through terminal evidence, not assumptions.
+
+- Use terminal checks before claiming completion: `git status --short`, `git diff --name-only`, command output, and commit hash.
+- For Ollama work, run real commands: `pnpm rb:agent:doctor`, `pnpm rb:agent:context`, `pnpm rb:agent:next`, `pnpm rb:agent:review`, `pnpm rb:agent:doc-sync`, `pnpm rb:agent:handoff`.
+- If command execution fails, report the exact command and the exact terminal failure text.
+
+---
+
+## Windows Ollama quickstart
+
+1. Verify CLI exists:
+
+```powershell
+Get-Command ollama -ErrorAction SilentlyContinue
+ollama --version
+```
+
+2. Verify API status:
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:11434/api/tags" -Method Get
+```
+
+3. If API is down, start Ollama:
+
+```powershell
+Start-Process ollama
+```
+
+4. Choose model and run lab smoke checks:
+
+```powershell
+$env:REDBYTE_AGENT_MODEL="qwen2.5-coder:1.5b-base"
+pnpm rb:agent:doctor
+pnpm rb:agent:context
+pnpm rb:agent:next
+```
+
+If the model is not installed, pull it first:
+
+```powershell
+ollama pull qwen2.5-coder:1.5b-base
+```
+
+See `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md` for full setup, failure modes, and model guidance.
+
+---
+
 ## Phase model
 
 The agent lab earns trust across phases. Each phase must be stable before the next.
 
 | Phase | Capability | Status |
 |-------|-----------|--------|
-| 0 | Connectivity check (`doctor`) | ✅ Implemented |
-| 1 | Read-only context and prompt generation | ✅ Implemented |
-| 2 | Diff review and doc-sync gap detection | ✅ Implemented |
+| 0 | Connectivity check (`doctor`) | âœ… Implemented |
+| 1 | Read-only context and prompt generation | âœ… Implemented |
+| 2 | Diff review and doc-sync gap detection | âœ… Implemented |
 | 3 | Patch proposal (outputs `.patch` file, never applies) | Future |
 | 4 | Controlled file edit (one file, user-confirmed) | Future |
 | 5 | Controlled commit (user-confirmed, never pushes) | Future |
 | 6 | Full slice automation with human review checkpoint | Future |
 
-Phases 3–6 must be explicitly scoped and approved before implementation.
+Phases 3â€“6 must be explicitly scoped and approved before implementation.
 
 ---
 
@@ -141,9 +194,9 @@ The agent reads these docs on every run (where applicable):
 The agent's `doc-sync` command generates a checklist of required Obsidian vault updates after each implementation slice. It does not write to the vault directly (Phase 1 is read-only). Vault write capability is a Phase 4+ concern.
 
 Relevant vault nodes:
-- `01 Dashboard/RedByte Engineering Brain.md` — master entry point
-- `05 Bugs/BUG-00N.md` — per-bug notes (close after fix is committed)
-- Session logs — add handoff summary after each slice
+- `01 Dashboard/RedByte Engineering Brain.md` â€” master entry point
+- `05 Bugs/BUG-00N.md` â€” per-bug notes (close after fix is committed)
+- Session logs â€” add handoff summary after each slice
 
 ---
 
