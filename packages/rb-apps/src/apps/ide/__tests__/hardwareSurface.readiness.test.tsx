@@ -608,13 +608,12 @@ describe('HardwareSurface readiness', () => {
     expect(row.textContent).toContain('SW0');
     expect(row.textContent).toContain('V17');
     expect(queryByText('iom-in0')).toBeNull();
-    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('Select a signal row');
+    // Guide collapses when all required signals are mapped (F-H2) — check row action instead.
     expect(getByTestId('ide-hw-map-row-action-iom-in0').textContent).toContain('Edit mapping');
 
     fireEvent.click(row);
     expect(row.getAttribute('aria-pressed')).toBe('true');
-    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('IN0');
-    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('SW0');
+    // Selected signal card still shows the current pin assignment even without the guide.
     expect(getByTestId('ide-hw-selected-signal-card').textContent).toContain('V17');
     fireEvent.click(getByTestId('ide-hw-map-sw-1'));
 

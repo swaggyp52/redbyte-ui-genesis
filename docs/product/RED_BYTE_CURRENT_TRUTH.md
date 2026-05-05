@@ -77,7 +77,6 @@ Supporting truths:
 
 ### Workflow-language and trust clarity
 
-- Export `F-E1` / `F-E2`: trust language is still duplicated and overly repetitive.
 - Map Pins `F-H2` / `F-H3`: stale guidance and unclear `NEEDS REVIEW` state still compete with the real task.
 
 ### Repo / process hygiene
@@ -105,8 +104,7 @@ Supporting truths:
 
 If the working tree is understood and isolated, the first real implementation slice is:
 
-1. Export `F-E1` / `F-E2` trust language
-2. Map Pins `F-H2` / `F-H3` trust language
-3. Curate starter and example learning path
+1. Map Pins `F-H2` / `F-H3` trust language
+2. Curate starter and example learning path
 
 Do not skip to website, pilot, or broad example expansion while proof closure and workflow-language contradictions remain open.

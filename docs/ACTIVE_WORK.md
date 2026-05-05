@@ -17,8 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Tighten Export trust language (F-E1 / F-E2)** - Keep one primary trust story on Export: remove repeated Verify warning copy and collapse summary/action duplication into one honest handoff path.
-3. **Tighten Map Pins trust language (F-H2 / F-H3)** - Hide stale complete-state guide copy and explain `NEEDS REVIEW` with the real fix path instead of warning color alone.
+2. **Tighten Map Pins trust language (F-H2 / F-H3)** - Hide stale complete-state guide copy and explain `NEEDS REVIEW` with the real fix path instead of warning color alone.
 
 ---
 
@@ -50,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
 | F-P1 fix: the Project next-action card now keeps Verify as the dominant story when Verify is the required next step. The status frame now reads `VERIFY NEXT`, the supporting line points to Verify before Export/hardware reliance, and focused Project continuity + CTA + first-load wiring checks all pass. | `AI_STATE.md` - Change Log 2026-05-04 (Project next-action semantics) |
 | RB-DEBT-011 fix (F-P2): first-load Project home now renders immediately on `/` and `/os/` with canonical mode fallback, active Project rail agreement, and updated first-load browser assertions in `ide-surface-baselines`. Browser checks run at 1366x768 and 1920x1080 with cleared storage and saved-project restore path. | `AI_STATE.md` - Change Log 2026-05-03 (Project first-load home render fix) |
 | Whole-product UX audit + flow model: all 5 surfaces inspected in browser at 1366x768 and 1920x1080; friction codes F-P1–F-P5, F-V1–F-V3, F-H1–F-H5, F-E1–F-E4 catalogued; implementation slices ordered by student impact; 3/3 browser gates reconfirmed green | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` |

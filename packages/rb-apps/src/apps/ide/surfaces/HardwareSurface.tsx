@@ -2594,18 +2594,30 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 hasNoBoundaryRows
                   ? 'Add inputs and outputs in Design first.'
                   : mappingReady
-                    ? 'Mapping is complete. Run Verify or open Export.'
+                    ? failureTruth.condition === 'ready'
+                      ? 'Mapping complete — open Export to build the submission package.'
+                      : failureTruth.condition === 'verify-not-run'
+                        ? 'Mapping complete — open Verify to create trusted export evidence.'
+                        : failureTruth.condition === 'verify-stale'
+                          ? 'Mapping complete — Verify evidence is stale. Open Verify to refresh before export.'
+                          : failureTruth.condition === 'trace-only'
+                            ? 'Mapping complete — run Compare checks in Verify for trusted export evidence.'
+                            : failureTruth.condition === 'mapping-review'
+                              ? 'Mapping complete — re-run Compare in Verify for current trusted evidence.'
+                              : `Mapping complete — ${failureTruth.primaryCtaLabel.toLowerCase()} to continue.`
                     : `Map ${unresolvedRequiredCount} remaining required signal${unresolvedRequiredCount === 1 ? '' : 's'}.`
               }
             />
-            <div data-testid="ide-hw-map-loop-card">
-              <HardwareMappingGuide
-                activeStep={activeGuideStep}
-                signalLabel={selectedMappingLabel}
-                boardControlLabel={selectedMappingBoardControl}
-                packagePin={selectedMappingPackagePin}
-              />
-            </div>
+            {!mappingReady && (
+              <div data-testid="ide-hw-map-loop-card">
+                <HardwareMappingGuide
+                  activeStep={activeGuideStep}
+                  signalLabel={selectedMappingLabel}
+                  boardControlLabel={selectedMappingBoardControl}
+                  packagePin={selectedMappingPackagePin}
+                />
+              </div>
+            )}
           </>
         )}
 

@@ -227,8 +227,8 @@ Show `Project Ready` only when all of:
 - This matches the Verify behavior exactly â€” the testbench mirrors what the IDE proved.
 
 **Known friction (current state):**
-- **F-E1**: The message "Run Verify before relying on this handoff" appears **three times** in a single screen â€” in the EXPORT card header, the HANDOFF SUMMARY left heading, and the NEXT ACTION right column. This is excessive repetition and undermines the message.
-- **F-E2**: "HANDOFF SUMMARY" and "NEXT ACTION" appear as a two-column layout but contain the same content. The distinction is not clear. One of these should be the primary block; the other should be the action row below it.
+- ~~**F-E1**: The message "Run Verify before relying on this handoff" appears **three times** in a single screen — in the EXPORT card header, the HANDOFF SUMMARY left heading, and the NEXT ACTION right column. This is excessive repetition and undermines the message.~~ **Resolved 2026-05-05** — commit `4a248098`. Summary card now names the current tier (`summaryStateTitle`), next-action dock names the repair action (`nextActionTitleDistinct`), trust consequence gives how-to detail (`nextActionDetailDistinct`).
+- ~~**F-E2**: "HANDOFF SUMMARY" and "NEXT ACTION" appear as a two-column layout but contain the same content. The distinction is not clear. One of these should be the primary block; the other should be the action row below it.~~ **Resolved 2026-05-05** — same commit `4a248098`. HANDOFF SUMMARY and NEXT ACTION now derive distinct copy per export condition.
 - **F-E3**: "Build: Previous" in the right status column is unexplained jargon. Students cannot tell what action resolves it or why it matters.
 - **F-E4**: "NEEDS REVIEW" amber chip appears at top of surface and again in the NEXT ACTION column â€” redundant but consistent color usage.
 

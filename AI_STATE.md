@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(export): clarify draft versus trusted export — F-E1/F-E2)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`, control docs
+
+**Context:** The Export surface showed the same message ("Run Verify before relying on this handoff") in three separate locations (summary card, checks dock, trust consequence), and the HANDOFF SUMMARY and NEXT ACTION columns had identical content (F-E1 and F-E2 contradictions). Fix: three `useMemo` hooks deriving distinct per-condition copy.
+
+**Changes:**
+- `ExportSurface.tsx`: Added `summaryStateTitle` (names current export tier: "Draft export available", "Export ready to build", "Trusted export ready"), `nextActionTitleDistinct` (names specific repair action), and `nextActionDetailDistinct` (explains how to accomplish next action) — all derived per `handoffTruth.condition`.
+- `exportSurface.trust-clarity.test.tsx`: Added 1 RED→GREEN test validating that summary card, checks dock, and trust banner each present distinct non-repeated content when no Verify evidence exists. All 18 trust-clarity tests pass.
+- Control docs updated to close F-E1/F-E2 and advance driver to Map Pins F-H2/F-H3.
+
+**Validation:**
+- 18/18 `exportSurface.trust-clarity.test.tsx` tests pass
+- 3/3 Export gates pass (`export-ready-contract`, `export-blockers-contract`, `export-artifact-explorer-contract`)
+- `pnpm --filter @redbyte/playground build` succeeds
+- Commit: `4a248098` on `main`
+
+**Out of scope (intentionally not done):**
+- No Export layout/density changes.
+- No changes to Verify, Hardware, Project, or Import.
+- Not pushed.
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log 2026-05-04 (fix(project): align next-action semantics)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/ACTIVE_WORK.md`, `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/ide/01-project.md`

@@ -151,14 +151,20 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(stateEl.getAttribute('data-state')).toBe('design-first');
   });
 
-  it('renders the 3-step mapping guide', () => {
+  it('renders the 3-step mapping guide when mapping is not yet complete', () => {
+    // Guide is shown during active mapping work; it collapses once all required signals are bound.
+    // Use an incomplete row set (ld0 has no pin yet) to preserve this test after the F-H2 fix.
     const health = makeHealth();
+    const incompleteRows = [
+      { id: 'sw0', label: 'sw0', direction: 'in' as const, pin: 'V17', required: true },
+      { id: 'ld0', label: 'ld0', direction: 'out' as const, pin: '', required: true },
+    ];
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Guide Check"
           expectedBehavior="Test guide steps."
-          mappingRows={BASE_ROWS}
+          mappingRows={incompleteRows}
           expectedIoRows={[]}
           vectorsCount={1}
           health={health}
@@ -177,13 +183,19 @@ describe('HardwareSurface — mapping workflow primitives', () => {
   });
 
   it('shows step 1 as active and "Select a signal row" placeholder before any selection', () => {
+    // Guide renders during active mapping (at least one row unmapped).
+    // Use incomplete rows so mappingReady is false and guide is visible.
     const health = makeHealth();
+    const incompleteRows = [
+      { id: 'sw0', label: 'sw0', direction: 'in' as const, pin: 'V17', required: true },
+      { id: 'ld0', label: 'ld0', direction: 'out' as const, pin: '', required: true },
+    ];
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Step 1 Active"
           expectedBehavior="Step 1 should be active."
-          mappingRows={BASE_ROWS}
+          mappingRows={incompleteRows}
           expectedIoRows={[]}
           vectorsCount={1}
           health={health}
@@ -202,6 +214,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
   });
 
   it('marks step 1 as done and loop card updates after a mapped row is selected', () => {
+    // Use incomplete rows so guide renders (guide collapses when all rows are fully mapped).
+    // sig-out0 has no pin so mappingReady is false — guide is visible during active mapping.
     const health = makeHealth();
     const onSetMappingPin = vi.fn();
     const { getByTestId } = render(
@@ -211,7 +225,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
           expectedBehavior="Clicking a row updates the guide."
           mappingRows={[
             { id: 'sig-in0', label: 'sig-in0', direction: 'in', pin: 'V17', required: true },
-            { id: 'sig-out0', label: 'sig-out0', direction: 'out', pin: 'U16', required: true },
+            { id: 'sig-out0', label: 'sig-out0', direction: 'out', pin: '', required: true },
           ]}
           expectedIoRows={[]}
           vectorsCount={0}
