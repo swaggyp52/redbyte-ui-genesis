@@ -122,9 +122,14 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   const selectedTickLabel = selectedTick != null ? `t${selectedTick}` : 'No case selected';
   const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
   const effectiveModeSummary = authoringModeSummary ?? (isSequential ? 'Clocked stimulus' : 'Combinational no clock');
+  const shouldCollapseFirstRunEditor = isFirstRun && hasVectorsReady && !isUsingFallbackSignals;
   const [uncontrolledWorkbenchExpanded, setUncontrolledWorkbenchExpanded] = React.useState(
     () => initialExpanded ?? !isFirstRun
   );
+  const [firstRunEditorExpanded, setFirstRunEditorExpanded] = React.useState(
+    () => !shouldCollapseFirstRunEditor
+  );
+  const previousIsFirstRunRef = React.useRef(isFirstRun);
   const usesControlledWorkbenchState = typeof workbenchExpanded === 'boolean';
   const controlledWorkbenchExpanded = usesControlledWorkbenchState
     ? workbenchExpanded
@@ -148,6 +153,12 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       setUncontrolledWorkbenchExpanded(initialExpanded ?? !isFirstRun);
     }
   }, [initialExpanded, isFirstRun, usesControlledWorkbenchState]);
+  React.useEffect(() => {
+    if (previousIsFirstRunRef.current !== isFirstRun) {
+      setFirstRunEditorExpanded(!shouldCollapseFirstRunEditor);
+      previousIsFirstRunRef.current = isFirstRun;
+    }
+  }, [isFirstRun, shouldCollapseFirstRunEditor]);
   const compareCheckCopy = showsAssertedExpectedCells
     ? 'Expected outputs are active Compare checks.'
     : 'Add expected outputs to turn on Compare checks. Empty cells stay Observe-only.';
@@ -168,6 +179,10 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       : isSequential
         ? 'Drive inputs, set timing, then add expected outputs for checks.'
         : 'Drive inputs and add expected outputs where Compare should check behavior.';
+  const showCollapsedFirstRunSummary = shouldCollapseFirstRunEditor && !firstRunEditorExpanded;
+  const firstRunPlanCopy = showsAssertedExpectedCells
+    ? 'Current stimulus and checks are ready. Run Verify for evidence, or open the editor if the cases need changes.'
+    : 'Current stimulus is ready. Run Verify for evidence, or open the editor if the cases need changes.';
 
   const renderStimulusHeader = (isWorkbench: boolean) => (
     <div
@@ -372,6 +387,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <span className="ide-verify-empty-hint" data-testid="ide-verify-empty-message">
             {isUsingFallbackSignals
               ? 'Map your circuit I/O before authoring a real testbench.'
+              : showCollapsedFirstRunSummary
+                ? 'Current vectors are ready. Run Verify now, or open the editor to adjust stimulus first.'
               : hasVectors
                 ? 'Edit input stimulus, clock edges, and expected outputs in one table.'
                 : effectiveModeSummary === 'Auto board clock'
@@ -380,7 +397,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           </span>
         </div>
 
-        {stimulusAssist ? (
+        {!showCollapsedFirstRunSummary && stimulusAssist ? (
           <div className="ide-verify-stimulus-assist-slot">{stimulusAssist}</div>
         ) : null}
         {runSummary ? <div className="ide-verify-run-summary-slot">{runSummary}</div> : null}
@@ -405,7 +422,40 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           </div>
         ) : null}
 
-        {stimulusCanvas}
+        {showCollapsedFirstRunSummary ? (
+          <div
+            className="ide-verify-workbench-collapsed-strip ide-verify-workbench-collapsed-strip--first-run"
+            data-testid="ide-verify-first-run-collapsed-strip"
+          >
+            <div className="ide-verify-workbench-collapsed-copy">
+              <span className="ide-verify-workbench-collapsed-label">Run plan</span>
+              <p
+                className="ide-verify-workbench-collapsed-summary"
+                data-testid="ide-verify-first-run-collapsed-copy"
+              >
+                {firstRunPlanCopy}
+              </p>
+            </div>
+            <div className="ide-verify-workbench-collapsed-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={() => setFirstRunEditorExpanded(true)}
+                testId="ide-verify-first-run-edit-stimulus"
+              >
+                Edit stimulus
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={onOpenProjectVectors}
+                testId="ide-verify-empty-open-vectors"
+              >
+                Open Project vectors
+              </IdeButton>
+            </div>
+          </div>
+        ) : (
+          stimulusCanvas
+        )}
 
         <div style={{ display: 'none' }}>
           <IdeCallout tone="info" title={calloutTitle} testId="ide-verify-first-run-callout">
@@ -419,38 +469,49 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           </IdeCallout>
         </div>
 
-        <div className="ide-verify-run-footer" data-testid="ide-verify-workstation-run-bar">
-          <div className="ide-verify-run-footer-status">
-            {hasVectorsReady ? (
-              <span className="ide-verify-run-footer-ready">
-                {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''}{' '}
-                {showsAssertedExpectedCells ? 'ready for stimulus or checks' : 'ready for stimulus'}
-              </span>
-            ) : (
-              <span className="ide-verify-run-footer-hint">
-                {isUsingFallbackSignals ? 'Map I/O first' : 'Build the first testbench'}
-              </span>
-            )}
-          </div>
-          <div className="ide-verify-run-footer-actions">
-            {!hasVectorsReady ? (
+        {!showCollapsedFirstRunSummary ? (
+          <div className="ide-verify-run-footer" data-testid="ide-verify-workstation-run-bar">
+            <div className="ide-verify-run-footer-status">
+              {hasVectorsReady ? (
+                <span className="ide-verify-run-footer-ready">
+                  {effectiveVectorCount} vector{effectiveVectorCount !== 1 ? 's' : ''}{' '}
+                  {showsAssertedExpectedCells ? 'ready for stimulus or checks' : 'ready for stimulus'}
+                </span>
+              ) : (
+                <span className="ide-verify-run-footer-hint">
+                  {isUsingFallbackSignals ? 'Map I/O first' : 'Build the first testbench'}
+                </span>
+              )}
+            </div>
+            <div className="ide-verify-run-footer-actions">
+              {!hasVectorsReady ? (
+                <IdeButton
+                  tone="primary"
+                  onClick={onGenerateBasics}
+                  testId="ide-verify-generate-basic-vectors-footer"
+                >
+                  Generate starter testbench
+                </IdeButton>
+              ) : null}
+              {shouldCollapseFirstRunEditor ? (
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => setFirstRunEditorExpanded(false)}
+                  testId="ide-verify-first-run-hide-stimulus"
+                >
+                  Hide editor
+                </IdeButton>
+              ) : null}
               <IdeButton
-                tone="primary"
-                onClick={onGenerateBasics}
-                testId="ide-verify-generate-basic-vectors-footer"
+                tone="ghost"
+                onClick={onOpenProjectVectors}
+                testId="ide-verify-empty-open-vectors"
               >
-                Generate starter testbench
+                Open Project vectors
               </IdeButton>
-            ) : null}
-            <IdeButton
-              tone="ghost"
-              onClick={onOpenProjectVectors}
-              testId="ide-verify-empty-open-vectors"
-            >
-              Open Project vectors
-            </IdeButton>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
     );
   }

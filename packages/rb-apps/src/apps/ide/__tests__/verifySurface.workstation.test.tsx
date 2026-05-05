@@ -251,7 +251,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId, queryByText } = view;
 
     expect(getByTestId('ide-verify-empty-state').textContent).toContain(
-      'Edit input stimulus, clock edges, and expected outputs in one table'
+      'Current vectors are ready. Run Verify now, or open the editor to adjust stimulus first.'
     );
     expect(getByTestId('ide-verify-first-run-callout').textContent).toContain(
       'Compare only checks the expected-output cells you filled in'
@@ -266,10 +266,41 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-run')).toBeNull();
     expect(getByTestId('ide-vcb-run')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
+
+    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
+    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+
     expandVerifyWorkbenchDocks(view);
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(queryByText('Advanced vector tools')).toBeNull();
+  });
+
+  it('keeps the first-run surface on a compact run plan until the editor is explicitly opened', () => {
+    const { getByTestId, queryByTestId } = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in' },
+          { id: 'ld0', direction: 'out' },
+        ]}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
+    expect(getByTestId('ide-verify-testbench-summary')).toBeTruthy();
+    expect(getByTestId('ide-verify-empty-open-vectors').textContent).toContain('Open Project vectors');
+    expect(queryByTestId('ide-verify-add-vector-form')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
+
+    expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
   });
 
   it('labels trace-only verification as observation mode when no expected outputs are loaded', () => {
@@ -295,7 +326,7 @@ describe('VerifySurface workstation controls', () => {
     expect(queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-empty-message').textContent).toContain(
-      'Edit input stimulus, clock edges, and expected outputs in one table'
+      'Current vectors are ready. Run Verify now, or open the editor to adjust stimulus first.'
     );
     // footer run button removed (B-13 Phase 3) — header Run is canonical
     expect(queryByTestId('ide-verify-empty-run')).toBeNull();
@@ -373,6 +404,11 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
+    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
+    expect(queryByTestId('ide-verify-sequential-helper')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
+
     expect(queryByTestId('ide-verify-prerun-clock-chip')).toBeNull();
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('Latch behavior detected');
     expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('highlighted control lane');
@@ -425,6 +461,9 @@ describe('VerifySurface workstation controls', () => {
         onOpenProjectVectors={vi.fn()}
       />
     );
+
+    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
+    fireEvent.click(getByTestId('ide-verify-clock-mode-manual'));
 
     fireEvent.click(getByTestId('ide-stimulus-clock-pattern-alternating'));
 
@@ -1427,7 +1466,7 @@ describe('VerifySurface workstation controls', () => {
     expandVerifyWorkbenchDocks(view);
 
     const workbenchHeader = getByTestId('ide-verify-workbench-toggle');
-    expect(workbenchHeader.textContent).toContain('Build testbench');
+    expect(workbenchHeader.textContent).toContain('Clock, stimulus, checks, then run Compare.');
     expect(workbenchHeader.textContent).not.toContain('Project vectors');
     expect(workbenchHeader.textContent).not.toContain('Show checks');
 
@@ -2146,9 +2185,9 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-testbench-summary').textContent).toContain('What this testbench will do');
-    expect(getByTestId('ide-verify-testbench-summary-inputs').textContent).toContain('SW0');
-    expect(getByTestId('ide-verify-testbench-summary-outputs').textContent).toContain('LD0');
+    expect(getByTestId('ide-verify-testbench-summary').textContent).toContain('Inputs: 1');
+    expect(getByTestId('ide-verify-testbench-summary-inputs').textContent).toContain('Inputs: 1');
+    expect(getByTestId('ide-verify-testbench-summary-outputs').textContent).toContain('Checks: 1');
     expect(getByTestId('ide-verify-testbench-summary-cases').textContent).toContain('2 cases');
     expect(getByTestId('ide-verify-testbench-summary-compare').textContent?.toLowerCase()).toContain('compare checks on');
   });

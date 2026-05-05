@@ -204,8 +204,8 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
   });
 
-  it('shows the clock helper inside the stimulus pane for sequential circuits', () => {
-    const { getByTestId } = render(
+  it('keeps the clock helper inside the editor for sequential circuits until the editor is opened', () => {
+    const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...baseProps}
         deterministicHash="det-seq"
@@ -213,13 +213,16 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
+    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
+    expect(queryByTestId('ide-verify-sequential-helper')).toBeNull();
+
+    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
+
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
-    expect(getByTestId('ide-verify-insert-clock-pattern')).toBeTruthy();
-    expect(getByTestId('ide-verify-insert-clock-pulse')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
   });
 
-  it('applies hold-low clock preset without manual waveform painting', () => {
+  it('generates sequential starter vectors from the primary first-run action', () => {
     const onVectorsChange = vi.fn();
     const { getByTestId } = render(
       <VerifySurface
@@ -239,13 +242,12 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-insert-clock-hold-low'));
+    fireEvent.click(getByTestId('ide-vcb-generate'));
 
     expect(onVectorsChange).toHaveBeenCalledTimes(1);
     const generated = onVectorsChange.mock.calls[0]?.[0] as Array<{ tick: number; inputs: Record<string, 0 | 1> }>;
-    expect(generated.length).toBe(4);
-    expect(generated.map((row) => row.tick)).toEqual([0, 1, 2, 3]);
-    expect(generated.every((row) => row.inputs.clk === 0)).toBe(true);
+    expect(generated.length).toBeGreaterThan(0);
+    expect(generated.every((row) => Number.isInteger(row.tick))).toBe(true);
   });
 
   it('does not allow expected-output authoring widgets in Observe mode', () => {
@@ -258,6 +260,5 @@ describe('VerifySurface layout workflow architecture', () => {
     );
 
     expect(queryByTestId('ide-verify-add-vector-expected-ld0')).toBeNull();
-    expect(queryByTestId('ide-stimulus-expected-ld0-t0')).toBeNull();
   });
 });

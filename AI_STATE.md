@@ -1,5 +1,17 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(verify): collapse first-run editor into compact run plan)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, Verify first-run tests
+
+**Changes:**
+- For first-run Verify sessions that already have authored vectors, defaulted the stimulus authoring workbench to a compact `Run plan` strip so Run remains the dominant next action before evidence exists.
+- Added explicit first-run controls to open and re-hide the full stimulus editor (`Edit stimulus` / `Hide editor`) without changing run semantics, compare semantics, or clock policy authority.
+- Preserved full first-run authoring behavior for vector-empty and fallback-I/O states.
+- Updated focused Verify tests to assert the new progressive-disclosure contract for first-run sequential/combinational states.
+
+**Evidence:** `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.entryState.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx -t "tucks the first-run editor away until the student chooses to edit stimulus|keeps the first-run surface on a compact run plan until the editor is explicitly opened|sequential mode keeps the clock helper inside the editor until the student opens it|keeps the clock helper inside the editor for sequential circuits until the editor is opened|describes supported latch control as EN rather than a generic clock"` pass (board-clock file skipped by filter); targeted adjacent suite rerun pass; browser verify at `http://localhost:5174/` on Verify shows compact run-plan strip before edit and full editor reveal on `Edit stimulus`.
+
 ## Change Log 2026-05-05 (fix(hardware): collapse duplicate map-mode hierarchy)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, Hardware trust-clarity tests
