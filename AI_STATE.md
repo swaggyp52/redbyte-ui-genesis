@@ -1,5 +1,21 @@
 # AI State
 
+## Change Log 2026-05-05 (feat(examples): curate v1 learning path)
+
+**Subsystem:** `examplesCatalog.ts`, `labStarters.ts`, `ProjectSurfacePrimitives.tsx`, `ProjectSurface.tsx`
+
+**Changes:**
+- Added `ExampleLearningPath` interface (`tier`, `order`, `nextExampleId?`, `flagship?`, `openProof?`) to `IdeExampleDefinition`.
+- Wired path metadata to 6 examples: logic-gates (1), half-adder (2), full-adder (3), signal-tour (4, flagship), two-bit-counter (5, openProof), lab8-fsm-lock (6, tier 4).
+- Fixed half-adder and full-adder `category` from `'course'` to `'showcase'`.
+- Extended `BrowsableExample` with `learningPathOrder?`, `flagship?`, `openProof?`; `ProjectSurface.tsx` mapping passes these through.
+- `ExamplesBrowser` now renders a numbered path strip; path items sort before unpathed examples; flagship steps get a star badge; openProof shows a warning note on the card.
+- labStarters.ts normalized from CRLF to LF.
+
+**Evidence:** 10/10 learning path contract tests green · 34/34 ProjectSurface tests green · build EXIT 0 · verify:gates EXIT 0 · git diff --check CLEAN · browser-verified path strip renders all 6 steps with ⚠ and ⭐ · commits `13d77a3b` + `006a208c`
+
+---
+
 ## Change Log 2026-05-05 (fix(agent): doctor JSON smoke is warn-not-fatal)
 
 **Subsystem:** `scripts/rb-local-agent.mjs`

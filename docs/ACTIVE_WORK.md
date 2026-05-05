@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Curate starter and example learning path** - Existing starters gain short purpose, learning-goal, and proof-scope copy.
+2. **~~Curate starter and example learning path~~** — Done (`13d77a3b`). 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier metadata, flagship flag, openProof notes, and numbered path strip in ExamplesBrowser.
 
 ---
 
@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
 | F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
 | F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
 | F-P1 fix: the Project next-action card now keeps Verify as the dominant story when Verify is the required next step. The status frame now reads `VERIFY NEXT`, the supporting line points to Verify before Export/hardware reliance, and focused Project continuity + CTA + first-load wiring checks all pass. | `AI_STATE.md` - Change Log 2026-05-04 (Project next-action semantics) |
@@ -102,12 +103,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Done | Project next-action semantics (F-P1): Project card status framing and supporting status line now follow the Verify-first CTA instead of export availability when Verify is the required next step; focused Project continuity/CTA/first-load wiring checks and Project gates pass | `pending` |
-| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback to Project, invalid-mode hardening in `IdeApp`, startup regression tests (`/`, `/os/`, invalid mode), and first-load Project assertions in `ide-surface-baselines` | `pending` |
-| Done | Verify visual reset hardening (RB-DEBT-003): compact stimulus strip defaults, guidance disclosure, command-row click interception fix, hook-order runtime fix, and board-clock/export proof rerun | `pending` |
-| Done | Verify workbench layout cleanup (RB-DEBT-003): command hierarchy, compact stimulus framing, segmented clock controls, collapsible signal rail, waveform empty-state guidance, and board-clock/export proof rerun | `pending` |
-| Done | CSS guardrail enforcement (RB-DEBT-006): `pnpm css:audit:ide` now blocks broad substring selectors in polish and warns on root legacy selectors/overlap growth | `pending` |
-| Done | CSS debt strategy instrumentation (RB-DEBT-006): added `pnpm css:audit:ide`, captured baseline inventory/risk map, and updated strategy docs without behavior changes | `pending` |
+| Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
+| Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
+| Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |
+| Done | Project next-action semantics (F-P1): Project card status framing follows Verify-first CTA when Verify is required next step | `pending` |
+| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback, invalid-mode hardening in IdeApp, startup regression tests | `pending` |
 
 ---
 
