@@ -76,6 +76,8 @@ pnpm rb:agent:handoff   - generate session handoff draft
 Spec: `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`
 Capability model: `docs/product/RED_BYTE_AGENT_CAPABILITY_MODEL.md`
 
+For Obsidian, memory, or traceability tasks, use `pnpm rb:memory:*` commands and never write to the vault unless explicitly authorized. The memory bridge is read-only for Obsidian in v0; it may generate indexes and reports only under gitignored `.redbyte/agent/` output paths.
+
 Local-agent execution contract:
 - Run `pnpm rb:agent:ollama:doctor` before any `rb:agent:next|review|doc-sync|handoff` command.
 - If doctor fails, do not run `rb:agent:next`; fix health first or use `rb:agent:context` output manually.

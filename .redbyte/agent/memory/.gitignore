@@ -1,0 +1,10 @@
+config.json
+index/**
+runs/**
+*.jsonl
+*.sqlite
+*.db
+*.cache.json
+!config.example.json
+!README.md
+!.gitignore

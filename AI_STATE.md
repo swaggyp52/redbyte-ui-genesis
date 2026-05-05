@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(memory): add Obsidian product traceability bridge)
+
+**Subsystem:** `scripts/rb-obsidian-memory.mjs`, `.redbyte/agent/memory/`, product memory docs
+
+**Changes:**
+- Added a repo-local Obsidian + Ollama memory bridge with doctor, index, search, synth, sync-plan, trace, next-product-context, and handoff commands.
+- Added safe memory config defaults, generated-output ignore rules, keyword fallback when embeddings are unavailable, and no-write vault policy for v0.
+- Added product traceability model and memory bridge operating guide; linked the bridge from DOC_INDEX, local-agent lab docs, Obsidian sync rules, Copilot instructions, and agent-tool rules.
+
+**Evidence:** `pnpm rb:memory:test` pass; `pnpm rb:memory:doctor` pass with repo-root vault default and no private config; Ollama chat model `qwen2.5-coder:1.5b` available; embedding model not installed, keyword fallback used; `pnpm rb:memory:index` wrote 98 sources / 1260 chunks / 0 embeddings; `pnpm rb:memory:search -- "RedByte product truth"` used keyword mode; `pnpm rb:memory:synth -- "What is RedByte right now?"` produced structured JSON; `pnpm rb:memory:sync-plan`, `pnpm rb:memory:trace -- "Export is trusted only after Verify PASS"`, `pnpm rb:memory:trace -- "Map Pins does not replace Verify proof"`, `pnpm rb:memory:next-product-context`, and `pnpm rb:memory:handoff` all wrote gitignored run reports; `pnpm rb:agent:ollama:doctor` pass; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass; `git diff --check` clean.
+
+---
+
 ## Change Log 2026-05-05 (fix(ide): hide debug chrome toggles from product surfaces)
 
 **Subsystem:** `IdeWorkbenchShell.tsx`, `ideWorkbenchShell.test.tsx`

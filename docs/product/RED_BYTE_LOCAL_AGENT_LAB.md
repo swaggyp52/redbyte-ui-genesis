@@ -28,6 +28,9 @@ The agent lab is **not** an autonomous code editor. It is a read-only analysis a
       implementation.md     - Next-task prompt generation template
     continue/
       config.example.yaml   - Continue.dev config template for VS Code
+    memory/
+      config.example.json    - Obsidian + Ollama memory bridge config template
+      README.md              - Local memory directory rules
     runs/                   - All run outputs (gitignored, contents excluded)
       context-latest.md
       next-prompt.md
@@ -57,6 +60,19 @@ All commands are available via pnpm scripts:
 | `pnpm rb:agent:review` | `review` | Review current diff against RedByte rules |
 | `pnpm rb:agent:doc-sync` | `doc-sync` | Identify doc/Obsidian update gaps |
 | `pnpm rb:agent:handoff` | `handoff` | Generate session handoff draft |
+
+Memory bridge commands live beside the local-agent harness:
+
+| Script | What it does |
+|--------|--------------|
+| `pnpm rb:memory:doctor` | Checks memory config, vault path, repo docs, Ollama, models, gitignored outputs, and no-write mode |
+| `pnpm rb:memory:index` | Builds a local repo + Obsidian memory index under `.redbyte/agent/memory/index/` |
+| `pnpm rb:memory:search -- "query"` | Searches memory by embedding when available, otherwise keyword fallback |
+| `pnpm rb:memory:synth -- "question"` | Produces source-aware product synthesis |
+| `pnpm rb:memory:sync-plan` | Produces a no-write Obsidian/repo sync plan |
+| `pnpm rb:memory:trace -- "claim"` | Produces claim-to-docs/code/tests/gates traceability |
+| `pnpm rb:memory:next-product-context` | Produces a context pack for the next product slice |
+| `pnpm rb:memory:handoff` | Produces a memory-backed handoff |
 
 ---
 
@@ -211,6 +227,8 @@ The agent reads these docs on every run (where applicable):
 ## Obsidian vault integration
 
 The agent's `doc-sync` command generates a checklist of required Obsidian vault updates after each implementation slice. It does not write to the vault directly (Phase 1 is read-only). Vault write capability is a Phase 4+ concern.
+
+The memory bridge extends this with read-only indexing and traceability. It can read configured vault Markdown notes and write generated reports to `.redbyte/agent/runs/`, but it still never writes to the vault in v0. See `docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md` and `docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md`.
 
 Relevant vault nodes:
 - `01 Dashboard/RedByte Engineering Brain.md` - master entry point

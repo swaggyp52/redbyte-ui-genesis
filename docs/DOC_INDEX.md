@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-04
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-05-04
+**Last Updated:** 2026-05-05
 
 Navigation hub for all RedByte documentation. Start with the **Active Work** section below.
 
@@ -53,6 +53,8 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_OLLAMA_LOCAL_SETUP.md](./product/RED_BYTE_OLLAMA_LOCAL_SETUP.md) | Practical Windows setup and troubleshooting guide for local Ollama runtime with RedByte agent commands |
 | [product/RED_BYTE_AGENT_CAPABILITY_MODEL.md](./product/RED_BYTE_AGENT_CAPABILITY_MODEL.md) | Trust and capability model defining what agents are allowed to do and how trust is earned across phases |
 | [product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md](./product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md) | Curated student learning path through existing examples — curation spec, no new circuits |
+| [product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md](./product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md) | Repo-local Obsidian + Ollama memory bridge operating guide for indexing, search, traceability, sync plans, and next-product context |
+| [product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md](./product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md) | Claim-to-docs/code/tests/gates evidence model for RedByte product traceability |
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-04
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: sync rules between canonical repo docs and the RedByte Obsidian vault
@@ -89,6 +89,30 @@ If the Session Log already has unrelated dirty changes and the current slice mus
 
 ---
 
-## 7. Current rule for this control-pack slice
+## 7. Memory bridge workflow
+
+For Obsidian/memory/traceability tasks, use the repo-local bridge commands:
+
+```bash
+pnpm rb:memory:doctor
+pnpm rb:memory:index
+pnpm rb:memory:search -- "RedByte product truth"
+pnpm rb:memory:trace -- "Map Pins does not replace Verify proof"
+pnpm rb:memory:sync-plan
+```
+
+Rules:
+
+- The bridge may read configured vault Markdown notes.
+- The bridge may write generated reports only under `.redbyte/agent/runs/` and generated indexes only under `.redbyte/agent/memory/index/`.
+- The bridge must not write to the vault in v0.
+- A sync plan is a proposal, not an applied Obsidian edit.
+- Repo current-state docs win over vault memory when they conflict.
+
+See `docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md` and `docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md`.
+
+---
+
+## 8. Current rule for this control-pack slice
 
 This control-pack is canonical in the repo. Obsidian should reference it as the agent-routing layer instead of recreating a second product-control summary.
