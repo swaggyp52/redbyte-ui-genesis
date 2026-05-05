@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(agent): align Copilot and local agent control plane)
+
+**Subsystem:** `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`, `scripts/rb-local-agent.mjs`, `docs/product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md`, `docs/DOC_INDEX.md`
+
+**Context:** Agent control plane slice — adds GitHub Copilot instruction files (repo-wide + scoped), reusable prompt files, upgrades the local agent harness with structured JSON/markdown output mode and new env vars, and creates the curated learning path spec (queue item 6). No product UI touched. No push.
+
+**Changes:**
+- `.github/copilot-instructions.md`: Repo-wide Copilot instructions — canonical truth hierarchy, product spine, trust distinctions, operational rules, agent tooling references.
+- `.github/instructions/product-docs.instructions.md`: Scoped to `docs/product/**`, `docs/ide/**`, `docs/manuals/**` — source hierarchy, writing and structural rules, stale zone.
+- `.github/instructions/ide-surfaces.instructions.md`: Scoped to IDE surface files — spine, trust language, TypeScript rules, test rules, change discipline.
+- `.github/instructions/agent-tools.instructions.md`: Scoped to `scripts/rb-*.mjs`, `.redbyte/agent/**` — safety contract, phase model, output and script quality rules.
+- `.github/prompts/redbyte-start-slice.prompt.md`: Reusable slice-start prompt with pre-flight, required docs, implementation rules, done criteria, commit format.
+- `.github/prompts/redbyte-review-diff.prompt.md`: Reusable diff-review prompt with 6-step checklist: classify, hierarchy, trust claims, tests, risky edits, verdict.
+- `scripts/rb-local-agent.mjs`: Added `REDBYTE_AGENT_FORMAT` (json|markdown), `REDBYTE_AGENT_TEMPERATURE`, `REDBYTE_AGENT_CTX_LIMIT` env vars. JSON mode for `next`, `review`, `doc-sync` commands with structured schemas. Updated usage help text.
+- `docs/product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md`: New — curated 6-entry learning path spec (closes queue item 6). Covers logic-gates → half-adder → full-adder → signal-tour → two-bit-counter → FSM lock starter. Documents proof status, open E3, implementation plan for follow-on slice.
+- `docs/DOC_INDEX.md`: Added curated learning path spec entry.
+
+**Validation:**
+- `node scripts/rb-local-agent.mjs` (no args) prints updated usage with 5 env vars — confirmed.
+- All 6 `.github/` files exist and are non-empty — confirmed.
+- No product UI files modified.
+- Gates/build not re-run (no TS source changed).
+
+---
+
 ## Change Log 2026-05-05 (chore(agent): add Ollama-backed RedByte local agent lab)
 
 **Subsystem:** `scripts/rb-local-agent.mjs`, `.redbyte/agent/`, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_AGENT_CAPABILITY_MODEL.md`, `package.json`, `docs/DOC_INDEX.md`

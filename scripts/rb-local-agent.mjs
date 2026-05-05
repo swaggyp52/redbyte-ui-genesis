@@ -2,15 +2,15 @@
 /**
  * rb-local-agent.mjs
  *
- * RedByte Local Agent CLI — Ollama-backed repo intelligence harness.
+ * RedByte Local Agent CLI â€” Ollama-backed repo intelligence harness.
  *
  * Commands:
- *   doctor    — Check Ollama availability, model, repo readiness
- *   context   — Build context bundle from control docs and git state
- *   next      — Generate next-task prompt via Ollama
- *   review    — Review current git diff against RedByte rules via Ollama
- *   doc-sync  — Identify doc/Obsidian gaps after a completed slice
- *   handoff   — Generate a handoff draft for the current session
+ *   doctor    â€” Check Ollama availability, model, repo readiness
+ *   context   â€” Build context bundle from control docs and git state
+ *   next      â€” Generate next-task prompt via Ollama
+ *   review    â€” Review current git diff against RedByte rules via Ollama
+ *   doc-sync  â€” Identify doc/Obsidian gaps after a completed slice
+ *   handoff   â€” Generate a handoff draft for the current session
  *
  * Safety contract:
  *   - Never edits product files (packages/, apps/, docs/, scripts/, src/)
@@ -20,18 +20,26 @@
  *   - Fails clearly if Ollama is not reachable
  *
  * Configuration:
- *   REDBYTE_AGENT_MODEL   — Ollama model name (default: qwen2.5-coder:7b)
- *   OLLAMA_BASE_URL       — Ollama base URL (default: http://localhost:11434)
+ *   REDBYTE_AGENT_MODEL       â€” Ollama model name (default: qwen2.5-coder:7b)
+ *   OLLAMA_BASE_URL           â€” Ollama base URL (default: http://localhost:11434)
+ *   REDBYTE_AGENT_FORMAT      â€” Output format: 'markdown' (default) or 'json'
+ *   REDBYTE_AGENT_TEMPERATURE â€” Sampling temperature (default: 0.2)
+ *   REDBYTE_AGENT_CTX_LIMIT   â€” Max chars of context passed to Ollama (default: 10000)
  */
 
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
 const MODEL = process.env.REDBYTE_AGENT_MODEL ?? 'qwen2.5-coder:7b';
+const FORMAT = (process.env.REDBYTE_AGENT_FORMAT ?? 'markdown').toLowerCase();
+const TEMPERATURE = parseFloat(process.env.REDBYTE_AGENT_TEMPERATURE ?? '0.2');
+const CTX_LIMIT = parseInt(process.env.REDBYTE_AGENT_CTX_LIMIT ?? '10000', 10);
+
+const IS_JSON = FORMAT === 'json';
 
 function resolveRepoRoot() {
   try {
@@ -64,7 +72,7 @@ const OPTIONAL_DOCS = [
   'docs/STUDENT_RELEASE_READINESS.md',
 ];
 
-// ─── Utilities ───────────────────────────────────────────────────────────────
+// â”€â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function fatal(msg) {
   process.stderr.write(`\n[rb-local-agent] ERROR: ${msg}\n\n`);
@@ -117,7 +125,7 @@ function readPrompt(name) {
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
-// ─── Ollama client ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Ollama client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
   const url = `${OLLAMA_BASE_URL}/api/chat`;
@@ -129,7 +137,7 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
       { role: 'user', content: userContent },
     ],
     options: {
-      temperature: 0.2,
+      temperature: TEMPERATURE,
       num_ctx: 8192,
     },
   });
@@ -161,42 +169,42 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
   return json?.message?.content ?? '';
 }
 
-// ─── Commands ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function cmdDoctor() {
   info('Running RedByte Local Agent doctor...\n');
 
   // 1. Repo root
-  info(`✓ Repo root: ${ROOT}`);
+  info(`âœ“ Repo root: ${ROOT}`);
 
   // 2. Work driver packet
   const packet = path.join(WORK_DIR, 'NEXT_WORK_PACKET.md');
   if (fs.existsSync(packet)) {
-    info(`✓ Work driver packet: ${packet}`);
+    info(`âœ“ Work driver packet: ${packet}`);
   } else {
-    info(`✗ Work driver packet not found — run: pnpm rb:work:next`);
+    info(`âœ— Work driver packet not found â€” run: pnpm rb:work:next`);
   }
 
   // 3. Control docs
   for (const doc of CONTROL_DOCS) {
     const abs = path.join(ROOT, doc);
     if (fs.existsSync(abs)) {
-      info(`✓ Control doc: ${doc}`);
+      info(`âœ“ Control doc: ${doc}`);
     } else {
-      info(`✗ Missing control doc: ${doc}`);
+      info(`âœ— Missing control doc: ${doc}`);
     }
   }
 
   // 4. Prompts
   const promptsExist = fs.existsSync(PROMPTS_DIR);
-  info(promptsExist ? `✓ Prompts dir: ${PROMPTS_DIR}` : `✗ Prompts dir missing: ${PROMPTS_DIR}`);
+  info(promptsExist ? `âœ“ Prompts dir: ${PROMPTS_DIR}` : `âœ— Prompts dir missing: ${PROMPTS_DIR}`);
 
   // 5. Git status
   const status = gitStatus();
   if (status === '') {
-    info(`✓ Git working tree: clean`);
+    info(`âœ“ Git working tree: clean`);
   } else {
-    info(`⚠ Git working tree has uncommitted changes:\n${status}`);
+    info(`âš  Git working tree has uncommitted changes:\n${status}`);
   }
 
   // 6. Ollama smoke test
@@ -208,9 +216,9 @@ async function cmdDoctor() {
     );
     const trimmed = reply.trim();
     if (trimmed.includes('REDBYTE_AGENT_OK')) {
-      info(`✓ Ollama responded: ${trimmed}`);
+      info(`âœ“ Ollama responded: ${trimmed}`);
     } else {
-      info(`⚠ Ollama responded (unexpected): ${trimmed.slice(0, 120)}`);
+      info(`âš  Ollama responded (unexpected): ${trimmed.slice(0, 120)}`);
     }
   } catch {
     // fatal() already called inside ollamaChat
@@ -229,7 +237,7 @@ async function cmdContext() {
   if (packet) {
     parts.push(`# Work Driver Packet\n\n${packet}`);
   } else {
-    parts.push(`# Work Driver Packet\n\n(not found — run: pnpm rb:work:next)`);
+    parts.push(`# Work Driver Packet\n\n(not found â€” run: pnpm rb:work:next)`);
   }
 
   // Control docs
@@ -257,12 +265,12 @@ async function cmdContext() {
 
   const bundle = parts.join('\n\n---\n\n');
   const dest = writeRun('context-latest.md', bundle);
-  info(`✓ Context bundle written to: ${dest}`);
+  info(`âœ“ Context bundle written to: ${dest}`);
   info(`  Size: ${(bundle.length / 1024).toFixed(1)} KB`);
 }
 
 async function cmdNext() {
-  info('Generating next-task prompt via Ollama...');
+  info(`Generating next-task prompt via Ollama (format: ${FORMAT})...`);
 
   // Ensure context exists
   const contextPath = path.join(RUNS_DIR, 'context-latest.md');
@@ -275,51 +283,91 @@ async function cmdNext() {
   const systemPrompt = readPrompt('system') || 'You are the RedByte Local Agent.';
   const implPrompt = readPrompt('implementation') || '';
 
+  const jsonSchema = IS_JSON
+    ? `\n\nRespond ONLY with valid JSON matching this schema (no markdown fences, no extra text):\n` +
+      JSON.stringify({
+        task_title: 'string',
+        source_docs_read: ['string'],
+        repo_state: 'clean|dirty',
+        allowed_files: ['string'],
+        forbidden_files: ['string'],
+        validation_commands: ['string'],
+        commit_message: 'string',
+        prompt_markdown: 'string',
+      }, null, 2)
+    : '';
+
   const userContent =
-    `${implPrompt}\n\n---\n\n` +
-    `## Context bundle\n\n${context.slice(0, 10000)}\n\n` +
+    `${implPrompt}${jsonSchema}\n\n---\n\n` +
+    `## Context bundle\n\n${context.slice(0, CTX_LIMIT)}\n\n` +
     `## Task\n\n` +
     `Given the work-driver packet and current truth above, produce the exact next implementation prompt ` +
     `for Claude or Copilot to execute the recommended slice. Follow the Implementation Prompt format. ` +
     `Be specific: name every file, every test, every gate command, every commit message line.`;
 
-  info(`Calling Ollama (${MODEL})... this may take a moment.`);
+  info(`Calling Ollama (${MODEL})...`);
   const reply = await ollamaChat(systemPrompt, userContent);
 
-  const dest = writeRun('next-prompt.md', `# RedByte Next-Task Prompt\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n\n---\n\n${reply}`);
-  info(`✓ Next-task prompt written to: ${dest}`);
+  const outFile = IS_JSON ? 'next-prompt.json' : 'next-prompt.md';
+  const content = IS_JSON
+    ? reply
+    : `# RedByte Next-Task Prompt\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+  const dest = writeRun(outFile, content);
+  info(`âœ“ Next-task prompt written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
 async function cmdReview() {
-  info('Reviewing current diff against RedByte rules...');
+  info(`Reviewing current diff (format: ${FORMAT})...`);
 
   const diff = gitDiff();
   if (!diff) {
-    info('No changes in git diff — nothing to review.');
-    const dest = writeRun('review-latest.md', `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n\nNo diff to review — working tree matches HEAD.\n`);
-    info(`✓ Review written to: ${dest}`);
+    info('No changes in git diff â€” nothing to review.');
+    const empty = IS_JSON
+      ? JSON.stringify({ verdict: 'CLEAN', blocking_issues: [], non_blocking_issues: [], touched_files: [], validation_gaps: [], product_truth_risks: [], recommendation: 'No diff to review.' }, null, 2)
+      : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n\nNo diff to review â€” working tree matches HEAD.\n`;
+    const dest = writeRun(IS_JSON ? 'review-latest.json' : 'review-latest.md', empty);
+    info(`âœ“ Review written to: ${dest}`);
     return;
   }
 
   const systemPrompt = readPrompt('reviewer') || readPrompt('system') || 'You are the RedByte code reviewer.';
 
+  const jsonSchema = IS_JSON
+    ? `\n\nRespond ONLY with valid JSON matching this schema (no markdown fences, no extra text):\n` +
+      JSON.stringify({
+        verdict: 'CLEAN|HOLD|SPLIT',
+        blocking_issues: [{ file: 'string', line: 'string', severity: 'CRITICAL|HIGH', rule: 'string', issue: 'string', fix: 'string' }],
+        non_blocking_issues: [{ file: 'string', severity: 'MEDIUM|LOW', issue: 'string' }],
+        touched_files: ['string'],
+        validation_gaps: ['string'],
+        product_truth_risks: ['string'],
+        recommendation: 'string',
+      }, null, 2)
+    : '';
+
   const userContent =
-    `## Current git diff\n\n\`\`\`diff\n${diff.slice(0, 12000)}\n\`\`\`\n\n` +
+    `## Current git diff\n\n\`\`\`diff\n${diff.slice(0, 12000)}\n\`\`\`${jsonSchema}\n\n` +
     `## Task\n\n` +
     `Review this diff against the RedByte rules in your system prompt. ` +
-    `Follow the review checklist exactly. Report CRITICAL and HIGH issues first.`;
+    (IS_JSON
+      ? 'Output the JSON schema only. No other text.'
+      : 'Follow the review checklist exactly. Report CRITICAL and HIGH issues first.');
 
   info(`Calling Ollama (${MODEL})...`);
   const reply = await ollamaChat(systemPrompt, userContent);
 
-  const dest = writeRun('review-latest.md', `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n\n---\n\n${reply}`);
-  info(`✓ Review written to: ${dest}`);
+  const outFile = IS_JSON ? 'review-latest.json' : 'review-latest.md';
+  const content = IS_JSON
+    ? reply
+    : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+  const dest = writeRun(outFile, content);
+  info(`âœ“ Review written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
 async function cmdDocSync() {
-  info('Checking doc/Obsidian sync requirements...');
+  info(`Checking doc/Obsidian sync requirements (format: ${FORMAT})...`);
 
   const diff = gitDiff();
   const aiState = readFile('AI_STATE.md') ?? '(not found)';
@@ -328,20 +376,38 @@ async function cmdDocSync() {
 
   const systemPrompt = readPrompt('doc-sync') || readPrompt('system') || 'You are the RedByte doc-sync checker.';
 
+  const jsonSchema = IS_JSON
+    ? `\n\nRespond ONLY with valid JSON matching this schema (no markdown fences, no extra text):\n` +
+      JSON.stringify({
+        needs_ai_state_update: 'boolean',
+        needs_active_work_update: 'boolean',
+        needs_product_doc_update: 'boolean',
+        needs_obsidian_update: 'boolean',
+        suggested_files: [{ file: 'string', action: 'string', priority: 'REQUIRED|OPTIONAL', done: 'boolean' }],
+        handoff_note: 'string',
+      }, null, 2)
+    : '';
+
   const userContent =
     `## Git diff (current changes)\n\n\`\`\`diff\n${(diff || '(no diff)').slice(0, 6000)}\n\`\`\`\n\n` +
     `## AI_STATE.md (last 2000 chars)\n\n${aiState.slice(-2000)}\n\n` +
     `## ACTIVE_WORK.md (last 2000 chars)\n\n${activeWork.slice(-2000)}\n\n` +
-    `## Work driver packet\n\n${packet.slice(0, 2000)}\n\n` +
+    `## Work driver packet\n\n${packet.slice(0, 2000)}${jsonSchema}\n\n` +
     `## Task\n\n` +
     `Using the doc-sync checklist, identify which documentation files need updates after this diff. ` +
-    `State REQUIRED or OPTIONAL for each, and whether it appears to already be done.`;
+    (IS_JSON
+      ? 'Output the JSON schema only. No other text.'
+      : 'State REQUIRED or OPTIONAL for each, and whether it appears to already be done.');
 
   info(`Calling Ollama (${MODEL})...`);
   const reply = await ollamaChat(systemPrompt, userContent);
 
-  const dest = writeRun('doc-sync-latest.md', `# RedByte Doc Sync Checklist\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n\n---\n\n${reply}`);
-  info(`✓ Doc-sync checklist written to: ${dest}`);
+  const outFile = IS_JSON ? 'doc-sync-latest.json' : 'doc-sync-latest.md';
+  const content = IS_JSON
+    ? reply
+    : `# RedByte Doc Sync Checklist\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+  const dest = writeRun(outFile, content);
+  info(`âœ“ Doc-sync checklist written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
@@ -369,17 +435,17 @@ async function cmdHandoff() {
     `3. The next recommended slice (from work driver)\n` +
     `4. Any doc/Obsidian updates still needed\n` +
     `5. Git state: branch, ahead/behind, pushed or not\n\n` +
-    `Be honest — do not claim pushed or live unless the evidence shows it.`;
+    `Be honest â€” do not claim pushed or live unless the evidence shows it.`;
 
   info(`Calling Ollama (${MODEL})...`);
   const reply = await ollamaChat(systemPrompt, userContent);
 
   const dest = writeRun('handoff-latest.md', `# RedByte Session Handoff\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n\n---\n\n${reply}`);
-  info(`✓ Handoff draft written to: ${dest}`);
+  info(`âœ“ Handoff draft written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
-// ─── Entry point ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const COMMANDS = {
   doctor: cmdDoctor,
@@ -397,8 +463,11 @@ if (!cmd || !COMMANDS[cmd]) {
     `\nRedByte Local Agent\n\nUsage: pnpm rb:agent:<command>\n\nCommands:\n` +
     Object.keys(COMMANDS).map((c) => `  ${c}`).join('\n') +
     `\n\nEnvironment:\n` +
-    `  REDBYTE_AGENT_MODEL   Model to use (default: qwen2.5-coder:7b)\n` +
-    `  OLLAMA_BASE_URL       Ollama base URL (default: http://localhost:11434)\n\n`
+    `  REDBYTE_AGENT_MODEL       Model to use (default: qwen2.5-coder:7b)\n` +
+    `  OLLAMA_BASE_URL           Ollama base URL (default: http://localhost:11434)\n` +
+    `  REDBYTE_AGENT_FORMAT      Output format: markdown (default) or json\n` +
+    `  REDBYTE_AGENT_TEMPERATURE Sampling temperature (default: 0.2)\n` +
+    `  REDBYTE_AGENT_CTX_LIMIT   Max chars of context sent to Ollama (default: 10000)\n\n`
   );
   process.exit(cmd ? 1 : 0);
 }
