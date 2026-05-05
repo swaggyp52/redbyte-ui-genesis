@@ -9,10 +9,20 @@ const IDE_MODES = new Set<IdeMode>([
   'import',
 ]);
 
+export function isIdeMode(value: unknown): value is IdeMode {
+  return typeof value === 'string' && IDE_MODES.has(value as IdeMode);
+}
+
+export function normalizeIdeMode(value: unknown, fallback: IdeMode = 'project'): IdeMode {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim().toLowerCase();
+  return isIdeMode(normalized) ? normalized : fallback;
+}
+
 export function resolveRequestedIdeMode(search: string): IdeMode | null {
   const requestedMode = new URLSearchParams(search).get('mode')?.trim().toLowerCase();
   if (!requestedMode) return null;
-  return IDE_MODES.has(requestedMode as IdeMode) ? (requestedMode as IdeMode) : null;
+  return isIdeMode(requestedMode) ? requestedMode : null;
 }
 
 export function resolveInitialIdeModeFromSearch(search: string): IdeMode {

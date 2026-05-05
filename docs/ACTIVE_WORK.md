@@ -17,7 +17,7 @@ imported_by: CLAUDE.md
 ## Top 3 priorities
 
 1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
-2. **Fix first-load Project black screen (F-P2)** - Navigating to `/` renders a black main content area until the user explicitly clicks "Project" in the left rail. This is the first impression. See `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` §8 Slice 1.
+2. **Polish Project next-action semantics (F-P1)** - Remove the contradictory "AVAILABLE EXPORT" framing on the Project next-action card when the real action is "Continue to Verify". Keep one honest action story per card.
 3. **Use the product flow model to sequence visual follow-ups** - Full product UX audit completed 2026-05-03 and captured in `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`. Next follow-ups are now ordered by student impact per §8. CSS debt strategy and selector guardrails remain in place (see `pnpm css:audit:ide`).
 
 ---
@@ -50,6 +50,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| RB-DEBT-011 fix (F-P2): first-load Project home now renders immediately on `/` and `/os/` with canonical mode fallback, active Project rail agreement, and updated first-load browser assertions in `ide-surface-baselines`. Browser checks run at 1366x768 and 1920x1080 with cleared storage and saved-project restore path. | `AI_STATE.md` - Change Log 2026-05-03 (Project first-load home render fix) |
 | Whole-product UX audit + flow model: all 5 surfaces inspected in browser at 1366x768 and 1920x1080; friction codes F-P1–F-P5, F-V1–F-V3, F-H1–F-H5, F-E1–F-E4 catalogued; implementation slices ordered by student impact; 3/3 browser gates reconfirmed green | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` |
 | Verify clock section density cleanup (live browser pass): redundant Detected/Mode/Reset lines hidden, full cases grid now visible without scrolling; 23+33 tests pass, 3 browser gates pass | `AI_STATE.md` - Change Log 2026-05-03 (Verify clock section density cleanup) |
 | Verify visual reset hardening: compact stimulus strip, collapsed-by-default guidance and signal rail, command-row hit-target fix, hook-order stability fix, and full board-clock/export validation matrix | `AI_STATE.md` - Change Log 2026-05-03 (Verify visual reset hardening) |
@@ -99,11 +100,11 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback to Project, invalid-mode hardening in `IdeApp`, startup regression tests (`/`, `/os/`, invalid mode), and first-load Project assertions in `ide-surface-baselines` | `pending` |
 | Done | Verify visual reset hardening (RB-DEBT-003): compact stimulus strip defaults, guidance disclosure, command-row click interception fix, hook-order runtime fix, and board-clock/export proof rerun | `pending` |
 | Done | Verify workbench layout cleanup (RB-DEBT-003): command hierarchy, compact stimulus framing, segmented clock controls, collapsible signal rail, waveform empty-state guidance, and board-clock/export proof rerun | `pending` |
 | Done | CSS guardrail enforcement (RB-DEBT-006): `pnpm css:audit:ide` now blocks broad substring selectors in polish and warns on root legacy selectors/overlap growth | `pending` |
 | Done | CSS debt strategy instrumentation (RB-DEBT-006): added `pnpm css:audit:ide`, captured baseline inventory/risk map, and updated strategy docs without behavior changes | `pending` |
-| Done | Export readiness-density cleanup (RB-DEBT-002): trust/draft hierarchy, calmer default diagnostics, numbered Vivado handoff, and post-edit gates | `pending` |
 
 ---
 

@@ -20,8 +20,17 @@ describe('startupMode', () => {
     expect(resolveInitialIdeModeFromSearch('')).toBe('project');
   });
 
+  it('falls back initial mode to project when mode is invalid', () => {
+    expect(resolveInitialIdeModeFromSearch('?mode=launcher')).toBe('project');
+    expect(resolveInitialIdeModeFromSearch('?mode=')).toBe('project');
+  });
+
   it('routes restored sessions back to project home unless the URL asks for a mode', () => {
     expect(resolveRestoredIdeMode('')).toBe('project');
     expect(resolveRestoredIdeMode('?mode=hardware')).toBe('hardware');
+  });
+
+  it('falls back restored mode to project when mode is invalid', () => {
+    expect(resolveRestoredIdeMode('?mode=unsupported')).toBe('project');
   });
 });

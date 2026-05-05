@@ -7,7 +7,7 @@
  * Purpose: Catch surface-level layout regressions before Hardware / Export density cleanup.
  *
  * Surfaces covered: Project, Design, Verify, Hardware, Export
- * Viewports: 1366×768, 1920×1080
+ * Viewports: 1366Ã—768, 1920Ã—1080
  *
  * Pattern: follows board-clock-browser-proof.spec.ts conventions exactly.
  * - Suppresses onboarding via localStorage before navigation
@@ -47,6 +47,23 @@ async function suppressOnboarding(page: Page): Promise<void> {
  * Mirrors the exact pattern in board-clock-browser-proof.spec.ts.
  */
 async function loadTwoBitCounter(page: Page): Promise<void> {
+  const assertProjectHomeVisible = async (url: string) => {
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-testid="ide-root"]', { timeout: 60000 });
+    await expect(page.getByTestId('ide-mode-project')).toBeVisible({ timeout: 15000 });
+
+    const hasLanding = await page.getByTestId('ide-project-landing').isVisible().catch(() => false);
+    const hasPanel = await page.getByTestId('ide-project-panel').isVisible().catch(() => false);
+    expect(
+      hasLanding || hasPanel,
+      `Project surface should render meaningful first-load content for ${url}`
+    ).toBe(true);
+    await expect(page.getByTestId('mode-button-project')).toHaveAttribute('data-active', 'true');
+  };
+
+  await assertProjectHomeVisible('/?e2e=1');
+  await assertProjectHomeVisible('/os/?e2e=1');
+
   await page.goto('/?e2e=1', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 60000 });
   await page.getByTestId('ide-project-landing-example-two-bit-counter').click();
@@ -84,7 +101,7 @@ async function captureArtifact(
 // ---------------------------------------------------------------------------
 
 for (const vp of VIEWPORTS) {
-  test.describe(`IDE surface baselines — ${vp.label}`, () => {
+  test.describe(`IDE surface baselines â€” ${vp.label}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
     test(
@@ -97,7 +114,7 @@ for (const vp of VIEWPORTS) {
         await loadTwoBitCounter(page);
 
         // After loading the counter we land on Design.
-        // Walk surfaces: Design → Verify → Hardware → Export → Project
+        // Walk surfaces: Design â†’ Verify â†’ Hardware â†’ Export â†’ Project
 
         // ----------------------------------------------------------------
         // DESIGN surface
@@ -140,7 +157,7 @@ for (const vp of VIEWPORTS) {
         await page.getByTestId('mode-button-hardware').click();
         await expect(page.getByTestId('ide-mode-hardware')).toBeVisible({ timeout: 15000 });
 
-        // Main workflow ribbon — always rendered on Hardware surface
+        // Main workflow ribbon â€” always rendered on Hardware surface
         await expect(page.getByTestId('ide-hw-workflow-ribbon')).toBeVisible();
 
         // Dep-chain is the primary content area within the ribbon
@@ -165,7 +182,7 @@ for (const vp of VIEWPORTS) {
 
         // Build-output section must be present
         // Note: ide-export-readiness-details is in the DOM but CSS-hidden in the default state
-        // when no explicit export build has been triggered — this is current product behavior.
+        // when no explicit export build has been triggered â€” this is current product behavior.
         await expect(page.getByTestId('ide-export-build-output')).toBeVisible();
 
         await assertNoHorizontalOverflow(page, 'Export');

@@ -223,6 +223,19 @@ function seedIdeRoute(mode: 'project' | 'import') {
   window.history.replaceState({}, '', `/os/?mode=${mode}`);
 }
 
+async function expectProjectHomeVisible(view: ReturnType<typeof render>) {
+  await waitFor(() => {
+    expect(view.getByTestId('ide-mode-project')).toBeTruthy();
+  });
+
+  const hasLanding = Boolean(view.queryByTestId('ide-project-landing'));
+  const hasProjectPanel = Boolean(view.queryByTestId('ide-project-panel'));
+  expect(hasLanding || hasProjectPanel).toBe(true);
+
+  const projectButton = view.getByTestId('mode-button-project');
+  expect(projectButton.getAttribute('data-active')).toBe('true');
+}
+
 function enterImportWorkbench(view: ReturnType<typeof render>) {
   fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
   fireEvent.click(view.getByTestId('ide-import-start-secondary'));
@@ -321,6 +334,24 @@ describe('IdeApp lab-day wiring', () => {
 
     expect(view.getByTestId('ide-export-top-module').textContent).toBe('lab_day_top');
     expect(view.getByTestId('ide-export-part-number').textContent).toContain('xc7a100tcsg324-1');
+  });
+
+  it('renders Project home on first load at /', async () => {
+    window.history.replaceState({}, '', '/');
+    const view = render(<IdeApp />);
+    await expectProjectHomeVisible(view);
+  });
+
+  it('renders Project home on first load at /os/', async () => {
+    window.history.replaceState({}, '', '/os/');
+    const view = render(<IdeApp />);
+    await expectProjectHomeVisible(view);
+  });
+
+  it('falls back to Project home when URL mode is invalid', async () => {
+    window.history.replaceState({}, '', '/os/?mode=invalid');
+    const view = render(<IdeApp />);
+    await expectProjectHomeVisible(view);
   });
 
   it('derives live semantic clock mapping in Hardware before any verify run exists', async () => {

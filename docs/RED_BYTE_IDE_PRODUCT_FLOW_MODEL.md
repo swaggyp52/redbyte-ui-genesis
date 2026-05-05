@@ -3,10 +3,10 @@ doc_status: current
 last_validated: 2026-05-03
 owner: Connor Angiel
 used_by_claude: true
-role: canonical product flow model — whole-IDE UX and information architecture
+role: canonical product flow model â€” whole-IDE UX and information architecture
 ---
 
-# RedByte IDE — Product Flow Model
+# RedByte IDE â€” Product Flow Model
 
 **Purpose of this doc:** Single authoritative reference for what each surface is, how the surfaces connect, what information lives where, and what the known UX friction points are. This is a planning and alignment document. It does not make implementation changes. All implementation must refer to and stay consistent with this model.
 
@@ -19,7 +19,7 @@ RedByte IDE is a **deterministic FPGA workflow surface** for Basys3 hardware. It
 The canonical workflow is linear:
 
 ```
-Project → Design → Verify → Map Pins → Export
+Project â†’ Design â†’ Verify â†’ Map Pins â†’ Export
 ```
 
 Import is a utility entry point (not a workflow step). It lets students load prior work into the pipeline, not bypass it.
@@ -37,7 +37,7 @@ Board programming is an external handoff after Export. The IDE does not program 
 | Top bar | Product mark, project name, board target badge ("Basys3"), save state, keyboard shortcut help | Always visible, never changes per surface |
 | Left rail | Project button + 4 workflow step buttons (Design/Verify/Map Pins/Export) | Active state = current surface. Numeric badge = step number (not item count). OK badge = step complete. |
 | Status bar | "Mode: [surface]" | Minimal. Remains across surfaces. |
-| Workflow Review button | Bottom right corner | Debug/review utility — review whether to surface to students at all |
+| Workflow Review button | Bottom right corner | Debug/review utility â€” review whether to surface to students at all |
 
 ### 2.2 Surface-scoped chrome (appears only when relevant)
 
@@ -50,7 +50,7 @@ The following toggles appear at the top-right of the content area and are **scop
 | Verify rows On/Off | Verify only |
 | Console On/Off | Design, Verify (debug use) |
 
-**Current state:** These toggles appear on all surfaces including Project. This is a product inconsistency — they are developer/debug chrome, not student-facing controls. They should be hidden by default on all surfaces in a student-facing pass.
+**Current state:** These toggles appear on all surfaces including Project. This is a product inconsistency â€” they are developer/debug chrome, not student-facing controls. They should be hidden by default on all surfaces in a student-facing pass.
 
 ### 2.3 Breadcrumb pattern
 
@@ -70,22 +70,22 @@ Each surface renders a breadcrumb: `RedByte / [Project name] / [Surface] / [Boar
 3. Load a starter example or start fresh (with confirmation guard).
 
 **What students should see:**
-1. **Project identity card** — name, description, board, save state.
-2. **One dominant next-action card** — a single honest CTA based on actual readiness.
-3. **Readiness strip** — INPUTS, OUTPUTS, MAPPED, VERIFY, EXPORT, BOARD chips.
-4. **Board pin mapping summary** — read-only; Map Pins owns editing authority.
+1. **Project identity card** â€” name, description, board, save state.
+2. **One dominant next-action card** â€” a single honest CTA based on actual readiness.
+3. **Readiness strip** â€” INPUTS, OUTPUTS, MAPPED, VERIFY, EXPORT, BOARD chips.
+4. **Board pin mapping summary** â€” read-only; Map Pins owns editing authority.
 
 **Information architecture rules:**
-- The next-action card headline should match the action, not a conflicting status label. If Verify is needed, the card header should not say "AVAILABLE EXPORT" — those are two different truths and should not share a card.
+- The next-action card headline should match the action, not a conflicting status label. If Verify is needed, the card header should not say "AVAILABLE EXPORT" â€” those are two different truths and should not share a card.
 - Mapping truth shown on Project is **read-only**. It shows what Map Pins has saved. The student cannot edit it here.
-- Export status (Draft, Trusted, etc.) belongs on Project as a status chip — not as the dominant card frame.
+- Export status (Draft, Trusted, etc.) belongs on Project as a status chip â€” not as the dominant card frame.
 
 **Known friction (current state):**
-- **F-P1**: "AVAILABLE EXPORT" label frames the next-action card when the real action is "Continue to Verify" — these are contradictory. The card label comes from export state but the CTA points to Verify.
-- **F-P2**: First-load at "/" renders a black main content area until the user explicitly clicks the Project button. This is a routing/activation issue — the "project" mode is not self-activating on initial mount.
+- **F-P1**: "AVAILABLE EXPORT" label frames the next-action card when the real action is "Continue to Verify" â€” these are contradictory. The card label comes from export state but the CTA points to Verify.
+- **F-P2**: ~~First-load at "/" renders a black main content area until the user explicitly clicks the Project button.~~ **Resolved 2026-05-03** â€” startup mode now canonicalizes invalid values to `project`, and first-load assertions are enforced for `/` and `/os/`.
 - **F-P3**: The board mapping table (full XDC rows) is visible by default below the fold on Project. This is Map Pins territory and adds noise to the dashboard story.
 - **F-P4**: "Rails On / Console On" toggles appear at top-right even though Project has no rails or console concept.
-- **F-P5**: "Explore examples" secondary CTA next to "Continue to Verify" is an escape path that could overwrite the current project — needs destructive action guard.
+- **F-P5**: "Explore examples" secondary CTA next to "Continue to Verify" is an escape path that could overwrite the current project â€” needs destructive action guard.
 
 **Success state definition:**
 Show `Project Ready` only when all of:
@@ -105,12 +105,12 @@ Show `Project Ready` only when all of:
 3. Proceed to Verify when the circuit is stable.
 
 **What students should see:**
-1. **Left library** — Board resources, IO, Logic, Sequential, Reusable. Board expands first so CLK100MHZ is immediately reachable.
-2. **Workbench header** — Select/Wire tools, Snap/Undo/Redo/Fit/Delete, Canvas/Code/Split mode toggle, Open Verify + Project escape hatches.
-3. **Starter banner** — contextual orientation card when a starter is loaded. Shows what this circuit is and what to verify next. Expected/behavior summary.
-4. **Circuit health row** — errors, warnings, drafts, ready-to-build status. Compact.
-5. **Canvas (primary)** — takes the remaining vertical space. This is where the circuit lives.
-6. **Right inspector** — idle: DESIGN OVERVIEW (Inputs/Outputs/Nodes/Wires counts). Active: selection context, verify-linked signal inspection.
+1. **Left library** â€” Board resources, IO, Logic, Sequential, Reusable. Board expands first so CLK100MHZ is immediately reachable.
+2. **Workbench header** â€” Select/Wire tools, Snap/Undo/Redo/Fit/Delete, Canvas/Code/Split mode toggle, Open Verify + Project escape hatches.
+3. **Starter banner** â€” contextual orientation card when a starter is loaded. Shows what this circuit is and what to verify next. Expected/behavior summary.
+4. **Circuit health row** â€” errors, warnings, drafts, ready-to-build status. Compact.
+5. **Canvas (primary)** â€” takes the remaining vertical space. This is where the circuit lives.
+6. **Right inspector** â€” idle: DESIGN OVERVIEW (Inputs/Outputs/Nodes/Wires counts). Active: selection context, verify-linked signal inspection.
 
 **Information architecture rules:**
 - Canvas must win vertical space. The starter banner and circuit health row are supporting actors.
@@ -136,7 +136,7 @@ Show `Project Ready` only when all of:
 3. Inspect failure diffs, signal traces, and deterministic hashes.
 
 **What students should see:**
-1. **Command bar** — Run (primary), Observe only / Compare checks mode selector, Generate starter stimulus, session status.
+1. **Command bar** â€” Run (primary), Observe only / Compare checks mode selector, Generate starter stimulus, session status.
 2. **Stimulus left panel:**
    - Test stimulus header with mode chip and IO summary.
    - Clock/Timing section: board clock identification, auto/manual/custom override.
@@ -146,9 +146,9 @@ Show `Project Ready` only when all of:
    - Lane headers for all signals (always visible even before a run).
    - Empty state: "Run Verify to see waveforms" with one-click "Run - observe only" CTA.
    - Post-run: waveform traces per signal, selectable lanes.
-4. **Signal rail** (left, collapsible) — signal browser.
+4. **Signal rail** (left, collapsible) â€” signal browser.
 
-**Board clock truth (LOCKED — do not change):**
+**Board clock truth (LOCKED â€” do not change):**
 - `CLK100MHZ` on `W5` is recognized as a Basys3 board clock, not an ordinary switch lane.
 - Auto board clock mode auto-toggles the clock during a run. Students do not author CLK100MHZ pulses by hand.
 - Manual pulses and Custom pattern remain available for switch/button-clocked designs.
@@ -157,7 +157,7 @@ Show `Project Ready` only when all of:
 `Verification PASS` requires:
 1. Compare checks mode (not Observe only).
 2. Zero failing rows.
-3. Stable hash (circuit + vectors + mapping) — timestamp-free.
+3. Stable hash (circuit + vectors + mapping) â€” timestamp-free.
 4. Saved checks that authorize Export trust.
 
 **Known friction (current state):**
@@ -178,23 +178,23 @@ Show `Project Ready` only when all of:
 3. Confirm the physical package pin binding.
 
 **What students should see:**
-1. **Readiness indicator** — "MAPPING COMPLETE" or blocking issue count + what's missing.
-2. **3-step guide** — only when mapping is incomplete. Should collapse when all signals are mapped.
-3. **Board resource legend** — compact summary of available categories (System Clock, Slide Switches, Pushbuttons, LED Outputs, 7-Segment Lines) with counts.
-4. **Signal table** — grouped by CLOCK/RESET and OUTPUTS (and other categories). Each row shows signal name, board binding, package pin, mapping status, EDIT MAPPING button.
-5. **Board diagram** — visual Basys3 board with highlighted mapped controls.
-6. **Right inspector** — Mapping Focus (idle: "Ready to map"), Selected Board Control (active: package pin + status), Advanced XDC Preview (collapsed), Mapping Diagnostics (collapsed).
+1. **Readiness indicator** â€” "MAPPING COMPLETE" or blocking issue count + what's missing.
+2. **3-step guide** â€” only when mapping is incomplete. Should collapse when all signals are mapped.
+3. **Board resource legend** â€” compact summary of available categories (System Clock, Slide Switches, Pushbuttons, LED Outputs, 7-Segment Lines) with counts.
+4. **Signal table** â€” grouped by CLOCK/RESET and OUTPUTS (and other categories). Each row shows signal name, board binding, package pin, mapping status, EDIT MAPPING button.
+5. **Board diagram** â€” visual Basys3 board with highlighted mapped controls.
+6. **Right inspector** â€” Mapping Focus (idle: "Ready to map"), Selected Board Control (active: package pin + status), Advanced XDC Preview (collapsed), Mapping Diagnostics (collapsed).
 
 **Information architecture rules:**
-- There are currently two top-level card sections: "HARDWARE" (orientation) and "MAP PINS" (work area). These feel like duplicate sections because both describe the same task. The orientation content should be inside the work area card or above it — not as a separate peer card.
+- There are currently two top-level card sections: "HARDWARE" (orientation) and "MAP PINS" (work area). These feel like duplicate sections because both describe the same task. The orientation content should be inside the work area card or above it â€” not as a separate peer card.
 - Advanced XDC Preview, Mapping Diagnostics, and Preflight Details in the right inspector are technical details. These should be collapsed by default (they are) and labeled clearly as "for instructors / advanced".
 
 **Known friction (current state):**
-- **F-H1**: Two card sections ("HARDWARE" and "MAP PINS") create the impression of two separate sub-features. They are the same feature — just introduction text + the actual work area. These should be unified.
+- **F-H1**: Two card sections ("HARDWARE" and "MAP PINS") create the impression of two separate sub-features. They are the same feature â€” just introduction text + the actual work area. These should be unified.
 - **F-H2**: 3-step guide ("1. Select project signal | 2. Choose board control | 3. Confirm binding") persists even when mapping is 100% complete. This is stale guidance occupying prime space.
-- **F-H3**: "NEEDS REVIEW" amber chip persists even after mapping is confirmed complete (5/5 mapped). Students get a warning-colored chip with no clear resolution action — it may indicate Verify needs to run, but that's not labeled.
+- **F-H3**: "NEEDS REVIEW" amber chip persists even after mapping is confirmed complete (5/5 mapped). Students get a warning-colored chip with no clear resolution action â€” it may indicate Verify needs to run, but that's not labeled.
 - **F-H4**: Left accordion panel text truncates: "Compl..." instead of "Complete". Not visible enough to read.
-- **F-H5**: The board diagram appears only when scrolled — not in the visible first screen. This is a valuable orientation artifact and should be accessible without scrolling.
+- **F-H5**: The board diagram appears only when scrolled â€” not in the visible first screen. This is a valuable orientation artifact and should be accessible without scrolling.
 
 ---
 
@@ -207,7 +207,7 @@ Show `Project Ready` only when all of:
 2. Preview generated artifacts (top.vhd, top.xdc, README, testbench.vhd).
 3. Download the Vivado project package.
 
-**Trust tiers (LOCKED — do not change):**
+**Trust tiers (LOCKED â€” do not change):**
 | Tier | Meaning |
 |------|---------|
 | Draft | Structurally valid; no current Verify Compare PASS |
@@ -215,22 +215,22 @@ Show `Project Ready` only when all of:
 | Previous | Built from a prior circuit state; circuit has changed since |
 
 **What students should see:**
-1. **Readiness banner** — single honest status: READY, NEEDS REVIEW, or BLOCKED. Plus direct fix path if blocked.
-2. **Handoff summary** — design hash, verification status, build status. One block, not a two-column duplicate.
-3. **Primary actions** — "Build Current Bundle" when ready, or "Open Verify" as the repair path. "Download Draft Vivado Project" as secondary escape hatch.
-4. **Artifact workspace** — list of generated files with preview capability.
-5. **Right inspector** — Kit summary (name, expected behavior), then collapsed: Export Goals, Build/Debug Context, Artifact Checklist.
+1. **Readiness banner** â€” single honest status: READY, NEEDS REVIEW, or BLOCKED. Plus direct fix path if blocked.
+2. **Handoff summary** â€” design hash, verification status, build status. One block, not a two-column duplicate.
+3. **Primary actions** â€” "Build Current Bundle" when ready, or "Open Verify" as the repair path. "Download Draft Vivado Project" as secondary escape hatch.
+4. **Artifact workspace** â€” list of generated files with preview capability.
+5. **Right inspector** â€” Kit summary (name, expected behavior), then collapsed: Export Goals, Build/Debug Context, Artifact Checklist.
 
-**Testbench truth (LOCKED — do not change):**
+**Testbench truth (LOCKED â€” do not change):**
 - Generated `testbench.vhd` includes a dedicated free-running clock process for detected board clock ports (e.g. `CLK100MHZ` on `W5`).
 - Stimulus is sampled against `rising_edge(...)` waits. Students do not write manual clock vectors.
-- This matches the Verify behavior exactly — the testbench mirrors what the IDE proved.
+- This matches the Verify behavior exactly â€” the testbench mirrors what the IDE proved.
 
 **Known friction (current state):**
-- **F-E1**: The message "Run Verify before relying on this handoff" appears **three times** in a single screen — in the EXPORT card header, the HANDOFF SUMMARY left heading, and the NEXT ACTION right column. This is excessive repetition and undermines the message.
+- **F-E1**: The message "Run Verify before relying on this handoff" appears **three times** in a single screen â€” in the EXPORT card header, the HANDOFF SUMMARY left heading, and the NEXT ACTION right column. This is excessive repetition and undermines the message.
 - **F-E2**: "HANDOFF SUMMARY" and "NEXT ACTION" appear as a two-column layout but contain the same content. The distinction is not clear. One of these should be the primary block; the other should be the action row below it.
 - **F-E3**: "Build: Previous" in the right status column is unexplained jargon. Students cannot tell what action resolves it or why it matters.
-- **F-E4**: "NEEDS REVIEW" amber chip appears at top of surface and again in the NEXT ACTION column — redundant but consistent color usage.
+- **F-E4**: "NEEDS REVIEW" amber chip appears at top of surface and again in the NEXT ACTION column â€” redundant but consistent color usage.
 
 ---
 
@@ -240,27 +240,27 @@ Show `Project Ready` only when all of:
 
 ```
 Project (readiness review)
-  └─ → Design (circuit authoring)
-        └─ → Verify (proof: Compare checks PASS)
-              └─ → Map Pins (bind signals to board controls)
-                    └─ → Export (download Vivado package)
-                          └─ → Vivado (external: synth → impl → bitstream)
-                                └─ → Hardware Manager (external: program board)
-                                      └─ → Board observation (E3 certification)
+  â””â”€ â†’ Design (circuit authoring)
+        â””â”€ â†’ Verify (proof: Compare checks PASS)
+              â””â”€ â†’ Map Pins (bind signals to board controls)
+                    â””â”€ â†’ Export (download Vivado package)
+                          â””â”€ â†’ Vivado (external: synth â†’ impl â†’ bitstream)
+                                â””â”€ â†’ Hardware Manager (external: program board)
+                                      â””â”€ â†’ Board observation (E3 certification)
 ```
 
 ### 4.2 Navigation authority rules
 
 | From | To | Gate |
 |------|----|------|
-| Project → Design | Always allowed | |
-| Project → Verify | Always allowed | |
-| Design → Verify | Always allowed | "Open Verify" CTA + rail click |
-| Verify → Design | Always allowed | "Open in Design" CTA |
-| Verify → Export | Allowed; Export shows NEEDS REVIEW if no PASS | |
-| Map Pins → Export | Allowed | "Open Export" CTA |
-| Export → Verify | Allowed | "Open Verify" repair CTA |
-| Export → Map Pins | Allowed | "Map Pins" CTA in export header |
+| Project â†’ Design | Always allowed | |
+| Project â†’ Verify | Always allowed | |
+| Design â†’ Verify | Always allowed | "Open Verify" CTA + rail click |
+| Verify â†’ Design | Always allowed | "Open in Design" CTA |
+| Verify â†’ Export | Allowed; Export shows NEEDS REVIEW if no PASS | |
+| Map Pins â†’ Export | Allowed | "Open Export" CTA |
+| Export â†’ Verify | Allowed | "Open Verify" repair CTA |
+| Export â†’ Map Pins | Allowed | "Map Pins" CTA in export header |
 
 No surface blocks navigation to another surface. Trust is shown as state (READY / NEEDS REVIEW / BLOCKED) rather than blocking navigation.
 
@@ -275,13 +275,13 @@ No surface blocks navigation to another surface. Trust is shown as state (READY 
 | Export artifacts | Export | Project (EXPORT chip) |
 | Board target (Basys3) | Global (immutable) | Every surface |
 
-**Rule:** If a surface shows information it does not own, it must be visually read-only and link back to the owning surface for editing. Project violates this only if it allows editing the pin table — it does not (confirmed in browser).
+**Rule:** If a surface shows information it does not own, it must be visually read-only and link back to the owning surface for editing. Project violates this only if it allows editing the pin table â€” it does not (confirmed in browser).
 
 ### 4.4 Status badge semantics
 
 **Left rail badges:**
 - No badge: Project (home, not a workflow step)
-- Numeric badge (1, 2, 3, 4): Design, Verify, Map Pins, Export — these are **step numbers**, not item counts
+- Numeric badge (1, 2, 3, 4): Design, Verify, Map Pins, Export â€” these are **step numbers**, not item counts
 - "OK" badge: step is in a complete or passing state
 - Step-number badge with no OK: step is accessible but not yet proved complete
 
@@ -306,11 +306,11 @@ No surface blocks navigation to another surface. Trust is shown as state (READY 
 
 ### 5.2 Typography hierarchy
 
-1. **Surface headline** (e.g. "Export Needs Review", "Hardware") — largest, one per surface
-2. **Section header** (e.g. "HANDOFF SUMMARY", "MAP PINS") — small caps or uppercase label
-3. **Card heading** (e.g. "Run Verify before relying on this handoff") — one per card block
-4. **Body / description** — supporting copy below card heading
-5. **Chip / badge** — status bits inline with headings or in strips
+1. **Surface headline** (e.g. "Export Needs Review", "Hardware") â€” largest, one per surface
+2. **Section header** (e.g. "HANDOFF SUMMARY", "MAP PINS") â€” small caps or uppercase label
+3. **Card heading** (e.g. "Run Verify before relying on this handoff") â€” one per card block
+4. **Body / description** â€” supporting copy below card heading
+5. **Chip / badge** â€” status bits inline with headings or in strips
 
 **Rule:** A surface should have one level-1 story per screen. Multiple competing card headings of equal weight (as in Export currently) break the hierarchy.
 
@@ -321,7 +321,7 @@ Each surface must have:
 2. One primary CTA that resolves the empty state.
 3. One secondary action (optional).
 
-No surface should render a blank/black main region on initial load. (See F-P2 — Project violates this on first route mount.)
+No surface should render a blank/black main region on initial load. (F-P2 resolved 2026-05-03 for Project first-load routes.)
 
 ### 5.4 Chrome toggle visibility
 
@@ -338,21 +338,21 @@ These behaviors are established by gates, browser proofs, and E1/E2 certificatio
 
 | Truth | Source | Gate |
 |-------|--------|------|
-| `CLK100MHZ` on `W5` is a Basys3 board clock — not a manual switch lane | basys3Pins.ts, VerifySurface.tsx | board-clock-browser-proof.spec.ts |
+| `CLK100MHZ` on `W5` is a Basys3 board clock â€” not a manual switch lane | basys3Pins.ts, VerifySurface.tsx | board-clock-browser-proof.spec.ts |
 | Auto board clock mode runs the clock automatically; students do not author CLK100MHZ pulses | simEngine, ScenarioBuilderPanel | board-clock-browser-proof.spec.ts |
 | Manual pulses and Custom pattern remain available as explicit override modes | VerifySurface.tsx | Verify unit tests |
 | Generated testbench.vhd includes a free-running clock process for CLK100MHZ + rising_edge sampling | exportVHDL.ts | E1 batch logs |
 | Export trust tiers: Draft (no PASS), Trusted (current PASS + mapping + circuit) | projectHealth.ts, exportStore | Verify semantic suite |
-| Pin mapping authority is Map Pins — Project shows read-only mirror | projectWorkflowAuthority.ts | Map Pins surface tests |
-| Export is downstream of all other surfaces — reads circuit + vectors + mapping | export pipeline | gate: verify:gates |
+| Pin mapping authority is Map Pins â€” Project shows read-only mirror | projectWorkflowAuthority.ts | Map Pins surface tests |
+| Export is downstream of all other surfaces â€” reads circuit + vectors + mapping | export pipeline | gate: verify:gates |
 | Project save/load: project persists as RBProject JSON including circuit, layout, submodules, vectors, mapping | unifiedProjectStore | Project save/load tests |
 | Deterministic hash covers: circuit + project vectors + custom vectors + project IO mapping (not UI IDs) | projectHealth.ts | Verify semantic suite |
 | CSS: no broad substring selectors in ide-polish-pass.css | pnpm css:audit:ide | css-audit gate |
-| Browser surface baselines: all 5 surfaces render coherent landmarks at 1366x768 and 1920x1080 | — | ide-surface-baselines.spec.ts |
+| Browser surface baselines: all 5 surfaces render coherent landmarks at 1366x768 and 1920x1080 | â€” | ide-surface-baselines.spec.ts |
 
 ---
 
-## 7. Open Product Debt (with friction codes from §3)
+## 7. Open Product Debt (with friction codes from Â§3)
 
 This section maps known friction to debt items for tracking. See `docs/IDE_PRODUCT_DEBT_REGISTER.md` for full register.
 
@@ -360,17 +360,17 @@ This section maps known friction to debt items for tracking. See `docs/IDE_PRODU
 
 | Code | Surface | Issue | Blocking? |
 |------|---------|-------|-----------|
-| F-P2 | Project | First-load "/" renders black main content until explicit Project click | Yes — first impression |
-| F-P1 | Project | "AVAILABLE EXPORT" label frames next-action card when action is "Continue to Verify" | High — contradictory |
-| F-E1 | Export | "Run Verify before relying..." repeated 3× in one screen | High — undermines message |
+| F-P2 | Project | ~~First-load "/" renders black main content until explicit Project click~~ -> resolved via startup mode canonicalization + first-load route assertions | Closed |
+| F-P1 | Project | "AVAILABLE EXPORT" label frames next-action card when action is "Continue to Verify" | High â€” contradictory |
+| F-E1 | Export | "Run Verify before relying..." repeated 3Ã— in one screen | High â€” undermines message |
 | F-V1 | Verify | Command bar over-dense for smaller viewports; status text truncates (F-V2) | Medium |
-| F-H3 | Map Pins | "NEEDS REVIEW" chip persists after mapping is complete — no clear resolution path | Medium |
+| F-H3 | Map Pins | "NEEDS REVIEW" chip persists after mapping is complete â€” no clear resolution path | Medium |
 
 ### Medium priority (UX friction, not blocking)
 
 | Code | Surface | Issue |
 |------|---------|-------|
-| F-P3 | Project | Full mapping table visible below fold — Map Pins territory, adds noise |
+| F-P3 | Project | Full mapping table visible below fold â€” Map Pins territory, adds noise |
 | F-P4 | Project | Rails/Console toggles appear on Project (have no meaning there) |
 | F-H1 | Map Pins | Two card sections ("HARDWARE" + "MAP PINS") feel like duplicate feature descriptions |
 | F-H2 | Map Pins | 3-step guide persists when mapping is 100% complete |
@@ -389,36 +389,36 @@ This section maps known friction to debt items for tracking. See `docs/IDE_PRODU
 
 ## 8. Next Implementation Slices
 
-These slices are ordered by student impact. They are **proposals only** — each requires a browser proof gate before closure. No implementation should start without re-reading this document and the corresponding surface spec.
+These slices are ordered by student impact. They are **proposals only** â€” each requires a browser proof gate before closure. No implementation should start without re-reading this document and the corresponding surface spec.
 
-### Slice 1 — Fix first-load Project black screen (F-P2)
+### Slice 1 â€” Fix first-load Project black screen (F-P2) â€” **Done 2026-05-03**
 **What:** When navigating to `/`, the Project surface main content is invisible until the user explicitly clicks "Project" in the left rail.
-**Effort:** Small — likely a route/mode initialization issue.
-**Gate:** Browser proof: navigate to `/`, confirm Project content renders without any click.
+**Fix:** Implemented startup mode canonicalization (`normalizeIdeMode`) in `startupMode.ts` + `IdeApp.tsx`, with first-load guard assertions for `/` and `/os/` in `tests/e2e/ide-surface-baselines.spec.ts`.
+**Gate:** Browser proof passed: `/` and `/os/` at 1366x768 and 1920x1080 with clean-storage and saved-project restore paths.
 
-### Slice 2 — Unify Project next-action card (F-P1)
+### Slice 2 â€” Unify Project next-action card (F-P1)
 **What:** Remove the "AVAILABLE EXPORT" framing label from the next-action card when the action is "Continue to Verify". The card title should be the action, not the status of an unrelated surface.
-**Effort:** Small — copy and label change.
+**Effort:** Small â€” copy and label change.
 **Gate:** Browser proof at both 1366x768 and 1920x1080. Confirm no test breaks.
 
-### Slice 3 — Deduplicate Export messaging (F-E1, F-E2)
+### Slice 3 â€” Deduplicate Export messaging (F-E1, F-E2)
 **What:** "Run Verify before relying on this handoff" should appear once per screen. Merge HANDOFF SUMMARY and NEXT ACTION into a single block: status + one primary action + one secondary action.
-**Effort:** Medium — component restructuring in ExportSurface.
+**Effort:** Medium â€” component restructuring in ExportSurface.
 **Gate:** Browser proof. CSS audit. Playwright baselines.
 
-### Slice 4 — Collapse Map Pins 3-step guide when complete (F-H2)
-**What:** The 3-step guide ("Select project signal → Choose board control → Confirm binding") should be collapsed or hidden when all required signals are mapped (MAPPING COMPLETE state).
-**Effort:** Small — conditional render on mapping completeness.
+### Slice 4 â€” Collapse Map Pins 3-step guide when complete (F-H2)
+**What:** The 3-step guide ("Select project signal â†’ Choose board control â†’ Confirm binding") should be collapsed or hidden when all required signals are mapped (MAPPING COMPLETE state).
+**Effort:** Small â€” conditional render on mapping completeness.
 **Gate:** Browser proof with 5/5 mapped. Manual test with partial mapping to confirm guide still shows.
 
-### Slice 5 — Clarify "NEEDS REVIEW" on Map Pins and Export (F-H3)
+### Slice 5 â€” Clarify "NEEDS REVIEW" on Map Pins and Export (F-H3)
 **What:** When "NEEDS REVIEW" persists after mapping is complete, the chip should explain what needs review. Likely: "Verify needs a fresh run to trust this mapping." The chip should link directly to Verify or include the fix path inline.
-**Effort:** Small — copy + CTA.
+**Effort:** Small â€” copy + CTA.
 **Gate:** Browser proof confirming chip explains itself.
 
-### Slice 6 — Hide dev chrome toggles from student surfaces (Global)
+### Slice 6 â€” Hide dev chrome toggles from student surfaces (Global)
 **What:** Rails/Console/Toolbar/Verify-rows toggles should not be visible on all surfaces by default. Gate them behind a dev/instructor mode or collapse them to a single "Dev tools" button.
-**Effort:** Medium — requires a dev mode toggle mechanism.
+**Effort:** Medium â€” requires a dev mode toggle mechanism.
 **Gate:** Browser proof confirming clean surfaces. Ensure all existing toggle tests still pass (tests use DOM queries not visual state).
 
 ---

@@ -192,14 +192,15 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Severity: High
 - Category: UI/UX - Routing/render
 - Surface: Project
-- Current evidence: Browser audit 2026-05-03 — navigating to `/` shows the top bar and left rail but a completely black main content region. Clicking "Project" in the left rail causes the dashboard to render correctly. DOM snapshot confirms all content exists (heading, next-action card, status chips); the problem is activation/visibility, not missing data.
+- Current evidence: **Resolved 2026-05-03.** Browser checks now show immediate Project/home content on first load at both `/` and `/os/` (1366x768 and 1920x1080), including clean-storage and saved-project restore paths.
 - How to reproduce or inspect: Navigate to `http://localhost:5173/` in dev or `http://127.0.0.1:4173/os/` in preview. Main content area is black. Click "Project" in the left rail — content appears.
 - Why it matters: First screen a student sees looks like a crash. Destroys first-impression trust.
 - Risk if touched: Low to medium. Likely an initial-mode initialization issue in the IDE root component.
-- Suggested next pass: Check `IdeApp.tsx` (or equivalent) for how the initial active mode is set on mount. Confirm that `/` or `/os/` routes initialize to `project` mode immediately so the Project surface renders without user interaction.
-- Tests/browser proof needed: Browser proof: navigate to `/`, confirm Project content visible without any click. Rerun `ide-surface-baselines.spec.ts` (2/2) and `board-clock-browser-proof.spec.ts` (1/1).
+- Root cause: Mode selection had multiple dynamic write paths (`handleSafeLoadIntoIde`, diagnostic routing payloads, CTA mode handoff) without a shared runtime canonicalizer. In stale/legacy mode-value scenarios, the shell could mount with a non-canonical mode path, producing a blank-looking main workspace until a manual Project click forced a valid mode.
+- Fix behavior: `startupMode.ts` now exports `normalizeIdeMode`/`isIdeMode`; `IdeApp.tsx` canonicalizes dynamic mode updates and self-heals invalid state to `project` via `activeMode`. Startup tests now cover `/`, `/os/`, and invalid mode fallback. `ide-surface-baselines.spec.ts` explicitly verifies first-load Project content before cross-surface navigation.
+- Tests/browser proof needed: `pnpm -w exec vitest run ...startupMode.test.ts ...ideApp.labday-wiring.test.tsx` pass; `pnpm -w exec playwright test tests/e2e/ide-surface-baselines.spec.ts` pass; manual browser verification on `/` and `/os/` at 1366x768 + 1920x1080 pass.
 - Files likely involved: `packages/rb-apps/src/apps/IdeApp.tsx`, route initialization logic, `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`.
-- Status: Open (confirmed in browser 2026-05-03)
+- Status: **Resolved** (fixed + validated 2026-05-03)
 
 ### RB-DEBT-012 - Developer chrome toggles (Rails/Console/Toolbar) visible on student surfaces (global)
 
