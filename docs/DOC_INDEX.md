@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-26
+last_validated: 2026-05-04
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-04-26
+**Last Updated:** 2026-05-04
 
 Navigation hub for all RedByte documentation. Start with the **Active Work** section below.
 
@@ -35,6 +35,19 @@ Canonical TA surface — certified starter matrix (L0/E0–E3 tiers), what is sa
 
 ### [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md)
 RC1 honest posture — E1 certified rows, E2/E3 status, TA closeout checklist.
+
+---
+
+## Product Control Pack
+
+Compact agent-control docs for current truth, work ordering, and repo/vault sync.
+
+| File | Purpose |
+|------|---------|
+| [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, live blockers, and already-closed items that should not be reopened casually |
+| [product/RED_BYTE_AGENT_OPERATING_RULES.md](./product/RED_BYTE_AGENT_OPERATING_RULES.md) | Canonical working rules for Claude/Copilot sessions |
+| [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term queue with done criteria and commit expectations |
+| [product/RED_BYTE_OBSIDIAN_SYNC_RULES.md](./product/RED_BYTE_OBSIDIAN_SYNC_RULES.md) | Boundary and sync rules between repo docs and the Obsidian vault |
 
 ---
 

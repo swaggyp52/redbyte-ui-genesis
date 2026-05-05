@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-04 (docs(product): add RedByte development operating system)
+
+**Subsystem:** `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_AGENT_OPERATING_RULES.md`, `docs/product/RED_BYTE_WORK_QUEUE.md`, `docs/product/RED_BYTE_OBSIDIAN_SYNC_RULES.md`, `docs/DOC_INDEX.md`
+
+**Context:** Repo audit work confirmed that RedByte is past broad product-definition cleanup. The active bottleneck is honest proof closure plus narrow workflow-language and UX consistency fixes. Future agent sessions still had to reconstruct source hierarchy from multiple docs and could be misled by stale `PRODUCT.md`, older roadmap language, or unbounded "next step" interpretation. This batch adds a compact repo-control layer so sessions can route from current truth to next work without reopening closed cleanup.
+
+**Changes:**
+- Added `docs/product/RED_BYTE_CURRENT_TRUTH.md` as the compact current-truth control layer: source hierarchy, current product thesis, active UX spine, live blockers, and a bounded list of already-closed items that should not be reopened without new proof.
+- Added `docs/product/RED_BYTE_AGENT_OPERATING_RULES.md` to define mandatory read order, next-slice selection rules, stale-roadmap guards, work categories, update obligations, and commit discipline for Claude/Copilot sessions.
+- Added `docs/product/RED_BYTE_WORK_QUEUE.md` as the ordered near-term queue: dirty-tree isolation, proof closure, Project `F-P1`, Export `F-E1`/`F-E2`, Map Pins `F-H2`/`F-H3`, then examples, onboarding, website, and pilot work.
+- Added `docs/product/RED_BYTE_OBSIDIAN_SYNC_RULES.md` to define repo-docs vs Obsidian ownership, Engineering Brain / ADR / Session Log update triggers, and anti-duplication rules.
+- Updated `docs/DOC_INDEX.md` to route future sessions to this control pack.
+
+**Validation:**
+- Planned as docs-only slice; no runtime behavior changed.
+- Validation to run before closeout: doc validation if available, plus diff review and `git diff --check`.
+
+**Behavior preserved (verified by scope):** no product code, surface behavior, certification state, or proof claims changed in this batch. This is routing and control-plane documentation only.
+
+**Out of scope (intentionally not done):**
+- No implementation of Project `F-P1` yet.
+- No updates to already-dirty concurrent files (`docs/ACTIVE_WORK.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md`, `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `08 Agents + Prompts/Session Log.md`, startup/test files) to keep this slice isolated.
+- No website, example, pilot, or proof-matrix expansion.
+- No push.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-03 (feat(import): navigate to Design after successful project import)
 
 **Subsystem:** `packages/rb-apps/src/apps/IdeApp.tsx`, `packages/rb-apps/src/apps/ide/__tests__/ideApp.import-navigates-to-design.test.tsx`
