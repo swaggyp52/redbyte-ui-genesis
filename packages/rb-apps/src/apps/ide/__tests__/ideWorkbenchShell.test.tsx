@@ -382,10 +382,21 @@ describe('IdeWorkbenchShell', () => {
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
   });
 
+  it('does not render chrome toggle bar by default (hidden from product UI)', () => {
+    const { queryByTestId } = renderShell({ mode: 'design', consoleHasEntries: true });
+    expect(queryByTestId('ide-chrome-toggle-bar')).toBeNull();
+  });
+
+  it('renders chrome toggle bar when showDevChrome=true', () => {
+    const { getByTestId } = renderShell({ mode: 'design', showDevChrome: true });
+    expect(getByTestId('ide-chrome-toggle-bar')).toBeTruthy();
+  });
+
   it('renders persistent chrome controls that can hide and restore rails and console', async () => {
     const { getByTestId, queryByTestId } = renderShell({
       mode: 'design',
       consoleHasEntries: true,
+      showDevChrome: true,
     });
 
     expect(getByTestId('ide-chrome-toggle-bar')).toBeTruthy();
@@ -435,6 +446,7 @@ describe('IdeWorkbenchShell', () => {
     const { getByTestId, queryByTestId } = renderShell({
       mode: 'verify',
       consoleHasEntries: true,
+      showDevChrome: true,
     });
 
     await waitFor(() => {

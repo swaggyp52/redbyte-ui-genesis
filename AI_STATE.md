@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(ide): hide debug chrome toggles from product surfaces)
+
+**Subsystem:** `IdeWorkbenchShell.tsx`, `ideWorkbenchShell.test.tsx`
+
+**Root problem:** `ChromeToggleBar` ("Rails On / Console On / Toolbar On / Verify rows On") rendered unconditionally in the top-right of every surface — Design, Verify, Map Pins, Export, Project. Developer debug vocabulary in the permanent product header made every surface look like an unfinished tool.
+
+**Changes:**
+- Added `showDevChrome?: boolean` prop to `IdeWorkbenchShellProps`, default `false`.
+- Gated `<ChromeToggleBar>` render on `showDevChrome`.
+- No change to panel defaults or CSS — rails stay visible, console state unchanged.
+
+**Evidence:** 23/23 ideWorkbenchShell tests green (2 new: hidden-by-default + showDevChrome=true) · build EXIT 0 · browser-verified toggle bar absent on Design and Verify surfaces.
+
+---
+
 ## Change Log 2026-05-05 (feat(examples): curate v1 learning path)
 
 **Subsystem:** `examplesCatalog.ts`, `labStarters.ts`, `ProjectSurfacePrimitives.tsx`, `ProjectSurface.tsx`

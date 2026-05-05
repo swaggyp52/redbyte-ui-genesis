@@ -79,6 +79,8 @@ export interface IdeWorkbenchShellProps {
   rightDockRevealKey?: string | null;
   /** @deprecated Use rightDockMode='hidden' instead. */
   hideRightDock?: boolean;
+  /** Show developer chrome panel-visibility toggles. Hidden by default in the product UI. */
+  showDevChrome?: boolean;
 }
 
 export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
@@ -98,6 +100,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   rightDockCanCollapse = false,
   rightDockRevealKey = null,
   hideRightDock = false,
+  showDevChrome = false,
 }) => {
   const shellRef = useRef<HTMLElement | null>(null);
   const savedScrollRef = useRef(new Map<string, Record<string, number>>());
@@ -472,11 +475,13 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-console-visible={chromeToggles.consoleVisible ? 'true' : 'false'}
       style={shellStyle}
     >
-      <ChromeToggleBar
-        mode={mode}
-        toggles={chromeToggles}
-        onToggle={toggleChrome}
-      />
+      {showDevChrome && (
+        <ChromeToggleBar
+          mode={mode}
+          toggles={chromeToggles}
+          onToggle={toggleChrome}
+        />
+      )}
       <div
         className={`ide-workbench-main${showLeftCollapsedRail ? ' is-left-dock-collapsed' : ''}${
           showRightCollapsedRail ? ' is-right-dock-collapsed' : ''
