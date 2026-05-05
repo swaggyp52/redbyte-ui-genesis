@@ -2,15 +2,16 @@
 /**
  * rb-local-agent.mjs
  *
- * RedByte Local Agent CLI â€” Ollama-backed repo intelligence harness.
+ * RedByte Local Agent CLI - Ollama-backed repo intelligence harness.
  *
  * Commands:
- *   doctor    â€” Check Ollama availability, model, repo readiness
- *   context   â€” Build context bundle from control docs and git state
- *   next      â€” Generate next-task prompt via Ollama
- *   review    â€” Review current git diff against RedByte rules via Ollama
- *   doc-sync  â€” Identify doc/Obsidian gaps after a completed slice
- *   handoff   â€” Generate a handoff draft for the current session
+ *   doctor    - Check Ollama availability, model, repo readiness
+ *   ollama-doctor - Alias of doctor for explicit Ollama health checks
+ *   context   - Build context bundle from control docs and git state
+ *   next      - Generate next-task prompt via Ollama
+ *   review    - Review current git diff against RedByte rules via Ollama
+ *   doc-sync  - Identify doc/Obsidian gaps after a completed slice
+ *   handoff   - Generate a handoff draft for the current session
  *
  * Safety contract:
  *   - Never edits product files (packages/, apps/, docs/, scripts/, src/)
@@ -20,24 +21,36 @@
  *   - Fails clearly if Ollama is not reachable
  *
  * Configuration:
- *   REDBYTE_AGENT_MODEL       â€” Ollama model name (default: qwen2.5-coder:7b)
- *   OLLAMA_BASE_URL           â€” Ollama base URL (default: http://localhost:11434)
- *   REDBYTE_AGENT_FORMAT      â€” Output format: 'markdown' (default) or 'json'
- *   REDBYTE_AGENT_TEMPERATURE â€” Sampling temperature (default: 0.2)
- *   REDBYTE_AGENT_CTX_LIMIT   â€” Max chars of context passed to Ollama (default: 10000)
+ *   REDBYTE_AGENT_MODEL       - Ollama model name (default: auto-select installed small model)
+ *   OLLAMA_BASE_URL           - Ollama base URL (default: http://localhost:11434)
+ *   REDBYTE_AGENT_FORMAT      - Output format: 'markdown' (default) or 'json'
+ *   REDBYTE_AGENT_TEMPERATURE - Sampling temperature (default: 0.2)
+ *   REDBYTE_AGENT_CTX_LIMIT   - Max chars of context passed to Ollama (default: 10000)
  */
 
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Config ------------------------------------------------------------------
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL ?? 'http://localhost:11434';
-const MODEL = process.env.REDBYTE_AGENT_MODEL ?? 'qwen2.5-coder:7b';
+const MODEL_OVERRIDE = (process.env.REDBYTE_AGENT_MODEL ?? '').trim();
 const FORMAT = (process.env.REDBYTE_AGENT_FORMAT ?? 'markdown').toLowerCase();
 const TEMPERATURE = parseFloat(process.env.REDBYTE_AGENT_TEMPERATURE ?? '0.2');
 const CTX_LIMIT = parseInt(process.env.REDBYTE_AGENT_CTX_LIMIT ?? '10000', 10);
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REDBYTE_AGENT_TIMEOUT_MS ?? '90000', 10);
+const DEFAULT_FALLBACK_MODEL = 'qwen2.5-coder:1.5b';
+const PREFERRED_MODELS = [
+  'qwen2.5-coder:1.5b',
+  'qwen2.5-coder:1.5b-instruct',
+  'qwen2.5-coder:1.5b-base',
+  'qwen2.5-coder:0.5b',
+  'gemma3:1b',
+];
+
+let ACTIVE_MODEL = MODEL_OVERRIDE || DEFAULT_FALLBACK_MODEL;
+let ACTIVE_MODEL_SOURCE = MODEL_OVERRIDE ? 'env override' : 'fallback default';
 
 const IS_JSON = FORMAT === 'json';
 
@@ -72,7 +85,7 @@ const OPTIONAL_DOCS = [
   'docs/STUDENT_RELEASE_READINESS.md',
 ];
 
-// â”€â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Utilities ---------------------------------------------------------------
 
 function fatal(msg) {
   process.stderr.write(`\n[rb-local-agent] ERROR: ${msg}\n\n`);
@@ -125,17 +138,119 @@ function readPrompt(name) {
   return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
+function isLikelySmallModel(name) {
+  return /(0\.5b|1b|1\.5b|2b|3b|mini|small)/i.test(name);
+}
+
+function pickModelFromInstalled(modelNames) {
+  for (const preferred of PREFERRED_MODELS) {
+    if (modelNames.includes(preferred)) {
+      return { model: preferred, source: `installed preferred (${preferred})` };
+    }
+  }
+
+  const otherSmall = modelNames.find((name) => isLikelySmallModel(name));
+  if (otherSmall) {
+    return { model: otherSmall, source: `installed small model (${otherSmall})` };
+  }
+
+  return { model: DEFAULT_FALLBACK_MODEL, source: `fallback default (${DEFAULT_FALLBACK_MODEL})` };
+}
+
+function writeJsonDebug(commandName, reply) {
+  const fileName = `${commandName}-invalid-json.txt`;
+  return writeRun(fileName, reply);
+}
+
+function ensureJsonOrFatal(reply, commandName, requiredKeys = []) {
+  if (!IS_JSON) return reply;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(reply);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    const debugFile = writeJsonDebug(commandName, reply);
+    fatal(
+      `Invalid JSON response for '${commandName}' while REDBYTE_AGENT_FORMAT=json.\n` +
+      `  Reason: ${reason}\n` +
+      `  Model: ${ACTIVE_MODEL}\n` +
+      `  Raw response saved to: ${debugFile}\n` +
+      `  Try a model with better JSON adherence or set REDBYTE_AGENT_FORMAT=markdown.`
+    );
+  }
+
+  const missing = requiredKeys.filter((key) => !(key in parsed));
+  if (missing.length > 0) {
+    const debugFile = writeJsonDebug(commandName, reply);
+    fatal(
+      `JSON response for '${commandName}' is missing required keys.\n` +
+      `  Missing: ${missing.join(', ')}\n` +
+      `  Model: ${ACTIVE_MODEL}\n` +
+      `  Raw response saved to: ${debugFile}`
+    );
+  }
+
+  return reply;
+}
+
+function parseModelNames(tagsJson) {
+  const models = Array.isArray(tagsJson?.models) ? tagsJson.models : [];
+  return models.map((m) => m?.name).filter(Boolean);
+}
+
+async function resolveActiveModelFromApi({ failIfUnreachable = false } = {}) {
+  if (MODEL_OVERRIDE) {
+    ACTIVE_MODEL = MODEL_OVERRIDE;
+    ACTIVE_MODEL_SOURCE = 'env override';
+    return { modelNames: [], apiChecked: false };
+  }
+
+  try {
+    const tags = await getOllamaTags();
+    const modelNames = parseModelNames(tags);
+    const selected = pickModelFromInstalled(modelNames);
+    ACTIVE_MODEL = selected.model;
+    ACTIVE_MODEL_SOURCE = selected.source;
+    return { modelNames, apiChecked: true };
+  } catch (err) {
+    if (failIfUnreachable) {
+      const reason = err instanceof Error ? err.message : String(err);
+      fatal(
+        `Unable to resolve installed models from ${OLLAMA_BASE_URL}/api/tags.\n` +
+        `  Reason: ${reason}\n` +
+        `  PowerShell start command: Start-Process ollama`
+      );
+    }
+
+    ACTIVE_MODEL = DEFAULT_FALLBACK_MODEL;
+    ACTIVE_MODEL_SOURCE = `fallback default (${DEFAULT_FALLBACK_MODEL})`;
+    return { modelNames: [], apiChecked: false };
+  }
+}
+
 function getOllamaCliInfo() {
+  let cliPath = '';
+  try {
+    cliPath = execSync('where ollama', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim().split(/\r?\n/)[0] ?? '';
+  } catch {
+    return { found: false, path: '', version: '', versionError: '' };
+  }
+
   try {
     const version = execSync('ollama --version', {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
-    return { found: true, version };
+    return { found: true, path: cliPath, version, versionError: '' };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    return { found: false, version: '', reason };
+    return { found: true, path: cliPath, version: '', versionError: reason };
   }
 }
 
@@ -154,12 +269,12 @@ async function getOllamaTags() {
   }
 }
 
-// â”€â”€â”€ Ollama client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Ollama client -----------------------------------------------------------
 
-async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
+async function ollamaChat(systemPrompt, userContent, { stream = false, forceJson = false } = {}) {
   const url = `${OLLAMA_BASE_URL}/api/chat`;
-  const body = JSON.stringify({
-    model: MODEL,
+  const payload = {
+    model: ACTIVE_MODEL,
     stream,
     messages: [
       { role: 'system', content: systemPrompt },
@@ -169,23 +284,56 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
       temperature: TEMPERATURE,
       num_ctx: 8192,
     },
-  });
+  };
+
+  if (forceJson) {
+    payload.format = 'json';
+  }
+
+  const body = JSON.stringify(payload);
 
   let res;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
+  let lastReason = '';
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      break;
+    } catch (err) {
+      clearTimeout(timeout);
+      const reason = err instanceof Error ? err.message : String(err);
+      lastReason = reason;
+      const isTimeoutAbort = reason.includes('aborted') || reason.includes('AbortError');
+
+      if (attempt === 1 && isTimeoutAbort) {
+        info(`[warn] Ollama request timed out after ${REQUEST_TIMEOUT_MS} ms, retrying once...`);
+        continue;
+      }
+
+      throw new Error(
+        `Cannot reach Ollama at ${OLLAMA_BASE_URL}.\n` +
+        `  Reason: ${reason}\n` +
+        `  Timeout: ${REQUEST_TIMEOUT_MS} ms\n` +
+        `  Fix: ensure Ollama is running (run 'ollama serve' or check system tray)\n` +
+        `  Model: ${ACTIVE_MODEL}\n` +
+        `  Override URL: OLLAMA_BASE_URL=<url> pnpm rb:agent:ollama:doctor`
+      );
+    }
+  }
+
+  if (!res) {
     throw new Error(
       `Cannot reach Ollama at ${OLLAMA_BASE_URL}.\n` +
-      `  Reason: ${reason}\n` +
-      `  Fix: ensure Ollama is running (run 'ollama serve' or check system tray)\n` +
-      `  Model: ${MODEL}\n` +
-      `  Override URL: OLLAMA_BASE_URL=<url> pnpm rb:agent:doctor`
+      `  Reason: ${lastReason || 'unknown'}\n` +
+      `  Timeout: ${REQUEST_TIMEOUT_MS} ms\n` +
+      `  Model: ${ACTIVE_MODEL}`
     );
   }
 
@@ -198,16 +346,17 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
   return json?.message?.content ?? '';
 }
 
-// â”€â”€â”€ Commands â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Commands ----------------------------------------------------------------
 
 async function cmdDoctor() {
   info('Running RedByte Local Agent doctor...\n');
 
   info('Environment summary:');
   info(`  OLLAMA_BASE_URL=${OLLAMA_BASE_URL}`);
-  info(`  REDBYTE_AGENT_MODEL=${MODEL}`);
+  info(`  REDBYTE_AGENT_MODEL=${MODEL_OVERRIDE || '(auto)'}`);
   info(`  REDBYTE_AGENT_FORMAT=${FORMAT}`);
   info(`  REDBYTE_AGENT_TEMPERATURE=${TEMPERATURE}`);
+  info(`  REDBYTE_AGENT_TIMEOUT_MS=${REQUEST_TIMEOUT_MS}`);
   info(`  REDBYTE_AGENT_CTX_LIMIT=${CTX_LIMIT}`);
 
   // 1. Repo root
@@ -246,15 +395,19 @@ async function cmdDoctor() {
   // 6. Ollama CLI check
   const cli = getOllamaCliInfo();
   if (cli.found) {
-    info(`[ok] Ollama CLI found: ${cli.version}`);
+    info(`[ok] Ollama CLI found: ${cli.path}`);
+    if (cli.version) {
+      info(`[ok] Ollama CLI version: ${cli.version}`);
+    } else {
+      info(`[warn] Ollama CLI version command failed: ${cli.versionError}`);
+      info('[warn] Continuing because API checks may still succeed.');
+    }
   } else {
-    fatal(
-      `Ollama CLI not found in PATH.\n` +
-      `  Reason: ${cli.reason}\n` +
-      `  Install: https://ollama.com/download/windows\n` +
-      `  Then verify with: ollama --version`
-    );
+    info('[warn] Ollama CLI not found in PATH.');
+    info('[warn] Continuing with direct API probe.');
   }
+
+  await resolveActiveModelFromApi();
 
   // 7. Ollama API check
   let tags;
@@ -263,6 +416,14 @@ async function cmdDoctor() {
     info(`[ok] Ollama API reachable: ${OLLAMA_BASE_URL}/api/tags`);
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
+    if (!cli.found) {
+      fatal(
+        `Ollama CLI missing and API unreachable at ${OLLAMA_BASE_URL}.\n` +
+        `  API reason: ${reason}\n` +
+        `  Install: https://ollama.com/download/windows\n` +
+        `  Then start with: Start-Process ollama`
+      );
+    }
     fatal(
       `Ollama API is unreachable at ${OLLAMA_BASE_URL}.\n` +
       `  Reason: ${reason}\n` +
@@ -272,21 +433,22 @@ async function cmdDoctor() {
     );
   }
 
-  const models = Array.isArray(tags?.models) ? tags.models : [];
-  const modelNames = models.map((m) => m?.name).filter(Boolean);
-  const modelInstalled = modelNames.includes(MODEL);
-  info(`[ok] Installed models (${models.length}): ${modelNames.join(', ') || 'none'}`);
+  const modelNames = parseModelNames(tags);
+  const modelInstalled = modelNames.includes(ACTIVE_MODEL);
+  info(`[ok] Installed models (${modelNames.length}): ${modelNames.join(', ') || 'none'}`);
+  info(`[ok] Selected model: ${ACTIVE_MODEL} (${ACTIVE_MODEL_SOURCE})`);
   if (!modelInstalled) {
+    const fallbackModel = pickModelFromInstalled(modelNames).model;
     fatal(
-      `Configured model is not installed: ${MODEL}\n` +
-      `  Suggested pull: ollama pull ${MODEL}\n` +
+      `Selected model is not installed: ${ACTIVE_MODEL}\n` +
+      `  Suggested pull: ollama pull ${ACTIVE_MODEL}\n` +
       `  Or set an installed model, for example:\n` +
-      `  $env:REDBYTE_AGENT_MODEL=\"${modelNames[0] ?? 'qwen2.5-coder:1.5b-base'}\"`
+      `  $env:REDBYTE_AGENT_MODEL=\"${fallbackModel}\"`
     );
   }
 
   // 8. Ollama smoke test
-  info(`\nSmoke-testing Ollama chat with model ${MODEL}...`);
+  info(`\nSmoke-testing Ollama markdown with model ${ACTIVE_MODEL}...`);
   try {
     const reply = await ollamaChat(
       'You are a smoke test. Respond with exactly: REDBYTE_AGENT_OK',
@@ -296,16 +458,49 @@ async function cmdDoctor() {
     if (trimmed.includes('REDBYTE_AGENT_OK')) {
       info(`[ok] Ollama responded: ${trimmed}`);
     } else {
-      info(`[warn] Ollama responded (unexpected): ${trimmed.slice(0, 120)}`);
+      fatal(
+        `Ollama smoke test returned an unexpected response for ${ACTIVE_MODEL}.
+  Expected token: REDBYTE_AGENT_OK
+  Got: ${trimmed.slice(0, 160)}
+  This indicates runtime/model instability; retry after restarting Ollama.`
+      );
     }
+
+    const jsonReply = await ollamaChat(
+      'Return only valid JSON. No prose.',
+      'Return exactly this object: {"ok":true,"name":"redbyte"}',
+      { forceJson: true }
+    );
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(jsonReply);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      fatal(
+        `Ollama JSON smoke test returned invalid JSON for ${ACTIVE_MODEL}.\n` +
+        `  Reason: ${reason}\n` +
+        `  Raw: ${jsonReply.slice(0, 200)}`
+      );
+    }
+
+    if (parsedJson?.ok !== true || parsedJson?.name !== 'redbyte') {
+      fatal(
+        `Ollama JSON smoke test returned unexpected payload for ${ACTIVE_MODEL}.\n` +
+        `  Expected: {"ok":true,"name":"redbyte"}\n` +
+        `  Got: ${jsonReply.slice(0, 200)}`
+      );
+    }
+
+    info('[ok] Ollama JSON smoke test passed.');
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     if (reason.includes('memory layout cannot be allocated')) {
       fatal(
-        `Model failed to start due to memory limits: ${MODEL}\n` +
+        `Model failed to start due to memory limits: ${ACTIVE_MODEL}\n` +
         `  Use a smaller model for local smoke tests, for example:\n` +
-        `  ollama pull qwen2.5-coder:1.5b-base\n` +
-        `  $env:REDBYTE_AGENT_MODEL=\"qwen2.5-coder:1.5b-base\"`
+        `  ollama pull qwen2.5-coder:1.5b\n` +
+        `  Fallback: ollama pull qwen2.5-coder:0.5b\n` +
+        `  $env:REDBYTE_AGENT_MODEL=\"qwen2.5-coder:1.5b\"`
       );
     }
     throw err;
@@ -324,7 +519,7 @@ async function cmdContext() {
   if (packet) {
     parts.push(`# Work Driver Packet\n\n${packet}`);
   } else {
-    parts.push(`# Work Driver Packet\n\n(not found â€” run: pnpm rb:work:next)`);
+    parts.push(`# Work Driver Packet\n\n(not found - run: pnpm rb:work:next)`);
   }
 
   // Control docs
@@ -358,6 +553,7 @@ async function cmdContext() {
 
 async function cmdNext() {
   info(`Generating next-task prompt via Ollama (format: ${FORMAT})...`);
+  await resolveActiveModelFromApi();
 
   // Ensure context exists
   const contextPath = path.join(RUNS_DIR, 'context-latest.md');
@@ -367,6 +563,10 @@ async function cmdNext() {
   }
 
   const context = fs.readFileSync(contextPath, 'utf8');
+  const truncatedContext = context.slice(0, CTX_LIMIT);
+  if (context.length > CTX_LIMIT) {
+    info(`[warn] Context truncated from ${context.length} to ${CTX_LIMIT} chars.`);
+  }
   const systemPrompt = readPrompt('system') || 'You are the RedByte Local Agent.';
   const implPrompt = readPrompt('implementation') || '';
 
@@ -386,35 +586,42 @@ async function cmdNext() {
 
   const userContent =
     `${implPrompt}${jsonSchema}\n\n---\n\n` +
-    `## Context bundle\n\n${context.slice(0, CTX_LIMIT)}\n\n` +
+    `## Context bundle\n\n${truncatedContext}\n\n` +
     `## Task\n\n` +
     `Given the work-driver packet and current truth above, produce the exact next implementation prompt ` +
     `for Claude or Copilot to execute the recommended slice. Follow the Implementation Prompt format. ` +
     `Be specific: name every file, every test, every gate command, every commit message line.`;
 
-  info(`Calling Ollama (${MODEL})...`);
-  const reply = await ollamaChat(systemPrompt, userContent);
+  info(`Calling Ollama (${ACTIVE_MODEL})...`);
+  const reply = ensureJsonOrFatal(
+    await ollamaChat(systemPrompt, userContent, { forceJson: IS_JSON }),
+    'next',
+    IS_JSON
+      ? ['task_title', 'source_docs_read', 'repo_state', 'allowed_files', 'forbidden_files', 'validation_commands', 'commit_message', 'prompt_markdown']
+      : []
+  );
 
   const outFile = IS_JSON ? 'next-prompt.json' : 'next-prompt.md';
   const content = IS_JSON
     ? reply
-    : `# RedByte Next-Task Prompt\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+    : `# RedByte Next-Task Prompt\n\n_Generated ${new Date().toISOString()}_\n_Model: ${ACTIVE_MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
   const dest = writeRun(outFile, content);
-  info(`âœ“ Next-task prompt written to: ${dest}`);
+  info(`[ok] Next-task prompt written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
 async function cmdReview() {
   info(`Reviewing current diff (format: ${FORMAT})...`);
+  await resolveActiveModelFromApi();
 
   const diff = gitDiff();
   if (!diff) {
-    info('No changes in git diff â€” nothing to review.');
+    info('No changes in git diff - nothing to review.');
     const empty = IS_JSON
       ? JSON.stringify({ verdict: 'CLEAN', blocking_issues: [], non_blocking_issues: [], touched_files: [], validation_gaps: [], product_truth_risks: [], recommendation: 'No diff to review.' }, null, 2)
-      : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n\nNo diff to review â€” working tree matches HEAD.\n`;
+      : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n\nNo diff to review - working tree matches HEAD.\n`;
     const dest = writeRun(IS_JSON ? 'review-latest.json' : 'review-latest.md', empty);
-    info(`âœ“ Review written to: ${dest}`);
+    info(`[ok] Review written to: ${dest}`);
     return;
   }
 
@@ -441,20 +648,27 @@ async function cmdReview() {
       ? 'Output the JSON schema only. No other text.'
       : 'Follow the review checklist exactly. Report CRITICAL and HIGH issues first.');
 
-  info(`Calling Ollama (${MODEL})...`);
-  const reply = await ollamaChat(systemPrompt, userContent);
+  info(`Calling Ollama (${ACTIVE_MODEL})...`);
+  const reply = ensureJsonOrFatal(
+    await ollamaChat(systemPrompt, userContent, { forceJson: IS_JSON }),
+    'review',
+    IS_JSON
+      ? ['verdict', 'blocking_issues', 'non_blocking_issues', 'touched_files', 'validation_gaps', 'product_truth_risks', 'recommendation']
+      : []
+  );
 
   const outFile = IS_JSON ? 'review-latest.json' : 'review-latest.md';
   const content = IS_JSON
     ? reply
-    : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+    : `# RedByte Diff Review\n\n_Generated ${new Date().toISOString()}_\n_Model: ${ACTIVE_MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
   const dest = writeRun(outFile, content);
-  info(`âœ“ Review written to: ${dest}`);
+  info(`[ok] Review written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
 async function cmdDocSync() {
   info(`Checking doc/Obsidian sync requirements (format: ${FORMAT})...`);
+  await resolveActiveModelFromApi();
 
   const diff = gitDiff();
   const aiState = readFile('AI_STATE.md') ?? '(not found)';
@@ -486,20 +700,27 @@ async function cmdDocSync() {
       ? 'Output the JSON schema only. No other text.'
       : 'State REQUIRED or OPTIONAL for each, and whether it appears to already be done.');
 
-  info(`Calling Ollama (${MODEL})...`);
-  const reply = await ollamaChat(systemPrompt, userContent);
+  info(`Calling Ollama (${ACTIVE_MODEL})...`);
+  const reply = ensureJsonOrFatal(
+    await ollamaChat(systemPrompt, userContent, { forceJson: IS_JSON }),
+    'doc-sync',
+    IS_JSON
+      ? ['needs_ai_state_update', 'needs_active_work_update', 'needs_product_doc_update', 'needs_obsidian_update', 'suggested_files', 'handoff_note']
+      : []
+  );
 
   const outFile = IS_JSON ? 'doc-sync-latest.json' : 'doc-sync-latest.md';
   const content = IS_JSON
     ? reply
-    : `# RedByte Doc Sync Checklist\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
+    : `# RedByte Doc Sync Checklist\n\n_Generated ${new Date().toISOString()}_\n_Model: ${ACTIVE_MODEL}_\n_Format: ${FORMAT}_\n\n---\n\n${reply}`;
   const dest = writeRun(outFile, content);
-  info(`âœ“ Doc-sync checklist written to: ${dest}`);
+  info(`[ok] Doc-sync checklist written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
 async function cmdHandoff() {
   info('Generating session handoff draft...');
+  await resolveActiveModelFromApi();
 
   const aiState = readFile('AI_STATE.md') ?? '(not found)';
   const activeWork = readFile('docs/ACTIVE_WORK.md') ?? '(not found)';
@@ -522,20 +743,21 @@ async function cmdHandoff() {
     `3. The next recommended slice (from work driver)\n` +
     `4. Any doc/Obsidian updates still needed\n` +
     `5. Git state: branch, ahead/behind, pushed or not\n\n` +
-    `Be honest â€” do not claim pushed or live unless the evidence shows it.`;
+    `Be honest - do not claim pushed or live unless the evidence shows it.`;
 
-  info(`Calling Ollama (${MODEL})...`);
+  info(`Calling Ollama (${ACTIVE_MODEL})...`);
   const reply = await ollamaChat(systemPrompt, userContent);
 
-  const dest = writeRun('handoff-latest.md', `# RedByte Session Handoff\n\n_Generated ${new Date().toISOString()}_\n_Model: ${MODEL}_\n\n---\n\n${reply}`);
-  info(`âœ“ Handoff draft written to: ${dest}`);
+  const dest = writeRun('handoff-latest.md', `# RedByte Session Handoff\n\n_Generated ${new Date().toISOString()}_\n_Model: ${ACTIVE_MODEL}_\n\n---\n\n${reply}`);
+  info(`[ok] Handoff draft written to: ${dest}`);
   process.stdout.write('\n' + reply + '\n\n');
 }
 
-// â”€â”€â”€ Entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Entry point -------------------------------------------------------------
 
 const COMMANDS = {
   doctor: cmdDoctor,
+  'ollama-doctor': cmdDoctor,
   context: cmdContext,
   next: cmdNext,
   review: cmdReview,
@@ -550,10 +772,11 @@ if (!cmd || !COMMANDS[cmd]) {
     `\nRedByte Local Agent\n\nUsage: pnpm rb:agent:<command>\n\nCommands:\n` +
     Object.keys(COMMANDS).map((c) => `  ${c}`).join('\n') +
     `\n\nEnvironment:\n` +
-    `  REDBYTE_AGENT_MODEL       Model to use (default: qwen2.5-coder:7b)\n` +
+    `  REDBYTE_AGENT_MODEL       Model to use (default: auto-select installed small model)\n` +
     `  OLLAMA_BASE_URL           Ollama base URL (default: http://localhost:11434)\n` +
     `  REDBYTE_AGENT_FORMAT      Output format: markdown (default) or json\n` +
     `  REDBYTE_AGENT_TEMPERATURE Sampling temperature (default: 0.2)\n` +
+    `  REDBYTE_AGENT_TIMEOUT_MS  Request timeout ms (default: 90000)\n` +
     `  REDBYTE_AGENT_CTX_LIMIT   Max chars of context sent to Ollama (default: 10000)\n\n`
   );
   process.exit(cmd ? 1 : 0);

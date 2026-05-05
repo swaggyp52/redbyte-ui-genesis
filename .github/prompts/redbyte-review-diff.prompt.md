@@ -1,4 +1,4 @@
-# RedByte â€” Review Diff Prompt
+# RedByte - Review Diff Prompt
 
 Use this prompt to review a git diff before committing or creating a PR.
 
@@ -14,32 +14,32 @@ git diff --name-only HEAD
 git status --short
 ```
 
-## Step 1 â€” Classify touched files
+## Step 1 - Classify touched files
 
 For each changed file, categorize as:
 
-- `PRODUCT_UI` â€” packages/rb-apps/src/**
-- `CONTROL_DOC` â€” AI_STATE.md, docs/product/**, docs/ACTIVE_WORK.md
-- `AGENT_TOOL` â€” scripts/rb-*.mjs, .redbyte/agent/**
-- `SPEC_DOC` â€” docs/ide/**, docs/manuals/**
-- `TEST` â€” **/__tests__/**
-- `CONFIG` â€” package.json, tsconfig.json, vitest.config.ts, etc.
-- `INFRA` â€” .github/**, .gitignore, pnpm-workspace.yaml
+- `PRODUCT_UI` - packages/rb-apps/src/**
+- `CONTROL_DOC` - AI_STATE.md, docs/product/**, docs/ACTIVE_WORK.md
+- `AGENT_TOOL` - scripts/rb-*.mjs, .redbyte/agent/**
+- `SPEC_DOC` - docs/ide/**, docs/manuals/**
+- `TEST` - **/__tests__/**
+- `CONFIG` - package.json, tsconfig.json, vitest.config.ts, etc.
+- `INFRA` - .github/**, .gitignore, pnpm-workspace.yaml
 
-## Step 2 â€” Check source hierarchy
+## Step 2 - Check source hierarchy
 
 - Are control docs (`RED_BYTE_CURRENT_TRUTH.md`, `ACTIVE_WORK.md`, `AI_STATE.md`) updated if product behaviour changed?
 - Is `DOC_INDEX.md` updated if a new durable doc was added?
 - Is `last_validated` updated in frontmatter if a canonical doc changed?
 
-## Step 3 â€” Check product trust claims
+## Step 3 - Check product trust claims
 
 - No copy conflates Draft Export with Trusted Export.
 - No copy conflates mapped hardware with verified trust.
 - NEEDS REVIEW chips name specific fix paths, not generic messages.
 - No new product features claimed beyond current proof matrix.
 
-## Step 4 â€” Check tests and validation
+## Step 4 - Check tests and validation
 
 - Does every new UI behaviour have a test?
 - Do tests use correct fixture states (incomplete rows for incomplete-state renders, complete rows for complete-state renders)?
@@ -47,8 +47,10 @@ For each changed file, categorize as:
 - Is build confirmed passing?
 - Are claims backed by terminal output (not assumptions)?
 - If any command failed, is the exact command and error output recorded?
+- For local-agent changes, did `pnpm rb:agent:ollama:doctor` pass before `rb:agent:next`?
+- If JSON mode is claimed, is the produced output parseable JSON with required command keys?
 
-## Step 5 â€” Identify risky broad edits
+## Step 5 - Identify risky broad edits
 
 Flag:
 - Surface rewrites affecting more than one workflow step
@@ -56,10 +58,10 @@ Flag:
 - Additions to `IDE_EXAMPLES` or `LAB_STARTERS` without matching vectors and ioRows
 - Doc changes that make claims beyond the current proof matrix
 
-## Step 6 â€” Recommend
+## Step 6 - Recommend
 
 One of:
 
-- **COMMIT** â€” diff is clean, tests pass, docs updated, bounds respected
-- **HOLD** â€” specific issue(s) must be resolved first (list them)
-- **SPLIT** â€” diff mixes unrelated changes and should be separated into focused commits
+- **COMMIT** - diff is clean, tests pass, docs updated, bounds respected
+- **HOLD** - specific issue(s) must be resolved first (list them)
+- **SPLIT** - diff mixes unrelated changes and should be separated into focused commits

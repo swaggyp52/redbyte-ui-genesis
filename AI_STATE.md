@@ -1,5 +1,58 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(agent): make Ollama health checks deterministic)
+
+**Subsystem:** `scripts/rb-local-agent.mjs`, `scripts/rb-encoding-check.mjs`, `.github` local-agent instruction/prompt files, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md`, `package.json`
+
+**Context:** Stabilization/recovery slice before curated learning-path implementation. Objective was to make local-agent/Ollama checks deterministic and keep documentation aligned to terminal truth.
+
+**Changes:**
+- `scripts/rb-local-agent.mjs`
+  - Separated CLI and API diagnostics in doctor (API reachability is primary generation signal).
+  - Added dedicated command alias: `rb:agent:ollama:doctor`.
+  - Replaced static default model with deterministic selection:
+    - use `REDBYTE_AGENT_MODEL` when set,
+    - else prefer installed small models in order (`qwen2.5-coder:1.5b`, `qwen2.5-coder:1.5b-instruct`, `qwen2.5-coder:1.5b-base`, `qwen2.5-coder:0.5b`, `gemma3:1b`),
+    - else fall back to `qwen2.5-coder:1.5b` with explicit missing-model guidance.
+  - Added timeout control via `REDBYTE_AGENT_TIMEOUT_MS` (default now `90000`).
+  - Added one retry on abort/time-out in Ollama calls to reduce false-negative startup failures.
+  - Made doctor smoke test fail hard on unexpected reply tokens.
+  - Added Ollama API `format: "json"` for JSON mode and strict parse validation.
+  - Added required-key validation per JSON command:
+    - `next`: `task_title`, `source_docs_read`, `repo_state`, `allowed_files`, `forbidden_files`, `validation_commands`, `commit_message`, `prompt_markdown`
+    - `review`: `verdict`, `blocking_issues`, `non_blocking_issues`, `touched_files`, `validation_gaps`, `product_truth_risks`, `recommendation`
+    - `doc-sync`: `needs_ai_state_update`, `needs_active_work_update`, `needs_product_doc_update`, `needs_obsidian_update`, `suggested_files`, `handoff_note`
+  - Invalid/missing-key JSON responses now write raw debug payloads into `.redbyte/agent/runs/*-invalid-json.txt`.
+  - Added context truncation warning in `next`.
+- `scripts/rb-encoding-check.mjs`
+  - Added/kept `rb:encoding:check` guard for local-agent durable surfaces.
+  - Excludes generated outputs and scans the active AI_STATE head window.
+- Docs updated with truthful runtime status and fallback guidance when Ollama runtime is unhealthy or disk pressure blocks writes.
+- Docs/instructions/prompts updated to use `rb:agent:ollama:doctor` as the first required health gate.
+
+**Terminal evidence (this session):**
+- CLI/API/process:
+  - `Get-Command ollama` -> found.
+  - `ollama --version` -> `0.20.2` on successful runs (intermittent OpenBLAS errors observed in some runs).
+  - `Invoke-RestMethod http://localhost:11434/api/tags` -> reachable.
+  - Multiple `ollama` processes observed.
+- Models:
+  - Installed: `qwen2.5-coder:1.5b`, `qwen2.5-coder:1.5b-base`, `claude-sonnet-4-6:latest`, `gemma4-local:latest`, `gemma4:e4b`.
+  - Pull attempts:
+    - `qwen2.5-coder:1.5b` -> succeeded after storage cleanup.
+- Runtime:
+  - Direct API markdown smoke returned `REDBYTE_AGENT_OK` with `qwen2.5-coder:1.5b`.
+  - Direct API JSON smoke returned parseable `{"ok": true, "name": "redbyte"}`.
+  - `rb:agent:ollama:doctor` now requires both markdown and JSON smoke success to pass.
+  - `rb:agent:next` succeeded in markdown and JSON modes with required keys present.
+
+**Validation:**
+- `node scripts/rb-doc-validate.mjs` -> pass.
+- `node scripts/rb-encoding-check.mjs` -> pass.
+- `git diff --check` -> clean.
+
+---
+
 ## Change Log 2026-05-05 (fix(agent): surface actionable memory-limit guidance in doctor)
 
 **Subsystem:** `scripts/rb-local-agent.mjs`
