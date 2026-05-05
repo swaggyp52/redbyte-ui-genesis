@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (feat(onboarding): add professional workflow orientation)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, onboarding authority tests
+
+**Changes:**
+- Replaced the mode-by-mode first-run tutorial overlay with a Project-only workflow orientation card that uses professional, spine-accurate language.
+- Added explicit trust boundary copy in onboarding: Map Pins is binding authority, not behavior proof; draft export is artifact-ready while trusted handoff requires current Compare PASS plus current mapping.
+- Kept experienced-user flow non-blocking by preserving one-click dismissal persistence and adding a direct `Open Design` action.
+- Wired onboarding CTA to open Design directly from the Project orientation card.
+- Updated focused onboarding tests to enforce Project-only visibility, professional workflow/trust copy, dismissal persistence, and Design routing callback.
+
+**Evidence:** `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx` pass; `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideApp.import-navigates-to-design.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` pass; browser audit at `http://localhost:5173/` on `1366x768` and `1920x1080` shows Project-only professional orientation copy and working `Open Design`; `pnpm --filter @redbyte/playground build` pass; `pnpm rb:encoding:check` pass; `git -c core.whitespace=cr-at-eol diff --check` clean.
+
 ## Change Log 2026-05-05 (fix(verify): collapse first-run editor into compact run plan)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, Verify first-run tests

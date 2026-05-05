@@ -1495,7 +1495,7 @@ export const IdeApp: React.FC = () => {
         onHelp={() => setShowShortcuts(true)}
       />
 
-      <OnboardingOverlay mode={activeMode} />
+      <OnboardingOverlay mode={activeMode} onOpenDesign={() => setCurrentMode('design')} />
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       <div className="ide-layout-shell">
