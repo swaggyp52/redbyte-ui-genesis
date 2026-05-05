@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-05-04 (fix(project): align next-action semantics)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/ACTIVE_WORK.md`, `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/ide/01-project.md`
+
+**Context:** The work driver advanced from the clean repo to Project `F-P1`, and the Project-flow docs all pointed at the same narrow contradiction: the dominant Project next-action card told two stories at once. The title and CTA sent the student to Verify, but the card chrome still framed the state as `AVAILABLE EXPORT`, which made Export look like the real next step even when current comparison evidence was still missing.
+
+**Changes:**
+- `ProjectSurface.tsx` now keeps the dominant next-action card aligned with the required next step when Verify is next: the status frame becomes `VERIFY NEXT` instead of export-availability framing.
+- `ProjectSurface.tsx` now uses a Verify-first supporting status line when mapping is complete but vectors/evidence are still missing: `Mapping complete - add vectors in Verify before you rely on Export or hardware.`
+- Added a focused continuity assertion in `projectSurface.continuity.test.tsx` that proves the Project card status frame and supporting line match the Verify-first CTA instead of `AVAILABLE EXPORT`.
+- Updated the current-truth/control docs and Project surface spec to mark `F-P1` resolved and advance the default next implementation slice to Export `F-E1` / `F-E2` trust language.
+
+**Validation:**
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` -> pass
+- `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectSurface.submission.test.tsx packages/rb-apps/src/apps/ide/__tests__/ideApp.labday-wiring.test.tsx` -> pass (34 passed, 1 skipped)
+- `pnpm ide:gate:project-overview-contract` -> pass
+- `pnpm ide:gate:project-readiness-contract` -> pass
+- `pnpm ide:gate:project-continue-cta-contract` -> pass
+
+**Behavior preserved (verified by scope):** startup mode behavior from `739adab5` is unchanged; Verify, Hardware, Export, and Import runtime semantics are unchanged; export availability remains visible in secondary Project metrics/export summary instead of the dominant next-action card frame.
+
+**Out of scope (intentionally not done):**
+- No Project home redesign.
+- No changes to Verify, Hardware, Export, or Import behavior.
+- No startup-mode follow-up work.
+- No Session Log / stash changes.
+- No push.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-04 (chore(agent): add local RedByte work driver)
 
 **Subsystem:** `scripts/rb-work-driver.mjs`, `package.json`, `docs/product/RED_BYTE_WORK_DRIVER.md`, `docs/DOC_INDEX.md`, `packages/rb-apps/src/__tests__/rb-work-driver.test.ts`

@@ -442,6 +442,10 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-quick-stats')).toBeNull();
     // Reconciliation R2: the command strip is the single authority for the primary
     // CTA label, next-step reason, and "Continue to X" narrative.
+    expect(getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
+    expect(getByTestId('ide-project-hero-status').textContent).toBe(
+      'Mapping complete - add vectors in Verify before you rely on Export or hardware.'
+    );
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-command-strip-next-step-copy').textContent).toContain('trusted comparison evidence');
     expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');

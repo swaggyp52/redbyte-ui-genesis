@@ -402,7 +402,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       return `Circuit loaded - ${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} unmapped.`;
     if (!readiness.hasIoMapping) return 'Circuit loaded - map pins before hardware use.';
     if (!readiness.hasVectors)
-      return 'Mapping complete - export files are available now. Add vectors when you want to compare observed outputs.';
+      return 'Mapping complete - add vectors in Verify before you rely on Export or hardware.';
     if (projectVerifyState === 'stale')
       return 'Authored compare results are stale for the current circuit. Open Verify to trace the live design, refresh assertions, or intentionally keep the older reference.';
     if (comparePassIncomplete)
@@ -481,6 +481,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     ? 'Action needed'
     : hardwareReady
       ? 'Trusted export ready'
+      : activePrimaryCta.mode === 'verify'
+        ? 'Verify next'
       : exportAvailable
         ? compareDiffers
           ? 'Review compare'

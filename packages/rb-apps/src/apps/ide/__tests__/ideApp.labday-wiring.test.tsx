@@ -336,6 +336,25 @@ describe('IdeApp lab-day wiring', () => {
     expect(view.getByTestId('ide-export-part-number').textContent).toContain('xc7a100tcsg324-1');
   });
 
+  it('keeps Verify as the dominant Project next action when mapped work lacks compare evidence', async () => {
+    const view = render(<IdeApp />);
+
+    await act(async () => {
+      useProjectRuntime.getState().loadFromProject(buildDraftAuthoringProject());
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
+    });
+
+    expect(view.getByTestId('ide-project-hero-status').textContent).toBe(
+      'Mapping complete - add vectors in Verify before you rely on Export or hardware.'
+    );
+    expect(view.getByTestId('ide-project-command-strip-primary-cta').textContent).toContain(
+      'Continue to Verify'
+    );
+  });
+
   it('renders Project home on first load at /', async () => {
     window.history.replaceState({}, '', '/');
     const view = render(<IdeApp />);

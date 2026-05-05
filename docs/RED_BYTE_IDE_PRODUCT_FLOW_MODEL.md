@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-03
+last_validated: 2026-05-04
 owner: Connor Angiel
 used_by_claude: true
 role: canonical product flow model â€” whole-IDE UX and information architecture
@@ -76,12 +76,12 @@ Each surface renders a breadcrumb: `RedByte / [Project name] / [Surface] / [Boar
 4. **Board pin mapping summary** â€” read-only; Map Pins owns editing authority.
 
 **Information architecture rules:**
-- The next-action card headline should match the action, not a conflicting status label. If Verify is needed, the card header should not say "AVAILABLE EXPORT" â€” those are two different truths and should not share a card.
+- The next-action card headline, status frame, and primary CTA should tell the same story. If Verify is needed, the dominant card should frame Verify as next and keep export availability secondary in the metrics/export summary.
 - Mapping truth shown on Project is **read-only**. It shows what Map Pins has saved. The student cannot edit it here.
 - Export status (Draft, Trusted, etc.) belongs on Project as a status chip â€” not as the dominant card frame.
 
 **Known friction (current state):**
-- **F-P1**: "AVAILABLE EXPORT" label frames the next-action card when the real action is "Continue to Verify" â€” these are contradictory. The card label comes from export state but the CTA points to Verify.
+- **F-P1**: ~~"AVAILABLE EXPORT" label frames the next-action card when the real action is "Continue to Verify" â€” these are contradictory. The card label comes from export state but the CTA points to Verify.~~ **Resolved 2026-05-04** â€” the dominant card now frames Verify as `VERIFY NEXT` and keeps export availability in secondary Project status/summary fields.
 - **F-P2**: ~~First-load at "/" renders a black main content area until the user explicitly clicks the Project button.~~ **Resolved 2026-05-03** â€” startup mode now canonicalizes invalid values to `project`, and first-load assertions are enforced for `/` and `/os/`.
 - **F-P3**: The board mapping table (full XDC rows) is visible by default below the fold on Project. This is Map Pins territory and adds noise to the dashboard story.
 - **F-P4**: "Rails On / Console On" toggles appear at top-right even though Project has no rails or console concept.
@@ -299,7 +299,7 @@ No surface blocks navigation to another surface. Trust is shown as state (READY 
 | Color | Semantic | Use |
 |-------|----------|-----|
 | Teal/cyan | Primary action | Run button, Open Verify, primary CTAs |
-| Amber/yellow | Warning / needs attention | Draft, Needs Review, AVAILABLE EXPORT |
+| Amber/yellow | Warning / needs attention | Draft, Needs Review, VERIFY NEXT |
 | Green | Success / complete | PASS, MAPPING COMPLETE, OK badges, Mapped |
 | Muted gray | Inactive / informational | Observe-only labels, secondary text |
 | Dark background | Always | Surfaces share the same dark IDE background |
@@ -361,7 +361,7 @@ This section maps known friction to debt items for tracking. See `docs/IDE_PRODU
 | Code | Surface | Issue | Blocking? |
 |------|---------|-------|-----------|
 | F-P2 | Project | ~~First-load "/" renders black main content until explicit Project click~~ -> resolved via startup mode canonicalization + first-load route assertions | Closed |
-| F-P1 | Project | "AVAILABLE EXPORT" label frames next-action card when action is "Continue to Verify" | High â€” contradictory |
+| F-P1 | Project | ~~"AVAILABLE EXPORT" label frames next-action card when action is "Continue to Verify"~~ -> resolved via Verify-first status framing on the dominant Project card | Closed |
 | F-E1 | Export | "Run Verify before relying..." repeated 3Ã— in one screen | High â€” undermines message |
 | F-V1 | Verify | Command bar over-dense for smaller viewports; status text truncates (F-V2) | Medium |
 | F-H3 | Map Pins | "NEEDS REVIEW" chip persists after mapping is complete â€” no clear resolution path | Medium |
@@ -396,10 +396,10 @@ These slices are ordered by student impact. They are **proposals only** â€”
 **Fix:** Implemented startup mode canonicalization (`normalizeIdeMode`) in `startupMode.ts` + `IdeApp.tsx`, with first-load guard assertions for `/` and `/os/` in `tests/e2e/ide-surface-baselines.spec.ts`.
 **Gate:** Browser proof passed: `/` and `/os/` at 1366x768 and 1920x1080 with clean-storage and saved-project restore paths.
 
-### Slice 2 â€” Unify Project next-action card (F-P1)
+### Slice 2 â€” Unify Project next-action card (F-P1) â€” **Done 2026-05-04**
 **What:** Remove the "AVAILABLE EXPORT" framing label from the next-action card when the action is "Continue to Verify". The card title should be the action, not the status of an unrelated surface.
-**Effort:** Small â€” copy and label change.
-**Gate:** Browser proof at both 1366x768 and 1920x1080. Confirm no test breaks.
+**Fix:** `ProjectSurface.tsx` now gives the dominant next-action card Verify-first framing when the required next step is Verify: status label `VERIFY NEXT`, supporting line pointing to Verify before Export/hardware reliance, and no export-availability framing in the card chrome itself.
+**Gate:** `projectSurface.continuity`, `projectSurface.submission`, and `ideApp.labday-wiring` pass; `pnpm ide:gate:project-overview-contract`, `pnpm ide:gate:project-readiness-contract`, and `pnpm ide:gate:project-continue-cta-contract` pass.
 
 ### Slice 3 â€” Deduplicate Export messaging (F-E1, F-E2)
 **What:** "Run Verify before relying on this handoff" should appear once per screen. Merge HANDOFF SUMMARY and NEXT ACTION into a single block: status + one primary action + one secondary action.

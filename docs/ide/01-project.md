@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-05-04
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -25,7 +25,7 @@ Provide the Project dashboard/home surface: project truth, readiness, next-actio
 
 1. Main dashboard
 - Project identity/header.
-- Next-action command strip.
+- Next-action command strip whose status frame, headline, and primary CTA all point at the same required next step.
 - Metrics / readiness snapshot.
 - Read-only mapping summary and export alignment truth.
 - Collapsed **Project bridge & determinism** disclosure for low-level internals.
@@ -67,6 +67,7 @@ Destructive action guard:
 
 - Supposed to do: explain the full product spine, project identity, current readiness, examples, and the next honest action.
 - Current truth: Project is now a dashboard/home surface with read-only mapping/export truth and one dominant next action; low-level bridge internals are secondary behind a collapsed disclosure.
+- Next-action framing rule: when Verify is the required next step, the dominant Project card frames Verify as next and keeps export availability in secondary summary/status fields.
 - Determinism change needed: keep Project language explicitly split between draft export, trusted export, Vivado build proof, board programming proof, and board observation proof.
 - Friction found: additive UI pieces such as the bridge disclosure need direct tests so later cleanup passes do not pull diagnostics back into the primary dashboard story.
 

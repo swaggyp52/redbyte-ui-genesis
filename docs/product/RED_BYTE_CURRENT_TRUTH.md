@@ -77,7 +77,6 @@ Supporting truths:
 
 ### Workflow-language and trust clarity
 
-- Project `F-P1`: next-action card framing still contradicts the real next action.
 - Export `F-E1` / `F-E2`: trust language is still duplicated and overly repetitive.
 - Map Pins `F-H2` / `F-H3`: stale guidance and unclear `NEEDS REVIEW` state still compete with the real task.
 
@@ -96,6 +95,7 @@ Supporting truths:
 - Basys3 board-clock truth (`CLK100MHZ` / `W5`) and exported testbench parity are proven; do not casually reopen board-clock semantics.
 - Import now routes to Design after a successful project import.
 - Project first-load black-screen issue (`F-P2`) is resolved.
+- Project next-action semantics (`F-P1`) now keep Verify as the dominant story when Verify is the required next step.
 - Old-brief cleanup claims about `apps/lab3-webapp`, `apps/studio`, `packages/rb-shell`, or `?launcher=1` are stale and not current high-leverage work.
 - Broad Verify redesign is not the current roadmap; preserve current locked truths and fix narrow contradictions instead.
 
@@ -105,8 +105,8 @@ Supporting truths:
 
 If the working tree is understood and isolated, the first real implementation slice is:
 
-1. Project `F-P1` next-action semantics
-2. Export `F-E1` / `F-E2` trust language
-3. Map Pins `F-H2` / `F-H3` trust language
+1. Export `F-E1` / `F-E2` trust language
+2. Map Pins `F-H2` / `F-H3` trust language
+3. Curate starter and example learning path
 
 Do not skip to website, pilot, or broad example expansion while proof closure and workflow-language contradictions remain open.
