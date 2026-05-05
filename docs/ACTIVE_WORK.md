@@ -103,6 +103,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
+| Local | Hardware map-mode hierarchy/status clarity: mapped Map Pins view hides the duplicate secondary intro; mapped-complete command strip and mapping header now share the same `failureTruth`-driven Verify/evidence follow-up copy; focused trust/readiness tests pass locally | `uncommitted` |
 | Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
 | Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
 | Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |

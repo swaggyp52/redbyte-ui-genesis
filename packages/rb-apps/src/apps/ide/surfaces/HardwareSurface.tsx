@@ -1134,6 +1134,54 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           failureTruth.condition === 'trace-only'
         ? 'info'
         : 'warn';
+  const mappingReadyFollowUp = useMemo(() => {
+    switch (failureTruth.condition) {
+      case 'verify-not-run':
+        return {
+          commandStrip:
+            'Pin mapping is complete. Open Verify to create current evidence before you rely on Hardware or Export.',
+          headerHint: 'Mapping complete — open Verify to create trusted export evidence.',
+        };
+      case 'verify-stale':
+        return {
+          commandStrip:
+            'Pin mapping is complete, but Verify evidence is stale. Re-run Verify before you rely on Hardware or Export.',
+          headerHint: 'Mapping complete — Verify evidence is stale. Open Verify to refresh before export.',
+        };
+      case 'trace-only':
+        return {
+          commandStrip:
+            'Pin mapping is complete. Run Compare in Verify to create current evidence before you rely on Hardware or Export.',
+          headerHint: 'Mapping complete — run Compare checks in Verify for trusted export evidence.',
+        };
+      case 'assertions-differ':
+        return {
+          commandStrip:
+            'Pin mapping is complete, but the latest Compare run differs. Open Verify to inspect the mismatch before you rely on Hardware or Export.',
+          headerHint:
+            'Mapping complete — latest Compare run differs. Open Verify to inspect the mismatch before export.',
+        };
+      case 'mapping-review':
+        return {
+          commandStrip:
+            'Pin mapping is complete, but the last passing comparison used incomplete mapping. Re-run Compare in Verify so the evidence matches the current board bindings.',
+          headerHint:
+            'Mapping complete — rerun Compare in Verify so the evidence matches the current mapping.',
+        };
+      case 'ready':
+        return {
+          commandStrip:
+            'Pin mapping, Verify, and Export are current. Continue to Program Handoff when you are ready for the Basys3.',
+          headerHint:
+            'Mapping complete — Verify and Export are current. Continue to Program Handoff when you are ready.',
+        };
+      default:
+        return {
+          commandStrip: failureTruth.message,
+          headerHint: `Mapping complete — ${failureTruth.primaryCtaLabel.toLowerCase()} to continue.`,
+        };
+    }
+  }, [failureTruth.condition, failureTruth.message, failureTruth.primaryCtaLabel]);
   const dominantPrimaryAction = useMemo(() => {
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
@@ -2116,9 +2164,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     hwMode === 'map'
       ? hasNoBoundaryRows
         ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
-        : selectedMappingRow
-          ? `${selectedMappingLabel} is selected. Click a highlighted Basys3 control below to assign the board pin.`
-          : 'Pin mapping connects each circuit signal to a physical Basys3 board control. Select a signal row, then click the matching control on the board diagram to assign it.'
+        : mappingReady
+          ? mappingReadyFollowUp.commandStrip
+          : selectedMappingRow
+            ? `${selectedMappingLabel} is selected. Click a highlighted Basys3 control below to assign the board pin.`
+            : 'Pin mapping connects each circuit signal to a physical Basys3 board control. Select a signal row, then click the matching control on the board diagram to assign it.'
       : nextActionHero.body;
   const hardwareCommandTitle =
     hwMode === 'map'
@@ -2367,25 +2417,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </div>}
 
         {/* ── Stage rail: workflow caption + primary stage tabs ── */}
-        <div className="ide-hw-map-reset-header" data-testid="ide-hw-map-reset-header">
-          <div>
-            <span className="ide-hw-map-reset-kicker" data-testid="ide-hw-board-chrome-stage">Map Pins</span>
-            <h3>Bind project signals to the Basys3 board</h3>
-            <p data-testid="ide-hw-stage-caption">
-              {hasNoBoundaryRows
-                ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
-                  : selectedMappingRow
-                  ? `${formatProjectSignalName(selectedMappingRow)} is selected. Click the matching board control to save its pin.`
-                  : unresolvedRequiredCount > 0
-                    ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a signal row, then click the matching board control.`
-                  : 'Select a signal, click the matching board control, then confirm the physical package pin shown in the row.'}
-            </p>
+        {!mappingReady && (
+          <div className="ide-hw-map-reset-header" data-testid="ide-hw-map-reset-header">
+            <div>
+              <span className="ide-hw-map-reset-kicker" data-testid="ide-hw-board-chrome-stage">Map Pins</span>
+              <h3>Bind project signals to the Basys3 board</h3>
+              <p data-testid="ide-hw-stage-caption">
+                {hasNoBoundaryRows
+                  ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
+                    : selectedMappingRow
+                    ? `${formatProjectSignalName(selectedMappingRow)} is selected. Click the matching board control to save its pin.`
+                    : unresolvedRequiredCount > 0
+                      ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a signal row, then click the matching board control.`
+                      : 'Select a signal, click the matching board control, then confirm the physical package pin shown in the row.'}
+              </p>
+            </div>
+            <div className="ide-hw-map-reset-summary" aria-label="Mapping summary">
+              <span>{mappingRows.length} signal{mappingRows.length === 1 ? '' : 's'}</span>
+              <strong>{unresolvedRequiredCount} missing</strong>
+            </div>
           </div>
-          <div className="ide-hw-map-reset-summary" aria-label="Mapping summary">
-            <span>{mappingRows.length} signal{mappingRows.length === 1 ? '' : 's'}</span>
-            <strong>{mappingReady ? 'Mapped' : `${unresolvedRequiredCount} missing`}</strong>
-          </div>
-        </div>
+        )}
 
         <div className="ide-hw-stage-rail ide-hw-stage-rail--demoted" data-testid="ide-hw-stage-rail">
           <div className="ide-hw-stage-rail-top">
@@ -2594,17 +2646,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 hasNoBoundaryRows
                   ? 'Add inputs and outputs in Design first.'
                   : mappingReady
-                    ? failureTruth.condition === 'ready'
-                      ? 'Mapping complete — open Export to build the submission package.'
-                      : failureTruth.condition === 'verify-not-run'
-                        ? 'Mapping complete — open Verify to create trusted export evidence.'
-                        : failureTruth.condition === 'verify-stale'
-                          ? 'Mapping complete — Verify evidence is stale. Open Verify to refresh before export.'
-                          : failureTruth.condition === 'trace-only'
-                            ? 'Mapping complete — run Compare checks in Verify for trusted export evidence.'
-                            : failureTruth.condition === 'mapping-review'
-                              ? 'Mapping complete — re-run Compare in Verify for current trusted evidence.'
-                              : `Mapping complete — ${failureTruth.primaryCtaLabel.toLowerCase()} to continue.`
+                    ? mappingReadyFollowUp.headerHint
                     : `Map ${unresolvedRequiredCount} remaining required signal${unresolvedRequiredCount === 1 ? '' : 's'}.`
               }
             />

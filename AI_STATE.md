@@ -1,5 +1,16 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(hardware): collapse duplicate map-mode hierarchy)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, Hardware trust-clarity tests
+
+**Changes:**
+- Hid the secondary `Map Pins` intro header once required bindings are complete so the mapped hardware view reads as one task instead of parallel `Hardware` and `Map Pins` sections.
+- Centralized mapped-complete follow-up copy in one helper so the command strip and mapping header stay aligned on the specific Verify, Compare, export, or handoff next step for each `failureTruth.condition`.
+- Added focused trust-clarity regressions for the complete-state duplicate hierarchy and the complete-state `NEEDS REVIEW` command-strip copy.
+
+**Evidence:** `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.trust-clarity.test.tsx --reporter=basic` pass; `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx --reporter=basic` pass; editor diagnostics clean for touched files; code-review pass found only a low unreachable branch in the incomplete-only mapping summary and that cleanup was applied.
+
 ## Change Log 2026-05-05 (chore(feedback): add product problem intake loop)
 
 **Subsystem:** `scripts/rb-product-feedback.mjs`, `rb:problem:*`, product feedback docs

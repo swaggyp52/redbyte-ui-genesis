@@ -97,6 +97,30 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
     expect(queryByTestId('ide-hw-mapping-guide')).toBeNull();
   });
 
+  it('RED TEST: hides the secondary Map Pins intro when all required signals are mapped', () => {
+    // Once binding is complete, the surface should stop introducing a second
+    // peer Map Pins section. The command strip remains the single authority.
+    const health = makeHealthVerifyNotRun();
+    const { queryByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Complete Mapping"
+          expectedBehavior="sw0 drives ld0."
+          mappingRows={COMPLETE_ROWS}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={health}
+          workflowAuthority={makeAuthorityForHealth(health)}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(queryByTestId('ide-hw-map-reset-header')).toBeNull();
+  });
+
   it('still shows the 3-step guide when mapping is incomplete', () => {
     // One row has no pin — guide should still be visible.
     const health = makeHealthVerifyNotRun();
@@ -157,6 +181,34 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
     const hint = getByTestId('ide-hw-mapping-header-hint');
     expect(hint.textContent).toMatch(/verify/i);
     expect(hint.textContent).toMatch(/evidence/i);
+  });
+
+  it('RED TEST: command strip names Verify evidence when mapping is complete but no Verify evidence exists', () => {
+    // The top-level Hardware card still shows NEEDS REVIEW in this state, so
+    // its copy must explain that Verify evidence is the missing step rather
+    // than repeating generic pin-binding instructions.
+    const health = makeHealthVerifyNotRun();
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Needs Verify"
+          expectedBehavior="sw0 drives ld0."
+          mappingRows={COMPLETE_ROWS}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={health}
+          workflowAuthority={makeAuthorityForHealth(health)}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    const commandStrip = getByTestId('ide-hardware-command-strip');
+    expect(commandStrip.textContent).toMatch(/verify/i);
+    expect(commandStrip.textContent).toMatch(/evidence/i);
+    expect(commandStrip.textContent).not.toMatch(/select a signal row/i);
   });
 
   it('RED TEST: next-action hint names specific Verify action when mapping is complete but Verify evidence is stale', () => {
