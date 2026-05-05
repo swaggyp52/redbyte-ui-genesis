@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(hardware): clarify mapping versus verified trust — F-H2/F-H3)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.trust-clarity.test.tsx`, control docs
+
+**Context:** The work driver advanced from Export F-E1/F-E2 to Map Pins F-H2/F-H3. The Hardware surface showed two trust-clarity contradictions: the 3-step mapping guide stayed visible even after all required signals were bound (`mappingReady=true`), occupying prime space with stale guidance; and the `nextActionHint` used a generic "Run Verify or open Export." regardless of the actual `failureTruth.condition`.
+
+**Changes:**
+- `HardwareSurface.tsx`: Added `!mappingReady` guard around `<HardwareMappingGuide />` (F-H2). Updated `nextActionHint` to derive condition-specific copy from `failureTruth.condition` when `mappingReady` (F-H3): `verify-not-run` / `verify-stale` / `trace-only` / `mapping-review` / `ready` each produce a distinct, actionable hint naming "trusted export evidence" or the specific Verify action.
+- `hardwareSurface.trust-clarity.test.tsx`: Added 4 new tests — 3 RED→GREEN (F-H2 guide collapses, F-H3 verify-not-run hint, F-H3 verify-stale hint) + 1 negative (guide still visible during active mapping).
+- `hardwareSurface.mappingWorkflow.test.tsx`: Updated 3 tests that used fully-mapped rows to use incomplete rows so the guide still renders as expected under the new logic.
+- `hardwareSurface.readiness.test.tsx`: Removed 3 stale `ide-hw-map-loop-card` assertions from the "signal to board control to physical pin" test (guide is hidden when all rows mapped; row click + pin assignment behavior preserved).
+- Control docs updated to close F-H2/F-H3 and advance driver.
+
+**Validation:**
+- 40/40 hardware surface tests pass (4 test files)
+- `hw:mode-fallback-gate` (3 tests) + `hw:dryrun-program-flow-gate` (9 tests) pass
+- `pnpm --filter @redbyte/playground build` succeeds
+- Commit: `aeda6bc4` on `main`
+
+**Out of scope (intentionally not done):**
+- No changes to projectWorkflowAuthority.ts or any pipeline logic.
+- No changes to Export, Verify, Project, or Import surfaces.
+- Not pushed.
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log 2026-05-05 (fix(export): clarify draft versus trusted export — F-E1/F-E2)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx`, control docs

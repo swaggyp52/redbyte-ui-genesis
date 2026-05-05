@@ -77,7 +77,7 @@ Supporting truths:
 
 ### Workflow-language and trust clarity
 
-- Map Pins `F-H2` / `F-H3`: stale guidance and unclear `NEEDS REVIEW` state still compete with the real task.
+- No open workflow-language friction items at this time.
 
 ### Repo / process hygiene
 
@@ -95,7 +95,7 @@ Supporting truths:
 - Import now routes to Design after a successful project import.
 - Project first-load black-screen issue (`F-P2`) is resolved.
 - Project next-action semantics (`F-P1`) now keep Verify as the dominant story when Verify is the required next step.
-- Old-brief cleanup claims about `apps/lab3-webapp`, `apps/studio`, `packages/rb-shell`, or `?launcher=1` are stale and not current high-leverage work.
+- Map Pins `F-H2` / `F-H3` mapping guide collapses when complete; hint names the specific Verify action when evidence is advisory — resolved 2026-05-05 commit `aeda6bc4`.
 - Broad Verify redesign is not the current roadmap; preserve current locked truths and fix narrow contradictions instead.
 
 ---
@@ -104,7 +104,7 @@ Supporting truths:
 
 If the working tree is understood and isolated, the first real implementation slice is:
 
-1. Map Pins `F-H2` / `F-H3` trust language
-2. Curate starter and example learning path
+1. Curate starter and example learning path
+2. Finish honest proof closure: `golden` E3, custom-row E2/E3, certification matrix
 
 Do not skip to website, pilot, or broad example expansion while proof closure and workflow-language contradictions remain open.
