@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(agent): surface actionable memory-limit guidance in doctor)
+
+**Subsystem:** `scripts/rb-local-agent.mjs`
+
+**Context:** Post-commit review found that doctor-specific memory-allocation guidance was unreachable because `ollamaChat()` terminated the process before `cmdDoctor()` could classify the error.
+
+**Changes:**
+- `ollamaChat()` now throws errors (instead of calling `fatal()` internally), allowing command-level handlers to provide targeted guidance.
+- `cmdDoctor()` now correctly detects `memory layout cannot be allocated` and emits explicit small-model fallback instructions.
+- `getOllamaTags()` now wraps JSON parsing with a clearer parse-error message.
+
+**Validation:**
+- `pnpm rb:agent:doctor` now reports actionable memory-limit guidance for `claude-sonnet-4-6:latest` in this environment.
+- `git diff --check` clean for the updated file.
+
+---
+
 ## Change Log 2026-05-05 (chore(agent): document and verify local Ollama workflow)
 
 **Subsystem:** `.github/copilot-instructions.md`, `.github/instructions/agent-tools.instructions.md`, `.github/prompts/*`, `scripts/rb-local-agent.mjs`, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md`, `docs/DOC_INDEX.md`

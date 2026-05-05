@@ -146,7 +146,12 @@ async function getOllamaTags() {
     const text = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ''}`);
   }
-  return res.json();
+  try {
+    return await res.json();
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`Invalid JSON from ${url}: ${reason}`);
+  }
 }
 
 // â”€â”€â”€ Ollama client â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -175,7 +180,7 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
     });
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    fatal(
+    throw new Error(
       `Cannot reach Ollama at ${OLLAMA_BASE_URL}.\n` +
       `  Reason: ${reason}\n` +
       `  Fix: ensure Ollama is running (run 'ollama serve' or check system tray)\n` +
@@ -186,7 +191,7 @@ async function ollamaChat(systemPrompt, userContent, { stream = false } = {}) {
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
-    fatal(`Ollama API returned ${res.status}: ${text}`);
+    throw new Error(`Ollama API returned ${res.status}: ${text}`);
   }
 
   const json = await res.json();
