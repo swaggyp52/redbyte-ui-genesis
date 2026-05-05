@@ -391,6 +391,7 @@ export const LAB_STARTERS: LabStarter[] = [
       lab: 'Lab 8',
       concept: 'Finite State Machines',
       tags: ['fsm', 'sequential', 'starter', 'lab8', 'basys3'],
+      learningPath: { tier: 4, order: 6 },
       expectedBehavior: 'Use the scaffold to build the lock one subsystem at a time: track bit position, detect valid 3-bit groups, advance the valid-group milestones, and drive LOCK only when the full sequence is satisfied.',
       goals: [
         'Start here before the fuller final-project reference package - this is the recommended student bridge',

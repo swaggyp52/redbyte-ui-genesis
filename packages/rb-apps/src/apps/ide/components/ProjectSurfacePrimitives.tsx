@@ -311,6 +311,12 @@ export interface BrowsableExample {
   lab?: string;
   tags: string[];
   recommended?: boolean;
+  /** 1-based position in the curated learning path (1–6 for v1). Absent for non-path examples. */
+  learningPathOrder?: number;
+  /** True for the flagship example that first demonstrates the full IDE spine. */
+  flagship?: boolean;
+  /** Honest caveat when proof is not fully closed. Shown as a warning in the path strip. */
+  openProof?: string;
 }
 
 export interface ExamplesBrowserProps {
@@ -355,9 +361,26 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
 
   const allTags = useMemo(() => deriveTagsFromExamples(examples), [examples]);
 
+  // Path items in order — always shown regardless of search/tag filter.
+  const pathItems = useMemo(
+    () =>
+      examples
+        .filter((ex) => ex.learningPathOrder != null)
+        .sort((a, b) => a.learningPathOrder! - b.learningPathOrder!),
+    [examples],
+  );
+
+  // Grid: path items first (by learningPathOrder), then non-path examples.
+  const sorted = useMemo(() => {
+    const path = examples.filter((ex) => ex.learningPathOrder != null)
+      .sort((a, b) => a.learningPathOrder! - b.learningPathOrder!);
+    const rest = examples.filter((ex) => ex.learningPathOrder == null);
+    return [...path, ...rest];
+  }, [examples]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return examples.filter((ex) => {
+    return sorted.filter((ex) => {
       if (activeTag && !(ex.tags ?? []).includes(activeTag)) return false;
       if (!q) return true;
       const haystack = [
@@ -372,7 +395,7 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [examples, query, activeTag]);
+  }, [sorted, query, activeTag]);
 
   return (
     <section
@@ -399,6 +422,36 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
       </header>
       {expanded ? (
         <>
+          {pathItems.length > 0 && (
+            <nav
+              className="ide-projectx-learning-path"
+              data-testid="ide-projectx-learning-path"
+              aria-label="Guided learning path"
+            >
+              <span className="ide-projectx-learning-path-label">Start here:</span>
+              {pathItems.map((ex, idx) => (
+                <React.Fragment key={ex.id}>
+                  <button
+                    type="button"
+                    className={`ide-projectx-path-step${ex.flagship ? ' is-flagship' : ''}`}
+                    data-testid={`ide-projectx-path-step-${ex.id}`}
+                    onClick={() => onLoad(ex.id)}
+                    title={ex.openProof ? `${ex.name} — ${ex.openProof}` : ex.name}
+                    aria-label={`Step ${idx + 1}: ${ex.name}${ex.openProof ? ' (proof open)' : ''}`}
+                  >
+                    <span className="ide-projectx-path-step-num">{idx + 1}</span>
+                    <span className="ide-projectx-path-step-name">{ex.name}</span>
+                    {ex.openProof ? (
+                      <span className="ide-projectx-path-step-warn" aria-hidden="true" title={ex.openProof}>⚠</span>
+                    ) : null}
+                  </button>
+                  {idx < pathItems.length - 1 ? (
+                    <span className="ide-projectx-path-arrow" aria-hidden="true">›</span>
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </nav>
+          )}
           <div className="ide-projectx-examples-controls">
             <input
               type="search"
@@ -453,7 +506,12 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
                 >
                   <header className="ide-projectx-example-card-head">
                     <h4 className="ide-projectx-example-card-title">{ex.name}</h4>
-                    {ex.recommended ? (
+                    {ex.learningPathOrder != null ? (
+                      <span className="ide-projectx-example-path-badge">
+                        Step {ex.learningPathOrder}
+                        {ex.flagship ? ' ⭐' : ''}
+                      </span>
+                    ) : ex.recommended ? (
                       <span className="ide-projectx-example-recommended">Recommended</span>
                     ) : null}
                   </header>
@@ -462,6 +520,11 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
                     <p className="ide-projectx-example-card-learn">
                       <span className="ide-projectx-example-card-learn-label">You&rsquo;ll learn:</span>{' '}
                       {ex.expectedBehavior}
+                    </p>
+                  ) : null}
+                  {ex.openProof ? (
+                    <p className="ide-projectx-example-card-open-proof" data-testid={`ide-projectx-example-open-proof-${ex.id}`}>
+                      ⚠ {ex.openProof}
                     </p>
                   ) : null}
                   <div className="ide-projectx-example-card-tags">

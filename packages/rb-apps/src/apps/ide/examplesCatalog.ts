@@ -19,6 +19,20 @@ export interface IdeExampleIoRow {
   boardResourceType?: HardwareBoardResourceType;
 }
 
+/** Position of this example in the curated v1 learning path. */
+export interface ExampleLearningPath {
+  /** Curriculum tier: 1=combinational, 2=hardware-mapping, 3=sequential, 4=lab-bridge. */
+  tier: 1 | 2 | 3 | 4;
+  /** Globally unique 1-based position across the full path (1–6 for v1). */
+  order: number;
+  /** ID of the next example in the path; undefined for the final item. */
+  nextExampleId?: string;
+  /** True for the flagship example that first introduces the full Design→Verify→Hardware→Export spine. */
+  flagship?: boolean;
+  /** Honest caveat when proof is not fully closed (e.g. E3 hardware observation pending). */
+  openProof?: string;
+}
+
 export interface IdeExampleDefinition {
   id: string;
   name: string;
@@ -34,6 +48,8 @@ export interface IdeExampleDefinition {
   category?: 'showcase' | 'course';
   goals?: string[];
   probes?: Array<{ nodeId: string; portName: string; label: string; color: string }>;
+  /** Curated learning path metadata. Present only on the 6 path examples. */
+  learningPath?: ExampleLearningPath;
 }
 
 export const IDE_DEFAULT_EXAMPLE_ID = 'signal-tour';
@@ -48,6 +64,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     lab: '',
     concept: 'Board Mapping',
     tags: ['mapping', 'hardware', 'starter'],
+    learningPath: { tier: 2, order: 4, nextExampleId: 'two-bit-counter', flagship: true },
     expectedBehavior: 'Each switch directly drives its corresponding LED. SW0→LD0, SW1→LD1, SW2→LD2, SW3→LD3.',
     goals: [
       'Map SW and LD ports to Basys3 pins',
@@ -107,6 +124,7 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     lab: '',
     concept: 'Combinational Logic',
     tags: ['gates', 'combinational', 'starter'],
+    learningPath: { tier: 1, order: 1, nextExampleId: 'half-adder' },
     expectedBehavior: 'LD0 = SW0 AND SW1 (both on). LD1 = SW0 OR SW1 (either on). LD2 = SW0 XOR SW1 (exactly one on).',
     goals: [
       'Observe each gate respond to the same two inputs',
@@ -167,6 +185,12 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     lab: '',
     concept: 'Sequential + Waveforms',
     tags: ['counter', 'sequential', 'waveforms', 'basys3', 'board-clock'],
+    learningPath: {
+      tier: 3,
+      order: 5,
+      nextExampleId: '23_lab8-fsm-lock-starter-basys3',
+      openProof: 'E3 hardware proof not yet closed — export is draft until board observation is recorded.',
+    },
     expectedBehavior:
       'With SW0 high, the counter advances on each rising edge of CLK100MHZ (Verify simulates clock steps; the board runs at real 100 MHz so LEDs show a fast blur unless you slow the clock in hardware). With BTNC pressed (RST), count returns to 00.',
     goals: [
@@ -319,13 +343,14 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
   },
   {
     id: 'half-adder',
-    category: 'course' as const,
+    category: 'showcase' as const,
     name: 'Half Adder',
     summary: 'XOR gives the sum bit; AND gives the carry. Toggle SW0 and SW1 to verify all 4 input combinations.',
     course: '',
     lab: '',
     concept: 'Combinational Arithmetic',
     tags: ['arithmetic', 'combinational', 'adder'],
+    learningPath: { tier: 1, order: 2, nextExampleId: 'full-adder' },
     expectedBehavior: 'LD1 shows the SUM (SW0 XOR SW1). LD0 shows the CARRY (SW0 AND SW1). Both LEDs light only when both switches are ON.',
     goals: [
       'Toggle SW0 and SW1 — LD1 shows sum, LD0 shows carry',
@@ -370,13 +395,14 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
   },
   {
     id: 'full-adder',
-    category: 'course' as const,
+    category: 'showcase' as const,
     name: 'Full Adder',
     summary: '3-input addition with carry-in. Two XOR stages compute the sum; two AND gates + OR compute the carry-out.',
     course: '',
     lab: '',
     concept: 'Combinational Arithmetic',
     tags: ['arithmetic', 'combinational', 'adder'],
+    learningPath: { tier: 1, order: 3, nextExampleId: 'signal-tour' },
     expectedBehavior: 'LD1 shows SUM, LD0 shows CARRY-OUT. SW2 is the carry-in. Compare with Half Adder to see how CIN changes the behavior.',
     goals: [
       'Compare with Half Adder — how does CIN change the behavior?',

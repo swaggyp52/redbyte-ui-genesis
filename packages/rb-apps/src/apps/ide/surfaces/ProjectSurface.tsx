@@ -1474,6 +1474,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               lab: ex.lab,
               tags: ex.tags ?? [],
               recommended: ex.id === featuredSecurityStarter?.id,
+              learningPathOrder: ex.learningPath?.order,
+              flagship: ex.learningPath?.flagship,
+              openProof: ex.learningPath?.openProof,
             }))}
             activeExampleId={activeExampleId}
             onLoad={onOpenExample}
