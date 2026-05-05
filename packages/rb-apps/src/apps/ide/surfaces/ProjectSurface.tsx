@@ -115,6 +115,7 @@ export interface ProjectSurfaceProps {
     course: string;
     lab: string;
     concept: string;
+    learningPath?: import('../examplesCatalog').ExampleLearningPath;
   }>;
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;

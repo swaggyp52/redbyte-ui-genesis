@@ -1527,6 +1527,7 @@ export const IdeApp: React.FC = () => {
                 course: example.course,
                 lab: example.lab,
                 concept: example.concept,
+                learningPath: example.learningPath,
               }))}
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
