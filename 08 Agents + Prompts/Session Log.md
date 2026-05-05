@@ -18,6 +18,30 @@ Use the [[Session Template]] to generate the raw content; paste the "End of sess
 
 ---
 
+## 2026-05-05 — Curated learning path + Professional IDE Sprint 1
+
+**What changed:**
+- `13d77a3b` `feat(examples)`: curated v1 learning path — `ExampleLearningPath` metadata on 6 examples (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock), path strip in ExamplesBrowser with numbered steps, flagship star, openProof warnings; half-adder/full-adder category fixed to 'showcase'; 10/10 path tests green
+- `006a208c` `fix(examples)`: wired learningPath through IdeApp.tsx and ProjectSurface prop type (root cause: IdeApp had its own explicit field-list that dropped learningPath)
+- `eb3cf578` `fix(ide)`: hid debug chrome toggles — `ChromeToggleBar` ("Rails On / Console On / Toolbar On / Verify rows On") now gated behind `showDevChrome` prop (default false); 23/23 shell tests pass
+- `54c7c300` docs: ACTIVE_WORK + AI_STATE updated; labStarters.ts normalized from CRLF to LF
+
+**What is true now:**
+- Project surface shows a 6-step curated learning path strip (ordered, flagged, with openProof warnings)
+- All 5 surfaces (Design, Verify, Map Pins, Export, Project) are free of developer debug chrome in the header
+- Panel state defaults unchanged: rails visible, console hidden
+- All gates green, build EXIT 0, repo clean at `eb3cf578`
+
+**What is still open:**
+- Close `golden-basys3-switch-and` E3 and custom-row E2/E3 (requires bench observation)
+- Export: "Draft export available" heading duplicated in EXPORT card and HANDOFF SUMMARY card
+- Map Pins: HARDWARE + MAP PINS dual-section cards for same mapping task (F-H1)
+- Design: Guidance banner occupies above-fold real estate after circuit exists
+
+**Exact next action:** Fix Export duplicate "Draft export available" heading — two `h3` elements on the Export surface show the same text simultaneously (EXPORT card + HANDOFF SUMMARY card). Find the HANDOFF SUMMARY heading in `ExportSurface.tsx`, replace or remove the redundant title so the authoritative message is clear. TDD first.
+
+---
+
 ## 2026-04-27 — Product audit + Project Bridge vocabulary scrub
 
 **What changed:**
