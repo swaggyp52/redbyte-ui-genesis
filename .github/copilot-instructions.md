@@ -45,8 +45,9 @@ Project -> Design -> Verify -> Map Pins / Hardware -> Export
 
 - Run `pnpm rb:work:status` and `pnpm rb:work:next` before starting any implementation.
 - Before product work, run `pnpm rb:control:next` and use it to reconcile work-driver, memory, git history, and current product truth.
+- If the user describes a product issue in natural language, run `pnpm rb:problem:intake -- "<raw feedback>"` before implementation. Preserve the raw wording, map it to the product spine, list overengineering risks, and produce a definition of done.
 - Before claiming a product fact, run or reference `pnpm rb:control:trace-claims` or `pnpm rb:memory:trace -- "claim"`.
-- If work-driver and memory disagree, report the disagreement instead of forcing the task.
+- If work-driver, memory, control-loop, and problem-packet outputs disagree, report the disagreement instead of forcing the task.
 - Treat generated memory/control outputs as evidence candidates, not canonical docs.
 - Terminal access is available in this environment when tools provide it; use terminal commands for verification instead of guessing.
 - Verify repo state, validation results, and generated outputs from terminal (`git status`, `git diff`, work-driver/doc commands, targeted tests) before claiming done.
@@ -83,6 +84,8 @@ Capability model: `docs/product/RED_BYTE_AGENT_CAPABILITY_MODEL.md`
 For Obsidian, memory, or traceability tasks, use `pnpm rb:memory:*` commands and never write to the vault unless explicitly authorized. The memory bridge is read-only for Obsidian in v0; it may generate indexes and reports only under gitignored `.redbyte/agent/` output paths.
 
 For agent-control-loop tasks, use `pnpm rb:control:next`, `pnpm rb:control:trace-claims`, and `pnpm rb:control:test`. Never let Obsidian memory or generated run files override current repo truth.
+
+For product-feedback or lost-in-translation tasks, use `pnpm rb:problem:doctor`, `pnpm rb:problem:intake`, `pnpm rb:problem:triage`, `pnpm rb:problem:trace`, and `pnpm rb:problem:prompt`. Never replace a simple complaint with a broad redesign.
 
 Local-agent execution contract:
 - Run `pnpm rb:agent:ollama:doctor` before any `rb:agent:next|review|doc-sync|handoff` command.

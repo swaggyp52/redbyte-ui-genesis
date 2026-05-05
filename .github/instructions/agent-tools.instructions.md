@@ -37,12 +37,16 @@ Default: phases 0-2 only. Do not promote to phase 3+ without explicit instructio
 - For local agent work, run the real commands: `pnpm rb:agent:ollama:doctor` (first), `pnpm rb:agent:context`, `pnpm rb:agent:next`, `pnpm rb:agent:review`, `pnpm rb:agent:doc-sync`, `pnpm rb:agent:handoff`.
 - For Obsidian/memory/traceability work, run the real commands: `pnpm rb:memory:doctor`, `pnpm rb:memory:index`, `pnpm rb:memory:search -- "query"`, `pnpm rb:memory:trace -- "claim"`, and any relevant synth/sync-plan/next-product-context/handoff command.
 - Before product work, run `pnpm rb:control:next`. Before broad product claims, run `pnpm rb:control:trace-claims` or a focused `pnpm rb:memory:trace -- "claim"`.
+- If the user describes a product issue in natural language, run `pnpm rb:problem:intake -- "<raw feedback>"` before implementation, then `pnpm rb:problem:triage`, `pnpm rb:problem:trace`, and `pnpm rb:problem:prompt` for ambiguous or product-facing work.
+- Problem intake must preserve raw wording, map the problem to the product spine, list overengineering risks, list do-not-build items, and produce a definition of done.
 - If work-driver output and memory output disagree, report the disagreement and prefer current repo truth plus recent commits.
+- If problem-packet output disagrees with work-driver or control-loop output, report the disagreement instead of forcing implementation.
 - Memory bridge v0 must not write to the Obsidian vault. It may write only generated indexes under `.redbyte/agent/memory/index/` and reports under `.redbyte/agent/runs/`.
 - If `pnpm rb:agent:ollama:doctor` fails, do not run `rb:agent:next`; fix Ollama/model health first or continue with manual prompts from `context-latest.md`.
 - Do not default to models that are not installed. Prefer installed small models and report the exact selected model tag.
 - Do not claim JSON support unless output is parseable JSON and includes required keys for the command.
 - Treat `.redbyte/agent/runs/*` outputs as generated evidence candidates, not canonical docs.
+- Treat `.redbyte/agent/runs/problems/*` outputs as generated problem packets, not canonical product truth.
 - Use terminal evidence to close claims: `git status --short`, `git diff --name-only`, validator/test output, and commit hash.
 - If command execution fails, report the exact command and the concrete failure output.
 

@@ -88,6 +88,7 @@ The bridge supports:
 - next-task grounding
 - handoff generation
 - control-loop input for `pnpm rb:control:next`
+- problem-intake evidence for `pnpm rb:problem:intake`
 
 The bridge does not:
 
@@ -161,6 +162,8 @@ Do not stage generated index or run files.
 | `pnpm rb:memory:handoff` | Generate a handoff from git state, control docs, and memory search. |
 
 For the complete pre-product-work packet, run `pnpm rb:control:next` after memory context generation. The control loop treats memory outputs as evidence candidates and reconciles them against work-driver state, git history, and current repo truth.
+
+For natural-language product feedback, run `pnpm rb:problem:intake -- "raw feedback"` first. Problem intake uses memory hits as supporting context only; Obsidian memory still cannot override current repo truth.
 
 ---
 

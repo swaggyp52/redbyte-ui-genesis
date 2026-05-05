@@ -49,6 +49,8 @@ For each changed file, categorize as:
 - If any command failed, is the exact command and error output recorded?
 - For local-agent changes, did `pnpm rb:agent:ollama:doctor` pass before `rb:agent:next`?
 - For control-loop or product-claim changes, did `pnpm rb:control:next` and `pnpm rb:control:trace-claims` run where relevant?
+- For product-feedback-driven changes, did `pnpm rb:problem:intake`, `pnpm rb:problem:triage`, `pnpm rb:problem:trace`, and `pnpm rb:problem:prompt` run before implementation?
+- Was the raw feedback preserved, and did the diff avoid replacing a simple complaint with a broad redesign?
 - Are generated memory/control reports treated as evidence candidates rather than canonical docs?
 - If JSON mode is claimed, is the produced output parseable JSON with required command keys?
 

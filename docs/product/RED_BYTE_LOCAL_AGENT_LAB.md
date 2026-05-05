@@ -31,6 +31,11 @@ The agent lab is **not** an autonomous code editor. It is a read-only analysis a
     memory/
       config.example.json    - Obsidian + Ollama memory bridge config template
       README.md              - Local memory directory rules
+    problem/
+      config.example.json    - Product problem intake config template
+      README.md              - Problem intake config rules
+    skills/
+      *.md                   - Durable RedByte agent skill prompts
     runs/                   - All run outputs (gitignored, contents excluded)
       context-latest.md
       next-prompt.md
@@ -81,6 +86,18 @@ Control-loop commands live beside the memory bridge:
 | `pnpm rb:control:next` | Reconciles work-driver output, memory context, git history, and product truth into one next-slice packet |
 | `pnpm rb:control:trace-claims` | Checks the canonical product claims against configured docs, likely code files, and expected tests/gates |
 | `pnpm rb:control:test` | Runs focused control-loop script tests |
+
+Problem-intake commands translate raw feedback before implementation:
+
+| Script | What it does |
+|--------|--------------|
+| `pnpm rb:problem:doctor` | Checks problem-intake config, output ignores, control/memory availability, dirty product files, Ollama availability, and no-write mode |
+| `pnpm rb:problem:intake -- "raw feedback"` | Preserves raw feedback and writes a source-backed product problem packet |
+| `pnpm rb:problem:triage` | Classifies the latest packet as implement-now, browser-audit, doc-reconcile, hardware-blocked, or possible known debt |
+| `pnpm rb:problem:trace` | Traces the latest packet to product claims, docs, code files, tests/gates, evidence gaps, and stale-memory risk |
+| `pnpm rb:problem:prompt` | Writes the bounded Codex execution prompt after intake, triage, and trace exist |
+| `pnpm rb:problem:close` | Writes post-implementation AI_STATE, docs, Obsidian sync, and evidence-update reminders |
+| `pnpm rb:problem:test` | Runs focused problem-intake tests |
 
 ---
 
@@ -239,6 +256,8 @@ The agent's `doc-sync` command generates a checklist of required Obsidian vault 
 The memory bridge extends this with read-only indexing and traceability. It can read configured vault Markdown notes and write generated reports to `.redbyte/agent/runs/`, but it still never writes to the vault in v0. See `docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md` and `docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md`.
 
 The control loop is the pre-product-work command layer that reconciles the work driver, memory bridge, git history, and canonical claim traces. See `docs/product/RED_BYTE_AGENT_CONTROL_LOOP.md`.
+
+The problem intake loop is the natural-language feedback layer. It must run before implementation when a user describes a product issue ambiguously, especially when the risk is overengineering, product drift, or workflow confusion. See `docs/product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md` and `docs/product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md`.
 
 Relevant vault nodes:
 - `01 Dashboard/RedByte Engineering Brain.md` - master entry point

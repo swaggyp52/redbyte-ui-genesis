@@ -47,6 +47,16 @@ The control loop prepares work. It does not perform product work.
 
 ---
 
+## Relationship To Problem Intake
+
+Use `pnpm rb:control:next` when choosing the next product slice from repo truth, work-driver state, memory, and git history.
+
+Use `pnpm rb:problem:intake -- "raw feedback"` when Connor describes a product problem in natural language. Problem intake preserves the raw wording, maps it to the product spine, lists overengineering risks, and writes a bounded Codex prompt before implementation starts.
+
+If problem intake and the control loop disagree, report the disagreement and prefer current repo truth plus recent commits. Do not force either generated output into product truth.
+
+---
+
 ## Commands
 
 ### `pnpm rb:control:next`
@@ -110,6 +120,15 @@ pnpm rb:memory:next-product-context
 pnpm rb:control:next
 pnpm rb:control:trace-claims
 git status --short
+```
+
+For ambiguous product feedback, run this before editing:
+
+```bash
+pnpm rb:problem:intake -- "raw feedback"
+pnpm rb:problem:triage
+pnpm rb:problem:trace
+pnpm rb:problem:prompt
 ```
 
 If the tree is dirty, classify the dirty files before continuing. Stop on unrelated product UI files.

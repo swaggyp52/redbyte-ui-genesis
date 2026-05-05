@@ -1,0 +1,8 @@
+config.json
+runs/**
+index/**
+*.json
+*.md
+!config.example.json
+!README.md
+!.gitignore

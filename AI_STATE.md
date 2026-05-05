@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(feedback): add product problem intake loop)
+
+**Subsystem:** `scripts/rb-product-feedback.mjs`, `rb:problem:*`, product feedback docs
+
+**Changes:**
+- Added a deterministic product problem intake loop that preserves Connor's raw feedback, maps it to the RedByte product spine, checks repo/memory evidence, and writes bounded problem packets under gitignored `.redbyte/agent/runs/problems/`.
+- Added durable RedByte agent skill prompts for product-intent interpretation, overengineering detection, spine mapping, traceability, Obsidian reconciliation, and Codex execution packet writing.
+- Added product feedback/problem-intake operating docs and concise Copilot/agent routing updates so ambiguous product complaints run through `rb:problem:*` before implementation.
+
+**Evidence:** `pnpm rb:problem:doctor` pass; `pnpm rb:problem:test` pass; sample intakes preserved raw feedback for Export duplicate heading, Map Pins action confusion, serious-workbench drift, and overengineering feedback; triage/trace/prompt outputs regenerated under gitignored `.redbyte/agent/runs/problems/`; `pnpm rb:work:status` reported only this slice dirty; `pnpm rb:control:next` pass and still recommends proof closure as board/manual-evidence gated; `pnpm rb:control:trace-claims` pass with 10/10 proven; `pnpm rb:memory:doctor` pass with keyword fallback warning because `all-minilm` is not installed; `pnpm rb:memory:test` pass; `pnpm rb:agent:ollama:doctor` pass with `qwen2.5-coder:1.5b`; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass; `git diff --check` clean. Problem outputs and memory/control run outputs confirmed gitignored.
+
+---
+
 ## Change Log 2026-05-05 (chore(control): add RedByte agent control loop)
 
 **Subsystem:** `scripts/rb-control-loop.mjs`, `rb:control:*`, product control docs
