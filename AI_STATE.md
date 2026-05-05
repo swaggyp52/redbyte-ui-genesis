@@ -1,5 +1,41 @@
 # AI State
 
+## Change Log 2026-05-04 (chore(agent): add local RedByte work driver)
+
+**Subsystem:** `scripts/rb-work-driver.mjs`, `package.json`, `docs/product/RED_BYTE_WORK_DRIVER.md`, `docs/DOC_INDEX.md`, `packages/rb-apps/src/__tests__/rb-work-driver.test.ts`
+
+**Context:** The RedByte control-pack now defines current truth, operating rules, work ordering, and repo/vault sync, but sessions still had to manually reconstruct the next safe slice from those docs. The goal of this batch is narrower than an autonomous agent: create a deterministic repo-local harness that reads the existing control docs, reads current git state, and emits bounded work guidance for Claude/Copilot without touching product surfaces or reaching for external services.
+
+**Changes:**
+- Added `scripts/rb-work-driver.mjs` as a dependency-free Node ESM work driver with three commands: `status`, `next`, and `close`.
+- Added package scripts: `pnpm rb:work:status`, `pnpm rb:work:next`, and `pnpm rb:work:close`.
+- `rb:work:status` now prints a Markdown status snapshot with branch, commit, dirty-tree summary, docs found/missing, queue preview, and the next safe task.
+- `rb:work:next` now generates `.redbyte/work/NEXT_WORK_PACKET.md` with a deterministic bounded packet: required docs, allowed and forbidden file patterns, validation commands, expected commit message, done criteria, handoff requirements, and a Claude/Copilot-ready prompt.
+- `rb:work:close` now generates `.redbyte/work/HANDOFF_DRAFT.md` with git status summary, changed-file list, validation checklist, AI_STATE / Session Log reminders, and a preserved manual-notes section.
+- Hardened the driver so it resolves the repo root from git, fails clearly when git commands or file writes fail, and blocks packet generation when required control docs are missing.
+- Added focused regression coverage in `packages/rb-apps/src/__tests__/rb-work-driver.test.ts` for queue parsing, profile selection, packet rendering, and section extraction helpers.
+- Added `docs/product/RED_BYTE_WORK_DRIVER.md` explaining what the driver is, what it is not, when to run each command, how it relates to the control docs, how it prevents stale-roadmap work, and the current v0 limitations.
+- Updated `docs/DOC_INDEX.md` so future sessions can route from the control pack to the work-driver guide.
+
+**Validation:**
+- `pnpm rb:work:status` -> pass
+- `pnpm rb:work:next` -> pass, wrote ignored local packet under `.redbyte/work/`
+- `pnpm rb:work:close` -> pass, wrote ignored local handoff draft under `.redbyte/work/`
+- `pnpm -w exec vitest run packages/rb-apps/src/__tests__/rb-work-driver.test.ts` -> pass (4/4)
+- `pnpm rb:doc:validate` -> pass (36 passed, 0 failed)
+- `git diff --check -- AI_STATE.md docs/DOC_INDEX.md docs/product/RED_BYTE_WORK_DRIVER.md package.json scripts/rb-work-driver.mjs packages/rb-apps/src/__tests__/rb-work-driver.test.ts` -> clean
+
+**Behavior preserved (verified by scope):** no product UI or runtime behavior changed; no control docs were replaced; no canonical docs are updated automatically by the driver; no staging, commit, or push automation was introduced.
+
+**Out of scope (intentionally not done):**
+- No LLM wrapper or external API integration.
+- No autonomous task execution.
+- No implementation of Project `F-P1` yet.
+- No edits to unrelated dirty worktree files.
+- No push.
+
+**Attribution:** Connor Angiel
+
 ## Change Log 2026-05-04 (docs(product): add RedByte development operating system)
 
 **Subsystem:** `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_AGENT_OPERATING_RULES.md`, `docs/product/RED_BYTE_WORK_QUEUE.md`, `docs/product/RED_BYTE_OBSIDIAN_SYNC_RULES.md`, `docs/DOC_INDEX.md`

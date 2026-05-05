@@ -48,6 +48,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_AGENT_OPERATING_RULES.md](./product/RED_BYTE_AGENT_OPERATING_RULES.md) | Canonical working rules for Claude/Copilot sessions |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term queue with done criteria and commit expectations |
 | [product/RED_BYTE_OBSIDIAN_SYNC_RULES.md](./product/RED_BYTE_OBSIDIAN_SYNC_RULES.md) | Boundary and sync rules between repo docs and the Obsidian vault |
+| [product/RED_BYTE_WORK_DRIVER.md](./product/RED_BYTE_WORK_DRIVER.md) | Local driver contract for turning the control docs and git state into bounded work packets |
 
 ---
 
