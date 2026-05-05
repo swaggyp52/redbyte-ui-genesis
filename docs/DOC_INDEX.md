@@ -49,6 +49,8 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term queue with done criteria and commit expectations |
 | [product/RED_BYTE_OBSIDIAN_SYNC_RULES.md](./product/RED_BYTE_OBSIDIAN_SYNC_RULES.md) | Boundary and sync rules between repo docs and the Obsidian vault |
 | [product/RED_BYTE_WORK_DRIVER.md](./product/RED_BYTE_WORK_DRIVER.md) | Local driver contract for turning the control docs and git state into bounded work packets |
+| [product/RED_BYTE_LOCAL_AGENT_LAB.md](./product/RED_BYTE_LOCAL_AGENT_LAB.md) | Spec and operating guide for the Ollama-backed local agent harness (phases 0–2 live) |
+| [product/RED_BYTE_AGENT_CAPABILITY_MODEL.md](./product/RED_BYTE_AGENT_CAPABILITY_MODEL.md) | Trust and capability model defining what agents are allowed to do and how trust is earned across phases |
 
 ---
 

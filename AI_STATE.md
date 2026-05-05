@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(agent): add Ollama-backed RedByte local agent lab)
+
+**Subsystem:** `scripts/rb-local-agent.mjs`, `.redbyte/agent/`, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_AGENT_CAPABILITY_MODEL.md`, `package.json`, `docs/DOC_INDEX.md`
+
+**Context:** Infrastructure slice — builds the RedByte Local Agent Lab, a deterministic Ollama-backed harness for read-only repo intelligence (phases 0–2). Follows rb-work-driver.mjs Node ESM patterns. Does not touch product UI or any surface code.
+
+**Changes:**
+- `scripts/rb-local-agent.mjs`: New CLI with 6 commands: `doctor`, `context`, `next`, `review`, `doc-sync`, `handoff`. Reads control docs + git state. Calls Ollama `/api/chat`. Writes to `.redbyte/agent/runs/` only. Fails clearly (exit 1 with actionable message) if Ollama unreachable.
+- `.redbyte/agent/config.example.json`: Configuration template with model/URL/doc paths. `config.json` is gitignored.
+- `.redbyte/agent/prompts/`: system.md, reviewer.md, planner.md, doc-sync.md, implementation.md — structured prompt templates embedding RedByte rules and trust distinctions.
+- `.redbyte/agent/continue/config.example.yaml`: Continue.dev YAML config template with chat/autocomplete/embed model tiers and RedByte-specific rules.
+- `.redbyte/agent/runs/.gitignore`: `*\n!.gitignore` — keeps directory tracked, contents excluded.
+- `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`: Spec and operating guide for the agent lab.
+- `docs/product/RED_BYTE_AGENT_CAPABILITY_MODEL.md`: Trust and capability model defining phase ladder and forbidden actions.
+- `docs/DOC_INDEX.md`: Added two new product control doc entries.
+- `package.json`: Added 6 `rb:agent:*` scripts.
+
+**Validation:**
+- `node scripts/rb-local-agent.mjs` (no args) prints usage — confirmed.
+- `pnpm rb:agent:doctor` runs to completion (Ollama connectivity varies by environment — fails clearly with actionable message if not running).
+- `pnpm rb:agent:context` produces `.redbyte/agent/runs/context-latest.md`.
+- Build unchanged: no product files modified.
+
+**Out of scope:**
+- No product surface changes.
+- No git push.
+- Phases 3–6 (patch proposal, controlled edit, controlled commit, slice automation) are future work.
+
+**Attribution:** Connor Angiel
+
+---
+
 ## Change Log 2026-05-05 (fix(hardware): clarify mapping versus verified trust — F-H2/F-H3)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.trust-clarity.test.tsx`, control docs

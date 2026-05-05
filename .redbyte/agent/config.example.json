@@ -1,0 +1,34 @@
+{
+  "_comment": "Copy this to config.json and fill in your local paths. config.json is gitignored.",
+  "defaultModel": "qwen2.5-coder:7b",
+  "ollamaBaseUrl": "http://localhost:11434",
+  "contextLength": 8192,
+  "temperature": 0.2,
+  "requiredSourceDocs": [
+    "AI_STATE.md",
+    "docs/ACTIVE_WORK.md",
+    "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+    "docs/product/RED_BYTE_AGENT_OPERATING_RULES.md",
+    "docs/product/RED_BYTE_WORK_QUEUE.md",
+    "docs/product/RED_BYTE_OBSIDIAN_SYNC_RULES.md"
+  ],
+  "forbiddenWritePaths": [
+    "packages/",
+    "apps/",
+    "services/",
+    "docs/",
+    "scripts/",
+    "*.ts",
+    "*.tsx",
+    "*.js",
+    "*.mjs",
+    "package.json",
+    "pnpm-workspace.yaml"
+  ],
+  "allowedRunOutputPaths": [
+    ".redbyte/agent/runs/"
+  ],
+  "obsidianVaultPath": "__FILL_IN__",
+  "workDriverPacket": ".redbyte/work/NEXT_WORK_PACKET.md",
+  "handoffDraft": ".redbyte/work/HANDOFF_DRAFT.md"
+}

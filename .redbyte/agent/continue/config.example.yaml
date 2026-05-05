@@ -1,0 +1,57 @@
+name: RedByte Local Agent
+version: 0.0.1
+schema: v1
+
+# Copy this to your Continue user config directory and adjust paths.
+# This file is a template — the active Continue config lives in the user config area.
+# See: https://docs.continue.dev/customize/model-providers/top-level/ollama
+
+models:
+  - name: RedByte Local Chat
+    provider: ollama
+    model: qwen2.5-coder:7b
+    roles:
+      - chat
+      - edit
+      - apply
+    defaultCompletionOptions:
+      temperature: 0.2
+      contextLength: 8192
+
+  - name: RedByte Local Autocomplete
+    provider: ollama
+    model: qwen2.5-coder:1.5b-base
+    roles:
+      - autocomplete
+    defaultCompletionOptions:
+      temperature: 0.1
+      contextLength: 4096
+
+  - name: RedByte Local Embeddings
+    provider: ollama
+    model: nomic-embed-text
+    roles:
+      - embed
+
+context:
+  - provider: file
+  - provider: code
+  - provider: diff
+  - provider: terminal
+  - provider: repo-map
+  - provider: folder
+  - provider: search
+
+rules:
+  - Always read RedByte control docs (RED_BYTE_CURRENT_TRUTH.md, ACTIVE_WORK.md, AI_STATE.md) before proposing changes.
+  - Never treat stale OS-era docs (docs/00-canon/00-08-*.md, STUDENT_WORKFLOW.md, IMPLEMENTATION_STATUS.md) as current truth.
+  - Never claim completion without git diff, passing tests, gates, and commit.
+  - Never confuse mapped hardware (physical pin assignment) with verified/trusted (Verify comparison evidence exists).
+  - Never confuse draft export with trusted export.
+  - Preserve NEEDS REVIEW chip logic — it must always name a specific fix path, not generic copy.
+  - Use one focused commit per slice. Stage only the active slice's files.
+  - Do not push without explicit user confirmation.
+  - Use pnpm, never npm install.
+  - TypeScript strict mode — no any except legacy fixtures with explicit comment.
+  - Connection shape: nested from.portName/to.portName — flat shape is never valid.
+  - Port names must match Basys3 XDC exactly: SW{N}, LD{N}, BTN{N}, CLK100MHZ.
