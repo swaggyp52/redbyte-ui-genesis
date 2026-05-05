@@ -814,6 +814,87 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         return handoffTruth.title;
     }
   }, [evidenceDiagnostics, handoffTruth.condition, handoffTruth.title, unmappedRequiredPorts.length, viewModel.errors]);
+
+    /** Summary-state title: names what export tier is available (F-E1 fix: distinct from next-action) */
+    const summaryStateTitle = useMemo(() => {
+      if (downloadDone) return `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`;
+    
+      switch (handoffTruth.condition) {
+        case 'mapping-incomplete':
+        case 'design-blocked':
+        case 'verify-not-run':
+        case 'verify-stale':
+        case 'assertions-differ':
+        case 'trace-only':
+          return 'Draft export available';
+        case 'export-stale':
+        case 'export-missing':
+          return 'Export ready to build';
+        case 'mapping-review':
+          return 'Export ready - mapping review pending';
+        case 'ready':
+          return 'Trusted export ready';
+        default:
+          return 'Export status';
+      }
+    }, [downloadDone, handoffTruth.condition, projectSlug]);
+
+    /** Next-action title: names the specific repair/build action (F-E2 fix: distinct from summary-state) */
+    const nextActionTitleDistinct = useMemo(() => {
+      if (downloadDone) return `Open ${projectSlug}.xpr in Vivado to continue your build.`;
+    
+      switch (handoffTruth.condition) {
+        case 'mapping-incomplete':
+          return 'Open Map Pins and finish required signal bindings';
+        case 'design-blocked':
+          return 'Fix blocking design issues in Project or Design';
+        case 'verify-not-run':
+          return 'Open Verify to create trusted export evidence';
+        case 'verify-stale':
+          return 'Rerun Verify to refresh evidence for the current design';
+        case 'assertions-differ':
+          return 'Debug and fix failing assertions in Design';
+        case 'trace-only':
+          return 'Run Compare checks in Verify to generate comparison evidence';
+        case 'export-stale':
+          return 'Rebuild the current bundle';
+        case 'export-missing':
+          return 'Build the first Vivado package';
+        case 'mapping-review':
+          return 'Complete mapping review in Map Pins, then build';
+        case 'ready':
+          return 'Download trusted Vivado package and program board';
+        default:
+          return handoffTruth.title;
+      }
+    }, [downloadDone, handoffTruth.condition, handoffTruth.title, projectSlug]);
+
+    /** Next-action detail: explains how to accomplish the next action */
+    const nextActionDetailDistinct = useMemo(() => {
+      if (downloadDone) return 'Unzip the exported project folder and open the .xpr file. Run Flow → Generate Bitstream to build for Basys3.';
+    
+      switch (handoffTruth.condition) {
+        case 'mapping-incomplete':
+        case 'mapping-review':
+          return 'Assign all required output/input signals to board controls (Switches, LEDs, Buttons, 7-Segment).';
+        case 'design-blocked':
+        case 'export-stale':
+        case 'export-missing':
+          return handoffTruth.message;
+        case 'verify-not-run':
+          return 'Switch to Verify, author or generate test stimulus, and run Compare checks to lock in expected behavior.';
+        case 'verify-stale':
+          return 'Return to Verify and run Compare checks again to validate the design against the current testbench.';
+        case 'assertions-differ':
+          return 'Return to Design and adjust your circuit logic to match the expected behavior you defined in Verify.';
+        case 'trace-only':
+          return 'Return to Verify and execute Compare checks (not Observe only) to generate assertion-based proof.';
+        case 'ready':
+          return 'The export bundle is ready for Vivado synthesis. Download the kit and open the project file.';
+        default:
+          return handoffTruth.message;
+      }
+    }, [downloadDone, handoffTruth.condition, handoffTruth.message, projectSlug]);
   const primaryHandoffDisabled =
     (handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
       handoffTruth.primaryCtaIntent === 're-export-current-bundle')
@@ -828,10 +909,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     handoffTruth.primaryCtaIntent !== 're-export-current-bundle';
   const nextActionTitle = downloadDone
     ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
-    : handoffTruth.title;
+      : nextActionTitleDistinct;
   const nextActionDetail = downloadDone
     ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
-    : handoffTruth.message;
+      : nextActionDetailDistinct;
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
   const projectDownloadLabel = isRebuilding
@@ -869,7 +950,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : 'Download Vivado Kit';
   const dominantActionTitle = downloadDone
     ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
-    : handoffTruth.title;
+      : summaryStateTitle;
   const dominantActionDetail = downloadDone
     ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
     : handoffTruth.message;

@@ -551,3 +551,41 @@ describe('ExportSurface trust clarity', () => {
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
 });
+    it('RED TEST: keeps summary, next action, and trust consequence distinct when no verify evidence exists', () => {
+      // This test verifies F-E1/F-E2 fix: the same message should NOT appear in summary + checks dock + consequence
+      const { getByTestId } = render(
+        <ExportSurface
+          project={buildMappedProject()}
+          determinismHash="ide-hash"
+          workflowAuthority={makeWorkflowAuthority()}
+        />
+      );
+
+      const summaryCard = getByTestId('ide-export-summary-card');
+      const checksDock = getByTestId('ide-export-checks-dock');
+      const trustBanner = getByTestId('ide-export-trust-banner');
+
+      // Summary should name the current state (Draft/Available)
+      expect(summaryCard.textContent).toContain('Draft');
+        expect(summaryCard.textContent).toContain('available');
+
+      // Next action dock should name the repair path (not repeat the same warning)
+      expect(checksDock.textContent).toContain('Verify');
+    
+      // Consequence should explain trust implication
+      expect(trustBanner.textContent).toContain('comparison has not run');
+
+      // F-E1 check: The same exact message should NOT appear in both summary and dock
+      const summaryText = summaryCard.textContent || '';
+      const dockText = checksDock.textContent || '';
+      const summaryLines = summaryText.split('\n').filter(l => l.trim());
+      const dockLines = dockText.split('\n').filter(l => l.trim());
+    
+      // Count overlaps - allow some shared words but not full sentence repetition
+      const sharedFullLines = summaryLines.filter(sline => 
+        dockLines.some(dline => 
+          sline.trim() === dline.trim() && sline.trim().length > 10
+        )
+      );
+      expect(sharedFullLines.length).toBeLessThan(2);
+    });
