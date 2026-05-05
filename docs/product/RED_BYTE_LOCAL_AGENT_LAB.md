@@ -74,6 +74,14 @@ Memory bridge commands live beside the local-agent harness:
 | `pnpm rb:memory:next-product-context` | Produces a context pack for the next product slice |
 | `pnpm rb:memory:handoff` | Produces a memory-backed handoff |
 
+Control-loop commands live beside the memory bridge:
+
+| Script | What it does |
+|--------|--------------|
+| `pnpm rb:control:next` | Reconciles work-driver output, memory context, git history, and product truth into one next-slice packet |
+| `pnpm rb:control:trace-claims` | Checks the canonical product claims against configured docs, likely code files, and expected tests/gates |
+| `pnpm rb:control:test` | Runs focused control-loop script tests |
+
 ---
 
 ## Configuration
@@ -229,6 +237,8 @@ The agent reads these docs on every run (where applicable):
 The agent's `doc-sync` command generates a checklist of required Obsidian vault updates after each implementation slice. It does not write to the vault directly (Phase 1 is read-only). Vault write capability is a Phase 4+ concern.
 
 The memory bridge extends this with read-only indexing and traceability. It can read configured vault Markdown notes and write generated reports to `.redbyte/agent/runs/`, but it still never writes to the vault in v0. See `docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md` and `docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md`.
+
+The control loop is the pre-product-work command layer that reconciles the work driver, memory bridge, git history, and canonical claim traces. See `docs/product/RED_BYTE_AGENT_CONTROL_LOOP.md`.
 
 Relevant vault nodes:
 - `01 Dashboard/RedByte Engineering Brain.md` - master entry point

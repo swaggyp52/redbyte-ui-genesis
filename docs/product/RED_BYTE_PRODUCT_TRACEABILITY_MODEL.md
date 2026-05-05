@@ -120,7 +120,10 @@ Use the memory bridge trace command for source-backed reports:
 
 ```bash
 pnpm rb:memory:trace -- "Map Pins does not replace Verify proof"
+pnpm rb:control:trace-claims
 ```
+
+`rb:control:trace-claims` checks the canonical claim set in `.redbyte/agent/memory/product-claims.example.json` so the main product promises can be reviewed as a batch before a slice starts.
 
 The command writes `.redbyte/agent/runs/trace-latest.md` and never writes to the Obsidian vault.
 

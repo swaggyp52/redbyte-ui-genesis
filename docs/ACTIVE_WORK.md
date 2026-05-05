@@ -106,8 +106,8 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 | Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
 | Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
 | Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |
-| Done | Project next-action semantics (F-P1): Project card status framing follows Verify-first CTA when Verify is required next step | `pending` |
-| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback, invalid-mode hardening in IdeApp, startup regression tests | `pending` |
+| Done | Project next-action semantics (F-P1): Project card status framing follows Verify-first CTA when Verify is required next step | `34e07ab7` |
+| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback, invalid-mode hardening in IdeApp, startup regression tests | `739adab5` |
 
 ---
 

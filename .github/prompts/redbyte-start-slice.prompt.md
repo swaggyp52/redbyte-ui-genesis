@@ -9,6 +9,7 @@ Use this prompt to begin a bounded RedByte implementation slice. Run it at the s
 ```
 pnpm rb:work:status
 pnpm rb:work:next
+pnpm rb:control:next
 git status --short
 git log --oneline -3
 ```
@@ -23,6 +24,7 @@ Terminal-first rule:
 - If a command fails, include the exact command and failure output in the report.
 - Do not claim completion without terminal-backed evidence and a commit hash.
 - For local-agent/Ollama work, run `pnpm rb:agent:ollama:doctor` first; if it fails, do not run `pnpm rb:agent:next`.
+- If `rb:work:next`, `rb:memory:next-product-context`, and `rb:control:next` disagree, report the disagreement and prefer current repo truth plus recent commits.
 
 ## Required docs - read before any implementation
 
@@ -32,11 +34,13 @@ docs/ACTIVE_WORK.md
 docs/product/RED_BYTE_CURRENT_TRUTH.md
 docs/product/RED_BYTE_AGENT_OPERATING_RULES.md
 .redbyte/work/NEXT_WORK_PACKET.md
+.redbyte/agent/runs/control-next-latest.md
 ```
 
 ## Slice implementation rules
 
 1. Implement only what `.redbyte/work/NEXT_WORK_PACKET.md` recommends.
+1. Reconcile that packet against `.redbyte/agent/runs/control-next-latest.md` before editing.
 2. Write tests before behaviour changes (TDD - RED then GREEN).
 3. Touch only files in the `Allowed files/patterns` list from the work packet.
 4. Do not touch `Forbidden files/patterns` from the work packet.

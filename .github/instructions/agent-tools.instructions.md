@@ -36,10 +36,13 @@ Default: phases 0-2 only. Do not promote to phase 3+ without explicit instructio
 - This environment provides terminal access when tools are enabled; use it for real checks instead of assumptions.
 - For local agent work, run the real commands: `pnpm rb:agent:ollama:doctor` (first), `pnpm rb:agent:context`, `pnpm rb:agent:next`, `pnpm rb:agent:review`, `pnpm rb:agent:doc-sync`, `pnpm rb:agent:handoff`.
 - For Obsidian/memory/traceability work, run the real commands: `pnpm rb:memory:doctor`, `pnpm rb:memory:index`, `pnpm rb:memory:search -- "query"`, `pnpm rb:memory:trace -- "claim"`, and any relevant synth/sync-plan/next-product-context/handoff command.
+- Before product work, run `pnpm rb:control:next`. Before broad product claims, run `pnpm rb:control:trace-claims` or a focused `pnpm rb:memory:trace -- "claim"`.
+- If work-driver output and memory output disagree, report the disagreement and prefer current repo truth plus recent commits.
 - Memory bridge v0 must not write to the Obsidian vault. It may write only generated indexes under `.redbyte/agent/memory/index/` and reports under `.redbyte/agent/runs/`.
 - If `pnpm rb:agent:ollama:doctor` fails, do not run `rb:agent:next`; fix Ollama/model health first or continue with manual prompts from `context-latest.md`.
 - Do not default to models that are not installed. Prefer installed small models and report the exact selected model tag.
 - Do not claim JSON support unless output is parseable JSON and includes required keys for the command.
+- Treat `.redbyte/agent/runs/*` outputs as generated evidence candidates, not canonical docs.
 - Use terminal evidence to close claims: `git status --short`, `git diff --name-only`, validator/test output, and commit hash.
 - If command execution fails, report the exact command and the concrete failure output.
 

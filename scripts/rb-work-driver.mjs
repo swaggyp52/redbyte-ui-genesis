@@ -398,6 +398,26 @@ function listItems(markdown, heading) {
     .map((line) => line.slice(2).trim());
 }
 
+function detectRecommendedBlockers(recommendedItem, docs) {
+  const text = `${recommendedItem.slice} ${recommendedItem.why}`.toLowerCase();
+  const active = `${docs.activeWork.content}\n${docs.currentTruth.content}`.toLowerCase();
+  const blockers = [];
+
+  if (text.includes('proof closure') && (
+    active.includes('requires manual board observation') ||
+    active.includes('connected bench session') ||
+    active.includes('keep the board on the active row')
+  )) {
+    blockers.push('This queue item is blocked on manual Basys3 board observation/E3 evidence until a connected bench session is available.');
+  }
+
+  if (active.includes('build:unified') && active.includes('dist') && text.includes('proof')) {
+    blockers.push('`build:unified` still has a Windows `dist/` lock caveat; do not present root build handoff as fully solved.');
+  }
+
+  return blockers;
+}
+
 function timestamp() {
   const value = new Date();
   const year = value.getFullYear();
@@ -518,6 +538,7 @@ function buildContext() {
   const profile = resolveProfile(recommendedItem);
   const thesis = normalizeInlineCode(firstParagraph(docs.currentTruth.content, '2. Current product thesis'));
   const blockers = listItems(docs.currentTruth.content, '4. Current live blockers');
+  const recommendedBlockers = detectRecommendedBlockers(recommendedItem, docs);
 
   return {
     branch: currentBranch(),
@@ -532,6 +553,7 @@ function buildContext() {
     profile,
     thesis,
     blockers,
+    recommendedBlockers,
   };
 }
 
@@ -621,6 +643,9 @@ function buildStatusMarkdown(context) {
     `- Recommended item: ${context.recommendedItem.slice}`,
     `- Why: ${normalizeInlineCode(context.recommendedItem.why)}`,
     `- Expected commit type: ${context.recommendedItem.expectedCommitType}`,
+    ...(context.recommendedBlockers.length > 0
+      ? ['', '## Recommended item blockers', '', markdownList(context.recommendedBlockers)]
+      : []),
     '',
     '## Dirty files',
     '',
@@ -684,6 +709,9 @@ function buildNextPacketMarkdown(context) {
     `- Slice: ${context.recommendedItem.slice}`,
     `- Why now: ${normalizeInlineCode(context.recommendedItem.why)}`,
     `- Source docs: ${normalizeInlineCode(context.recommendedItem.sourceDocs)}`,
+    ...(context.recommendedBlockers.length > 0
+      ? ['', '## Current blocker / constraint', '', markdownList(context.recommendedBlockers)]
+      : []),
     '',
     '## Required docs to read first',
     '',

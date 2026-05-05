@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(control): add RedByte agent control loop)
+
+**Subsystem:** `scripts/rb-control-loop.mjs`, `rb:control:*`, product control docs
+
+**Changes:**
+- Added `pnpm rb:control:next`, `pnpm rb:control:trace-claims`, and `pnpm rb:control:test` for a deterministic next-slice control loop before product work starts.
+- Added canonical product-claim config at `.redbyte/agent/memory/product-claims.example.json` and generated trace reports under gitignored `.redbyte/agent/runs/`.
+- Reconciled stale queue truth so the completed curated learning path and Project F-P1 work no longer drive `rb:work:next`; proof closure is now reported as board/manual-evidence gated when applicable.
+- Added `docs/product/RED_BYTE_AGENT_CONTROL_LOOP.md` and concise Copilot/agent routing updates.
+
+**Evidence:** `pnpm rb:work:status` pass; `pnpm rb:work:next` wrote ignored packet; `pnpm rb:agent:ollama:doctor` pass with `qwen2.5-coder:1.5b`; `pnpm rb:memory:doctor` pass with keyword fallback warning because `all-minilm` is not installed; `pnpm rb:memory:test` pass; `pnpm rb:memory:index` wrote 98 sources / 1260 chunks / 0 embeddings; `pnpm rb:memory:search -- "RedByte product truth"` used keyword mode; `pnpm rb:memory:trace -- "Map Pins does not replace Verify proof"` wrote structured trace; `pnpm rb:memory:next-product-context` and `pnpm rb:memory:sync-plan` wrote structured reports; `pnpm rb:control:test`, `pnpm rb:control:next`, and `pnpm rb:control:trace-claims` pass; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass; `git diff --check` clean; generated run/index/work files confirmed gitignored.
+
+---
+
 ## Change Log 2026-05-05 (chore(memory): add Obsidian product traceability bridge)
 
 **Subsystem:** `scripts/rb-obsidian-memory.mjs`, `.redbyte/agent/memory/`, product memory docs

@@ -48,6 +48,8 @@ For each changed file, categorize as:
 - Are claims backed by terminal output (not assumptions)?
 - If any command failed, is the exact command and error output recorded?
 - For local-agent changes, did `pnpm rb:agent:ollama:doctor` pass before `rb:agent:next`?
+- For control-loop or product-claim changes, did `pnpm rb:control:next` and `pnpm rb:control:trace-claims` run where relevant?
+- Are generated memory/control reports treated as evidence candidates rather than canonical docs?
 - If JSON mode is claimed, is the produced output parseable JSON with required command keys?
 
 ## Step 5 - Identify risky broad edits

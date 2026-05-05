@@ -55,6 +55,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md](./product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md) | Curated student learning path through existing examples — curation spec, no new circuits |
 | [product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md](./product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md) | Repo-local Obsidian + Ollama memory bridge operating guide for indexing, search, traceability, sync plans, and next-product context |
 | [product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md](./product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md) | Claim-to-docs/code/tests/gates evidence model for RedByte product traceability |
+| [product/RED_BYTE_AGENT_CONTROL_LOOP.md](./product/RED_BYTE_AGENT_CONTROL_LOOP.md) | Practical control-loop command layer that reconciles work-driver, memory, git history, and traceability before product work starts |
 
 ---
 

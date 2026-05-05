@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-04
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -95,6 +95,8 @@ Supporting truths:
 - Import now routes to Design after a successful project import.
 - Project first-load black-screen issue (`F-P2`) is resolved.
 - Project next-action semantics (`F-P1`) now keep Verify as the dominant story when Verify is the required next step.
+- Curated learning path is resolved: commit `13d77a3b` adds the six-step guided path and `006a208c` wires it through IDE props.
+- Product-visible debug chrome toggles are hidden from main IDE surfaces by default: commit `eb3cf578`.
 - Map Pins `F-H2` / `F-H3` mapping guide collapses when complete; hint names the specific Verify action when evidence is advisory — resolved 2026-05-05 commit `aeda6bc4`.
 - Broad Verify redesign is not the current roadmap; preserve current locked truths and fix narrow contradictions instead.
 
@@ -102,9 +104,9 @@ Supporting truths:
 
 ## 6. Default next move after this control pass
 
-If the working tree is understood and isolated, the first real implementation slice is:
+If the working tree is understood and isolated, the first real product priority is:
 
-1. Curate starter and example learning path
-2. Finish honest proof closure: `golden` E3, custom-row E2/E3, certification matrix
+1. Finish honest proof closure: `golden` E3, custom-row E2/E3, certification matrix.
+2. If the connected bench is unavailable, run `pnpm rb:control:next` and use its source-backed packet to choose the next non-bench product slice without reopening completed queue items.
 
-Do not skip to website, pilot, or broad example expansion while proof closure and workflow-language contradictions remain open.
+Do not skip to website, pilot, broad example expansion, or stale learning-path work while proof closure remains open or board-gated.

@@ -1,0 +1,239 @@
+{
+  "_comment": "Canonical RedByte product claims for rb:control:trace-claims. This is an agent-control config, not an Obsidian truth source.",
+  "claims": [
+    {
+      "id": "rb-spine-001",
+      "statement": "RedByte workflow spine is Project -> Design -> Verify -> Map Pins / Hardware -> Export.",
+      "product_area": "workflow",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+        "docs/product/RED_BYTE_STUDIO_PRODUCT_BRIEF.md",
+        "docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md",
+        "docs/ide/00-ide-layout.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/IdeApp.tsx",
+        "packages/rb-apps/src/apps/ide/workflowStages.ts",
+        "packages/rb-apps/src/apps/ide/components/IdeLeftRail.tsx"
+      ],
+      "expected_tests_gates": [
+        "pnpm ide:gate:route-contract",
+        "pnpm ide:gate:student-loop-contract",
+        "tests/e2e/ide-surface-baselines.spec.ts"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Historical docs may still describe OS-era shells or non-IDE workflows."
+    },
+    {
+      "id": "rb-export-001",
+      "statement": "Draft Export is not the same as Trusted Export.",
+      "product_area": "export",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+        "docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md",
+        "docs/ide/04-export.md",
+        "docs/manuals/RedByte_Product_Manual.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts",
+        "packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx",
+        "packages/rb-apps/src/apps/ide/projectHealth.ts"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx",
+        "pnpm ide:gate:export-ready-contract",
+        "pnpm ide:gate:export-blockers-contract"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Older notes may call any downloadable package ready without the Draft/Trusted distinction."
+    },
+    {
+      "id": "rb-export-002",
+      "statement": "Trusted Export requires current Verify evidence.",
+      "product_area": "verify-export",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+        "docs/contracts/RedByte_Product_Contract.md",
+        "docs/ide/03-verify.md",
+        "docs/ide/04-export.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts",
+        "packages/rb-apps/src/apps/ide/projectRuntime.ts",
+        "packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx",
+        "packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts",
+        "pnpm ide:gate:export-ready-contract"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Aspirational or stale docs may imply mapping or export alone proves behavior."
+    },
+    {
+      "id": "rb-hardware-001",
+      "statement": "Map Pins does not replace Verify proof.",
+      "product_area": "hardware",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+        "docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md",
+        "docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md",
+        "docs/ide/SURFACE_CONFORMANCE.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx",
+        "packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx",
+        "packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.trust-clarity.test.tsx",
+        "packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx",
+        "pnpm ide:gate:hardware-checklist-contract",
+        "pnpm ide:gate:student-loop-contract"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Notes about board mapping may overstate physical binding as behavioral proof."
+    },
+    {
+      "id": "rb-chrome-001",
+      "statement": "Debug chrome is hidden from product surfaces by default.",
+      "product_area": "ide-shell",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "AI_STATE.md",
+        "docs/ACTIVE_WORK.md",
+        "docs/IDE_PRODUCT_DEBT_REGISTER.md",
+        "docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/components/IdeWorkbenchShell.tsx"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx",
+        "pnpm ide:gate:shell-chrome-contract",
+        "pnpm --filter @redbyte/playground build"
+      ],
+      "minimum_evidence_level": "L2",
+      "stale_memory_risk": "Older audits list developer toggles as open; current commits hide product-visible debug chrome."
+    },
+    {
+      "id": "rb-learning-001",
+      "statement": "Curated learning path exists but is an entry path, not the product center.",
+      "product_area": "examples",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "AI_STATE.md",
+        "docs/ACTIVE_WORK.md",
+        "docs/product/RED_BYTE_STUDIO_PRODUCT_BRIEF.md",
+        "docs/product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/examplesCatalog.ts",
+        "packages/rb-apps/src/apps/ide/labStarters.ts",
+        "packages/rb-apps/src/apps/ide/components/ProjectSurfacePrimitives.tsx"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/examplesCatalog.learningPath.test.ts",
+        "packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx",
+        "pnpm --filter @redbyte/playground build"
+      ],
+      "minimum_evidence_level": "L2",
+      "stale_memory_risk": "Classroom/lab notes may treat examples as the center of the product."
+    },
+    {
+      "id": "rb-import-001",
+      "statement": "Import is a utility, not the main workflow.",
+      "product_area": "import",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_CURRENT_TRUTH.md",
+        "docs/product/RED_BYTE_STUDIO_PRODUCT_BRIEF.md",
+        "docs/ide/05-import.md",
+        "docs/manuals/RedByte_Product_Manual.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx",
+        "packages/rb-apps/src/apps/IdeApp.tsx"
+      ],
+      "expected_tests_gates": [
+        "pnpm ide:gate:import-renders-schematic",
+        "pnpm ide:gate:import-actionable-targets-contract",
+        "pnpm ide:gate:zip-import-contract"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Older import or ZIP notes may overstate Import as the default workflow."
+    },
+    {
+      "id": "rb-vivado-001",
+      "statement": "Vivado is the downstream professional tool, not something RedByte replaces.",
+      "product_area": "export",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_STUDIO_PRODUCT_BRIEF.md",
+        "docs/contracts/RedByte_Product_Contract.md",
+        "docs/manuals/RedByte_Product_Manual.md",
+        "docs/ide/04-export.md"
+      ],
+      "likely_code_files": [
+        "packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx",
+        "packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts"
+      ],
+      "expected_tests_gates": [
+        "packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx",
+        "pnpm ide:gate:export-download-contract",
+        "pnpm ide:gate:vivado-pack-contract"
+      ],
+      "minimum_evidence_level": "L3",
+      "stale_memory_risk": "Marketing or planning notes may imply RedByte replaces Vivado."
+    },
+    {
+      "id": "rb-trace-001",
+      "statement": "Product claims must be backed by docs, code, tests, and evidence level.",
+      "product_area": "traceability",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md",
+        "docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md",
+        "docs/product/RED_BYTE_AGENT_OPERATING_RULES.md"
+      ],
+      "likely_code_files": [
+        "scripts/rb-obsidian-memory.mjs",
+        "scripts/rb-control-loop.mjs"
+      ],
+      "expected_tests_gates": [
+        "pnpm rb:memory:test",
+        "pnpm rb:control:test",
+        "pnpm rb:control:trace-claims"
+      ],
+      "minimum_evidence_level": "L2",
+      "stale_memory_risk": "Generated reports can look authoritative even though they are evidence candidates."
+    },
+    {
+      "id": "rb-memory-001",
+      "statement": "Generated agent/memory outputs must not become product truth.",
+      "product_area": "agent-control",
+      "current_expected_status": "implemented",
+      "primary_source_docs": [
+        "docs/product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md",
+        "docs/product/RED_BYTE_OBSIDIAN_SYNC_RULES.md",
+        ".redbyte/agent/memory/config.example.json",
+        ".redbyte/agent/memory/.gitignore"
+      ],
+      "likely_code_files": [
+        "scripts/rb-obsidian-memory.mjs",
+        "scripts/rb-control-loop.mjs"
+      ],
+      "expected_tests_gates": [
+        "pnpm rb:memory:doctor",
+        "pnpm rb:memory:test",
+        "pnpm rb:control:test"
+      ],
+      "minimum_evidence_level": "L2",
+      "stale_memory_risk": "Agents may cite generated runs as canonical unless instructions route them back to repo docs."
+    }
+  ]
+}

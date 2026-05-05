@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-04
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: deterministic local work-driver guide for RedByte agent sessions
@@ -66,6 +66,7 @@ It reports:
 - source-of-truth docs found vs missing
 - the top queue items from `RED_BYTE_WORK_QUEUE.md`
 - the next safe task for the current repo state
+- manual/hardware blocker notes when proof closure is recommended but current docs say final evidence requires a connected bench
 
 If the working tree is dirty, this command warns and treats worktree reconciliation as the next safe coordination slice.
 
@@ -172,6 +173,7 @@ Version 0 is intentionally simple.
 - The driver writes local Markdown only; it does not mutate canonical docs automatically.
 - `.redbyte/work/` is created on demand and is ignored by git.
 - Dirty-tree reconciliation is advisory in v0; the driver reports it but does not resolve it for you.
+- Board-gated proof closure is advisory in v0; the driver reports the blocker but does not invent hardware evidence or skip the queue by itself.
 - The handoff draft is a scaffold, not a release signoff.
 
 That is enough for v0. The point is bounded repeatability, not autonomy theater.

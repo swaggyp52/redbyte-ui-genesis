@@ -87,6 +87,7 @@ The bridge supports:
 - sync plans
 - next-task grounding
 - handoff generation
+- control-loop input for `pnpm rb:control:next`
 
 The bridge does not:
 
@@ -158,6 +159,8 @@ Do not stage generated index or run files.
 | `pnpm rb:memory:trace -- "claim"` | Produce a claim-to-docs/code/tests/gates traceability report. |
 | `pnpm rb:memory:next-product-context` | Generate a source-backed context pack for the next product slice. |
 | `pnpm rb:memory:handoff` | Generate a handoff from git state, control docs, and memory search. |
+
+For the complete pre-product-work packet, run `pnpm rb:control:next` after memory context generation. The control loop treats memory outputs as evidence candidates and reconciles them against work-driver state, git history, and current repo truth.
 
 ---
 
