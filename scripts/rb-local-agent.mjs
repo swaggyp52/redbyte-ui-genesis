@@ -466,32 +466,32 @@ async function cmdDoctor() {
       );
     }
 
-    const jsonReply = await ollamaChat(
-      'Return only valid JSON. No prose.',
-      'Return exactly this object: {"ok":true,"name":"redbyte"}',
-      { forceJson: true }
-    );
-    let parsedJson;
+    // JSON smoke is advisory: warn-not-fatal so doctor exits 0 when markdown works.
+    // rb:agent:next with REDBYTE_AGENT_FORMAT=json still hard-fails on invalid JSON.
     try {
-      parsedJson = JSON.parse(jsonReply);
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      fatal(
-        `Ollama JSON smoke test returned invalid JSON for ${ACTIVE_MODEL}.\n` +
-        `  Reason: ${reason}\n` +
-        `  Raw: ${jsonReply.slice(0, 200)}`
+      const jsonReply = await ollamaChat(
+        'Return only valid JSON. No prose.',
+        'Return exactly this object: {"ok":true,"name":"redbyte"}',
+        { forceJson: true }
       );
+      let parsedJson;
+      try {
+        parsedJson = JSON.parse(jsonReply);
+      } catch {
+        info(`[warn] JSON smoke: invalid JSON from ${ACTIVE_MODEL} — markdown mode works; use REDBYTE_AGENT_FORMAT=markdown for reliable output.`);
+        parsedJson = null;
+      }
+      if (parsedJson !== null) {
+        if (parsedJson?.ok !== true || parsedJson?.name !== 'redbyte') {
+          info(`[warn] JSON smoke: unexpected payload from ${ACTIVE_MODEL} — markdown mode works; REDBYTE_AGENT_FORMAT=json may produce junk for this model.`);
+        } else {
+          info('[ok] Ollama JSON smoke test passed.');
+        }
+      }
+    } catch (jsonErr) {
+      const jsonReason = jsonErr instanceof Error ? jsonErr.message : String(jsonErr);
+      info(`[warn] JSON smoke: request failed (${jsonReason.slice(0, 120)}) — markdown mode works.`);
     }
-
-    if (parsedJson?.ok !== true || parsedJson?.name !== 'redbyte') {
-      fatal(
-        `Ollama JSON smoke test returned unexpected payload for ${ACTIVE_MODEL}.\n` +
-        `  Expected: {"ok":true,"name":"redbyte"}\n` +
-        `  Got: ${jsonReply.slice(0, 200)}`
-      );
-    }
-
-    info('[ok] Ollama JSON smoke test passed.');
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     if (reason.includes('memory layout cannot be allocated')) {

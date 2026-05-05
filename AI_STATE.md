@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(agent): doctor JSON smoke is warn-not-fatal)
+
+**Subsystem:** `scripts/rb-local-agent.mjs`
+
+**Changes:**
+- `cmdDoctor` JSON smoke test is now advisory: logs `[warn]` and continues if JSON mode fails, instead of calling `fatal()`. Doctor exits 0 as long as markdown smoke passes.
+- `rb:agent:next` with `REDBYTE_AGENT_FORMAT=json` still hard-fails on invalid JSON / missing required keys (unchanged).
+
+**Terminal evidence:**
+- `qwen2.5-coder:1.5b` confirmed installed and resolves as default via auto-select.
+- `pnpm rb:agent:ollama:doctor` → all `[ok]` including JSON smoke (exit 0).
+- `pnpm rb:agent:next` markdown mode → valid output (exit 0).
+- `pnpm rb:agent:next` JSON mode → valid JSON with all required keys (exit 0).
+- `git diff --check` → clean.
+
+---
+
 ## Change Log 2026-05-05 (fix(agent): make Ollama health checks deterministic)
 
 **Subsystem:** `scripts/rb-local-agent.mjs`, `scripts/rb-encoding-check.mjs`, `.github` local-agent instruction/prompt files, `docs/product/RED_BYTE_LOCAL_AGENT_LAB.md`, `docs/product/RED_BYTE_OLLAMA_LOCAL_SETUP.md`, `package.json`
