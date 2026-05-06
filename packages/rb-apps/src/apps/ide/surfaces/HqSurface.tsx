@@ -5,6 +5,8 @@ import {
   getHqBenchEvidence,
   getHqHealth,
   getHqSnapshot,
+  listHqPackets,
+  readHqPacket,
   runMemorySearch,
   runProblemIntake,
   runTraceClaim,
@@ -15,6 +17,8 @@ import type {
   HqChatMessage,
   HqChatMode,
   HqHealth,
+  HqPacket,
+  HqPacketHeader,
   HqSnapshot,
   HqSourceConfidence,
   HqSourceRecord,
@@ -57,8 +61,24 @@ export const HqSurface: React.FC = () => {
   const [generatedFiles, setGeneratedFiles] = useState<string[]>([]);
   const [nextAction, setNextAction] = useState<string>('Run Refresh HQ to capture current status.');
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [latestPacketId, setLatestPacketId] = useState<string | null>(null);
+  const [packets, setPackets] = useState<HqPacketHeader[]>([]);
+  const [selectedPacket, setSelectedPacket] = useState<HqPacket | null>(null);
+  const [packetsLoading, setPacketsLoading] = useState(false);
 
   const offline = !health || !health.agent.ollama_online;
+
+  const loadPackets = useCallback(async () => {
+    setPacketsLoading(true);
+    try {
+      const result = await listHqPackets({ limit: 20 });
+      setPackets(result.packets);
+    } catch {
+      // packet load failure is non-fatal
+    } finally {
+      setPacketsLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -77,7 +97,8 @@ export const HqSurface: React.FC = () => {
       setError(message);
       setBackendOnline(false);
     }
-  }, []);
+    void loadPackets();
+  }, [loadPackets]);
 
   useEffect(() => {
     void refresh();
@@ -105,6 +126,10 @@ export const HqSurface: React.FC = () => {
         setGeneratedFiles(response.generatedFiles || []);
         setNextAction(response.recommendedNextAction || 'No next action provided.');
         setRequiresApproval(Boolean(response.requiresApproval));
+        if (response.packetId) {
+          setLatestPacketId(response.packetId);
+          void loadPackets();
+        }
       } catch (chatError) {
         const message = chatError instanceof Error ? chatError.message : String(chatError);
         setMessages((current) => [
@@ -173,9 +198,20 @@ export const HqSurface: React.FC = () => {
       } finally {
         setBusy(false);
       }
+      // reload packets after any action
+      void loadPackets();
     },
-    [chatInput],
+    [chatInput, loadPackets],
   );
+
+  const selectPacket = useCallback(async (id: string) => {
+    try {
+      const result = await readHqPacket(id);
+      setSelectedPacket(result.packet);
+    } catch {
+      // non-fatal
+    }
+  }, []);
 
   const evidenceCounts = evidence?.counts ?? { E0: 0, E1: 0, E2: 0, E3: 0 };
 
@@ -318,6 +354,11 @@ export const HqSurface: React.FC = () => {
             {generatedFiles.length ? (
               <p className="hq-copy" data-testid="hq-generated-files"><strong>Generated:</strong> {generatedFiles.join(', ')}</p>
             ) : null}
+            {latestPacketId ? (
+              <p className="hq-copy hq-saved-indicator" data-testid="hq-saved-indicator">
+                <strong>Saved:</strong> packet {latestPacketId}
+              </p>
+            ) : null}
           </div>
         </IdePanel>
 
@@ -379,6 +420,53 @@ export const HqSurface: React.FC = () => {
           <IdePanel title="Claim Trace" testId="hq-claim-panel">
             <p className="hq-copy">Use Trace Claim to verify high-risk product statements against docs/code/tests.</p>
             <p className="hq-copy">Claims proven: {snapshot?.claims_trace_summary?.proven ?? 'n/a'}</p>
+          </IdePanel>
+
+          <IdePanel title="Workbench History" testId="hq-workbench-history-panel">
+            {packetsLoading ? (
+              <p className="hq-copy" data-testid="hq-packets-loading">Loading packets...</p>
+            ) : packets.length === 0 ? (
+              <p className="hq-copy" data-testid="hq-packets-empty">No saved packets yet. Marcus outputs will appear here.</p>
+            ) : (
+              <ul className="hq-packet-list" data-testid="hq-packet-list">
+                {packets.slice(0, 10).map((pkt) => (
+                  <li
+                    key={pkt.id}
+                    className={`hq-packet-row${selectedPacket?.id === pkt.id ? ' hq-packet-selected' : ''}`}
+                    onClick={() => void selectPacket(pkt.id)}
+                    data-testid={`hq-packet-row-${pkt.id}`}
+                  >
+                    <span className="hq-packet-type-chip" data-testid="hq-packet-type">{pkt.type.replace(/_/g, ' ')}</span>
+                    <span className="hq-packet-title" data-testid="hq-packet-title">{pkt.title}</span>
+                    <span className="hq-packet-meta">
+                      <span data-testid="hq-packet-evidence">{pkt.evidenceLevel}</span>
+                      <span data-testid="hq-packet-confidence">{pkt.sourceConfidence}</span>
+                      {pkt.warningCount > 0 && <span className="hq-packet-warn">{pkt.warningCount}⚠</span>}
+                      {pkt.generatedFileCount > 0 && <span>{pkt.generatedFileCount}📄</span>}
+                      {pkt.degraded && <span className="hq-packet-degraded">degraded</span>}
+                    </span>
+                    <span className="hq-packet-time">{new Date(pkt.createdAt).toLocaleTimeString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedPacket ? (
+              <div className="hq-packet-preview" data-testid="hq-packet-preview">
+                <p className="hq-copy"><strong>{selectedPacket.title}</strong></p>
+                <p className="hq-copy">{selectedPacket.summary || selectedPacket.reply.slice(0, 240)}</p>
+                {selectedPacket.generatedFiles.length > 0 && (
+                  <p className="hq-copy" data-testid="hq-packet-preview-files">
+                    <strong>Generated:</strong> {selectedPacket.generatedFiles.join(', ')}
+                  </p>
+                )}
+                {selectedPacket.sources.length > 0 && (
+                  <p className="hq-copy">
+                    <strong>Sources:</strong> {selectedPacket.sources.map((s) => s.title).join(', ')}
+                  </p>
+                )}
+                <IdeButton tone="ghost" onClick={() => setSelectedPacket(null)}>Close</IdeButton>
+              </div>
+            ) : null}
           </IdePanel>
         </div>
       </div>

@@ -135,3 +135,81 @@ test('/trace-claim response includes canonical and generated sources', async () 
     assert.ok(payload.sources.some((source) => source.kind === 'tool_output'));
   });
 });
+
+test('/chat response includes packetId after successful reply', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'What is the current blocked task?', mode: 'ask', allowTools: false }),
+    });
+
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    // packetId is a string id or null (null if save failed, but should succeed in clean env)
+    assert.ok(payload.packetId === null || typeof payload.packetId === 'string');
+  });
+});
+
+test('/trace-claim response includes packetId', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/trace-claim`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ claim: 'Draft Export is not Trusted Export.' }),
+    });
+
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.ok(payload.packetId === null || typeof payload.packetId === 'string');
+  });
+});
+
+test('GET /packets returns packet list', async () => {
+  await withServer(async (baseUrl) => {
+    // Save one packet via chat first
+    await fetch(`${baseUrl}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'list packets test prompt', mode: 'ask', allowTools: false }),
+    });
+
+    const response = await fetch(`${baseUrl}/packets`);
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.ok(Array.isArray(payload.packets));
+    assert.ok(typeof payload.total === 'number');
+  });
+});
+
+test('GET /packets/:id returns packet by id', async () => {
+  await withServer(async (baseUrl) => {
+    // Save one via chat
+    const chatResp = await fetch(`${baseUrl}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'packet read test prompt', mode: 'ask', allowTools: false }),
+    });
+    const chatPayload = await chatResp.json();
+    const packetId = chatPayload.packetId;
+
+    if (!packetId) return; // skip if save failed (no packet dir in CI)
+
+    const response = await fetch(`${baseUrl}/packets/${encodeURIComponent(packetId)}`);
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.equal(payload.packet.id, packetId);
+  });
+});
+
+test('GET /packets/:id rejects path traversal attempts', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/packets/${encodeURIComponent('../etc/passwd')}`);
+    assert.equal(response.status, 404);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+  });
+});

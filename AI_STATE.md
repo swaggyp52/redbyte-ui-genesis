@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus workbench history)
+
+**Subsystem:** `scripts/marcus/marcus-packet-store.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, packet store tests, server tests, docs
+
+**Changes:**
+- Added `scripts/marcus/marcus-packet-store.mjs` — local file-backed packet store with `savePacket`, `listPackets`, `readPacket`, `generatePacketId`, `sanitizePacketType`, `sanitizePacketId`, and `ensurePacketDir`. Path traversal blocked in sanitizer and path-resolution check. Packets go to `.redbyte/agent/runs/hq/packets/` (gitignored).
+- Added `GET /packets` and `GET /packets/:id` endpoints to `rb-hq-server.mjs`. All four chat/coding-plan/problem-intake/trace-claim endpoints now save a packet via `trySavePacket` (warn-only, never throws) and include `packetId` in response.
+- Added `HqPacketType`, `HqPacketHeader`, `HqPacket`, `HqPacketListResponse`, `HqPacketReadResponse` types to `hqTypes.ts`. Added `listHqPackets` and `readHqPacket` functions to `hqClient.ts`.
+- Added "Workbench History" panel to `HqSurface.tsx` in `hq-right-stack`. Shows latest 20 packets with type chip, title, evidenceLevel, sourceConfidence, warningCount, generatedFileCount, degraded label, and timestamp. Click to preview full packet. Also shows "Saved" indicator when `latestPacketId` is set.
+- Added 20-test `marcus-packet-store.test.mjs` covering all exports including path traversal rejection, type filtering, and ordering.
+- Added 5 packet-related tests to `rb-hq-server.test.mjs` covering `packetId` in responses, `GET /packets`, `GET /packets/:id`, and path traversal rejection.
+- Updated `rb:hq:test` script to include packet store tests (21 server + 3 registry + 7 loop + 20 store = 51 total).
+- Added `docs/product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md` workbench history contract.
+- Updated `docs/DOC_INDEX.md` to reference the new contract doc.
+
+**Evidence:** `pnpm rb:hq:test` pass (all 51 tests green); `pnpm rb:doc:validate` 36 passed 0 failed; `pnpm rb:encoding:check` clean; `git diff --check` clean; `pnpm --filter @redbyte/playground build` 316 modules.
+
 ## Change Log 2026-05-06 (feat(hq): ground Marcus replies in RedByte sources)
 
 **Subsystem:** `scripts/marcus/*`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, Marcus docs

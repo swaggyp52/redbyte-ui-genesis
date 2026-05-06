@@ -7,6 +7,8 @@ import type {
   HqCodingPlanRequest,
   HqCommandResponse,
   HqHealth,
+  HqPacketListResponse,
+  HqPacketReadResponse,
   HqSnapshot,
 } from './hqTypes';
 
@@ -88,4 +90,18 @@ export async function runMemorySearch(query: string): Promise<HqCommandResponse>
     body: JSON.stringify({ query }),
   });
   return parseJson<HqCommandResponse>(response);
+}
+
+export async function listHqPackets(options?: { limit?: number; type?: string }): Promise<HqPacketListResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  if (options?.type) params.set('type', options.type);
+  const qs = params.toString();
+  const response = await fetch(`${HQ_BASE_URL}/packets${qs ? `?${qs}` : ''}`);
+  return parseJson<HqPacketListResponse>(response);
+}
+
+export async function readHqPacket(id: string): Promise<HqPacketReadResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/packets/${encodeURIComponent(id)}`);
+  return parseJson<HqPacketReadResponse>(response);
 }

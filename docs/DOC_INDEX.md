@@ -60,6 +60,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md](./product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md) | Marcus source-grounding contract for structured sources, evidence level, confidence, degraded fallback labeling, and HQ display rules |
 | [product/RED_BYTE_MARCUS_RUNTIME.md](./product/RED_BYTE_MARCUS_RUNTIME.md) | Marcus runtime launcher and health-recovery contract for `rb:marcus:start|status|doctor|stop`, runtime state files, and safety boundaries |
 | [product/RED_BYTE_MARCUS_AGENT_ENGINE.md](./product/RED_BYTE_MARCUS_AGENT_ENGINE.md) | Marcus Agent Engine v1 architecture, capability levels, tool registry policy, and coding-plan safety contract |
+| [product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md](./product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md) | Marcus workbench history contract — packet types, field schema, storage rules, GET /packets endpoints, UI history panel, trust/safety rules |
 | [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |
 | [product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md](./product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md) | Operating guide for `rb:problem:*` intake, triage, trace, prompt, and closeout packets |
 

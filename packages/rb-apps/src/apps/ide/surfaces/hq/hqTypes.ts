@@ -115,6 +115,7 @@ export interface HqChatResponse {
   error?: string;
   agent_name?: string;
   source_hints?: string[];
+  packetId?: string | null;
 }
 
 export type HqChatMode = 'ask' | 'explain-state' | 'problem-packet' | 'trace-claim' | 'coding-plan';
@@ -151,4 +152,51 @@ export interface HqCommandResponse {
   degraded?: boolean;
   output?: string;
   error?: string | null;
+  packetId?: string | null;
+}
+
+export type HqPacketType =
+  | 'chat_answer'
+  | 'coding_plan'
+  | 'problem_packet'
+  | 'trace_report'
+  | 'bench_summary'
+  | 'control_snapshot'
+  | 'fallback_report';
+
+export interface HqPacketHeader {
+  id: string;
+  createdAt: string;
+  type: HqPacketType;
+  title: string;
+  evidenceLevel: HqEvidenceLevel;
+  sourceConfidence: HqSourceConfidence;
+  warningCount: number;
+  generatedFileCount: number;
+  degraded: boolean;
+}
+
+export interface HqPacket extends HqPacketHeader {
+  summary: string;
+  prompt: string;
+  reply: string;
+  mode: string;
+  toolsUsed: Array<{ name: string; ok: boolean; summary: string }>;
+  sources: HqSourceRecord[];
+  generatedFiles: string[];
+  warnings: string[];
+  requiresApproval: boolean;
+  path: string;
+  tags: string[];
+}
+
+export interface HqPacketListResponse {
+  ok: boolean;
+  packets: HqPacketHeader[];
+  total: number;
+}
+
+export interface HqPacketReadResponse {
+  ok: boolean;
+  packet: HqPacket;
 }

@@ -7,6 +7,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createMarcusToolRegistry } from './marcus/marcus-tool-registry.mjs';
 import { runMarcusAgentLoop } from './marcus/marcus-agent-loop.mjs';
+import { savePacket, listPackets, readPacket } from './marcus/marcus-packet-store.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -17,6 +18,7 @@ const MAX_BODY_BYTES = 64 * 1024;
 const OLLAMA_TIMEOUT_MS = Number(process.env.REDBYTE_HQ_OLLAMA_TIMEOUT_MS || 30000);
 
 const REPO_ROOT = resolveRepoRoot();
+const PACKETS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'packets');
 const CONTROL_NEXT_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'control-next-latest.json');
 const CLAIMS_TRACE_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'product-claims-trace-latest.json');
 const PROBLEM_PACKET_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'problems', 'problem-latest.json');
@@ -333,6 +335,21 @@ function relative(filePath) {
   return path.relative(REPO_ROOT, filePath).replace(/\\/g, '/');
 }
 
+/**
+ * Try to save a workbench packet. Never throws — save failures warn only.
+ * @param {object} packet
+ * @returns {string|null} saved packet id, or null on failure
+ */
+function trySavePacket(packet) {
+  try {
+    const saved = savePacket(packet, PACKETS_DIR);
+    return saved.id;
+  } catch (err) {
+    console.warn('[hq] packet save failed:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 function withCors(res) {
   res.setHeader('access-control-allow-origin', '*');
   res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
@@ -393,6 +410,26 @@ export function createHqServer() {
     const url = new URL(req.url || '/', `http://${HOST}:${DEFAULT_PORT}`);
 
     try {
+      if (req.method === 'GET' && url.pathname === '/packets') {
+        const limitParam = Number(url.searchParams.get('limit') || 20);
+        const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 20;
+        const type = url.searchParams.get('type') || undefined;
+        const packets = listPackets({ limit, type }, PACKETS_DIR);
+        respondJson(res, 200, { ok: true, packets, total: packets.length });
+        return;
+      }
+
+      const packetIdMatch = url.pathname.match(/^\/packets\/([^/]+)$/);
+      if (req.method === 'GET' && packetIdMatch) {
+        try {
+          const packet = readPacket(packetIdMatch[1], PACKETS_DIR);
+          respondJson(res, 200, { ok: true, packet });
+        } catch (err) {
+          respondJson(res, 404, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/health') {
         respondJson(res, 200, await buildHealth());
         return;
@@ -465,6 +502,28 @@ export function createHqServer() {
 
         const git = gitSummary();
         const dirtyRepoWarning = !git.clean && mode === 'coding-plan';
+        const chatWarnings = dirtyRepoWarning
+          ? [...response.warnings, 'Repository has local changes. Review coding plan cautiously before implementation.']
+          : response.warnings;
+
+        const packetType = response.degraded ? 'fallback_report' : 'chat_answer';
+        const packetId = trySavePacket({
+          type: packetType,
+          title: message.slice(0, 100),
+          summary: String(response.reply || '').slice(0, 280),
+          prompt: message,
+          reply: response.reply,
+          mode,
+          toolsUsed: response.toolsUsed,
+          sources: response.sources,
+          evidenceLevel: response.evidenceLevel,
+          sourceConfidence: response.sourceConfidence,
+          generatedFiles: response.generatedFiles,
+          warnings: chatWarnings,
+          requiresApproval: response.requiresApproval,
+          degraded: response.degraded,
+          tags: [mode],
+        });
 
         respondJson(res, 200, {
           ok: true,
@@ -474,15 +533,14 @@ export function createHqServer() {
           sources: response.sources,
           evidenceLevel: response.evidenceLevel,
           sourceConfidence: response.sourceConfidence,
-          warnings: dirtyRepoWarning
-            ? [...response.warnings, 'Repository has local changes. Review coding plan cautiously before implementation.']
-            : response.warnings,
+          warnings: chatWarnings,
           generatedFiles: response.generatedFiles,
           recommendedNextAction: response.recommendedNextAction,
           requiresApproval: response.requiresApproval,
           degraded: response.degraded,
           agent_name: 'Marcus',
           source_hints: ['snapshot', 'bench-evidence', 'control-next', ...(response.sources || []).map((source) => source.id)],
+          packetId,
         });
         return;
       }
@@ -508,23 +566,44 @@ export function createHqServer() {
         });
 
         const git = gitSummary();
+        const codingPlanWarnings = !git.clean ? ['Repository has local changes. Review packet with extra caution.'] : [];
+        const codingPlanReply = result.ok
+          ? 'Marcus generated a safe coding-plan packet. Review and approve before applying changes.'
+          : 'Marcus failed to generate coding-plan packet.';
 
-        respondJson(res, result.ok ? 200 : 500, {
-          ok: result.ok,
+        const cpPacketId = trySavePacket({
+          type: 'coding_plan',
+          title: rawUserRequest.slice(0, 100),
+          summary: codingPlanReply,
+          prompt: rawUserRequest,
+          reply: codingPlanReply,
           mode: 'coding-plan',
-          reply: result.ok
-            ? 'Marcus generated a safe coding-plan packet. Review and approve before applying changes.'
-            : 'Marcus failed to generate coding-plan packet.',
           toolsUsed: [{ name: 'generate_codex_packet', ok: result.ok, summary: result.summary }],
           sources: result.sources,
           evidenceLevel: result.evidenceLevel,
           sourceConfidence: result.sourceConfidence,
-          warnings: !git.clean ? ['Repository has local changes. Review packet with extra caution.'] : [],
+          generatedFiles: result.generatedFiles,
+          warnings: codingPlanWarnings,
+          requiresApproval: true,
+          degraded: false,
+          tags: ['coding-plan', targetSurface],
+        });
+
+        respondJson(res, result.ok ? 200 : 500, {
+          ok: result.ok,
+          mode: 'coding-plan',
+          reply: codingPlanReply,
+          toolsUsed: [{ name: 'generate_codex_packet', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          warnings: codingPlanWarnings,
           generatedFiles: result.generatedFiles,
           recommendedNextAction: 'Review packet content, then run focused tests before any implementation.',
           requiresApproval: true,
           degraded: false,
           details: result,
+          packetId: cpPacketId,
         });
         return;
       }
@@ -539,10 +618,30 @@ export function createHqServer() {
 
         const result = await marcusToolRegistry.executeTool('problem_intake', { raw_feedback });
         const packet = readJsonMaybe(PROBLEM_PACKET_JSON);
+        const piReply = result.ok ? 'Problem intake packet generated from raw feedback.' : 'Problem intake packet generation failed.';
+
+        const piPacketId = trySavePacket({
+          type: 'problem_packet',
+          title: raw_feedback.slice(0, 100),
+          summary: piReply,
+          prompt: raw_feedback,
+          reply: piReply,
+          mode: 'problem-packet',
+          toolsUsed: [{ name: 'problem_intake', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          generatedFiles: result.generatedFiles,
+          warnings: result.warnings,
+          requiresApproval: false,
+          degraded: !result.ok,
+          tags: ['problem-intake'],
+        });
+
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
           mode: 'problem-packet',
-          reply: result.ok ? 'Problem intake packet generated from raw feedback.' : 'Problem intake packet generation failed.',
+          reply: piReply,
           toolsUsed: [{ name: 'problem_intake', ok: result.ok, summary: result.summary }],
           sources: result.sources,
           evidenceLevel: result.evidenceLevel,
@@ -557,6 +656,7 @@ export function createHqServer() {
           product_surface: packet?.product_surface ?? null,
           severity: packet?.severity ?? null,
           stderr: result.error || null,
+          packetId: piPacketId,
         });
         return;
       }
@@ -589,10 +689,30 @@ export function createHqServer() {
         const body = await readBody(req);
         const claim = sanitizeUserText(body?.claim || 'Draft export is not trusted export');
         const result = await marcusToolRegistry.executeTool('trace_claim', { claim });
+        const tcReply = result.ok ? 'Claim trace completed.' : 'Claim trace failed.';
+
+        const tcPacketId = trySavePacket({
+          type: 'trace_report',
+          title: claim.slice(0, 100),
+          summary: tcReply,
+          prompt: claim,
+          reply: String(result.data?.output || tcReply).slice(0, 8000),
+          mode: 'trace-claim',
+          toolsUsed: [{ name: 'trace_claim', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          generatedFiles: result.generatedFiles,
+          warnings: result.warnings,
+          requiresApproval: false,
+          degraded: !result.ok,
+          tags: ['trace-claim'],
+        });
+
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
           mode: 'trace-claim',
-          reply: result.ok ? 'Claim trace completed.' : 'Claim trace failed.',
+          reply: tcReply,
           toolsUsed: [{ name: 'trace_claim', ok: result.ok, summary: result.summary }],
           sources: result.sources,
           evidenceLevel: result.evidenceLevel,
@@ -605,6 +725,7 @@ export function createHqServer() {
           claim,
           output: result.data?.output || '',
           error: result.error || null,
+          packetId: tcPacketId,
         });
         return;
       }
@@ -615,6 +736,8 @@ export function createHqServer() {
         endpoints: [
           'GET /health',
           'GET /snapshot',
+          'GET /packets',
+          'GET /packets/:id',
           'POST /chat',
           'POST /coding-plan',
           'POST /problem-intake',
