@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+﻿// @vitest-environment jsdom
 
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -108,6 +108,7 @@ describe('HqSurface workstation', () => {
 
     const callout = await findByTestId('hq-connectivity-callout');
     expect(callout.textContent).toContain('Failed to fetch');
+    expect(getByText(/pnpm rb:marcus:start/i)).toBeTruthy();
     expect(getByText(/pnpm rb:hq:server/i)).toBeTruthy();
   });
 

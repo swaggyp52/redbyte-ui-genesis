@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-06 (chore(hq): add Marcus runtime launcher)
+
+**Subsystem:** `scripts/rb-marcus-runtime.mjs`, `scripts/rb-marcus-runtime.test.mjs`, HQ surface offline guidance, runtime docs
+
+**Changes:**
+- Added `rb:marcus:start|stop|status|doctor` lifecycle manager at `scripts/rb-marcus-runtime.mjs` with runtime state/log outputs under `.redbyte/agent/runs/hq/runtime/`.
+- Added duplicate-start protection, occupied-port rejection for non-HQ services, and bounded Ollama auto-start attempt when API is offline.
+- Added safe stop identity checks so runtime stop only kills launcher-tracked HQ process (`rb-hq-server.mjs serve`).
+- Added runtime health report generation (`marcus-health-latest.md`) and startup summary generation (`marcus-startup-latest.md`) with actionable degraded warnings.
+- Added focused runtime tests in `scripts/rb-marcus-runtime.test.mjs` for offline clarity, start decision safety, stop safety, state parsing, path confinement, and Ollama-down guidance.
+- Updated HQ surface offline callout and assistant fallback message to prefer `pnpm rb:marcus:start` with `pnpm rb:hq:server` fallback.
+- Added `docs/product/RED_BYTE_MARCUS_RUNTIME.md` and linked it from `docs/DOC_INDEX.md`; updated HQ local-agent doc startup guidance.
+
+**Evidence:** `pnpm rb:marcus:test` pass; runtime command contract validated via `rb:marcus:doctor`, `rb:marcus:start`, `rb:marcus:status`, `rb:marcus:stop`; `/health` and `/snapshot` probes pass while running; `pnpm rb:hq:test` pass; doc and encoding checks pass.
+
 ## Change Log 2026-05-06 (feat(hq): add Marcus tool-assisted agent loop)
 
 **Subsystem:** `scripts/rb-hq-server.mjs`, `scripts/marcus/*`, HQ surface/client/types, HQ docs

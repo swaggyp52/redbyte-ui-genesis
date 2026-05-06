@@ -96,7 +96,8 @@ export const HqSurface: React.FC = () => {
           ...current,
           {
             role: 'assistant',
-            content: 'Marcus could not reach the HQ backend. Start pnpm rb:hq:server and try again.',
+            content:
+              'Marcus could not reach the HQ backend. Start pnpm rb:marcus:start (preferred) or pnpm rb:hq:server (fallback), then try again.',
           },
         ]);
         setError(message);
@@ -198,7 +199,7 @@ export const HqSurface: React.FC = () => {
         <IdeCallout tone="warn" title="HQ connectivity" testId="hq-connectivity-callout">
           {error}
           <br />
-          Start server: <code>pnpm rb:hq:server</code>
+          Start runtime: <code>pnpm rb:marcus:start</code> (preferred) or <code>pnpm rb:hq:server</code> (fallback if you only need backend serve).
         </IdeCallout>
       ) : null}
 

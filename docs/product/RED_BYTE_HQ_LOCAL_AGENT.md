@@ -95,9 +95,16 @@ HQ may display E0/E1/E2/E3 counts and target summaries from bench artifacts, but
 
 ## How to start
 
-1. Start HQ server:
-   - `pnpm rb:hq:server`
-2. Start RedByte app and open HQ mode in IDE.
+1. Start Marcus runtime (preferred):
+   - `pnpm rb:marcus:start`
+2. Optional runtime checks:
+   - `pnpm rb:marcus:status`
+   - `pnpm rb:marcus:doctor`
+3. Start RedByte app and open HQ mode in IDE.
+
+If you only need backend serve without runtime lifecycle tooling:
+
+- `pnpm rb:hq:server`
 
 ## Known limitations
 
