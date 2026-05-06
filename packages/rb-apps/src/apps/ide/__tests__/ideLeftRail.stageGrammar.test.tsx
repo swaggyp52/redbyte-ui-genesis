@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// Contract tests for IdeLeftRail stage grammar post-Phase-1 redesign:
-// - exactly 5 nav buttons: project, design, verify, hardware, export
+// Contract tests for IdeLeftRail stage grammar post-HQ utility addition:
+// - exactly 6 nav buttons: project, hq, design, verify, hardware, export
 // - no import navigation button (Import is now a utility action, not a stage)
 // - no program navigation button (Program is an external handoff, not a stage)
 
@@ -16,6 +16,13 @@ describe('IdeLeftRail stage grammar', () => {
       <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
     );
     expect(getByTestId('mode-button-project')).toBeDefined();
+  });
+
+  it('renders the HQ utility button', () => {
+    const { getByTestId } = render(
+      <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
+    );
+    expect(getByTestId('mode-button-hq')).toBeDefined();
   });
 
   it('renders all four workflow stage buttons: design, verify, hardware, export', () => {
@@ -42,12 +49,12 @@ describe('IdeLeftRail stage grammar', () => {
     expect(queryByTestId('mode-button-program')).toBeNull();
   });
 
-  it('renders exactly 5 interactive navigation buttons (project + 4 workflow stages)', () => {
+  it('renders exactly 6 interactive navigation buttons (project + hq + 4 workflow stages)', () => {
     const { container } = render(
       <IdeLeftRail currentMode="design" onModeChange={vi.fn()} />
     );
     const modeButtons = container.querySelectorAll('[data-testid^="mode-button-"]');
-    expect(modeButtons).toHaveLength(5);
+    expect(modeButtons).toHaveLength(6);
   });
 
   it('does NOT render the legacy bottom-left rail expander', () => {

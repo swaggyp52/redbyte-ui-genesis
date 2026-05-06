@@ -2,6 +2,7 @@ import type { IdeMode } from './workflowStages';
 
 const IDE_MODES = new Set<IdeMode>([
   'project',
+  'hq',
   'design',
   'verify',
   'hardware',

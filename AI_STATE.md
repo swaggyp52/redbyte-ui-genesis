@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus local command center)
+
+**Subsystem:** IDE HQ utility surface + local HQ server + command-center docs
+
+**Changes:**
+- Added HQ utility mode wiring in IDE shell (`hq` mode) and left-rail entry so HQ is accessible without changing the core student workflow spine.
+- Added `packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx` with Marcus console, product-spine status strip, evidence matrix, bench intelligence panel, memory/Obsidian status panel, and claim-trace summary panel.
+- Added typed HQ client contracts (`hqClient.ts`, `hqTypes.ts`) for health/snapshot/evidence/chat/problem/memory/trace calls.
+- Added `scripts/rb-hq-server.mjs` with allowlisted-only command execution, local host binding, offline-safe Ollama chat degradation, and endpoints: `/health`, `/snapshot`, `/control-next`, `/bench-evidence`, `/chat`, `/problem-intake`, `/memory-search`, `/trace-claim`.
+- Added focused server safety tests in `scripts/rb-hq-server.test.mjs` and package scripts `rb:hq:server`, `rb:hq:doctor`, `rb:hq:test`.
+- Added scoped HQ styling in `ide-root.css` for command-center layout and responsive behavior.
+- Added concise product documentation for HQ v0 contract at `docs/product/RED_BYTE_HQ_LOCAL_AGENT.md`, with references from `docs/DOC_INDEX.md` and `docs/IDE_SYSTEM_MAP.md`.
+
+**Evidence:** `pnpm rb:hq:test` pass; `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx` pass; `pnpm rb:hq:doctor` reports correct degraded state when Ollama is offline.
+
 ## Change Log 2026-05-06 (chore(bench): add E1 E2 E3 evidence classifier)
 
 **Subsystem:** bench evidence model + classifier tooling + release/current-truth docs
