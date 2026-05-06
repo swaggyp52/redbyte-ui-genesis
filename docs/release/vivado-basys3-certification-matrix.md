@@ -1,6 +1,6 @@
 # Vivado + Basys3 certification matrix (RedByte)
 
-**Date:** 2026-04-30
+**Date:** 2026-05-05
 **Purpose:** Separate **export-valid** artifacts from **tool-certified** and **board-certified** outcomes. This is the working matrix for the real lab machine; update cells only with evidence (logs, bit paths, observation notes).
 
 ---
@@ -18,6 +18,14 @@ Align with **`docs/STUDENT_RELEASE_READINESS.md`** for instructor-facing languag
 | **E3 — Behavior-certified** | Observed I/O matches an agreed test procedure (manual or scripted). | Dated observation note tied to project revision / ZIP hash. |
 
 **Rule:** `bundle.valid` and classroom goldens prove **E0 only**. Never describe E0 as “lab ready.”
+
+Evidence classifier support (2026-05-06):
+
+- Model doc: `docs/release/redbyte-bench-evidence-model.md`
+- Command: `pnpm rb:bench:evidence:classify`
+- Controlled-run outputs: `.redbyte/bench/runs/20260505-222402/evidence-classification.md` and `.json`
+- Current controlled classification: `golden-basys3-switch-and`, `signal-tour`, and `two-bit-counter` are all **E2** in that run because observed behavior remains manual/uncertain.
+- Hard rule remains active: E3 cannot be inferred from E2 programming logs.
 
 **Curated vs from-scratch:** **IDE example rows** prove the gallery asset. **From-scratch rows** use `meta.projectKind: 'blank'` and **no** `sourceExampleId`—see `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md` and the authoring checklist.
 
@@ -60,9 +68,10 @@ pnpm lab:vivado:cert:from-scratch fs-seq-two-bit-counter-basys3
 
 | Project / fixture | Category | L0 | E0 | E1 | E2 | E3 | Certified for class? | Notes / limits |
 |-------------------|----------|----|----|----|----|----|----------------------|----------------|
-| `golden-basys3-switch-and` | Combinational | yes | yes | **yes** (`vivado_batch_golden_and_2026-04-29.log`) | **yes** (`vivado_program_golden_and_2026-04-29.log`) | pending | **E1+E2 proven; E3 still open** | Real export blocker fixed in fixture before recertification; see `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |
-| IDE `signal-tour` | Combinational / map tour | yes | yes | **yes** (`vivado_batch_signal_tour_2026-04-29.log`) | **yes** (`vivado_program_signal_tour_2026-04-29.log`) | **yes** | **yes for this row** | User-confirmed board behavior on 2026-04-29; see `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
-| IDE `two-bit-counter` | Sequential (CLK100MHZ/W5 + DFF) | yes | yes | **yes** (`vivado_batch_two_bit_counter_e2e.log`; prior `vivado_batch_two_bit_counter.log`) | **yes** (`vivado_program_two_bit_counter_e2_2026-04-23.log`; Digilent TCF, `xc7a35t_0`) | *pending TA sign-off* | **E1+E2 proven on live bench** | **IO:** SW0=enable, BTNC=sync RST, LD0/1=count (100 MHz → LED blur). **E3:** run RC1 freeze §3 item 3 and record observation. |
+| IDE `half-adder` | Combinational / adder | yes | yes | **yes** (2026-05-05 bench) | **yes** (2026-05-05 bench) | pending | **E1+E2 proven; E3 open** | Multi-output combinational sanity row. Vivado succeeds with first-run project warnings plus combinational no-clock timing/power warnings; see `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`. |
+| `golden-basys3-switch-and` | Combinational | yes | yes | **yes** (refreshed controlled bench 2026-05-05) | **yes** (refreshed controlled bench 2026-05-05) | pending | **E1+E2 proven; E3 still open** | Real export blocker fixed before recertification. Controlled pack `.redbyte/bench/runs/20260505-222402/` confirms Vivado build/bitstream/program success and classifies no-clock combinational warnings; see `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`. |
+| IDE `signal-tour` | Combinational / map tour | yes | yes | **yes** (refreshed controlled bench 2026-05-05) | **yes** (refreshed controlled bench 2026-05-05) | **yes** | **yes for this row** | User-confirmed board behavior on 2026-04-29; controlled 2026-05-05 pack refreshed E1/E2 only and did **not** re-observe LEDs. Vivado emits optimized-empty-top/no-clock warnings that RedByte should explain. |
+| IDE `two-bit-counter` | Sequential (CLK100MHZ/W5 + DFF) | yes | yes | **yes** (refreshed controlled bench 2026-05-05; timing constraints met) | **yes** (refreshed controlled bench 2026-05-05; `xc7a35t_0`) | *pending TA sign-off* | **E1+E2 proven on live bench** | **IO:** SW0=enable, BTNC=sync RST, LD0/1=count (100 MHz -> LED blur). Controlled pack confirms constrained Vivado timing and programming; E3 still requires physical observation. |
 | **From-scratch** `fs-comb-switch-and-basys3` | Combinational (blank save) | yes | yes | **yes** (`vivado_batch_fs_comb_from_scratch.log`) | **yes** (`vivado_program_fs_comb_from_scratch.log`) | *checklist* | **Authoring path** | SW(0)∧SW(1)→LED; alias pins. Checklist: `docs/release/from-scratch-basys3-authoring-checklist.md` |
 | **From-scratch** `fs-seq-two-bit-counter-basys3` | Sequential (blank save) | yes | yes | **yes** (`vivado_batch_fs_seq_from_scratch.log`) | **yes** (`vivado_program_fs_seq_from_scratch.log`) | *checklist* | **Authoring path** | Same IO story as IDE counter row; gate-level twin without example id. |
 | Custom `fs-custom-four-switch-led` | Multi-output (blank save) | yes | yes | **yes** (`out/vivado-cert/custom-projects/fs-custom-four-switch-led/vivado_batch.log`) | pending | pending | **E1 proven; board proof pending** | Recreates signal-tour as a blank-shaped custom project. Vivado warns about an "empty top module" after optimization, but bitstream generation succeeds. |

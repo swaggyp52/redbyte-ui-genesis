@@ -113,6 +113,10 @@ const ImportSurface = React.lazy(() =>
   import('./ide/surfaces/ImportSurface').then((module) => ({ default: module.ImportSurface }))
 );
 
+const HqSurface = React.lazy(() =>
+  import('./ide/surfaces/HqSurface').then((module) => ({ default: module.HqSurface }))
+);
+
 const DEFAULT_FPGA_PART = 'xc7a35tcpg236-1';
 
 interface IdeFpgaConfig {
@@ -1505,7 +1509,19 @@ export const IdeApp: React.FC = () => {
           stepsCompleted={workflowAuthority.stageCompletion}
         />
         <div className="ide-surface-column">
-        {activeMode === 'project' ? (
+        {activeMode === 'hq' ? (
+          <ErrorBoundary fallbackTitle="HQ workspace encountered an error">
+            <Suspense
+              fallback={
+                <div className="ide-copy" data-testid="ide-surface-loading">
+                  Loading {getIdeModeLabel('hq')} workspace...
+                </div>
+              }
+            >
+            <HqSurface />
+            </Suspense>
+          </ErrorBoundary>
+        ) : activeMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
             <ProjectSurface
               projectName={projectName}

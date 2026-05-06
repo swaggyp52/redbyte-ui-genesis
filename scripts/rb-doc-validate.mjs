@@ -76,10 +76,10 @@ function skip(label) {
 }
 
 function parseFrontmatter(content) {
-  const m = content.match(/^---\n([\s\S]*?)\n---/);
+  const m = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return {};
   const result = {};
-  for (const line of m[1].split('\n')) {
+  for (const line of m[1].split(/\r?\n/)) {
     const kv = line.match(/^(\w[\w_]*)\s*:\s*(.+)$/);
     if (kv) result[kv[1].trim()] = kv[2].trim();
   }

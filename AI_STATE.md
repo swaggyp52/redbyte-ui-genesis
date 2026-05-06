@@ -25,6 +25,61 @@
 **Evidence:** `pnpm rb:problem:intake`/`triage`/`trace`/`prompt` ran for the raw Export handoff feedback; browser audit on 2-Bit Up Counter Export at `1366x768` and `1920x1080` confirmed the pre-fix duplicate `Draft export available` heading and post-fix `Vivado handoff package generated` summary; focused RED test failed before the fix and passed after; `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx` pass (26/26); `pnpm --filter @redbyte/playground build` pass; `pnpm ide:gate:export-download-contract` pass; `pnpm ide:gate:vivado-pack-contract` pass; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass. `pnpm ide:gate:export-ready-contract` and `pnpm ide:gate:export-blockers-contract` currently fail in their preview harnesses on stale setup/visibility assertions unrelated to this copy hierarchy change (`verify had neither a visible generate-basics action nor an existing ready-vector state`; `export blockers list must render`). `pnpm rb:memory:sync-plan` wrote a no-write sync plan.
 
 ---
+## Change Log 2026-05-06 (feat(hq): add Marcus local command center)
+
+**Subsystem:** IDE HQ utility surface + local HQ server + command-center docs
+
+**Changes:**
+- Added HQ utility mode wiring in IDE shell (`hq` mode) and left-rail entry so HQ is accessible without changing the core student workflow spine.
+- Added `packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx` with Marcus console, product-spine status strip, evidence matrix, bench intelligence panel, memory/Obsidian status panel, and claim-trace summary panel.
+- Added typed HQ client contracts (`hqClient.ts`, `hqTypes.ts`) for health/snapshot/evidence/chat/problem/memory/trace calls.
+- Added `scripts/rb-hq-server.mjs` with allowlisted-only command execution, local host binding, offline-safe Ollama chat degradation, and endpoints: `/health`, `/snapshot`, `/control-next`, `/bench-evidence`, `/chat`, `/problem-intake`, `/memory-search`, `/trace-claim`.
+- Added focused server safety tests in `scripts/rb-hq-server.test.mjs` and package scripts `rb:hq:server`, `rb:hq:doctor`, `rb:hq:test`.
+- Added scoped HQ styling in `ide-root.css` for command-center layout and responsive behavior.
+- Added concise product documentation for HQ v0 contract at `docs/product/RED_BYTE_HQ_LOCAL_AGENT.md`, with references from `docs/DOC_INDEX.md` and `docs/IDE_SYSTEM_MAP.md`.
+
+**Evidence:** `pnpm rb:hq:test` pass; `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideLeftRail.stageGrammar.test.tsx` pass; `pnpm rb:hq:doctor` reports correct degraded state when Ollama is offline.
+
+## Change Log 2026-05-06 (chore(bench): add E1 E2 E3 evidence classifier)
+
+**Subsystem:** bench evidence model + classifier tooling + release/current-truth docs
+
+**Changes:**
+- Added `scripts/rb-bench-evidence.mjs` with `classify`, `observe`, and `test` command surfaces for post-Vivado evidence handling.
+- Added `scripts/rb-bench-evidence.test.mjs` focused tests covering E-level promotion rules, warning-class buckets, missing-run errors, and output-path guards under `.redbyte/bench/runs`.
+- Added package scripts: `rb:bench:evidence:classify`, `rb:bench:evidence:observe`, and `rb:bench:evidence:test`.
+- Added durable model doc `docs/release/redbyte-bench-evidence-model.md` defining E0/E1/E2/E3 semantics, warning classes, and non-conflation rule (`E3` never inferred from `E2`).
+- Generated controlled-run outputs under `.redbyte/bench/runs/20260505-222402/`: `evidence-classification.md`, `evidence-classification.json`, and refreshed target-specific `board-observation.md` templates for `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour`.
+- Updated `docs/ACTIVE_WORK.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/V1_RELEASE_READINESS_CHECKLIST.md`, and `docs/DOC_INDEX.md` to reflect the new evidence workflow and current E2-only controlled status.
+
+**Evidence:** `pnpm rb:bench:evidence:test` pass; `pnpm rb:bench:evidence:observe -- <target-id>` generated updated observation templates for all three controlled targets; `pnpm rb:bench:evidence:classify` wrote classification artifacts and reported `E0=0, E1=0, E2=3, E3=0` for run `20260505-222402`.
+
+## Change Log 2026-05-05 (chore(bench): capture controlled Vivado Basys3 evidence pack)
+
+**Subsystem:** controlled Vivado/Basys3 bench evidence, release/certification truth docs
+
+**Changes:**
+- Created gitignored `.redbyte/bench/runs/20260505-222402/` as the controlled raw evidence pack location and added `.redbyte/bench/runs/` to `.gitignore`.
+- Captured lab environment proof: Windows 11 Education, Vivado 2024.2 at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, `hw_server` present, `djtgcfg` absent, `XILINX_VIVADO` unset, FTDI/Digilent USB device visible, and Vivado Hardware Manager Tcl detecting `localhost:3121/xilinx_tcf/Digilent/210183BF7C42A` with `xc7a35t_0`.
+- Narrowed the first controlled pass to exactly three targets: `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour`.
+- Regenerated exports, ran real Vivado batch synth/implementation/bitstream, collected logs/reports, and programmed the Basys3 for all three targets through `scripts/vivado/redbyte_program_device.tcl`.
+- Wrote generated `environment.md`, `commands.md`, `targets.md`, `matrix.md`, `vivado-warning-taxonomy.md`, `redbyte-gaps.md`, `next-actions.md`, and per-target `board-observation.md` files under `.redbyte/bench/runs/20260505-222402/`.
+- Updated durable release/current-truth docs to record the controlled E1/E2 evidence refresh while keeping E3 proof closure blocked on manual board observation.
+
+**Evidence:** all three controlled targets exported successfully; Vivado batch logs report `synth_design Complete!`, `write_bitstream Complete!`, and bitstreams under each project `.runs/impl_1/top.bit`; programming logs report local `connect_hw_server`, one hardware target, selected `xc7a35t_0`, and `RedByte program: SUCCESS`. Warning taxonomy recorded `Synth 8-3330` optimized empty-top for `signal-tour`, `Synth 8-7080` parallel synthesis notes, combinational no-clock/no-timing warnings (`Timing 38-313`, `Power 33-232`), and `two-bit-counter` timing constraints met. No physical switch/button/LED behavior was observed by Codex in this run; E3 remains manual. `pnpm rb:agent:ollama:doctor` and `pnpm rb:memory:doctor` were blocked because Ollama CLI/API was unavailable.
+
+## Change Log 2026-05-05 (chore(bench): capture Vivado Basys3 bench intelligence)
+
+**Subsystem:** `scripts/rb-vivado-bench.mjs`, Vivado/Basys3 certification docs, bench evidence reports
+
+**Changes:**
+- Ran repo/control preflight on clean `main` at `1e730acd` with no local ahead/behind against `origin/main`; control loop still reports proof closure as board/manual-evidence gated.
+- Inventoried the lab machine: Windows 11 Education, Vivado 2024.2 at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, `hw_server` present, `djtgcfg` absent, `XILINX_VIVADO` unset, FTDI/Digilent USB device visible, and Vivado hardware manager detecting `localhost:3121/xilinx_tcf/Digilent/210183BF7C42A` with `xc7a35t_0`.
+- Exported, built, bitstreamed, and programmed four targets through real Vivado + Basys3: `golden-basys3-switch-and`, IDE `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`.
+- Added `scripts/rb-vivado-bench.mjs` plus `rb:bench:*` aliases to turn captured Vivado/program logs into a matrix, warning taxonomy, JSON summary, environment report, and per-target board-observation templates under gitignored `.redbyte/agent/runs/bench/`.
+- Added durable bench report `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md` and updated release/current-truth docs to keep E1/E2 evidence separate from E3 behavior proof.
+
+**Evidence:** `pnpm lab:vivado:hw-probe` pass with one JTAG target; Vivado batch `synth_1 -> impl_1 -> write_bitstream` pass for all four targets; `scripts/vivado/redbyte_program_device.tcl` pass for all four bitstreams with `program_hw_devices` success; `pnpm rb:bench:doctor` pass; `pnpm rb:bench:summarize` pass and generated the required matrix. Warnings classified include Windows path-length risk, first-run generated-run messages, optimized `signal-tour` empty-top warning, combinational no-clock timing/power warnings, and the clean constrained clock path for `two-bit-counter`. Board observation remains **manual required** for this run; do not close E3 from these programming logs. `pnpm rb:agent:ollama:doctor`, `pnpm rb:memory:doctor`, and `pnpm rb:memory:*` trace/synth commands were blocked by missing Ollama/API or missing memory index; `pnpm rb:problem:intake/triage/trace/prompt` succeeded with deterministic fallback.
 
 ## Change Log 2026-05-05 (feat(onboarding): add professional workflow orientation)
 

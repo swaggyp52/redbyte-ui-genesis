@@ -1,5 +1,6 @@
 export type IdeMode =
   | 'project'
+  | 'hq'
   | 'design'
   | 'verify'
   | 'hardware'
@@ -38,6 +39,7 @@ export const STUDENT_WORKFLOW_SUMMARY = STUDENT_WORKFLOW_SPINE.join(' → ');
 
 export const IDE_MODE_LABELS: Record<IdeMode, string> = {
   project: 'Project',
+  hq: 'HQ',
   design: DESIGN_STAGE_LABEL,
   verify: VERIFY_STAGE_LABEL,
   hardware: MAP_PINS_STAGE_LABEL,

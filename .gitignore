@@ -31,6 +31,7 @@ yarn-error.log*
 # Agent source files (prompts, templates, config examples) ARE tracked
 .redbyte/work/
 .redbyte/agent/runs/
+.redbyte/bench/runs/
 .redbyte/agent/config.json
 fuzz_log*.txt
 
