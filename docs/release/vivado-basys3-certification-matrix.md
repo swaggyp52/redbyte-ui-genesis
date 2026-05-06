@@ -19,6 +19,14 @@ Align with **`docs/STUDENT_RELEASE_READINESS.md`** for instructor-facing languag
 
 **Rule:** `bundle.valid` and classroom goldens prove **E0 only**. Never describe E0 as “lab ready.”
 
+Evidence classifier support (2026-05-06):
+
+- Model doc: `docs/release/redbyte-bench-evidence-model.md`
+- Command: `pnpm rb:bench:evidence:classify`
+- Controlled-run outputs: `.redbyte/bench/runs/20260505-222402/evidence-classification.md` and `.json`
+- Current controlled classification: `golden-basys3-switch-and`, `signal-tour`, and `two-bit-counter` are all **E2** in that run because observed behavior remains manual/uncertain.
+- Hard rule remains active: E3 cannot be inferred from E2 programming logs.
+
 **Curated vs from-scratch:** **IDE example rows** prove the gallery asset. **From-scratch rows** use `meta.projectKind: 'blank'` and **no** `sourceExampleId`—see `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md` and the authoring checklist.
 
 ---

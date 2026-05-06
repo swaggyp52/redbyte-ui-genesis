@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-05
+last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Close E3 observation honestly for fresh bench rows** - 2026-05-05 controlled pack refreshed E1/E2 for `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour`; prior broad pass also refreshed IDE `half-adder`. Only prior `signal-tour` has E3, so `golden`, `half-adder`, and `two-bit-counter` still need manual behavior notes.
+1. **Close E3 observation honestly for fresh bench rows** - controlled pack now has explicit E1/E2/E3 classifier outputs (`pnpm rb:bench:evidence:classify`) confirming `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour` are E2 in that run; manual board observation is still required for E3 promotion.
 2. **~~Curate starter and example learning path~~** — Done (`13d77a3b`). 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier metadata, flagship flag, openProof notes, and numbered path strip in ExamplesBrowser.
 
 ---
@@ -33,13 +33,15 @@ imported_by: CLAUDE.md
 
 ## Next bench / Vivado task
 
-**Target:** E3 observation notes for the fresh 2026-05-05 controlled rows, starting with `golden-basys3-switch-and` and IDE `two-bit-counter`.
+**Target:** Fill E3 observation notes for the controlled rows using the new observation templates, starting with `golden-basys3-switch-and` and IDE `two-bit-counter`.
 
 ```powershell
-pnpm rb:bench:summarize
+pnpm rb:bench:evidence:observe -- golden-basys3-switch-and
+pnpm rb:bench:evidence:observe -- two-bit-counter
+pnpm rb:bench:evidence:classify
 ```
 
-Planned E3 observation: use the generated `.redbyte/bench/runs/20260505-222402/<target>/board-observation.md` templates for the controlled pack, or `.redbyte/agent/runs/bench/<target>/board-observation.md` for the broader bench pack, to record switch/button actions, LED behavior, expected-vs-observed result, evidence type, and operator/date. Do not mark proof closure complete from programming logs alone.
+Planned E3 observation: use the generated `.redbyte/bench/runs/20260505-222402/<target>/board-observation.md` templates to record controls toggled, observed outputs, pass/fail/uncertain, observer, evidence type, and `can_promote_to_E3`. Do not mark proof closure complete from programming logs alone.
 
 Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`, `docs/STUDENT_RELEASE_READINESS.md` section 3, and `scripts/vivado/README.md`.
 
@@ -49,6 +51,7 @@ Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-
 
 | Evidence | Path |
 |----------|------|
+| Bench evidence classifier + observation workflow (2026-05-06): new evidence model doc, `rb:bench:evidence:*` commands, and controlled-run classification outputs; all three controlled targets classify as E2 because board observation is still uncertain/manual. | `docs/release/redbyte-bench-evidence-model.md`; `scripts/rb-bench-evidence.mjs`; `.redbyte/bench/runs/20260505-222402/evidence-classification.md` |
 | Vivado/Basys3 bench intelligence (2026-05-05): real Vivado 2024.2 + detected Basys3 target; broad pass exported/built/programmed four rows, then controlled pack narrowed to `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour` with environment report, command log, matrix, warning taxonomy, RedByte gaps, and per-target board-observation templates. E3 remains manual except prior `signal-tour` proof. | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`; `.redbyte/bench/runs/20260505-222402/` |
 | Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
 | F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
@@ -104,7 +107,7 @@ Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Local | Controlled Vivado/Basys3 evidence pack: `.redbyte/bench/runs/20260505-222402/` captures environment, commands, three-target matrix, warning taxonomy, RedByte gaps, programming logs, and manual board-observation templates; durable docs updated without product-code changes | `uncommitted` |
+| Local | Bench evidence classifier slice: added `scripts/rb-bench-evidence.mjs`, `rb:bench:evidence:*` scripts, durable E1/E2/E3 evidence model, controlled-run `evidence-classification.{md,json}`, and refreshed target-specific board-observation templates | `uncommitted` |
 | Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
 | Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
 | Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |

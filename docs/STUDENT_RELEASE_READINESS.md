@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-05
+last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-05-05
+**Last updated:** 2026-05-06
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -97,6 +97,7 @@ Full command reference: `scripts/vivado/README.md`.
 
 | Evidence | Path |
 |----------|------|
+| Bench evidence classifier (2026-05-06): `rb:bench:evidence:*` now classifies E0/E1/E2/E3 and writes per-run `evidence-classification.{md,json}`. Controlled run `20260505-222402` classifies `golden-basys3-switch-and`, `signal-tour`, and `two-bit-counter` as E2 because board observation remains uncertain/manual. | `docs/release/redbyte-bench-evidence-model.md`; `scripts/rb-bench-evidence.mjs`; `.redbyte/bench/runs/20260505-222402/evidence-classification.md` |
 | Vivado/Basys3 bench intelligence (2026-05-05): four-row broad pass plus controlled three-target pack (`golden`, `two-bit-counter`, `signal-tour`) exported, built, bitstreamed, programmed, and warning-classified; E3 remains manual except prior `signal-tour` proof | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`; generated raw pack `.redbyte/bench/runs/20260505-222402/` |
 | RC1 bench closeout (E2/E3 honesty + hw_probe) | `docs/release/proof/rc1-bench-closeout-2026-04-23.md` |
 | `signal-tour` E2/E3 closeout | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |

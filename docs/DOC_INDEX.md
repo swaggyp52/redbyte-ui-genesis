@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-05
+last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-05-05
+**Last Updated:** 2026-05-06
 
 Navigation hub for all RedByte documentation. Start with the **Active Work** section below.
 
@@ -96,6 +96,7 @@ These docs turn surface complaints into governed work with explicit proof obliga
 | File | Purpose |
 |------|---------|
 | [ide/SURFACE_CONFORMANCE.md](./ide/SURFACE_CONFORMANCE.md) | Surface change -> contract, QA, and proof review rules |
+| [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | Durable E0/E1/E2/E3 post-Vivado evidence model and warning-classification rules |
 | [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Canonical local ticket schema for product-legitimacy issues |
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
 

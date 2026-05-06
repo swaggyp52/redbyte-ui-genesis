@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-05
+last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -71,6 +71,7 @@ Supporting truths:
 ### Proof closure
 
 - 2026-05-05 broad bench refreshed E1/E2 for `golden-basys3-switch-and`, IDE `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`; a controlled evidence pack then narrowed to `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour` under `.redbyte/bench/runs/20260505-222402/`.
+- 2026-05-06 evidence tooling added `pnpm rb:bench:evidence:classify` and `pnpm rb:bench:evidence:observe`; controlled run `20260505-222402` currently classifies `golden-basys3-switch-and`, IDE `signal-tour`, and IDE `two-bit-counter` as E2 because observation is still uncertain/manual.
 - The controlled pack confirms Vivado 2024.2, Hardware Manager Tcl board detection/programming on `xc7a35t_0`, and classifies warning patterns, but it records no new physical LED/switch behavior observations.
 - `golden-basys3-switch-and`, IDE `half-adder`, and IDE `two-bit-counter` still need final E3 observation closure.
 - Custom-row E2/E3 proof is still incomplete unless a row is programmed and observed in a later bench run.

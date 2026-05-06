@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-05
+last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
 role: v1 readiness gate — honest checklist of what is done, in-progress, and blocked
@@ -64,6 +64,8 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 
 ## D. Verification / Export Readiness
 
+- [x] Post-Vivado bench evidence classifier is live (`rb:bench:evidence:classify`) and keeps E1/E2/E3 separated
+- [x] Target observation template workflow is live (`rb:bench:evidence:observe`) with explicit `can_promote_to_E3` gate
 - [x] Vivado Kit ZIP passes E1 (synth + impl + bitstream) for golden, signal-tour, two-bit-counter, from-scratch twins
 - [x] XDC uses correct Basys3 package pin names (traced to Digilent master XDC)
 - [x] `create_clock` constraint present and correct for CLK100MHZ / W5

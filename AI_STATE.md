@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-06 (chore(bench): add E1 E2 E3 evidence classifier)
+
+**Subsystem:** bench evidence model + classifier tooling + release/current-truth docs
+
+**Changes:**
+- Added `scripts/rb-bench-evidence.mjs` with `classify`, `observe`, and `test` command surfaces for post-Vivado evidence handling.
+- Added `scripts/rb-bench-evidence.test.mjs` focused tests covering E-level promotion rules, warning-class buckets, missing-run errors, and output-path guards under `.redbyte/bench/runs`.
+- Added package scripts: `rb:bench:evidence:classify`, `rb:bench:evidence:observe`, and `rb:bench:evidence:test`.
+- Added durable model doc `docs/release/redbyte-bench-evidence-model.md` defining E0/E1/E2/E3 semantics, warning classes, and non-conflation rule (`E3` never inferred from `E2`).
+- Generated controlled-run outputs under `.redbyte/bench/runs/20260505-222402/`: `evidence-classification.md`, `evidence-classification.json`, and refreshed target-specific `board-observation.md` templates for `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour`.
+- Updated `docs/ACTIVE_WORK.md`, `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/V1_RELEASE_READINESS_CHECKLIST.md`, and `docs/DOC_INDEX.md` to reflect the new evidence workflow and current E2-only controlled status.
+
+**Evidence:** `pnpm rb:bench:evidence:test` pass; `pnpm rb:bench:evidence:observe -- <target-id>` generated updated observation templates for all three controlled targets; `pnpm rb:bench:evidence:classify` wrote classification artifacts and reported `E0=0, E1=0, E2=3, E3=0` for run `20260505-222402`.
+
 ## Change Log 2026-05-05 (chore(bench): capture controlled Vivado Basys3 evidence pack)
 
 **Subsystem:** controlled Vivado/Basys3 bench evidence, release/certification truth docs
