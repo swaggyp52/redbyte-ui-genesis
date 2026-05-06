@@ -815,10 +815,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
   }, [evidenceDiagnostics, handoffTruth.condition, handoffTruth.title, unmappedRequiredPorts.length, viewModel.errors]);
 
-    /** Summary-state title: names what export tier is available (F-E1 fix: distinct from next-action) */
-    const summaryStateTitle = useMemo(() => {
+    /** Surface status title: names the current export tier in the command strip. */
+    const surfaceStatusTitle = useMemo(() => {
       if (downloadDone) return `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`;
-    
+
       switch (handoffTruth.condition) {
         case 'mapping-incomplete':
         case 'design-blocked':
@@ -838,6 +838,67 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           return 'Export status';
       }
     }, [downloadDone, handoffTruth.condition, projectSlug]);
+
+    const surfaceStatusDetail = downloadDone
+      ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
+      : handoffTruth.message;
+
+    /** Summary-state title: explains the package handoff without repeating the command-strip status. */
+    const summaryStateTitle = useMemo(() => {
+      if (downloadDone) return `Vivado project downloaded`;
+
+      switch (handoffTruth.condition) {
+        case 'mapping-incomplete':
+          return 'Pin mapping must be completed before handoff';
+        case 'design-blocked':
+          return 'Export blockers must be resolved before handoff';
+        case 'verify-not-run':
+        case 'verify-stale':
+        case 'assertions-differ':
+        case 'trace-only':
+          return 'Vivado handoff package generated';
+        case 'export-stale':
+          return 'Previous package needs rebuild';
+        case 'export-missing':
+          return 'Vivado package ready to build';
+        case 'mapping-review':
+          return 'Vivado package generated with mapping review pending';
+        case 'ready':
+          return 'Trusted Vivado handoff ready';
+        default:
+          return 'Vivado handoff status';
+      }
+    }, [downloadDone, handoffTruth.condition]);
+
+    const summaryStateDetail = useMemo(() => {
+      if (downloadDone) {
+        return 'Open the .xpr in Vivado, then run synthesis, implementation, bitstream, and board programming outside RedByte.';
+      }
+
+      switch (handoffTruth.condition) {
+        case 'mapping-incomplete':
+        case 'mapping-review':
+          return 'Map Pins owns board readiness. Complete the physical bindings, then keep Verify evidence separate from pin assignment.';
+        case 'design-blocked':
+          return 'Resolve the blocking export diagnostic before treating the Vivado files as a credible handoff.';
+        case 'verify-not-run':
+          return 'Draft files are available for inspection or download; run Verify Compare before treating this package as trusted.';
+        case 'verify-stale':
+          return 'Draft files reflect the current design state, but trusted handoff waits on refreshed Verify evidence.';
+        case 'assertions-differ':
+          return 'Draft files can be inspected, but failed Compare evidence prevents a trusted handoff claim.';
+        case 'trace-only':
+          return 'Trace-only evidence is observation, not proof. Run Compare before calling the package trusted.';
+        case 'export-stale':
+          return 'Rebuild the package so the downloadable Vivado project matches the current design.';
+        case 'export-missing':
+          return 'Build the Vivado project package after checking mapping, timing, and Verify evidence.';
+        case 'ready':
+          return 'Current Verify evidence, mapping, and generated files agree for Vivado handoff.';
+        default:
+          return handoffTruth.message;
+      }
+    }, [downloadDone, handoffTruth.condition, handoffTruth.message]);
 
     /** Next-action title: names the specific repair/build action (F-E2 fix: distinct from summary-state) */
     const nextActionTitleDistinct = useMemo(() => {
@@ -949,11 +1010,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         ? 'Download Draft Vivado Kit'
         : 'Download Vivado Kit';
   const dominantActionTitle = downloadDone
-    ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
+    ? 'Vivado project downloaded'
       : summaryStateTitle;
   const dominantActionDetail = downloadDone
-    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
-    : handoffTruth.message;
+    ? 'Open the .xpr in Vivado, then run synthesis, implementation, bitstream, and board programming outside RedByte.'
+    : summaryStateDetail;
   const gateStackSection = (
     <div className="ide-export-gate-details-panel" data-testid="ide-export-readiness-details">
       <header className="ide-export-section-header">
@@ -1504,8 +1565,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               className="ide-export-command-strip"
               testId="ide-export-command-strip"
               label="Export"
-              title={dominantActionTitle}
-              description={dominantActionDetail}
+              title={surfaceStatusTitle}
+              description={surfaceStatusDetail}
               meta={(
                 <>
                   <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel.toUpperCase()}</IdeStatusPill>

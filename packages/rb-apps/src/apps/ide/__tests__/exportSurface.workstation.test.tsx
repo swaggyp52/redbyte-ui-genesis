@@ -197,6 +197,29 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/Ready for Vivado/);
   });
 
+  it('keeps draft state, handoff summary, and Verify next action as distinct messages', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        workflowAuthority={makeWorkflowAuthority()}
+      />
+    );
+
+    const commandStrip = getByTestId('ide-export-command-strip');
+    const summaryCard = getByTestId('ide-export-summary-card');
+    const checksDock = getByTestId('ide-export-checks-dock');
+    const handoffSummary = getByTestId('ide-export-handoff-summary');
+
+    expect(commandStrip.textContent).toContain('Draft export available');
+    expect(summaryCard.textContent).not.toContain('Draft export available');
+    expect(summaryCard.textContent).toContain('Vivado handoff package generated');
+    expect(checksDock.textContent).toContain('Open Verify to create trusted export evidence');
+    expect(handoffSummary.textContent).toContain('Pin mapping');
+    expect(handoffSummary.textContent).toContain('Verification');
+    expect(handoffSummary.textContent).toContain('Draft package available; trusted evidence still pending');
+  });
+
   it('keeps project export available when verify has not run yet', () => {
     const { getByTestId, getByText, queryByTestId } = render(
       <ExportSurface

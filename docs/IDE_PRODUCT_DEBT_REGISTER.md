@@ -52,6 +52,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
 - Status: **Resolved (2026-05-05)** — commit `4a248098` (`fix(export): clarify draft versus trusted export`). Export summary card now names the current tier (`summaryStateTitle`: "Draft export available", "Export ready to build", "Trusted export ready"), next-action dock names the specific repair action (`nextActionTitleDistinct`), and trust consequence explains how to resolve (`nextActionDetailDistinct`). 18 trust-clarity tests pass; 3 export gates pass. Remaining visual/density debt (layout balance, CSS) is tracked in RB-DEBT-006 and RB-DEBT-007.
 
+- Follow-up (2026-05-05): Export handoff hierarchy now splits the command-strip export state from the hero handoff summary. The command strip may say "Draft export available"; the summary says "Vivado handoff package generated"; the next-action dock owns the Verify repair path. Browser audit at `1366x768` and `1920x1080` confirmed the duplicate Draft heading is gone while Draft vs Trusted and Map Pins vs Verify boundaries remain explicit.
+
 ### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
 
 - Severity: Medium

@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(export): clarify handoff hierarchy)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `exportSurface.workstation.test.tsx`, Export product debt docs
+
+**Changes:**
+- Split Export's command-strip state from the hero handoff summary so Draft status is not repeated as the dominant heading in both places.
+- Kept Draft Export available while making the summary say what the package is: a generated Vivado handoff whose trusted status still depends on Verify Compare evidence.
+- Added a focused Export workstation test proving draft state, handoff summary, Verify next action, pin mapping, and verification summary stay distinct.
+
+**Evidence:** `pnpm rb:problem:intake`/`triage`/`trace`/`prompt` ran for the raw Export handoff feedback; browser audit on 2-Bit Up Counter Export at `1366x768` and `1920x1080` confirmed the pre-fix duplicate `Draft export available` heading and post-fix `Vivado handoff package generated` summary; focused RED test failed before the fix and passed after; `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.trust-clarity.test.tsx` pass (26/26); `pnpm --filter @redbyte/playground build` pass; `pnpm ide:gate:export-download-contract` pass; `pnpm ide:gate:vivado-pack-contract` pass; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass. `pnpm ide:gate:export-ready-contract` and `pnpm ide:gate:export-blockers-contract` currently fail in their preview harnesses on stale setup/visibility assertions unrelated to this copy hierarchy change (`verify had neither a visible generate-basics action nor an existing ready-vector state`; `export blockers list must render`). `pnpm rb:memory:sync-plan` wrote a no-write sync plan.
+
+---
+
 ## Change Log 2026-05-05 (feat(onboarding): add professional workflow orientation)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, onboarding authority tests
