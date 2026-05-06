@@ -18,6 +18,7 @@ const ALLOWED_TYPES = new Set([
   'trace_report',
   'bench_summary',
   'control_snapshot',
+  'patch_proposal',
   'fallback_report',
 ]);
 

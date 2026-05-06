@@ -50,6 +50,10 @@ export function createMarcusToolRegistry(deps) {
     buildSnapshot,
     loadBenchEvidenceSummary,
     gitSummary,
+    searchCode,
+    readCodeFile,
+    generatePatchProposal,
+    listPatchProposals,
   } = deps;
 
   const hqRunsDir = path.join(repoRoot, '.redbyte', 'agent', 'runs', 'hq');
@@ -118,6 +122,168 @@ export function createMarcusToolRegistry(deps) {
   }
 
   const toolList = [
+    {
+      name: 'code_search',
+      description: 'Search allowlisted RedByte repo code/docs paths with bounded read-only snippets.',
+      safetyLevel: 'safe-read',
+      access: 'read',
+      timeoutMs: 30000,
+      allowedCommands: [],
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+        },
+        required: ['query'],
+      },
+      handler: async (args) => {
+        if (typeof searchCode !== 'function') throw new Error('code search unavailable');
+        const query = sanitizeUserText(args.query || 'RedByte');
+        const result = searchCode(query, { maxSnippets: 12 });
+        return finalizeResult({
+          summary: `Code search returned ${result.results.length} result(s) for: ${query}`,
+          data: result,
+          sources: result.results.slice(0, 8).map((entry, index) => sourceRecord({
+            id: `code-search-${index}`,
+            kind: 'tool_output',
+            title: entry.title || entry.path,
+            path: entry.path,
+            excerpt: clipExcerpt(entry.snippet),
+            freshness: 'current',
+            authority: 'supporting',
+          })),
+          warnings: result.warnings || [],
+          authority: 'supporting',
+          sourceConfidence: result.results.length ? 'medium' : 'low',
+        });
+      },
+    },
+    {
+      name: 'code_read',
+      description: 'Read a bounded preview from an allowlisted RedByte repo text file.',
+      safetyLevel: 'safe-read',
+      access: 'read',
+      timeoutMs: 30000,
+      allowedCommands: [],
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string' },
+        },
+        required: ['path'],
+      },
+      handler: async (args) => {
+        if (typeof readCodeFile !== 'function') throw new Error('code read unavailable');
+        const filePath = sanitizeUserText(args.path || '');
+        const result = readCodeFile(filePath, { maxChars: 5000 });
+        return finalizeResult({
+          summary: `Read safe code preview: ${result.path}`,
+          data: result,
+          sources: [
+            sourceRecord({
+              id: `code-read-${result.path}`,
+              kind: 'tool_output',
+              title: result.path,
+              path: result.path,
+              excerpt: clipExcerpt(result.content),
+              freshness: 'current',
+              authority: 'supporting',
+            }),
+          ],
+          warnings: result.truncated ? ['Code preview was truncated.'] : [],
+          authority: 'supporting',
+          sourceConfidence: 'medium',
+        });
+      },
+    },
+    {
+      name: 'generate_patch_proposal',
+      description: 'Generate a proposal-only patch plan from a task, packet, or raw request. Does not edit files.',
+      safetyLevel: 'safe-write-generated',
+      access: 'write-generated',
+      timeoutMs: 60000,
+      allowedCommands: [],
+      parameters: {
+        type: 'object',
+        properties: {
+          taskId: { type: 'string' },
+          packetId: { type: 'string' },
+          rawRequest: { type: 'string' },
+        },
+      },
+      handler: async (args) => {
+        if (typeof generatePatchProposal !== 'function') throw new Error('patch proposal generation unavailable');
+        const proposal = generatePatchProposal({
+          taskId: sanitizeUserText(args.taskId || ''),
+          packetId: sanitizeUserText(args.packetId || ''),
+          rawRequest: sanitizeUserText(args.rawRequest || args.query || ''),
+        });
+        return finalizeResult({
+          summary: `Generated proposal-only patch plan: ${proposal.title}`,
+          data: {
+            proposal,
+            requiresApproval: true,
+            applyStatus: 'proposal_only',
+          },
+          sources: [
+            sourceRecord({
+              id: 'patch-proposal-generated',
+              kind: 'generated_run',
+              title: proposal.title,
+              path: proposal.generatedFiles?.[0] || null,
+              excerpt: clipExcerpt(proposal.patchSketch),
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+            sourceRecord({
+              id: 'code-intelligence-contract',
+              kind: 'repo_doc',
+              title: 'Marcus Code Intelligence',
+              path: 'docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md',
+              excerpt: 'A patch proposal is not an applied change.',
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+          ],
+          warnings: ['Patch proposal only. Marcus did not edit files.'],
+          generatedFiles: proposal.generatedFiles || [],
+          authority: 'generated',
+          sourceConfidence: 'medium',
+        });
+      },
+    },
+    {
+      name: 'list_patch_proposals',
+      description: 'List recent generated patch proposal artifacts.',
+      safetyLevel: 'safe-read',
+      access: 'read',
+      timeoutMs: 15000,
+      allowedCommands: [],
+      parameters: {
+        type: 'object',
+        properties: {},
+      },
+      handler: async () => {
+        if (typeof listPatchProposals !== 'function') throw new Error('patch proposal list unavailable');
+        const proposals = listPatchProposals({ limit: 10 });
+        return finalizeResult({
+          summary: `Found ${proposals.length} patch proposal(s).`,
+          data: { proposals },
+          sources: proposals.slice(0, 5).map((proposal) => sourceRecord({
+            id: `patch-proposal-${proposal.id}`,
+            kind: 'generated_run',
+            title: proposal.title,
+            path: proposal.generatedFiles?.[0] || null,
+            excerpt: proposal.applyStatus,
+            freshness: 'generated',
+            authority: 'generated',
+          })),
+          warnings: [],
+          authority: 'generated',
+          sourceConfidence: proposals.length ? 'medium' : 'low',
+        });
+      },
+    },
     {
       name: 'get_product_snapshot',
       description: 'Read current RedByte control snapshot and product state summary.',

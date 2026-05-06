@@ -17,6 +17,9 @@ const hqClientMocks = vi.hoisted(() => ({
   mockGenerateMarcusCodingPlan: vi.fn(),
   mockListHqPackets: vi.fn(),
   mockReadHqPacket: vi.fn(),
+  mockListHqPatchProposals: vi.fn(),
+  mockReadHqPatchProposal: vi.fn(),
+  mockDraftHqPatchProposal: vi.fn(),
   mockListHqSessionEvents: vi.fn(),
   mockListHqTasks: vi.fn(),
   mockReadHqTask: vi.fn(),
@@ -36,6 +39,9 @@ vi.mock('../surfaces/hq/hqClient', () => ({
   generateMarcusCodingPlan: hqClientMocks.mockGenerateMarcusCodingPlan,
   listHqPackets: hqClientMocks.mockListHqPackets,
   readHqPacket: hqClientMocks.mockReadHqPacket,
+  listHqPatchProposals: hqClientMocks.mockListHqPatchProposals,
+  readHqPatchProposal: hqClientMocks.mockReadHqPatchProposal,
+  draftHqPatchProposal: hqClientMocks.mockDraftHqPatchProposal,
   listHqSessionEvents: hqClientMocks.mockListHqSessionEvents,
   listHqTasks: hqClientMocks.mockListHqTasks,
   readHqTask: hqClientMocks.mockReadHqTask,
@@ -104,6 +110,43 @@ const fullTask = {
   sources: fullPacket.sources,
 };
 
+const proposalHeader = {
+  id: 'patch-proposal-1',
+  createdAt: '2026-05-06T12:10:00.000Z',
+  title: 'Export diagnostics proposal',
+  sourceTaskId: 'task-1',
+  sourcePacketId: 'pkt-1',
+  targetFileCount: 1,
+  riskCount: 1,
+  requiresApproval: true,
+  applyStatus: 'proposal_only',
+  generatedFiles: ['.redbyte/agent/runs/hq/patch-proposals/patch-proposal-1.json'],
+};
+
+const fullProposal = {
+  ...proposalHeader,
+  productProblem: 'Export diagnostics need a focused implementation plan.',
+  targetFiles: ['packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx'],
+  codeFindings: [
+    {
+      path: 'packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx',
+      reason: 'Matched ExportSurface search.',
+      snippet: 'Export diagnostics',
+    },
+  ],
+  proposedChanges: ['Update Export diagnostics copy only after Codex review.'],
+  patchSketch: 'Proposal only. No patch has been applied.',
+  risks: ['Do not touch Verify trust logic.'],
+  doNotTouch: ['Do not write to Obsidian.', 'Do not modify files from Marcus.'],
+  tests: ['pnpm rb:hq:test'],
+  validationCommands: ['pnpm rb:hq:test', 'pnpm --filter @redbyte/playground build'],
+  evidenceSources: fullPacket.sources,
+  generatedFiles: ['.redbyte/agent/runs/hq/patch-proposals/patch-proposal-1.json', '.redbyte/agent/runs/hq/patch-proposals/patch-proposal-1.md'],
+  requiresApproval: true,
+  applyStatus: 'proposal_only',
+  codexPrompt: 'Codex implements only after approval.',
+};
+
 function primeHealthyMocks() {
   hqClientMocks.mockGetHqHealth.mockResolvedValue({
     status: 'ok',
@@ -159,6 +202,16 @@ function primeHealthyMocks() {
 
   hqClientMocks.mockListHqPackets.mockResolvedValue({ ok: true, packets: [], total: 0 });
   hqClientMocks.mockReadHqPacket.mockResolvedValue({ ok: true, packet: fullPacket });
+  hqClientMocks.mockListHqPatchProposals.mockResolvedValue({ ok: true, proposals: [], total: 0 });
+  hqClientMocks.mockReadHqPatchProposal.mockResolvedValue({ ok: true, proposal: fullProposal });
+  hqClientMocks.mockDraftHqPatchProposal.mockResolvedValue({
+    ok: true,
+    proposal: fullProposal,
+    generatedFiles: fullProposal.generatedFiles,
+    requiresApproval: true,
+    applyStatus: 'proposal_only',
+    packetId: 'proposal-packet-1',
+  });
   hqClientMocks.mockListHqSessionEvents.mockResolvedValue({ ok: true, events: [], total: 0 });
   hqClientMocks.mockListHqTasks.mockResolvedValue({ ok: true, tasks: [], total: 0 });
   hqClientMocks.mockReadHqTask.mockResolvedValue({ ok: true, task: fullTask });
@@ -288,11 +341,11 @@ describe('HqSurface workstation', () => {
   });
 
   it('does not expose Obsidian write action in HQ UI', async () => {
-    const { queryByText } = render(<HqSurface />);
+    const { queryByRole, queryByText } = render(<HqSurface />);
 
     await waitFor(() => expect(queryByText(/Obsidian writes: disabled/i)).toBeTruthy());
     expect(queryByText(/Write to Obsidian/i)).toBeNull();
-    expect(queryByText(/Apply patch/i)).toBeNull();
+    expect(queryByRole('button', { name: /Apply patch/i })).toBeNull();
   });
 
   it('renders packet detail with sources, generated files, approval, and prompt copy action', async () => {
@@ -350,5 +403,41 @@ describe('HqSurface workstation', () => {
     expect(getByTestId('hq-bench-manual-needed').textContent).toContain('2');
     expect(getByTestId('hq-bench-timeline-targets').textContent).toContain('manual pending');
     expect(queryByText(/E3 proven/i)).toBeNull();
+  });
+
+  it('renders patch proposals panel and proposal-only preview', async () => {
+    hqClientMocks.mockListHqPatchProposals.mockResolvedValue({ ok: true, proposals: [proposalHeader], total: 1 });
+    const { getByTestId, queryByRole } = render(<HqSurface />);
+
+    await waitFor(() => expect(getByTestId('hq-patch-proposals-panel')).toBeTruthy());
+    await waitFor(() => expect(getByTestId('hq-patch-proposal-row-patch-proposal-1')).toBeTruthy());
+    fireEvent.click(getByTestId('hq-patch-proposal-row-patch-proposal-1'));
+
+    await waitFor(() => expect(getByTestId('hq-patch-proposal-detail')).toBeTruthy());
+    expect(getByTestId('hq-patch-approval-badge').textContent).toContain('approval required');
+    expect(getByTestId('hq-patch-proposal-only-badge').textContent).toContain('proposal only');
+    expect(getByTestId('hq-patch-target-files').textContent).toContain('ExportSurface.tsx');
+    expect(getByTestId('hq-patch-risks').textContent).toContain('Verify trust logic');
+    expect(getByTestId('hq-patch-tests').textContent).toContain('pnpm rb:hq:test');
+    expect(getByTestId('hq-patch-do-not-touch').textContent).toContain('Obsidian');
+    expect(queryByRole('button', { name: /Apply patch/i })).toBeNull();
+  });
+
+  it('drafts patch proposal from selected task and packet', async () => {
+    hqClientMocks.mockListHqTasks.mockResolvedValue({ ok: true, tasks: [taskHeader], total: 1 });
+    hqClientMocks.mockListHqPackets.mockResolvedValue({ ok: true, packets: [packetHeader], total: 1 });
+    const { getByTestId } = render(<HqSurface />);
+
+    await waitFor(() => expect(getByTestId('hq-task-row-task-1')).toBeTruthy());
+    fireEvent.click(getByTestId('hq-task-row-task-1'));
+    await waitFor(() => expect(getByTestId('hq-draft-task-patch-proposal')).toBeTruthy());
+    fireEvent.click(getByTestId('hq-draft-task-patch-proposal'));
+    await waitFor(() => expect(hqClientMocks.mockDraftHqPatchProposal).toHaveBeenCalledWith({ taskId: 'task-1', packetId: null, rawRequest: undefined }));
+    expect(getByTestId('hq-patch-proposal-detail').textContent).toContain('Export diagnostics proposal');
+
+    fireEvent.click(getByTestId('hq-packet-row-pkt-1'));
+    await waitFor(() => expect(getByTestId('hq-draft-packet-patch-proposal')).toBeTruthy());
+    fireEvent.click(getByTestId('hq-draft-packet-patch-proposal'));
+    await waitFor(() => expect(hqClientMocks.mockDraftHqPatchProposal).toHaveBeenCalledWith({ taskId: null, packetId: 'pkt-1', rawRequest: undefined }));
   });
 });

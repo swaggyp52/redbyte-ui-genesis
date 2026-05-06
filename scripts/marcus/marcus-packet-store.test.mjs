@@ -44,7 +44,7 @@ function withTempDir(fn) {
 // --- sanitizePacketType ---
 
 test('sanitizePacketType accepts all allowed types', () => {
-  const types = ['chat_answer', 'coding_plan', 'problem_packet', 'trace_report', 'bench_summary', 'control_snapshot', 'fallback_report'];
+  const types = ['chat_answer', 'coding_plan', 'problem_packet', 'trace_report', 'bench_summary', 'control_snapshot', 'patch_proposal', 'fallback_report'];
   for (const t of types) {
     assert.equal(sanitizePacketType(t), t);
   }

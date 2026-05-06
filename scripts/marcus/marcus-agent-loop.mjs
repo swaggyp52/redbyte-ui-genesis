@@ -28,6 +28,8 @@ function determineFallbackTools(mode) {
       return ['trace_claim'];
     case 'coding-plan':
       return ['git_status', 'control_next', 'memory_search', 'generate_codex_packet'];
+    case 'patch-proposal':
+      return ['git_status', 'control_next', 'code_search', 'generate_patch_proposal'];
     case 'ask':
     default:
       return ['get_product_snapshot'];
@@ -118,7 +120,7 @@ function buildSystemPrompt(snapshot, mode) {
     'You are Marcus, a local RedByte engineering operator.',
     'Protect truth boundaries: E2 is not E3, Map Pins is not Verify proof, Draft Export is not Trusted Export.',
     'Generated outputs are advisory and require human/Codex approval for implementation.',
-    'Do not request unsafe commands or file edits.',
+    'Do not request unsafe commands or file edits. If asked to fix or change code, generate a patch proposal only.',
     `Conversation mode: ${mode}.`,
     `Snapshot: ${JSON.stringify({ blocked_task: snapshot?.blocked_task, bench_evidence: snapshot?.bench_evidence })}`,
   ].join('\n');
@@ -165,7 +167,7 @@ export async function runMarcusAgentLoop({
       generatedFiles.push(...(result.generatedFiles || []));
       evidenceLevel = highestEvidenceLevel([evidenceLevel, result.evidenceLevel || 'E0']);
       sourceConfidence = mergeConfidence(sourceConfidence, result.sourceConfidence || 'low');
-      if (toolName === 'generate_codex_packet') {
+      if (toolName === 'generate_codex_packet' || toolName === 'generate_patch_proposal') {
         requiresApproval = true;
       }
     }
@@ -258,7 +260,7 @@ export async function runMarcusAgentLoop({
     generatedFiles.push(...(result.generatedFiles || []));
     evidenceLevel = highestEvidenceLevel([evidenceLevel, result.evidenceLevel || 'E0']);
     sourceConfidence = mergeConfidence(sourceConfidence, result.sourceConfidence || 'low');
-    if (call.name === 'generate_codex_packet') {
+    if (call.name === 'generate_codex_packet' || call.name === 'generate_patch_proposal') {
       requiresApproval = true;
     }
 

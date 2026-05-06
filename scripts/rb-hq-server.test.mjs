@@ -272,6 +272,72 @@ test('POST /tasks/:id/status updates task status', async () => {
   });
 });
 
+test('GET /code/search returns safe code snippets', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/code/search?q=${encodeURIComponent('ExportSurface')}`);
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.equal(payload.mode, 'safe-keyword');
+    assert.ok(Array.isArray(payload.results));
+    assert.ok(payload.results.some((entry) => String(entry.path).includes('ExportSurface')));
+  });
+});
+
+test('GET /code/file reads allowlisted file and denies traversal/private paths', async () => {
+  await withServer(async (baseUrl) => {
+    const allowed = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx')}`);
+    assert.equal(allowed.ok, true);
+    const allowedPayload = await allowed.json();
+    assert.equal(allowedPayload.ok, true);
+    assert.match(allowedPayload.file.content, /HqSurface/);
+
+    const traversal = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('../AI_STATE.md')}`);
+    assert.equal(traversal.status, 403);
+    const privateConfig = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('.redbyte/agent/config.json')}`);
+    assert.equal(privateConfig.status, 403);
+  });
+});
+
+test('POST /patch-proposals creates proposal-only artifact and list/read endpoints work', async () => {
+  await withServer(async (baseUrl) => {
+    const create = await fetch(`${baseUrl}/patch-proposals`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rawRequest: 'Create a proposal for Export diagnostics.',
+        likelyFiles: ['packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx'],
+      }),
+    });
+    assert.equal(create.ok, true);
+    const created = await create.json();
+    assert.equal(created.ok, true);
+    assert.equal(created.requiresApproval, true);
+    assert.equal(created.applyStatus, 'proposal_only');
+    assert.ok(created.generatedFiles.every((file) => String(file).includes('patch-proposals')));
+    assert.ok(created.proposal.targetFiles.some((file) => file.includes('ExportSurface')));
+
+    const list = await fetch(`${baseUrl}/patch-proposals`);
+    assert.equal(list.ok, true);
+    const listed = await list.json();
+    assert.ok(listed.proposals.some((proposal) => proposal.id === created.proposal.id));
+
+    const read = await fetch(`${baseUrl}/patch-proposals/${encodeURIComponent(created.proposal.id)}`);
+    assert.equal(read.ok, true);
+    const readPayload = await read.json();
+    assert.equal(readPayload.proposal.id, created.proposal.id);
+  });
+});
+
+test('no patch apply endpoint exists', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/patch-proposals/fake/apply`, { method: 'POST' });
+    assert.equal(response.status, 404);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+  });
+});
+
 test('GET /tasks/:id rejects path traversal attempts', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/tasks/${encodeURIComponent('../task')}`);

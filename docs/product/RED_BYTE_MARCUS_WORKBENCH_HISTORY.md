@@ -2,6 +2,7 @@
 doc_status: current
 used_by_claude: true
 created: 2026-05-06
+last_validated: 2026-05-06
 slice: feat(hq): add Marcus workbench history
 ---
 
@@ -25,6 +26,7 @@ This is **not** canonical product truth. Canonical truth is repo docs, code, and
 | `trace_report` | `POST /trace-claim` | Claim trace reports against repo docs |
 | `bench_summary` | `GET /bench-evidence` | Bench evidence classification summaries |
 | `control_snapshot` | `GET /snapshot` | Control-next + bench + claims combined snapshot |
+| `patch_proposal` | `POST /patch-proposals` | Proposal-only code intelligence artifact; never an applied patch |
 | `fallback_report` | `POST /chat` (degraded) | Degraded/offline Marcus fallback responses |
 
 ---

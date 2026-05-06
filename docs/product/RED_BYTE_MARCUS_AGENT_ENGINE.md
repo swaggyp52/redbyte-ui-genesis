@@ -52,10 +52,12 @@ Fallback mode is mandatory: if Ollama is unavailable or tool-calling fails, Marc
   - packet detail review and local operator task promotion
 - L4: Safe checks only
   - allowlisted checks (`rb:doc:validate`, `rb:encoding:check`)
-- L5: Patch proposal only (future)
+- L5: Patch proposal only
+  - safe code search/read previews over allowlisted repo paths
+  - generated proposal-only patch plans under `.redbyte/agent/runs/hq/patch-proposals/`
 - L6: Controlled worktree editing (future)
 
-v1 target is L1+L2+L3 with limited L4.
+v1 target is L1+L2+L3 with limited L4 and proposal-only L5. L6 remains out of scope.
 
 ## Tool Registry Contract
 
@@ -89,6 +91,8 @@ Registry is deny-by-default. Unknown tool names are rejected.
 - No Obsidian writes in v1.
 - No git commit/push in v1.
 - No direct repo edits by Marcus in v1.
+- No patch apply endpoint in v1.
+- Code intelligence reads are allowlisted, bounded, and deny private/generated paths.
 
 ## Trust Boundary Rules
 
@@ -124,6 +128,14 @@ Marcus responses must preserve:
   - summarizes local bench classification runs when present
   - returns a safe empty/manual-gated state when local bench runs are absent
 
+- `GET /code/search` and `GET /code/file`
+  - provide bounded read-only previews from allowlisted repo paths
+  - deny traversal, private configs, generated runtime outputs, binary files, and oversized files
+
+- `POST /patch-proposals`, `GET /patch-proposals`, `GET /patch-proposals/:id`
+  - create and inspect proposal-only artifacts under `.redbyte/agent/runs/hq/patch-proposals/`
+  - return `requiresApproval: true` and `applyStatus: proposal_only`
+
 ## Coding Workflow Contract
 
 Marcus coding flow is staged and approval-gated:
@@ -134,10 +146,11 @@ Marcus coding flow is staged and approval-gated:
 4. generate packet
 5. inspect packet detail and source evidence
 6. optionally promote packet into Operator Queue
-7. human approval
-8. Codex executes implementation
+7. optionally draft a read-only code intelligence patch proposal
+8. human approval
+9. Codex executes implementation
 
-Marcus v1 does not apply patches directly.
+Marcus v1 does not apply patches directly. A patch proposal is not an applied change.
 
 ## Source grounding
 

@@ -1,16 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { IdeButton, IdeCallout, IdePanel, IdeStatusPill } from '../components/IdePrimitives';
 import {
+  draftHqPatchProposal,
   generateMarcusCodingPlan,
   getHqBenchEvidence,
   getHqBenchTimeline,
   getHqHealth,
   getHqSnapshot,
   listHqPackets,
+  listHqPatchProposals,
   listHqSessionEvents,
   listHqTasks,
   promoteHqPacketToTask,
   readHqPacket,
+  readHqPatchProposal,
   readHqTask,
   runMemorySearch,
   runProblemIntake,
@@ -26,6 +29,8 @@ import type {
   HqHealth,
   HqPacket,
   HqPacketHeader,
+  HqPatchProposal,
+  HqPatchProposalHeader,
   HqSessionEvent,
   HqSnapshot,
   HqSourceConfidence,
@@ -81,6 +86,10 @@ export const HqSurface: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<HqTask | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [taskError, setTaskError] = useState<string | null>(null);
+  const [patchProposals, setPatchProposals] = useState<HqPatchProposalHeader[]>([]);
+  const [selectedPatchProposal, setSelectedPatchProposal] = useState<HqPatchProposal | null>(null);
+  const [patchProposalLoading, setPatchProposalLoading] = useState(false);
+  const [patchProposalError, setPatchProposalError] = useState<string | null>(null);
   const [sessionEvents, setSessionEvents] = useState<HqSessionEvent[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
 
@@ -107,6 +116,18 @@ export const HqSurface: React.FC = () => {
       // task load failure is non-fatal
     } finally {
       setTasksLoading(false);
+    }
+  }, []);
+
+  const loadPatchProposals = useCallback(async () => {
+    setPatchProposalLoading(true);
+    try {
+      const result = await listHqPatchProposals({ limit: 20 });
+      setPatchProposals(result.proposals);
+    } catch {
+      // proposal load failure is non-fatal
+    } finally {
+      setPatchProposalLoading(false);
     }
   }, []);
 
@@ -143,8 +164,9 @@ export const HqSurface: React.FC = () => {
     }
     void loadPackets();
     void loadTasks();
+    void loadPatchProposals();
     void loadSessionEvents();
-  }, [loadPackets, loadSessionEvents, loadTasks]);
+  }, [loadPackets, loadPatchProposals, loadSessionEvents, loadTasks]);
 
   useEffect(() => {
     void refresh();
@@ -198,7 +220,7 @@ export const HqSurface: React.FC = () => {
   );
 
   const runAction = useCallback(
-    async (type: 'problem' | 'trace' | 'memory' | 'coding-plan') => {
+    async (type: 'problem' | 'trace' | 'memory' | 'coding-plan' | 'patch-proposal') => {
       setBusy(true);
       setError(null);
       try {
@@ -233,6 +255,15 @@ export const HqSurface: React.FC = () => {
           setGeneratedFiles(response.generatedFiles || []);
           setNextAction(response.recommendedNextAction || 'Review generated coding plan.');
           setRequiresApproval(Boolean(response.requiresApproval));
+        } else if (type === 'patch-proposal') {
+          const response = await draftHqPatchProposal({
+            rawRequest: chatInput || 'Draft a proposal-only patch plan from current HQ context.',
+          });
+          setSelectedPatchProposal(response.proposal);
+          setMessages((current) => [...current, { role: 'assistant', content: 'Patch proposal drafted. Review before Codex implementation.' }]);
+          setGeneratedFiles(response.generatedFiles || []);
+          setNextAction('Review proposal-only patch plan; Marcus did not edit files.');
+          setRequiresApproval(true);
         } else {
           const response = await runMemorySearch(chatInput || 'RedByte current truth');
           const text = response.ok
@@ -249,9 +280,10 @@ export const HqSurface: React.FC = () => {
       // reload packets after any action
       void loadPackets();
       void loadTasks();
+      void loadPatchProposals();
       void loadSessionEvents();
     },
-    [chatInput, loadPackets, loadSessionEvents, loadTasks],
+    [chatInput, loadPackets, loadPatchProposals, loadSessionEvents, loadTasks],
   );
 
   const selectPacket = useCallback(async (id: string) => {
@@ -285,6 +317,35 @@ export const HqSurface: React.FC = () => {
       setTaskError(err instanceof Error ? err.message : String(err));
     }
   }, [loadSessionEvents, loadTasks, selectedPacket]);
+
+  const selectPatchProposal = useCallback(async (id: string) => {
+    setPatchProposalError(null);
+    try {
+      const result = await readHqPatchProposal(id);
+      setSelectedPatchProposal(result.proposal);
+    } catch (err) {
+      setPatchProposalError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  const draftPatchProposal = useCallback(async (source: 'task' | 'packet' | 'chat') => {
+    setPatchProposalError(null);
+    try {
+      const response = await draftHqPatchProposal({
+        taskId: source === 'task' ? selectedTask?.id : null,
+        packetId: source === 'packet' ? selectedPacket?.id : null,
+        rawRequest: source === 'chat' ? chatInput : undefined,
+      });
+      setSelectedPatchProposal(response.proposal);
+      setGeneratedFiles(response.generatedFiles || []);
+      setRequiresApproval(true);
+      void loadPatchProposals();
+      void loadPackets();
+      void loadSessionEvents();
+    } catch (err) {
+      setPatchProposalError(err instanceof Error ? err.message : String(err));
+    }
+  }, [chatInput, loadPackets, loadPatchProposals, loadSessionEvents, selectedPacket, selectedTask]);
 
   const setTaskStatus = useCallback(async (status: HqTaskStatus) => {
     if (!selectedTask) return;
@@ -381,6 +442,7 @@ export const HqSurface: React.FC = () => {
                 <option value="problem-packet">Generate Problem Packet</option>
                 <option value="trace-claim">Trace Claim</option>
                 <option value="coding-plan">Coding Plan</option>
+                <option value="patch-proposal">Patch Proposal</option>
               </select>
               <label htmlFor="hq-tools-toggle" className="hq-copy">Enable tools</label>
               <input
@@ -404,6 +466,9 @@ export const HqSurface: React.FC = () => {
               </IdeButton>
               <IdeButton tone="secondary" onClick={() => void runAction('coding-plan')} disabled={busy} testId="hq-coding-plan-btn">
                 Coding Plan
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={() => void runAction('patch-proposal')} disabled={busy} testId="hq-patch-proposal-btn">
+                Patch Proposal
               </IdeButton>
             </div>
           }
@@ -581,6 +646,9 @@ export const HqSurface: React.FC = () => {
                   <p className="hq-copy"><strong>Tests:</strong> {selectedTask.tests.join(' | ')}</p>
                 ) : null}
                 <div className="hq-chip-row">
+                  <IdeButton tone="secondary" onClick={() => void draftPatchProposal('task')} testId="hq-draft-task-patch-proposal">
+                    Draft Patch Proposal
+                  </IdeButton>
                   {(['ready', 'blocked', 'in_progress', 'done', 'archived'] as HqTaskStatus[]).map((status) => (
                     <IdeButton key={status} tone="ghost" onClick={() => void setTaskStatus(status)}>
                       {status.replace(/_/g, ' ')}
@@ -590,6 +658,72 @@ export const HqSurface: React.FC = () => {
                 {selectedTask.codexPrompt ? (
                   <pre className="hq-code-preview" data-testid="hq-task-codex-prompt">{selectedTask.codexPrompt}</pre>
                 ) : null}
+              </div>
+            ) : null}
+          </IdePanel>
+
+          <IdePanel title="Patch Proposals" testId="hq-patch-proposals-panel">
+            <p className="hq-copy">Proposal-only. Marcus does not modify files.</p>
+            {patchProposalError ? <p className="hq-copy hq-error-copy" data-testid="hq-patch-proposal-error">{patchProposalError}</p> : null}
+            <div className="hq-chip-row">
+              <IdeButton tone="secondary" onClick={() => void draftPatchProposal('chat')} testId="hq-draft-chat-patch-proposal">
+                Draft From Prompt
+              </IdeButton>
+            </div>
+            {patchProposalLoading ? (
+              <p className="hq-copy" data-testid="hq-patch-proposals-loading">Loading proposals...</p>
+            ) : patchProposals.length === 0 ? (
+              <p className="hq-copy" data-testid="hq-patch-proposals-empty">No patch proposals yet.</p>
+            ) : (
+              <ul className="hq-task-list" data-testid="hq-patch-proposal-list">
+                {patchProposals.slice(0, 6).map((proposal) => (
+                  <li
+                    key={proposal.id}
+                    className={`hq-task-row${selectedPatchProposal?.id === proposal.id ? ' hq-task-selected' : ''}`}
+                    onClick={() => void selectPatchProposal(proposal.id)}
+                    data-testid={`hq-patch-proposal-row-${proposal.id}`}
+                  >
+                    <span className="hq-approval-badge" data-testid="hq-proposal-only-badge">{proposal.applyStatus.replace(/_/g, ' ')}</span>
+                    <span className="hq-task-title">{proposal.title}</span>
+                    <span className="hq-task-meta">{proposal.targetFileCount} files · {proposal.riskCount} risks</span>
+                    {proposal.requiresApproval ? <span className="hq-approval-badge">approval required</span> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedPatchProposal ? (
+              <div className="hq-task-detail hq-patch-proposal-detail" data-testid="hq-patch-proposal-detail">
+                <div className="hq-detail-header">
+                  <p className="hq-copy"><strong>{selectedPatchProposal.title}</strong></p>
+                  <span className="hq-approval-badge" data-testid="hq-patch-approval-badge">approval required</span>
+                  <span className="hq-approval-badge" data-testid="hq-patch-proposal-only-badge">proposal only</span>
+                </div>
+                <p className="hq-copy">{selectedPatchProposal.productProblem}</p>
+                <p className="hq-copy"><strong>Generated:</strong> {selectedPatchProposal.generatedFiles.join(', ')}</p>
+                <div className="hq-packet-text-block" data-testid="hq-patch-target-files">
+                  <strong>Target files</strong>
+                  <pre>{selectedPatchProposal.targetFiles.join('\n') || 'No target files identified.'}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-patch-proposed-changes">
+                  <strong>Proposed changes</strong>
+                  <pre>{selectedPatchProposal.proposedChanges.join('\n')}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-patch-risks">
+                  <strong>Risks</strong>
+                  <pre>{selectedPatchProposal.risks.join('\n') || 'No risks listed.'}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-patch-tests">
+                  <strong>Tests / gates</strong>
+                  <pre>{selectedPatchProposal.validationCommands.join('\n')}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-patch-do-not-touch">
+                  <strong>Do not touch</strong>
+                  <pre>{selectedPatchProposal.doNotTouch.join('\n')}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-patch-codex-prompt">
+                  <strong>Codex prompt</strong>
+                  <pre>{selectedPatchProposal.codexPrompt}</pre>
+                </div>
               </div>
             ) : null}
           </IdePanel>
@@ -678,6 +812,9 @@ export const HqSurface: React.FC = () => {
                 <div className="hq-chip-row">
                   <IdeButton tone="secondary" onClick={() => void promoteSelectedPacket()} testId="hq-promote-packet">
                     Promote to Task
+                  </IdeButton>
+                  <IdeButton tone="secondary" onClick={() => void draftPatchProposal('packet')} testId="hq-draft-packet-patch-proposal">
+                    Draft Patch Proposal
                   </IdeButton>
                   {(selectedPacket.type === 'coding_plan' || selectedPacket.prompt || selectedPacket.reply) ? (
                     <IdeButton

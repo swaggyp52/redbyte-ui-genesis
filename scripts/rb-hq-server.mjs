@@ -10,6 +10,13 @@ import { runMarcusAgentLoop } from './marcus/marcus-agent-loop.mjs';
 import { savePacket, listPackets, readPacket } from './marcus/marcus-packet-store.mjs';
 import { appendEvent, listEvents, clearEvents } from './marcus/marcus-session-store.mjs';
 import { createTaskFromPacket, listTasks, readTask, updateTaskStatus } from './marcus/marcus-task-queue.mjs';
+import {
+  generatePatchProposal,
+  listPatchProposals,
+  readCodeFile,
+  readPatchProposal,
+  searchCode,
+} from './marcus/marcus-code-intelligence.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -23,6 +30,7 @@ const REPO_ROOT = resolveRepoRoot();
 const PACKETS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'packets');
 const SESSION_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'session');
 const TASKS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'tasks');
+const PATCH_PROPOSALS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'patch-proposals');
 const CONTROL_NEXT_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'control-next-latest.json');
 const CLAIMS_TRACE_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'product-claims-trace-latest.json');
 const PROBLEM_PACKET_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'problems', 'problem-latest.json');
@@ -337,6 +345,7 @@ export function buildMarcusSystemPrompt() {
     'Never conflate E2 board programming with E3 observed board behavior.',
     'Never conflate Map Pins completion with Verify proof.',
     'Never conflate Draft Export with Trusted Export.',
+    'If asked to fix or change code, generate a proposal-only packet. Do not edit, apply patches, stage, commit, or push.',
     'Keep answers concise, actionable, and tied to evidence.',
   ].join(' ');
 }
@@ -384,6 +393,14 @@ const marcusToolRegistry = createMarcusToolRegistry({
   buildSnapshot,
   loadBenchEvidenceSummary,
   gitSummary,
+  searchCode: (query, options) => searchCode(REPO_ROOT, query, options),
+  readCodeFile: (filePath, options) => readCodeFile(REPO_ROOT, filePath, options),
+  generatePatchProposal: ({ taskId = null, packetId = null, rawRequest = '', likelyFiles = [] } = {}) => {
+    const task = taskId ? readTask(taskId, TASKS_DIR) : null;
+    const packet = packetId ? readPacket(packetId, PACKETS_DIR) : null;
+    return generatePatchProposal(REPO_ROOT, { task, packet, taskId, packetId, rawRequest, likelyFiles }, PATCH_PROPOSALS_DIR);
+  },
+  listPatchProposals: (options) => listPatchProposals(REPO_ROOT, options, PATCH_PROPOSALS_DIR),
 });
 
 async function buildHealth() {
@@ -602,6 +619,118 @@ export function createHqServer() {
             metadata: { taskId: task.id, status: task.status },
           });
           respondJson(res, 200, { ok: true, task });
+        } catch (err) {
+          respondJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/code/search') {
+        const query = sanitizeUserText(url.searchParams.get('q') || url.searchParams.get('query') || '');
+        if (!query) {
+          respondJson(res, 400, { ok: false, error: 'q is required.' });
+          return;
+        }
+        try {
+          const result = searchCode(REPO_ROOT, query, { maxSnippets: 20 });
+          respondJson(res, 200, { ok: true, ...result });
+        } catch (err) {
+          respondJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/code/file') {
+        const filePath = sanitizeUserText(url.searchParams.get('path') || '');
+        if (!filePath) {
+          respondJson(res, 400, { ok: false, error: 'path is required.' });
+          return;
+        }
+        try {
+          const file = readCodeFile(REPO_ROOT, filePath, { maxChars: 12000 });
+          respondJson(res, 200, { ok: true, file });
+        } catch (err) {
+          respondJson(res, 403, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/patch-proposals') {
+        const limitParam = Number(url.searchParams.get('limit') || 20);
+        const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 20;
+        const proposals = listPatchProposals(REPO_ROOT, { limit }, PATCH_PROPOSALS_DIR);
+        respondJson(res, 200, { ok: true, proposals, total: proposals.length });
+        return;
+      }
+
+      const proposalIdMatch = url.pathname.match(/^\/patch-proposals\/([^/]+)$/);
+      if (req.method === 'GET' && proposalIdMatch) {
+        try {
+          const proposal = readPatchProposal(REPO_ROOT, proposalIdMatch[1], PATCH_PROPOSALS_DIR);
+          respondJson(res, 200, { ok: true, proposal });
+        } catch (err) {
+          respondJson(res, 404, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/patch-proposals') {
+        const body = await readBody(req);
+        const taskId = sanitizeUserText(body?.taskId || body?.task_id || '');
+        const packetId = sanitizeUserText(body?.packetId || body?.packet_id || '');
+        const rawRequest = sanitizeUserText(body?.rawRequest || body?.raw_request || '');
+        try {
+          const task = taskId ? readTask(taskId, TASKS_DIR) : null;
+          const packet = packetId ? readPacket(packetId, PACKETS_DIR) : null;
+          const proposal = generatePatchProposal(REPO_ROOT, {
+            task,
+            packet,
+            taskId: taskId || null,
+            packetId: packetId || null,
+            rawRequest,
+            likelyFiles: Array.isArray(body?.likelyFiles) ? body.likelyFiles.slice(0, 12).map(String) : [],
+          }, PATCH_PROPOSALS_DIR);
+
+          const proposalPacketId = trySavePacket({
+            type: 'patch_proposal',
+            title: proposal.title,
+            summary: proposal.productProblem,
+            prompt: rawRequest || task?.codexPrompt || packet?.prompt || proposal.title,
+            reply: proposal.patchSketch,
+            mode: 'patch-proposal',
+            toolsUsed: [{ name: 'generate_patch_proposal', ok: true, summary: 'Proposal-only patch plan generated.' }],
+            sources: proposal.evidenceSources,
+            evidenceLevel: task?.evidenceLevel || packet?.evidenceLevel || 'E0',
+            sourceConfidence: task?.sourceConfidence || packet?.sourceConfidence || 'medium',
+            generatedFiles: proposal.generatedFiles,
+            warnings: proposal.risks,
+            recommendedAction: 'Review proposal, then have Codex implement only after approval.',
+            requiresApproval: true,
+            degraded: false,
+            tags: ['patch-proposal'],
+          });
+
+          tryAppendEvent({
+            type: 'coding_plan_generated',
+            title: `Patch proposal: ${proposal.title}`,
+            summary: 'Proposal-only patch plan generated. No files were edited.',
+            severity: 'success',
+            toolName: 'generate_patch_proposal',
+            packetId: proposalPacketId,
+            generatedFiles: proposal.generatedFiles,
+            sources: (proposal.evidenceSources || []).slice(0, 5),
+            evidenceLevel: task?.evidenceLevel || packet?.evidenceLevel || 'E0',
+            metadata: { proposalId: proposal.id, applyStatus: proposal.applyStatus },
+          });
+
+          respondJson(res, 200, {
+            ok: true,
+            proposal,
+            generatedFiles: proposal.generatedFiles,
+            requiresApproval: true,
+            applyStatus: 'proposal_only',
+            packetId: proposalPacketId,
+          });
         } catch (err) {
           respondJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
         }
@@ -1071,6 +1200,11 @@ export function createHqServer() {
           'GET /tasks/:id',
           'POST /tasks/from-packet',
           'POST /tasks/:id/status',
+          'GET /code/search?q=',
+          'GET /code/file?path=',
+          'POST /patch-proposals',
+          'GET /patch-proposals',
+          'GET /patch-proposals/:id',
           'GET /session/events',
           'POST /session/clear',
           'POST /chat',

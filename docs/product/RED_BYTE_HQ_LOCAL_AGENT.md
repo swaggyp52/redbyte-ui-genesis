@@ -20,6 +20,7 @@ RedByte HQ is a local utility surface in the IDE that exposes command-center sta
 - claim/problem helper actions
 - workbench packet detail
 - local operator task queue
+- read-only code intelligence and patch proposals
 
 HQ is utility context for engineering and validation. It is not a required student workflow step.
 
@@ -66,6 +67,11 @@ This degraded mode is acceptable for v0.
 - `GET /tasks/:id`
 - `POST /tasks/from-packet`
 - `POST /tasks/:id/status`
+- `GET /code/search`
+- `GET /code/file`
+- `GET /patch-proposals`
+- `GET /patch-proposals/:id`
+- `POST /patch-proposals`
 - `POST /chat`
 - `POST /coding-plan`
 - `POST /problem-intake`
@@ -74,7 +80,7 @@ This degraded mode is acceptable for v0.
 
 `POST /chat` now supports mode-driven tool-assisted replies with structured metadata:
 
-- `mode`: `ask | explain-state | problem-packet | trace-claim | coding-plan`
+- `mode`: `ask | explain-state | problem-packet | trace-claim | coding-plan | patch-proposal`
 - `allowTools` (default `true`)
 - `maxToolCalls` (default `4`)
 
@@ -95,6 +101,10 @@ Response envelope includes:
 
 `POST /tasks/from-packet` promotes a saved packet into a local operator task under `.redbyte/agent/runs/hq/tasks/`. These tasks are generated planning artifacts, not canonical repo truth.
 
+`GET /code/search` and `GET /code/file` expose bounded read-only code previews for allowlisted repo paths. They deny private configs, generated runtime files, traversal, binary files, and oversized files.
+
+`POST /patch-proposals` drafts a proposal-only artifact under `.redbyte/agent/runs/hq/patch-proposals/` and may save a local packet. It does not apply patches, edit files, stage, commit, or push.
+
 ## Safety model (v1)
 
 - No unrestricted command execution endpoint.
@@ -103,6 +113,7 @@ Response envelope includes:
 - Obsidian writes are disabled by default (`REDBYTE_HQ_ALLOW_OBSIDIAN_WRITES=false`).
 - Marcus cannot commit/push and cannot directly edit product files.
 - Operator tasks cannot apply patches and cannot write to Obsidian.
+- Code intelligence is read-only and patch proposals are `proposal_only` with `requiresApproval: true`.
 
 ## Evidence display contract
 
@@ -125,8 +136,10 @@ HQ now includes an operator workbench layer:
 - Packet detail panel for prompt, reply, sources, evidence, warnings, generated files, and approval-required state.
 - Operator Queue for promoting packets into local task records with status, blockers, tests, Codex prompt, and source metadata.
 - Bench timeline panel for latest run, E0/E1/E2/E3 counts, warning classes, manual E3 needs, and run history.
+- Patch Proposals panel for proposal-only target files, risks, tests, do-not-touch boundaries, and Codex prompts.
 
 See `docs/product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md` for the detailed contract.
+See `docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md` for the read-only code and patch-proposal safety contract.
 
 ## How to start
 

@@ -1,5 +1,21 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus code intelligence proposals)
+
+**Subsystem:** `scripts/marcus/marcus-code-intelligence.mjs`, `scripts/rb-hq-server.mjs`, Marcus tool registry/agent loop, HQ client/types/UI, code-intelligence tests, HQ docs
+
+**Changes:**
+- Added read-only Marcus code intelligence for allowlisted repo search and bounded file previews. It denies traversal, private config paths, generated runtime outputs, binary files, oversized files, and arbitrary command execution.
+- Added proposal-only patch artifacts under `.redbyte/agent/runs/hq/patch-proposals/` with JSON/Markdown output, `requiresApproval: true`, and `applyStatus: proposal_only`.
+- Added HQ endpoints for `GET /code/search`, `GET /code/file`, `POST /patch-proposals`, `GET /patch-proposals`, and `GET /patch-proposals/:id`; no patch-apply endpoint exists.
+- Added Marcus tools `code_search`, `code_read`, `generate_patch_proposal`, and `list_patch_proposals`, with agent rules requiring proposal-only behavior when users ask Marcus to fix/change code.
+- Added HQ Patch Proposals panel and selected packet/task actions for drafting and previewing target files, proposed changes, risks, tests, do-not-touch boundaries, generated file path, and Codex prompt.
+- Added `docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md` and updated Marcus/HQ docs and `docs/DOC_INDEX.md`.
+
+**Safety:** Marcus still cannot edit files, apply patches, stage, commit, push, write to Obsidian, or run arbitrary shell commands. Generated proposals are local planning artifacts, not canonical truth.
+
+**Evidence:** Focused code-intelligence, tool-registry, server, and HQ workstation tests pass.
+
 ## Change Log 2026-05-06 (feat(hq): add Marcus operator workbench)
 
 **Subsystem:** `scripts/marcus/marcus-task-queue.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, task queue tests, server tests, docs

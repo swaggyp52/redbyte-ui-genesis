@@ -19,6 +19,7 @@ It helps Connor and coding agents:
 - see what sources, warnings, generated files, and evidence levels support a task
 - track task/session activity without treating generated files as canonical truth
 - see bench evidence status trends without overstating E3
+- draft read-only patch proposals that Codex can implement after approval
 
 This is not a student workflow surface. The product spine remains:
 
@@ -106,6 +107,11 @@ Marcus must preserve this boundary:
 - `POST /tasks/from-packet`
 - `POST /tasks/:id/status`
 - `GET /bench-timeline`
+- `GET /code/search`
+- `GET /code/file`
+- `GET /patch-proposals`
+- `GET /patch-proposals/:id`
+- `POST /patch-proposals`
 
 Existing packet endpoints remain:
 
@@ -127,9 +133,17 @@ All output paths stay under ignored generated directories. Path traversal is blo
 
 ## Patch Proposal Status
 
-Controlled patch proposal generation is not implemented in Sprint 1.
+Controlled patch proposal generation is implemented as proposal-only code intelligence.
 
-That is intentional. Marcus may generate Codex-ready prompts and task packets, but Codex or a human operator still performs implementation through the normal repo/test/commit workflow.
+Marcus may search/read bounded allowlisted code, gather likely implementation context, and save a proposal under:
+
+`.redbyte/agent/runs/hq/patch-proposals/`
+
+Patch proposals include target files, code findings, proposed changes, risks, do-not-touch boundaries, tests, validation commands, and a Codex-ready prompt.
+
+Marcus still does not edit files or apply patches. Codex or a human operator performs implementation through the normal repo/test/commit workflow.
+
+See `docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md` for the full safety contract.
 
 ## Operating Flow
 
@@ -139,9 +153,11 @@ That is intentional. Marcus may generate Codex-ready prompts and task packets, b
 4. Select the saved packet in Workbench History.
 5. Review sources, warnings, evidence level, and generated files.
 6. Promote the packet to Operator Queue only if it is useful.
-7. Update task status locally as Connor/Codex works.
-8. Run the relevant tests and gates outside Marcus.
-9. Update canonical docs/AI_STATE through normal repo changes when the actual product slice lands.
+7. Draft a Patch Proposal when code context is needed.
+8. Review target files, risks, tests, do-not-touch boundaries, and proposal-only status.
+9. Codex or Connor implements outside Marcus after approval.
+10. Run the relevant tests and gates outside Marcus.
+11. Update canonical docs/AI_STATE through normal repo changes when the actual product slice lands.
 
 ## Validation
 
@@ -152,4 +168,3 @@ Primary checks:
 - `pnpm rb:doc:validate`
 - `pnpm rb:encoding:check`
 - `pnpm --filter @redbyte/playground build`
-

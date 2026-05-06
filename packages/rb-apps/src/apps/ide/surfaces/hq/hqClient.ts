@@ -10,6 +10,9 @@ import type {
   HqHealth,
   HqPacketListResponse,
   HqPacketReadResponse,
+  HqPatchProposalListResponse,
+  HqPatchProposalMutationResponse,
+  HqPatchProposalReadResponse,
   HqSessionEventsResponse,
   HqSnapshot,
   HqTaskListResponse,
@@ -147,6 +150,32 @@ export async function updateHqTaskStatus(id: string, status: HqTaskStatus): Prom
     body: JSON.stringify({ status }),
   });
   return parseJson<HqTaskMutationResponse>(response);
+}
+
+export async function listHqPatchProposals(options?: { limit?: number }): Promise<HqPatchProposalListResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  const qs = params.toString();
+  const response = await fetch(`${HQ_BASE_URL}/patch-proposals${qs ? `?${qs}` : ''}`);
+  return parseJson<HqPatchProposalListResponse>(response);
+}
+
+export async function readHqPatchProposal(id: string): Promise<HqPatchProposalReadResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/patch-proposals/${encodeURIComponent(id)}`);
+  return parseJson<HqPatchProposalReadResponse>(response);
+}
+
+export async function draftHqPatchProposal(payload: {
+  taskId?: string | null;
+  packetId?: string | null;
+  rawRequest?: string;
+}): Promise<HqPatchProposalMutationResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/patch-proposals`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<HqPatchProposalMutationResponse>(response);
 }
 
 export async function listHqSessionEvents(options?: { limit?: number; type?: string }): Promise<HqSessionEventsResponse> {

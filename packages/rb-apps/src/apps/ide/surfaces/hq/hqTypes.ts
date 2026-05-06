@@ -157,7 +157,7 @@ export interface HqChatResponse {
   packetId?: string | null;
 }
 
-export type HqChatMode = 'ask' | 'explain-state' | 'problem-packet' | 'trace-claim' | 'coding-plan';
+export type HqChatMode = 'ask' | 'explain-state' | 'problem-packet' | 'trace-claim' | 'coding-plan' | 'patch-proposal';
 
 export interface HqCodingPlanRequest {
   raw_user_request: string;
@@ -201,6 +201,7 @@ export type HqPacketType =
   | 'trace_report'
   | 'bench_summary'
   | 'control_snapshot'
+  | 'patch_proposal'
   | 'fallback_report';
 
 export interface HqPacketHeader {
@@ -281,6 +282,62 @@ export interface HqTaskReadResponse {
 export interface HqTaskMutationResponse {
   ok: boolean;
   task: HqTask;
+  error?: string;
+}
+
+export interface HqPatchProposalHeader {
+  id: string;
+  createdAt: string;
+  title: string;
+  sourceTaskId: string | null;
+  sourcePacketId: string | null;
+  targetFileCount: number;
+  riskCount: number;
+  requiresApproval: boolean;
+  applyStatus: 'proposal_only';
+  generatedFiles: string[];
+}
+
+export interface HqPatchProposal {
+  id: string;
+  createdAt: string;
+  sourceTaskId: string | null;
+  sourcePacketId: string | null;
+  title: string;
+  productProblem: string;
+  targetFiles: string[];
+  codeFindings: Array<{ path: string; reason: string; snippet: string }>;
+  proposedChanges: string[];
+  patchSketch: string;
+  risks: string[];
+  doNotTouch: string[];
+  tests: string[];
+  validationCommands: string[];
+  evidenceSources: HqSourceRecord[];
+  generatedFiles: string[];
+  requiresApproval: true;
+  applyStatus: 'proposal_only';
+  codexPrompt: string;
+}
+
+export interface HqPatchProposalListResponse {
+  ok: boolean;
+  proposals: HqPatchProposalHeader[];
+  total: number;
+}
+
+export interface HqPatchProposalReadResponse {
+  ok: boolean;
+  proposal: HqPatchProposal;
+}
+
+export interface HqPatchProposalMutationResponse {
+  ok: boolean;
+  proposal: HqPatchProposal;
+  generatedFiles: string[];
+  requiresApproval: true;
+  applyStatus: 'proposal_only';
+  packetId?: string | null;
   error?: string;
 }
 
