@@ -31556,12 +31556,12 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-starter-banner {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.9fr) !important;
-  gap: 12px !important;
-  margin: 0 12px 10px !important;
-  padding: 12px 14px !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.8fr) !important;
+  gap: 8px !important;
+  margin: 0 12px 8px !important;
+  padding: 6px 10px !important;
   border: 1px solid rgba(78, 118, 150, 0.24) !important;
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   background:
     linear-gradient(135deg, rgba(10, 21, 35, 0.94), rgba(8, 17, 29, 0.82)) !important;
   box-shadow:
@@ -31572,7 +31572,7 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-starter-banner-main,
 [data-ide-mode-marker='design'] .ide-design-starter-banner-next {
   display: grid !important;
-  gap: 6px !important;
+  gap: 4px !important;
   min-width: 0 !important;
 }
 
@@ -31582,7 +31582,7 @@ button:disabled,
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: center !important;
-  gap: 6px !important;
+  gap: 5px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-starter-banner-eyebrow,
@@ -31597,20 +31597,20 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-starter-banner-tag {
   display: inline-flex !important;
   align-items: center !important;
-  min-height: 22px !important;
-  padding: 0 8px !important;
+  min-height: 18px !important;
+  padding: 0 6px !important;
   border-radius: 999px !important;
   border: 1px solid rgba(92, 140, 178, 0.24) !important;
   background: rgba(17, 29, 44, 0.72) !important;
   color: rgba(211, 230, 246, 0.88) !important;
-  font-size: 11px !important;
+  font-size: 10px !important;
   font-weight: 600 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-starter-banner-title {
   margin: 0 !important;
-  font-size: 18px !important;
-  line-height: 1.2 !important;
+  font-size: 14px !important;
+  line-height: 1.15 !important;
   color: rgba(241, 247, 255, 0.96) !important;
 }
 
@@ -31619,24 +31619,73 @@ button:disabled,
 [data-ide-mode-marker='design'] .ide-design-starter-banner-next-copy {
   margin: 0 !important;
   font-size: 12px !important;
-  line-height: 1.45 !important;
+  line-height: 1.4 !important;
   color: rgba(188, 210, 231, 0.84) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-banner-next-copy {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-starter-banner-expected strong {
   color: rgba(235, 243, 252, 0.94) !important;
 }
 
+[data-ide-mode-marker='design'] .ide-design-starter-details {
+  margin-top: 0 !important;
+  color: rgba(188, 210, 231, 0.84) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-details summary {
+  cursor: pointer !important;
+  width: max-content !important;
+  max-width: 100% !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: rgba(125, 196, 255, 0.82) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-details-body {
+  display: grid !important;
+  gap: 4px !important;
+  margin-top: 6px !important;
+  padding-top: 6px !important;
+  border-top: 1px solid rgba(78, 118, 150, 0.18) !important;
+}
+
 [data-ide-mode-marker='design'] .ide-design-starter-banner-next {
-  align-content: start !important;
-  padding: 2px 0 2px 12px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-content: center !important;
+  align-items: center !important;
+  gap: 4px 8px !important;
+  padding: 0 0 0 8px !important;
   border-left: 1px solid rgba(78, 118, 150, 0.22) !important;
 }
 
+[data-ide-mode-marker='design'] .ide-design-starter-banner-next-label {
+  flex: 0 0 auto !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-banner-next-copy {
+  flex: 1 1 220px !important;
+  min-width: 180px !important;
+  -webkit-line-clamp: 1 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-banner-actions {
+  flex: 0 0 auto !important;
+}
+
 [data-ide-mode-marker='design'] .ide-design-starter-banner-actions .ide-button {
-  min-height: 28px !important;
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
+  min-height: 24px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-workspace-status-bar {

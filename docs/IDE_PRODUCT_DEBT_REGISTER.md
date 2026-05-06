@@ -84,6 +84,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Tests/browser proof needed: Enforced Design screenshots at `1366x768` and `1920x1080`; rerun Design workstation suites after any UI pass.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
 - Status: Needs browser proof
+- Follow-up (2026-05-06): starter-loaded guidance now uses a compact default hierarchy. The visible row keeps starter identity, next action, and Verify/Project actions; long summary and expected behavior move behind `Starter brief`. Browser audit at `1366x768` and `1920x1080` confirmed the starter banner no longer collapses the canvas to a 15-49px strip; the 1366 starter canvas is now about 120px. Remaining Design debt: left library density, generic/skinny inspector usefulness, and the existing stacked-inspector layout at 1366px.
 
 ### RB-DEBT-005 - Project home is improved but still needs a low-risk continuity audit
 

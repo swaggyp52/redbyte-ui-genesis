@@ -6315,13 +6315,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <h3 className="ide-design-starter-banner-title" data-testid="ide-design-starter-banner-title">
                     {starterContext.name}
                   </h3>
-                  {starterContext.summary ? (
-                    <p className="ide-design-starter-banner-summary">{starterContext.summary}</p>
-                  ) : null}
-                  {starterContext.expectedBehavior ? (
-                    <p className="ide-design-starter-banner-expected">
-                      <strong>Expected behavior:</strong> {starterContext.expectedBehavior}
-                    </p>
+                  {starterContext.summary || starterContext.expectedBehavior ? (
+                    <details className="ide-design-starter-details" data-testid="ide-design-starter-details">
+                      <summary data-testid="ide-design-starter-details-summary">Starter brief</summary>
+                      <div className="ide-design-starter-details-body" data-testid="ide-design-starter-details-body">
+                        {starterContext.summary ? (
+                          <p className="ide-design-starter-banner-summary">{starterContext.summary}</p>
+                        ) : null}
+                        {starterContext.expectedBehavior ? (
+                          <p className="ide-design-starter-banner-expected">
+                            <strong>Expected behavior:</strong> {starterContext.expectedBehavior}
+                          </p>
+                        ) : null}
+                      </div>
+                    </details>
                   ) : null}
                 </div>
                 <div className="ide-design-starter-banner-next">

@@ -244,6 +244,36 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-command-strip-secondary-cta').textContent).toContain('Project');
   });
 
+  it('keeps starter guidance compact while preserving next action and detail access', () => {
+    const view = renderSurface({
+      starterContext: {
+        name: '2-Bit Up Counter (Basys3)',
+        lab: 'Sequential + Waveforms',
+        concept: 'Board clock',
+        summary: 'On-chip 2-bit counter clocked by CLK100MHZ with switch enable and LED outputs.',
+        expectedBehavior: 'With SW0 high, the counter advances on each rising edge. BTNC resets the count.',
+        nextAction: 'In Verify: confirm CLK100MHZ auto-runs before trusting the counter.',
+      },
+    });
+
+    expect(view.getByTestId('ide-design-starter-banner-title').textContent).toContain(
+      '2-Bit Up Counter'
+    );
+    expect(view.getByTestId('ide-design-starter-banner-next-action').textContent).toContain(
+      'In Verify'
+    );
+    expect(view.getByTestId('ide-design-starter-go-to-verify').textContent).toContain('Open Verify');
+
+    const details = view.getByTestId('ide-design-starter-details') as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(view.getByTestId('ide-design-starter-details-summary').textContent).toContain(
+      'Starter brief'
+    );
+    expect(view.getByTestId('ide-design-starter-details-body').textContent).toContain(
+      'Expected behavior'
+    );
+  });
+
   it('keeps canvas mode support rails visible by default so core library and inspector context are already on-screen', async () => {
     const view = renderSurface();
 

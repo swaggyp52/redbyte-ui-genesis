@@ -1,5 +1,17 @@
 # AI State
 
+## Change Log 2026-05-06 (fix(design): reduce starter guidance density)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, Design workstation tests, Design surface/docs debt
+
+**Changes:**
+- Converted the Design starter-loaded banner from an expanded explanatory block into a compact workbench row: starter identity, tags, next action, and Verify/Project actions remain visible, while long summary and expected-behavior copy move behind a closed `Starter brief` disclosure.
+- Tightened Design-only starter banner spacing, title scale, chips, next-action copy, and button density so starter guidance supports the canvas instead of competing with it.
+- Added focused workstation coverage proving starter guidance preserves the next action and detail access while defaulting the detailed brief closed.
+- Updated Design surface/product-flow/debt docs to reflect the partial Design density closure and leave left-library / inspector density as separate follow-up work.
+
+**Evidence:** Problem intake/triage/trace/prompt generated for the raw Design density complaint. Focused starter-guidance test failed RED, then passed after implementation. Browser audit on `2-Bit Up Counter` and `Logic Gates` at `1366x768` and `1920x1080` confirmed the starter banner is compact, `Starter brief` is closed by default, no horizontal overflow appears, and the 1366 starter canvas improves from the pre-fix 15-49px strip to about 120px. E3 proof closure remains manual-board gated.
+
 ## Change Log 2026-05-06 (fix(export): surface Vivado evidence diagnostics)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, Export workstation tests, Export/evidence docs

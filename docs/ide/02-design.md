@@ -37,6 +37,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 3. Center workspace
 - The canvas is the primary region and should win the page.
 - The tools row stays attached to the workbench header; expanded tool options open as a compact popup instead of adding another horizontal band.
+- Starter-loaded guidance is compact by default: starter name, tags, next action, and navigation stay visible, while long summary / expected-behavior copy lives behind the `Starter brief` disclosure.
 - The compact authoring card is the readiness owner for design issues.
 - The simulation strip is contextual and appears only when replay, stale replay, verify-linked focus, active simulation, or another real simulation story exists.
 - When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect.

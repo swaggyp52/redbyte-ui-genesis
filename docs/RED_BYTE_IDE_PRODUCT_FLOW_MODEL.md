@@ -107,7 +107,7 @@ Show `Project Ready` only when all of:
 **What students should see:**
 1. **Left library** â€” Board resources, IO, Logic, Sequential, Reusable. Board expands first so CLK100MHZ is immediately reachable.
 2. **Workbench header** â€” Select/Wire tools, Snap/Undo/Redo/Fit/Delete, Canvas/Code/Split mode toggle, Open Verify + Project escape hatches.
-3. **Starter banner** â€” contextual orientation card when a starter is loaded. Shows what this circuit is and what to verify next. Expected/behavior summary.
+3. **Starter banner** â€” compact contextual orientation card when a starter is loaded. Shows what this circuit is and what to verify next; longer summary / expected-behavior copy stays behind `Starter brief`.
 4. **Circuit health row** â€” errors, warnings, drafts, ready-to-build status. Compact.
 5. **Canvas (primary)** â€” takes the remaining vertical space. This is where the circuit lives.
 6. **Right inspector** â€” idle: DESIGN OVERVIEW (Inputs/Outputs/Nodes/Wires counts). Active: selection context, verify-linked signal inspection.
@@ -119,7 +119,7 @@ Show `Project Ready` only when all of:
 
 **Current state (observed):**
 - Design surface renders well. Canvas shows the 2-bit counter circuit clearly.
-- Starter banner is helpful and compact.
+- Starter banner is compact by default; the long starter explanation is no longer expanded above the canvas.
 - Left library is wide by default (shows all Board resources expanded). This is by spec (Board first), but it takes 15-20% of viewport width permanently.
 - Right inspector idle copy is verbose.
 - No significant layout or rendering issues.
