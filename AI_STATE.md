@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus operator workbench)
+
+**Subsystem:** `scripts/marcus/marcus-task-queue.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, task queue tests, server tests, docs
+
+**Changes:**
+- Added `scripts/marcus/marcus-task-queue.mjs`, a local JSON-backed Operator Queue under `.redbyte/agent/runs/hq/tasks/`. It can create tasks from saved packets, list/read tasks, update task status, and blocks traversal. Tasks are generated planning artifacts, not canonical truth.
+- Added HQ server endpoints: `GET /tasks`, `GET /tasks/:id`, `POST /tasks/from-packet`, `POST /tasks/:id/status`, and `GET /bench-timeline`. Task promotion emits session events; bench timeline returns a safe manual-gated empty state when local bench runs are absent.
+- Upgraded packet storage to preserve `recommendedAction`, and upgraded packet detail in HQ to show prompt, reply, sources, evidence level, source confidence, warnings, generated files, approval-required state, and related session events.
+- Added an Operator Queue panel to HQ with task status chips, product area, evidence/source confidence, blockers, tests, Codex prompt preview, and local status updates.
+- Upgraded Bench Intelligence with latest run, blocker summary, E0/E1/E2/E3 counts, warning classes, manual E3 needed count, targets, and run timeline while preserving E2/E3 distinction.
+- Added `scripts/marcus/marcus-task-queue.test.mjs`, expanded HQ server tests, and expanded HQ workstation tests for packet detail, task promotion, task status, bench timeline, and no direct patch/Obsidian action.
+- Added `docs/product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md` and updated HQ/Marcus docs and `docs/DOC_INDEX.md`.
+
+**Safety:** Marcus still cannot edit files, apply patches, commit/push, write to Obsidian, or expose arbitrary shell execution. Operator queue outputs stay under ignored generated run directories.
+
+**Evidence:** `pnpm rb:hq:test` green; focused HQ workstation test green; task queue unit test green.
+
 ## Change Log 2026-05-06 (feat(hq): add Marcus session console)
 
 **Subsystem:** `scripts/marcus/marcus-session-store.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, session store tests, server tests, docs

@@ -94,6 +94,7 @@ export function savePacket(packet, packetDir) {
     sourceConfidence: packet.sourceConfidence || 'low',
     generatedFiles: Array.isArray(packet.generatedFiles) ? packet.generatedFiles : [],
     warnings: Array.isArray(packet.warnings) ? packet.warnings : [],
+    recommendedAction: String(packet.recommendedAction || packet.recommendedNextAction || '').slice(0, 700),
     requiresApproval: Boolean(packet.requiresApproval),
     degraded: Boolean(packet.degraded),
     path: `packets/${fileName}`,
@@ -117,12 +118,10 @@ export function listPackets({ limit = 20, type } = {}, packetDir) {
   const files = fs
     .readdirSync(packetDir)
     .filter((f) => f.endsWith('.json'))
-    .sort()
-    .reverse(); // newest-first (lexicographic timestamp)
+    .sort();
 
   const results = [];
   for (const file of files) {
-    if (results.length >= limit) break;
     try {
       const filePath = path.join(packetDir, file);
       const resolved = path.resolve(filePath);
@@ -147,7 +146,12 @@ export function listPackets({ limit = 20, type } = {}, packetDir) {
       // skip malformed packet files
     }
   }
-  return results;
+  return results
+    .sort((a, b) => {
+      const created = String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+      return created !== 0 ? created : String(b.id || '').localeCompare(String(a.id || ''));
+    })
+    .slice(0, limit);
 }
 
 /**

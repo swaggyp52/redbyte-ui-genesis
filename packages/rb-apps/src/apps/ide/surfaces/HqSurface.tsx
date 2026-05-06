@@ -3,18 +3,24 @@ import { IdeButton, IdeCallout, IdePanel, IdeStatusPill } from '../components/Id
 import {
   generateMarcusCodingPlan,
   getHqBenchEvidence,
+  getHqBenchTimeline,
   getHqHealth,
   getHqSnapshot,
   listHqPackets,
   listHqSessionEvents,
+  listHqTasks,
+  promoteHqPacketToTask,
   readHqPacket,
+  readHqTask,
   runMemorySearch,
   runProblemIntake,
   runTraceClaim,
   sendMarcusChat,
+  updateHqTaskStatus,
 } from './hq/hqClient';
 import type {
   HqBenchEvidence,
+  HqBenchTimeline,
   HqChatMessage,
   HqChatMode,
   HqHealth,
@@ -25,6 +31,9 @@ import type {
   HqSourceConfidence,
   HqSourceRecord,
   HqEvidenceLevel,
+  HqTask,
+  HqTaskHeader,
+  HqTaskStatus,
 } from './hq/hqTypes';
 import type { IdeChromeContract } from '../chromeContract';
 
@@ -42,6 +51,7 @@ export const HqSurface: React.FC = () => {
   const [health, setHealth] = useState<HqHealth | null>(null);
   const [snapshot, setSnapshot] = useState<HqSnapshot | null>(null);
   const [evidence, setEvidence] = useState<HqBenchEvidence | null>(null);
+  const [benchTimeline, setBenchTimeline] = useState<HqBenchTimeline | null>(null);
   const [backendOnline, setBackendOnline] = useState(false);
   const [messages, setMessages] = useState<HqChatMessage[]>([
     {
@@ -67,6 +77,10 @@ export const HqSurface: React.FC = () => {
   const [packets, setPackets] = useState<HqPacketHeader[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<HqPacket | null>(null);
   const [packetsLoading, setPacketsLoading] = useState(false);
+  const [tasks, setTasks] = useState<HqTaskHeader[]>([]);
+  const [selectedTask, setSelectedTask] = useState<HqTask | null>(null);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskError, setTaskError] = useState<string | null>(null);
   const [sessionEvents, setSessionEvents] = useState<HqSessionEvent[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
 
@@ -81,6 +95,18 @@ export const HqSurface: React.FC = () => {
       // packet load failure is non-fatal
     } finally {
       setPacketsLoading(false);
+    }
+  }, []);
+
+  const loadTasks = useCallback(async () => {
+    setTasksLoading(true);
+    try {
+      const result = await listHqTasks({ limit: 20 });
+      setTasks(result.tasks);
+    } catch {
+      // task load failure is non-fatal
+    } finally {
+      setTasksLoading(false);
     }
   }, []);
 
@@ -99,14 +125,16 @@ export const HqSurface: React.FC = () => {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const [nextHealth, nextSnapshot, nextEvidence] = await Promise.all([
+      const [nextHealth, nextSnapshot, nextEvidence, nextBenchTimeline] = await Promise.all([
         getHqHealth(),
         getHqSnapshot(),
         getHqBenchEvidence(),
+        getHqBenchTimeline(),
       ]);
       setHealth(nextHealth);
       setSnapshot(nextSnapshot);
       setEvidence(nextEvidence);
+      setBenchTimeline(nextBenchTimeline.timeline);
       setBackendOnline(true);
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
@@ -114,8 +142,9 @@ export const HqSurface: React.FC = () => {
       setBackendOnline(false);
     }
     void loadPackets();
+    void loadTasks();
     void loadSessionEvents();
-  }, [loadPackets, loadSessionEvents]);
+  }, [loadPackets, loadSessionEvents, loadTasks]);
 
   useEffect(() => {
     void refresh();
@@ -147,6 +176,7 @@ export const HqSurface: React.FC = () => {
           setLatestPacketId(response.packetId);
           void loadPackets();
         }
+        void loadTasks();
         void loadSessionEvents();
       } catch (chatError) {
         const message = chatError instanceof Error ? chatError.message : String(chatError);
@@ -164,7 +194,7 @@ export const HqSurface: React.FC = () => {
         setBusy(false);
       }
     },
-    [allowTools, messages, mode],
+    [allowTools, loadPackets, loadSessionEvents, loadTasks, messages, mode],
   );
 
   const runAction = useCallback(
@@ -218,9 +248,10 @@ export const HqSurface: React.FC = () => {
       }
       // reload packets after any action
       void loadPackets();
+      void loadTasks();
       void loadSessionEvents();
     },
-    [chatInput, loadPackets, loadSessionEvents],
+    [chatInput, loadPackets, loadSessionEvents, loadTasks],
   );
 
   const selectPacket = useCallback(async (id: string) => {
@@ -231,6 +262,42 @@ export const HqSurface: React.FC = () => {
       // non-fatal
     }
   }, []);
+
+  const selectTask = useCallback(async (id: string) => {
+    try {
+      const result = await readHqTask(id);
+      setSelectedTask(result.task);
+      setTaskError(null);
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  const promoteSelectedPacket = useCallback(async () => {
+    if (!selectedPacket) return;
+    setTaskError(null);
+    try {
+      const result = await promoteHqPacketToTask(selectedPacket.id);
+      setSelectedTask(result.task);
+      void loadTasks();
+      void loadSessionEvents();
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : String(err));
+    }
+  }, [loadSessionEvents, loadTasks, selectedPacket]);
+
+  const setTaskStatus = useCallback(async (status: HqTaskStatus) => {
+    if (!selectedTask) return;
+    setTaskError(null);
+    try {
+      const result = await updateHqTaskStatus(selectedTask.id, status);
+      setSelectedTask(result.task);
+      void loadTasks();
+      void loadSessionEvents();
+    } catch (err) {
+      setTaskError(err instanceof Error ? err.message : String(err));
+    }
+  }, [loadSessionEvents, loadTasks, selectedTask]);
 
   const evidenceCounts = evidence?.counts ?? { E0: 0, E1: 0, E2: 0, E3: 0 };
 
@@ -252,6 +319,14 @@ export const HqSurface: React.FC = () => {
       snapshot.control_next?.why_this_task_matters || 'Evidence and control outputs drive next slice selection.',
     ];
   }, [snapshot]);
+
+  const relatedPacketEvents = useMemo(() => {
+    if (!selectedPacket) return [];
+    return sessionEvents.filter((event) => event.packetId === selectedPacket.id).slice(0, 6);
+  }, [selectedPacket, sessionEvents]);
+
+  const benchTimelineCounts = benchTimeline?.counts ?? evidenceCounts;
+  const benchWarningClasses = Object.entries(benchTimeline?.warningClasses ?? {}).slice(0, 6);
 
   return (
     <div className="hq-surface" data-testid="hq-surface-root">
@@ -407,9 +482,28 @@ export const HqSurface: React.FC = () => {
           </IdePanel>
 
           <IdePanel title="Bench Intelligence" testId="hq-bench-panel">
-            <p className="hq-copy">Run folder: {evidence?.run_folder || 'unavailable'}</p>
-            <div className="hq-target-list">
-              {(evidence?.targets || []).slice(0, 4).map((target) => (
+            <p className="hq-copy" data-testid="hq-bench-latest-run">Latest run: {benchTimeline?.latestRunFolder || evidence?.run_folder || 'unavailable'}</p>
+            <p className="hq-copy" data-testid="hq-bench-blocker-summary">
+              {benchTimeline?.currentBlockerSummary || evidence?.message || 'Bench evidence unavailable locally.'}
+            </p>
+            <div className="hq-evidence-grid hq-evidence-grid--compact" data-testid="hq-bench-timeline-counts">
+              <div className="hq-evidence-cell"><strong>E0</strong><span>{benchTimelineCounts.E0}</span></div>
+              <div className="hq-evidence-cell"><strong>E1</strong><span>{benchTimelineCounts.E1}</span></div>
+              <div className="hq-evidence-cell"><strong>E2</strong><span>{benchTimelineCounts.E2}</span></div>
+              <div className="hq-evidence-cell"><strong>E3</strong><span>{benchTimelineCounts.E3}</span></div>
+            </div>
+            <p className="hq-copy" data-testid="hq-bench-manual-needed">
+              Manual E3 needed: {benchTimeline?.manualObservationNeededCount ?? 0}
+            </p>
+            {benchWarningClasses.length ? (
+              <div className="hq-chip-row" data-testid="hq-bench-warning-classes">
+                {benchWarningClasses.map(([name, count]) => (
+                  <span key={name} className="hq-small-chip">{name}: {count}</span>
+                ))}
+              </div>
+            ) : null}
+            <div className="hq-target-list" data-testid="hq-bench-timeline-targets">
+              {(benchTimeline?.targets || evidence?.targets || []).slice(0, 4).map((target) => (
                 <div key={target.target_id} className="hq-target-row">
                   <span>{target.target_id}</span>
                   <span>{target.evidence_level}</span>
@@ -417,6 +511,16 @@ export const HqSurface: React.FC = () => {
                 </div>
               ))}
             </div>
+            <div className="hq-target-list" data-testid="hq-bench-run-timeline">
+              {(benchTimeline?.runs || []).slice(0, 4).map((run) => (
+                <div key={run.runFolder} className="hq-target-row">
+                  <span>{run.runFolder}</span>
+                  <span>{run.targetCount} targets</span>
+                  <span>E3 {run.counts.E3}</span>
+                </div>
+              ))}
+            </div>
+            <p className="hq-copy">E2 programming remains distinct from E3 observed behavior.</p>
           </IdePanel>
         </div>
 
@@ -439,6 +543,55 @@ export const HqSurface: React.FC = () => {
           <IdePanel title="Claim Trace" testId="hq-claim-panel">
             <p className="hq-copy">Use Trace Claim to verify high-risk product statements against docs/code/tests.</p>
             <p className="hq-copy">Claims proven: {snapshot?.claims_trace_summary?.proven ?? 'n/a'}</p>
+          </IdePanel>
+
+          <IdePanel title="Operator Queue" testId="hq-operator-queue-panel">
+            {taskError ? <p className="hq-copy hq-error-copy" data-testid="hq-task-error">{taskError}</p> : null}
+            {tasksLoading ? (
+              <p className="hq-copy" data-testid="hq-tasks-loading">Loading tasks...</p>
+            ) : tasks.length === 0 ? (
+              <p className="hq-copy" data-testid="hq-tasks-empty">No operator tasks yet. Select a packet and promote it.</p>
+            ) : (
+              <ul className="hq-task-list" data-testid="hq-task-list">
+                {tasks.slice(0, 8).map((task) => (
+                  <li
+                    key={task.id}
+                    className={`hq-task-row${selectedTask?.id === task.id ? ' hq-task-selected' : ''}`}
+                    onClick={() => void selectTask(task.id)}
+                    data-testid={`hq-task-row-${task.id}`}
+                  >
+                    <span className={`hq-task-status hq-task-status-${task.status}`}>{task.status.replace(/_/g, ' ')}</span>
+                    <span className="hq-task-title">{task.title}</span>
+                    <span className="hq-task-meta">{task.productArea} · {task.evidenceLevel} · {task.sourceConfidence}</span>
+                    {task.blockerCount > 0 ? <span className="hq-packet-warn">{task.blockerCount} blockers</span> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {selectedTask ? (
+              <div className="hq-task-detail" data-testid="hq-task-detail">
+                <p className="hq-copy"><strong>{selectedTask.title}</strong></p>
+                <p className="hq-copy">Status: {selectedTask.status} · Area: {selectedTask.productArea}</p>
+                <p className="hq-copy">{selectedTask.summary}</p>
+                <p className="hq-copy"><strong>Recommended action:</strong> {selectedTask.recommendedAction}</p>
+                {selectedTask.blockers.length ? (
+                  <p className="hq-copy"><strong>Blockers:</strong> {selectedTask.blockers.join(' | ')}</p>
+                ) : null}
+                {selectedTask.tests.length ? (
+                  <p className="hq-copy"><strong>Tests:</strong> {selectedTask.tests.join(' | ')}</p>
+                ) : null}
+                <div className="hq-chip-row">
+                  {(['ready', 'blocked', 'in_progress', 'done', 'archived'] as HqTaskStatus[]).map((status) => (
+                    <IdeButton key={status} tone="ghost" onClick={() => void setTaskStatus(status)}>
+                      {status.replace(/_/g, ' ')}
+                    </IdeButton>
+                  ))}
+                </div>
+                {selectedTask.codexPrompt ? (
+                  <pre className="hq-code-preview" data-testid="hq-task-codex-prompt">{selectedTask.codexPrompt}</pre>
+                ) : null}
+              </div>
+            ) : null}
           </IdePanel>
 
           <IdePanel title="Workbench History" testId="hq-workbench-history-panel">
@@ -470,27 +623,80 @@ export const HqSurface: React.FC = () => {
               </ul>
             )}
             {selectedPacket ? (
-              <div className="hq-packet-preview" data-testid="hq-packet-preview">
-                <p className="hq-copy"><strong>{selectedPacket.title}</strong></p>
-                <p className="hq-copy">{selectedPacket.summary || selectedPacket.reply.slice(0, 240)}</p>
+              <div className="hq-packet-preview hq-packet-detail" data-testid="hq-packet-detail">
+                <div className="hq-detail-header">
+                  <p className="hq-copy"><strong>{selectedPacket.title}</strong></p>
+                  {selectedPacket.requiresApproval ? (
+                    <span className="hq-approval-badge" data-testid="hq-packet-approval-badge">approval required</span>
+                  ) : null}
+                </div>
+                <p className="hq-copy">Type: {selectedPacket.type.replace(/_/g, ' ')} · Evidence: {selectedPacket.evidenceLevel} · Confidence: {selectedPacket.sourceConfidence}</p>
+                <p className="hq-copy" data-testid="hq-packet-detail-summary">{selectedPacket.summary || selectedPacket.reply.slice(0, 240)}</p>
+                <div className="hq-packet-text-block" data-testid="hq-packet-detail-prompt">
+                  <strong>Prompt</strong>
+                  <pre>{selectedPacket.prompt || 'No prompt captured.'}</pre>
+                </div>
+                <div className="hq-packet-text-block" data-testid="hq-packet-detail-reply">
+                  <strong>Reply</strong>
+                  <pre>{selectedPacket.reply || 'No reply captured.'}</pre>
+                </div>
+                {selectedPacket.toolsUsed.length > 0 ? (
+                  <p className="hq-copy" data-testid="hq-packet-detail-tools">
+                    <strong>Tools:</strong> {selectedPacket.toolsUsed.map((tool) => `${tool.name}:${tool.ok ? 'ok' : 'fail'}`).join(', ')}
+                  </p>
+                ) : null}
+                {selectedPacket.warnings.length > 0 ? (
+                  <p className="hq-copy" data-testid="hq-packet-detail-warnings"><strong>Warnings:</strong> {selectedPacket.warnings.join(' | ')}</p>
+                ) : null}
                 {selectedPacket.generatedFiles.length > 0 && (
-                  <p className="hq-copy" data-testid="hq-packet-preview-files">
+                  <p className="hq-copy" data-testid="hq-packet-detail-files">
                     <strong>Generated:</strong> {selectedPacket.generatedFiles.join(', ')}
                   </p>
                 )}
                 {selectedPacket.sources.length > 0 && (
-                  <p className="hq-copy">
-                    <strong>Sources:</strong> {selectedPacket.sources.map((s) => s.title).join(', ')}
-                  </p>
+                  <ul className="hq-source-preview-list" data-testid="hq-packet-detail-sources">
+                    {selectedPacket.sources.slice(0, 8).map((source) => (
+                      <li key={source.id}>
+                        <strong>{source.title}</strong>
+                        <span>{source.authority} · {source.freshness} · {sourceKindLabel[source.kind]}</span>
+                        {source.path ? <code>{source.path}</code> : null}
+                        {source.excerpt ? <p>{source.excerpt}</p> : null}
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                <IdeButton tone="ghost" onClick={() => setSelectedPacket(null)}>Close</IdeButton>
+                {relatedPacketEvents.length > 0 ? (
+                  <div data-testid="hq-packet-related-events">
+                    <p className="hq-copy"><strong>Related session events:</strong></p>
+                    <ul className="hq-mini-list">
+                      {relatedPacketEvents.map((event) => (
+                        <li key={event.id}>{event.type.replace(/_/g, ' ')} · {event.title}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                <div className="hq-chip-row">
+                  <IdeButton tone="secondary" onClick={() => void promoteSelectedPacket()} testId="hq-promote-packet">
+                    Promote to Task
+                  </IdeButton>
+                  {(selectedPacket.type === 'coding_plan' || selectedPacket.prompt || selectedPacket.reply) ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => setChatInput(selectedPacket.prompt || selectedPacket.reply)}
+                      testId="hq-copy-codex-prompt"
+                    >
+                      Copy Codex prompt
+                    </IdeButton>
+                  ) : null}
+                  <IdeButton tone="ghost" onClick={() => setSelectedPacket(null)}>Close</IdeButton>
+                </div>
               </div>
             ) : null}
           </IdePanel>
 
           <IdePanel title="Session Console" testId="hq-session-console-panel">
             <div className="hq-session-header">
-              <IdeButton tone="ghost" onClick={() => void loadSessionEvents()} data-testid="hq-session-refresh">
+              <IdeButton tone="ghost" onClick={() => void loadSessionEvents()} testId="hq-session-refresh">
                 Refresh
               </IdeButton>
             </div>

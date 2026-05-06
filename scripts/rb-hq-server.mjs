@@ -9,6 +9,7 @@ import { createMarcusToolRegistry } from './marcus/marcus-tool-registry.mjs';
 import { runMarcusAgentLoop } from './marcus/marcus-agent-loop.mjs';
 import { savePacket, listPackets, readPacket } from './marcus/marcus-packet-store.mjs';
 import { appendEvent, listEvents, clearEvents } from './marcus/marcus-session-store.mjs';
+import { createTaskFromPacket, listTasks, readTask, updateTaskStatus } from './marcus/marcus-task-queue.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -21,6 +22,7 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.REDBYTE_HQ_OLLAMA_TIMEOUT_MS || 300
 const REPO_ROOT = resolveRepoRoot();
 const PACKETS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'packets');
 const SESSION_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'session');
+const TASKS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'tasks');
 const CONTROL_NEXT_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'control-next-latest.json');
 const CLAIMS_TRACE_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'product-claims-trace-latest.json');
 const PROBLEM_PACKET_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'problems', 'problem-latest.json');
@@ -211,6 +213,106 @@ function loadBenchEvidenceSummary() {
       observed_behavior_status: target.observed_behavior_status,
       warning_classes: target.warning_classes,
     })),
+  };
+}
+
+function createEmptyBenchTimeline(message = 'No bench runs found.') {
+  return {
+    available: false,
+    runs: [],
+    targets: [],
+    counts: { E0: 0, E1: 0, E2: 0, E3: 0 },
+    warningClasses: {},
+    latestRunFolder: null,
+    currentBlockerSummary: message,
+    manualObservationNeededCount: 0,
+    message,
+  };
+}
+
+function loadBenchTimeline() {
+  if (!fs.existsSync(BENCH_RUNS_ROOT)) {
+    return createEmptyBenchTimeline('No local bench run folder exists. E3 proof remains manual-observation gated.');
+  }
+
+  const runDirs = fs
+    .readdirSync(BENCH_RUNS_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(BENCH_RUNS_ROOT, entry.name))
+    .sort();
+
+  if (runDirs.length === 0) {
+    return createEmptyBenchTimeline('Bench runs directory exists but contains no runs.');
+  }
+
+  const runs = [];
+  const latestTargets = [];
+  const counts = { E0: 0, E1: 0, E2: 0, E3: 0 };
+  const warningClasses = {};
+  let manualObservationNeededCount = 0;
+
+  for (const runDir of runDirs) {
+    const classificationPath = path.join(runDir, 'evidence-classification.json');
+    const classification = readJsonMaybe(classificationPath);
+    const runCounts = { E0: 0, E1: 0, E2: 0, E3: 0 };
+    const targets = Array.isArray(classification?.targets) ? classification.targets : [];
+
+    for (const target of targets) {
+      const level = target.evidence_level;
+      if (runCounts[level] !== undefined) runCounts[level] += 1;
+      for (const warningClass of target.warning_classes || []) {
+        warningClasses[warningClass] = (warningClasses[warningClass] || 0) + 1;
+      }
+      const needsObservation =
+        level === 'E2' ||
+        /uncertain|pending|manual|not observed/i.test(String(target.observed_behavior_status || '')) ||
+        (Array.isArray(target.blockers) && target.blockers.some((blocker) => /observe|manual|E3/i.test(String(blocker))));
+      if (needsObservation) manualObservationNeededCount += 1;
+    }
+
+    runs.push({
+      runFolder: relative(runDir),
+      generatedAt: classification?.generated_at || null,
+      targetCount: targets.length,
+      counts: runCounts,
+      warningClasses: Object.fromEntries(
+        Object.entries(warningClasses)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .slice(0, 12)
+      ),
+      hasClassification: Boolean(classification),
+    });
+  }
+
+  const latestRunDir = runDirs[runDirs.length - 1];
+  const latestClassification = readJsonMaybe(path.join(latestRunDir, 'evidence-classification.json'));
+  const latestRunTargets = Array.isArray(latestClassification?.targets) ? latestClassification.targets : [];
+  for (const target of latestRunTargets) {
+    const level = target.evidence_level;
+    if (counts[level] !== undefined) counts[level] += 1;
+    latestTargets.push({
+      target_id: target.target_id,
+      evidence_level: level,
+      observed_behavior_status: target.observed_behavior_status,
+      warning_classes: Array.isArray(target.warning_classes) ? target.warning_classes : [],
+      blockers: Array.isArray(target.blockers) ? target.blockers : [],
+      recommended_next_action: target.recommended_next_action || null,
+    });
+  }
+
+  const currentBlockerSummary = manualObservationNeededCount > 0
+    ? `${manualObservationNeededCount} target observation record(s) still need manual E3 review across local runs.`
+    : 'No manual E3 observation blockers detected in local classifications.';
+
+  return {
+    available: true,
+    runs: runs.slice(-10).reverse(),
+    targets: latestTargets,
+    counts,
+    warningClasses,
+    latestRunFolder: relative(latestRunDir),
+    currentBlockerSummary,
+    manualObservationNeededCount,
   };
 }
 
@@ -461,6 +563,71 @@ export function createHqServer() {
         return;
       }
 
+      if (req.method === 'GET' && url.pathname === '/tasks') {
+        const limitParam = Number(url.searchParams.get('limit') || 20);
+        const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 20;
+        const status = url.searchParams.get('status') || undefined;
+        const tasks = listTasks({ limit, status }, TASKS_DIR);
+        respondJson(res, 200, { ok: true, tasks, total: tasks.length });
+        return;
+      }
+
+      const taskIdMatch = url.pathname.match(/^\/tasks\/([^/]+)$/);
+      if (req.method === 'GET' && taskIdMatch) {
+        try {
+          const task = readTask(taskIdMatch[1], TASKS_DIR);
+          respondJson(res, 200, { ok: true, task });
+        } catch (err) {
+          respondJson(res, 404, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/tasks/from-packet') {
+        const body = await readBody(req);
+        const packetId = sanitizeUserText(body?.packetId || body?.packet_id || '');
+        if (!packetId) {
+          respondJson(res, 400, { ok: false, error: 'packetId is required.' });
+          return;
+        }
+        try {
+          const packet = readPacket(packetId, PACKETS_DIR);
+          const task = createTaskFromPacket(packet, TASKS_DIR);
+          tryAppendEvent({
+            type: 'runtime_status',
+            title: `Task promoted: ${task.title}`,
+            summary: `Packet ${packet.id} promoted to operator task ${task.id}.`,
+            severity: 'success',
+            packetId: packet.id,
+            metadata: { taskId: task.id, status: task.status },
+          });
+          respondJson(res, 200, { ok: true, task });
+        } catch (err) {
+          respondJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
+      const taskStatusMatch = url.pathname.match(/^\/tasks\/([^/]+)\/status$/);
+      if (req.method === 'POST' && taskStatusMatch) {
+        const body = await readBody(req);
+        try {
+          const task = updateTaskStatus(taskStatusMatch[1], body?.status, TASKS_DIR);
+          tryAppendEvent({
+            type: 'runtime_status',
+            title: `Task status: ${task.status}`,
+            summary: `${task.title} is now ${task.status}.`,
+            severity: 'info',
+            packetId: task.sourcePacketId,
+            metadata: { taskId: task.id, status: task.status },
+          });
+          respondJson(res, 200, { ok: true, task });
+        } catch (err) {
+          respondJson(res, 400, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/health') {
         respondJson(res, 200, await buildHealth());
         return;
@@ -478,6 +645,11 @@ export function createHqServer() {
           ...evidence,
           warning: classify.ok ? null : 'bench-evidence-classify-failed',
         });
+        return;
+      }
+
+      if (req.method === 'GET' && url.pathname === '/bench-timeline') {
+        respondJson(res, 200, { ok: true, timeline: loadBenchTimeline() });
         return;
       }
 
@@ -590,6 +762,7 @@ export function createHqServer() {
           sourceConfidence: response.sourceConfidence,
           generatedFiles: response.generatedFiles,
           warnings: chatWarnings,
+          recommendedAction: response.recommendedNextAction,
           requiresApproval: response.requiresApproval,
           degraded: response.degraded,
           tags: [mode],
@@ -679,6 +852,7 @@ export function createHqServer() {
           sourceConfidence: result.sourceConfidence,
           generatedFiles: result.generatedFiles,
           warnings: codingPlanWarnings,
+          recommendedAction: 'Review packet content, then run focused tests before any implementation.',
           requiresApproval: true,
           degraded: false,
           tags: ['coding-plan', targetSurface],
@@ -752,6 +926,7 @@ export function createHqServer() {
           sourceConfidence: result.sourceConfidence,
           generatedFiles: result.generatedFiles,
           warnings: result.warnings,
+          recommendedAction: 'Inspect the generated problem packet before implementation.',
           requiresApproval: false,
           degraded: !result.ok,
           tags: ['problem-intake'],
@@ -834,6 +1009,7 @@ export function createHqServer() {
           sourceConfidence: result.sourceConfidence,
           generatedFiles: result.generatedFiles,
           warnings: result.warnings,
+          recommendedAction: 'Review canonical repo docs before treating generated trace output as truth.',
           requiresApproval: false,
           degraded: !result.ok,
           tags: ['trace-claim'],
@@ -891,6 +1067,10 @@ export function createHqServer() {
           'GET /snapshot',
           'GET /packets',
           'GET /packets/:id',
+          'GET /tasks',
+          'GET /tasks/:id',
+          'POST /tasks/from-packet',
+          'POST /tasks/:id/status',
           'GET /session/events',
           'POST /session/clear',
           'POST /chat',
@@ -899,6 +1079,7 @@ export function createHqServer() {
           'POST /memory-search',
           'POST /trace-claim',
           'GET /bench-evidence',
+          'GET /bench-timeline',
           'GET /control-next',
         ],
       });

@@ -62,6 +62,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_MARCUS_AGENT_ENGINE.md](./product/RED_BYTE_MARCUS_AGENT_ENGINE.md) | Marcus Agent Engine v1 architecture, capability levels, tool registry policy, and coding-plan safety contract |
 | [product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md](./product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md) | Marcus workbench history contract — packet types, field schema, storage rules, GET /packets endpoints, UI history panel, trust/safety rules |
 | [product/RED_BYTE_MARCUS_SESSION_CONSOLE.md](./product/RED_BYTE_MARCUS_SESSION_CONSOLE.md) | Marcus session console contract — event types, JSONL store, GET /session/events endpoint, UI console panel rules |
+| [product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md](./product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md) | Marcus operator workbench contract for packet detail, source preview, task queue, bench timeline, and safety boundaries |
 | [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |
 | [product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md](./product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md) | Operating guide for `rb:problem:*` intake, triage, trace, prompt, and closeout packets |
 

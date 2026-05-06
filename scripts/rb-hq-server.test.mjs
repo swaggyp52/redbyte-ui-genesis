@@ -214,6 +214,86 @@ test('GET /packets/:id rejects path traversal attempts', async () => {
   });
 });
 
+test('POST /tasks/from-packet promotes a packet into an operator task', async () => {
+  await withServer(async (baseUrl) => {
+    const chatResp = await fetch(`${baseUrl}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'Generate an Export coding plan candidate.', mode: 'coding-plan', allowTools: false }),
+    });
+    const chatPayload = await chatResp.json();
+    const packetId = chatPayload.packetId;
+    if (!packetId) return;
+
+    const promote = await fetch(`${baseUrl}/tasks/from-packet`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ packetId }),
+    });
+    assert.equal(promote.ok, true);
+    const promoted = await promote.json();
+    assert.equal(promoted.ok, true);
+    assert.equal(promoted.task.sourcePacketId, packetId);
+    assert.match(promoted.task.productArea, /Export|RedByte|HQ|Verify|Hardware/);
+
+    const list = await fetch(`${baseUrl}/tasks`);
+    assert.equal(list.ok, true);
+    const listed = await list.json();
+    assert.ok(Array.isArray(listed.tasks));
+    assert.ok(listed.tasks.some((task) => task.id === promoted.task.id));
+  });
+});
+
+test('POST /tasks/:id/status updates task status', async () => {
+  await withServer(async (baseUrl) => {
+    const chatResp = await fetch(`${baseUrl}/chat`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ message: 'Task status test.', mode: 'ask', allowTools: false }),
+    });
+    const { packetId } = await chatResp.json();
+    if (!packetId) return;
+
+    const promote = await fetch(`${baseUrl}/tasks/from-packet`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ packetId }),
+    });
+    const { task } = await promote.json();
+
+    const update = await fetch(`${baseUrl}/tasks/${encodeURIComponent(task.id)}/status`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'ready' }),
+    });
+    assert.equal(update.ok, true);
+    const updated = await update.json();
+    assert.equal(updated.task.status, 'ready');
+  });
+});
+
+test('GET /tasks/:id rejects path traversal attempts', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/tasks/${encodeURIComponent('../task')}`);
+    assert.equal(response.status, 404);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+  });
+});
+
+test('GET /bench-timeline returns safe structure without overstating E3', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/bench-timeline`);
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.ok(payload.timeline);
+    assert.ok(payload.timeline.counts);
+    assert.equal(typeof payload.timeline.manualObservationNeededCount, 'number');
+    assert.ok(!/E3 proven/i.test(JSON.stringify(payload.timeline)));
+  });
+});
+
 test('GET /session/events returns empty events array initially', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/session/events`);

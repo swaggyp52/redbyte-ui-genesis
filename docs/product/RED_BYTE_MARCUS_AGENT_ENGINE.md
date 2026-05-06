@@ -49,6 +49,7 @@ Fallback mode is mandatory: if Ollama is unavailable or tool-calling fails, Marc
   - allowlisted tools (control-next, trace-claim, memory-search, problem-intake, bench-evidence, git-status)
 - L3: Work packet generation
   - coding-plan packet + Codex prompt generation under `.redbyte/agent/runs/hq/`
+  - packet detail review and local operator task promotion
 - L4: Safe checks only
   - allowlisted checks (`rb:doc:validate`, `rb:encoding:check`)
 - L5: Patch proposal only (future)
@@ -111,6 +112,18 @@ Marcus responses must preserve:
     - `.redbyte/agent/runs/hq/marcus-coding-plan-latest.md`
     - `.redbyte/agent/runs/hq/marcus-coding-plan-latest.json`
 
+- `GET /packets` and `GET /packets/:id`
+  - read saved Marcus packets from local generated history
+  - packet detail includes prompt, reply, sources, evidence level, warnings, generated files, and approval state
+
+- `GET /tasks`, `GET /tasks/:id`, `POST /tasks/from-packet`, `POST /tasks/:id/status`
+  - maintain local operator tasks under `.redbyte/agent/runs/hq/tasks/`
+  - tasks are planning artifacts, not canonical product truth
+
+- `GET /bench-timeline`
+  - summarizes local bench classification runs when present
+  - returns a safe empty/manual-gated state when local bench runs are absent
+
 ## Coding Workflow Contract
 
 Marcus coding flow is staged and approval-gated:
@@ -119,8 +132,10 @@ Marcus coding flow is staged and approval-gated:
 2. plan
 3. gather evidence
 4. generate packet
-5. human approval
-6. Codex executes implementation
+5. inspect packet detail and source evidence
+6. optionally promote packet into Operator Queue
+7. human approval
+8. Codex executes implementation
 
 Marcus v1 does not apply patches directly.
 

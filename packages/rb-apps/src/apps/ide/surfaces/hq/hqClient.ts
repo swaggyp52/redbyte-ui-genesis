@@ -1,5 +1,6 @@
 import type {
   HqBenchEvidence,
+  HqBenchTimelineResponse,
   HqChatMode,
   HqChatMessage,
   HqChatRequestOptions,
@@ -11,6 +12,10 @@ import type {
   HqPacketReadResponse,
   HqSessionEventsResponse,
   HqSnapshot,
+  HqTaskListResponse,
+  HqTaskMutationResponse,
+  HqTaskReadResponse,
+  HqTaskStatus,
 } from './hqTypes';
 
 const HQ_BASE_URL = import.meta.env.VITE_REDBYTE_HQ_URL || 'http://127.0.0.1:4255';
@@ -36,6 +41,11 @@ export async function getHqSnapshot(): Promise<HqSnapshot> {
 export async function getHqBenchEvidence(): Promise<HqBenchEvidence> {
   const response = await fetch(`${HQ_BASE_URL}/bench-evidence`);
   return parseJson<HqBenchEvidence>(response);
+}
+
+export async function getHqBenchTimeline(): Promise<HqBenchTimelineResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/bench-timeline`);
+  return parseJson<HqBenchTimelineResponse>(response);
 }
 
 export async function sendMarcusChat(
@@ -105,6 +115,38 @@ export async function listHqPackets(options?: { limit?: number; type?: string })
 export async function readHqPacket(id: string): Promise<HqPacketReadResponse> {
   const response = await fetch(`${HQ_BASE_URL}/packets/${encodeURIComponent(id)}`);
   return parseJson<HqPacketReadResponse>(response);
+}
+
+export async function listHqTasks(options?: { limit?: number; status?: HqTaskStatus }): Promise<HqTaskListResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  if (options?.status) params.set('status', options.status);
+  const qs = params.toString();
+  const response = await fetch(`${HQ_BASE_URL}/tasks${qs ? `?${qs}` : ''}`);
+  return parseJson<HqTaskListResponse>(response);
+}
+
+export async function readHqTask(id: string): Promise<HqTaskReadResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/tasks/${encodeURIComponent(id)}`);
+  return parseJson<HqTaskReadResponse>(response);
+}
+
+export async function promoteHqPacketToTask(packetId: string): Promise<HqTaskMutationResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/tasks/from-packet`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ packetId }),
+  });
+  return parseJson<HqTaskMutationResponse>(response);
+}
+
+export async function updateHqTaskStatus(id: string, status: HqTaskStatus): Promise<HqTaskMutationResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/tasks/${encodeURIComponent(id)}/status`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ status }),
+  });
+  return parseJson<HqTaskMutationResponse>(response);
 }
 
 export async function listHqSessionEvents(options?: { limit?: number; type?: string }): Promise<HqSessionEventsResponse> {

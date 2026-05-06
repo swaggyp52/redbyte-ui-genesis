@@ -15,8 +15,11 @@ RedByte HQ is a local utility surface in the IDE that exposes command-center sta
 - Marcus chat (local Ollama-backed when available)
 - control-loop snapshot status
 - bench evidence summary (E0/E1/E2/E3)
+- bench evidence timeline/status trends
 - memory index status
 - claim/problem helper actions
+- workbench packet detail
+- local operator task queue
 
 HQ is utility context for engineering and validation. It is not a required student workflow step.
 
@@ -56,6 +59,13 @@ This degraded mode is acceptable for v0.
 - `GET /snapshot`
 - `GET /control-next`
 - `GET /bench-evidence`
+- `GET /bench-timeline`
+- `GET /packets`
+- `GET /packets/:id`
+- `GET /tasks`
+- `GET /tasks/:id`
+- `POST /tasks/from-packet`
+- `POST /tasks/:id/status`
 - `POST /chat`
 - `POST /coding-plan`
 - `POST /problem-intake`
@@ -83,6 +93,8 @@ Response envelope includes:
 
 `POST /coding-plan` generates a safe work packet under `.redbyte/agent/runs/hq/` and does not edit product files.
 
+`POST /tasks/from-packet` promotes a saved packet into a local operator task under `.redbyte/agent/runs/hq/tasks/`. These tasks are generated planning artifacts, not canonical repo truth.
+
 ## Safety model (v1)
 
 - No unrestricted command execution endpoint.
@@ -90,6 +102,7 @@ Response envelope includes:
 - Request body size is capped.
 - Obsidian writes are disabled by default (`REDBYTE_HQ_ALLOW_OBSIDIAN_WRITES=false`).
 - Marcus cannot commit/push and cannot directly edit product files.
+- Operator tasks cannot apply patches and cannot write to Obsidian.
 
 ## Evidence display contract
 
@@ -104,6 +117,16 @@ HQ now also renders a compact source-grounding section for the latest Marcus rep
 - generated file paths
 
 Memory-derived sources must stay visually subordinate to canonical repo-doc sources.
+
+## Operator workbench contract
+
+HQ now includes an operator workbench layer:
+
+- Packet detail panel for prompt, reply, sources, evidence, warnings, generated files, and approval-required state.
+- Operator Queue for promoting packets into local task records with status, blockers, tests, Codex prompt, and source metadata.
+- Bench timeline panel for latest run, E0/E1/E2/E3 counts, warning classes, manual E3 needs, and run history.
+
+See `docs/product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md` for the detailed contract.
 
 ## How to start
 
@@ -124,3 +147,4 @@ If you only need backend serve without runtime lifecycle tooling:
 - `rb:hq:doctor` may report degraded status if control-loop inputs are incomplete.
 - v0 contains no browser-triggered arbitrary command feature by design.
 - Bench evidence can still be unavailable when `.redbyte/bench/runs/` is absent; in that case Marcus must ground replies in repo truth/control outputs or fallback sources instead of implying bench proof exists.
+- Operator task files and packet files are generated local history; they do not replace repo docs, AI_STATE, or release evidence.

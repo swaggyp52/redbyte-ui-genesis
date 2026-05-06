@@ -148,12 +148,12 @@ test('listPackets returns empty array when directory is missing', () => {
 
 test('listPackets returns saved packets newest-first', () => {
   withTempDir((dir) => {
-    savePacket({ type: 'chat_answer', title: 'first', reply: 'A' }, dir);
-    savePacket({ type: 'coding_plan', title: 'second', reply: 'B' }, dir);
+    savePacket({ id: 'trace_report-old', createdAt: '2026-05-06T10:00:00.000Z', type: 'trace_report', title: 'old trace', reply: 'A' }, dir);
+    savePacket({ id: 'chat_answer-new', createdAt: '2026-05-06T10:01:00.000Z', type: 'chat_answer', title: 'new chat', reply: 'B' }, dir);
     const list = listPackets({}, dir);
     assert.equal(list.length, 2);
-    // second saved should come first (timestamp ordering)
-    assert.ok(list[0].createdAt >= list[1].createdAt);
+    assert.equal(list[0].id, 'chat_answer-new');
+    assert.equal(list[1].id, 'trace_report-old');
   });
 });
 

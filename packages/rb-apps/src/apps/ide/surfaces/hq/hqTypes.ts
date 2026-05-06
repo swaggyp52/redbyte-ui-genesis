@@ -46,6 +46,45 @@ export interface HqBenchEvidence {
   message?: string;
 }
 
+export interface HqBenchTimelineRun {
+  runFolder: string;
+  generatedAt: string | null;
+  targetCount: number;
+  counts: {
+    E0: number;
+    E1: number;
+    E2: number;
+    E3: number;
+  };
+  warningClasses: Record<string, number>;
+  hasClassification: boolean;
+}
+
+export interface HqBenchTimeline {
+  available: boolean;
+  runs: HqBenchTimelineRun[];
+  targets: Array<HqBenchTarget & {
+    blockers?: string[];
+    recommended_next_action?: string | null;
+  }>;
+  counts: {
+    E0: number;
+    E1: number;
+    E2: number;
+    E3: number;
+  };
+  warningClasses: Record<string, number>;
+  latestRunFolder: string | null;
+  currentBlockerSummary: string;
+  manualObservationNeededCount: number;
+  message?: string;
+}
+
+export interface HqBenchTimelineResponse {
+  ok: boolean;
+  timeline: HqBenchTimeline;
+}
+
 export interface HqSnapshot {
   generated_at: string;
   blocked_task: string;
@@ -185,6 +224,7 @@ export interface HqPacket extends HqPacketHeader {
   sources: HqSourceRecord[];
   generatedFiles: string[];
   warnings: string[];
+  recommendedAction?: string;
   requiresApproval: boolean;
   path: string;
   tags: string[];
@@ -199,6 +239,49 @@ export interface HqPacketListResponse {
 export interface HqPacketReadResponse {
   ok: boolean;
   packet: HqPacket;
+}
+
+export type HqTaskStatus = 'candidate' | 'ready' | 'blocked' | 'in_progress' | 'done' | 'archived';
+
+export interface HqTaskHeader {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  title: string;
+  status: HqTaskStatus;
+  sourcePacketId: string;
+  productArea: string;
+  evidenceLevel: HqEvidenceLevel;
+  sourceConfidence: HqSourceConfidence;
+  blockerCount: number;
+}
+
+export interface HqTask extends HqTaskHeader {
+  summary: string;
+  recommendedAction: string;
+  blockers: string[];
+  doNotTouch: string[];
+  tests: string[];
+  codexPrompt: string;
+  generatedFiles: string[];
+  sources: HqSourceRecord[];
+}
+
+export interface HqTaskListResponse {
+  ok: boolean;
+  tasks: HqTaskHeader[];
+  total: number;
+}
+
+export interface HqTaskReadResponse {
+  ok: boolean;
+  task: HqTask;
+}
+
+export interface HqTaskMutationResponse {
+  ok: boolean;
+  task: HqTask;
+  error?: string;
 }
 
 export type HqSessionEventType =
