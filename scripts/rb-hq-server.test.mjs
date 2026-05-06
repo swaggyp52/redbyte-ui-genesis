@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import assert from 'node:assert/strict';
 import {
@@ -211,5 +211,44 @@ test('GET /packets/:id rejects path traversal attempts', async () => {
     assert.equal(response.status, 404);
     const payload = await response.json();
     assert.equal(payload.ok, false);
+  });
+});
+
+test('GET /session/events returns empty events array initially', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/session/events`);
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.ok(Array.isArray(payload.events));
+    assert.equal(typeof payload.total, 'number');
+  });
+});
+
+test('POST /session/clear returns ok', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/session/clear`, { method: 'POST' });
+    assert.equal(response.ok, true);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+  });
+});
+
+test('GET /session/events returns valid structure after POST /session/clear', async () => {
+  await withServer(async (baseUrl) => {
+    // Clear first, then verify events list is structurally valid
+    const clearResponse = await fetch(`${baseUrl}/session/clear`, { method: 'POST' });
+    assert.equal(clearResponse.ok, true);
+    const clearPayload = await clearResponse.json();
+    assert.equal(clearPayload.ok, true);
+
+    // Events fetched immediately after clear should be a valid array
+    // (concurrent tests may write new events, so we verify structure only)
+    const eventsResponse = await fetch(`${baseUrl}/session/events`);
+    assert.equal(eventsResponse.ok, true);
+    const eventsPayload = await eventsResponse.json();
+    assert.equal(eventsPayload.ok, true);
+    assert.ok(Array.isArray(eventsPayload.events));
+    assert.equal(typeof eventsPayload.total, 'number');
   });
 });

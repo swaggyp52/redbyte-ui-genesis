@@ -200,3 +200,40 @@ export interface HqPacketReadResponse {
   ok: boolean;
   packet: HqPacket;
 }
+
+export type HqSessionEventType =
+  | 'user_message'
+  | 'marcus_reply'
+  | 'tool_call'
+  | 'tool_result'
+  | 'warning'
+  | 'degraded_mode'
+  | 'packet_saved'
+  | 'coding_plan_generated'
+  | 'source_grounding'
+  | 'runtime_status'
+  | 'error';
+
+export type HqSessionEventSeverity = 'info' | 'warn' | 'error' | 'success';
+
+export interface HqSessionEvent {
+  id: string;
+  createdAt: string;
+  type: HqSessionEventType;
+  title: string;
+  summary: string;
+  severity: HqSessionEventSeverity;
+  toolName?: string | null;
+  packetId?: string | null;
+  generatedFiles?: string[];
+  sources?: HqSourceRecord[];
+  evidenceLevel?: HqEvidenceLevel | null;
+  degraded?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface HqSessionEventsResponse {
+  ok: boolean;
+  events: HqSessionEvent[];
+  total: number;
+}

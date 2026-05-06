@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { createMarcusToolRegistry } from './marcus/marcus-tool-registry.mjs';
 import { runMarcusAgentLoop } from './marcus/marcus-agent-loop.mjs';
 import { savePacket, listPackets, readPacket } from './marcus/marcus-packet-store.mjs';
+import { appendEvent, listEvents, clearEvents } from './marcus/marcus-session-store.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -19,6 +20,7 @@ const OLLAMA_TIMEOUT_MS = Number(process.env.REDBYTE_HQ_OLLAMA_TIMEOUT_MS || 300
 
 const REPO_ROOT = resolveRepoRoot();
 const PACKETS_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'packets');
+const SESSION_DIR = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'hq', 'session');
 const CONTROL_NEXT_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'control-next-latest.json');
 const CLAIMS_TRACE_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'product-claims-trace-latest.json');
 const PROBLEM_PACKET_JSON = path.join(REPO_ROOT, '.redbyte', 'agent', 'runs', 'problems', 'problem-latest.json');
@@ -350,6 +352,20 @@ function trySavePacket(packet) {
   }
 }
 
+/**
+ * Try to append a session event. Never throws — append failures warn only.
+ * @param {object} event
+ * @returns {object|null} normalized event, or null on failure
+ */
+function tryAppendEvent(event) {
+  try {
+    return appendEvent(event, SESSION_DIR);
+  } catch (err) {
+    console.warn('[hq] session event append failed:', err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 function withCors(res) {
   res.setHeader('access-control-allow-origin', '*');
   res.setHeader('access-control-allow-methods', 'GET,POST,OPTIONS');
@@ -410,6 +426,21 @@ export function createHqServer() {
     const url = new URL(req.url || '/', `http://${HOST}:${DEFAULT_PORT}`);
 
     try {
+      if (req.method === 'GET' && url.pathname === '/session/events') {
+        const limitParam = Number(url.searchParams.get('limit') || 20);
+        const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 20;
+        const type = url.searchParams.get('type') || undefined;
+        const events = listEvents({ limit, type }, SESSION_DIR);
+        respondJson(res, 200, { ok: true, events, total: events.length });
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/session/clear') {
+        clearEvents(SESSION_DIR);
+        respondJson(res, 200, { ok: true });
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/packets') {
         const limitParam = Number(url.searchParams.get('limit') || 20);
         const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 100) : 20;
@@ -506,6 +537,45 @@ export function createHqServer() {
           ? [...response.warnings, 'Repository has local changes. Review coding plan cautiously before implementation.']
           : response.warnings;
 
+        // Emit session events for user message, tool calls, warnings, degraded state
+        tryAppendEvent({
+          type: 'user_message',
+          title: message.slice(0, 100),
+          summary: message.slice(0, 500),
+          severity: 'info',
+          metadata: { mode },
+        });
+
+        for (const tool of response.toolsUsed || []) {
+          tryAppendEvent({
+            type: 'tool_call',
+            title: `Tool: ${tool.name}`,
+            summary: tool.summary || '',
+            severity: tool.ok ? 'info' : 'warn',
+            toolName: tool.name,
+          });
+        }
+
+        if (response.degraded) {
+          tryAppendEvent({
+            type: 'degraded_mode',
+            title: 'Marcus running in degraded/fallback mode',
+            summary: 'Ollama unavailable; local tool fallback used.',
+            severity: 'warn',
+            degraded: true,
+            metadata: { mode },
+          });
+        }
+
+        for (const warning of (response.warnings || []).slice(0, 5)) {
+          tryAppendEvent({
+            type: 'warning',
+            title: String(warning).slice(0, 100),
+            summary: String(warning).slice(0, 500),
+            severity: 'warn',
+          });
+        }
+
         const packetType = response.degraded ? 'fallback_report' : 'chat_answer';
         const packetId = trySavePacket({
           type: packetType,
@@ -524,6 +594,31 @@ export function createHqServer() {
           degraded: response.degraded,
           tags: [mode],
         });
+
+        // Emit marcus_reply and packet_saved events
+        tryAppendEvent({
+          type: 'marcus_reply',
+          title: String(response.reply || 'Reply').slice(0, 100),
+          summary: String(response.reply || '').slice(0, 500),
+          severity: response.degraded ? 'warn' : 'success',
+          packetId,
+          sources: (response.sources || []).slice(0, 5),
+          evidenceLevel: response.evidenceLevel,
+          generatedFiles: (response.generatedFiles || []).slice(0, 5),
+          degraded: response.degraded,
+          metadata: { mode, sourceConfidence: response.sourceConfidence },
+        });
+
+        if (packetId) {
+          tryAppendEvent({
+            type: 'packet_saved',
+            title: `Packet saved: ${packetType}`,
+            summary: message.slice(0, 100),
+            severity: 'success',
+            packetId,
+            metadata: { packetType },
+          });
+        }
 
         respondJson(res, 200, {
           ok: true,
@@ -589,6 +684,30 @@ export function createHqServer() {
           tags: ['coding-plan', targetSurface],
         });
 
+        tryAppendEvent({
+          type: 'coding_plan_generated',
+          title: `Coding plan: ${rawUserRequest.slice(0, 80)}`,
+          summary: codingPlanReply,
+          severity: result.ok ? 'success' : 'warn',
+          toolName: 'generate_codex_packet',
+          packetId: cpPacketId,
+          generatedFiles: (result.generatedFiles || []).slice(0, 5),
+          sources: (result.sources || []).slice(0, 5),
+          evidenceLevel: result.evidenceLevel,
+          metadata: { targetSurface, urgency },
+        });
+
+        if (cpPacketId) {
+          tryAppendEvent({
+            type: 'packet_saved',
+            title: 'Coding plan packet saved',
+            summary: rawUserRequest.slice(0, 100),
+            severity: 'success',
+            packetId: cpPacketId,
+            metadata: { packetType: 'coding_plan' },
+          });
+        }
+
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
           mode: 'coding-plan',
@@ -637,6 +756,17 @@ export function createHqServer() {
           degraded: !result.ok,
           tags: ['problem-intake'],
         });
+
+        if (piPacketId) {
+          tryAppendEvent({
+            type: 'packet_saved',
+            title: 'Problem packet saved',
+            summary: raw_feedback.slice(0, 100),
+            severity: 'success',
+            packetId: piPacketId,
+            metadata: { packetType: 'problem_packet' },
+          });
+        }
 
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
@@ -709,6 +839,29 @@ export function createHqServer() {
           tags: ['trace-claim'],
         });
 
+        tryAppendEvent({
+          type: 'source_grounding',
+          title: `Claim trace: ${claim.slice(0, 80)}`,
+          summary: tcReply,
+          severity: result.ok ? 'info' : 'warn',
+          toolName: 'trace_claim',
+          packetId: tcPacketId,
+          sources: (result.sources || []).slice(0, 5),
+          evidenceLevel: result.evidenceLevel,
+          degraded: !result.ok,
+        });
+
+        if (tcPacketId) {
+          tryAppendEvent({
+            type: 'packet_saved',
+            title: 'Trace report packet saved',
+            summary: claim.slice(0, 100),
+            severity: 'success',
+            packetId: tcPacketId,
+            metadata: { packetType: 'trace_report' },
+          });
+        }
+
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
           mode: 'trace-claim',
@@ -738,6 +891,8 @@ export function createHqServer() {
           'GET /snapshot',
           'GET /packets',
           'GET /packets/:id',
+          'GET /session/events',
+          'POST /session/clear',
           'POST /chat',
           'POST /coding-plan',
           'POST /problem-intake',

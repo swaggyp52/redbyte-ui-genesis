@@ -53,7 +53,7 @@
         "rb:bench:evidence:test": "node scripts/rb-bench-evidence.test.mjs",
         "rb:hq:server": "node scripts/rb-hq-server.mjs serve",
         "rb:hq:doctor": "node scripts/rb-hq-server.mjs doctor",
-        "rb:hq:test": "node scripts/rb-hq-server.test.mjs && node scripts/marcus/marcus-tool-registry.test.mjs && node scripts/marcus/marcus-agent-loop.test.mjs && node scripts/marcus/marcus-packet-store.test.mjs",
+        "rb:hq:test": "node scripts/rb-hq-server.test.mjs && node scripts/marcus/marcus-tool-registry.test.mjs && node scripts/marcus/marcus-agent-loop.test.mjs && node scripts/marcus/marcus-packet-store.test.mjs && node scripts/marcus/marcus-session-store.test.mjs",
         "rb:marcus:start": "node scripts/rb-marcus-runtime.mjs start",
         "rb:marcus:stop": "node scripts/rb-marcus-runtime.mjs stop",
         "rb:marcus:status": "node scripts/rb-marcus-runtime.mjs status",

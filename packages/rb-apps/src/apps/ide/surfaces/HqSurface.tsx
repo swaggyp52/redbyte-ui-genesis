@@ -6,6 +6,7 @@ import {
   getHqHealth,
   getHqSnapshot,
   listHqPackets,
+  listHqSessionEvents,
   readHqPacket,
   runMemorySearch,
   runProblemIntake,
@@ -19,6 +20,7 @@ import type {
   HqHealth,
   HqPacket,
   HqPacketHeader,
+  HqSessionEvent,
   HqSnapshot,
   HqSourceConfidence,
   HqSourceRecord,
@@ -65,6 +67,8 @@ export const HqSurface: React.FC = () => {
   const [packets, setPackets] = useState<HqPacketHeader[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<HqPacket | null>(null);
   const [packetsLoading, setPacketsLoading] = useState(false);
+  const [sessionEvents, setSessionEvents] = useState<HqSessionEvent[]>([]);
+  const [sessionLoading, setSessionLoading] = useState(false);
 
   const offline = !health || !health.agent.ollama_online;
 
@@ -77,6 +81,18 @@ export const HqSurface: React.FC = () => {
       // packet load failure is non-fatal
     } finally {
       setPacketsLoading(false);
+    }
+  }, []);
+
+  const loadSessionEvents = useCallback(async () => {
+    setSessionLoading(true);
+    try {
+      const result = await listHqSessionEvents({ limit: 20 });
+      setSessionEvents(result.events);
+    } catch {
+      // session load failure is non-fatal
+    } finally {
+      setSessionLoading(false);
     }
   }, []);
 
@@ -98,7 +114,8 @@ export const HqSurface: React.FC = () => {
       setBackendOnline(false);
     }
     void loadPackets();
-  }, [loadPackets]);
+    void loadSessionEvents();
+  }, [loadPackets, loadSessionEvents]);
 
   useEffect(() => {
     void refresh();
@@ -130,6 +147,7 @@ export const HqSurface: React.FC = () => {
           setLatestPacketId(response.packetId);
           void loadPackets();
         }
+        void loadSessionEvents();
       } catch (chatError) {
         const message = chatError instanceof Error ? chatError.message : String(chatError);
         setMessages((current) => [
@@ -200,8 +218,9 @@ export const HqSurface: React.FC = () => {
       }
       // reload packets after any action
       void loadPackets();
+      void loadSessionEvents();
     },
-    [chatInput, loadPackets],
+    [chatInput, loadPackets, loadSessionEvents],
   );
 
   const selectPacket = useCallback(async (id: string) => {
@@ -467,6 +486,48 @@ export const HqSurface: React.FC = () => {
                 <IdeButton tone="ghost" onClick={() => setSelectedPacket(null)}>Close</IdeButton>
               </div>
             ) : null}
+          </IdePanel>
+
+          <IdePanel title="Session Console" testId="hq-session-console-panel">
+            <div className="hq-session-header">
+              <IdeButton tone="ghost" onClick={() => void loadSessionEvents()} data-testid="hq-session-refresh">
+                Refresh
+              </IdeButton>
+            </div>
+            {sessionLoading ? (
+              <p className="hq-copy" data-testid="hq-session-loading">Loading session events...</p>
+            ) : sessionEvents.length === 0 ? (
+              <p className="hq-copy" data-testid="hq-session-empty">No session events yet. Ask Marcus something to begin.</p>
+            ) : (
+              <ul className="hq-session-list" data-testid="hq-session-list">
+                {sessionEvents.map((ev) => (
+                  <li
+                    key={ev.id}
+                    className={`hq-session-row hq-session-severity-${ev.severity}`}
+                    data-testid={`hq-session-row-${ev.type}`}
+                  >
+                    <span
+                      className={`hq-session-severity-chip hq-session-severity-${ev.severity}`}
+                      data-testid="hq-session-severity"
+                    >
+                      {ev.severity === 'success' ? '✓' : ev.severity === 'warn' ? '⚠' : ev.severity === 'error' ? '✕' : '·'}
+                    </span>
+                    <span className="hq-session-type" data-testid="hq-session-type">{ev.type.replace(/_/g, ' ')}</span>
+                    <span className="hq-session-title" data-testid="hq-session-title">{ev.title}</span>
+                    {ev.toolName && (
+                      <span className="hq-session-chip" data-testid="hq-session-tool">{ev.toolName}</span>
+                    )}
+                    {ev.packetId && (
+                      <span className="hq-session-chip hq-session-packet-chip" data-testid="hq-session-packet-id">pkt</span>
+                    )}
+                    {ev.degraded && (
+                      <span className="hq-session-chip hq-session-degraded-chip" data-testid="hq-session-degraded">degraded</span>
+                    )}
+                    <span className="hq-session-time">{new Date(ev.createdAt).toLocaleTimeString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </IdePanel>
         </div>
       </div>

@@ -9,6 +9,7 @@ import type {
   HqHealth,
   HqPacketListResponse,
   HqPacketReadResponse,
+  HqSessionEventsResponse,
   HqSnapshot,
 } from './hqTypes';
 
@@ -104,4 +105,18 @@ export async function listHqPackets(options?: { limit?: number; type?: string })
 export async function readHqPacket(id: string): Promise<HqPacketReadResponse> {
   const response = await fetch(`${HQ_BASE_URL}/packets/${encodeURIComponent(id)}`);
   return parseJson<HqPacketReadResponse>(response);
+}
+
+export async function listHqSessionEvents(options?: { limit?: number; type?: string }): Promise<HqSessionEventsResponse> {
+  const params = new URLSearchParams();
+  if (options?.limit !== undefined) params.set('limit', String(options.limit));
+  if (options?.type) params.set('type', options.type);
+  const qs = params.toString();
+  const response = await fetch(`${HQ_BASE_URL}/session/events${qs ? `?${qs}` : ''}`);
+  return parseJson<HqSessionEventsResponse>(response);
+}
+
+export async function clearHqSession(): Promise<{ ok: boolean }> {
+  const response = await fetch(`${HQ_BASE_URL}/session/clear`, { method: 'POST' });
+  return parseJson<{ ok: boolean }>(response);
 }

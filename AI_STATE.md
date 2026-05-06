@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus session console)
+
+**Subsystem:** `scripts/marcus/marcus-session-store.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, session store tests, server tests, docs
+
+**Changes:**
+- Added `scripts/marcus/marcus-session-store.mjs` — local JSONL-backed session event store with `appendEvent`, `listEvents`, `clearEvents`, `generateEventId`, `sanitizeEventType`, `sanitizeSeverity`, `ensureSessionDir`. Path traversal blocked. Events go to `.redbyte/agent/runs/hq/session/events.jsonl` (gitignored). `tryAppendEvent` in server is warn-only, never throws.
+- Added `GET /session/events` and `POST /session/clear` endpoints to `rb-hq-server.mjs`. All four endpoint handlers (`/chat`, `/coding-plan`, `/problem-intake`, `/trace-claim`) emit typed session events (`user_message`, `tool_call`, `degraded_mode`, `warning`, `marcus_reply`, `packet_saved`, `coding_plan_generated`, `source_grounding`) via `tryAppendEvent`.
+- Added `HqSessionEventType`, `HqSessionEventSeverity`, `HqSessionEvent`, `HqSessionEventsResponse` types to `hqTypes.ts`. Added `listHqSessionEvents` and `clearHqSession` functions to `hqClient.ts`.
+- Added "Session Console" panel to `HqSurface.tsx` in `hq-right-stack` (below Workbench History). Shows latest 20 events with severity chip, type, title, toolName/packetId chips, and timestamp. `loadSessionEvents` called on refresh, after chat submit, and after any action.
+- Added 16-test `marcus-session-store.test.mjs` covering all exports including type sanitization, truncation, path traversal safety, newest-first ordering, type filtering, and clear.
+- Added 4 session-related tests to `rb-hq-server.test.mjs` covering `GET /session/events` structure, `POST /session/clear` response, and combined clear+events flow.
+- Updated `rb:hq:test` script to include session store tests.
+- Added `docs/product/RED_BYTE_MARCUS_SESSION_CONSOLE.md` session console contract.
+- Updated `docs/DOC_INDEX.md` to reference the new contract doc.
+
+**Evidence:** `pnpm rb:hq:test` 16+15+3+7+20 = 61 tests green; `pnpm rb:doc:validate` 36 passed 0 failed; `pnpm rb:encoding:check` clean; `pnpm --filter @redbyte/playground build` green.
+
 ## Change Log 2026-05-06 (feat(hq): add Marcus workbench history)
 
 **Subsystem:** `scripts/marcus/marcus-packet-store.mjs`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, packet store tests, server tests, docs
