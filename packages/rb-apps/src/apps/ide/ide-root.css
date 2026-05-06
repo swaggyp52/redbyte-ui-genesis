@@ -18043,9 +18043,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 }
 
 .ide-hw-map-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  align-items: stretch;
   gap: var(--rb-space-2);
   padding: 3px var(--rb-space-2);
   border-radius: 4px;
@@ -18068,12 +18067,29 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-color: rgba(56,189,248,0.5);
 }
 
-.ide-hw-map-row-left {
-  flex: 1;
+.ide-hw-map-row-primary,
+.ide-hw-map-row-secondary {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+}
+
+.ide-hw-map-row-primary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--rb-space-2);
+}
+
+.ide-hw-map-row-secondary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--rb-space-1);
+}
+
+.ide-hw-map-row-signal {
+  min-width: 0;
+  display: grid;
   gap: 2px;
 }
 
@@ -18084,12 +18100,24 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   white-space: nowrap;
 }
 
+.ide-hw-map-row-caption {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(155, 183, 206, 0.74);
+}
+
 .ide-hw-map-row-v2-chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 3px;
   max-width: 100%;
+}
+
+.ide-hw-map-row-role {
+  justify-content: flex-end;
 }
 
 .ide-hw-map-chip {
@@ -30613,6 +30641,12 @@ button:disabled,
   flex-shrink: 0;
 }
 
+.ide-hw-map-row-status {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
 .ide-hw-map-row-badge {
   font-size: 9px;
   font-weight: 600;
@@ -31904,7 +31938,7 @@ button:disabled,
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row {
   align-items: stretch;
-  gap: 12px;
+  gap: 8px;
   min-height: 74px;
 }
 
@@ -31923,8 +31957,28 @@ button:disabled,
   color: rgba(241, 248, 255, 0.98);
 }
 
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-caption {
+  font-size: 9px;
+  color: rgba(148, 176, 199, 0.7);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-primary {
+  grid-template-columns: minmax(0, 1fr) minmax(72px, auto);
+  gap: 8px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-secondary {
+  grid-template-columns: auto minmax(120px, 1fr) auto;
+  gap: 7px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-role {
+  align-self: start;
+  max-width: 120px;
+}
+
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-binding {
-  flex: 0 0 162px;
+  min-width: 0;
   display: grid;
   gap: 5px;
   align-content: center;

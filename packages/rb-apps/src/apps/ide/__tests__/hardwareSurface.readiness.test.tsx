@@ -620,6 +620,40 @@ describe('HardwareSurface readiness', () => {
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
   });
 
+  it('keeps mapped row identity, role, board binding, and status in distinct regions', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <HardwareSurface
+          projectName="Readable mapped rows"
+          expectedBehavior="CLK advances the mapped LED counter."
+          mappingRows={[
+            { id: 'clk', label: 'CLK100MHZ', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
+            { id: 'rst', label: 'RST', direction: 'in', pin: 'U18', required: true, timingRole: 'reset', boardResourceType: 'button' },
+            { id: 'q0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+          ]}
+          expectedIoRows={[]}
+          vectorsCount={0}
+          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
+          onGenerateBringUpVectors={vi.fn()}
+          onOpenExport={vi.fn()}
+          onOpenVerify={vi.fn()}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-hw-map-row-signal-clk').textContent).toContain('CLK100MHZ');
+    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Clock pin');
+    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Role: clock');
+    expect(getByTestId('ide-hw-map-row-status-clk').textContent).toContain('Mapped');
+    expect(getByTestId('ide-hw-map-row-binding-clk').textContent).toContain('Board: CLK100MHZ');
+    expect(getByTestId('ide-hw-map-row-action-clk').textContent).toContain('Edit mapping');
+
+    expect(getByTestId('ide-hw-map-row-signal-q0').textContent).toContain('LD0');
+    expect(getByTestId('ide-hw-map-row-role-q0').textContent).toContain('LED');
+    expect(getByTestId('ide-hw-map-row-status-q0').textContent).toContain('Mapped');
+    expect(getByTestId('ide-hw-map-row-binding-q0').textContent).toContain('pin U16');
+  });
+
   it('shows board planner clock truth, supported resources, and xdc preview in Hardware', () => {
     const { getByTestId, getByText } = render(
       <BoardSignalProvider>

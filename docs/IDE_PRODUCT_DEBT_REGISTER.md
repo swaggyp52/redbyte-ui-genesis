@@ -37,6 +37,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Tests/browser proof needed: Enforced hardware screenshots at `1366x768` and `1920x1080`, plus a browser proof that row selection, board highlight, and XDC preview stay coherent.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/hardware/HardwareSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
 - Status: **Partially resolved (2026-05-03)** — map-mode default is now task-first (concise no-selection inspector, collapsed advanced sections, clearer row action affordances, and explicit board-task copy). Hardware no longer reads like a permanent debug panel. Remaining work: minor visual tuning after Export density pass.
+- Follow-up (2026-05-05): mapped signal rows now separate circuit signal identity, role chips, mapped status, board binding/package pin, and the Edit Mapping action. Browser audit at `1366x768` and `1920x1080` confirmed the rows no longer read as a cramped debug-badge run while the Basys3 board remains the visual anchor.
 
 ### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
 

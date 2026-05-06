@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Hardware mapped-row readability (2026-05-05): Map Pins rows now expose circuit signal, role chips, mapped status, board binding/package pin, and Edit Mapping as distinct regions; browser audit at 1366x768 and 1920x1080 confirmed the row no longer reads as a cramped badge list while Verify-first trust copy remains intact. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware mapped row readability) |
 | Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
 | F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
 | F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
@@ -103,7 +104,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Local | Hardware map-mode hierarchy/status clarity: mapped Map Pins view hides the duplicate secondary intro; mapped-complete command strip and mapping header now share the same `failureTruth`-driven Verify/evidence follow-up copy; focused trust/readiness tests pass locally | `uncommitted` |
+| Done | Hardware mapped-row readability: mapped rows split signal identity, role chips, mapped status, board binding/package pin, and Edit Mapping into distinct regions while preserving Verify-first trust copy | `AI_STATE.md` - Change Log 2026-05-05 (Hardware mapped row readability) |
 | Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
 | Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
 | Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |

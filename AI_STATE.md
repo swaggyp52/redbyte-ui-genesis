@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (fix(hardware): improve mapped signal row readability)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, Hardware map-row CSS, `hardwareSurface.readiness.test.tsx`
+
+**Changes:**
+- Split each mapped Map Pins row into distinct regions for circuit signal identity, role chips, mapped status, board binding/package pin, and the Edit Mapping action.
+- Kept the Basys3 board visualization, mapping selection behavior, and Verify-first trust copy unchanged.
+- Added a focused readiness regression proving mapped status no longer replaces the signal label and role metadata remains separate from board binding.
+
+**Evidence:** `pnpm rb:problem:intake`/`triage`/`trace`/`prompt` ran for the raw Hardware mapped-row readability feedback; focused RED test failed before the row-region split and passed after; `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.trust-clarity.test.tsx` pass (31/31); browser audit on 2-Bit Up Counter Map Pins at `1366x768` and `1920x1080` confirmed row status, role, binding, and action read as separate regions while `Mapping complete — open Verify to create trusted export evidence` remains visible; `pnpm ide:gate:hardware-checklist-contract` pass; `pnpm --filter @redbyte/playground build` pass; `pnpm rb:doc:validate` pass; `pnpm rb:encoding:check` pass; `git diff --check` clean; `pnpm rb:memory:sync-plan` wrote a no-write sync plan. `pnpm ide:gate:student-loop-contract` still fails on the existing Verify ready-vector harness condition, and `pnpm ide:gate:route-contract` still fails waiting for launcher `desktop-shell`; neither failure is caused by this Hardware row layout change.
+
+---
+
 ## Change Log 2026-05-05 (fix(export): clarify handoff hierarchy)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, `exportSurface.workstation.test.tsx`, Export product debt docs

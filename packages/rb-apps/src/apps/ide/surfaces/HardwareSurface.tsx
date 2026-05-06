@@ -3291,11 +3291,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             }
                           }}
                         >
-                          <span className="ide-hw-map-row-left">
-                            <span className="ide-hw-map-row-label">{signalLabel}</span>
-                            <div
-                              className="ide-hw-map-row-v2-chips"
-                              data-testid={`ide-hw-map-row-v2-${row.id}`}
+                          <span className="ide-hw-map-row-primary">
+                            <span className="ide-hw-map-row-signal" data-testid={`ide-hw-map-row-signal-${row.id}`}>
+                              <span className="ide-hw-map-row-label">{signalLabel}</span>
+                              <span className="ide-hw-map-row-caption">Circuit signal</span>
+                            </span>
+                            <span
+                              className="ide-hw-map-row-v2-chips ide-hw-map-row-role"
+                              data-testid={`ide-hw-map-row-role-${row.id}`}
                             >
                               {resourceChip ? (
                                 <span className="ide-hw-map-chip ide-hw-map-chip--resource" title="Board resource">
@@ -3307,16 +3310,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                                   {timingChip}
                                 </span>
                               ) : null}
-                            </div>
+                            </span>
                           </span>
-                          <span className="ide-hw-map-row-meta">
-                            {row.required ? (
-                              isMissing
-                                ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">Missing</span>
-                                : <span className={`ide-hw-map-row-badge ${hasConflict ? 'ide-hw-map-row-badge--conflict' : 'ide-hw-map-row-badge--ok'}`}>{statusLabel}</span>
-                            ) : (
-                              <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
-                            )}
+                          <span className="ide-hw-map-row-secondary">
+                            <span className="ide-hw-map-row-status" data-testid={`ide-hw-map-row-status-${row.id}`}>
+                              {row.required ? (
+                                isMissing
+                                  ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">Missing</span>
+                                  : <span className={`ide-hw-map-row-badge ${hasConflict ? 'ide-hw-map-row-badge--conflict' : 'ide-hw-map-row-badge--ok'}`}>{statusLabel}</span>
+                              ) : (
+                                <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
+                              )}
+                            </span>
                             <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
                               <span>Board: <strong>{boardControl}</strong> (pin <strong>{packagePin}</strong>)</span>
                             </span>
