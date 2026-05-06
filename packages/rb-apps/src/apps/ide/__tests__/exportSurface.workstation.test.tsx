@@ -243,6 +243,33 @@ describe('ExportSurface workstation redesign', () => {
 
   // ─── Commit 1: pass-incomplete is not trusted ────────────────────────────
 
+  it('surfaces Vivado evidence diagnostics without treating E1 or E2 as E3 proof', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        workflowAuthority={makeWorkflowAuthority()}
+      />
+    );
+
+    const diagnostics = getByTestId('ide-export-vivado-evidence-diagnostics');
+    expect(diagnostics.textContent).toContain('E0');
+    expect(diagnostics.textContent).toContain('Export package');
+    expect(diagnostics.textContent).toContain('E1');
+    expect(diagnostics.textContent).toContain('Vivado build / bitstream');
+    expect(diagnostics.textContent).toContain('E2');
+    expect(diagnostics.textContent).toContain('Board programming');
+    expect(diagnostics.textContent).toContain('E3');
+    expect(diagnostics.textContent).toContain('Observed board behavior');
+    expect(getByTestId('ide-export-evidence-row-e2').textContent).toContain('does not prove behavior');
+    expect(getByTestId('ide-export-evidence-row-e3').textContent).toContain('manual observation required');
+    expect(getByTestId('ide-export-vivado-warning-classes').textContent).toContain('expected/no-clock/combinational');
+    expect(getByTestId('ide-export-vivado-warning-classes').textContent).toContain('observation blocker');
+    expect(getByTestId('ide-export-bench-empty-state').textContent).toContain('No local bench classification is attached');
+    expect(getByTestId('ide-export-command-strip').textContent).toContain('Draft export available');
+    expect(getByTestId('ide-export-command-strip').textContent).not.toContain('Trusted export ready');
+  });
+
   it('treats pass-with-incomplete-mapping as unverified: export is NOT trusted', () => {
     const incompletePassRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
       scenarioId: 'pass-scenario',

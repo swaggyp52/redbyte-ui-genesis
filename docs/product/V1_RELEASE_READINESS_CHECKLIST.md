@@ -66,6 +66,7 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 
 - [x] Post-Vivado bench evidence classifier is live (`rb:bench:evidence:classify`) and keeps E1/E2/E3 separated
 - [x] Target observation template workflow is live (`rb:bench:evidence:observe`) with explicit `can_promote_to_E3` gate
+- [x] Export surface now shows a compact Vivado evidence diagnostics ladder so E0 package generation, E1 build/bitstream, E2 programming, and E3 observed behavior are not conflated
 - [x] Vivado Kit ZIP passes E1 (synth + impl + bitstream) for golden, signal-tour, two-bit-counter, from-scratch twins
 - [x] XDC uses correct Basys3 package pin names (traced to Digilent master XDC)
 - [x] `create_clock` constraint present and correct for CLK100MHZ / W5

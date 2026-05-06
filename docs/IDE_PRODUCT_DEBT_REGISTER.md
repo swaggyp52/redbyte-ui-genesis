@@ -55,6 +55,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 - Follow-up (2026-05-05): Export handoff hierarchy now splits the command-strip export state from the hero handoff summary. The command strip may say "Draft export available"; the summary says "Vivado handoff package generated"; the next-action dock owns the Verify repair path. Browser audit at `1366x768` and `1920x1080` confirmed the duplicate Draft heading is gone while Draft vs Trusted and Map Pins vs Verify boundaries remain explicit.
 
+- Follow-up (2026-05-06): Export now includes a compact Vivado evidence diagnostics section that separates E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior. Browser audit on the 2-Bit Up Counter at `1366x768` and `1920x1080` confirmed the ladder is visible, E2 explicitly does not prove behavior, E3 remains manual-observation required, warning classes are listed, and no E3 overclaim is shown.
+
 ### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
 
 - Severity: Medium

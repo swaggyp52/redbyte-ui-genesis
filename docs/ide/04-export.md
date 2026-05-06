@@ -29,6 +29,7 @@ Act as compiler-like export authority for Basys3 Vivado artifacts while distingu
 
 2. Main center
 - Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
+- Compact Vivado evidence diagnostics that separate E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior.
 
 3. Right inspector
 - Pin table.
@@ -61,6 +62,15 @@ Each error must include a direct fix path.
 4. Download actions enabled.
 
 Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.
+
+Export must also keep downstream Vivado/bench evidence separated:
+
+1. **E0** - RedByte generated the Vivado package artifacts.
+2. **E1** - Vivado synthesis, implementation, and bitstream evidence exists outside RedByte.
+3. **E2** - Board programming evidence exists outside RedByte.
+4. **E3** - Physical board behavior was observed and recorded.
+
+E2 programming success must never imply E3 behavior proof. When no bench classifier output is attached to the browser session, Export should say so plainly and keep E1/E2/E3 as external/manual evidence.
 
 Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
 When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.

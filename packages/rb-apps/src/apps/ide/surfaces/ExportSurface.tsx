@@ -1352,6 +1352,53 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       handoffTruth.primaryCtaIntent === 're-export-current-bundle');
 
   const downloadDisabled = !downloadReady || isRebuilding;
+  const vivadoEvidenceRows = [
+    {
+      id: 'e0',
+      level: 'E0',
+      label: 'Export package',
+      tone: hasBlockingErrors ? 'error' as const : 'ok' as const,
+      status: hasBlockingErrors
+        ? 'Blocked'
+        : downloadDone
+          ? 'Downloaded'
+          : 'Generated in RedByte',
+      detail: hasBlockingErrors
+        ? 'Resolve export blockers before the package can be considered export-valid.'
+        : 'RedByte generated the VHDL, XDC, Tcl, README, and project handoff artifacts. This is export/package evidence only.',
+    },
+    {
+      id: 'e1',
+      level: 'E1',
+      label: 'Vivado build / bitstream',
+      tone: 'warn' as const,
+      status: 'External evidence required',
+      detail: 'Run Vivado synthesis, implementation, and bitstream generation outside RedByte. Preserve and classify warnings before claiming E1.',
+    },
+    {
+      id: 'e2',
+      level: 'E2',
+      label: 'Board programming',
+      tone: 'warn' as const,
+      status: 'External evidence required',
+      detail: 'Program success proves delivery to the board only; E2 does not prove behavior and must not be treated as E3.',
+    },
+    {
+      id: 'e3',
+      level: 'E3',
+      label: 'Observed board behavior',
+      tone: 'warn' as const,
+      status: 'manual observation required',
+      detail: 'Toggle the expected controls and record physical LED/output behavior before making any behavior-certified claim.',
+    },
+  ];
+  const vivadoWarningClasses = [
+    'expected/no-clock/combinational',
+    'needs RedByte explanation',
+    'build blocker',
+    'programming blocker',
+    'observation blocker',
+  ];
 
   const partNumberCopied = copiedTarget === 'part-number';
   const debugReportCopyState: ExportDebugCopyState =
@@ -1673,6 +1720,47 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             onDownloadProject={() => void handleDownloadExport('project')}
             onDownloadKit={() => void handleDownloadExport('kit')}
           />
+
+          <section
+            className="ide-export-section ide-mt-2"
+            data-testid="ide-export-vivado-evidence-diagnostics"
+          >
+            <header className="ide-export-section-header">
+              <div>
+                <h3>Vivado evidence diagnostics</h3>
+                <p className="ide-export-section-subcopy">
+                  RedByte separates package generation, Vivado build evidence, board programming, and observed behavior.
+                </p>
+              </div>
+              <IdeStatusPill tone="warn">E3 manual</IdeStatusPill>
+            </header>
+            <div className="ide-kv-list" data-testid="ide-export-vivado-evidence-rows">
+              {vivadoEvidenceRows.map((row) => (
+                <div
+                  key={row.id}
+                  className="ide-kv-row"
+                  data-testid={`ide-export-evidence-row-${row.id}`}
+                >
+                  <span>
+                    <strong>{row.level}</strong> - {row.label}
+                  </span>
+                  <span>
+                    <IdeStatusPill tone={row.tone}>{row.status}</IdeStatusPill>
+                  </span>
+                  <span className="ide-copy ide-copy--flush">{row.detail}</span>
+                </div>
+              ))}
+            </div>
+            <div className="ide-mt-2" data-testid="ide-export-vivado-warning-classes">
+              <p className="ide-copy ide-copy--flush">
+                <strong>Warning classes to preserve:</strong> {vivadoWarningClasses.join(' | ')}
+              </p>
+            </div>
+            <IdeCallout tone="info" testId="ide-export-bench-empty-state" className="ide-mt-2">
+              No local bench classification is attached to this browser session. Use `pnpm rb:bench:evidence:classify`
+              on a machine with bench run artifacts, then keep E1/E2/E3 claims separated.
+            </IdeCallout>
+          </section>
 
           <div className="ide-export-layout">
             <div className="ide-export-left-col">

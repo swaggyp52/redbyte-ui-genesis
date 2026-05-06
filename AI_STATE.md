@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-06 (fix(export): surface Vivado evidence diagnostics)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`, Export workstation tests, Export/evidence docs
+
+**Changes:**
+- Added a compact Export-side Vivado evidence diagnostics section that separates E0 package generation, E1 Vivado build/bitstream evidence, E2 board programming evidence, and E3 observed board behavior.
+- Kept Export trust logic unchanged: Draft Export does not become Trusted Export from E1/E2 bench evidence, and E2 programming explicitly does not prove board behavior.
+- Added an honest empty/degraded browser state when no local bench classification is attached to the session, plus warning-class language for combinational/no-clock, RedByte explanation, build blocker, programming blocker, and observation blocker classes.
+- Added focused workstation coverage proving E1/E2/E3 are distinct, E3 remains manual-required, warning classes render, and Draft/Trusted language is not changed by diagnostics.
+- Updated Export spec/readiness/debt docs to reflect the evidence ladder.
+
+**Evidence:** Focused Export workstation test passed after RED failure; browser audit on 2-Bit Up Counter Export at `1366x768` and `1920x1080` confirmed E0/E1/E2/E3 are visible, E2 does not imply E3, E3 remains manual observation required, warning classes render, and no horizontal overflow or E3 overclaim appears. `pnpm rb:bench:evidence:classify` remains blocked locally because `.redbyte/bench/runs` is absent.
+
 ## Change Log 2026-05-06 (feat(hq): add Marcus code intelligence proposals)
 
 **Subsystem:** `scripts/marcus/marcus-code-intelligence.mjs`, `scripts/rb-hq-server.mjs`, Marcus tool registry/agent loop, HQ client/types/UI, code-intelligence tests, HQ docs
