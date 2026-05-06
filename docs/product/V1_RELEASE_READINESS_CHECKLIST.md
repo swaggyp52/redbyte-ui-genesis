@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-03
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: v1 readiness gate — honest checklist of what is done, in-progress, and blocked
@@ -8,7 +8,7 @@ role: v1 readiness gate — honest checklist of what is done, in-progress, and b
 
 # RedByte v1 — Release Readiness Checklist
 
-**Last updated:** 2026-05-03
+**Last updated:** 2026-05-05
 **Honest posture:** RC1 (frozen 2026-04-23). Core student workflow proven. Visual and pilot readiness not yet complete.
 
 Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]` = not done · `[!]` = known blocker
@@ -28,8 +28,8 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 - [x] Cross-artifact consistency check passes (testbench ports match entity ports)
 - [x] README accurately describes the current product (overclaims removed 2026-04-01)
 - [x] Product manual contains zero known overclaims (claim audit + traceability matrix current)
-- [ ] Final E3 observation for `golden-basys3-switch-and` (four-case manual note pending board session)
-- [ ] `two-bit-counter` E3 (TA checklist §3 on hardware)
+- [ ] Final E3 observation for `golden-basys3-switch-and` (four-case manual note still pending after 2026-05-05 controlled E2 refresh)
+- [ ] `two-bit-counter` E3 (TA checklist on hardware still pending after 2026-05-05 controlled E2 refresh)
 
 ---
 
@@ -50,8 +50,8 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 ## C. Example / Learning Path Readiness
 
 - [x] `signal-tour`: E1 + E2 + E3 — fully certified (board behavior confirmed 2026-04-29)
-- [x] `golden-basys3-switch-and`: E1 + E2 — certified; E3 pending four-case note
-- [x] `two-bit-counter`: E1 + E2 — certified; E3 pending TA checklist
+- [x] `golden-basys3-switch-and`: E1 + E2 refreshed in controlled 2026-05-05 bench; E3 pending four-case note
+- [x] `two-bit-counter`: E1 + E2 refreshed in controlled 2026-05-05 bench; E3 pending TA checklist
 - [x] From-scratch combinational: E1 + E2 (fs-comb-switch-and-basys3)
 - [x] From-scratch sequential: E1 + E2 (fs-seq-two-bit-counter-basys3)
 - [x] Custom project shapes: E1 proven (fs-custom-four-switch-led, fs-custom-mixed-gate-chain)

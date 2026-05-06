@@ -24,6 +24,22 @@ Known tooling limits from this machine:
 - `pnpm rb:memory:synth` / `rb:memory:trace` were also blocked because the memory index was missing.
 - The deterministic problem intake loop still worked, using fallback mode.
 
+## Controlled Evidence Pack
+
+After the broader four-row bench pass, a narrower controlled pass produced a generated evidence pack under `.redbyte/bench/runs/20260505-222402/`. The folder is gitignored and contains `environment.md`, `commands.md`, `targets.md`, `matrix.md`, `vivado-warning-taxonomy.md`, `redbyte-gaps.md`, `next-actions.md`, per-target Vivado logs/reports, programming logs, and board-observation templates.
+
+Controlled target set:
+
+| Target | Export | Synthesis | Implementation | Bitstream | Program | Board Observed | Warnings | RedByte Gap |
+|---|---|---|---|---|---|---|---|---|
+| `golden-basys3-switch-and` | pass | pass with warnings | pass with warnings | generated | pass | manual observation required | `Synth 8-7080`; `Place 46-29`; `Timing 38-313`; `Power 33-232`; no timing constraints/clocks | Classify combinational no-clock/no-timing warnings as expected-but-visible and provide a SW0/SW1/LD0 checklist. |
+| IDE `two-bit-counter` | pass | pass with warning | pass | generated | pass | manual observation required | `Synth 8-7080`; timing report says all user timing constraints are met | Provide a fast-clock board observation checklist for SW0 enable, BTNC reset, and LD0/LD1 behavior. |
+| IDE `signal-tour` | pass | pass with warnings | pass with warnings | generated | pass | manual observation required in this run | `Synth 8-3330` empty top module; `Synth 8-7080`; `Timing 38-313`; `Power 33-232`; no timing constraints/clocks | Explain optimized-empty-top passthrough builds and no-clock warnings after Vivado. |
+
+Programming method for all three rows was Vivado Hardware Manager Tcl through `scripts/vivado/redbyte_program_device.tcl`: `open_hw_manager`, local `connect_hw_server`, target discovery, `xc7a35t_0` selection, and `program_hw_devices`.
+
+This controlled pack reinforces the same proof boundary: bitstreams and programming logs are E1/E2 evidence. They do not close E3 because no physical switch/button/LED behavior was observed by Codex in this run.
+
 ## Bench Matrix
 
 | Target | Export | Synthesis | Implementation | Bitstream | Program | Board Observed | Warnings | RedByte Gap |

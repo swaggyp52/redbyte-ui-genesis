@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Close E3 observation honestly for fresh bench rows** - 2026-05-05 bench refreshed E1/E2 for `golden-basys3-switch-and`, `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`; only prior `signal-tour` has E3, so `golden`, `half-adder`, and `two-bit-counter` still need manual behavior notes.
+1. **Close E3 observation honestly for fresh bench rows** - 2026-05-05 controlled pack refreshed E1/E2 for `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour`; prior broad pass also refreshed IDE `half-adder`. Only prior `signal-tour` has E3, so `golden`, `half-adder`, and `two-bit-counter` still need manual behavior notes.
 2. **~~Curate starter and example learning path~~** — Done (`13d77a3b`). 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier metadata, flagship flag, openProof notes, and numbered path strip in ExamplesBrowser.
 
 ---
@@ -25,7 +25,7 @@ imported_by: CLAUDE.md
 
 | Blocker | Why | Unblock by |
 |---------|-----|-----------|
-| Final E3 notes for `golden` + custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
+| Final E3 notes for `golden`, `two-bit-counter`, `half-adder`, and custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
 | `build:unified` root `dist/` verification | Windows can hold the root `dist/` directory lock even after build + merge succeed | Identify the locking process and harden the unified-build handoff or recovery path |
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
 
@@ -33,13 +33,13 @@ imported_by: CLAUDE.md
 
 ## Next bench / Vivado task
 
-**Target:** E3 observation notes for the fresh 2026-05-05 bench rows, starting with `golden-basys3-switch-and` and IDE `half-adder`.
+**Target:** E3 observation notes for the fresh 2026-05-05 controlled rows, starting with `golden-basys3-switch-and` and IDE `two-bit-counter`.
 
 ```powershell
 pnpm rb:bench:summarize
 ```
 
-Planned E3 observation: use the generated `.redbyte/agent/runs/bench/<target>/board-observation.md` templates to record switch/button actions, LED behavior, expected-vs-observed result, evidence type, and operator/date. Do not mark proof closure complete from programming logs alone.
+Planned E3 observation: use the generated `.redbyte/bench/runs/20260505-222402/<target>/board-observation.md` templates for the controlled pack, or `.redbyte/agent/runs/bench/<target>/board-observation.md` for the broader bench pack, to record switch/button actions, LED behavior, expected-vs-observed result, evidence type, and operator/date. Do not mark proof closure complete from programming logs alone.
 
 Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`, `docs/STUDENT_RELEASE_READINESS.md` section 3, and `scripts/vivado/README.md`.
 
@@ -49,7 +49,7 @@ Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-
 
 | Evidence | Path |
 |----------|------|
-| Vivado/Basys3 bench intelligence (2026-05-05): real Vivado 2024.2 + detected Basys3 target; `golden-basys3-switch-and`, `signal-tour`, `half-adder`, and `two-bit-counter` all exported, built, bitstreamed, and programmed; warning taxonomy and matrix generated; E3 remains manual except prior `signal-tour` proof. | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md` |
+| Vivado/Basys3 bench intelligence (2026-05-05): real Vivado 2024.2 + detected Basys3 target; broad pass exported/built/programmed four rows, then controlled pack narrowed to `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour` with environment report, command log, matrix, warning taxonomy, RedByte gaps, and per-target board-observation templates. E3 remains manual except prior `signal-tour` proof. | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`; `.redbyte/bench/runs/20260505-222402/` |
 | Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
 | F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
 | F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
@@ -104,7 +104,7 @@ Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-
 
 | Status | Item | Commit |
 |--------|------|--------|
-| Local | Hardware map-mode hierarchy/status clarity: mapped Map Pins view hides the duplicate secondary intro; mapped-complete command strip and mapping header now share the same `failureTruth`-driven Verify/evidence follow-up copy; focused trust/readiness tests pass locally | `uncommitted` |
+| Local | Controlled Vivado/Basys3 evidence pack: `.redbyte/bench/runs/20260505-222402/` captures environment, commands, three-target matrix, warning taxonomy, RedByte gaps, programming logs, and manual board-observation templates; durable docs updated without product-code changes | `uncommitted` |
 | Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
 | Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
 | Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |

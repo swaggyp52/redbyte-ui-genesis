@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(bench): capture controlled Vivado Basys3 evidence pack)
+
+**Subsystem:** controlled Vivado/Basys3 bench evidence, release/certification truth docs
+
+**Changes:**
+- Created gitignored `.redbyte/bench/runs/20260505-222402/` as the controlled raw evidence pack location and added `.redbyte/bench/runs/` to `.gitignore`.
+- Captured lab environment proof: Windows 11 Education, Vivado 2024.2 at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, `hw_server` present, `djtgcfg` absent, `XILINX_VIVADO` unset, FTDI/Digilent USB device visible, and Vivado Hardware Manager Tcl detecting `localhost:3121/xilinx_tcf/Digilent/210183BF7C42A` with `xc7a35t_0`.
+- Narrowed the first controlled pass to exactly three targets: `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour`.
+- Regenerated exports, ran real Vivado batch synth/implementation/bitstream, collected logs/reports, and programmed the Basys3 for all three targets through `scripts/vivado/redbyte_program_device.tcl`.
+- Wrote generated `environment.md`, `commands.md`, `targets.md`, `matrix.md`, `vivado-warning-taxonomy.md`, `redbyte-gaps.md`, `next-actions.md`, and per-target `board-observation.md` files under `.redbyte/bench/runs/20260505-222402/`.
+- Updated durable release/current-truth docs to record the controlled E1/E2 evidence refresh while keeping E3 proof closure blocked on manual board observation.
+
+**Evidence:** all three controlled targets exported successfully; Vivado batch logs report `synth_design Complete!`, `write_bitstream Complete!`, and bitstreams under each project `.runs/impl_1/top.bit`; programming logs report local `connect_hw_server`, one hardware target, selected `xc7a35t_0`, and `RedByte program: SUCCESS`. Warning taxonomy recorded `Synth 8-3330` optimized empty-top for `signal-tour`, `Synth 8-7080` parallel synthesis notes, combinational no-clock/no-timing warnings (`Timing 38-313`, `Power 33-232`), and `two-bit-counter` timing constraints met. No physical switch/button/LED behavior was observed by Codex in this run; E3 remains manual. `pnpm rb:agent:ollama:doctor` and `pnpm rb:memory:doctor` were blocked because Ollama CLI/API was unavailable.
+
 ## Change Log 2026-05-05 (chore(bench): capture Vivado Basys3 bench intelligence)
 
 **Subsystem:** `scripts/rb-vivado-bench.mjs`, Vivado/Basys3 certification docs, bench evidence reports
