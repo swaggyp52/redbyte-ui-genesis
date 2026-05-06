@@ -22,11 +22,18 @@ test('allowlist accepts known command ids', () => {
   assert.equal(isAllowlistedCommandId('control-next'), true);
   assert.equal(isAllowlistedCommandId('bench-evidence-classify'), true);
   assert.equal(isAllowlistedCommandId('trace-claim'), true);
+  assert.equal(isAllowlistedCommandId('problem-trace'), true);
+  assert.equal(isAllowlistedCommandId('problem-prompt'), true);
+  assert.equal(isAllowlistedCommandId('validate-docs'), true);
+  assert.equal(isAllowlistedCommandId('encoding-check'), true);
 });
 
 test('allowlist rejects unknown command ids', () => {
   assert.equal(isAllowlistedCommandId('shell-exec'), false);
   assert.equal(isAllowlistedCommandId('rm-rf'), false);
+  assert.equal(isAllowlistedCommandId('git-commit'), false);
+  assert.equal(isAllowlistedCommandId('git-push'), false);
+  assert.equal(isAllowlistedCommandId('write-obsidian'), false);
 });
 
 test('sanitizeUserText strips multiline payloads', () => {

@@ -5103,6 +5103,27 @@ details[open] summary .details-arrow {
   gap: 8px;
 }
 
+.hq-console-actions select {
+  min-height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(95, 136, 173, 0.6);
+  background: rgba(7, 15, 27, 0.9);
+  color: var(--ide-text-strong);
+  padding: 4px 8px;
+}
+
+.hq-console-actions input[type='checkbox'] {
+  transform: translateY(1px);
+}
+
+.hq-meta {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(95, 136, 173, 0.24);
+  padding-top: 10px;
+}
+
 .hq-spine-strip {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

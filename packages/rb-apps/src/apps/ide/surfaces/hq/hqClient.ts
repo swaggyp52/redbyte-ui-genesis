@@ -1,7 +1,9 @@
 import type {
   HqBenchEvidence,
+  HqChatMode,
   HqChatMessage,
   HqChatResponse,
+  HqCodingPlanRequest,
   HqCommandResponse,
   HqHealth,
   HqSnapshot,
@@ -32,13 +34,32 @@ export async function getHqBenchEvidence(): Promise<HqBenchEvidence> {
   return parseJson<HqBenchEvidence>(response);
 }
 
-export async function sendMarcusChat(message: string, history: HqChatMessage[]): Promise<HqChatResponse> {
+export async function sendMarcusChat(
+  message: string,
+  history: HqChatMessage[],
+  options?: { mode?: HqChatMode; allowTools?: boolean; maxToolCalls?: number },
+): Promise<HqChatResponse> {
   const response = await fetch(`${HQ_BASE_URL}/chat`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({
+      message,
+      history,
+      mode: options?.mode ?? 'ask',
+      allowTools: options?.allowTools ?? true,
+      maxToolCalls: options?.maxToolCalls ?? 4,
+    }),
   });
   return parseJson<HqChatResponse>(response);
+}
+
+export async function generateMarcusCodingPlan(payload: HqCodingPlanRequest): Promise<HqCommandResponse> {
+  const response = await fetch(`${HQ_BASE_URL}/coding-plan`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson<HqCommandResponse>(response);
 }
 
 export async function runProblemIntake(rawFeedback: string): Promise<HqCommandResponse> {

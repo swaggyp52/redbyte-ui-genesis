@@ -3,10 +3,10 @@ doc_status: current
 last_validated: 2026-05-06
 owner: Connor Angiel
 used_by_claude: true
-role: RedByte HQ v0 local command center contract
+role: RedByte HQ local command center contract
 ---
 
-# RedByte HQ Local Agent (v0)
+# RedByte HQ Local Agent (v1)
 
 ## What HQ is
 
@@ -50,23 +50,44 @@ HQ server is local (`127.0.0.1`). If Ollama is unavailable:
 
 This degraded mode is acceptable for v0.
 
-## Server endpoints (v0)
+## Server endpoints (v1)
 
 - `GET /health`
 - `GET /snapshot`
 - `GET /control-next`
 - `GET /bench-evidence`
 - `POST /chat`
+- `POST /coding-plan`
 - `POST /problem-intake`
 - `POST /memory-search`
 - `POST /trace-claim`
 
-## Safety model (v0)
+`POST /chat` now supports mode-driven tool-assisted replies with structured metadata:
+
+- `mode`: `ask | explain-state | problem-packet | trace-claim | coding-plan`
+- `allowTools` (default `true`)
+- `maxToolCalls` (default `4`)
+
+Response envelope includes:
+
+- `reply`
+- `toolsUsed`
+- `sources`
+- `warnings`
+- `generatedFiles`
+- `recommendedNextAction`
+- `requiresApproval`
+- `degraded`
+
+`POST /coding-plan` generates a safe work packet under `.redbyte/agent/runs/hq/` and does not edit product files.
+
+## Safety model (v1)
 
 - No unrestricted command execution endpoint.
 - Backend command execution is allowlist-only.
 - Request body size is capped.
 - Obsidian writes are disabled by default (`REDBYTE_HQ_ALLOW_OBSIDIAN_WRITES=false`).
+- Marcus cannot commit/push and cannot directly edit product files.
 
 ## Evidence display contract
 

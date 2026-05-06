@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): add Marcus tool-assisted agent loop)
+
+**Subsystem:** `scripts/rb-hq-server.mjs`, `scripts/marcus/*`, HQ surface/client/types, HQ docs
+
+**Changes:**
+- Added Marcus v1 server-side tool registry (`scripts/marcus/marcus-tool-registry.mjs`) with deny-by-default tool execution, JSON-schema parameter contracts, safety/read-write metadata, and explicit allowlisted command IDs.
+- Added Marcus v1 agent loop (`scripts/marcus/marcus-agent-loop.mjs`) with bounded tool calls, fallback mode when Ollama/tool-calls fail, and structured response metadata (`toolsUsed`, `warnings`, `generatedFiles`, `recommendedNextAction`, `requiresApproval`, `degraded`).
+- Upgraded HQ server `/chat` to mode-driven tool-assisted responses and added safe `POST /coding-plan` endpoint that writes approval-gated packets to `.redbyte/agent/runs/hq/marcus-coding-plan-latest.{md,json}` without editing product files.
+- Hardened bench-evidence endpoint behavior so missing bench runs no longer collapse HQ refresh.
+- Upgraded HQ UI with mode selector, tools toggle/status, backend status, last tools/warnings/next-action/generated packet display, and explicit offline server-start hint.
+- Added focused tests for Marcus registry/agent loop and HQ surface workstation behavior.
+- Added architecture doc `docs/product/RED_BYTE_MARCUS_AGENT_ENGINE.md` and linked docs index/system map updates.
+
+**Safety:** No arbitrary shell execution endpoint added; no Obsidian writes enabled; no direct file edits by Marcus; no git commit/push actions exposed through HQ endpoints.
+
+---
+
 ## Change Log 2026-05-05 (fix(hardware): improve mapped signal row readability)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`, Hardware map-row CSS, `hardwareSurface.readiness.test.tsx`

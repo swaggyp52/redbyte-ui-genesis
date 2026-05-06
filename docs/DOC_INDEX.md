@@ -56,7 +56,8 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md](./product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md) | Repo-local Obsidian + Ollama memory bridge operating guide for indexing, search, traceability, sync plans, and next-product context |
 | [product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md](./product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md) | Claim-to-docs/code/tests/gates evidence model for RedByte product traceability |
 | [product/RED_BYTE_AGENT_CONTROL_LOOP.md](./product/RED_BYTE_AGENT_CONTROL_LOOP.md) | Practical control-loop command layer that reconciles work-driver, memory, git history, and traceability before product work starts |
-| [product/RED_BYTE_HQ_LOCAL_AGENT.md](./product/RED_BYTE_HQ_LOCAL_AGENT.md) | RedByte HQ v0 local command-center contract for Marcus, endpoint scope, offline behavior, and safety boundaries |
+| [product/RED_BYTE_HQ_LOCAL_AGENT.md](./product/RED_BYTE_HQ_LOCAL_AGENT.md) | RedByte HQ v1 local command-center contract for Marcus, endpoint scope, tool-assisted chat modes, offline behavior, and safety boundaries |
+| [product/RED_BYTE_MARCUS_AGENT_ENGINE.md](./product/RED_BYTE_MARCUS_AGENT_ENGINE.md) | Marcus Agent Engine v1 architecture, capability levels, tool registry policy, and coding-plan safety contract |
 | [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |
 | [product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md](./product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md) | Operating guide for `rb:problem:*` intake, triage, trace, prompt, and closeout packets |
 

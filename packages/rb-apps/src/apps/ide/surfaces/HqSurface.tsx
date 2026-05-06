@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { IdeButton, IdeCallout, IdePanel, IdeStatusPill } from '../components/IdePrimitives';
 import {
+  generateMarcusCodingPlan,
   getHqBenchEvidence,
   getHqHealth,
   getHqSnapshot,
@@ -9,7 +10,7 @@ import {
   runTraceClaim,
   sendMarcusChat,
 } from './hq/hqClient';
-import type { HqBenchEvidence, HqChatMessage, HqHealth, HqSnapshot } from './hq/hqTypes';
+import type { HqBenchEvidence, HqChatMessage, HqChatMode, HqHealth, HqSnapshot } from './hq/hqTypes';
 import type { IdeChromeContract } from '../chromeContract';
 
 export const CHROME_CONTRACT = {
@@ -26,6 +27,7 @@ export const HqSurface: React.FC = () => {
   const [health, setHealth] = useState<HqHealth | null>(null);
   const [snapshot, setSnapshot] = useState<HqSnapshot | null>(null);
   const [evidence, setEvidence] = useState<HqBenchEvidence | null>(null);
+  const [backendOnline, setBackendOnline] = useState(false);
   const [messages, setMessages] = useState<HqChatMessage[]>([
     {
       role: 'assistant',
@@ -34,8 +36,15 @@ export const HqSurface: React.FC = () => {
     },
   ]);
   const [chatInput, setChatInput] = useState('');
+  const [mode, setMode] = useState<HqChatMode>('ask');
+  const [allowTools, setAllowTools] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toolsUsed, setToolsUsed] = useState<Array<{ name: string; ok: boolean; summary: string }>>([]);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [generatedFiles, setGeneratedFiles] = useState<string[]>([]);
+  const [nextAction, setNextAction] = useState<string>('Run Refresh HQ to capture current status.');
+  const [requiresApproval, setRequiresApproval] = useState(false);
 
   const offline = !health || !health.agent.ollama_online;
 
@@ -50,9 +59,11 @@ export const HqSurface: React.FC = () => {
       setHealth(nextHealth);
       setSnapshot(nextSnapshot);
       setEvidence(nextEvidence);
+      setBackendOnline(true);
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : String(fetchError);
       setError(message);
+      setBackendOnline(false);
     }
   }, []);
 
@@ -72,8 +83,13 @@ export const HqSurface: React.FC = () => {
 
       try {
         const history = messages.slice(-8);
-        const response = await sendMarcusChat(text, history);
+        const response = await sendMarcusChat(text, history, { mode, allowTools, maxToolCalls: 4 });
         setMessages((current) => [...current, { role: 'assistant', content: response.reply }]);
+        setToolsUsed(response.toolsUsed || []);
+        setWarnings(response.warnings || []);
+        setGeneratedFiles(response.generatedFiles || []);
+        setNextAction(response.recommendedNextAction || 'No next action provided.');
+        setRequiresApproval(Boolean(response.requiresApproval));
       } catch (chatError) {
         const message = chatError instanceof Error ? chatError.message : String(chatError);
         setMessages((current) => [
@@ -84,15 +100,16 @@ export const HqSurface: React.FC = () => {
           },
         ]);
         setError(message);
+        setBackendOnline(false);
       } finally {
         setBusy(false);
       }
     },
-    [messages],
+    [allowTools, messages, mode],
   );
 
   const runAction = useCallback(
-    async (type: 'problem' | 'trace' | 'memory') => {
+    async (type: 'problem' | 'trace' | 'memory' | 'coding-plan') => {
       setBusy(true);
       setError(null);
       try {
@@ -108,6 +125,22 @@ export const HqSurface: React.FC = () => {
             ? 'Claim trace command completed. Check latest trace report for details.'
             : `Claim trace failed: ${response.error || 'unknown error'}`;
           setMessages((current) => [...current, { role: 'assistant', content: text }]);
+        } else if (type === 'coding-plan') {
+          const response = await generateMarcusCodingPlan({
+            raw_user_request: chatInput || 'Generate a coding plan from current HQ context.',
+            target_surface: 'hq',
+            urgency: 'normal',
+            constraints: 'No arbitrary shell commands. No direct file edits by Marcus.',
+          });
+          const text = response.ok
+            ? response.reply || 'Coding plan generated.'
+            : `Coding plan failed: ${response.error || 'unknown error'}`;
+          setMessages((current) => [...current, { role: 'assistant', content: text }]);
+          setToolsUsed(response.toolsUsed || []);
+          setWarnings(response.warnings || []);
+          setGeneratedFiles(response.generatedFiles || []);
+          setNextAction(response.recommendedNextAction || 'Review generated coding plan.');
+          setRequiresApproval(Boolean(response.requiresApproval));
         } else {
           const response = await runMemorySearch(chatInput || 'RedByte current truth');
           const text = response.ok
@@ -146,8 +179,14 @@ export const HqSurface: React.FC = () => {
           <p className="hq-subtitle">Marcus local command center</p>
         </div>
         <div className="hq-header-actions">
+          <IdeStatusPill tone={backendOnline ? 'ok' : 'warn'} testId="hq-backend-status">
+            {backendOnline ? 'HQ BACKEND ONLINE' : 'HQ BACKEND OFFLINE'}
+          </IdeStatusPill>
           <IdeStatusPill tone={offline ? 'warn' : 'ok'} testId="hq-ollama-status">
             {offline ? 'OLLAMA OFFLINE' : 'OLLAMA ONLINE'}
+          </IdeStatusPill>
+          <IdeStatusPill tone={allowTools ? 'ok' : 'warn'} testId="hq-tools-status">
+            {allowTools ? 'TOOLS ENABLED' : 'TOOLS DISABLED'}
           </IdeStatusPill>
           <IdeButton tone="secondary" onClick={() => void refresh()} testId="hq-refresh">
             Refresh HQ
@@ -158,6 +197,8 @@ export const HqSurface: React.FC = () => {
       {error ? (
         <IdeCallout tone="warn" title="HQ connectivity" testId="hq-connectivity-callout">
           {error}
+          <br />
+          Start server: <code>pnpm rb:hq:server</code>
         </IdeCallout>
       ) : null}
 
@@ -169,6 +210,27 @@ export const HqSurface: React.FC = () => {
           className="hq-console-panel"
           actions={
             <div className="hq-console-actions">
+              <label htmlFor="hq-mode" className="hq-copy">Mode</label>
+              <select
+                id="hq-mode"
+                value={mode}
+                onChange={(event) => setMode(event.target.value as HqChatMode)}
+                data-testid="hq-mode-selector"
+              >
+                <option value="ask">Ask Marcus</option>
+                <option value="explain-state">Explain Current State</option>
+                <option value="problem-packet">Generate Problem Packet</option>
+                <option value="trace-claim">Trace Claim</option>
+                <option value="coding-plan">Coding Plan</option>
+              </select>
+              <label htmlFor="hq-tools-toggle" className="hq-copy">Enable tools</label>
+              <input
+                id="hq-tools-toggle"
+                type="checkbox"
+                checked={allowTools}
+                onChange={(event) => setAllowTools(event.target.checked)}
+                data-testid="hq-tools-toggle"
+              />
               <IdeButton tone="primary" onClick={() => void submitChat(chatInput)} disabled={busy} testId="hq-send-chat">
                 Ask Marcus
               </IdeButton>
@@ -180,6 +242,9 @@ export const HqSurface: React.FC = () => {
               </IdeButton>
               <IdeButton tone="secondary" onClick={() => void runAction('trace')} disabled={busy}>
                 Trace Claim
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={() => void runAction('coding-plan')} disabled={busy} testId="hq-coding-plan-btn">
+                Coding Plan
               </IdeButton>
             </div>
           }
@@ -203,6 +268,15 @@ export const HqSurface: React.FC = () => {
             <IdeButton tone="ghost" onClick={() => void runAction('memory')} disabled={busy}>
               Memory Search
             </IdeButton>
+          </div>
+          <div className="hq-meta" data-testid="hq-meta">
+            <p className="hq-copy"><strong>Next action:</strong> {nextAction}</p>
+            <p className="hq-copy"><strong>Approval required:</strong> {requiresApproval ? 'yes' : 'no'}</p>
+            <p className="hq-copy"><strong>Last tools used:</strong> {toolsUsed.length ? toolsUsed.map((tool) => tool.name).join(', ') : 'none'}</p>
+            {warnings.length ? <p className="hq-copy" data-testid="hq-warnings"><strong>Warnings:</strong> {warnings.join(' | ')}</p> : null}
+            {generatedFiles.length ? (
+              <p className="hq-copy" data-testid="hq-generated-files"><strong>Generated:</strong> {generatedFiles.join(', ')}</p>
+            ) : null}
           </div>
         </IdePanel>
 

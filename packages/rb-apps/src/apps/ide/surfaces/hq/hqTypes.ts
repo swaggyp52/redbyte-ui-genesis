@@ -35,6 +35,7 @@ export interface HqBenchEvidence {
   available: boolean;
   run_folder?: string;
   generated_at?: string;
+  warning?: string | null;
   counts?: {
     E0: number;
     E1: number;
@@ -69,15 +70,48 @@ export interface HqChatMessage {
 
 export interface HqChatResponse {
   ok: boolean;
-  offline: boolean;
+  mode?: HqChatMode;
+  degraded: boolean;
   reply: string;
+  toolsUsed?: Array<{
+    name: string;
+    ok: boolean;
+    summary: string;
+  }>;
+  sources?: string[];
+  warnings?: string[];
+  generatedFiles?: string[];
+  recommendedNextAction?: string;
+  requiresApproval?: boolean;
   error?: string;
   agent_name?: string;
   source_hints?: string[];
 }
 
+export type HqChatMode = 'ask' | 'explain-state' | 'problem-packet' | 'trace-claim' | 'coding-plan';
+
+export interface HqCodingPlanRequest {
+  raw_user_request: string;
+  target_surface?: string;
+  urgency?: string;
+  constraints?: string;
+}
+
 export interface HqCommandResponse {
   ok: boolean;
+  mode?: HqChatMode;
+  reply?: string;
+  toolsUsed?: Array<{
+    name: string;
+    ok: boolean;
+    summary: string;
+  }>;
+  sources?: string[];
+  warnings?: string[];
+  generatedFiles?: string[];
+  recommendedNextAction?: string;
+  requiresApproval?: boolean;
+  degraded?: boolean;
   output?: string;
   error?: string | null;
 }

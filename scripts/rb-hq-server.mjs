@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createMarcusToolRegistry } from './marcus/marcus-tool-registry.mjs';
+import { runMarcusAgentLoop } from './marcus/marcus-agent-loop.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -28,10 +30,15 @@ const ALLOWLISTED_COMMANDS = new Set([
   'memory-synth',
   'memory-sync-plan',
   'problem-intake',
+  'problem-trace',
+  'problem-prompt',
   'bench-evidence-classify',
   'agent-ollama-doctor',
   'work-status',
   'trace-claim',
+  'validate-docs',
+  'encoding-check',
+  'git-status-short',
 ]);
 
 export function isAllowlistedCommandId(commandId) {
@@ -88,6 +95,10 @@ export function runAllowlistedCommand(commandId, payload = '') {
       return runCommand(pnpm, ['rb:memory:sync-plan']);
     case 'problem-intake':
       return runCommand(pnpm, ['rb:problem:intake', '--', safePayload || 'No feedback provided.']);
+    case 'problem-trace':
+      return runCommand(pnpm, ['rb:problem:trace']);
+    case 'problem-prompt':
+      return runCommand(pnpm, ['rb:problem:prompt']);
     case 'bench-evidence-classify':
       return runCommand(pnpm, ['rb:bench:evidence:classify']);
     case 'agent-ollama-doctor':
@@ -96,6 +107,12 @@ export function runAllowlistedCommand(commandId, payload = '') {
       return runCommand(pnpm, ['rb:work:status']);
     case 'trace-claim':
       return runCommand(pnpm, ['rb:memory:trace', '--', safePayload || 'Draft export is not trusted export']);
+    case 'validate-docs':
+      return runCommand(pnpm, ['rb:doc:validate']);
+    case 'encoding-check':
+      return runCommand(pnpm, ['rb:encoding:check']);
+    case 'git-status-short':
+      return runCommand('git', ['status', '--short']);
     default:
       throw new Error(`Unhandled allowlisted command: ${commandId}`);
   }
@@ -198,7 +215,7 @@ export function buildMarcusSystemPrompt() {
   ].join(' ');
 }
 
-async function callOllamaChat({ messages }) {
+async function callOllamaChat({ messages, tools }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT_MS);
   try {
@@ -209,6 +226,7 @@ async function callOllamaChat({ messages }) {
         model: REDBYTE_AGENT_MODEL,
         stream: false,
         messages,
+        ...(tools ? { tools } : {}),
       }),
       signal: controller.signal,
     });
@@ -218,18 +236,29 @@ async function callOllamaChat({ messages }) {
     }
 
     const payload = await response.json();
-    const content = payload?.message?.content;
-    if (typeof content !== 'string' || !content.trim()) {
-      return { ok: false, error: 'Ollama response had no message content.' };
+    const message = payload?.message;
+    const content = message?.content;
+    const tool_calls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+    if (typeof content !== 'string' && tool_calls.length === 0) {
+      return { ok: false, error: 'Ollama response had no usable content or tool call.' };
     }
 
-    return { ok: true, content };
+    return { ok: true, message: { content: typeof content === 'string' ? content : '', tool_calls } };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   } finally {
     clearTimeout(timer);
   }
 }
+
+const marcusToolRegistry = createMarcusToolRegistry({
+  repoRoot: REPO_ROOT,
+  sanitizeUserText,
+  runAllowlistedCommand,
+  buildSnapshot,
+  loadBenchEvidenceSummary,
+  gitSummary,
+});
 
 async function buildHealth() {
   const git = gitSummary();
@@ -355,8 +384,12 @@ export function createHqServer() {
       }
 
       if (req.method === 'GET' && url.pathname === '/bench-evidence') {
-        runAllowlistedCommand('bench-evidence-classify');
-        respondJson(res, 200, loadBenchEvidenceSummary());
+        const classify = runAllowlistedCommand('bench-evidence-classify');
+        const evidence = loadBenchEvidenceSummary();
+        respondJson(res, 200, {
+          ...evidence,
+          warning: classify.ok ? null : 'bench-evidence-classify-failed',
+        });
         return;
       }
 
@@ -374,7 +407,10 @@ export function createHqServer() {
       if (req.method === 'POST' && url.pathname === '/chat') {
         const body = await readBody(req);
         const message = sanitizeUserText(body?.message || '');
+        const mode = sanitizeUserText(body?.mode || 'ask') || 'ask';
         const history = Array.isArray(body?.history) ? body.history : [];
+        const allowTools = body?.allowTools !== false;
+        const maxToolCalls = Number.isFinite(body?.maxToolCalls) ? Number(body.maxToolCalls) : 4;
 
         if (!message) {
           respondJson(res, 400, { ok: false, error: 'message is required.' });
@@ -382,34 +418,89 @@ export function createHqServer() {
         }
 
         const snapshot = await buildSnapshot();
-        const systemPrompt = buildMarcusSystemPrompt();
+        const health = await buildHealth();
 
-        const messages = [
-          { role: 'system', content: `${systemPrompt}\n\nSnapshot summary: ${JSON.stringify(snapshot.bench_evidence)}` },
-          ...history
-            .filter((entry) => entry && typeof entry.role === 'string' && typeof entry.content === 'string')
-            .slice(-8),
-          { role: 'user', content: message },
-        ];
+        const response = await runMarcusAgentLoop({
+          userMessage: message,
+          mode,
+          snapshot,
+          maxToolCalls,
+          allowTools,
+          toolRegistry: marcusToolRegistry,
+          callOllamaChat: async ({ messages, tools }) => {
+            const mergedMessages = [
+              ...history
+                .filter((entry) => entry && typeof entry.role === 'string' && typeof entry.content === 'string')
+                .slice(-8),
+              ...messages,
+            ];
+            const ollama = await callOllamaChat({ messages: mergedMessages, tools });
+            if (!ollama.ok) {
+              throw new Error(ollama.error || 'ollama-call-failed');
+            }
+            return ollama;
+          },
+          ollamaOnline: Boolean(health.agent.ollama_online),
+        });
 
-        const response = await callOllamaChat({ messages });
-        if (!response.ok) {
-          respondJson(res, 200, {
-            ok: true,
-            offline: true,
-            reply:
-              'Marcus is currently offline because Ollama is unavailable. You can still use snapshot, evidence, and trace panels. Start Ollama, then retry chat.',
-            error: response.error,
-          });
-          return;
-        }
+        const git = gitSummary();
+        const dirtyRepoWarning = !git.clean && mode === 'coding-plan';
 
         respondJson(res, 200, {
           ok: true,
-          offline: false,
-          reply: response.content,
+          mode,
+          reply: response.reply,
+          toolsUsed: response.toolsUsed,
+          sources: response.sources,
+          warnings: dirtyRepoWarning
+            ? [...response.warnings, 'Repository has local changes. Review coding plan cautiously before implementation.']
+            : response.warnings,
+          generatedFiles: response.generatedFiles,
+          recommendedNextAction: response.recommendedNextAction,
+          requiresApproval: response.requiresApproval,
+          degraded: response.degraded,
           agent_name: 'Marcus',
-          source_hints: ['snapshot', 'bench-evidence', 'control-next'],
+          source_hints: ['snapshot', 'bench-evidence', 'control-next', ...response.sources],
+        });
+        return;
+      }
+
+      if (req.method === 'POST' && url.pathname === '/coding-plan') {
+        const body = await readBody(req);
+        const rawUserRequest = sanitizeUserText(body?.raw_user_request || body?.message || '');
+        const targetSurface = sanitizeUserText(body?.target_surface || 'unspecified');
+        const urgency = sanitizeUserText(body?.urgency || 'normal');
+        const constraints = sanitizeUserText(body?.constraints || 'none');
+
+        if (!rawUserRequest) {
+          respondJson(res, 400, { ok: false, error: 'raw_user_request is required.' });
+          return;
+        }
+
+        const result = await marcusToolRegistry.executeTool('generate_codex_packet', {
+          raw_user_request: rawUserRequest,
+          target_surface: targetSurface,
+          urgency,
+          constraints,
+          mode: 'coding-plan',
+        });
+
+        const git = gitSummary();
+
+        respondJson(res, result.ok ? 200 : 500, {
+          ok: result.ok,
+          mode: 'coding-plan',
+          reply: result.ok
+            ? 'Marcus generated a safe coding-plan packet. Review and approve before applying changes.'
+            : 'Marcus failed to generate coding-plan packet.',
+          toolsUsed: [{ name: 'generate_codex_packet', ok: result.ok, summary: result.summary }],
+          sources: ['problem-intake', 'problem-trace', 'problem-prompt', 'control-next', 'memory-search', 'git-status'],
+          warnings: !git.clean ? ['Repository has local changes. Review packet with extra caution.'] : [],
+          generatedFiles: [result?.data?.artifacts?.markdownPath, result?.data?.artifacts?.jsonPath].filter(Boolean),
+          recommendedNextAction: 'Review packet content, then run focused tests before any implementation.',
+          requiresApproval: true,
+          degraded: false,
+          details: result,
         });
         return;
       }
@@ -468,6 +559,7 @@ export function createHqServer() {
           'GET /health',
           'GET /snapshot',
           'POST /chat',
+          'POST /coding-plan',
           'POST /problem-intake',
           'POST /memory-search',
           'POST /trace-claim',

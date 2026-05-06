@@ -53,7 +53,7 @@
         "rb:bench:evidence:test": "node scripts/rb-bench-evidence.test.mjs",
         "rb:hq:server": "node scripts/rb-hq-server.mjs serve",
         "rb:hq:doctor": "node scripts/rb-hq-server.mjs doctor",
-        "rb:hq:test": "node scripts/rb-hq-server.test.mjs",
+        "rb:hq:test": "node scripts/rb-hq-server.test.mjs && node scripts/marcus/marcus-tool-registry.test.mjs && node scripts/marcus/marcus-agent-loop.test.mjs",
         "start": "pnpm start:local",
         "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1",
         "start:production": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1 -Production",
