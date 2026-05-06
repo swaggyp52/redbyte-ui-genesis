@@ -70,9 +70,9 @@ Supporting truths:
 
 ### Proof closure
 
-- `golden-basys3-switch-and` still needs final E3 observation closure.
-- Custom-row E2/E3 proof is still incomplete.
-- `two-bit-counter` still needs final E3 observation closure.
+- 2026-05-05 bench refreshed E1/E2 for `golden-basys3-switch-and`, IDE `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`; only prior `signal-tour` has E3 behavior proof.
+- `golden-basys3-switch-and`, IDE `half-adder`, and IDE `two-bit-counter` still need final E3 observation closure.
+- Custom-row E2/E3 proof is still incomplete unless a row is programmed and observed in a later bench run.
 - Student-safe public claims must stay scoped to the current certification matrix.
 
 ### Workflow-language and trust clarity

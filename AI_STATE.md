@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-05 (chore(bench): capture Vivado Basys3 bench intelligence)
+
+**Subsystem:** `scripts/rb-vivado-bench.mjs`, Vivado/Basys3 certification docs, bench evidence reports
+
+**Changes:**
+- Ran repo/control preflight on clean `main` at `1e730acd` with no local ahead/behind against `origin/main`; control loop still reports proof closure as board/manual-evidence gated.
+- Inventoried the lab machine: Windows 11 Education, Vivado 2024.2 at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, `hw_server` present, `djtgcfg` absent, `XILINX_VIVADO` unset, FTDI/Digilent USB device visible, and Vivado hardware manager detecting `localhost:3121/xilinx_tcf/Digilent/210183BF7C42A` with `xc7a35t_0`.
+- Exported, built, bitstreamed, and programmed four targets through real Vivado + Basys3: `golden-basys3-switch-and`, IDE `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`.
+- Added `scripts/rb-vivado-bench.mjs` plus `rb:bench:*` aliases to turn captured Vivado/program logs into a matrix, warning taxonomy, JSON summary, environment report, and per-target board-observation templates under gitignored `.redbyte/agent/runs/bench/`.
+- Added durable bench report `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md` and updated release/current-truth docs to keep E1/E2 evidence separate from E3 behavior proof.
+
+**Evidence:** `pnpm lab:vivado:hw-probe` pass with one JTAG target; Vivado batch `synth_1 -> impl_1 -> write_bitstream` pass for all four targets; `scripts/vivado/redbyte_program_device.tcl` pass for all four bitstreams with `program_hw_devices` success; `pnpm rb:bench:doctor` pass; `pnpm rb:bench:summarize` pass and generated the required matrix. Warnings classified include Windows path-length risk, first-run generated-run messages, optimized `signal-tour` empty-top warning, combinational no-clock timing/power warnings, and the clean constrained clock path for `two-bit-counter`. Board observation remains **manual required** for this run; do not close E3 from these programming logs. `pnpm rb:agent:ollama:doctor`, `pnpm rb:memory:doctor`, and `pnpm rb:memory:*` trace/synth commands were blocked by missing Ollama/API or missing memory index; `pnpm rb:problem:intake/triage/trace/prompt` succeeded with deterministic fallback.
+
 ## Change Log 2026-05-05 (feat(onboarding): add professional workflow orientation)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/components/OnboardingOverlay.tsx`, `packages/rb-apps/src/apps/IdeApp.tsx`, onboarding authority tests

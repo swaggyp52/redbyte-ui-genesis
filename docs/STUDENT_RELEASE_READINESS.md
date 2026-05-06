@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-05-05
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-05-02
+**Last updated:** 2026-05-05
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -37,6 +37,7 @@ Proven on this lab machine unless noted:
 
 | Starter / artifact | L0 | E0 | E1 | E2 | E3 | Student note |
 |--------------------|----|----|----|----|----|--------------|
+| IDE `half-adder` (2 SW -> SUM/CARRY LEDs) | yes | yes | **yes** (2026-05-05 bench) | **yes** (2026-05-05 bench) | pending | Multi-output combinational row added by bench-intelligence run; not student-safe hardware proof until E3 observation is recorded. |
 | Classroom golden `golden-basys3-switch-and` (SW0∧SW1→LED0) | yes | yes | **yes** | **yes** (`vivado_program_golden_and_2026-04-29.log`) | pending | Fixture blocker fixed; board was reprogrammed for manual four-case confirmation. |
 | IDE `signal-tour` (4 SW → 4 LED) | yes | yes | **yes** | **yes** (`vivado_program_signal_tour_2026-04-29.log`) | **yes** | User-confirmed bench behavior on 2026-04-29; proof: `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md`. |
 | IDE `two-bit-counter` (Basys3 `CLK100MHZ`→W5, SW0, BTNC, LD0–1) | yes | yes | **yes** (`vivado_batch_two_bit_counter_e2e.log`) | **yes** (`vivado_program_two_bit_counter_e2_2026-04-23.log`; `hw_probe` exit 0 same session) | *pending* — TA runs §3 checklist on hardware | Proof + E2 detail: `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md`. Verify now auto-runs `CLK100MHZ` in the IDE and exported `testbench.vhd` drives the board clock automatically. |
@@ -96,6 +97,7 @@ Full command reference: `scripts/vivado/README.md`.
 
 | Evidence | Path |
 |----------|------|
+| Vivado/Basys3 bench intelligence (2026-05-05): four rows exported, built, bitstreamed, programmed, and warning-classified; E3 remains manual except prior `signal-tour` proof | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md` |
 | RC1 bench closeout (E2/E3 honesty + hw_probe) | `docs/release/proof/rc1-bench-closeout-2026-04-23.md` |
 | `signal-tour` E2/E3 closeout | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
 | `golden-basys3-switch-and` blocker fix + fresh E1/E2 | `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |

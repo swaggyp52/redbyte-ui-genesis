@@ -16,7 +16,7 @@ imported_by: CLAUDE.md
 
 ## Top 3 priorities
 
-1. **Close `golden-basys3-switch-and` E3 and custom row E2/E3 honestly** - `signal-tour` is E2/E3, `golden` is E1/E2 with E3 still waiting on the manual four-case note, and custom rows remain E1-only unless programmed and observed.
+1. **Close E3 observation honestly for fresh bench rows** - 2026-05-05 bench refreshed E1/E2 for `golden-basys3-switch-and`, `signal-tour`, IDE `half-adder`, and IDE `two-bit-counter`; only prior `signal-tour` has E3, so `golden`, `half-adder`, and `two-bit-counter` still need manual behavior notes.
 2. **~~Curate starter and example learning path~~** — Done (`13d77a3b`). 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier metadata, flagship flag, openProof notes, and numbered path strip in ExamplesBrowser.
 
 ---
@@ -33,15 +33,15 @@ imported_by: CLAUDE.md
 
 ## Next bench / Vivado task
 
-**Target:** custom-project E2/E3 after `golden` E3 closes.
+**Target:** E3 observation notes for the fresh 2026-05-05 bench rows, starting with `golden-basys3-switch-and` and IDE `half-adder`.
 
 ```powershell
-pnpm lab:vivado:cert:custom -- --case fs-custom-four-switch-led --project packages/rb-apps/src/fixtures/cert/fs-custom-four-switch-led.rbproj --program true
+pnpm rb:bench:summarize
 ```
 
-Planned E3 observation: `SW0..SW3` each drive `LD0..LD3` on the custom blank-shaped row, then re-run the mixed gate chain or custom AND row on hardware.
+Planned E3 observation: use the generated `.redbyte/agent/runs/bench/<target>/board-observation.md` templates to record switch/button actions, LED behavior, expected-vs-observed result, evidence type, and operator/date. Do not mark proof closure complete from programming logs alone.
 
-Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-29.md` · `docs/STUDENT_RELEASE_READINESS.md` §3 · `scripts/vivado/README.md`.
+Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`, `docs/STUDENT_RELEASE_READINESS.md` section 3, and `scripts/vivado/README.md`.
 
 ---
 
@@ -49,6 +49,7 @@ Full reproduce sequence: `docs/release/custom-project-vivado-hardening-2026-04-2
 
 | Evidence | Path |
 |----------|------|
+| Vivado/Basys3 bench intelligence (2026-05-05): real Vivado 2024.2 + detected Basys3 target; `golden-basys3-switch-and`, `signal-tour`, `half-adder`, and `two-bit-counter` all exported, built, bitstreamed, and programmed; warning taxonomy and matrix generated; E3 remains manual except prior `signal-tour` proof. | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md` |
 | Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
 | F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
 | F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
