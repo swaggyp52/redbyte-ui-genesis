@@ -67,6 +67,17 @@ Each tool entry defines:
 - explicit allowed command IDs
 - summarized structured output
 
+Structured tool output must include:
+
+- `summary`
+- `data`
+- `sources`
+- `warnings`
+- `evidenceLevel` when relevant
+- `generatedFiles` when relevant
+- `authority`
+- `sourceConfidence`
+
 Registry is deny-by-default. Unknown tool names are rejected.
 
 ## Safety Model
@@ -92,7 +103,7 @@ Marcus responses must preserve:
 
 - `POST /chat`
   - request: `message`, `mode`, `allowTools`, `maxToolCalls`, optional `history`
-  - response includes: `reply`, `toolsUsed`, `sources`, `warnings`, `generatedFiles`, `recommendedNextAction`, `requiresApproval`, `degraded`
+  - response includes: `reply`, `toolsUsed`, `sources`, `evidenceLevel`, `sourceConfidence`, `warnings`, `generatedFiles`, `recommendedNextAction`, `requiresApproval`, `degraded`
 
 - `POST /coding-plan`
   - request: `raw_user_request`, optional `target_surface`, `urgency`, `constraints`
@@ -112,3 +123,14 @@ Marcus coding flow is staged and approval-gated:
 6. Codex executes implementation
 
 Marcus v1 does not apply patches directly.
+
+## Source grounding
+
+Marcus replies are source-grounded in v1:
+
+- repo docs are marked canonical and include paths
+- Obsidian memory is labeled supporting / memory, never canonical
+- generated control/problem/packet outputs are labeled generated
+- fallback mode emits explicit fallback sources and degraded confidence
+
+See `docs/product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md` for the detailed contract.

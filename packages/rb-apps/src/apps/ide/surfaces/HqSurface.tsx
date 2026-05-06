@@ -10,7 +10,16 @@ import {
   runTraceClaim,
   sendMarcusChat,
 } from './hq/hqClient';
-import type { HqBenchEvidence, HqChatMessage, HqChatMode, HqHealth, HqSnapshot } from './hq/hqTypes';
+import type {
+  HqBenchEvidence,
+  HqChatMessage,
+  HqChatMode,
+  HqHealth,
+  HqSnapshot,
+  HqSourceConfidence,
+  HqSourceRecord,
+  HqEvidenceLevel,
+} from './hq/hqTypes';
 import type { IdeChromeContract } from '../chromeContract';
 
 export const CHROME_CONTRACT = {
@@ -41,6 +50,9 @@ export const HqSurface: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toolsUsed, setToolsUsed] = useState<Array<{ name: string; ok: boolean; summary: string }>>([]);
+  const [sources, setSources] = useState<HqSourceRecord[]>([]);
+  const [sourceConfidence, setSourceConfidence] = useState<HqSourceConfidence | null>(null);
+  const [evidenceLevel, setEvidenceLevel] = useState<HqEvidenceLevel | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [generatedFiles, setGeneratedFiles] = useState<string[]>([]);
   const [nextAction, setNextAction] = useState<string>('Run Refresh HQ to capture current status.');
@@ -86,6 +98,9 @@ export const HqSurface: React.FC = () => {
         const response = await sendMarcusChat(text, history, { mode, allowTools, maxToolCalls: 4 });
         setMessages((current) => [...current, { role: 'assistant', content: response.reply }]);
         setToolsUsed(response.toolsUsed || []);
+        setSources(response.sources || []);
+        setSourceConfidence(response.sourceConfidence || null);
+        setEvidenceLevel(response.evidenceLevel || null);
         setWarnings(response.warnings || []);
         setGeneratedFiles(response.generatedFiles || []);
         setNextAction(response.recommendedNextAction || 'No next action provided.');
@@ -138,6 +153,9 @@ export const HqSurface: React.FC = () => {
             : `Coding plan failed: ${response.error || 'unknown error'}`;
           setMessages((current) => [...current, { role: 'assistant', content: text }]);
           setToolsUsed(response.toolsUsed || []);
+          setSources(response.sources || []);
+          setSourceConfidence(response.sourceConfidence || null);
+          setEvidenceLevel(response.evidenceLevel || null);
           setWarnings(response.warnings || []);
           setGeneratedFiles(response.generatedFiles || []);
           setNextAction(response.recommendedNextAction || 'Review generated coding plan.');
@@ -160,6 +178,16 @@ export const HqSurface: React.FC = () => {
   );
 
   const evidenceCounts = evidence?.counts ?? { E0: 0, E1: 0, E2: 0, E3: 0 };
+
+  const sourceKindLabel: Record<HqSourceRecord['kind'], string> = {
+    repo_doc: 'repo doc',
+    obsidian_memory: 'memory',
+    generated_run: 'generated run',
+    bench_evidence: 'bench evidence',
+    git_state: 'git state',
+    tool_output: 'tool output',
+    fallback: 'fallback',
+  };
 
   const timelineItems = useMemo(() => {
     if (!snapshot) return [];
@@ -274,6 +302,18 @@ export const HqSurface: React.FC = () => {
             <p className="hq-copy"><strong>Next action:</strong> {nextAction}</p>
             <p className="hq-copy"><strong>Approval required:</strong> {requiresApproval ? 'yes' : 'no'}</p>
             <p className="hq-copy"><strong>Last tools used:</strong> {toolsUsed.length ? toolsUsed.map((tool) => tool.name).join(', ') : 'none'}</p>
+            <p className="hq-copy" data-testid="hq-source-confidence"><strong>Source confidence:</strong> {sourceConfidence || 'unknown'}</p>
+            <p className="hq-copy" data-testid="hq-evidence-level"><strong>Evidence level:</strong> {evidenceLevel || 'unknown'}</p>
+            <div className="hq-copy" data-testid="hq-sources">
+              <strong>Sources:</strong>{' '}
+              {sources.length ? (
+                <span>
+                  {sources.map((source) => `${source.title} (${sourceKindLabel[source.kind]}${source.path ? `: ${source.path}` : ''})`).join(' | ')}
+                </span>
+              ) : (
+                <span>none</span>
+              )}
+            </div>
             {warnings.length ? <p className="hq-copy" data-testid="hq-warnings"><strong>Warnings:</strong> {warnings.join(' | ')}</p> : null}
             {generatedFiles.length ? (
               <p className="hq-copy" data-testid="hq-generated-files"><strong>Generated:</strong> {generatedFiles.join(', ')}</p>

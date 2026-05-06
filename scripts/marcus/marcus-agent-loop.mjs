@@ -34,6 +34,85 @@ function determineFallbackTools(mode) {
   }
 }
 
+function highestEvidenceLevel(levels) {
+  const order = ['E0', 'E1', 'E2', 'E3'];
+  let best = 'E0';
+  for (const level of levels) {
+    if (order.indexOf(level) > order.indexOf(best)) {
+      best = level;
+    }
+  }
+  return best;
+}
+
+function mergeConfidence(current, next) {
+  const order = ['degraded', 'low', 'medium', 'high'];
+  const currentIndex = order.indexOf(current);
+  const nextIndex = order.indexOf(next);
+  return order[Math.max(currentIndex, nextIndex, 0)] || 'low';
+}
+
+function pushUniqueSources(target, sources) {
+  const seen = new Set(target.map((source) => source.id));
+  for (const source of sources || []) {
+    if (!source || typeof source !== 'object' || !source.id || seen.has(source.id)) continue;
+    target.push(source);
+    seen.add(source.id);
+  }
+}
+
+function baselineSources(snapshot, degraded = false) {
+  const sources = [
+    {
+      id: 'baseline-current-truth',
+      kind: 'repo_doc',
+      title: 'RedByte Current Truth',
+      path: 'docs/product/RED_BYTE_CURRENT_TRUTH.md',
+      excerpt: snapshot?.blocked_task || 'Current RedByte product truth.',
+      freshness: 'current',
+      authority: 'canonical',
+    },
+  ];
+
+  if (snapshot?.control_next) {
+    sources.push({
+      id: 'baseline-control-next',
+      kind: 'generated_run',
+      title: 'Latest control-next output',
+      path: '.redbyte/agent/runs/control-next-latest.json',
+      excerpt: snapshot.control_next.why_this_task_matters || snapshot.blocked_task,
+      freshness: 'generated',
+      authority: 'generated',
+    });
+  }
+
+  if (snapshot?.bench_evidence?.run_folder) {
+    sources.push({
+      id: 'baseline-bench-evidence',
+      kind: 'bench_evidence',
+      title: 'Bench evidence classification',
+      path: `${snapshot.bench_evidence.run_folder}/evidence-classification.json`,
+      excerpt: snapshot.bench_evidence.message || 'Bench evidence summary available.',
+      freshness: 'generated',
+      authority: 'generated',
+    });
+  }
+
+  if (degraded || sources.length === 0) {
+    sources.push({
+      id: 'baseline-fallback',
+      kind: 'fallback',
+      title: 'Fallback reasoning',
+      path: null,
+      excerpt: 'Marcus is using fallback grounding because live tool assistance is limited.',
+      freshness: 'unknown',
+      authority: 'fallback',
+    });
+  }
+
+  return sources;
+}
+
 function buildSystemPrompt(snapshot, mode) {
   return [
     'You are Marcus, a local RedByte engineering operator.',
@@ -60,6 +139,8 @@ export async function runMarcusAgentLoop({
   const toolsUsed = [];
   const generatedFiles = [];
   let requiresApproval = false;
+  let evidenceLevel = 'E0';
+  let sourceConfidence = 'low';
 
   const safeMode = mode || 'ask';
   const maxCalls = Number.isFinite(maxToolCalls) ? Math.max(1, Math.min(8, maxToolCalls)) : 4;
@@ -80,14 +161,18 @@ export async function runMarcusAgentLoop({
         mode: safeMode,
       });
       toolsUsed.push({ name: toolName, ok: result.ok, summary: result.summary });
-      sources.push(toolName);
-      if (result?.data?.artifacts?.markdownPath) {
-        generatedFiles.push(result.data.artifacts.markdownPath);
-      }
+      pushUniqueSources(sources, result.sources);
+      generatedFiles.push(...(result.generatedFiles || []));
+      evidenceLevel = highestEvidenceLevel([evidenceLevel, result.evidenceLevel || 'E0']);
+      sourceConfidence = mergeConfidence(sourceConfidence, result.sourceConfidence || 'low');
       if (toolName === 'generate_codex_packet') {
         requiresApproval = true;
       }
     }
+
+    pushUniqueSources(sources, baselineSources(snapshot, true));
+    evidenceLevel = highestEvidenceLevel([evidenceLevel, snapshot?.bench_evidence?.available ? 'E2' : 'E0']);
+    sourceConfidence = mergeConfidence(sourceConfidence, 'degraded');
 
     return {
       mode: safeMode,
@@ -99,7 +184,9 @@ export async function runMarcusAgentLoop({
       toolsUsed,
       sources,
       warnings,
-      generatedFiles,
+      generatedFiles: Array.from(new Set(generatedFiles)),
+      evidenceLevel,
+      sourceConfidence,
       recommendedNextAction:
         safeMode === 'coding-plan'
           ? 'Review generated coding packet and approve Codex execution steps.'
@@ -130,6 +217,8 @@ export async function runMarcusAgentLoop({
         toolCalls.push({ name: fallbackTool, args: { query: userMessage, claim: userMessage, raw_feedback: userMessage, raw_user_request: userMessage, mode: safeMode } });
       }
       warnings.push('Model returned no tool calls; deterministic fallback tool route applied.');
+    } else if (toolCalls.length === 0) {
+      warnings.push('No tools were used; answer may be less grounded.');
     }
   } catch (error) {
     warnings.push(`Tool-call planning failed; fallback mode used: ${error instanceof Error ? error.message : String(error)}`);
@@ -165,11 +254,10 @@ export async function runMarcusAgentLoop({
 
     const result = await toolRegistry.executeTool(call.name, call.args);
     toolsUsed.push({ name: call.name, ok: result.ok, summary: result.summary });
-    sources.push(call.name);
-
-    if (result?.data?.artifacts?.markdownPath) {
-      generatedFiles.push(result.data.artifacts.markdownPath);
-    }
+    pushUniqueSources(sources, result.sources);
+    generatedFiles.push(...(result.generatedFiles || []));
+    evidenceLevel = highestEvidenceLevel([evidenceLevel, result.evidenceLevel || 'E0']);
+    sourceConfidence = mergeConfidence(sourceConfidence, result.sourceConfidence || 'low');
     if (call.name === 'generate_codex_packet') {
       requiresApproval = true;
     }
@@ -178,6 +266,18 @@ export async function runMarcusAgentLoop({
       role: 'tool',
       content: JSON.stringify({ name: call.name, result }),
     });
+  }
+
+  if (toolsUsed.length === 0) {
+    warnings.push('No tools were used; answer may be less grounded.');
+  }
+
+  pushUniqueSources(sources, baselineSources(snapshot, false));
+  if (snapshot?.bench_evidence?.available) {
+    evidenceLevel = highestEvidenceLevel([evidenceLevel, 'E2']);
+  }
+  if (sources.some((source) => source.authority === 'canonical')) {
+    sourceConfidence = mergeConfidence(sourceConfidence, 'high');
   }
 
   let finalReply = 'Marcus completed tool-assisted analysis.';
@@ -207,9 +307,11 @@ export async function runMarcusAgentLoop({
     degraded: false,
     reply: finalReply,
     toolsUsed,
-    sources: Array.from(new Set(sources)),
+    sources,
     warnings,
-    generatedFiles,
+    generatedFiles: Array.from(new Set(generatedFiles)),
+    evidenceLevel,
+    sourceConfidence,
     recommendedNextAction:
       safeMode === 'coding-plan'
         ? 'Review generated coding plan and approve execution before making repo edits.'

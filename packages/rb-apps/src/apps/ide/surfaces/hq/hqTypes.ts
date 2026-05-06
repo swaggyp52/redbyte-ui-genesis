@@ -68,6 +68,33 @@ export interface HqChatMessage {
   content: string;
 }
 
+export type HqSourceKind =
+  | 'repo_doc'
+  | 'obsidian_memory'
+  | 'generated_run'
+  | 'bench_evidence'
+  | 'git_state'
+  | 'tool_output'
+  | 'fallback';
+
+export type HqSourceFreshness = 'current' | 'stale_possible' | 'generated' | 'unknown';
+
+export type HqSourceAuthority = 'canonical' | 'supporting' | 'memory' | 'generated' | 'fallback';
+
+export type HqEvidenceLevel = 'E0' | 'E1' | 'E2' | 'E3';
+
+export type HqSourceConfidence = 'high' | 'medium' | 'low' | 'degraded';
+
+export interface HqSourceRecord {
+  id: string;
+  kind: HqSourceKind;
+  title: string;
+  path: string | null;
+  excerpt: string | null;
+  freshness: HqSourceFreshness;
+  authority: HqSourceAuthority;
+}
+
 export interface HqChatResponse {
   ok: boolean;
   mode?: HqChatMode;
@@ -78,7 +105,9 @@ export interface HqChatResponse {
     ok: boolean;
     summary: string;
   }>;
-  sources?: string[];
+  sources?: HqSourceRecord[];
+  evidenceLevel?: HqEvidenceLevel;
+  sourceConfidence?: HqSourceConfidence;
   warnings?: string[];
   generatedFiles?: string[];
   recommendedNextAction?: string;
@@ -97,6 +126,12 @@ export interface HqCodingPlanRequest {
   constraints?: string;
 }
 
+export interface HqChatRequestOptions {
+  mode?: HqChatMode;
+  allowTools?: boolean;
+  maxToolCalls?: number;
+}
+
 export interface HqCommandResponse {
   ok: boolean;
   mode?: HqChatMode;
@@ -106,7 +141,9 @@ export interface HqCommandResponse {
     ok: boolean;
     summary: string;
   }>;
-  sources?: string[];
+  sources?: HqSourceRecord[];
+  evidenceLevel?: HqEvidenceLevel;
+  sourceConfidence?: HqSourceConfidence;
   warnings?: string[];
   generatedFiles?: string[];
   recommendedNextAction?: string;

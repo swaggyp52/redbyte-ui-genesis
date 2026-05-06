@@ -73,6 +73,8 @@ Response envelope includes:
 - `reply`
 - `toolsUsed`
 - `sources`
+- `evidenceLevel`
+- `sourceConfidence`
 - `warnings`
 - `generatedFiles`
 - `recommendedNextAction`
@@ -93,6 +95,16 @@ Response envelope includes:
 
 HQ may display E0/E1/E2/E3 counts and target summaries from bench artifacts, but must not claim E3 unless board observation evidence exists.
 
+HQ now also renders a compact source-grounding section for the latest Marcus reply:
+
+- source confidence
+- evidence level
+- structured source list
+- warnings
+- generated file paths
+
+Memory-derived sources must stay visually subordinate to canonical repo-doc sources.
+
 ## How to start
 
 1. Start Marcus runtime (preferred):
@@ -111,3 +123,4 @@ If you only need backend serve without runtime lifecycle tooling:
 - Depends on local tooling (`pnpm`, repo scripts, optional Ollama runtime).
 - `rb:hq:doctor` may report degraded status if control-loop inputs are incomplete.
 - v0 contains no browser-triggered arbitrary command feature by design.
+- Bench evidence can still be unavailable when `.redbyte/bench/runs/` is absent; in that case Marcus must ground replies in repo truth/control outputs or fallback sources instead of implying bench proof exists.

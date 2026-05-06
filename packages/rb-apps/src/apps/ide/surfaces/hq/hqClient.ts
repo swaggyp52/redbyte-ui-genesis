@@ -2,6 +2,7 @@ import type {
   HqBenchEvidence,
   HqChatMode,
   HqChatMessage,
+  HqChatRequestOptions,
   HqChatResponse,
   HqCodingPlanRequest,
   HqCommandResponse,
@@ -37,7 +38,7 @@ export async function getHqBenchEvidence(): Promise<HqBenchEvidence> {
 export async function sendMarcusChat(
   message: string,
   history: HqChatMessage[],
-  options?: { mode?: HqChatMode; allowTools?: boolean; maxToolCalls?: number },
+  options?: HqChatRequestOptions,
 ): Promise<HqChatResponse> {
   const response = await fetch(`${HQ_BASE_URL}/chat`, {
     method: 'POST',

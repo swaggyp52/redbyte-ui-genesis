@@ -57,6 +57,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md](./product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md) | Claim-to-docs/code/tests/gates evidence model for RedByte product traceability |
 | [product/RED_BYTE_AGENT_CONTROL_LOOP.md](./product/RED_BYTE_AGENT_CONTROL_LOOP.md) | Practical control-loop command layer that reconciles work-driver, memory, git history, and traceability before product work starts |
 | [product/RED_BYTE_HQ_LOCAL_AGENT.md](./product/RED_BYTE_HQ_LOCAL_AGENT.md) | RedByte HQ v1 local command-center contract for Marcus, endpoint scope, tool-assisted chat modes, offline behavior, and safety boundaries |
+| [product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md](./product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md) | Marcus source-grounding contract for structured sources, evidence level, confidence, degraded fallback labeling, and HQ display rules |
 | [product/RED_BYTE_MARCUS_RUNTIME.md](./product/RED_BYTE_MARCUS_RUNTIME.md) | Marcus runtime launcher and health-recovery contract for `rb:marcus:start|status|doctor|stop`, runtime state files, and safety boundaries |
 | [product/RED_BYTE_MARCUS_AGENT_ENGINE.md](./product/RED_BYTE_MARCUS_AGENT_ENGINE.md) | Marcus Agent Engine v1 architecture, capability levels, tool registry policy, and coding-plan safety contract |
 | [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |

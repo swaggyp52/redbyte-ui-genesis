@@ -1,6 +1,33 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+function clipExcerpt(value, limit = 220) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, limit) || null;
+}
+
+function sourceRecord({ id, kind, title, path: filePath = null, excerpt = null, freshness, authority }) {
+  return {
+    id,
+    kind,
+    title,
+    path: filePath,
+    excerpt,
+    freshness,
+    authority,
+  };
+}
+
+function highestEvidenceLevel(levels) {
+  const order = ['E0', 'E1', 'E2', 'E3'];
+  let best = 'E0';
+  for (const level of levels) {
+    if (order.indexOf(level) > order.indexOf(best)) {
+      best = level;
+    }
+  }
+  return best;
+}
+
 function safeJsonParse(value) {
   if (typeof value !== 'string') return value;
   try {
@@ -26,6 +53,22 @@ export function createMarcusToolRegistry(deps) {
   } = deps;
 
   const hqRunsDir = path.join(repoRoot, '.redbyte', 'agent', 'runs', 'hq');
+  const controlNextPath = '.redbyte/agent/runs/control-next-latest.json';
+  const problemPacketPath = '.redbyte/agent/runs/problems/problem-latest.json';
+  const memoryManifestPath = '.redbyte/agent/memory/index/manifest.json';
+
+  function finalizeResult({ summary, data, sources = [], warnings = [], evidenceLevel = 'E0', generatedFiles = [], authority = 'supporting', sourceConfidence = 'medium' }) {
+    return {
+      summary,
+      data,
+      sources,
+      warnings,
+      evidenceLevel,
+      generatedFiles,
+      authority,
+      sourceConfidence,
+    };
+  }
 
   function writeCodingPlanArtifacts(plan) {
     fs.mkdirSync(hqRunsDir, { recursive: true });
@@ -88,10 +131,42 @@ export function createMarcusToolRegistry(deps) {
       },
       handler: async () => {
         const snapshot = await buildSnapshot();
-        return {
+        const evidenceLevel = snapshot?.bench_evidence?.counts
+          ? highestEvidenceLevel(
+              Object.entries(snapshot.bench_evidence.counts)
+                .filter(([, count]) => Number(count) > 0)
+                .map(([level]) => level),
+            )
+          : 'E0';
+
+        return finalizeResult({
           summary: `Blocked task: ${snapshot.blocked_task}`,
           data: snapshot,
-        };
+          sources: [
+            sourceRecord({
+              id: 'current-truth',
+              kind: 'repo_doc',
+              title: 'RedByte Current Truth',
+              path: 'docs/product/RED_BYTE_CURRENT_TRUTH.md',
+              excerpt: clipExcerpt(snapshot.blocked_task),
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+            sourceRecord({
+              id: 'control-next-generated',
+              kind: 'generated_run',
+              title: 'Latest control-next report',
+              path: controlNextPath,
+              excerpt: clipExcerpt(snapshot?.control_next?.why_this_task_matters || snapshot?.blocked_task),
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+          ],
+          warnings: snapshot?.bench_evidence?.available ? [] : ['Bench evidence unavailable in current snapshot.'],
+          evidenceLevel,
+          authority: 'canonical',
+          sourceConfidence: 'high',
+        });
       },
     },
     {
@@ -107,14 +182,37 @@ export function createMarcusToolRegistry(deps) {
       },
       handler: async () => {
         const result = runAllowlistedCommand('control-next');
-        return {
+        return finalizeResult({
           summary: result.ok ? 'control-next completed' : 'control-next reported failure',
           data: {
             ok: result.ok,
             output: result.stdout.trim(),
             error: result.stderr.trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'control-next-output',
+              kind: 'generated_run',
+              title: 'control-next latest output',
+              path: controlNextPath,
+              excerpt: clipExcerpt(result.stdout),
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+            sourceRecord({
+              id: 'work-queue-doc',
+              kind: 'repo_doc',
+              title: 'RedByte Work Queue',
+              path: 'docs/product/RED_BYTE_WORK_QUEUE.md',
+              excerpt: 'Control output is advisory and must not override repo truth.',
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+          ],
+          warnings: result.ok ? [] : ['control-next reported failure; generated output may be incomplete.'],
+          authority: 'supporting',
+          sourceConfidence: result.ok ? 'medium' : 'low',
+        });
       },
     },
     {
@@ -134,7 +232,7 @@ export function createMarcusToolRegistry(deps) {
       handler: async (args) => {
         const claim = sanitizeUserText(args.claim || 'Draft export is not trusted export');
         const result = runAllowlistedCommand('trace-claim', claim);
-        return {
+        return finalizeResult({
           summary: result.ok ? `Claim traced: ${claim}` : `Trace failed for claim: ${claim}`,
           data: {
             claim,
@@ -142,7 +240,30 @@ export function createMarcusToolRegistry(deps) {
             output: result.stdout.trim(),
             error: result.stderr.trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'trace-claim-tool-output',
+              kind: 'tool_output',
+              title: 'Claim trace output',
+              path: null,
+              excerpt: clipExcerpt(result.stdout || claim),
+              freshness: 'generated',
+              authority: 'supporting',
+            }),
+            sourceRecord({
+              id: 'traceability-model',
+              kind: 'repo_doc',
+              title: 'RedByte Product Traceability Model',
+              path: 'docs/product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md',
+              excerpt: clipExcerpt(claim),
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+          ],
+          warnings: result.ok ? [] : ['Claim trace command failed; grounding is partial.'],
+          authority: 'supporting',
+          sourceConfidence: result.ok ? 'medium' : 'low',
+        });
       },
     },
     {
@@ -162,7 +283,7 @@ export function createMarcusToolRegistry(deps) {
       handler: async (args) => {
         const query = sanitizeUserText(args.query || 'RedByte current truth');
         const result = runAllowlistedCommand('memory-search', query);
-        return {
+        return finalizeResult({
           summary: result.ok ? `Memory search completed for: ${query}` : `Memory search failed for: ${query}`,
           data: {
             query,
@@ -170,7 +291,21 @@ export function createMarcusToolRegistry(deps) {
             output: result.stdout.trim(),
             error: result.stderr.trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'memory-search-output',
+              kind: 'obsidian_memory',
+              title: 'Obsidian memory search',
+              path: memoryManifestPath,
+              excerpt: clipExcerpt(result.stdout || query),
+              freshness: 'stale_possible',
+              authority: 'memory',
+            }),
+          ],
+          warnings: result.ok ? ['Obsidian memory is supporting context, not canonical truth.'] : ['Memory search failed; no supporting memory context available.'],
+          authority: 'memory',
+          sourceConfidence: result.ok ? 'low' : 'degraded',
+        });
       },
     },
     {
@@ -192,7 +327,7 @@ export function createMarcusToolRegistry(deps) {
         const intake = runAllowlistedCommand('problem-intake', raw);
         const trace = runAllowlistedCommand('problem-trace');
         const prompt = runAllowlistedCommand('problem-prompt');
-        return {
+        return finalizeResult({
           summary: intake.ok ? 'Problem intake packet generated' : 'Problem intake failed',
           data: {
             raw_feedback: raw,
@@ -201,7 +336,30 @@ export function createMarcusToolRegistry(deps) {
             prompt_ok: prompt.ok,
             stderr: [intake.stderr, trace.stderr, prompt.stderr].filter(Boolean).join('\n').trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'problem-packet-generated',
+              kind: 'generated_run',
+              title: 'Problem intake packet',
+              path: problemPacketPath,
+              excerpt: clipExcerpt(raw),
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+            sourceRecord({
+              id: 'problem-loop-doc',
+              kind: 'repo_doc',
+              title: 'RedByte Product Problem Intake',
+              path: 'docs/product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md',
+              excerpt: 'Raw user feedback is preserved before interpretation.',
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+          ],
+          warnings: intake.ok ? [] : ['Problem intake command failed; generated packet may be missing.'],
+          authority: 'generated',
+          sourceConfidence: intake.ok ? 'medium' : 'low',
+        });
       },
     },
     {
@@ -218,14 +376,49 @@ export function createMarcusToolRegistry(deps) {
       handler: async () => {
         const classify = runAllowlistedCommand('bench-evidence-classify');
         const summary = loadBenchEvidenceSummary();
-        return {
+        const runPath = summary?.run_folder ? `${summary.run_folder}/evidence-classification.json` : null;
+        const evidenceLevel = summary?.available
+          ? highestEvidenceLevel((summary.targets || []).map((target) => target.evidence_level))
+          : 'E0';
+        const warnings = [];
+        if (!classify.ok) warnings.push('bench-evidence-classify command failed.');
+        if (!summary.available) warnings.push(summary.message || 'Bench evidence unavailable.');
+
+        return finalizeResult({
           summary: summary.available ? 'Bench evidence loaded' : 'Bench evidence unavailable',
           data: {
             classify_ok: classify.ok,
             classify_error: classify.stderr.trim() || null,
             evidence: summary,
           },
-        };
+          sources: summary.available
+            ? [
+                sourceRecord({
+                  id: 'bench-evidence-generated',
+                  kind: 'bench_evidence',
+                  title: 'Bench evidence classification',
+                  path: runPath,
+                  excerpt: clipExcerpt(`Counts: ${JSON.stringify(summary.counts || {})}`),
+                  freshness: 'generated',
+                  authority: 'generated',
+                }),
+              ]
+            : [
+                sourceRecord({
+                  id: 'bench-evidence-fallback',
+                  kind: 'fallback',
+                  title: 'Bench evidence unavailable',
+                  path: null,
+                  excerpt: clipExcerpt(summary.message || 'No bench runs found.'),
+                  freshness: 'unknown',
+                  authority: 'fallback',
+                }),
+              ],
+          warnings,
+          evidenceLevel,
+          authority: 'generated',
+          sourceConfidence: summary.available ? 'medium' : 'degraded',
+        });
       },
     },
     {
@@ -241,10 +434,24 @@ export function createMarcusToolRegistry(deps) {
       },
       handler: async () => {
         const summary = gitSummary();
-        return {
+        return finalizeResult({
           summary: summary.clean ? 'Repo is clean' : 'Repo has local changes',
           data: summary,
-        };
+          sources: [
+            sourceRecord({
+              id: 'git-status',
+              kind: 'git_state',
+              title: 'Git status',
+              path: null,
+              excerpt: clipExcerpt(summary.status_short || summary.latest_commit),
+              freshness: 'current',
+              authority: 'supporting',
+            }),
+          ],
+          warnings: summary.clean ? [] : ['Repository has local changes.'],
+          authority: 'supporting',
+          sourceConfidence: 'high',
+        });
       },
     },
     {
@@ -260,14 +467,28 @@ export function createMarcusToolRegistry(deps) {
       },
       handler: async () => {
         const result = runAllowlistedCommand('validate-docs');
-        return {
+        return finalizeResult({
           summary: result.ok ? 'Doc validation passed' : 'Doc validation failed',
           data: {
             ok: result.ok,
             output: result.stdout.trim(),
             error: result.stderr.trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'doc-validate-output',
+              kind: 'tool_output',
+              title: 'Documentation validation output',
+              path: null,
+              excerpt: clipExcerpt(result.stdout || result.stderr),
+              freshness: 'generated',
+              authority: 'supporting',
+            }),
+          ],
+          warnings: result.ok ? [] : ['Documentation validation failed.'],
+          authority: 'supporting',
+          sourceConfidence: result.ok ? 'medium' : 'low',
+        });
       },
     },
     {
@@ -283,14 +504,28 @@ export function createMarcusToolRegistry(deps) {
       },
       handler: async () => {
         const result = runAllowlistedCommand('encoding-check');
-        return {
+        return finalizeResult({
           summary: result.ok ? 'Encoding check passed' : 'Encoding check failed',
           data: {
             ok: result.ok,
             output: result.stdout.trim(),
             error: result.stderr.trim() || null,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'encoding-check-output',
+              kind: 'tool_output',
+              title: 'Encoding check output',
+              path: null,
+              excerpt: clipExcerpt(result.stdout || result.stderr),
+              freshness: 'generated',
+              authority: 'supporting',
+            }),
+          ],
+          warnings: result.ok ? [] : ['Encoding check failed.'],
+          authority: 'supporting',
+          sourceConfidence: result.ok ? 'medium' : 'low',
+        });
       },
     },
     {
@@ -380,14 +615,47 @@ export function createMarcusToolRegistry(deps) {
 
         const artifact = writeCodingPlanArtifacts(plan);
 
-        return {
+        return finalizeResult({
           summary: 'Generated coding plan packet for human-approved Codex execution.',
           data: {
             requiresApproval: true,
             dirtyRepoWarning: !git.clean,
             artifacts: artifact,
           },
-        };
+          sources: [
+            sourceRecord({
+              id: 'coding-plan-md',
+              kind: 'generated_run',
+              title: 'Marcus coding plan markdown',
+              path: artifact.markdownPath,
+              excerpt: 'Approval-gated coding plan packet.',
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+            sourceRecord({
+              id: 'coding-plan-json',
+              kind: 'generated_run',
+              title: 'Marcus coding plan json',
+              path: artifact.jsonPath,
+              excerpt: clipExcerpt(rawRequest),
+              freshness: 'generated',
+              authority: 'generated',
+            }),
+            sourceRecord({
+              id: 'agent-engine-doc',
+              kind: 'repo_doc',
+              title: 'Marcus Agent Engine',
+              path: 'docs/product/RED_BYTE_MARCUS_AGENT_ENGINE.md',
+              excerpt: 'Generated agent output is advisory until validated by tests and docs.',
+              freshness: 'current',
+              authority: 'canonical',
+            }),
+          ],
+          warnings: !git.clean ? ['Repository has local changes. Review coding packet cautiously.'] : [],
+          generatedFiles: [artifact.markdownPath, artifact.jsonPath],
+          authority: 'generated',
+          sourceConfidence: 'medium',
+        });
       },
     },
   ];
@@ -413,6 +681,12 @@ export function createMarcusToolRegistry(deps) {
         name,
         summary: `Unknown tool: ${name}`,
         error: 'unknown-tool',
+        sources: [],
+        warnings: [`Unknown tool rejected: ${name}`],
+        evidenceLevel: 'E0',
+        generatedFiles: [],
+        authority: 'fallback',
+        sourceConfidence: 'degraded',
       };
     }
 
@@ -426,6 +700,12 @@ export function createMarcusToolRegistry(deps) {
         access: tool.access,
         summary: result.summary,
         data: result.data,
+        sources: result.sources || [],
+        warnings: result.warnings || [],
+        evidenceLevel: result.evidenceLevel || 'E0',
+        generatedFiles: result.generatedFiles || [],
+        authority: result.authority || 'supporting',
+        sourceConfidence: result.sourceConfidence || 'medium',
       };
     } catch (error) {
       return {
@@ -435,6 +715,22 @@ export function createMarcusToolRegistry(deps) {
         access: tool.access,
         summary: `Tool failed: ${name}`,
         error: error instanceof Error ? error.message : String(error),
+        sources: [
+          sourceRecord({
+            id: `${name}-failure`,
+            kind: 'fallback',
+            title: `Tool failure: ${name}`,
+            path: null,
+            excerpt: clipExcerpt(error instanceof Error ? error.message : String(error)),
+            freshness: 'unknown',
+            authority: 'fallback',
+          }),
+        ],
+        warnings: [`Tool failed: ${name}`],
+        evidenceLevel: 'E0',
+        generatedFiles: [],
+        authority: 'fallback',
+        sourceConfidence: 'degraded',
       };
     }
   }

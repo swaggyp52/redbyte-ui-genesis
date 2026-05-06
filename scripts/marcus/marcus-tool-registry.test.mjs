@@ -43,3 +43,23 @@ test('unknown tool is rejected', async () => {
   assert.equal(result.ok, false);
   assert.match(result.summary, /Unknown tool/);
 });
+
+test('bench evidence tool returns structured source metadata and evidence level', async () => {
+  const result = await registry.executeTool('bench_evidence', {});
+
+  assert.equal(result.ok, true);
+  assert.ok(Array.isArray(result.sources));
+  assert.ok(result.sources.length >= 1);
+  assert.equal(result.sources[0].kind, 'fallback');
+  assert.equal(result.authority, 'generated');
+  assert.equal(result.evidenceLevel, 'E0');
+});
+
+test('trace claim tool returns structured grounding sources', async () => {
+  const result = await registry.executeTool('trace_claim', { claim: 'Map Pins does not replace Verify proof.' });
+
+  assert.equal(result.ok, true);
+  assert.ok(Array.isArray(result.sources));
+  assert.ok(result.sources.some((source) => source.kind === 'tool_output'));
+  assert.equal(result.authority, 'supporting');
+});

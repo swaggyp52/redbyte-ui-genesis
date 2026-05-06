@@ -134,6 +134,26 @@ function readTextMaybe(filePath) {
   }
 }
 
+function clipExcerpt(value, limit = 220) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, limit) || null;
+}
+
+function commandSources(commandId, excerpt, overrides = {}) {
+  const defaults = {
+    kind: 'tool_output',
+    title: commandId,
+    path: null,
+    freshness: 'generated',
+    authority: 'supporting',
+  };
+  return [{
+    id: `${commandId}-source`,
+    ...defaults,
+    ...overrides,
+    excerpt: clipExcerpt(excerpt),
+  }];
+}
+
 function gitSummary() {
   const status = runCommand('git', ['status', '--short']);
   const latest = runCommand('git', ['log', '--oneline', '-1']);
@@ -452,6 +472,8 @@ export function createHqServer() {
           reply: response.reply,
           toolsUsed: response.toolsUsed,
           sources: response.sources,
+          evidenceLevel: response.evidenceLevel,
+          sourceConfidence: response.sourceConfidence,
           warnings: dirtyRepoWarning
             ? [...response.warnings, 'Repository has local changes. Review coding plan cautiously before implementation.']
             : response.warnings,
@@ -460,7 +482,7 @@ export function createHqServer() {
           requiresApproval: response.requiresApproval,
           degraded: response.degraded,
           agent_name: 'Marcus',
-          source_hints: ['snapshot', 'bench-evidence', 'control-next', ...response.sources],
+          source_hints: ['snapshot', 'bench-evidence', 'control-next', ...(response.sources || []).map((source) => source.id)],
         });
         return;
       }
@@ -494,9 +516,11 @@ export function createHqServer() {
             ? 'Marcus generated a safe coding-plan packet. Review and approve before applying changes.'
             : 'Marcus failed to generate coding-plan packet.',
           toolsUsed: [{ name: 'generate_codex_packet', ok: result.ok, summary: result.summary }],
-          sources: ['problem-intake', 'problem-trace', 'problem-prompt', 'control-next', 'memory-search', 'git-status'],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
           warnings: !git.clean ? ['Repository has local changes. Review packet with extra caution.'] : [],
-          generatedFiles: [result?.data?.artifacts?.markdownPath, result?.data?.artifacts?.jsonPath].filter(Boolean),
+          generatedFiles: result.generatedFiles,
           recommendedNextAction: 'Review packet content, then run focused tests before any implementation.',
           requiresApproval: true,
           degraded: false,
@@ -513,15 +537,26 @@ export function createHqServer() {
           return;
         }
 
-        const result = runAllowlistedCommand('problem-intake', raw_feedback);
+        const result = await marcusToolRegistry.executeTool('problem_intake', { raw_feedback });
         const packet = readJsonMaybe(PROBLEM_PACKET_JSON);
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
+          mode: 'problem-packet',
+          reply: result.ok ? 'Problem intake packet generated from raw feedback.' : 'Problem intake packet generation failed.',
+          toolsUsed: [{ name: 'problem_intake', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          warnings: result.warnings,
+          generatedFiles: result.generatedFiles,
+          recommendedNextAction: 'Inspect the generated problem packet before implementation.',
+          requiresApproval: false,
+          degraded: false,
           packet_id: packet?.id ?? null,
           interpreted_problem: packet?.interpreted_product_problem ?? null,
           product_surface: packet?.product_surface ?? null,
           severity: packet?.severity ?? null,
-          stderr: result.stderr.trim(),
+          stderr: result.error || null,
         });
         return;
       }
@@ -529,12 +564,23 @@ export function createHqServer() {
       if (req.method === 'POST' && url.pathname === '/memory-search') {
         const body = await readBody(req);
         const query = sanitizeUserText(body?.query || 'RedByte product truth');
-        const result = runAllowlistedCommand('memory-search', query);
+        const result = await marcusToolRegistry.executeTool('memory_search', { query });
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
+          mode: 'ask',
+          reply: result.ok ? 'Memory search completed.' : 'Memory search failed.',
+          toolsUsed: [{ name: 'memory_search', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          warnings: result.warnings,
+          generatedFiles: result.generatedFiles,
+          recommendedNextAction: 'Treat memory output as supporting context, not canonical truth.',
+          requiresApproval: false,
+          degraded: !result.ok,
           query,
-          output: result.stdout.trim(),
-          error: result.stderr.trim() || null,
+          output: result.data?.output || '',
+          error: result.error || null,
         });
         return;
       }
@@ -542,12 +588,23 @@ export function createHqServer() {
       if (req.method === 'POST' && url.pathname === '/trace-claim') {
         const body = await readBody(req);
         const claim = sanitizeUserText(body?.claim || 'Draft export is not trusted export');
-        const result = runAllowlistedCommand('trace-claim', claim);
+        const result = await marcusToolRegistry.executeTool('trace_claim', { claim });
         respondJson(res, result.ok ? 200 : 500, {
           ok: result.ok,
+          mode: 'trace-claim',
+          reply: result.ok ? 'Claim trace completed.' : 'Claim trace failed.',
+          toolsUsed: [{ name: 'trace_claim', ok: result.ok, summary: result.summary }],
+          sources: result.sources,
+          evidenceLevel: result.evidenceLevel,
+          sourceConfidence: result.sourceConfidence,
+          warnings: result.warnings,
+          generatedFiles: result.generatedFiles,
+          recommendedNextAction: 'Review canonical repo docs before treating generated trace output as truth.',
+          requiresApproval: false,
+          degraded: !result.ok,
           claim,
-          output: result.stdout.trim(),
-          error: result.stderr.trim() || null,
+          output: result.data?.output || '',
+          error: result.error || null,
         });
         return;
       }

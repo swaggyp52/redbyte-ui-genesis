@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-06 (feat(hq): ground Marcus replies in RedByte sources)
+
+**Subsystem:** `scripts/marcus/*`, `scripts/rb-hq-server.mjs`, HQ client/types/UI, Marcus docs
+
+**Changes:**
+- Added structured Marcus source-grounding contract with source objects, evidence level, source confidence, degraded fallback labeling, and authority/freshness semantics.
+- Upgraded Marcus tool registry outputs so safe tools now return structured `sources`, `warnings`, `evidenceLevel`, `generatedFiles`, `authority`, and `sourceConfidence` metadata instead of only flat summaries.
+- Upgraded Marcus agent loop to aggregate grounding metadata across tool calls, preserve baseline snapshot/control sources when no tool calls happen, and emit explicit low-grounding warnings when replies are less source-backed.
+- Upgraded HQ API envelopes for `/chat`, `/coding-plan`, `/problem-intake`, `/memory-search`, and `/trace-claim` to return grounded source objects, evidence level, and source confidence.
+- Added minimal HQ UI grounding display for the latest Marcus reply: source confidence, evidence level, and compact source list while preserving existing tools/warnings/generated-files sections.
+- Added focused server, registry, loop, and HQ surface tests covering grounded sources, degraded fallback sources, confidence aggregation, and evidence-level display.
+
+**Evidence:** `pnpm rb:hq:test` pass; focused HQ surface tests pass; live `/chat` and `/coding-plan` probes return structured sources and confidence; browser HQ verification confirmed live grounded reply rendering with sources, tools used, warnings, and evidence/confidence visible.
+
 ## Change Log 2026-05-06 (chore(hq): add Marcus runtime launcher)
 
 **Subsystem:** `scripts/rb-marcus-runtime.mjs`, `scripts/rb-marcus-runtime.test.mjs`, HQ surface offline guidance, runtime docs

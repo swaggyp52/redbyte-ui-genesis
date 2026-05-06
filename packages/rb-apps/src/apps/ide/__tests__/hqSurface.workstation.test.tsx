@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -60,11 +60,23 @@ describe('HqSurface workstation', () => {
       degraded: false,
       reply: 'tool-assisted response',
       toolsUsed: [{ name: 'control_next', ok: true, summary: 'ok' }],
+      sourceConfidence: 'high',
+      evidenceLevel: 'E2',
       warnings: ['fallback warning'],
       generatedFiles: ['.redbyte/agent/runs/hq/marcus-coding-plan-latest.md'],
       recommendedNextAction: 'run tests',
       requiresApproval: true,
-      sources: ['control_next'],
+      sources: [
+        {
+          id: 'truth-doc',
+          kind: 'repo_doc',
+          title: 'Current Truth',
+          path: 'docs/product/RED_BYTE_CURRENT_TRUTH.md',
+          excerpt: 'Proof closure remains blocked on manual board observation.',
+          freshness: 'current',
+          authority: 'canonical',
+        },
+      ],
     });
     hqClientMocks.mockGenerateMarcusCodingPlan.mockResolvedValue({
       ok: true,
@@ -99,7 +111,46 @@ describe('HqSurface workstation', () => {
     await waitFor(() => expect(getByTestId('hq-meta').textContent).toContain('control_next'));
     expect(getByTestId('hq-warnings').textContent).toContain('fallback warning');
     expect(getByTestId('hq-generated-files').textContent).toContain('marcus-coding-plan-latest.md');
+    expect(getByTestId('hq-sources').textContent).toContain('Current Truth');
+    expect(getByTestId('hq-source-confidence').textContent).toContain('high');
+    expect(getByTestId('hq-evidence-level').textContent).toContain('E2');
     expect(getByText(/run tests/i)).toBeTruthy();
+  });
+
+  it('renders degraded fallback source when reply is degraded', async () => {
+    hqClientMocks.mockSendMarcusChat.mockResolvedValueOnce({
+      ok: true,
+      degraded: true,
+      reply: 'fallback reply',
+      toolsUsed: [],
+      warnings: ['No tools were used; answer may be less grounded.'],
+      sources: [
+        {
+          id: 'fallback-1',
+          kind: 'fallback',
+          title: 'Fallback reasoning',
+          path: null,
+          excerpt: 'Marcus used degraded local reasoning.',
+          freshness: 'unknown',
+          authority: 'fallback',
+        },
+      ],
+      sourceConfidence: 'degraded',
+      evidenceLevel: 'E0',
+      generatedFiles: [],
+      recommendedNextAction: 'Start Ollama',
+      requiresApproval: false,
+    });
+
+    const { getByTestId } = render(<HqSurface />);
+
+    await waitFor(() => expect(getByTestId('hq-chat-input')).toBeTruthy());
+    fireEvent.change(getByTestId('hq-chat-input'), { target: { value: 'status' } });
+    fireEvent.click(getByTestId('hq-send-chat'));
+
+    await waitFor(() => expect(getByTestId('hq-sources').textContent).toContain('Fallback reasoning'));
+    expect(getByTestId('hq-source-confidence').textContent).toContain('degraded');
+    expect(getByTestId('hq-evidence-level').textContent).toContain('E0');
   });
 
   it('shows offline hint when backend fetch fails', async () => {
