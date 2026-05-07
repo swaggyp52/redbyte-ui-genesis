@@ -11,6 +11,9 @@
 /index.html
   Cache-Control: public, max-age=0, must-revalidate
 
+/start.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 /os/index.html
   Cache-Control: public, max-age=0, must-revalidate
 

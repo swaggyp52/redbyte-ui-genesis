@@ -36,6 +36,7 @@
         "rb:control:next": "node scripts/rb-control-loop.mjs next",
         "rb:control:trace-claims": "node scripts/rb-control-loop.mjs trace-claims",
         "rb:control:test": "node scripts/rb-control-loop.test.mjs",
+        "rb:site:start:test": "node scripts/rb-public-start-page.test.mjs",
         "rb:problem:doctor": "node scripts/rb-product-feedback.mjs doctor",
         "rb:problem:intake": "node scripts/rb-product-feedback.mjs intake",
         "rb:problem:triage": "node scripts/rb-product-feedback.mjs triage",

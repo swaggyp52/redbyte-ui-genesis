@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-07 (feat(site): add RedByte public start path)
+
+**Subsystem:** `public/start.html`, public routing/static headers, README, public start-path docs/tests
+
+**Changes:**
+- Added a static public `/start.html` doorway that explains RedByte as a proof-backed digital logic and FPGA workbench, shows the `Project -> Design -> Verify -> Map Pins -> Export` workflow spine, and links to `/os/` for the IDE.
+- Updated root public routing so `/` redirects to `/start.html` while `/os/` remains the direct IDE path.
+- Added local start, production preview, Marcus HQ startup, Vivado/Basys3 setup, and E0/E1/E2/E3 evidence-boundary sections without changing IDE internals.
+- Added `pnpm rb:site:start:test` to guard the static page against losing product statement, workflow spine, local commands, Marcus command, evidence tiers, or adding forbidden E3/Vivado overclaims.
+- Updated README, `docs/product/RED_BYTE_PUBLIC_START_PATH.md`, `docs/DOC_INDEX.md`, and the v1 readiness checklist for the public start-path status.
+
+**Evidence:** Preflight confirmed clean repo and latest `6ce9de04`; control loop still reports E3 proof closure as manual-board gated. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `pnpm --filter @redbyte/playground build` passed before edits.
+
 ## Change Log 2026-05-06 (fix(design): improve inspector workbench guidance)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, Design correctness gate, Design inspector tests/docs

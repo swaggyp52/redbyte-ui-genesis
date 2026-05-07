@@ -21,6 +21,17 @@ It provides:
 
 ---
 
+## Public Start Path
+
+The public doorway is:
+
+- [redbyteapps.dev/start.html](https://redbyteapps.dev/start.html) - explains RedByte, the workflow spine, local setup, Marcus HQ, Vivado/Basys3 requirements, and current E0/E1/E2/E3 readiness limits.
+- [redbyteapps.dev/os/](https://redbyteapps.dev/os/) - opens the IDE directly.
+
+RedByte does not replace Vivado. Vivado remains downstream for synthesis, implementation, bitstream generation, board programming, and hardware logs. Board programming evidence (E2) is not the same as observed board behavior evidence (E3).
+
+---
+
 ## Quick Start
 
 For Windows, double-click:
@@ -44,6 +55,7 @@ Developer shortcuts:
 pnpm dev                 # Vite dev server
 pnpm start:production    # Build and preview the /os/ production bundle
 pnpm build:unified       # Full production build path
+pnpm rb:marcus:start     # Start local Marcus HQ runtime
 ```
 
 Run tests:

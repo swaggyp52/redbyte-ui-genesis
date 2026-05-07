@@ -1,5 +1,5 @@
-# Canonical root redirect to the IDE
-/      /os/  302
+# Canonical root redirect to the public start path
+/      /start.html  302
 
 # Normalize /os without trailing slash
 /os    /os/  302

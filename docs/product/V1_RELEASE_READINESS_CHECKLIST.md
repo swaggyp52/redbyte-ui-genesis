@@ -88,11 +88,11 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 ## F. Website / README Readiness
 
 - [x] README rewritten — no OS-era or overclaimed features
-- [ ] Website (redbyteapps.dev) has current product description, not stale copy
+- [x] Website/start path has current product description, not stale copy (`/start.html`)
 - [ ] Website has screenshot or GIF of the live product
-- [ ] Website has clear "open the IDE" CTA
-- [ ] Website has setup instructions (Vivado 2024.2 prerequisite, Basys3 required for hardware path)
-- [ ] Website has known limitations section
+- [x] Website has clear "open the IDE" CTA
+- [x] Website has setup instructions (Vivado 2024.2 prerequisite, Basys3 required for hardware path)
+- [x] Website has known limitations section
 - [ ] First-run in-app onboarding: student opening the IDE for the first time has a clear "start here" path
 
 ---
@@ -118,6 +118,6 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 | `two-bit-counter` E3 | TA checklist §3 on hardware | Connected bench session |
 | `build:unified` `dist/` lock | Windows directory lock after merge | Identify locking process; harden build handoff |
 | Clean-tree classroom signoff | Not yet rehearsed | Schedule with instructor or TA |
-| Website current copy + demo assets | Not yet updated or captured | After product spine stable (this doc set) |
+| Website demo assets | Screenshot/GIF not yet captured | Add a current product screenshot or GIF after this start-path slice |
 | Professor pitch / demo script | OS-era doc is stale | University pilot plan (this doc set) |
 | Guided learning path copy | Starters exist but have no learning-goal text | Curation pass after examples certified |

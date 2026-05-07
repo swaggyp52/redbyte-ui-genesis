@@ -66,6 +66,7 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md](./product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md) | Marcus read-only code intelligence and patch-proposal safety contract for allowlisted file search, bounded previews, and proposal-only artifacts |
 | [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |
 | [product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md](./product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md) | Operating guide for `rb:problem:*` intake, triage, trace, prompt, and closeout packets |
+| [product/RED_BYTE_PUBLIC_START_PATH.md](./product/RED_BYTE_PUBLIC_START_PATH.md) | Public `/start.html` doorway contract for product explanation, local setup, Marcus HQ startup, Vivado/Basys3 boundaries, and evidence honesty |
 
 ---
 
