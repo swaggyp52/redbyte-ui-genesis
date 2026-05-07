@@ -5957,6 +5957,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 const nodeCountIdle = circuit.nodes.length;
                 const connectionCountIdle = circuit.connections.length;
                 const isEmptyCanvas = nodeCountIdle === 0;
+                const idleInputRows = liveIoSignals.inputRows;
+                const idleOutputRows = liveIoSignals.outputRows;
+                const hasIdleIoState = idleInputRows.length > 0 || idleOutputRows.length > 0;
                 return (
                   <div
                     className="ide-design-inspector-canvas-default"
@@ -6004,6 +6007,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           </div>
                         </dl>
                       )}
+                      {hasIdleIoState ? (
+                        <div
+                          className="ide-design-inspector-io-state"
+                          data-testid="ide-design-inspector-io-state"
+                        >
+                          <div className="ide-design-inspector-io-state-header">
+                            <span>Current I/O</span>
+                            <span className="ide-design-inspector-io-state-kicker">Design state</span>
+                          </div>
+                          <div className="ide-design-inspector-io-state-list">
+                            {[...idleInputRows, ...idleOutputRows].map((row) => (
+                              <div
+                                key={`${row.kind}-${row.id}`}
+                                className={`ide-design-inspector-io-state-row is-${row.kind}`}
+                                data-testid={`ide-design-inspector-${row.kind}-${row.id}`}
+                              >
+                                <span className="ide-design-inspector-io-state-label">
+                                  <strong>{row.label}</strong>
+                                  <span>{row.kind === 'input' ? 'input' : 'output'}</span>
+                                  {row.pinAlias ? <code>{row.pinAlias}</code> : null}
+                                </span>
+                                <code
+                                  className="ide-design-inspector-io-state-value"
+                                  data-testid={`ide-design-inspector-${row.kind}-${row.id}-value`}
+                                >
+                                  {row.value}
+                                </code>
+                              </div>
+                            ))}
+                          </div>
+                          <p
+                            className="ide-copy ide-design-inspector-proof-boundary"
+                            data-testid="ide-design-inspector-proof-boundary"
+                          >
+                            This is live design state only. Verify owns behavior proof before trust or export.
+                          </p>
+                        </div>
+                      ) : null}
                       {totalErrors > 0 || totalWarnings > 0 ? (
                         <p
                           className="ide-copy ide-design-inspector-idle-issues"

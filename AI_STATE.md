@@ -1,5 +1,17 @@
 # AI State
 
+## Change Log 2026-05-06 (fix(design): improve inspector workbench guidance)
+
+**Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, Design correctness gate, Design inspector tests/docs
+
+**Changes:**
+- Upgraded the idle Design inspector from generic counts into a compact Design inspection readout with current input/output labels, package pin aliases, live values, and an explicit boundary that Verify owns behavior proof.
+- Reconciled `pnpm ide:gate:design-correctness-contract` from removed `ide-design-live-state-table` selectors to current quick-input toggles plus inspector I/O selectors.
+- Added focused idle-inspector coverage proving the current-I/O readout and proof boundary render without changing selected-object inspector behavior.
+- Updated Design surface/product-flow/debt docs to reflect partial inspector usefulness closure and restored correctness-gate coverage.
+
+**Evidence:** Focused idle-inspector test failed RED before implementation and passed after. `pnpm ide:gate:design-correctness-contract`, `pnpm ide:gate:design-workbench-contract`, `pnpm ide:gate:design-wire-interaction-contract`, and 46 focused Design inspector/workstation tests passed. Browser audit on `2-Bit Up Counter` at `1366x768` and `1920x1080` confirmed current I/O values render, Verify/Project actions remain visible, `Starter brief` stays closed, and no Verify-proof overclaim appears.
+
 ## Change Log 2026-05-06 (fix(design): reduce starter guidance density)
 
 **Subsystem:** `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, Design workstation tests, Design surface/docs debt

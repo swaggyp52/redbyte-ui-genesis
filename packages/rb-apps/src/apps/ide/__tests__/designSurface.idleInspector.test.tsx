@@ -166,6 +166,11 @@ describe('DesignSurface idle inspector contract', () => {
     expect(view.getByTestId('ide-design-inspector-idle-outputs').textContent).toBe('1');
     expect(view.getByTestId('ide-design-inspector-idle-nodes').textContent).toBe('2');
     expect(view.getByTestId('ide-design-inspector-idle-wires').textContent).toBe('1');
+    expect(view.getByTestId('ide-design-inspector-io-state').textContent).toContain('Current I/O');
+    expect(view.getByTestId('ide-design-inspector-input-sw0_node').textContent).toContain('SW0');
+    expect(view.getByTestId('ide-design-inspector-output-ld0_node').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('Verify');
+    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('proof');
   });
 
   it('keeps the default inspector contract while handling the empty-canvas branch', () => {

@@ -110,7 +110,7 @@ Show `Project Ready` only when all of:
 3. **Starter banner** â€” compact contextual orientation card when a starter is loaded. Shows what this circuit is and what to verify next; longer summary / expected-behavior copy stays behind `Starter brief`.
 4. **Circuit health row** â€” errors, warnings, drafts, ready-to-build status. Compact.
 5. **Canvas (primary)** â€” takes the remaining vertical space. This is where the circuit lives.
-6. **Right inspector** â€” idle: DESIGN OVERVIEW (Inputs/Outputs/Nodes/Wires counts). Active: selection context, verify-linked signal inspection.
+6. **Right inspector** â€” idle: DESIGN OVERVIEW (Inputs/Outputs/Nodes/Wires counts, current I/O values, and a Verify-proof boundary). Active: selection context, verify-linked signal inspection.
 
 **Information architecture rules:**
 - Canvas must win vertical space. The starter banner and circuit health row are supporting actors.
@@ -121,7 +121,7 @@ Show `Project Ready` only when all of:
 - Design surface renders well. Canvas shows the 2-bit counter circuit clearly.
 - Starter banner is compact by default; the long starter explanation is no longer expanded above the canvas.
 - Left library is wide by default (shows all Board resources expanded). This is by spec (Board first), but it takes 15-20% of viewport width permanently.
-- Right inspector idle copy is verbose.
+- Right inspector idle state now exposes current I/O values and the Verify-proof boundary; remaining work is broader composition/left-library density, not stale inspector filler.
 - No significant layout or rendering issues.
 
 ---

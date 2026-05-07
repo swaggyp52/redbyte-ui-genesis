@@ -44,7 +44,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 4. Right inspector
 - Owns selection, focused-asset, mapping, and signal context.
-- Idle fallback stays secondary, but it is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts plus an empty-canvas branch.
+- Idle fallback stays secondary, but it is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts, current I/O values, a Verify-owns-proof boundary, and an empty-canvas branch.
 - In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.
 
 ## Empty / Idle State
