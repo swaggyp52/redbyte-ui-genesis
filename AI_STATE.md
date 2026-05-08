@@ -1,5 +1,18 @@
 # AI State
 
+## Change Log 2026-05-08 (refactor(hq): separate Marcus from RedByte IDE)
+
+**Subsystem:** `IdeApp`, IDE mode grammar/left rail, Marcus runtime/server, public start path, Marcus docs/tests
+
+**Changes:**
+- Removed Marcus/HQ from RedByte IDE mode routing and the left rail. `?mode=hq` now falls back to Project, keeping the IDE focused on Project, Design, Verify, Map Pins, Export, plus Import as a utility surface.
+- Added a standalone Marcus companion shell served by the existing HQ server at `http://127.0.0.1:4255/` and `/marcus`, with local status, chat, packets, tasks, patch proposals, session events, and bench-evidence views backed by the existing safe APIs.
+- Updated `pnpm rb:marcus:start|status|doctor` output/state to point at the standalone Marcus URL instead of the RedByte IDE `mode=hq` route.
+- Updated the public start page and Marcus docs to state that Marcus is optional supplemental infrastructure, not part of the RedByte product spine.
+- Added/updated tests for the no-HQ left rail contract, `mode=hq` fallback, standalone Marcus server shell, runtime URL, and public start copy.
+
+**Safety:** Marcus still cannot edit files, apply patches, stage, commit, push, write to Obsidian, or run arbitrary shell commands. RedByte IDE product surfaces were not behavior-changed beyond removing the HQ route/nav entry.
+
 ## Change Log 2026-05-07 (feat(site): add RedByte public start path)
 
 **Subsystem:** `public/start.html`, public routing/static headers, README, public start-path docs/tests

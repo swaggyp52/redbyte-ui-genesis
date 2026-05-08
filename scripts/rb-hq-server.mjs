@@ -17,6 +17,7 @@ import {
   readPatchProposal,
   searchCode,
 } from './marcus/marcus-code-intelligence.mjs';
+import { buildMarcusStandaloneHtml } from './marcus/marcus-standalone-page.mjs';
 
 const DEFAULT_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const HOST = '127.0.0.1';
@@ -501,6 +502,16 @@ function respondJson(res, statusCode, payload) {
   res.end(body);
 }
 
+function respondHtml(res, statusCode, html) {
+  const body = String(html || '');
+  res.writeHead(statusCode, {
+    'content-type': 'text/html; charset=utf-8',
+    'content-length': Buffer.byteLength(body),
+    'cache-control': 'no-store',
+  });
+  res.end(body);
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -545,6 +556,11 @@ export function createHqServer() {
     const url = new URL(req.url || '/', `http://${HOST}:${DEFAULT_PORT}`);
 
     try {
+      if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/marcus' || url.pathname === '/marcus/')) {
+        respondHtml(res, 200, buildMarcusStandaloneHtml());
+        return;
+      }
+
       if (req.method === 'GET' && url.pathname === '/session/events') {
         const limitParam = Number(url.searchParams.get('limit') || 20);
         const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 200) : 20;
@@ -1193,6 +1209,8 @@ export function createHqServer() {
         error: 'Not found',
         endpoints: [
           'GET /health',
+          'GET /',
+          'GET /marcus',
           'GET /snapshot',
           'GET /packets',
           'GET /packets/:id',
@@ -1257,7 +1275,7 @@ async function main() {
 
   const server = createHqServer();
   server.listen(DEFAULT_PORT, HOST, () => {
-    process.stdout.write(`[rb-hq] Marcus HQ server listening on http://${HOST}:${DEFAULT_PORT}\n`);
+    process.stdout.write(`[rb-hq] Marcus companion listening on http://${HOST}:${DEFAULT_PORT}/\n`);
     process.stdout.write(`[rb-hq] Repo root: ${REPO_ROOT}\n`);
     process.stdout.write(`[rb-hq] Obsidian writes enabled: ${REDBYTE_HQ_ALLOW_OBSIDIAN_WRITES}\n`);
   });

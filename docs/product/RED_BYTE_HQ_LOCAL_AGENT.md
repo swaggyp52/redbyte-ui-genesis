@@ -1,16 +1,16 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-05-08
 owner: Connor Angiel
 used_by_claude: true
-role: RedByte HQ local command center contract
+role: standalone Marcus HQ local command center contract
 ---
 
 # RedByte HQ Local Agent (v1)
 
 ## What HQ is
 
-RedByte HQ is a local utility surface in the IDE that exposes command-center status for:
+RedByte HQ is Marcus's standalone local companion command center. It is served by the Marcus runtime at `http://127.0.0.1:4255/` and exposes status for:
 
 - Marcus chat (local Ollama-backed when available)
 - control-loop snapshot status
@@ -22,11 +22,12 @@ RedByte HQ is a local utility surface in the IDE that exposes command-center sta
 - local operator task queue
 - read-only code intelligence and patch proposals
 
-HQ is utility context for engineering and validation. It is not a required student workflow step.
+HQ is utility context for engineering and validation. It is not a RedByte IDE mode and is not a required student workflow step.
 
 ## What HQ is not
 
 - Not part of the mandatory student spine.
+- Not a Project/Design/Verify/Map Pins/Export peer in the RedByte IDE.
 - Not a replacement for Project, Design, Verify, Map Pins, or Export.
 - Not a generic shell runner.
 - Not an Obsidian writer in v0.
@@ -56,6 +57,7 @@ This degraded mode is acceptable for v0.
 
 ## Server endpoints (v1)
 
+- `GET /` and `GET /marcus`
 - `GET /health`
 - `GET /snapshot`
 - `GET /control-next`
@@ -148,7 +150,7 @@ See `docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md` for the read-only code a
 2. Optional runtime checks:
    - `pnpm rb:marcus:status`
    - `pnpm rb:marcus:doctor`
-3. Start RedByte app and open HQ mode in IDE.
+3. Open the standalone Marcus URL printed by the command, normally `http://127.0.0.1:4255/`.
 
 If you only need backend serve without runtime lifecycle tooling:
 

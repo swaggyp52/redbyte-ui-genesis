@@ -115,24 +115,6 @@ const ExportIcon = () => (
   </svg>
 );
 
-const HqIcon = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="14"
-    height="14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M2 11.5V4.5l3 2.2 3-4.2 3 4.2 3-2.2v7" />
-    <path d="M2 11.5h12" />
-    <circle cx="8" cy="8.5" r="1.2" />
-  </svg>
-);
-
 const WORKFLOW_STEPS: WorkflowStep[] = IDE_WORKFLOW_ROUTE_STEPS.map((step) => ({
   ...step,
   icon:
@@ -150,13 +132,6 @@ const PROJECT_ENTRY: UtilityEntry = {
   label: 'Project',
   hint: 'Start and review',
   icon: <ProjectIcon />,
-};
-
-const HQ_ENTRY: UtilityEntry = {
-  id: 'hq',
-  label: 'HQ',
-  hint: 'Marcus command center',
-  icon: <HqIcon />,
 };
 
 export type { IdeMode } from '../workflowStages';
@@ -241,8 +216,6 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
       <nav className="ide-left-rail-nav" aria-label="Workflow steps">
         {WORKFLOW_STEPS.map(renderStep)}
       </nav>
-
-      <div className="ide-left-rail-utility-bottom">{renderUtility(HQ_ENTRY)}</div>
 
       {hasLabProgress ? (
         <div className="ide-left-rail-footer">

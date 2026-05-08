@@ -63,6 +63,18 @@ test('Marcus system prompt carries RedByte trust boundaries', () => {
   assert.match(prompt, /Draft Export/);
 });
 
+test('GET / serves standalone Marcus companion shell', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/`);
+    assert.equal(response.ok, true);
+    const html = await response.text();
+    assert.match(html, /Marcus is the RedByte operator beside the IDE/);
+    assert.match(html, /data-testid="marcus-standalone-root"/);
+    assert.match(html, /Marcus does not edit files/);
+    assert.doesNotMatch(html, /switch to HQ in the IDE/i);
+  });
+});
+
 test('/chat response includes structured sources when grounded tool output is available', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/chat`, {
@@ -286,11 +298,11 @@ test('GET /code/search returns safe code snippets', async () => {
 
 test('GET /code/file reads allowlisted file and denies traversal/private paths', async () => {
   await withServer(async (baseUrl) => {
-    const allowed = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx')}`);
+    const allowed = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('scripts/marcus/marcus-standalone-page.mjs')}`);
     assert.equal(allowed.ok, true);
     const allowedPayload = await allowed.json();
     assert.equal(allowedPayload.ok, true);
-    assert.match(allowedPayload.file.content, /HqSurface/);
+    assert.match(allowedPayload.file.content, /buildMarcusStandaloneHtml/);
 
     const traversal = await fetch(`${baseUrl}/code/file?path=${encodeURIComponent('../AI_STATE.md')}`);
     assert.equal(traversal.status, 403);

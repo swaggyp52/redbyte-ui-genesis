@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-05-08
 owner: Connor Angiel
 used_by_claude: true
 role: Marcus Agent Engine v1 architecture and safety contract
@@ -10,7 +10,7 @@ role: Marcus Agent Engine v1 architecture and safety contract
 
 ## Purpose
 
-Marcus v1 turns HQ from dashboard-only status into a local, tool-assisted RedByte engineering operator.
+Marcus v1 turns HQ from dashboard-only status into a standalone local, tool-assisted RedByte engineering operator.
 
 Marcus is for:
 
@@ -29,7 +29,7 @@ Marcus is not for:
 ## Architecture
 
 ```text
-HQ UI
+Standalone HQ UI
   -> HQ server
   -> Marcus agent loop
   -> Ollama chat/tool calls (when available)

@@ -25,7 +25,7 @@ It provides:
 
 The public doorway is:
 
-- [redbyteapps.dev/start.html](https://redbyteapps.dev/start.html) - explains RedByte, the workflow spine, local setup, Marcus HQ, Vivado/Basys3 requirements, and current E0/E1/E2/E3 readiness limits.
+- [redbyteapps.dev/start.html](https://redbyteapps.dev/start.html) - explains RedByte, the workflow spine, local setup, the standalone Marcus companion, Vivado/Basys3 requirements, and current E0/E1/E2/E3 readiness limits.
 - [redbyteapps.dev/os/](https://redbyteapps.dev/os/) - opens the IDE directly.
 
 RedByte does not replace Vivado. Vivado remains downstream for synthesis, implementation, bitstream generation, board programming, and hardware logs. Board programming evidence (E2) is not the same as observed board behavior evidence (E3).
@@ -55,7 +55,7 @@ Developer shortcuts:
 pnpm dev                 # Vite dev server
 pnpm start:production    # Build and preview the /os/ production bundle
 pnpm build:unified       # Full production build path
-pnpm rb:marcus:start     # Start local Marcus HQ runtime
+pnpm rb:marcus:start     # Start standalone local Marcus companion runtime
 ```
 
 Run tests:
@@ -68,7 +68,7 @@ pnpm -w exec vitest run
 
 ## IDE Surfaces
 
-RedByte uses a six-surface workflow inside a single IDE shell:
+RedByte uses a focused IDE workbench plus one utility import surface:
 
 | Surface | Purpose |
 |---------|---------|
@@ -77,7 +77,9 @@ RedByte uses a six-surface workflow inside a single IDE shell:
 | **Verify** | Run test scenarios, view pass/fail results, inspect waveforms |
 | **Hardware** | Map Pins / physical board-binding surface for Basys3 resources and package-pin truth |
 | **Export** | Generate and download a Vivado Kit ZIP for synthesis and programming |
-| **Import** | Paste VHDL to import circuits with fidelity reporting |
+| **Import** | Utility surface for VHDL/ZIP import with fidelity reporting |
+
+Marcus is not an IDE surface. It is a separate local companion command center started with `pnpm rb:marcus:start`.
 
 ---
 
@@ -144,7 +146,7 @@ redbyte-ui/
 ├── apps/
 │   └── playground/              # Dev entry point
 ├── packages/
-│   ├── rb-apps/                 # IDE application (IdeApp + 6 surfaces)
+│   ├── rb-apps/                 # IDE application (IdeApp + RedByte workbench surfaces)
 │   ├── rb-logic-core/           # Circuit simulation engine
 │   ├── rb-logic-view/           # 2D circuit canvas
 │   ├── rb-fpga-toolchain/       # VHDL/XDC generation

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-05-08
 owner: Connor Angiel
 used_by_claude: true
 role: Marcus operator workbench contract
@@ -10,7 +10,7 @@ role: Marcus operator workbench contract
 
 ## Purpose
 
-Marcus Operator Workbench turns HQ from chat plus history into a local engineering control surface.
+Marcus Operator Workbench turns the standalone HQ companion from chat plus history into a local engineering control surface.
 
 It helps Connor and coding agents:
 
@@ -148,7 +148,7 @@ See `docs/product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md` for the full safety cont
 ## Operating Flow
 
 1. Start Marcus with `pnpm rb:marcus:start`.
-2. Open HQ mode.
+2. Open the standalone Marcus URL printed by the command.
 3. Ask Marcus or generate a coding plan.
 4. Select the saved packet in Workbench History.
 5. Review sources, warnings, evidence level, and generated files.

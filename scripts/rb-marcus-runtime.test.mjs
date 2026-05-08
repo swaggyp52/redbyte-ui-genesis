@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import {
   buildStatusWarnings,
+  buildUiUrl,
   canStopProcess,
   decideStartAction,
   ensurePathWithin,
@@ -42,6 +43,12 @@ test('duplicate prevention returns already-running when HQ is reachable', () => 
   });
 
   assert.equal(decision.action, 'already-running');
+});
+
+test('runtime URL points to standalone Marcus server', () => {
+  const url = buildUiUrl();
+  assert.equal(url, 'http://127.0.0.1:4255/');
+  assert.ok(!url.includes('mode=hq'));
 });
 
 test('occupied non-HQ port returns explicit failure decision', () => {

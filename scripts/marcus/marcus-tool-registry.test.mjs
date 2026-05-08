@@ -24,7 +24,7 @@ const fakeDeps = {
   searchCode: (query) => ({
     query,
     mode: 'safe-keyword',
-    results: [{ path: 'packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx', title: 'HqSurface.tsx', snippet: 'Patch Proposals', score: 1 }],
+    results: [{ path: 'scripts/marcus/marcus-standalone-page.mjs', title: 'marcus-standalone-page.mjs', snippet: 'Patch Proposals', score: 1 }],
     warnings: [],
   }),
   readCodeFile: (filePath) => ({ path: filePath, size: 20, truncated: false, content: 'export const value = 1;' }),
@@ -33,7 +33,7 @@ const fakeDeps = {
     createdAt: new Date().toISOString(),
     title: 'Patch proposal test',
     productProblem: 'Need safe proposal.',
-    targetFiles: ['packages/rb-apps/src/apps/ide/surfaces/HqSurface.tsx'],
+    targetFiles: ['scripts/marcus/marcus-standalone-page.mjs'],
     codeFindings: [],
     proposedChanges: [],
     patchSketch: 'Proposal only. No patch applied.',
@@ -103,10 +103,10 @@ test('trace claim tool returns structured grounding sources', async () => {
 });
 
 test('code_search tool exists and returns source metadata', async () => {
-  const result = await registry.executeTool('code_search', { query: 'HqSurface' });
+  const result = await registry.executeTool('code_search', { query: 'Marcus standalone page' });
 
   assert.equal(result.ok, true);
-  assert.ok(result.sources.some((source) => source.path?.includes('HqSurface.tsx')));
+  assert.ok(result.sources.some((source) => source.path?.includes('marcus-standalone-page.mjs')));
   assert.equal(result.authority, 'supporting');
 });
 

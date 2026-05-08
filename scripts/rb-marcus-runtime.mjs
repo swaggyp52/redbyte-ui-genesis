@@ -10,7 +10,6 @@ const HQ_HOST = '127.0.0.1';
 const HQ_PORT = Number(process.env.REDBYTE_HQ_PORT || 4255);
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 const DEFAULT_MODEL = process.env.REDBYTE_AGENT_MODEL || 'qwen2.5-coder:1.5b';
-const DEFAULT_UI_PORT = Number(process.env.REDBYTE_PLAYGROUND_PORT || 5173);
 
 function fail(message, details = [], code = 1) {
   process.stderr.write(`[rb-marcus-runtime] [error] ${message}\n`);
@@ -299,8 +298,8 @@ export function decideStartAction({ hqReachable, portOpen, portLooksLikeHq }) {
   return { action: 'start-hq', reason: 'HQ not reachable; safe to launch runtime server.' };
 }
 
-function buildUiUrl() {
-  return `http://localhost:${DEFAULT_UI_PORT}/?mode=hq`;
+export function buildUiUrl() {
+  return `http://${HQ_HOST}:${HQ_PORT}/`;
 }
 
 function markdownSection(title, lines) {
@@ -385,6 +384,7 @@ function writeHealthMarkdown(paths, report) {
     '# Marcus Runtime Health',
     '',
     `- generated_at: ${report.generatedAt}`,
+    `- marcus_url: ${report.uiUrl}`,
     `- hq_url: ${report.hqUrl}`,
     `- ui_url: ${report.uiUrl}`,
     '',
@@ -423,8 +423,7 @@ async function commandDoctor(repoRoot, paths) {
   info(`Health report written: ${path.relative(repoRoot, paths.healthMarkdown).replace(/\\/g, '/')}`);
 
   const warnings = buildStatusWarnings(report);
-  info(`HQ URL: ${report.hqUrl}`);
-  info(`UI URL: ${report.uiUrl}`);
+  info(`Marcus URL: ${report.uiUrl}`);
   info(`Ollama API reachable: ${report.ollamaApi.reachable}`);
   info(`HQ reachable: ${report.hq.ok}`);
 
@@ -527,6 +526,7 @@ async function commandStart(repoRoot, paths) {
     '# Marcus Runtime Startup',
     '',
     `- generated_at: ${report.generatedAt}`,
+    `- marcus_url: ${report.uiUrl}`,
     `- hq_url: ${report.hqUrl}`,
     `- ui_url: ${report.uiUrl}`,
     `- hq_pid: ${launchedPid || 'unknown'}`,
@@ -542,7 +542,7 @@ async function commandStart(repoRoot, paths) {
     '',
     '## Next actions',
     ...(report.ollamaApi.reachable
-      ? ['- Open RedByte and switch to HQ mode.']
+      ? [`- Open standalone Marcus: ${report.uiUrl}`]
       : ['- Start Ollama manually, then run `pnpm rb:marcus:status`.']),
   ].join('\n');
 
@@ -570,8 +570,7 @@ async function commandStart(repoRoot, paths) {
   });
 
   info(`Marcus runtime ready check complete.`);
-  info(`HQ URL: ${report.hqUrl}`);
-  info(`UI URL: ${report.uiUrl}`);
+  info(`Marcus URL: ${report.uiUrl}`);
   info(`HQ PID: ${launchedPid || 'unknown'}`);
   info(`Ollama API: ${report.ollamaApi.reachable ? 'reachable' : 'unreachable'}`);
   info(`Memory index: ${report.memory.indexAvailable ? 'available' : 'missing'}`);
@@ -672,8 +671,7 @@ async function commandStatus(repoRoot, paths) {
   info(`Model (${DEFAULT_MODEL}) available: ${report.modelAvailable}`);
   info(`Last started: ${report.lastStartAt || 'unknown'}`);
   info(`Tracked HQ PID: ${report.hqPid || 'none'}`);
-  info(`HQ URL: ${report.hqUrl}`);
-  info(`UI URL: ${report.uiUrl}`);
+  info(`Marcus URL: ${report.uiUrl}`);
   info(`Runtime files: ${JSON.stringify(report.runtimeFiles)}`);
   if (warnings.length > 0) {
     for (const warning of warnings) info(`warning: ${warning}`);

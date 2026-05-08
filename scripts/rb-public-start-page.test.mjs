@@ -35,6 +35,8 @@ const requiredSnippets = [
   'E2',
   'E3',
   'pnpm rb:marcus:start',
+  'Marcus is a separate local companion command center',
+  'open the Marcus URL printed by the command',
   'pnpm dev',
   'AMD Vivado 2024.2',
   'A physical Basys3 board is required for E2 programming and E3 observation.',
@@ -52,6 +54,7 @@ const forbiddenClaims = [
   'fully released',
   'replaces Vivado',
   'board behavior proven by programming',
+  'switch to HQ in the IDE',
 ];
 
 for (const claim of forbiddenClaims) {

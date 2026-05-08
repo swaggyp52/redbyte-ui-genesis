@@ -246,7 +246,7 @@ function inferQuery({ task, packet, rawRequest }) {
   if (/verify|proof|evidence|waveform/i.test(text)) return 'VerifySurface';
   if (/design|canvas|wire|component/i.test(text)) return 'DesignSurface';
   if (/project|onboarding|starter/i.test(text)) return 'ProjectSurface';
-  if (/hq|marcus|operator|packet|task|proposal/i.test(text)) return 'HqSurface';
+  if (/hq|marcus|operator|packet|task|proposal/i.test(text)) return 'marcus standalone page hq server';
   return clip(text, 80) || 'RedByte';
 }
 

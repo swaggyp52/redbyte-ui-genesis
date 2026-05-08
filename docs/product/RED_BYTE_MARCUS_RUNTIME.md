@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-05-08
 owner: Connor Angiel
 used_by_claude: true
 role: Marcus runtime launcher and recovery contract
@@ -14,12 +14,13 @@ Provide one reliable command to make Marcus usable and diagnosable:
 
 - `pnpm rb:marcus:start`
 
-The runtime launcher handles local startup, health reporting, and safe shutdown for the HQ backend process while preserving strict safety boundaries.
+The runtime launcher handles local startup, health reporting, safe shutdown, and the standalone Marcus companion URL while preserving strict safety boundaries.
 
 ## Commands
 
 - `pnpm rb:marcus:start`
-  - Starts or reuses HQ backend runtime at `http://127.0.0.1:4255`.
+  - Starts or reuses Marcus HQ runtime at `http://127.0.0.1:4255/`.
+  - Serves the standalone Marcus companion shell at that URL.
   - Avoids duplicate HQ processes when backend is already healthy.
   - Fails clearly if port `4255` is occupied by a non-HQ process.
   - Attempts one Ollama auto-start if API is down and CLI is available.
@@ -59,7 +60,7 @@ These paths are local run artifacts and remain gitignored.
 - bench evidence classifier status
 - control-next status
 - runtime output directory writability
-- local HQ and UI URLs for follow-up
+- local Marcus/HQ URL for follow-up
 
 Degraded states are explicit and actionable instead of silent.
 
@@ -79,4 +80,4 @@ Degraded states are explicit and actionable instead of silent.
 
 ## UX Surface Hook
 
-HQ offline guidance in IDE now prefers `pnpm rb:marcus:start` with `pnpm rb:hq:server` as fallback for backend-only serve.
+Marcus is no longer opened through the RedByte IDE. `pnpm rb:marcus:start` prints the standalone companion URL. `pnpm rb:hq:server` remains a backend-only fallback for direct server use.

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-07
+last_validated: 2026-05-08
 owner: Connor Angiel
 used_by_claude: true
 role: public start path and local-run contract
@@ -18,7 +18,7 @@ It answers:
 2. What workflow it supports.
 3. How to open the IDE.
 4. How to run the repo locally.
-5. How to start Marcus HQ.
+5. How to start the standalone Marcus companion.
 6. What Vivado/Basys3 handoff means.
 7. What evidence is proven and what remains manual.
 
@@ -52,7 +52,8 @@ The page must preserve these public truths:
 - E0, E1, E2, and E3 remain separate.
 - E2 board programming does not imply E3 observed behavior.
 - Final E3 closure remains manual-observation gated for open rows.
-- Local Marcus HQ starts with `pnpm rb:marcus:start`.
+- Local Marcus starts with `pnpm rb:marcus:start` and opens from the URL printed by that command.
+- Marcus is a separate local companion command center, not an IDE mode.
 - The repo uses pnpm; do not document `npm install`.
 
 ## Local Start Commands
@@ -71,12 +72,14 @@ pnpm --filter @redbyte/playground build
 pnpm preview
 ```
 
-For local Marcus HQ:
+For local Marcus:
 
 ```powershell
 pnpm rb:marcus:start
 pnpm rb:marcus:status
 ```
+
+Open the Marcus URL printed by `pnpm rb:marcus:start`. Do not document Marcus as a RedByte IDE surface or workflow-spine peer.
 
 ## Vivado / Basys3 Boundary
 
@@ -107,7 +110,7 @@ Update this doc and `public/start.html` when:
 
 - The public route changes.
 - Local start commands change.
-- Marcus runtime commands change.
+- Marcus runtime commands or standalone URL behavior change.
 - Vivado/Basys3 evidence posture changes.
 - The release readiness checklist changes the website/start-path status.
 

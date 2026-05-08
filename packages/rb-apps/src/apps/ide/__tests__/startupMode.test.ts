@@ -13,6 +13,7 @@ describe('startupMode', () => {
 
   it('ignores invalid mode values', () => {
     expect(resolveRequestedIdeMode('?mode=launcher')).toBeNull();
+    expect(resolveRequestedIdeMode('?mode=hq')).toBeNull();
     expect(resolveRequestedIdeMode('')).toBeNull();
   });
 
@@ -22,6 +23,7 @@ describe('startupMode', () => {
 
   it('falls back initial mode to project when mode is invalid', () => {
     expect(resolveInitialIdeModeFromSearch('?mode=launcher')).toBe('project');
+    expect(resolveInitialIdeModeFromSearch('?mode=hq')).toBe('project');
     expect(resolveInitialIdeModeFromSearch('?mode=')).toBe('project');
   });
 
