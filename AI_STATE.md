@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-10 (chore(session): add RedByte start packet)
+
+**Subsystem:** repo hygiene + session-start operating loop tooling
+
+**Changes:**
+- Inspected untracked `.agents/` and `.codex/` trees, confirmed local agent instruction/config content, and added both directories to `.gitignore` to remove repo-noise without deleting local assets.
+- Reworked `scripts/rb-session-start.mjs` to generate bounded start packets under `.redbyte/session/latest-start-packet.{json,md}`.
+- Session-start packets now combine local repo truth with read-only Marcus context (`/next-work`, `/product-state`, `/evidence-status`) when reachable, and degrade cleanly to local-only context when Marcus is unavailable.
+- Added focused tests in `scripts/rb-session-start.test.mjs` and updated package scripts so `rb:session:test` covers both closeout and start-packet flows.
+- Updated operating-loop docs and index to standardize `start -> focused work -> close` session ritual.
+
+**Safety:** No token output, no token requirement for start packet, no arbitrary shell execution path, no product UI changes, no Pi repo clone, and no bulk commit of `.agents/` or `.codex/`.
+
+**Evidence:** `pnpm rb:session:start`, `pnpm rb:session:test`, `pnpm rb:session:status`, `pnpm rb:session:close`, `pnpm rb:marcus:test`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` (results in this session).
+
 ## Change Log 2026-05-10 (chore(session): add RedByte operating loop closeout)
 
 **Subsystem:** repo-side session closeout tooling and operating-loop docs

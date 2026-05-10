@@ -8,7 +8,7 @@ role: RedByte session closeout operating loop contract
 
 # RedByte Operating Loop
 
-RedByte Operating Loop v0.6 connects three layers into one disciplined handoff:
+RedByte Operating Loop v0.7 connects three layers into one disciplined handoff:
 
 1. RedByte repo and product work
 2. Marcus Pi product-operations node
@@ -53,6 +53,18 @@ Structured status output includes:
 - token presence flag only (never prints token)
 - packet generation readiness
 - current next-work source when available
+
+### rb:session:start
+
+Session-start behavior:
+
+1. Gather current repo branch, commit, and dirty state.
+2. Build a prompt-ready start packet under `.redbyte/session/latest-start-packet.{json,md}`.
+3. Read Marcus `/next-work`, `/product-state`, and `/evidence-status` when reachable.
+4. Fall back to local repo truth docs when Marcus is unavailable.
+5. Emit first-command recommendations and a concise next-agent prompt.
+
+Read-only Marcus access does not require `MARCUS_TOKEN`.
 
 ### rb:session:close
 
@@ -115,6 +127,12 @@ The operating loop must not:
 
 ## Session ritual
 
+Before a new bounded implementation slice:
+
+```bash
+pnpm rb:session:start
+```
+
 Run this at the end of each bounded implementation slice:
 
 ```bash
@@ -128,3 +146,10 @@ Resulting behavior:
 - blockers and do-not-touch boundaries are preserved
 - Marcus state is updated when available
 - the next Codex/Copilot agent has a clear handoff source
+
+Standard loop:
+
+1. `pnpm rb:session:start`
+2. focused implementation slice
+3. `pnpm rb:session:close`
+4. optional Marcus sync via closeout (`MARCUS_TOKEN` present)
