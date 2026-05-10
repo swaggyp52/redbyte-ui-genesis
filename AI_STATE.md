@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-10 (chore(marcus): add repo summary sync)
+
+**Subsystem:** repo-side Marcus sync script and product-state docs
+
+**Changes:**
+- Added `scripts/rb-marcus-sync.mjs`, a bounded repo-side packet generator and sync client for Marcus `POST /repo-summary`.
+- Added `pnpm rb:marcus:packet` and `pnpm rb:marcus:sync`; expanded `pnpm rb:marcus:test` to keep the existing runtime tests and add focused sync tests.
+- Added `docs/product/RED_BYTE_MARCUS_SYNC.md` and indexed it in `docs/DOC_INDEX.md`.
+- Packet generation reads repo control docs only, keeps output below 50 KB, redacts token-shaped values, and does not call an LLM.
+
+**Safety:** No token is hardcoded or printed. No arbitrary shell execution, Pi repo clone, larger Ollama model, Obsidian write, or Marcus autonomy path was added.
+
+**Evidence:** `pnpm rb:marcus:packet` generated a 4.6 KB packet; `pnpm rb:marcus:test` passed. Authenticated sync reached Marcus at `192.168.1.103:4260` and recorded `/home/pi/redbyte-pi/product/latest-repo-summary.{json,md}`. Verified `/product-state`, `/next-work`, `/memory`, `/dashboard-data`, and `/evidence-status`; `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed after fixing a mojibake literal caught by the encoding gate.
+
 ## Change Log 2026-05-10 (infra(marcus): deploy Product Operations v0.4)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
