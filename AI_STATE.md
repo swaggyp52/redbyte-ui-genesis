@@ -1,5 +1,17 @@
 # AI State
 
+## Change Log 2026-05-10 (infra(marcus): deploy Pi dashboard v0.3)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Deployed a dependency-free Marcus v0.3 dashboard to the Pi service at `http://192.168.1.103:4260/` with token localStorage controls, health, evidence status, compact memory/evidence file lists, chat controls, and explicit E2/E3/known-bug proof boundaries.
+- Added read-only `GET /dashboard-data` for dashboard hydration while keeping `GET /health`, `/status`, `/power`, `/memory`, and `/evidence-status` LAN-readable.
+- Preserved token protection for `POST /chat`, `/remember`, and `/evidence`; no arbitrary shell execution endpoint, repo clone, larger model pull, secret exposure, or Obsidian write path was added.
+- Added `/home/pi/redbyte-pi/marcus-doctor.sh` on the Pi and created post-success Pi backup tarball `/home/pi/redbyte-pi-marcus-backup-20260510-184554.tar.gz`.
+
+**Evidence:** SSH and HTTP reached `redbyte-pi` at `192.168.1.103`; `redbyte-pi-node.service` restarted active. Verified `/health`, `/evidence-status`, `/memory`, `/power`, `/dashboard-data`, dashboard HTML controls, unauthenticated `/chat` 401, authenticated structured evidence chat, and doctor script output. Current evidence remains E2-only for `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour`; no target is E3 and no known logic bug is recorded.
+
 ## Change Log 2026-05-08 (refactor(hq): separate Marcus from RedByte IDE)
 
 **Subsystem:** `IdeApp`, IDE mode grammar/left rail, Marcus runtime/server, public start path, Marcus docs/tests
