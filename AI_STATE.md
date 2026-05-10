@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-10 (infra(marcus): deploy Product Operations v0.4)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Deployed Marcus Product Operations v0.4 with durable local product state under `/home/pi/redbyte-pi/product/`.
+- Added protected `POST /repo-summary` for small RedByte/Codex summary packets, plus fast read-only `GET /product-state` and `GET /next-work`.
+- Reworked the Pi dashboard around product truth, evidence status, blockers, next work, and Marcus safety boundaries instead of adding unrelated panels.
+- Added structured chat fast paths for next work, product state, evidence status, and role/limits before falling back to the small local Ollama model.
+- Updated `marcus-doctor.sh` to cover `/product-state`, `/next-work`, `/memory`, and the unauthenticated `/chat` 401 guard.
+
+**Safety:** No arbitrary shell execution endpoint was added. The Pi did not clone the full RedByte repo, did not pull a larger Ollama model, did not write to Obsidian, and did not change the evidence truth: `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour` remain E2-only; no E3 target and no known logic bug are recorded.
+
+**Evidence:** SSH and HTTP reached `redbyte-pi` at `192.168.1.103`; `redbyte-pi-node.service` restarted active. Verified `/health`, `/evidence-status`, `/product-state`, `/next-work`, `/memory`, `/dashboard-data`, dashboard operations copy, unauthenticated `/chat` 401, authenticated structured next-work chat, repo-summary import, and doctor script. Post-success Pi backup: `/home/pi/redbyte-pi-marcus-backup-20260510-190024.tar.gz`.
+
 ## Change Log 2026-05-10 (infra(marcus): deploy Pi dashboard v0.3)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
