@@ -32,6 +32,7 @@ yarn-error.log*
 .redbyte/work/
 .redbyte/agent/runs/
 .redbyte/bench/runs/
+.redbyte/session/
 .redbyte/agent/config.json
 fuzz_log*.txt
 

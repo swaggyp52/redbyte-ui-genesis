@@ -9,8 +9,9 @@
     ],
     "scripts": {
         "rb:session:start": "node scripts/rb-session-start.mjs",
-        "rb:session:status": "node scripts/rb-session-status.mjs",
-        "rb:session:close": "node scripts/rb-session-close.mjs",
+        "rb:session:status": "node scripts/rb-session-close.mjs status",
+        "rb:session:close": "node scripts/rb-session-close.mjs close",
+        "rb:session:test": "node scripts/rb-session-close.test.mjs",
         "rb:work:status": "node scripts/rb-work-driver.mjs status",
         "rb:work:next": "node scripts/rb-work-driver.mjs next",
         "rb:work:close": "node scripts/rb-work-driver.mjs close",

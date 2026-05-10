@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-10 (chore(session): add RedByte operating loop closeout)
+
+**Subsystem:** repo-side session closeout tooling and operating-loop docs
+
+**Changes:**
+- Replaced legacy interactive `scripts/rb-session-close.mjs` behavior with deterministic `status|close|test` commands for operating-loop closeout.
+- Added local closeout artifacts under `.redbyte/session/latest-closeout.{json,md}` with schema `redbyte-session-closeout-v1` and bounded repo/Marcus/next-work fields.
+- Integrated packet generation through existing Marcus sync module logic and added degraded-mode handling for missing token or unreachable Marcus.
+- Added focused script tests at `scripts/rb-session-close.test.mjs` and wired package scripts `rb:session:status`, `rb:session:close`, and `rb:session:test`.
+- Added `docs/product/RED_BYTE_OPERATING_LOOP.md` and indexed it in `docs/DOC_INDEX.md`.
+
+**Safety:** No token logging, no arbitrary command execution path, no product-UI edits, no Pi repo clone, and no requirement for Marcus online availability to generate local closeout reports.
+
+**Evidence:** `pnpm rb:session:test`, `pnpm rb:session:status`, `pnpm rb:session:close`, `pnpm rb:marcus:test`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` (results in this session).
+
 ## Change Log 2026-05-10 (infra(marcus): harden Pi service reliability)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
