@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-05-10 (infra(marcus): harden Pi service reliability)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Added fast `GET /ping` and `GET /version` endpoints to Marcus for cheap liveness and service introspection.
+- Changed `/dashboard-data` to use a compact local snapshot instead of the heavier `/health` snapshot, so dashboard hydration does not call Ollama tags or synchronous tool-version probes.
+- Added response-size guards for JSON responses and a tighter Ollama tag timeout on the heavy health path.
+- Updated `marcus-doctor.sh` to check `/ping` first, then version, health, evidence, product-state, next-work, dashboard-data, memory, and unauthenticated `/chat` 401 with concise status/timing output.
+
+**Safety:** No arbitrary shell execution endpoint, model pull, repo clone, token exposure, Obsidian write, or Marcus rename was added. Marcus evidence truth remains E2-only for the tracked targets with no E3 and no known logic bug recorded.
+
+**Evidence:** Pi IP remained `192.168.1.103` via `redbyte-pi.local`. Logs showed clean service restarts and no Node stack traces. After deploy, `redbyte-pi-node.service` restarted active; `/ping`, `/version`, `/health`, `/product-state`, `/next-work`, `/dashboard-data`, unauthenticated `/chat`, authenticated structured `/chat`, and `marcus-doctor.sh` passed. `/dashboard-data` returned in about 0.02s and reports Ollama tags as omitted from dashboard. Post-success Pi backup: `/home/pi/redbyte-pi-marcus-backup-20260510-142830.tar.gz`.
+
 ## Change Log 2026-05-10 (chore(marcus): add repo summary sync)
 
 **Subsystem:** repo-side Marcus sync script and product-state docs
