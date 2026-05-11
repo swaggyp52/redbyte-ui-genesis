@@ -14,11 +14,11 @@
 - Added `docs/release/course-edition/13-marcus-rpi-hard-separation-and-main-sync.md`; marked the previous partial separation doc as superseded.
 - Updated `.gitignore` to ignore `.redbyte/agent/` fully.
 - Committed RedByte hard separation as `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`.
-- Pushed cleaned RedByte `main` to `origin/main`; after fetch, both refs resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`.
+- Pushed cleaned RedByte `main` to `origin/main` with no force-push. A follow-up doc-only closeout commit records the sync; use `git log -1 origin/main` for the current remote head.
 
 **Safety:** Project, Design, Verify, Hardware/Map Pins, Export, Import, starters, Basys3/Vivado export source, VHDL/XDC/Tcl code, and E0/E1/E2/E3 evidence boundaries were kept. `api/server.mjs`, FPGA board registry source, and mixed `artifacts/**` remain for separate human-review cleanup.
 
-**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `pnpm rb:site:start:test`, and `git diff --check` passed before final commit. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. `git push origin main` succeeded with no force push; GitHub reported a bypass of the required `Classroom Truth Gates` status check expectation.
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `pnpm rb:site:start:test`, and `git diff --check` passed before the hard-separation commit. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. `git push origin main` succeeded with no force push; GitHub reported a bypass of the required `Classroom Truth Gates` status check expectation.
 
 **Next recommended task:** Handle the pre-existing `rb-lab-engine` / `rb-logic-core` type-boundary drift as a separate task, then rerun the full workspace typecheck.
 

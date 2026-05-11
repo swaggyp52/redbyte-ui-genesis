@@ -121,8 +121,8 @@ Results:
 
 | Step | Result |
 |------|--------|
-| RedByte separation commit before push | `d7765d05bbdceafc26c6b39711dd9e8d5b75559d` |
+| RedByte hard-separation commit | `d7765d05bbdceafc26c6b39711dd9e8d5b75559d` |
 | Divergence before push | `origin/main...main` = `0 1` |
-| Push | `git push origin main` succeeded; no force-push used. |
+| First push | `git push origin main` succeeded; no force-push used. |
 | Remote note | GitHub reported the push bypassed the required `Classroom Truth Gates` status check expectation. |
-| Verification after fetch | `main` and `origin/main` both resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`. |
+| Verification after first fetch | `main` and `origin/main` both resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`. A later doc-only closeout commit may advance both refs after this row. |
