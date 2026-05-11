@@ -48,6 +48,8 @@
         "ide:gate:ece141-counter-clock-export": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-counter-clock-export.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-counter-compare-pass": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-counter-compare-pass.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-map-pins-recovery": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-map-pins-recovery.spec.ts --project=chromium --retries=0",
+        "ide:gate:ece141-project-persistence": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-import-export-recovery.spec.ts --project=chromium --grep @project-persistence --retries=0",
+        "ide:gate:ece141-import-export-recovery": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-import-export-recovery.spec.ts --project=chromium --grep @import-export-recovery --retries=0",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",
         "lint:packages": "pnpm --filter @redbyte/rb-* run lint 2>&1 || true",
