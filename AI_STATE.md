@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-11 (merge: import export recovery hardening)
+
+**Subsystem:** RedByte ECE141 Import, Export, project persistence, recovery, and mainline validation.
+
+**Changes:**
+- Merged `origin/product/import-export-recovery-1` into `main` with merge commit `0800a3f906c023498b211cdb926b3d3125811ce6`.
+- Added `docs/release/course-edition/18-import-export-recovery-merge.md`.
+- Updated the course-edition validation log with merged-main product gate results.
+
+**Product stack now on local `main`:**
+- Browser proof for project persistence and stale evidence handling.
+- Browser proof for Vivado project ZIP download containing `project.rbproj.json`.
+- Manifest-backed Import restore path for RedByte project state.
+- Corrupt manifest Import recovery that does not replace the current project.
+- Imported Verify PASS is not trusted until Compare is rerun.
+- Export and Import behavior remains E0-only. It does not prove Vivado build, board programming, or observed board behavior.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, the focused 73-test import/export/project-format and Verify/Hardware/Export Vitest suite, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits. `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Safety:** No product feature work, repo cleanup, MarcusRPI work, install-script work, manual generation, Vivado artifact correctness work, or typecheck/build redirect cleanup was performed. E0/E1/E2/E3 boundaries remain distinct.
+
+**Known failures:** Full workspace `pnpm typecheck` remains red in `@redbyte/rb-lab-engine` / pulled `rb-logic-core`. `pnpm build:unified` was not run in this task; the known `/os/` redirect contract drift remains release-process debt.
+
+**Next recommended task:** Vivado artifact correctness sprint for generated VHDL/XDC/Tcl/manifest across Logic Gates, Half Adder, and 2-Bit Up Counter, with E0-only claims unless separate Vivado evidence exists.
+
 ## Change Log 2026-05-11 (test: add import export recovery gates)
 
 **Subsystem:** RedByte ECE141 Import, Export, project persistence, and recovery.
