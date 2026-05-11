@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-11 (infra(marcus): harden Pi chat timeout and doctor ping gate)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Verified Marcus remained reachable at `192.168.1.103` on SSH and HTTP after the v0.5 sync; `redbyte-pi.local` also resolved to `192.168.1.103`.
+- Inspected `redbyte-pi-node.service` and recent logs; the service was active, recent restarts were clean, and no Node stack traces appeared after the final restart.
+- Confirmed `/dashboard-data` uses compact local status, omits Ollama tags/tool probes, and returns a bounded response rather than a heavy `/health` snapshot.
+- Added a timeout to the `/chat` Ollama fallback request with `AbortSignal.timeout(CHAT_OLLAMA_TIMEOUT_MS)` and applied a tighter chat response byte limit.
+- Updated `marcus-doctor.sh` so `/ping` is a fail-fast `200` liveness gate before heavier endpoint checks.
+
+**Safety:** No larger model pull, arbitrary shell execution, full repo clone on the Pi, token exposure, Marcus rename, or dashboard overbuild was added. The post-success backup tarball excludes `marcus.token`.
+
+**Evidence:** TDD source-contract checks failed before the timeout and doctor ping-gate changes, then passed after patching. `redbyte-pi-node.service` restarted active with `MainPID=9864`. Validated `/ping`, `/version`, `/health`, `/product-state`, `/next-work`, `/dashboard-data`, unauthenticated `/chat` returning `401`, authenticated structured `/chat`, `marcus-doctor.sh`, and `node --check server.mjs`. Post-success Pi backup: `/home/pi/redbyte-pi-marcus-backup-20260511-031104.tar.gz`.
+
 ## Change Log 2026-05-10 (chore(session): add RedByte start packet)
 
 **Subsystem:** repo hygiene + session-start operating loop tooling
