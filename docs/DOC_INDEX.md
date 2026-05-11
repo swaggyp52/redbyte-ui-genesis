@@ -45,30 +45,9 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | File | Purpose |
 |------|---------|
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, live blockers, and already-closed items that should not be reopened casually |
-| [product/RED_BYTE_AGENT_OPERATING_RULES.md](./product/RED_BYTE_AGENT_OPERATING_RULES.md) | Canonical working rules for Claude/Copilot sessions |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term queue with done criteria and commit expectations |
-| [product/RED_BYTE_OBSIDIAN_SYNC_RULES.md](./product/RED_BYTE_OBSIDIAN_SYNC_RULES.md) | Boundary and sync rules between repo docs and the Obsidian vault |
-| [product/RED_BYTE_WORK_DRIVER.md](./product/RED_BYTE_WORK_DRIVER.md) | Local driver contract for turning the control docs and git state into bounded work packets |
-| [product/RED_BYTE_LOCAL_AGENT_LAB.md](./product/RED_BYTE_LOCAL_AGENT_LAB.md) | Spec and operating guide for the Ollama-backed local agent harness (phases 0–2 live) |
-| [product/RED_BYTE_OLLAMA_LOCAL_SETUP.md](./product/RED_BYTE_OLLAMA_LOCAL_SETUP.md) | Practical Windows setup and troubleshooting guide for local Ollama runtime with RedByte agent commands |
-| [product/RED_BYTE_AGENT_CAPABILITY_MODEL.md](./product/RED_BYTE_AGENT_CAPABILITY_MODEL.md) | Trust and capability model defining what agents are allowed to do and how trust is earned across phases |
 | [product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md](./product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md) | Curated student learning path through existing examples — curation spec, no new circuits |
-| [product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md](./product/RED_BYTE_OBSIDIAN_MEMORY_BRIDGE.md) | Repo-local Obsidian + Ollama memory bridge operating guide for indexing, search, traceability, sync plans, and next-product context |
-| [product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md](./product/RED_BYTE_PRODUCT_TRACEABILITY_MODEL.md) | Claim-to-docs/code/tests/gates evidence model for RedByte product traceability |
-| [product/RED_BYTE_AGENT_CONTROL_LOOP.md](./product/RED_BYTE_AGENT_CONTROL_LOOP.md) | Practical control-loop command layer that reconciles work-driver, memory, git history, and traceability before product work starts |
-| [product/RED_BYTE_HQ_LOCAL_AGENT.md](./product/RED_BYTE_HQ_LOCAL_AGENT.md) | Standalone Marcus HQ local command-center contract, endpoint scope, tool-assisted chat modes, offline behavior, and safety boundaries |
-| [product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md](./product/RED_BYTE_MARCUS_SOURCE_GROUNDING.md) | Marcus source-grounding contract for structured sources, evidence level, confidence, degraded fallback labeling, and HQ display rules |
-| [product/RED_BYTE_MARCUS_RUNTIME.md](./product/RED_BYTE_MARCUS_RUNTIME.md) | Marcus runtime launcher and health-recovery contract for `rb:marcus:start|status|doctor|stop`, standalone companion URL, runtime state files, and safety boundaries |
-| [product/RED_BYTE_MARCUS_SYNC.md](./product/RED_BYTE_MARCUS_SYNC.md) | Repo-side Marcus Sync contract for bounded product-state packets posted to the Marcus Pi Node without cloning the repo onto the Pi |
-| [product/RED_BYTE_OPERATING_LOOP.md](./product/RED_BYTE_OPERATING_LOOP.md) | Session operating-loop contract linking start packet, focused work, closeout, and Marcus sync through `rb:session:start|status|close|test` |
-| [product/RED_BYTE_MARCUS_AGENT_ENGINE.md](./product/RED_BYTE_MARCUS_AGENT_ENGINE.md) | Marcus Agent Engine v1 architecture, capability levels, tool registry policy, and coding-plan safety contract |
-| [product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md](./product/RED_BYTE_MARCUS_WORKBENCH_HISTORY.md) | Marcus workbench history contract — packet types, field schema, storage rules, GET /packets endpoints, UI history panel, trust/safety rules |
-| [product/RED_BYTE_MARCUS_SESSION_CONSOLE.md](./product/RED_BYTE_MARCUS_SESSION_CONSOLE.md) | Marcus session console contract — event types, JSONL store, GET /session/events endpoint, UI console panel rules |
-| [product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md](./product/RED_BYTE_MARCUS_OPERATOR_WORKBENCH.md) | Marcus operator workbench contract for packet detail, source preview, task queue, bench timeline, and safety boundaries |
-| [product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md](./product/RED_BYTE_MARCUS_CODE_INTELLIGENCE.md) | Marcus read-only code intelligence and patch-proposal safety contract for allowlisted file search, bounded previews, and proposal-only artifacts |
-| [product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md](./product/RED_BYTE_PRODUCT_FEEDBACK_LOOP.md) | Product feedback interpretation model for preserving raw intent and preventing overbuilt agent translations |
-| [product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md](./product/RED_BYTE_PRODUCT_PROBLEM_INTAKE.md) | Operating guide for `rb:problem:*` intake, triage, trace, prompt, and closeout packets |
-| [product/RED_BYTE_PUBLIC_START_PATH.md](./product/RED_BYTE_PUBLIC_START_PATH.md) | Public `/start.html` doorway contract for product explanation, local setup, standalone Marcus companion startup, Vivado/Basys3 boundaries, and evidence honesty |
+| [product/RED_BYTE_PUBLIC_START_PATH.md](./product/RED_BYTE_PUBLIC_START_PATH.md) | Public `/start.html` doorway contract for product explanation, local setup, Vivado/Basys3 boundaries, and evidence honesty |
 
 ---
 
@@ -183,16 +162,6 @@ Default agent context excludes these docs unless the task is explicitly about hi
 
 ---
 
-## Obsidian Engineering Brain
-
-The Obsidian vault in the repo root (`01 Dashboard/` through `10 Reference/`) is the active working memory for engineering state. Entry point:
-
-- `01 Dashboard/RedByte Engineering Brain.md` — master dashboard
-- `08 Agents + Prompts/Canonical Notes Policy.md` — which notes are source of truth
-- `03 Architecture/Note Schema.md` — metadata schema for all vault notes
-
----
-
 ## Package Documentation
 
 The primary package under active development is `packages/rb-apps`. Other packages:
@@ -208,4 +177,4 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 ---
 
-*Maintained by: Connor Angiel + Claude agents*
+*Maintained by: Connor Angiel*

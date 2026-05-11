@@ -34,14 +34,13 @@ const requiredSnippets = [
   'E1',
   'E2',
   'E3',
-  'pnpm rb:marcus:start',
-  'Marcus is a separate local companion command center',
-  'open the Marcus URL printed by the command',
+  'Project -> Design -> Verify',
+  'Map Pins -> Export -> Vivado',
   'pnpm dev',
   'AMD Vivado 2024.2',
   'A physical Basys3 board is required for E2 programming and E3 observation.',
   'RedByte is not a toy simulator and not a Vivado replacement.',
-  'RedByte source and docs are the truth.',
+  'RedByte source and maintained course docs are the truth.',
 ];
 
 for (const snippet of requiredSnippets) {
@@ -55,6 +54,8 @@ const forbiddenClaims = [
   'replaces Vivado',
   'board behavior proven by programming',
   'switch to HQ in the IDE',
+  'pnpm rb:marcus:start',
+  'Marcus companion',
 ];
 
 for (const claim of forbiddenClaims) {

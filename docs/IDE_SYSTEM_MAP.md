@@ -39,7 +39,6 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
 | Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, inspect an authoritative board resource, click a board control, and see the saved board control plus physical package pin. Hardware now behaves like a simplified Basys3 board planner with clock truth, grouped resource catalog, and an XDC binding preview tied to the same saved mapping Export reads. |
 | Import | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Vivado ZIP / HDL+XDC import pipeline |
-Marcus HQ is not an IDE surface. It is a separate local companion served by `scripts/rb-hq-server.mjs` and launched with `pnpm rb:marcus:start`.
 
 ### Shell chrome controls
 

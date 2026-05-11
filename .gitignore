@@ -29,16 +29,14 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-# .redbyte local run outputs — never commit these
-# Agent source files (prompts, templates, config examples) ARE tracked
+# .redbyte local run outputs - never commit these
 .redbyte/work/
-.redbyte/agent/runs/
+.redbyte/agent/
 .redbyte/bench/runs/
 .redbyte/course-edition/
 .redbyte/pi-session-room/
 .redbyte/product-immersion/
 .redbyte/session/
-.redbyte/agent/config.json
 .redbyte/**/rooms.json
 .redbyte/**/registry.json
 .redbyte/**/connection-profile*.json

@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-05-11 (chore: remove Marcus RPI HQ work from RedByte)
+
+**Subsystem:** Repo boundary, Marcus/RPI/HQ/local-agent separation, RedByte main sync prep.
+
+**Remote authorization note:** User explicitly authorized one-time remote sync of cleaned RedByte `main` to `origin/main` for this task. Force-push remains disallowed.
+
+**Changes:**
+- Preserved tracked Marcus/RPI/HQ/Ollama/Obsidian/local-agent/control-loop material under `C:\MarcusRPI\imports\redbyte-tracked-marcus-rpi-hq-migration-20260511-1631`.
+- Created MarcusRPI local commits `b8834e1`, `6e9b101`, and `5984a4e`; MarcusRPI was not pushed anywhere.
+- Removed migrated RedByte tracked material: `.redbyte/agent/**`, Marcus/HQ/local-agent scripts, local-agent product docs, HQ IDE surface source/tests/CSS, and package scripts for `rb:session:*`, `rb:work:*`, `rb:agent:*`, `rb:memory:*`, `rb:control:*`, `rb:problem:*`, `rb:hq:*`, and `rb:marcus:*`.
+- Updated the public start page and start-page contract/test so RedByte exposes the ECE141 course IDE workflow only and rejects Marcus companion command copy.
+- Added `docs/release/course-edition/13-marcus-rpi-hard-separation-and-main-sync.md`; marked the previous partial separation doc as superseded.
+- Updated `.gitignore` to ignore `.redbyte/agent/` fully.
+
+**Safety:** Project, Design, Verify, Hardware/Map Pins, Export, Import, starters, Basys3/Vivado export source, VHDL/XDC/Tcl code, and E0/E1/E2/E3 evidence boundaries were kept. `api/server.mjs`, FPGA board registry source, and mixed `artifacts/**` remain for separate human-review cleanup.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `pnpm rb:site:start:test`, and `git diff --check` passed before final commit. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Next recommended task:** Push cleaned `main` to `origin/main` after the separation commit, then handle the pre-existing `rb-lab-engine` / `rb-logic-core` type-boundary drift as a separate task.
+
 ## Change Log 2026-05-11 (merge: local main course edition sync)
 
 **Subsystem:** Local main synchronization, course-edition readiness branch integration, remote policy boundary.

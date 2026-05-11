@@ -109,6 +109,6 @@ Supporting truths:
 If the working tree is understood and isolated, the first real product priority is:
 
 1. Finish honest proof closure: `golden` E3, custom-row E2/E3, certification matrix.
-2. If the connected bench is unavailable, run `pnpm rb:control:next` and use its source-backed packet to choose the next non-bench product slice without reopening completed queue items.
+2. If the connected bench is unavailable, choose the next non-bench product slice from `docs/ACTIVE_WORK.md`, this current-truth file, and the course-edition release docs without reopening completed queue items.
 
 Do not skip to website, pilot, broad example expansion, or stale learning-path work while proof closure remains open or board-gated.

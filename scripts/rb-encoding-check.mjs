@@ -23,7 +23,6 @@ const ALLOWED_EXTENSIONS = new Set(['.md', '.mjs']);
 const EXCLUDE_DIRS = new Set([
   '.git',
   'node_modules',
-  '.redbyte/agent/runs',
   '.redbyte/work',
   'dist',
   'coverage',

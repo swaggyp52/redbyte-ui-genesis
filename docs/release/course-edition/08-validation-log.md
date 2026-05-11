@@ -91,3 +91,20 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `pnpm rb:encoding:check` | Passed on local main | ~1s | No mojibake markers found. | N/A | No action. |
 | `git diff --check` | Passed on local main | <1s | No whitespace errors. | N/A | No action. |
 | `pnpm typecheck` | Failed on local main | ~7s | Same pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass. | Pre-existing/out of task scope | Do not fix in repo separation task. |
+| `git branch backup/pre-marcus-rpi-hard-separation` | Passed | <1s | Safety branch created at `aebc908fd250be3359bd640035a0bc67c5128896`. | N/A | No action. |
+| Copy tracked Marcus/RPI/HQ/local-agent material to `C:\MarcusRPI` | Passed | ~5s | 84 RedByte-relative files copied into `C:\MarcusRPI\imports\redbyte-tracked-marcus-rpi-hq-migration-20260511-1631`; manifest created and updated. | N/A | Remove copied material from RedByte after verification. |
+| `git -C C:\MarcusRPI commit ...` | Passed | <1s each | Created MarcusRPI local commits `b8834e1`, `6e9b101`, and `5984a4e`; no remote push attempted. | N/A | Keep MarcusRPI local unless user requests a remote. |
+| `pnpm rb:doc:validate` | Passed before final docs | ~1s | 36 passed, 0 failed after removing package docs/scripts references. | N/A | Rerun after validation log and AI_STATE updates. |
+| `pnpm rb:encoding:check` | Passed before final docs | ~1s | No mojibake markers found. | N/A | Rerun after validation log and AI_STATE updates. |
+| `pnpm install --frozen-lockfile` | Passed | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed | ~18s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~36s | Logic Gates starter -> Verify Compare -> Export ready gate still passes after hard separation. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed | ~86s | Four product immersion workflows still pass after hard separation. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed | ~10s | 8 starter-load tests passed. | N/A | No action. |
+| `git diff --check` | Passed before final docs | <1s | No whitespace errors. | N/A | Rerun after final docs. |
+| `pnpm typecheck` | Failed | ~7s | Same pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` schema/test-fixture/type-boundary drift. | Pre-existing/out of task scope | Keep as separate type-boundary cleanup task. |
+| `pnpm rb:site:start:test` | Failed before fix | ~1s | Test still required old footer string `RedByte source and docs are the truth.` after public start copy changed to course-doc wording. | Introduced by this cleanup | Updated test required snippet to match the new RedByte-only start page copy. |
+| `pnpm rb:site:start:test` | Passed | ~1s | Public start page test reported ok and now treats `pnpm rb:marcus:start` / `Marcus companion` as forbidden snippets. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed after final docs | ~1s | 36 passed, 0 failed after `AI_STATE.md`, validation log, and hard-separation doc updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after final docs | ~1s | No mojibake markers found after final docs. | N/A | No action. |
+| `git diff --check` | Passed after final docs | <1s | No whitespace errors after final docs. | N/A | Ready to commit RedByte hard separation. |

@@ -2,6 +2,8 @@
 
 Date: 2026-05-11
 
+Status: superseded by `docs/release/course-edition/13-marcus-rpi-hard-separation-and-main-sync.md`, which completed the tracked Marcus/RPI/HQ/local-agent migration after user approval.
+
 Scope: preserve Marcus/Raspberry Pi/local-agent spillover in `C:\MarcusRPI`, clean the RedByte working tree, and prepare RedByte course-edition work for main synchronization. This is not a RedByte product feature sprint.
 
 ## Phase 0 - Preflight and Safety Snapshot

@@ -3,7 +3,7 @@
 // - exactly 5 nav buttons: project, design, verify, hardware, export
 // - no import navigation button (Import is now a utility action, not a stage)
 // - no program navigation button (Program is an external handoff, not a stage)
-// - no HQ navigation button (Marcus is a separate local companion app)
+// - no HQ navigation button in the course-product IDE
 
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
