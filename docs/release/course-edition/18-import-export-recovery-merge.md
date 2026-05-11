@@ -68,4 +68,6 @@ No active Marcus/HQ/local-agent package scripts, `.redbyte/agent` tracked files,
 
 ## Closeout
 
-Final `main` commit before push will include this closeout record and the validation-log/AI_STATE updates. The next recommended sprint is Vivado artifact correctness for generated VHDL/XDC/Tcl/manifest across the certified starter set, preserving E0-only claims unless separate Vivado evidence exists.
+`git push origin main` succeeded with no force-push. GitHub reported a bypass of the required `Classroom Truth Gates` status check expectation; this remains release-process debt until the remote status check is enforced normally.
+
+The next recommended sprint is Vivado artifact correctness for generated VHDL/XDC/Tcl/manifest across the certified starter set, preserving E0-only claims unless separate Vivado evidence exists.
