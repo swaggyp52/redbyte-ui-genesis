@@ -227,6 +227,11 @@ function buildReadme(
   lines.push('- `vivado_import.tcl`: creates the Vivado project from these sources');
   lines.push('- `testbench.vhd`: simulation source (when verify vectors are present)');
   lines.push('');
+  lines.push('## Evidence boundary');
+  lines.push('This export is E0 package evidence only.');
+  lines.push('It does not prove Vivado build/bitstream success, board programming, or observed hardware behavior.');
+  lines.push('Collect E1/E2/E3 evidence separately after running Vivado and checking the physical board.');
+  lines.push('');
   lines.push('## Vivado quick steps');
   lines.push('1. Unzip and extract to a short path (e.g. C:\\rb\\) — Vivado warns on paths > 80 chars.');
   lines.push('2. Run from the extracted folder:');

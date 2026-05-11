@@ -4,6 +4,7 @@ import type { RBProject } from '../../export/projectFormat';
 import { stableStringify } from '../../export/stableStringify';
 import { compareCodepoint } from '../../export/codepointSort';
 import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
+import { resolveBasys3PackagePin } from '../../fpga/boards/basys3/basys3Pins';
 import { deriveIoSignalRoles } from './ioSignalRoles';
 import { simulateExpectedIoRows } from './sim/simEngine';
 import type { SimulatedExpectedIoRow } from './sim/simTypes';
@@ -29,6 +30,7 @@ export interface BringUpExpectedIoSignal {
   signal: string;
   direction: 'in' | 'out';
   pin: string;
+  packagePin: string;
   values: Array<{
     tick: number;
     expected: '0' | '1' | '-';
@@ -38,6 +40,7 @@ export interface BringUpExpectedIoSignal {
 export interface BringUpExpectedIoReport {
   schemaVersion: 'rb.expected-io.v1';
   board: 'basys3';
+  evidenceLevel: 'E0';
   source: 'verify-run' | 'project-vectors';
   generatedAtIso: string;
   verifyHash?: string;
@@ -219,6 +222,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
       signal: signalName,
       direction: 'out' as const,
       pin: row.pin,
+      packagePin: resolveBasys3PackagePin(row.pin) ?? row.pin,
       values,
     };
   });
@@ -226,6 +230,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
   return {
     schemaVersion: 'rb.expected-io.v1',
     board: 'basys3',
+    evidenceLevel: 'E0',
     source: hasVerifyRows ? 'verify-run' : 'project-vectors',
     generatedAtIso:
       input.verifyGeneratedAtIso ??
@@ -261,6 +266,7 @@ function buildBringUpMarkdown(input: {
     '# Basys3 Bring-Up',
     `- Project: ${input.projectName}`,
     '- Board: Basys3 (xc7a35tcpg236-1)',
+    '- Evidence Level: E0 export package only',
     `- Export Hash: ${input.exportHash ?? 'pending'}`,
     `- Verify Hash: ${input.verifyHash ?? 'pending'}`,
     '',

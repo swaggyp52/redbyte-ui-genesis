@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-05-11 (test: add vivado artifact correctness gates)
+
+**Subsystem:** RedByte ECE141 Vivado handoff artifacts, E0 export package correctness.
+
+**Branch:** `product/vivado-artifact-correctness-1` based on `b5e60b4cbb9d5f9aecb5d1339f56dee65c619a75`.
+
+**Artifact inventory summary:**
+- Browser-exported Vivado project ZIPs for Logic Gates, Half Adder, and 2-Bit Up Counter.
+- Each ZIP contained `project.rbproj.json`, `README.txt`, `vivado_import.tcl`, `.xpr`, `top.vhd`, `top.xdc`, `testbench.vhd`, `BRINGUP.md`, `EXPECTED_IO.json`, and `program_and_test.tcl`.
+- Tcl and `.xpr` top modules matched the generated VHDL entity for each starter.
+- XDC package pins matched certified Basys3 mappings, including Half Adder `SW1_B=V16` and Counter `CLK100MHZ=W5`.
+
+**Findings:**
+- Generated VHDL for Logic Gates, Half Adder, and 2-Bit Up Counter matched the certified starter semantics inspected in the browser-exported packages.
+- Counter VHDL uses rising-edge `CLK100MHZ`, enable on `SW`, and reset gating through `BTNC`, consistent with the certified Compare sequence.
+- Vivado project README output did not explicitly state the E0-only evidence boundary before this sprint.
+- `EXPECTED_IO.json` did not carry an explicit evidence level and did not distinguish board aliases from physical package pins.
+- `where.exe vivado` did not find Vivado on PATH, so no E1 exploratory Vivado import/build was attempted.
+
+**Changes:**
+- Added browser gate `pnpm -s ide:gate:ece141-vivado-artifacts`.
+- Added `tests/e2e/ece141-vivado-artifacts.spec.ts`.
+- Added explicit E0-only evidence wording to generated Vivado project-folder README output and flat Basys3 import-kit README output.
+- Added `evidenceLevel: "E0"` to `EXPECTED_IO.json`.
+- Added `packagePin` to each `EXPECTED_IO.json` signal while preserving the existing `pin` field.
+- Updated focused bring-up artifact tests for E0 and package-pin parity.
+- Added `docs/release/course-edition/19-vivado-artifact-correctness.md` and updated the course-edition validation log.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-vivado-artifacts`, the focused 30-test artifact/import/export/counter/clock-policy Vitest suite, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before final `AI_STATE.md` and validation-log updates. Full `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Safety:** This sprint proves E0 export-package structure and semantic parity only. It does not prove Vivado build/bitstream evidence, board programming evidence, or observed physical board behavior.
+
+**Remaining blockers:**
+- P1: Full workspace `pnpm typecheck` remains red in `@redbyte/rb-lab-engine` / pulled `rb-logic-core`.
+- P1: `pnpm build:unified` remains red on the known `/os/` redirect contract drift.
+- P2: No Vivado batch import/build was run because Vivado is not available on PATH; E1 certification remains separate.
+
+**Next recommended task:** Merge the Vivado artifact correctness branch to `main` after review, then run a focused full-workspace typecheck drift cleanup sprint.
+
 ## Change Log 2026-05-11 (merge: import export recovery hardening)
 
 **Subsystem:** RedByte ECE141 Import, Export, project persistence, recovery, and mainline validation.
