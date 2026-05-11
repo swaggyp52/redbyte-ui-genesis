@@ -829,19 +829,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           return 'Draft export available';
         case 'export-stale':
         case 'export-missing':
-          return 'Export ready to build';
+          return 'E0 export package ready to build';
         case 'mapping-review':
-          return 'Export ready - mapping review pending';
+          return 'E0 export package ready - mapping review pending';
         case 'ready':
-          return 'Trusted export ready';
+          return 'E0 export package ready';
         default:
           return 'Export status';
       }
     }, [downloadDone, handoffTruth.condition, projectSlug]);
 
-    const surfaceStatusDetail = downloadDone
-      ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
-      : handoffTruth.message;
+    const surfaceStatusDetail = useMemo(() => {
+      if (downloadDone) {
+        return 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager outside RedByte.';
+      }
+
+      switch (handoffTruth.condition) {
+        case 'export-stale':
+        case 'export-missing':
+        case 'ready':
+          return `${handoffTruth.message} This is E0 export-package evidence only; Vivado build, board programming, and observed behavior remain external.`;
+        default:
+          return handoffTruth.message;
+      }
+    }, [downloadDone, handoffTruth.condition, handoffTruth.message]);
 
     /** Summary-state title: explains the package handoff without repeating the command-strip status. */
     const summaryStateTitle = useMemo(() => {
@@ -858,13 +869,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Vivado handoff package generated';
         case 'export-stale':
-          return 'Previous package needs rebuild';
+          return 'Previous E0 package needs rebuild';
         case 'export-missing':
-          return 'Vivado package ready to build';
+          return 'E0 Vivado package ready to build';
         case 'mapping-review':
-          return 'Vivado package generated with mapping review pending';
+          return 'E0 Vivado package generated with mapping review pending';
         case 'ready':
-          return 'Trusted Vivado handoff ready';
+          return 'E0 Vivado handoff ready';
         default:
           return 'Vivado handoff status';
       }
@@ -890,11 +901,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Trace-only evidence is observation, not proof. Run Compare before calling the package trusted.';
         case 'export-stale':
-          return 'Rebuild the package so the downloadable Vivado project matches the current design.';
+          return 'Rebuild the E0 package so the downloadable Vivado project matches the current design. E1/E2/E3 still require external Vivado and board evidence.';
         case 'export-missing':
-          return 'Build the Vivado project package after checking mapping, timing, and Verify evidence.';
+          return 'Build the E0 Vivado project package after checking mapping, timing, and Verify evidence. E1/E2/E3 still require external Vivado and board evidence.';
         case 'ready':
-          return 'Current Verify evidence, mapping, and generated files agree for Vivado handoff.';
+          return 'Current Verify evidence, mapping, and generated files agree for an E0 Vivado handoff; Vivado build, programming, and observation remain external.';
         default:
           return handoffTruth.message;
       }
@@ -918,13 +929,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Run Compare checks in Verify to generate comparison evidence';
         case 'export-stale':
-          return 'Rebuild the current bundle';
+          return 'Rebuild the current E0 bundle';
         case 'export-missing':
-          return 'Build the first Vivado package';
+          return 'Build the first E0 Vivado package';
         case 'mapping-review':
           return 'Complete mapping review in Map Pins, then build';
         case 'ready':
-          return 'Download trusted Vivado package and program board';
+          return 'Download E0 Vivado package for external build';
         default:
           return handoffTruth.title;
       }
@@ -941,7 +952,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'design-blocked':
         case 'export-stale':
         case 'export-missing':
-          return handoffTruth.message;
+          return 'Build or rebuild the E0 export bundle for Vivado synthesis. RedByte does not claim Vivado build, board programming, or observed board behavior.';
         case 'verify-not-run':
           return 'Switch to Verify, author or generate test stimulus, and run Compare checks to lock in expected behavior.';
         case 'verify-stale':
@@ -951,7 +962,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Return to Verify and execute Compare checks (not Observe only) to generate assertion-based proof.';
         case 'ready':
-          return 'The export bundle is ready for Vivado synthesis. Download the kit and open the project file.';
+          return 'The E0 export bundle is ready for Vivado synthesis. Download the kit and run synthesis, implementation, bitstream, programming, and observation outside RedByte.';
         default:
           return handoffTruth.message;
       }
@@ -1586,11 +1597,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             : exportBlocked
               ? 'Export Blocked'
               : handoffTruth.condition === 'export-missing'
-                ? 'Export Ready to Build'
+                ? 'E0 Export Ready to Build'
                 : handoffTruth.condition === 'export-stale'
-                  ? 'Export Stale'
+                  ? 'E0 Export Stale'
                   : exportTrusted
-                    ? 'Export Ready'
+                    ? 'E0 Export Ready'
                     : 'Export Needs Review'
         }
         description={

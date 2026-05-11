@@ -8,7 +8,7 @@ import {
   type SimulationModel,
   type SimulationModelPortRef,
 } from '@redbyte/rb-logic-core';
-import type { IoMapping, TestVector } from '@redbyte/rb-utils';
+import { CLOCKED_MACRO_SEQUENCE, type IoMapping, type TestVector } from '@redbyte/rb-utils';
 import { canonicalizeSemanticCircuit } from '../../../circuit/semanticCircuit';
 import { digestValue } from '../../../utils/digest';
 import {
@@ -16,7 +16,6 @@ import {
   INTERNAL_SIM_CLOCK_NAME,
   type VerifyScheduleContract,
 } from '../../../fpga/boards/basys3/verifySchedule';
-import { getClockHelperValueForTick } from '../clockAuthority';
 import { adaptIrDiagnostic } from '../diagnostics';
 import {
   getCanonicalIoSignalKey,
@@ -623,8 +622,6 @@ function simulateVectorCasesFromModel(
     scheduleContract.schedule === 'clocked_macro'
       ? resolveClockNodeIdFromModel(model, ioRows, scheduleContract)
       : undefined;
-  const usesInjectedClock =
-    scheduleContract.schedule === 'clocked_macro' && scheduleContract.needsSimClockInjection;
   let combinationalTick = 0;
   const sortedVectors = [...vectors]
     .map((vector, index) => ({
@@ -649,7 +646,11 @@ function simulateVectorCasesFromModel(
   for (const entry of sortedVectors) {
     const vectorInputs = normalizeVectorInputMap(entry.vector.inputs ?? {});
     for (const binding of inputBindings) {
-      if (usesInjectedClock && clockNodeId && binding.nodeId === clockNodeId) {
+      if (
+        scheduleContract.schedule === 'clocked_macro' &&
+        clockNodeId &&
+        binding.nodeId === clockNodeId
+      ) {
         continue;
       }
       const value = resolveBoundInputValue(binding.lookupKeys, vectorInputs);
@@ -661,7 +662,6 @@ function simulateVectorCasesFromModel(
       scheduleContract.schedule === 'clocked_macro'
         ? executeClockedMacroVectorCase(engine, model, inputs, entry.tick, {
             clockNodeId,
-            usesInjectedClock,
           })
         : executeCombinationalVectorCase(engine, model, inputs, entry.tick, combinationalTick);
     if (scheduleContract.schedule !== 'clocked_macro') {
@@ -719,12 +719,28 @@ function executeClockedMacroVectorCase(
   sampleTick: number,
   input: {
     clockNodeId: string | undefined;
-    usesInjectedClock: boolean;
   }
 ): { engineTick: number; output: RuntimeSimTraceSample } {
-  if (input.usesInjectedClock && input.clockNodeId) {
-    inputs[input.clockNodeId] = getClockHelperValueForTick(sampleTick, 'alternating');
+  if (input.clockNodeId) {
+    let output: RuntimeSimTraceSample | null = null;
+    for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
+      inputs[input.clockNodeId] = clockValue;
+      applyInputsToEngine(engine, inputs);
+      engine.tick();
+      output = {
+        tick: sampleTick,
+        signals: normalizeSignalMap(engine, model),
+      };
+    }
+    return {
+      engineTick: sampleTick,
+      output: output ?? {
+        tick: sampleTick,
+        signals: normalizeSignalMap(engine, model),
+      },
+    };
   }
+
   applyInputsToEngine(engine, inputs);
   engine.tick();
 

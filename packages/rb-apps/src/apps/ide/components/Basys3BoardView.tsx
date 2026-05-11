@@ -158,7 +158,15 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
           strokeWidth={'CLK100MHZ' === highlightedAlias ? '2.4' : assignmentMode && isAllowed('CLK100MHZ', allowedAliases) ? '1.6' : '1'}
           className={'CLK100MHZ' === highlightedAlias ? 'map-hl' : undefined}
         />
-        <rect x="240" y="18" width="140" height="42" rx="8" fill="transparent" />
+        <rect
+          data-testid="ide-hw-map-clock-hit"
+          x="240"
+          y="18"
+          width="140"
+          height="42"
+          rx="8"
+          fill="transparent"
+        />
         <text x="310" y="36" fontFamily="IBM Plex Mono, monospace" fontSize="8"
           fill={labelFill('CLK100MHZ', mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
           textAnchor="middle" style={{ pointerEvents: 'none' }}>
@@ -278,7 +286,13 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               className={alias === highlightedAlias ? 'map-hl' : undefined}
             />
             {/* expanded hitbox */}
-            <circle cx={cx} cy={cy} r={16} fill="transparent" />
+            <circle
+              data-testid={`ide-hw-map-ld-${idx}-hit`}
+              cx={cx}
+              cy={cy}
+              r={16}
+              fill="transparent"
+            />
             <text x={cx} y={58} fontSize={7} fontFamily="IBM Plex Mono, monospace"
               fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
               textAnchor="middle" style={{ pointerEvents: 'none' }}>
@@ -300,7 +314,13 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             className={alias === highlightedAlias ? 'map-hl' : undefined}
           />
           {/* expanded hitbox */}
-          <circle cx={cx} cy={cy} r={18} fill="transparent" />
+          <circle
+            data-testid={`ide-hw-map-btn-${label.toLowerCase()}-hit`}
+            cx={cx}
+            cy={cy}
+            r={18}
+            fill="transparent"
+          />
           <text x={cx} y={cy + 22} fontSize={7} fontFamily="IBM Plex Mono, monospace"
             fill={labelFill(alias, mappedAliases, highlightedAlias, allowedAliases, assignmentMode)}
             textAnchor="middle" style={{ pointerEvents: 'none' }}>
@@ -329,7 +349,8 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
               className={alias === highlightedAlias ? 'map-hl' : undefined}
             />
             {/* expanded hitbox */}
-            <rect x={trackX - 8} y={trackY - 8} width={trackW + 16} height={trackH + 16}
+            <rect data-testid={`ide-hw-map-sw-${idx}-hit`}
+              x={trackX - 8} y={trackY - 8} width={trackW + 16} height={trackH + 16}
               rx={6} fill="transparent" />
             <text x={centerX} y={220} fontSize={7} fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"

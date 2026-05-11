@@ -67,6 +67,7 @@ export function detectVerifyClockPolicy(
   }
 
   const inputRows = input.ioRows.filter((row) => row.direction === 'in');
+  const resetSignalName = resolveResetSignalName(inputRows, scheduleContract);
   const boardClockRow = inputRows.find((row) => isAuthoritativeBoardClockRow(row));
   if (boardClockRow) {
     const binding = resolveBasys3SignalBinding(boardClockRow);
@@ -85,8 +86,8 @@ export function detectVerifyClockPolicy(
       periodNs: 10,
       boardAlias: binding?.alias ?? 'CLK100MHZ',
       packagePin: binding?.packagePin ?? BASYS3_CLOCK_PIN,
-      resetSignalName: scheduleContract.resetHint?.signalName,
-      resetBehavior: scheduleContract.resetHint?.signalName ? 'auto-sequence' : 'none',
+      resetSignalName,
+      resetBehavior: resetSignalName ? 'auto-sequence' : 'none',
     };
   }
 
@@ -104,7 +105,7 @@ export function detectVerifyClockPolicy(
       dutyCycle: 0.5,
       runCycles: DEFAULT_AUTO_RUN_CYCLES,
       packagePin: manualClockRow.pin?.trim() || undefined,
-      resetSignalName: scheduleContract.resetHint?.signalName,
+      resetSignalName,
       resetBehavior: 'custom',
       manualWarning: DEFAULT_MANUAL_WARNING,
     };
@@ -125,8 +126,8 @@ export function detectVerifyClockPolicy(
       dutyCycle: 0.5,
       runCycles: DEFAULT_AUTO_RUN_CYCLES,
       periodTicks: readPeriodTicks(explicitClockNode.config),
-      resetSignalName: scheduleContract.resetHint?.signalName,
-      resetBehavior: scheduleContract.resetHint?.signalName ? 'auto-sequence' : 'none',
+      resetSignalName,
+      resetBehavior: resetSignalName ? 'auto-sequence' : 'none',
     };
   }
 
@@ -146,9 +147,9 @@ export function detectVerifyClockPolicy(
       startLevel: 0,
       dutyCycle: 0.5,
       runCycles: DEFAULT_AUTO_RUN_CYCLES,
-      resetSignalName: scheduleContract.resetHint?.signalName,
+      resetSignalName,
       resetBehavior:
-        scheduleContract.resetHint?.signalName && !manualLike ? 'auto-sequence' : 'none',
+        resetSignalName && !manualLike ? 'auto-sequence' : 'none',
       manualWarning: manualLike ? DEFAULT_MANUAL_WARNING : undefined,
     };
   }
@@ -174,10 +175,9 @@ export function detectVerifyClockPolicy(
     startLevel: 0,
     dutyCycle: 0.5,
     runCycles: DEFAULT_AUTO_RUN_CYCLES,
-    resetSignalName: scheduleContract.resetHint?.signalName,
+    resetSignalName,
     resetBehavior:
-      scheduleContract.resetHint?.signalName &&
-      scheduleContract.timingMode !== 'manual_event_driven_lab'
+      resetSignalName && scheduleContract.timingMode !== 'manual_event_driven_lab'
         ? 'auto-sequence'
         : 'none',
     manualWarning:
@@ -198,9 +198,8 @@ export function materializeVectorsForClockPolicy(input: {
   }
 
   const inputRows = input.ioRows.filter((row) => row.direction === 'in');
-  const editableInputKeys = inputRows
-    .filter((row) => !matchesClockSignal(row, policy))
-    .map((row) => row.id);
+  const editableInputRows = inputRows.filter((row) => !matchesClockSignal(row, policy));
+  const editableInputKeys = editableInputRows.map((row) => row.id);
   const resetRow = policy.resetSignalName
     ? inputRows.find((row) => matchesSignalName(row, policy.resetSignalName ?? ''))
     : undefined;
@@ -225,7 +224,18 @@ export function materializeVectorsForClockPolicy(input: {
 
     if (sourceVector) {
       for (const [key, value] of Object.entries(sourceVector.inputs ?? {})) {
-        if (policy.signalId && matchesSignalToken(key, policy.signalId)) continue;
+        const matchedRow = inputRows.find((row) => matchesSignalName(row, key));
+        if (
+          (policy.signalId && matchesSignalToken(key, policy.signalId)) ||
+          (matchedRow && matchesClockSignal(matchedRow, policy))
+        ) {
+          continue;
+        }
+        if (matchedRow && matchedRow.direction === 'in') {
+          clearSignalAliases(inputs, matchedRow);
+          inputs[matchedRow.id] = normalizeBit(value);
+          continue;
+        }
         inputs[key] = normalizeBit(value);
       }
     }
@@ -237,7 +247,7 @@ export function materializeVectorsForClockPolicy(input: {
     if (
       resetRow &&
       policy.resetBehavior === 'auto-sequence' &&
-      !Object.prototype.hasOwnProperty.call(sourceVector?.inputs ?? {}, resetRow.id)
+      !hasSignalInput(sourceVector?.inputs ?? {}, resetRow)
     ) {
       inputs[resetRow.id] = cycleIndex === 0 ? 1 : 0;
     }
@@ -255,6 +265,20 @@ export function materializeVectorsForClockPolicy(input: {
   }
 
   return vectors;
+}
+
+function resolveResetSignalName(
+  inputRows: readonly VerifyClockPolicyIoRow[],
+  scheduleContract: VerifyScheduleContract
+): string | undefined {
+  const hinted = scheduleContract.resetHint?.signalName?.trim();
+  if (hinted) {
+    return hinted;
+  }
+  const resetRow =
+    inputRows.find((row) => row.timingRole === 'reset') ??
+    inputRows.find((row) => isResetLike(readSignalLabel(row)) || isResetLike(row.id));
+  return resetRow ? readSignalLabel(resetRow) : undefined;
 }
 
 function findExplicitClockComponent(
@@ -320,7 +344,8 @@ function readSignalLabel(row: VerifyClockPolicyIoRow): string {
 function matchesSignalName(row: VerifyClockPolicyIoRow, signalName: string): boolean {
   return (
     matchesSignalToken(row.id, signalName) ||
-    matchesSignalToken(row.label, signalName)
+    matchesSignalToken(row.label, signalName) ||
+    matchesSignalToken(row.nodeId, signalName)
   );
 }
 
@@ -344,6 +369,16 @@ function isClockLike(value: string | undefined): boolean {
     normalized === 'sysclk' ||
     normalized.startsWith('clk_') ||
     normalized.startsWith('clock_')
+  );
+}
+
+function isResetLike(value: string | undefined): boolean {
+  const normalized = normalizeToken(value);
+  return (
+    normalized === 'rst' ||
+    normalized === 'reset' ||
+    normalized === 'clear' ||
+    normalized === 'clr'
   );
 }
 
@@ -385,6 +420,24 @@ function buildDefaultInputMap(keys: readonly string[]): Record<string, 0 | 1> {
     next[key] = 0;
   }
   return next;
+}
+
+function clearSignalAliases(
+  inputs: Record<string, 0 | 1>,
+  row: VerifyClockPolicyIoRow
+): void {
+  for (const key of Object.keys(inputs)) {
+    if (matchesSignalName(row, key)) {
+      delete inputs[key];
+    }
+  }
+}
+
+function hasSignalInput(
+  inputs: Record<string, unknown>,
+  row: VerifyClockPolicyIoRow
+): boolean {
+  return Object.keys(inputs).some((key) => matchesSignalName(row, key));
 }
 
 function nextTickAfter(vectors: readonly TestVector[]): number {

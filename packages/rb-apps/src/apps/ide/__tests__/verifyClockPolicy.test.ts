@@ -130,6 +130,61 @@ describe('verifyClockPolicy', () => {
     expect(vectors.slice(1).every((vector) => Object.keys(vector.expected).length === 0)).toBe(true);
   });
 
+  it('canonicalizes authored node-id inputs without leaving row-id defaults that override them', () => {
+    const policy: VerifyClockPolicy = {
+      signalId: 'clk',
+      signalLabel: 'CLK100MHZ',
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      overrideMode: 'auto',
+      autoRunEnabled: true,
+      activeEdge: 'rising',
+      startLevel: 0,
+      dutyCycle: 0.5,
+      runCycles: 3,
+      frequencyMHz: 100,
+      periodNs: 10,
+      boardAlias: 'CLK100MHZ',
+      packagePin: 'W5',
+      resetSignalName: 'BTNC',
+      resetBehavior: 'auto-sequence',
+    };
+
+    const vectors = materializeVectorsForClockPolicy({
+      vectors: [
+        { tick: 0, inputs: { clk_node: 0, en_node: 1, rst_node: 0 }, expected: { q0_out: 1 } },
+      ],
+      ioRows: [
+        { id: 'clk', label: 'CLK100MHZ', nodeId: 'clk_node', direction: 'in', pin: 'W5' },
+        { id: 'en', label: 'SW0', nodeId: 'en_node', direction: 'in', pin: 'V17' },
+        { id: 'rst', label: 'BTNC', nodeId: 'rst_node', direction: 'in', pin: 'U18' },
+        { id: 'q0', label: 'LD0', nodeId: 'q0_out', direction: 'out', pin: 'U16' },
+      ],
+      policy,
+    });
+
+    expect(vectors[0]?.inputs).toMatchObject({ clk: 0, en: 1, rst: 0 });
+    expect(vectors[0]?.inputs).not.toHaveProperty('clk_node');
+    expect(vectors[0]?.inputs).not.toHaveProperty('en_node');
+    expect(vectors[0]?.inputs).not.toHaveProperty('rst_node');
+  });
+
+  it('uses a reset-role IO row as the auto-clock reset fallback when structural reset detection is unavailable', () => {
+    const policy = detectVerifyClockPolicy({
+      ioRows: [
+        { id: 'clk', label: 'CLK100MHZ', direction: 'in', pin: 'W5', timingRole: 'clock' },
+        { id: 'rst', label: 'BTNC', direction: 'in', pin: 'U18', timingRole: 'reset' },
+        { id: 'q0', label: 'LD0', direction: 'out', pin: 'U16' },
+      ],
+      scheduleContract: makeClockedContract({ resetHint: undefined }),
+    });
+
+    expect(policy).toMatchObject({
+      resetSignalName: 'BTNC',
+      resetBehavior: 'auto-sequence',
+    });
+  });
+
   it('creates default auto board-clock cycles when no authored vectors exist yet', () => {
     const policy: VerifyClockPolicy = {
       signalId: 'clk',
