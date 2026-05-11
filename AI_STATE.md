@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-05-11 (chore: clean course edition package boundary)
+
+**Subsystem:** Course-edition repo safety, generated-output boundary, environment-file boundary.
+
+**Changes:**
+- Removed the tracked root `.env` from the git index while leaving the local file on disk and ignored.
+- Removed tracked generated coverage HTML under `coverage/**` from the git index.
+- Removed tracked local `apps/playground/dev-server.log` from the git index.
+- Updated `.gitignore` for real env files, safe env templates, coverage output, nested dev-server logs, and common Vivado/local FPGA build products.
+- Added `docs/release/course-edition/10-security-package-boundary-cleanup.md`.
+- Added a concrete GitHub course-facing boundary section to `docs/release/course-edition/02-final-package-boundary.md`.
+- Updated `docs/release/course-edition/08-validation-log.md`.
+
+**Safety:** No product source, UI behavior, launcher behavior, package dependency, evidence-tier language, Vivado/Basys3 readiness claim, stale docs, old OS-era material, Marcus/agent material, or mixed `artifacts/**` content was removed. The untracked `.redbyte/pi-session-room/` local folder was left untouched.
+
+**Evidence:** Baseline and final `pnpm -s ide:gate:ece141-starter-verify-export` passed. `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Secret/privacy review found no real tracked secret values; `.env` contained a non-secret local config value but was still removed from tracking because real env files do not belong in the public/course-facing repo. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift; `@redbyte/rb-fpga-toolchain` still passes before that failure point.
+
+**Next recommended task:** Student-safe Windows script layer: install/launch/doctor/update/clean-reset, with the existing ECE141 starter Verify -> Export gate kept as the browser workflow guard.
+
 ## Change Log 2026-05-11 (fix: stabilize starter workflow console warnings)
 
 **Subsystem:** ECE141 course starter workflow, runtime projection, Verify/Export browser gate.

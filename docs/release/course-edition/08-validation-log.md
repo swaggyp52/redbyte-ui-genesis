@@ -39,3 +39,12 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `pnpm --filter @redbyte/rb-fpga-toolchain typecheck` | Passed | ~3s | Final targeted typecheck passed. | N/A | No action. |
 | `pnpm build:unified` | Failed | ~145s | Playground build and merge completed; dist verification failed with `dist/_redirects contains root redirect to /os/`. | Pre-existing known build/redirect contract drift; previous AI_STATE already noted root redirect mismatch | Track separately from starter workflow stabilization. |
 | `git diff --check` | Passed | <1s | No whitespace errors. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed before cleanup | ~26s | Baseline Logic Gates starter Verify -> Export gate passed before package-boundary cleanup. | N/A | Keep as course workflow guard. |
+| `git diff --check` | Passed before cleanup | <1s | Baseline diff whitespace check passed before package-boundary cleanup. | N/A | No action. |
+| `pnpm install --frozen-lockfile` | Passed | ~2s | Lockfile is up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed | ~15s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~26s | Focused ECE141 starter Verify -> Export Playwright gate still passes after env/generated-output untracking. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed | ~1s | 36 passed, 0 failed. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed | ~1s | No mojibake markers found. | N/A | No action. |
+| `pnpm typecheck` | Failed | ~6s | `@redbyte/rb-fpga-toolchain` passed; workspace still fails in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` sources on stale schema/test fixture/type-boundary drift. | Pre-existing/out of sprint scope | Keep as next type-boundary cleanup task; this sprint changed no product TS/TSX code. |
+| `git diff --check` | Passed | <1s | No whitespace errors after package-boundary cleanup. | N/A | No action. |

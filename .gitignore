@@ -15,8 +15,10 @@ out/
 
 # Environment
 .env
+.env.local
 .env.*
 !.env.example
+!.env.template
 
 # System files
 .DS_Store
@@ -84,11 +86,13 @@ apps/playground_bak2/
 nul
 
 # Generated test/report outputs (local-only)
+coverage/
 verify-gates*.txt
 ui-dev-guards.txt
 test-results.txt
 test-results/
 playwright-report/
+**/dev-server.log
 
 # Instructor-side curriculum files (local-only, not source code)
 /labs/
@@ -124,6 +128,18 @@ archive/pdfs/basys3_rm*.pdf
 
 # Lab8 import fixture: full Vivado trees are local-only; tests use fixtures/.../sources/
 packages/rb-apps/src/fixtures/import/04-lab8-security-lock/lab8_security_lock_vivado/
+
+# Vivado/local FPGA build products
+.Xil/
+*.jou
+*.str
+*.xpr
+*.bit
+*.dcp
+*.wdb
+*.rpt
+*.runs/
+*.cache/
 
 # Obsidian vault local state
 .obsidian/

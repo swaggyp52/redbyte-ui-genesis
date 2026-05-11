@@ -20,6 +20,43 @@ The final public/course-facing GitHub repo should contain:
 | CI and package metadata | `package.json`, `pnpm-lock.yaml`, workspace/config files, CI config, lint/test/build configs. |
 | Intentional static assets | Assets used by the app or intentionally referenced by docs/QA. |
 
+## GitHub Course-Facing Boundary
+
+The public/course-facing GitHub repo should be a source repo for RedByte ECE141 Course Edition, not a dump of every local run, historical experiment, or generated release output.
+
+Must stay:
+
+- RedByte app source.
+- ECE141 IDE surfaces: Project, Design, Verify, Map Pins/Hardware, Export, and Import.
+- Digital logic source and runtime packages needed by the IDE.
+- Verification, starter-loading, save/load, and export source.
+- Basys3/Vivado handoff source for VHDL, XDC, Tcl, and project snapshots.
+- Tests and gates, including the ECE141 starter Verify -> Export Playwright gate.
+- Course starters and examples after they are labeled as supported, bridge-only, or experimental.
+- Install, launch, doctor, update, and reset scripts once implemented.
+- Maintained student, professor, release, current-truth, and known-limitation docs.
+- Safe templates such as `.env.example` and `.env.template`.
+- `pnpm-lock.yaml` and pnpm workspace metadata.
+
+Must not stay in the final course-facing repo:
+
+- Real `.env` files or local machine configuration.
+- Generated build/test outputs such as `dist/`, `build/`, `coverage/`, `playwright-report/`, `test-results/`, local dev-server logs, and Vivado run products.
+- Personal logs, private machine paths, student data, credentials, or private support traces.
+- Non-course OS-era product material unless it is explicitly required by current RedByte runtime or maintained course docs.
+- Stale planning dumps that contradict the current six-surface IDE/course edition.
+- Abandoned playgrounds and one-off debug artifacts.
+- Marcus/Ollama/MCP experiments in student-facing package output; if retained in the source repo, they must be clearly maintainer-only.
+
+Needs human approval before removal:
+
+- Large historical directories.
+- Anything possibly imported by active source or tests.
+- Old docs that may contain recoverable institutional knowledge.
+- Marcus/agent material.
+- `artifacts/**` because it currently mixes proof evidence, release bundles, logs, screenshots, and generated outputs.
+- `package-lock.json` because pnpm is authoritative but previous cleanup docs requested approval before removal.
+
 ## Development-Only: Allowed But Not Shipped
 
 These can exist in the engineering repo if clearly labeled and excluded from student packages:
