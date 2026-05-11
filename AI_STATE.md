@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-05-11 (infra(marcus): deploy Marcus Homebase v1)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Verified SSH access through `ssh redbyte-pi`; the target reported hostname `redbyte-pi`, user `pi`, and active `redbyte-pi-node`.
+- Added connection profile config at `/home/pi/redbyte-pi/config/connection-profile.json` with hostname-first LAN access (`redbyte-pi.local` plus `192.168.1.103` fallback), key-based SSH metadata, and planned Tailscale / Raspberry Pi Connect fields.
+- Added service registry config at `/home/pi/redbyte-pi/services/registry.json` for Marcus, Ollama, SSH, Tailscale, Syncthing, Node-RED, and Pi-hole.
+- Added rooms config at `/home/pi/redbyte-pi/config/rooms.json` for Overview, RedByte, Services, Automation, Files, Lab, Logs, and Away.
+- Added unauthenticated read endpoints `GET /connection`, `GET /services`, `GET /rooms`, and compact `GET /homebase-data`.
+- Added controlled actions `services-status`, `connection-status`, `ollama-tags`, `service-log-marcus`, and `service-log-ollama`; service log actions are fixed allowlist entries bounded to the last 80 journal lines.
+- Reorganized the dashboard into Marcus Homebase rooms with status pips, service registry cards, planned-service markers, file counts, recent jobs, RedByte evidence/product state, Logs actions, and compact Away controls.
+- Updated `marcus-doctor.sh` to check the new endpoints, `/actions/run` unauthenticated `401`, and active `ollama`, `ssh`, and `redbyte-pi-node` services.
+- Updated the plugin manifest so system tools reference the new service/connection/log actions.
+
+**Safety:** No arbitrary shell endpoint, generic `systemctl`/`journalctl` action, new service installation, Tailscale/Syncthing/Node-RED/Pi-hole/Docker/Home Assistant/rclone install, larger Ollama model pull, full RedByte repo clone, Vivado-on-Pi work, Marcus rename, private key output, token output, or push was added. Public `/actions` responses now omit the underlying command strings.
+
+**Evidence:** Homebase source contract failed RED before implementation on missing `GET /connection`, then passed after deployment. `redbyte-pi-node.service` restarted active. Validated `/ping`, `/version`, `/connection`, `/services`, `/rooms`, `/homebase-data`, `/dashboard-data`, `/actions`, `/jobs`, `/plugins`, dashboard HTML room/planned-service text, dashboard absence of `marcus.token`, unauthenticated `/actions/run` returning `401`, authenticated `services-status`, `connection-status`, `ollama-tags`, `service-log-marcus`, and `service-log-ollama` action runs, updated `marcus-doctor.sh`, and `server-contract.test.mjs`.
+
+**Backups:** Pre-edit Pi file backups timestamp `20260511-045155` plus `/home/pi/redbyte-pi/backups/marcus-homebase-preedit-config-20260511-045155.tar.gz`. Post-deploy backup: `/home/pi/redbyte-pi/backups/marcus-homebase-backup-20260511-050625.tar.gz`, verified to exclude `marcus.token`.
+
+**Repo validation note:** After the local log commit, `pnpm repo:status` passed the early contract gates but failed at `pnpm build` because `scripts/verify-dist.mjs` still expects a root redirect to `/os/` while `public/_redirects` and generated `dist/_redirects` route `/` to `/start.html`. `pnpm repo:status -- --skip-build` then failed later at `ide:gate:project-health-live-contract` with a repeatable timeout waiting for `[data-testid="ide-verify-add-vector-form"]`. The commit only changes `AI_STATE.md`, so these failures were not caused by the Marcus Homebase code deployed on the Pi.
+
 ## Change Log 2026-05-11 (infra(marcus): deploy Marcus Lab v1)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
