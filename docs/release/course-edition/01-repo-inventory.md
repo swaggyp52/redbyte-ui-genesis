@@ -1,0 +1,57 @@
+# RedByte ECE141 Course Edition Repository Inventory
+
+Date: 2026-05-11
+
+Bucket key:
+
+- `A_KEEP_FINAL_PRODUCT`: belongs in final RedByte ECE141 Course Edition source repo.
+- `B_KEEP_COURSE_DOCS`: course docs that belong after rewrite or narrowing.
+- `C_KEEP_TESTS_QA`: tests, fixtures, gates, release validation.
+- `D_KEEP_EXAMPLES_STARTERS`: examples, lab starters, Basys3/Vivado starter material.
+- `E_REVIEW_UNCERTAIN`: potentially relevant, requires human/product decision.
+- `F_ARCHIVE_NOT_FINAL`: historical, OS-era, abandoned, or non-course material.
+- `G_REMOVE_GENERATED_OR_IGNORED`: generated outputs or local artifacts.
+- `H_SECURITY_OR_PRIVACY_REVIEW`: secrets, tokens, personal data, student data, or machine-specific content.
+
+This is a classification manifest, not a deletion list. No mass removal should occur until the archive strategy in `03-archive-removal-plan.md` is approved.
+
+| Path | Bucket | Reason and evidence | Risk if kept | Risk if removed | Recommended action | Human approval |
+| --- | --- | --- | --- | --- | --- | --- |
+| `packages/rb-apps/src/apps/IdeApp.tsx` | A_KEEP_FINAL_PRODUCT | Main six-surface IDE runtime. Owns Project/Design/Verify/Hardware/Export/Import wiring and query-mode startup. | None; core product. | Breaks app. | Keep. | No |
+| `packages/rb-apps/src/apps/ide/surfaces/**` | A_KEEP_FINAL_PRODUCT | Current surface implementations: `ProjectSurface`, `DesignSurface`, `VerifySurface`, `HardwareSurface`, `ExportSurface`, `ImportSurface`. | None; core product. | Breaks course IDE. | Keep. | No |
+| `packages/rb-apps/src/apps/ide/examplesCatalog.ts` | D_KEEP_EXAMPLES_STARTERS | Defines curated course path examples including Logic Gates, Half Adder, Full Adder, Signal Tour, 2-Bit Counter, Lab 8 bridge. | If not audited, unsupported examples may look official. | Removes starter path. | Keep, then certify supported rows and label unsupported rows. | No |
+| `packages/rb-apps/src/apps/ide/labStarters.ts` | D_KEEP_EXAMPLES_STARTERS | Lab 1 through Lab 8 starter scaffolds and metadata. | Lab 8 could be over-read as turnkey. | Removes student course path. | Keep; add course boundary labels where needed. | No |
+| `packages/rb-apps/src/export/**` | A_KEEP_FINAL_PRODUCT | VHDL, testbench, Vivado Tcl, project format, and bundle support. | None; course export depends on it. | Breaks E0 and Vivado handoff. | Keep and gate with golden exports. | No |
+| `packages/rb-apps/src/fpga/boards/basys3/**` | A_KEEP_FINAL_PRODUCT | Basys3 pins, board resources, export service, simulation/verify schedule. | None; supported board target. | Breaks Basys3 course lane. | Keep. | No |
+| `packages/rb-apps/src/import/**` and `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | A_KEEP_FINAL_PRODUCT | Import is a utility surface in current product docs. | Import-heavy flows may distract beginner path. | Removes recovery/import utility. | Keep, but describe as utility not primary course path. | No |
+| `packages/rb-logic-core/**`, `packages/rb-logic-view/**`, `packages/rb-logic-adapter/**` | A_KEEP_FINAL_PRODUCT | Logic engine/view/adapters used by the IDE. | None; core runtime. | Breaks Design/Verify. | Keep. | No |
+| `packages/rb-board-profiles/**`, `packages/rb-fpga-*`, `packages/rb-fpga-toolchain/**` | A_KEEP_FINAL_PRODUCT / E_REVIEW_UNCERTAIN | FPGA, bridge, proof, signing, and toolchain packages. Basys3/Vivado lane needs some of this; bridge/signing packages may be maintainer-only. | Student package may expose maintainer hardware-bridge experiments. | Could break bench gates or future certification. | Keep in source for now; decide shipped package boundary separately. | Yes |
+| `packages/rb-lab-content/**`, `packages/rb-lab-engine/**`, `tools/labs/**`, `labs/**` | D_KEEP_EXAMPLES_STARTERS / E_REVIEW_UNCERTAIN | Course/lab content and lab-runner material. Needs direct reconciliation with ECE141 official starter list. | Stale or non-course labs may confuse students. | May remove useful starter assets. | Review and classify per lab. | Yes |
+| `apps/playground/**` | A_KEEP_FINAL_PRODUCT | Vite app entry used by launcher/dev server. | None if it remains the app host. | App may not run. | Keep while it is the official host. | No |
+| `public/start.html` | A_KEEP_FINAL_PRODUCT | Public start path referenced by README and docs. | If stale, onboarding confusion. | Removes public launch anchor. | Keep and audit against course edition. | No |
+| `Start-RedByte.ps1`, `run.bat` | A_KEEP_FINAL_PRODUCT | Current Windows launcher. Smoke mode passed. | Launcher is maintainer-oriented and not yet full student installer/doctor/reset set. | Removes easiest local start path. | Keep; add course script set in later bounded task. | No |
+| `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml` | A_KEEP_FINAL_PRODUCT | Current pnpm workspace authority. | None. | Breaks install/reproducibility. | Keep. | No |
+| `package-lock.json` | F_ARCHIVE_NOT_FINAL / G_REMOVE_GENERATED_OR_IGNORED | Stale npm lockfile conflicts with pnpm authority and root metadata. | Encourages wrong install path. | Possible historical trace lost. | Archive or remove after approval; never use for student setup. | Yes |
+| `tests/e2e/**`, `playwright.config.ts`, `playwright.dev.config.ts` | C_KEEP_TESTS_QA | Browser/screenshot testing already configured. | None; must keep for release gates. | Loses browser feedback loop. | Keep. | No |
+| `vitest.config.ts`, `vitest.setup.ts`, `tests/**`, `packages/**/__tests__/**` | C_KEEP_TESTS_QA | Unit/contract tests, IDE tests, export tests. | None. | Loses regression control. | Keep. | No |
+| `scripts/vivado/**`, `scripts/rb-vivado-*`, `scripts/rb-bench-evidence.mjs` | C_KEEP_TESTS_QA | Vivado/Basys3 certification and evidence tooling. | Students should not run all maintainer scripts blindly. | Loses hardware proof path. | Keep as maintainer QA; expose only bounded course commands. | No |
+| `scripts/marcus/**`, `scripts/rb-hq-*`, `scripts/rb-marcus-*` | E_REVIEW_UNCERTAIN / F_ARCHIVE_NOT_FINAL | Maintainer automation and local agent operations, not student IDE surface. | Confuses product boundary; may expose local ops details. | Could remove useful maintainer workflow. | Keep in dev source for now; exclude from course package. | Yes |
+| `.claude/**`, `08 Agents + Prompts/**` | F_ARCHIVE_NOT_FINAL / E_REVIEW_UNCERTAIN | Agent prompt/vault material, not course product. | Public repo looks like AI ops dump rather than course tool. | Could lose maintainer memory. | Move to private/archive or keep only minimal maintainer docs. | Yes |
+| `.agents/**`, `.codex/**` | E_REVIEW_UNCERTAIN | Local agent config; `.agents`/`.codex` are ignored or local in current worktree. | If committed, pollutes course repo. | Maintainer convenience only. | Keep untracked/local; do not package for students. | Yes |
+| `.redbyte/pi-session-room/**` | H_SECURITY_OR_PRIVACY_REVIEW / E_REVIEW_UNCERTAIN | Untracked local Marcus/session-room service code and config. | May contain local machine/session assumptions. | Not part of repo commit. | Leave untracked; classify separately if user wants it productized. | Yes |
+| `.env` | H_SECURITY_OR_PRIVACY_REVIEW | Tracked environment file. Redacted inspection found assignment-like content. | Secret/privacy risk and public release blocker. | May break local demos if removed abruptly. | Review, rotate if needed, replace with `.env.example`, then remove from git in a dedicated security change. | Yes |
+| `coverage/**` | G_REMOVE_GENERATED_OR_IGNORED | Coverage output is tracked despite ignore intent. | Bloats repo and produces noisy diffs. | Low if regenerated. | Remove from git after approval; keep ignored. | Yes |
+| `artifacts/**` | E_REVIEW_UNCERTAIN / G_REMOVE_GENERATED_OR_IGNORED | Contains classroom RC zip, built assets, logs, screenshots, and evidence artifacts. | Mixes release output into source repo. | Some proof artifacts may be needed for traceability. | Split intentional proof screenshots/logs from generated builds/zips; archive release artifacts outside main source tree. | Yes |
+| `dist/**`, `out/**`, `playwright-report/**`, `test-results/**`, `node_modules/**` | G_REMOVE_GENERATED_OR_IGNORED | Local generated directories; not tracked in the sampled check. | Large noise if committed. | Regenerable. | Keep ignored. | No |
+| `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/STUDENT_RELEASE_READINESS.md` | B_KEEP_COURSE_DOCS | Current truth/readiness authorities. | If exposed raw, may be too maintainer-heavy for students. | Loses current-state governance. | Keep; derive student/professor docs. | No |
+| `docs/manuals/RedByte_Product_Manual.md`, `docs/contracts/RedByte_Product_Contract.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/ide/SURFACE_CONFORMANCE.md` | B_KEEP_COURSE_DOCS | Product/manual/system-map authority. | Contract is target-state; students may over-read it. | Loses product governance. | Keep for maintainers; publish narrowed course manuals. | No |
+| `docs/release/**` | B_KEEP_COURSE_DOCS / C_KEEP_TESTS_QA | Release proof, checklists, evidence model, Vivado matrix. | Some release docs are maintainer-specific. | Loses proof trace. | Keep; split student/professor/proof audiences. | No |
+| `docs/00-canon/**`, `docs/IMPLEMENTATION_STATUS.md`, `docs/PRODUCT_SURFACES.md`, `docs/INTERACTION_CONTRACT.md`, `docs/PROJECT_MODEL.md`, `docs/STUDENT_WORKFLOW.md`, `docs/P*_SMOKE_CHECKLIST.md` | F_ARCHIVE_NOT_FINAL | `docs/DOC_INDEX.md` and content indicate historical/OS-era truth or stale workflows. | High risk of misleading course users. | Historical context lost. | Archive or move behind a legacy index after approval. | Yes |
+| Root legacy docs: `PRODUCT.md`, `REDBYTE_USER_MANUAL.md`, `INSTRUCTOR_GUIDE.md`, `CLASSROOM_QUICKSTART_*.md`, `LAB_SPECS.md` | F_ARCHIVE_NOT_FINAL / B_KEEP_COURSE_DOCS | Some content overlaps course docs but uses older product framing. | Competes with current README/manual. | May lose draft language worth salvaging. | Rewrite into official student/professor manuals; archive originals. | Yes |
+| `business/**`, `_reference/**`, `01 Dashboard/**`, `03 Architecture/**`, `04 Decisions/**`, `05 Bugs/**`, `00 Inbox/**` | F_ARCHIVE_NOT_FINAL / E_REVIEW_UNCERTAIN | Vault/planning/business/reference material rather than course app source. | Public course repo looks unfocused and may expose private planning. | Could lose provenance. | Move to archive/private repo unless explicitly needed. | Yes |
+| `api/**`, `ops/**`, `services/**`, `packages/ops*` | E_REVIEW_UNCERTAIN | Ops/server material may support Marcus/HQ or future administration, not core student app. | Unclear support boundary. | Could break maintainer operations. | Review separately; likely development-only. | Yes |
+| `examples/**`, `samples/**`, `test-submission/**` | D_KEEP_EXAMPLES_STARTERS / E_REVIEW_UNCERTAIN | Some examples may be course-relevant; some may be one-off samples/submissions. | Student confusion or accidental answer leakage. | Useful fixtures may be lost. | Audit per file for starter/fixture/submission role. | Yes |
+
+## Immediate Inventory Conclusions
+
+The real course product code is concentrated in the IDE app, logic packages, Basys3/Vivado export code, curated examples/starters, launcher, and QA gates. The highest-risk repo-boundary problems are not missing product code; they are mixed historical docs, tracked generated output, tracked environment data, a stale npm lockfile, and maintainer AI/Marcus material living near course-facing source.

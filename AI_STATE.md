@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-11 (docs(course): add Course Edition repo triage)
+
+**Subsystem:** Course-release governance, repo boundary, and browser audit.
+
+**Changes:**
+- Created working branch `chore/course-edition-repo-triage` for the RedByte ECE141 Course Edition triage.
+- Added `docs/release/course-edition/00-preflight-report.md` through `08-validation-log.md` covering preflight, repo inventory, final package boundary, archive/removal plan, runtime/browser audit, product walkthrough findings, feature capability matrix, first cleanup PR plan, and validation log.
+- Added `.redbyte/course-edition/` to `.gitignore` so local Playwright/browser audit artifacts are not accidentally committed.
+- Established a local browser feedback loop against `http://127.0.0.1:5198/` using the existing Playwright dependency. Local screenshots and JSON evidence live under ignored `.redbyte/course-edition/browser/`.
+- Classified course-product source, course docs, tests/QA, examples/starters, archive candidates, generated outputs, and security/privacy review candidates without deleting or moving repo content.
+
+**Safety:** No product source, launcher code, examples, generated tracked files, stale docs, `.env`, `package-lock.json`, `coverage/**`, `artifacts/**`, or untracked `.redbyte/pi-session-room/**` files were removed or modified. E0/E1/E2/E3 evidence tiers remain distinct; this audit does not claim classroom readiness or E3 closure.
+
+**Evidence:** `pnpm install --frozen-lockfile` passed; `pnpm start:smoke` passed before and after docs edits; Playwright loaded Project, Design, Verify, Hardware/Map Pins, Export, and Import; Logic Gates, Half Adder, and 2-Bit Up Counter starters loaded; Logic Gates Verify Compare passed 12/12 and same-page Export reached ready-to-build. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`, `pnpm --filter @redbyte/playground build`, focused `startupMode.test.ts`, and `pnpm rb:site:start:test` passed. `pnpm lint:product` exited 0 but did not find selected lint scripts. `pnpm typecheck` failed in `@redbyte/rb-fpga-toolchain` on existing TypeScript/DOM-lib issues unrelated to this docs-only slice. Browser starter workflows produced repeated `CircuitStore` engine-not-connected warnings that need classification before course release.
+
 ## Change Log 2026-05-11 (infra(marcus): deploy Marcus Homebase v1)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
