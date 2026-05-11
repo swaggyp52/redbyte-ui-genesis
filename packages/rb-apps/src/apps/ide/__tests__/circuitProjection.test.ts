@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { buildCurrentVerifyProjectHash, buildCurrentVerifyReplayHash } from '../../IdeApp';
 import { useCircuitStore } from '../../../stores/circuitStore';
@@ -64,6 +64,22 @@ describe('circuitProjection', () => {
     expect(digestValue(useCircuitStore.getState().circuit)).toBe(digestValue(runtimeCircuit));
     expect(useCircuitStore.getState().past).toHaveLength(0);
     expect(useCircuitStore.getState().future).toHaveLength(0);
+  });
+
+  it('marks runtime-to-editor projection as not requiring editor engines', () => {
+    const store = useCircuitStore.getState();
+    const updateSpy = vi.spyOn(store, 'updateCircuit');
+    const runtimeCircuit = buildCircuit('runtime');
+
+    const changed = projectRuntimeCircuitToEditorStore(runtimeCircuit);
+
+    expect(changed).toBe(true);
+    expect(updateSpy).toHaveBeenCalledWith(
+      runtimeCircuit,
+      expect.objectContaining({ requireEngines: false })
+    );
+
+    updateSpy.mockRestore();
   });
 
   it('is a no-op when the editor store already matches runtime authority', () => {

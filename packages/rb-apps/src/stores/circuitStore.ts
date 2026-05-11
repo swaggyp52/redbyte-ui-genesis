@@ -124,7 +124,7 @@ interface CircuitState {
   setTickEngine: (tickEngine: TickEngine) => void;
 
   // Circuit mutations (all stable, no closures)
-  updateCircuit: (circuit: Circuit, opts?: { skipHistory?: boolean; enforceLimits?: boolean }) => void;
+  updateCircuit: (circuit: Circuit, opts?: CircuitUpdateOptions) => void;
   commit: (circuit: Circuit) => void; // Explicit commit with history
   addNode: (
     nodeType: string,
@@ -155,6 +155,12 @@ interface CircuitState {
   // State management
   setDirty: (dirty: boolean) => void;
   reset: () => void;
+}
+
+interface CircuitUpdateOptions {
+  skipHistory?: boolean;
+  enforceLimits?: boolean;
+  requireEngines?: boolean;
 }
 
 // Lazy-init singleton to prevent TDZ crash from circular imports
@@ -205,7 +211,7 @@ function createCircuitStore() {
 
       if (storeRef) storeRef._updateInProgress = true;
       try {
-        const { skipHistory = false, enforceLimits = true } = opts;
+        const { skipHistory = false, enforceLimits = true, requireEngines = true } = opts;
         const { engine, tickEngine, circuit: currentCircuit } = get();
 
         // Fingerprint no-op: if circuit is functionally identical, skip all work
@@ -263,7 +269,7 @@ function createCircuitStore() {
             // Vite/Vitest expose this during unit tests
             !!import.meta.env.VITEST ||
             import.meta.env.MODE === 'test';
-          if (!engine || !tickEngine) {
+          if (requireEngines && (!engine || !tickEngine)) {
             if (!isTestEnv) {
               console.warn(
                 '[CircuitStore] Circuit mutation called but engines not connected!\n' +

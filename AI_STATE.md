@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-05-11 (fix: stabilize starter workflow console warnings)
+
+**Subsystem:** ECE141 course starter workflow, runtime projection, Verify/Export browser gate.
+
+**Changes:**
+- Classified `[CircuitStore] Circuit mutation called but engines not connected!` during Logic Gates starter loading as a harmless but trust-noisy runtime-to-editor projection warning for this workflow.
+- Added `requireEngines?: boolean` to `useCircuitStore.updateCircuit`, defaulting to true so normal editor mutations still warn when engines are missing.
+- Marked `projectRuntimeCircuitToEditorStore` as `requireEngines: false` because it is a one-way cache projection from runtime authority before `DesignSurface` may have registered editor-local engines.
+- Added `tests/e2e/ece141-logic-gates-verify-export.spec.ts` and `pnpm -s ide:gate:ece141-starter-verify-export` for the Logic Gates starter -> Verify Compare -> Export ready-to-build path.
+- Fixed the targeted `@redbyte/rb-fpga-toolchain` typecheck failure by null-coalescing optional timing constraints and adding DOM ambient types for the current `rb-utils` source export surface.
+- Added `docs/release/course-edition/09-runtime-stabilization-sprint-1.md` and updated the course-edition validation log.
+
+**Safety:** No feature expansion, UI redesign, mass cleanup, stale-doc deletion, Vivado evidence claim, board-programming claim, or E2/E3 conflation. The new browser gate proves only the E0/export-readiness browser workflow, not Vivado build, programming, or physical board observation.
+
+**Evidence:** The new Playwright gate failed RED after reaching pass/export-ready state because it captured the `CircuitStore` warning, then passed after the runtime projection warning gate. `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts` passed. `pnpm -s ide:gate:ece141-starter-verify-export` passed. `pnpm --filter @redbyte/rb-fpga-toolchain typecheck` passed. `pnpm install --frozen-lockfile`, `pnpm start:smoke`, and `git diff --check` passed. Full `pnpm typecheck` still fails later in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` sources; `pnpm -s ide:gate:export-ready-contract` still fails on a separate ready-vector gate mismatch; `pnpm build:unified` still fails on the known root redirect contract drift (`dist/_redirects contains root redirect to /os/`) after the playground build and merge complete.
+
+**Next recommended task:** Security/package-boundary cleanup for tracked `.env`, generated outputs, active lockfile/package-manager boundary, and safe `.gitignore` updates, while leaving product behavior unchanged.
+
 ## Change Log 2026-05-11 (docs(course): add Course Edition repo triage)
 
 **Subsystem:** Course-release governance, repo boundary, and browser audit.
