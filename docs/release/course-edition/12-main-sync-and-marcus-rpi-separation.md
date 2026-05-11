@@ -125,3 +125,35 @@ Local sync state before validation:
 - `chore/course-edition-repo-triage` contains the course-edition audit, runtime stabilization, package-boundary cleanup, and product immersion commits.
 - Local `main` is an ancestor of the course branch, so a local fast-forward or merge from `chore/course-edition-repo-triage` is structurally possible.
 - Network sync to `origin/main` is policy-blocked by the current `AI_STATE.md` remote-operation rule unless explicitly overridden.
+
+Local main merge:
+
+- Switched to local `main`.
+- Did not run `git fetch origin --prune` or `git pull --ff-only origin main` because `AI_STATE.md` states remote operations are disallowed in this environment.
+- Merged `chore/course-edition-repo-triage` into local `main` with:
+
+```powershell
+git merge --no-ff chore/course-edition-repo-triage -m "merge: course edition product readiness work"
+```
+
+- Local `main` merge commit: `72481d1730590da893ff08032b4bcfee37ee873a`
+- Local `origin/main` ref remained `08da238d0c2227e8ed4c714377eba4d2e55ba015` because no remote fetch or push was performed after the policy conflict was identified.
+
+Post-merge local main validation:
+
+| Command | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | Passed |
+| `pnpm start:smoke` | Passed |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed |
+| `pnpm -s ui:lab-starter-load-gate` | Passed |
+| `pnpm rb:doc:validate` | Passed |
+| `pnpm rb:encoding:check` | Passed |
+| `git diff --check` | Passed |
+| `pnpm typecheck` | Failed with the known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` type-boundary drift |
+
+Remote sync status:
+
+- `origin/main` was not updated in this pass because remote operations are currently disallowed by `AI_STATE.md`.
+- No force push was attempted.

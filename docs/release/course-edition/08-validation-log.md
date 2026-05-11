@@ -80,3 +80,14 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `pnpm rb:doc:validate` | Passed after final doc updates | ~1s | 36 passed, 0 failed after `AI_STATE.md`, `08-validation-log.md`, and `12-main-sync-and-marcus-rpi-separation.md` updates. | N/A | No action. |
 | `pnpm rb:encoding:check` | Passed after final doc updates | ~1s | No mojibake markers found. | N/A | No action. |
 | `git diff --check` | Passed after final doc updates | <1s | No whitespace errors. | N/A | Ready to commit RedByte separation slice. |
+| `git checkout main` | Passed | <1s | Switched to local `main`, which was already 1 commit ahead of the local `origin/main` ref. | Existing local main state | Remote pull was not run because `AI_STATE.md` says remote operations are disallowed in this environment. |
+| `git merge --no-ff chore/course-edition-repo-triage -m "merge: course edition product readiness work"` | Passed | <1s | Local `main` received the course-edition audit, stabilization, package-boundary, product immersion, and Marcus/RPI spillover separation commits. | N/A | Validate local main before any remote sync decision. |
+| `pnpm install --frozen-lockfile` | Passed on local main | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed on local main | ~16s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed on local main | ~28s | Logic Gates starter -> Verify Compare -> Export ready gate passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed on local main | ~80s | Four product immersion workflows passed. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed on local main | ~10s | 8 starter-load tests passed. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed on local main | ~1s | 36 passed, 0 failed. | N/A | Rerun after final post-merge doc updates. |
+| `pnpm rb:encoding:check` | Passed on local main | ~1s | No mojibake markers found. | N/A | No action. |
+| `git diff --check` | Passed on local main | <1s | No whitespace errors. | N/A | No action. |
+| `pnpm typecheck` | Failed on local main | ~7s | Same pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass. | Pre-existing/out of task scope | Do not fix in repo separation task. |

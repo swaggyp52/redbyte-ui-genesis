@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-05-11 (merge: local main course edition sync)
+
+**Subsystem:** Local main synchronization, course-edition readiness branch integration, remote policy boundary.
+
+**Changes:**
+- Merged `chore/course-edition-repo-triage` into local `main` with merge commit `72481d1730590da893ff08032b4bcfee37ee873a`.
+- Updated `docs/release/course-edition/08-validation-log.md` and `docs/release/course-edition/12-main-sync-and-marcus-rpi-separation.md` with post-merge local main validation.
+- Did not run remote fetch, pull, or push because this file still states remote operations are disallowed in this environment.
+
+**Safety:** No RedByte app behavior changed after the merge. No force push or history rewrite was attempted. `origin/main` remains unchanged by this pass until the remote-operation policy is explicitly overridden or updated.
+
+**Evidence:** On local `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Next recommended task:** If `origin/main` must be updated from this environment, explicitly override or edit the remote-operation policy first; otherwise push local `main` from a normal remote-enabled workflow.
+
 ## Change Log 2026-05-11 (chore: separate Marcus RPI spillover)
 
 **Subsystem:** Repo separation, Marcus/Raspberry Pi local artifact preservation, course-edition branch synchronization prep.
