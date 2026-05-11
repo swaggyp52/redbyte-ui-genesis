@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-05-11 (test: add import export recovery gates)
+
+**Subsystem:** RedByte ECE141 Import, Export, project persistence, and recovery.
+
+**Branch:** `product/import-export-recovery-1` based on `b5e305d4f87ff600ef1a95a988611aba53d08b67`.
+
+**Import/Export capability inventory summary:**
+- RedByte-generated Vivado project ZIPs include an embedded `project.rbproj.json`; Import treats that manifest as the authoritative full-fidelity restore path.
+- Raw Vivado ZIP reconstruction remains supported for structural HDL/XDC, but it is not equivalent to a RedByte manifest restore.
+- Import does not restore prior Verify PASS as trusted evidence; students must rerun Compare after replacing the project.
+- Export and Import behavior covered in this sprint is E0-only. It does not prove Vivado build, board programming, or observed board behavior.
+
+**Workflows exercised:**
+- Logic Gates Verify -> manual Map Pins edit -> Export -> browser refresh -> Hardware/Export recovery.
+- 2-Bit Up Counter Verify -> browser refresh -> clock policy and E0 evidence recovery.
+- Logic Gates Vivado project ZIP download -> ZIP content inspection -> manifest Import -> Verify rerun -> mapping recovery.
+- 2-Bit Up Counter Vivado project ZIP download -> ZIP content inspection.
+- Corrupt RedByte manifest ZIP upload -> Import error -> previous project remains intact.
+
+**Changes:**
+- Added `tests/e2e/ece141-import-export-recovery.spec.ts`.
+- Added browser gates `pnpm -s ide:gate:ece141-project-persistence` and `pnpm -s ide:gate:ece141-import-export-recovery`.
+- Added `docs/release/course-edition/17-import-export-recovery.md` with inventory, browser findings, corrupt import recovery findings, stale evidence findings, and fix selection.
+- Updated the course-edition validation log with sprint results.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, focused import/export/project-format Vitest tests, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before final AI_STATE updates. Full `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Remaining blockers:**
+- P1: Full workspace `pnpm typecheck` remains red in `@redbyte/rb-lab-engine` / pulled `rb-logic-core`.
+- P1: `build:unified` remains red on the known `/os/` redirect contract drift.
+- P2: Import corrupt-manifest visible copy is generic unless students open technical details, though the recovery behavior is safe and gated.
+- P2: Raw external Vivado ZIP reconstruction is not yet browser-proven as a course-safe round trip.
+
+**Next recommended sprint:** Vivado artifact correctness for generated VHDL/XDC/Tcl/manifest across the certified starter set, with golden artifact tests and E0-only claims.
+
 ## Change Log 2026-05-11 (merge: product hardening verify hardware counter semantics)
 
 **Subsystem:** RedByte ECE141 Verify, Hardware / Map Pins, Export trust, and 2-Bit Up Counter verification semantics.
