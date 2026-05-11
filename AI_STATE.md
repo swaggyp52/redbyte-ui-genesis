@@ -1,5 +1,40 @@
 # AI State
 
+## Change Log 2026-05-11 (infra(marcus): deploy Marcus Lab v1)
+
+**Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
+
+**Changes:**
+- Verified key-based SSH now works through `ssh redbyte-pi`; the connection reports hostname `redbyte-pi`, user `pi`, and active `redbyte-pi-node`.
+- Deployed Marcus `1.0.0-lab` with local lab config at `/home/pi/redbyte-pi/config/marcus-lab.json`.
+- Added controlled action runner endpoints: `GET /actions`, protected `POST /actions/run`, `GET /jobs`, and `GET /jobs/:id`.
+- Added `GET /mode` returning Personal Lab Mode / controlled action boundary metadata.
+- Added plugin manifest support at `/home/pi/redbyte-pi/plugins/manifest.json`, `/home/pi/redbyte-pi/plugins/README.md`, and `GET /plugins`.
+- Added job history under `/home/pi/redbyte-pi/jobs/history/` with bounded stdout/stderr.
+- Updated the dashboard with Personal Lab Mode, Marcus Command Deck, Job History, risk labels, confirmation handling for `restart-marcus`, and explicit `No arbitrary shell` language.
+- Updated `marcus-doctor.sh` to cover `/mode`, `/actions`, `/jobs`, `/plugins`, plus existing health/product/evidence/next-work and unauthenticated `/chat` 401 checks.
+- Added `/home/pi/redbyte-pi/server-contract.test.mjs` as a lightweight source contract for token protection, action allowlisting, bounded jobs, mode/plugins, and dashboard safety language.
+
+**Safety:** No raw command endpoint, full repo clone, larger Ollama model pull, Vivado claim, Marcus rename, private SSH key print, or push was added. Action execution is by server-side `actionId` allowlist only. `restart-marcus` requires confirmation. The Marcus token was rotated during validation and was not recorded in repo docs.
+
+**Evidence:** Source contract failed RED before implementation on missing `GET /mode`, then passed after deployment. `redbyte-pi-node.service` restarted active with Marcus `1.0.0-lab`. Validated `/ping`, `/mode`, `/actions`, `/plugins`, `/jobs`, `/dashboard-data`, `/version`, doctor script, unauthenticated `/actions/run` returning `401`, authenticated `doctor` action job success, authenticated `backup` action job success, and backup exclusion of `marcus.token`.
+
+**Backups:** Pre-edit Pi file backups: `/home/pi/redbyte-pi/server.mjs.backup.20260511-033951` and `/home/pi/redbyte-pi/marcus-doctor.sh.backup.20260511-033951`. Marcus Lab backup tarball: `/home/pi/redbyte-pi/backups/marcus-lab-backup-20260511-034451.tar.gz`, verified to exclude `marcus.token`.
+
+## Change Log 2026-05-11 (infra(marcus): Marcus Lab v1 SSH gate blocked)
+
+**Subsystem:** Raspberry Pi Marcus LAN service access at `192.168.1.103`
+
+**Changes:**
+- Verified Marcus HTTP access remained healthy for `/ping`, `/version`, `/health`, and `/dashboard-data`; service version reported `0.5.1-reliability`.
+- Checked Codex/laptop SSH access before deploying Marcus Lab v1. The local ed25519 key exists, but `ssh pi@192.168.1.103` and `ssh redbyte-pi` both failed with `Permission denied (publickey,password)` in BatchMode.
+- Added local SSH alias `redbyte-pi` in `C:\Users\conno\.ssh\config` using the existing `id_ed25519` key and keepalive settings, but Pi-side authorization is still missing.
+- Did not edit Pi service files, deploy Marcus Lab v1, read/print `marcus.token`, print private SSH keys, add command execution, clone the repo onto the Pi, or push.
+
+**Blocker:** Add the local public key to `/home/pi/.ssh/authorized_keys` on the Pi, then rerun Marcus Lab v1 from Phase 1. Public key handoff is safe to print; private key must not be printed.
+
+**Evidence:** HTTP checks passed. SSH checks failed consistently with `Permission denied (publickey,password)`. No Pi password, `sshpass`, `plink`, `MARCUS_TOKEN`, `RB_MARCUS_TOKEN`, or `REDBYTE_MARCUS_TOKEN` was available in the environment.
+
 ## Change Log 2026-05-11 (infra(marcus): harden Pi chat timeout and doctor ping gate)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`
