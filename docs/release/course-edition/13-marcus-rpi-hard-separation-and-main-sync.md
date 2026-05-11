@@ -110,9 +110,19 @@ Validation is recorded in `docs/release/course-edition/08-validation-log.md`.
 
 ## Remote Sync
 
-Remote sync is performed only after:
+Remote sync was performed only after:
 
 1. RedByte separation commit is created.
 2. Product gates pass or failures are documented as pre-existing.
 3. RedByte working tree is clean.
 4. `git fetch origin --prune` shows no unexpected `origin/main` divergence.
+
+Results:
+
+| Step | Result |
+|------|--------|
+| RedByte separation commit before push | `d7765d05bbdceafc26c6b39711dd9e8d5b75559d` |
+| Divergence before push | `origin/main...main` = `0 1` |
+| Push | `git push origin main` succeeded; no force-push used. |
+| Remote note | GitHub reported the push bypassed the required `Classroom Truth Gates` status check expectation. |
+| Verification after fetch | `main` and `origin/main` both resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`. |

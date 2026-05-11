@@ -108,3 +108,6 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `pnpm rb:doc:validate` | Passed after final docs | ~1s | 36 passed, 0 failed after `AI_STATE.md`, validation log, and hard-separation doc updates. | N/A | No action. |
 | `pnpm rb:encoding:check` | Passed after final docs | ~1s | No mojibake markers found after final docs. | N/A | No action. |
 | `git diff --check` | Passed after final docs | <1s | No whitespace errors after final docs. | N/A | Ready to commit RedByte hard separation. |
+| `git fetch origin --prune` | Passed before push | ~1s | Divergence was `0 1`; local `main` was one commit ahead and `origin/main` had no extra commits. | N/A | Push local `main` without force. |
+| `git push origin main` | Passed | ~2s | Pushed `d7765d05` to `origin/main`; GitHub reported bypassed required `Classroom Truth Gates` status check expectation. | N/A | Verify refs after fetch. |
+| `git fetch origin && git rev-parse main && git rev-parse origin/main` | Passed | ~1s | Both refs resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`. | N/A | No action. |
