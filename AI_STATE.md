@@ -1,5 +1,22 @@
 # AI State
 
+## Change Log 2026-05-11 (chore: separate Marcus RPI spillover)
+
+**Subsystem:** Repo separation, Marcus/Raspberry Pi local artifact preservation, course-edition branch synchronization prep.
+
+**Changes:**
+- Created local safety branch `backup/pre-main-sync-2026-05-11` at the course-edition branch head before moving files.
+- Created `C:\MarcusRPI` as a separate local git repo with a README.
+- Copied untracked `.redbyte/pi-session-room/**` into `C:\MarcusRPI\imports\redbyte-spillover-20260511-1538\.redbyte\pi-session-room\` and verified 9 files were present before removing the RedByte working-tree copy.
+- Added narrow `.gitignore` guards for `.redbyte/pi-session-room/` plus local `.redbyte` Marcus/RPI config/runtime filenames such as `rooms.json`, `registry.json`, `connection-profile*.json`, `marcus-lab*.json`, `server.mjs`, `server-contract*`, and `marcus-doctor*`.
+- Added `docs/release/course-edition/12-main-sync-and-marcus-rpi-separation.md` and updated the course-edition validation log.
+
+**Safety:** No RedByte product source, starter, export code, Vivado/Basys3 logic, package dependency, or evidence-tier language changed. The broader tracked Marcus/HQ/local-agent source and docs remain in RedByte for human-review migration because package scripts, docs, tests, and the HQ source tree still reference them. No force push or history rewrite was attempted.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed on the course-edition branch after the separation cleanup. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. Network fetch/push remains policy-conflicted because this file still states remote operations are disallowed in this environment.
+
+**Next recommended task:** Decide whether to override the remote-operation policy for `origin/main` sync, then run a separate Marcus/HQ/local-agent tracked-content migration if the final RedByte source repo should remove those files entirely.
+
 ## Change Log 2026-05-11 (ux: harden ece141 starter workflows)
 
 **Subsystem:** RedByte IDE course workflow, product immersion browser loop, starter Verify -> Export trust path.

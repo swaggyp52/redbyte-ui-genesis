@@ -61,3 +61,22 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `pnpm -s ui:lab-starter-load-gate` | Passed | ~10s | 8 lab starter load tests passed after Half Adder mapping label fix. | N/A | No action. |
 | `pnpm typecheck` | Failed | ~6s | `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` passed; workspace still fails in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` sources on stale schema/test fixture/type-boundary drift. | Pre-existing/out of sprint scope | Separate lab-engine/core type-boundary cleanup remains required. |
 | `git diff --check` | Passed | <1s | No whitespace errors after product immersion docs, tests, and UI/starter fixes. | N/A | No action. |
+| `git status --short` | Passed | <1s | Before separation cleanup, only `.redbyte/pi-session-room/` was untracked. | Pre-existing local spillover | Copy to `C:\MarcusRPI` before removing RedByte copy. |
+| `git status --ignored --short` | Passed with findings | ~4s | Many ignored local/generated outputs were present; relevant `.redbyte` ignored outputs included agent runs, course-edition, product-immersion, session, and work folders. | Pre-existing local outputs | Leave ignored local outputs untouched. |
+| `git branch --show-current` | Passed | <1s | Reported `chore/course-edition-repo-triage`. | N/A | No action. |
+| `git log --oneline -n 12` | Passed | <1s | Latest commit was `f4f22919 ux: harden ece141 starter workflows`. | N/A | No action. |
+| `git remote -v` | Passed | <1s | `origin` points at `git@github.com:swaggyp52/redbyte-ui-genesis.git`. | N/A | Remote sync remains subject to `AI_STATE.md` remote-operation policy. |
+| `git branch backup/pre-main-sync-2026-05-11` | Passed | <1s | Safety branch created at `f4f22919`. | N/A | No action. |
+| Copy `.redbyte/pi-session-room/**` to `C:\MarcusRPI` | Passed | <1s | 9 files copied to `C:\MarcusRPI\imports\redbyte-spillover-20260511-1538\.redbyte\pi-session-room\`; `server.mjs` verified before RedByte source removal. | N/A | Commit MarcusRPI import locally after RedByte cleanup. |
+| `pnpm install --frozen-lockfile` | Passed | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed | ~15s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~31s | Logic Gates starter -> Verify Compare -> Export ready gate passed after spillover removal and ignore updates. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed | ~89s | Four Playwright product immersion workflows passed after spillover removal and ignore updates. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed | ~10s | 8 starter-load tests passed. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed | ~1s | 36 passed, 0 failed. | N/A | Rerun after final doc updates. |
+| `pnpm rb:encoding:check` | Passed | ~1s | No mojibake markers found. | N/A | No action. |
+| `pnpm typecheck` | Failed | ~7s | `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` passed; workspace still fails in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` on stale schema/test fixture/type-boundary drift. | Pre-existing/out of task scope | Keep as separate type-boundary cleanup task. |
+| `git diff --check` | Passed | <1s | No whitespace errors after separation cleanup. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed after final doc updates | ~1s | 36 passed, 0 failed after `AI_STATE.md`, `08-validation-log.md`, and `12-main-sync-and-marcus-rpi-separation.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after final doc updates | ~1s | No mojibake markers found. | N/A | No action. |
+| `git diff --check` | Passed after final doc updates | <1s | No whitespace errors. | N/A | Ready to commit RedByte separation slice. |

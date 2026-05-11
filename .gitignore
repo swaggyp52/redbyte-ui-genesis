@@ -35,9 +35,17 @@ yarn-error.log*
 .redbyte/agent/runs/
 .redbyte/bench/runs/
 .redbyte/course-edition/
+.redbyte/pi-session-room/
 .redbyte/product-immersion/
 .redbyte/session/
 .redbyte/agent/config.json
+.redbyte/**/rooms.json
+.redbyte/**/registry.json
+.redbyte/**/connection-profile*.json
+.redbyte/**/marcus-lab*.json
+.redbyte/**/server.mjs
+.redbyte/**/server-contract*
+.redbyte/**/marcus-doctor*
 .agents/
 .codex/
 fuzz_log*.txt
