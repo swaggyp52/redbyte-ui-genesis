@@ -20,6 +20,8 @@
 
 **Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ui:lab-starter-load-gate`, the focused 67-test Vitest suite for counter/clock/Verify/Hardware/Export behavior, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits. `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. `pnpm build:unified` still fails on the known redirect contract drift: `dist/_redirects contains root redirect to /os/`.
 
+**Remote sync:** `git push origin main` succeeded with no force-push. GitHub reported a bypass of the required `Classroom Truth Gates` status check expectation; this remains release-process debt until the remote status check is enforced normally.
+
 **Safety:** No new product feature work, repo cleanup, MarcusRPI work, install-script work, manual generation, or import/export recovery work was performed. E0/E1/E2/E3 boundaries remain distinct.
 
 **Next recommended task:** Import/export round-trip and recovery sprint after this merged `main` is pushed.

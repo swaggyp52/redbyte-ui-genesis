@@ -95,6 +95,15 @@ It does not prove:
 | `pnpm typecheck` | Pre-existing `@redbyte/rb-lab-engine` / pulled `rb-logic-core` type-boundary drift | Separate type-boundary cleanup task |
 | `pnpm build:unified` | Pre-existing redirect contract drift involving `dist/_redirects` root redirect to `/os/` | Separate build/deploy contract cleanup task |
 
+## Remote Sync
+
+| Item | Result |
+| --- | --- |
+| First push | `git push origin main` succeeded with no force-push |
+| First pushed commit | `8475b78af4bfd05691cf8d89dd438b40267d56bd` |
+| Post-push verification | `main` and `origin/main` both resolved to `8475b78af4bfd05691cf8d89dd438b40267d56bd` |
+| Branch-protection note | GitHub reported a bypass of required `Classroom Truth Gates`; this is release-process debt, not a product gate pass |
+
 ## Next Recommended Sprint
 
 Import/export round-trip and recovery sprint.
