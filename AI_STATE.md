@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-05-11 (product: harden Verify, Map Pins, and Export trust)
+
+**Subsystem:** RedByte ECE141 IDE Verify, Hardware / Map Pins, and Export trust states.
+
+**Branch:** `product/verify-hardware-map-pins-hardening-1` based on `bb52211886bb5b246cff02d52577522baf1b08d2`.
+
+**Changes:**
+- Added `docs/release/course-edition/14-verify-hardware-map-pins-hardening.md` with browser audit findings, fix selection, implemented fixes, gates, validation, and remaining product blockers.
+- Added Playwright gates `pnpm -s ide:gate:ece141-counter-clock-export` and `pnpm -s ide:gate:ece141-map-pins-recovery`.
+- Made the sequential clock/reset policy visible in the collapsed first-run Verify path for the 2-Bit Up Counter workflow.
+- Added stable test IDs to existing Basys3 board SVG hitboxes so manual Map Pins edits can be tested without coordinate clicks.
+- Corrected the Half Adder `SW1 (B)` starter pin from physical SW2/W16 to physical SW1/V16.
+- Updated Export copy so ready states explicitly say E0 export-package readiness and keep Vivado build, board programming, and observed behavior external to RedByte.
+
+**Safety:** No repo cleanup, MarcusRPI work, install-script work, Vivado automation, broad UI redesign, or E0/E1/E2/E3 semantic change. The new gates prove browser-level clock/mapping/export trust behavior only; they do not prove Vivado build, board programming, or physical board observation.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, focused Verify/Hardware/Export Vitest coverage, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Full `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Next recommended task:** Import/export round-trip and recovery sprint: prove save/reload, corrupt-state recovery, design-change stale verification handling, and project restart behavior without weakening the existing product gates.
+
 ## Change Log 2026-05-11 (chore: remove Marcus RPI HQ work from RedByte)
 
 **Subsystem:** Repo boundary, Marcus/RPI/HQ/local-agent separation, RedByte main sync prep.

@@ -397,6 +397,12 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           </span>
         </div>
 
+        {showCollapsedFirstRunSummary && isSequential && stimulusAssist ? (
+          <div className="ide-verify-stimulus-assist-slot" data-testid="ide-verify-first-run-clock-policy">
+            {stimulusAssist}
+          </div>
+        ) : null}
+
         {!showCollapsedFirstRunSummary && stimulusAssist ? (
           <div className="ide-verify-stimulus-assist-slot">{stimulusAssist}</div>
         ) : null}

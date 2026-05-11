@@ -111,3 +111,20 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 | `git fetch origin --prune` | Passed before push | ~1s | Divergence was `0 1`; local `main` was one commit ahead and `origin/main` had no extra commits. | N/A | Push local `main` without force. |
 | `git push origin main` | Passed | ~2s | Pushed `d7765d05` to `origin/main`; GitHub reported bypassed required `Classroom Truth Gates` status check expectation. | N/A | Verify refs after fetch. |
 | `git fetch origin && git rev-parse main && git rev-parse origin/main` | Passed | ~1s | Both refs resolved to `d7765d05bbdceafc26c6b39711dd9e8d5b75559d`. | N/A | No action. |
+| `pnpm install --frozen-lockfile` | Passed | ~2s | Lockfile up to date; no dependency changes on `product/verify-hardware-map-pins-hardening-1`. | N/A | No action. |
+| `pnpm start:smoke` | Passed | ~17s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~29s | Existing Logic Gates starter -> Verify Compare -> Export ready gate passed after Verify/Hardware/Export hardening. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed | ~81s | Existing four-workflow product immersion gate passed after hardening. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed | ~10s | 8 starter-load tests passed after Half Adder pin correction. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Failed during first parallel run | ~6s | Parallel Playwright launch collided on fixed dev-server port `4173` while another gate was running. | Operator validation setup error, not product failure | Reran sequentially below. |
+| `pnpm -s ide:gate:ece141-counter-clock-export` | Passed | ~37s | 2-Bit Counter clock/reset policy and E0 export evidence wording smoke passed; 2 tests passed. | N/A | Keep as focused product gate. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Failed before test selector fix | ~45s | Gate reached Export, then strict-mode locator matched three `Pin binding` elements. | Introduced test draft issue | Narrowed selector to the `summary` element and reran. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Passed | ~34s | Manual Map Pins edit changed Logic Gates `SW0` to `SW2`, persisted across surface navigation, appeared in Export mapping, and did not leak after switching to Half Adder. | N/A | Keep as focused product gate. |
+| `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx packages/rb-apps/src/apps/ide/__tests__/exportSurface.workstation.test.tsx` | Passed | ~12s | 36 focused Verify/Hardware/Export tests passed. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed | ~1s | 36 passed, 0 failed after adding the hardening sprint doc and validation rows. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed | ~1s | No mojibake markers found after sprint doc updates. | N/A | No action. |
+| `git diff --check` | Passed | <1s | No whitespace errors before AI_STATE final update. | N/A | Rerun after final AI_STATE update. |
+| `pnpm typecheck` | Failed | ~7s | Same known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` schema/test-fixture/type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-fpga-toolchain`, and `@redbyte/rb-viewport` pass. | Pre-existing/out of sprint scope | Keep as separate type-boundary cleanup task. |
+| `pnpm rb:doc:validate` | Passed after AI_STATE update | ~1s | 36 passed, 0 failed after final `AI_STATE.md` and validation-log updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after AI_STATE update | ~1s | No mojibake markers found after final docs. | N/A | No action. |
+| `git diff --check` | Passed after AI_STATE update | <1s | No whitespace errors after final docs. | N/A | Ready to review and commit. |
