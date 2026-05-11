@@ -257,6 +257,7 @@ describe('IDE bring-up contract', () => {
 
     const expectedIo = JSON.parse(expectedIoArtifact?.content ?? '{}') as {
       schemaVersion?: string;
+      evidenceLevel?: string;
       source?: string;
       generatedAtIso?: string;
       verifyHash?: string;
@@ -264,22 +265,25 @@ describe('IDE bring-up contract', () => {
       signals?: Array<{
         signal?: string;
         pin?: string;
+        packagePin?: string;
         values?: Array<{ tick?: number; expected?: string }>;
       }>;
     };
     expect(expectedIo.schemaVersion).toBe('rb.expected-io.v1');
+    expect(expectedIo.evidenceLevel).toBe('E0');
     expect(expectedIo.source).toBe('verify-run');
     expect(expectedIo.generatedAtIso).toBe(GENERATED_AT_ISO);
     expect(expectedIo.verifyHash).toBe(runtimeVerifyRun.deterministicHash);
     expect(expectedIo.verifyReportHash).toBe(runtimeVerifyRun.reportHash);
     expect(expectedIo.signals).toHaveLength(4);
-    expect(expectedIo.signals?.find((entry) => entry.signal === 'q0' && entry.pin === 'LD0')?.values)
-      .toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ tick: 0, expected: '0' }),
-          expect.objectContaining({ tick: 3, expected: '1' }),
-        ])
-      );
+    const q0Signal = expectedIo.signals?.find((entry) => entry.signal === 'q0' && entry.pin === 'LD0');
+    expect(q0Signal?.packagePin).toBe('U16');
+    expect(q0Signal?.values).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ tick: 0, expected: '0' }),
+        expect.objectContaining({ tick: 3, expected: '1' }),
+      ])
+    );
 
     expect(programArtifact?.content).toContain('open_hw_manager');
     expect(programArtifact?.content).toContain('connect_hw_server');

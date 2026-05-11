@@ -111,13 +111,49 @@ describe('bringupArtifacts canonical naming', () => {
     });
 
     const parsed = JSON.parse(artifacts.expectedIoJson) as {
-      signals?: Array<{ signal?: string; pin?: string }>;
+      signals?: Array<{ signal?: string; pin?: string; packagePin?: string }>;
     };
 
-    expect(parsed.signals?.map((row) => ({ signal: row.signal, pin: row.pin }))).toEqual([
-      { signal: 'leda', pin: 'U16' },
-      { signal: 'leda_2', pin: 'V16' },
+    expect(
+      parsed.signals?.map((row) => ({
+        signal: row.signal,
+        pin: row.pin,
+        packagePin: row.packagePin,
+      }))
+    ).toEqual([
+      { signal: 'leda', pin: 'U16', packagePin: 'U16' },
+      { signal: 'leda_2', pin: 'V16', packagePin: 'V16' },
     ]);
+  });
+
+  it('keeps board aliases while adding physical package pins in EXPECTED_IO', () => {
+    const artifacts = buildBringUpArtifacts({
+      project: createProjectFixture(),
+      ioRows: [
+        {
+          id: 'ld0_alias',
+          nodeId: 'ld0_node',
+          label: 'LD0',
+          direction: 'out',
+          pin: 'LD0',
+          required: true,
+        },
+      ],
+      expectedBehavior: 'LED follows switch',
+      verifyRows: [{ tick: 0, signal: 'LD0', expected: '1', actual: '1' }],
+    });
+
+    const parsed = JSON.parse(artifacts.expectedIoJson) as {
+      evidenceLevel?: string;
+      signals?: Array<{ signal?: string; pin?: string; packagePin?: string }>;
+    };
+
+    expect(parsed.evidenceLevel).toBe('E0');
+    expect(parsed.signals?.[0]).toMatchObject({
+      signal: 'ld0',
+      pin: 'LD0',
+      packagePin: 'U16',
+    });
   });
 
   it('simulates combinational starter vectors for a half-adder instead of defaulting outputs to zero', () => {
