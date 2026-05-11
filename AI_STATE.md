@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-11 (merge: product hardening verify hardware counter semantics)
+
+**Subsystem:** RedByte ECE141 Verify, Hardware / Map Pins, Export trust, and 2-Bit Up Counter verification semantics.
+
+**Remote authorization note:** User explicitly authorized one-time remote sync of validated RedByte `main` to `origin/main` for this task. Force-push remains disallowed.
+
+**Changes:**
+- Merged `origin/product/counter-verification-semantics-1` into `main` with merge commit `2e6f60e7`; that branch already contained `origin/product/verify-hardware-map-pins-hardening-1`.
+- Added `docs/release/course-edition/16-product-hardening-stack-merge.md`.
+- Updated the course-edition validation log with post-merge product gate results.
+
+**Product stack now on local `main`:**
+- Visible 2-Bit Counter clock/reset policy in the normal workflow.
+- Stable Basys3 board hitbox selectors for browser-level Map Pins testing.
+- Corrected Half Adder `SW1 (B)` starter pin (`V16`).
+- E0-specific Export wording that does not imply Vivado build, board programming, or observed hardware behavior.
+- Certified 2-Bit Counter Compare semantics, including clocked macro execution, canonical input alias handling, and reset-role fallback.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ui:lab-starter-load-gate`, the focused 67-test Vitest suite for counter/clock/Verify/Hardware/Export behavior, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits. `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. `pnpm build:unified` still fails on the known redirect contract drift: `dist/_redirects contains root redirect to /os/`.
+
+**Safety:** No new product feature work, repo cleanup, MarcusRPI work, install-script work, manual generation, or import/export recovery work was performed. E0/E1/E2/E3 boundaries remain distinct.
+
+**Next recommended task:** Import/export round-trip and recovery sprint after this merged `main` is pushed.
+
 ## Change Log 2026-05-11 (fix: certify counter compare semantics)
 
 **Subsystem:** RedByte ECE141 2-Bit Up Counter Verify Compare semantics.
