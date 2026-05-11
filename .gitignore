@@ -35,6 +35,7 @@ yarn-error.log*
 .redbyte/agent/runs/
 .redbyte/bench/runs/
 .redbyte/course-edition/
+.redbyte/product-immersion/
 .redbyte/session/
 .redbyte/agent/config.json
 .agents/

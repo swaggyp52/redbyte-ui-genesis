@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-05-11 (ux: harden ece141 starter workflows)
+
+**Subsystem:** RedByte IDE course workflow, product immersion browser loop, starter Verify -> Export trust path.
+
+**Changes:**
+- Added `pnpm -s ide:gate:ece141-product-immersion`, a Playwright browser loop for empty project, Logic Gates, Half Adder, 2-Bit Up Counter, FSM/lock starter, Export evidence rows, and Import entry visibility.
+- Stored product immersion screenshots/findings under ignored `.redbyte/product-immersion/`.
+- Changed the Project landing primary starter path to show Logic Gates, Half Adder, and 2-Bit Up Counter first, with fallback to the existing first three examples if any course starter is missing.
+- Fixed the Half Adder starter mapping labels so Verify passing no longer leads to an Export block from mismatched boundary labels (`SW0 (A)`, `SW1 (B)`, `LD0 (CARRY)`, `LD1 (SUM)`).
+- Updated lab-day wiring tests to use the current course starter landing cards.
+- Added `docs/release/course-edition/11-product-immersion-sprint-1.md` and updated the course-edition validation log.
+
+**Safety:** No broad UI redesign, feature expansion, install-script work, repo cleanup, Vivado automation, hardware bridge change, or E0/E1/E2/E3 semantics change. The new gate proves browser-level E0/export readiness and evidence-label honesty only; it does not prove Vivado build, board programming, or observed physical board behavior.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, and targeted Vitest for `examplesCatalog.learningPath.test.ts` plus `ideApp.labday-wiring.test.tsx` passed. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. Product immersion found a remaining P2: the 2-Bit Counter standard flow shows the auto board clock summary, but the fuller clock policy panel is not obvious before the run.
+
+**Next recommended task:** Verify and Hardware product hardening: make sequential clock policy clearer in the normal Counter flow, then add a Map Pins edit/stale-mapping browser gate.
+
 ## Change Log 2026-05-11 (chore: clean course edition package boundary)
 
 **Subsystem:** Course-edition repo safety, generated-output boundary, environment-file boundary.
