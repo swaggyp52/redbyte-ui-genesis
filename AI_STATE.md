@@ -15,6 +15,8 @@
 
 **Evidence:** TDD source-contract checks failed before the timeout and doctor ping-gate changes, then passed after patching. `redbyte-pi-node.service` restarted active with `MainPID=9864`. Validated `/ping`, `/version`, `/health`, `/product-state`, `/next-work`, `/dashboard-data`, unauthenticated `/chat` returning `401`, authenticated structured `/chat`, `marcus-doctor.sh`, and `node --check server.mjs`. Post-success Pi backup: `/home/pi/redbyte-pi-marcus-backup-20260511-031104.tar.gz`.
 
+**Release-process debt:** Pushing `9ea2b728` to `origin/main` reported a bypassed required status check: `Classroom Truth Gates`. Treat the GitHub push as source delivered, not as proof that protected CI gates ran.
+
 ## Change Log 2026-05-10 (chore(session): add RedByte start packet)
 
 **Subsystem:** repo hygiene + session-start operating loop tooling
