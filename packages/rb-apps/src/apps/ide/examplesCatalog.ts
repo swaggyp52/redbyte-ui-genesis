@@ -359,10 +359,10 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
       'Export the Vivado bundle and check the gate-level RTL view',
     ],
     ioRows: [
-      { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', direction: 'in',  pin: 'V17', required: true },
-      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1', direction: 'in',  pin: 'W16', required: true },
-      { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0', direction: 'out', pin: 'U16', required: true },
-      { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1', direction: 'out', pin: 'E19', required: true },
+      { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0 (A)', direction: 'in',  pin: 'V17', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1 (B)', direction: 'in',  pin: 'W16', required: true },
+      { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0 (CARRY)', direction: 'out', pin: 'U16', required: true },
+      { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1 (SUM)', direction: 'out', pin: 'E19', required: true },
     ],
     vectors: [
       { tick: 0, inputs: { sw0_node: 0, sw1_node: 0 }, expected: { ld0_node: 0, ld1_node: 0 } },

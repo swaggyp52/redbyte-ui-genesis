@@ -558,14 +558,14 @@ describe('IdeApp lab-day wiring', () => {
     const view = render(<IdeApp />);
 
     await view.findByTestId('ide-project-landing');
-    fireEvent.click(await view.findByTestId('ide-project-landing-example-signal-tour'));
+    fireEvent.click(await view.findByTestId('ide-project-landing-example-logic-gates'));
 
     await waitFor(() => {
       expect(view.queryByTestId('ide-example-confirm-modal')).toBeNull();
     });
 
     await waitFor(() => {
-      expect(useProjectRuntime.getState().activeExampleId).toBe('signal-tour');
+      expect(useProjectRuntime.getState().activeExampleId).toBe('logic-gates');
     });
 
     await act(async () => {
@@ -621,7 +621,7 @@ describe('IdeApp lab-day wiring', () => {
     const view = render(<IdeApp />);
 
     await view.findByTestId('ide-project-landing');
-    fireEvent.click(await view.findByTestId('ide-project-landing-example-signal-tour'));
+    fireEvent.click(await view.findByTestId('ide-project-landing-example-half-adder'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-topbar-mode-label').textContent).toContain('Design');

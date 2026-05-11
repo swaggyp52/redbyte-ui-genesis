@@ -183,6 +183,7 @@ const PROJECT_EMPTY_SIM: RuntimeSimState = {
 };
 
 const SECURITY_LOCK_STARTER_ID = '23_lab8-fsm-lock-starter-basys3';
+const COURSE_LANDING_EXAMPLE_IDS = ['logic-gates', 'half-adder', 'two-bit-counter'] as const;
 const SECURITY_LOCK_REFERENCE_PATH = 'labs/ece141-final-project';
 
 export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
@@ -869,7 +870,16 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     ]
   );
   const hasRecentEntryPoints = recentProjects.length > 0 || Boolean(onOpenSavedProjects);
-  const landingPrimaryExamples = useMemo(() => examples.slice(0, 3), [examples]);
+  const landingPrimaryExamples = useMemo(() => {
+    const examplesById = new Map(examples.map((example) => [example.id, example]));
+    const coursePathExamples = COURSE_LANDING_EXAMPLE_IDS
+      .map((id) => examplesById.get(id))
+      .filter((example): example is NonNullable<typeof example> => Boolean(example));
+
+    return coursePathExamples.length === COURSE_LANDING_EXAMPLE_IDS.length
+      ? coursePathExamples
+      : examples.slice(0, 3);
+  }, [examples]);
   const alternateStarterExamples = useMemo(() => {
     if (examples.length === 0) return [];
     if (!featuredSecurityStarter) return examples.slice(0, 3);

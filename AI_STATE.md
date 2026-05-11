@@ -1,5 +1,92 @@
 # AI State
 
+## Change Log 2026-05-11 (chore: separate Marcus RPI spillover)
+
+**Subsystem:** Repo separation, Marcus/Raspberry Pi local artifact preservation, course-edition branch synchronization prep.
+
+**Changes:**
+- Created local safety branch `backup/pre-main-sync-2026-05-11` at the course-edition branch head before moving files.
+- Created `C:\MarcusRPI` as a separate local git repo with a README.
+- Copied untracked `.redbyte/pi-session-room/**` into `C:\MarcusRPI\imports\redbyte-spillover-20260511-1538\.redbyte\pi-session-room\` and verified 9 files were present before removing the RedByte working-tree copy.
+- Added narrow `.gitignore` guards for `.redbyte/pi-session-room/` plus local `.redbyte` Marcus/RPI config/runtime filenames such as `rooms.json`, `registry.json`, `connection-profile*.json`, `marcus-lab*.json`, `server.mjs`, `server-contract*`, and `marcus-doctor*`.
+- Added `docs/release/course-edition/12-main-sync-and-marcus-rpi-separation.md` and updated the course-edition validation log.
+
+**Safety:** No RedByte product source, starter, export code, Vivado/Basys3 logic, package dependency, or evidence-tier language changed. The broader tracked Marcus/HQ/local-agent source and docs remain in RedByte for human-review migration because package scripts, docs, tests, and the HQ source tree still reference them. No force push or history rewrite was attempted.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed on the course-edition branch after the separation cleanup. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. Network fetch/push remains policy-conflicted because this file still states remote operations are disallowed in this environment.
+
+**Next recommended task:** Decide whether to override the remote-operation policy for `origin/main` sync, then run a separate Marcus/HQ/local-agent tracked-content migration if the final RedByte source repo should remove those files entirely.
+
+## Change Log 2026-05-11 (ux: harden ece141 starter workflows)
+
+**Subsystem:** RedByte IDE course workflow, product immersion browser loop, starter Verify -> Export trust path.
+
+**Changes:**
+- Added `pnpm -s ide:gate:ece141-product-immersion`, a Playwright browser loop for empty project, Logic Gates, Half Adder, 2-Bit Up Counter, FSM/lock starter, Export evidence rows, and Import entry visibility.
+- Stored product immersion screenshots/findings under ignored `.redbyte/product-immersion/`.
+- Changed the Project landing primary starter path to show Logic Gates, Half Adder, and 2-Bit Up Counter first, with fallback to the existing first three examples if any course starter is missing.
+- Fixed the Half Adder starter mapping labels so Verify passing no longer leads to an Export block from mismatched boundary labels (`SW0 (A)`, `SW1 (B)`, `LD0 (CARRY)`, `LD1 (SUM)`).
+- Updated lab-day wiring tests to use the current course starter landing cards.
+- Added `docs/release/course-edition/11-product-immersion-sprint-1.md` and updated the course-edition validation log.
+
+**Safety:** No broad UI redesign, feature expansion, install-script work, repo cleanup, Vivado automation, hardware bridge change, or E0/E1/E2/E3 semantics change. The new gate proves browser-level E0/export readiness and evidence-label honesty only; it does not prove Vivado build, board programming, or observed physical board behavior.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ui:lab-starter-load-gate`, and targeted Vitest for `examplesCatalog.learningPath.test.ts` plus `ideApp.labday-wiring.test.tsx` passed. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift. Product immersion found a remaining P2: the 2-Bit Counter standard flow shows the auto board clock summary, but the fuller clock policy panel is not obvious before the run.
+
+**Next recommended task:** Verify and Hardware product hardening: make sequential clock policy clearer in the normal Counter flow, then add a Map Pins edit/stale-mapping browser gate.
+
+## Change Log 2026-05-11 (chore: clean course edition package boundary)
+
+**Subsystem:** Course-edition repo safety, generated-output boundary, environment-file boundary.
+
+**Changes:**
+- Removed the tracked root `.env` from the git index while leaving the local file on disk and ignored.
+- Removed tracked generated coverage HTML under `coverage/**` from the git index.
+- Removed tracked local `apps/playground/dev-server.log` from the git index.
+- Updated `.gitignore` for real env files, safe env templates, coverage output, nested dev-server logs, and common Vivado/local FPGA build products.
+- Added `docs/release/course-edition/10-security-package-boundary-cleanup.md`.
+- Added a concrete GitHub course-facing boundary section to `docs/release/course-edition/02-final-package-boundary.md`.
+- Updated `docs/release/course-edition/08-validation-log.md`.
+
+**Safety:** No product source, UI behavior, launcher behavior, package dependency, evidence-tier language, Vivado/Basys3 readiness claim, stale docs, old OS-era material, Marcus/agent material, or mixed `artifacts/**` content was removed. The untracked `.redbyte/pi-session-room/` local folder was left untouched.
+
+**Evidence:** Baseline and final `pnpm -s ide:gate:ece141-starter-verify-export` passed. `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Secret/privacy review found no real tracked secret values; `.env` contained a non-secret local config value but was still removed from tracking because real env files do not belong in the public/course-facing repo. Full `pnpm typecheck` still fails in the pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift; `@redbyte/rb-fpga-toolchain` still passes before that failure point.
+
+**Next recommended task:** Student-safe Windows script layer: install/launch/doctor/update/clean-reset, with the existing ECE141 starter Verify -> Export gate kept as the browser workflow guard.
+
+## Change Log 2026-05-11 (fix: stabilize starter workflow console warnings)
+
+**Subsystem:** ECE141 course starter workflow, runtime projection, Verify/Export browser gate.
+
+**Changes:**
+- Classified `[CircuitStore] Circuit mutation called but engines not connected!` during Logic Gates starter loading as a harmless but trust-noisy runtime-to-editor projection warning for this workflow.
+- Added `requireEngines?: boolean` to `useCircuitStore.updateCircuit`, defaulting to true so normal editor mutations still warn when engines are missing.
+- Marked `projectRuntimeCircuitToEditorStore` as `requireEngines: false` because it is a one-way cache projection from runtime authority before `DesignSurface` may have registered editor-local engines.
+- Added `tests/e2e/ece141-logic-gates-verify-export.spec.ts` and `pnpm -s ide:gate:ece141-starter-verify-export` for the Logic Gates starter -> Verify Compare -> Export ready-to-build path.
+- Fixed the targeted `@redbyte/rb-fpga-toolchain` typecheck failure by null-coalescing optional timing constraints and adding DOM ambient types for the current `rb-utils` source export surface.
+- Added `docs/release/course-edition/09-runtime-stabilization-sprint-1.md` and updated the course-edition validation log.
+
+**Safety:** No feature expansion, UI redesign, mass cleanup, stale-doc deletion, Vivado evidence claim, board-programming claim, or E2/E3 conflation. The new browser gate proves only the E0/export-readiness browser workflow, not Vivado build, programming, or physical board observation.
+
+**Evidence:** The new Playwright gate failed RED after reaching pass/export-ready state because it captured the `CircuitStore` warning, then passed after the runtime projection warning gate. `pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/circuitProjection.test.ts` passed. `pnpm -s ide:gate:ece141-starter-verify-export` passed. `pnpm --filter @redbyte/rb-fpga-toolchain typecheck` passed. `pnpm install --frozen-lockfile`, `pnpm start:smoke`, and `git diff --check` passed. Full `pnpm typecheck` still fails later in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` sources; `pnpm -s ide:gate:export-ready-contract` still fails on a separate ready-vector gate mismatch; `pnpm build:unified` still fails on the known root redirect contract drift (`dist/_redirects contains root redirect to /os/`) after the playground build and merge complete.
+
+**Next recommended task:** Security/package-boundary cleanup for tracked `.env`, generated outputs, active lockfile/package-manager boundary, and safe `.gitignore` updates, while leaving product behavior unchanged.
+
+## Change Log 2026-05-11 (docs(course): add Course Edition repo triage)
+
+**Subsystem:** Course-release governance, repo boundary, and browser audit.
+
+**Changes:**
+- Created working branch `chore/course-edition-repo-triage` for the RedByte ECE141 Course Edition triage.
+- Added `docs/release/course-edition/00-preflight-report.md` through `08-validation-log.md` covering preflight, repo inventory, final package boundary, archive/removal plan, runtime/browser audit, product walkthrough findings, feature capability matrix, first cleanup PR plan, and validation log.
+- Added `.redbyte/course-edition/` to `.gitignore` so local Playwright/browser audit artifacts are not accidentally committed.
+- Established a local browser feedback loop against `http://127.0.0.1:5198/` using the existing Playwright dependency. Local screenshots and JSON evidence live under ignored `.redbyte/course-edition/browser/`.
+- Classified course-product source, course docs, tests/QA, examples/starters, archive candidates, generated outputs, and security/privacy review candidates without deleting or moving repo content.
+
+**Safety:** No product source, launcher code, examples, generated tracked files, stale docs, `.env`, `package-lock.json`, `coverage/**`, `artifacts/**`, or untracked `.redbyte/pi-session-room/**` files were removed or modified. E0/E1/E2/E3 evidence tiers remain distinct; this audit does not claim classroom readiness or E3 closure.
+
+**Evidence:** `pnpm install --frozen-lockfile` passed; `pnpm start:smoke` passed before and after docs edits; Playwright loaded Project, Design, Verify, Hardware/Map Pins, Export, and Import; Logic Gates, Half Adder, and 2-Bit Up Counter starters loaded; Logic Gates Verify Compare passed 12/12 and same-page Export reached ready-to-build. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`, `pnpm --filter @redbyte/playground build`, focused `startupMode.test.ts`, and `pnpm rb:site:start:test` passed. `pnpm lint:product` exited 0 but did not find selected lint scripts. `pnpm typecheck` failed in `@redbyte/rb-fpga-toolchain` on existing TypeScript/DOM-lib issues unrelated to this docs-only slice. Browser starter workflows produced repeated `CircuitStore` engine-not-connected warnings that need classification before course release.
+
 ## Change Log 2026-05-11 (infra(marcus): deploy Marcus Homebase v1)
 
 **Subsystem:** Raspberry Pi Marcus LAN service at `/home/pi/redbyte-pi`

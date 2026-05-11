@@ -376,7 +376,7 @@ export function calculateReadinessScore(
   }
 
   // Bonus for having timing constraints
-  if (constraintResult.pinInfo?.timingConstraints > 0) {
+  if ((constraintResult.pinInfo?.timingConstraints ?? 0) > 0) {
     score += 5;
   }
 

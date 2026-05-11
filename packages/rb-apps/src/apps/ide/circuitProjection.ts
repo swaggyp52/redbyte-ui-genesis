@@ -10,6 +10,10 @@ export function projectRuntimeCircuitToEditorStore(circuit: Circuit): boolean {
   }
 
   store.reset();
-  store.updateCircuit(circuit, { skipHistory: true, enforceLimits: true });
+  store.updateCircuit(circuit, {
+    skipHistory: true,
+    enforceLimits: true,
+    requireEngines: false,
+  });
   return true;
 }
