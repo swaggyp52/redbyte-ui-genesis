@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-11 (merge: vivado artifact correctness hardening)
+
+**Subsystem:** RedByte ECE141 Vivado handoff artifact correctness and mainline validation.
+
+**Changes:**
+- Merged `origin/product/vivado-artifact-correctness-1` into `main` with merge commit `0ea2e60d`.
+- Added `docs/release/course-edition/20-vivado-artifact-correctness-merge.md`.
+- Updated the course-edition validation log with merged-main product gate results.
+
+**Product stack now on local `main`:**
+- E0 Vivado project ZIP inspection for Logic Gates, Half Adder, and 2-Bit Up Counter.
+- Browser gate `pnpm -s ide:gate:ece141-vivado-artifacts`.
+- Generated Vivado project README outputs state the E0-only evidence boundary.
+- `EXPECTED_IO.json` includes `evidenceLevel: "E0"`.
+- `EXPECTED_IO.json` signals preserve `pin` and include physical `packagePin` for parity with XDC.
+- Existing import/export recovery, counter Compare, clock/export, map-pins recovery, starter Verify/Export, and product immersion gates remain in place.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-vivado-artifacts`, the focused 30-test artifact/import/export/counter/clock-policy Vitest suite, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Full `pnpm typecheck` still fails in the known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` type-boundary drift.
+
+**Safety:** This merge proves E0 export-package correctness only. It does not prove Vivado build/bitstream evidence, board programming evidence, or observed physical board behavior. No new feature work, repo cleanup, MarcusRPI work, install-script work, manual generation, typecheck cleanup, or build redirect cleanup was performed.
+
+**Known failures:** Full workspace `pnpm typecheck` remains red in `@redbyte/rb-lab-engine` / pulled `rb-logic-core`. `pnpm build:unified` was not run in this task; the known `/os/` redirect contract drift remains release-process debt.
+
+**Post-merge scan:** The Marcus/RPI/HQ/local-agent grep still finds historical `AI_STATE.md` notes, `.gitignore` ignore patterns, retained generated/build artifacts, and already-known retained files, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent scripts or surfaces.
+
+**Next recommended task:** Full workspace `pnpm typecheck` drift cleanup. Do not start install scripts or manuals before the typecheck gate is green or explicitly scoped.
+
 ## Change Log 2026-05-11 (test: add vivado artifact correctness gates)
 
 **Subsystem:** RedByte ECE141 Vivado handoff artifacts, E0 export package correctness.
