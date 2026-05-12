@@ -20,9 +20,11 @@
 
 **Validation note:** A broader supplemental Vitest sweep also run during merge validation failed one unchanged `verifySurface.workstation.test.tsx` latch-helper assertion. Neither `VerifySurface.tsx` nor that test changed in the merge, so no product code was changed for it in this no-new-UI merge task.
 
+**Remote sync:** `git push origin main` succeeded. `main` and `origin/main` both resolved to `aab82b6b52f69b8f16665323f73f3d444c237d2a` after fetch. GitHub reported bypassed required `Classroom Truth Gates` status check expectation; this remains release-process debt until the remote status check is enforced normally. Source has been delivered to GitHub `main`; this is not the same as a verified live/student deploy unless the deploy pipeline ships that commit.
+
 **Safety:** No new UI work, typecheck cleanup, install-script work, manuals, MarcusRPI work, E0/E1/E2/E3 semantic change, circuit engine change, simulator change, starter semantic change, or Vivado exporter behavior change was performed. The Marcus/RPI/HQ/local-agent scan still finds historical notes, ignore patterns, README companion references, lockfile substrings, tests asserting HQ absence, and retained known artifacts, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent IDE material.
 
-**Next recommended task:** Push validated `main` to `origin/main`, then start `product/redbyte-ui-hierarchy-2` for RedByte UI Hierarchy Sprint 2. Do not start install scripts, manuals, or typecheck cleanup before that sprint unless explicitly redirected.
+**Next recommended task:** Start `product/redbyte-ui-hierarchy-2` for RedByte UI Hierarchy Sprint 2. Do not start install scripts, manuals, or typecheck cleanup before that sprint unless explicitly redirected.
 
 ## Change Log 2026-05-12 (ux: establish RedByte lab workbench interface direction)
 
