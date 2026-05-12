@@ -6,6 +6,22 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed for typecheck merge | ~2s | Local `main` was up to date with `origin/main` at `e98bae578c422006fffefbe530fc3edad052808b`. | N/A | Merge typecheck cleanup branch. |
+| `git branch backup/pre-typecheck-drift-cleanup-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
+| `git merge --no-ff origin/release/typecheck-drift-cleanup-1 -m "merge: resolve workspace typecheck drift"` | Passed | ~1s | Merge commit `e98f11b4`; no conflicts. | N/A | Validate merged `main`. |
+| Marcus/RPI/HQ/local-agent grep | Passed with known retained findings | ~1s | Grep still finds historical `AI_STATE.md` notes, ignore patterns, retained generated/artifact material, lockfile substrings, and old historical references; merge did not add active Marcus/RPI/HQ/local-agent IDE surfaces or scripts. | Pre-existing/retained | Keep separate from typecheck cleanup merge. |
+| `pnpm install --frozen-lockfile` | Passed on typecheck-merged `main` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm --filter @redbyte/rb-lab-engine typecheck` | Passed on typecheck-merged `main` | ~3s | `@redbyte/rb-lab-engine` compiler gate passed. | N/A | No action. |
+| `pnpm typecheck` | Passed on typecheck-merged `main` | ~6s | Full workspace typecheck passed after `rb-board-profiles`, `rb-fpga-toolchain`, `rb-viewport`, and `rb-lab-engine` completed. | N/A | No action. |
+| `pnpm start:smoke` | Passed on typecheck-merged `main` | ~19s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| Full ECE141 browser gate stack | Passed on typecheck-merged `main` | ~435s | `ide:gate:ece141-starter-verify-export`, `ide:gate:ece141-product-immersion`, `ide:gate:ece141-counter-clock-export`, `ide:gate:ece141-map-pins-recovery`, `ide:gate:ece141-counter-compare-pass`, `ide:gate:ece141-project-persistence`, `ide:gate:ece141-import-export-recovery`, `ide:gate:ece141-vivado-artifacts`, `ide:gate:ece141-ui-art-direction`, `ide:gate:ece141-ui-hierarchy`, and `ui:lab-starter-load-gate` all passed sequentially. | N/A | No action. |
+| Focused typecheck-cleanup Vitest suite | Passed on typecheck-merged `main` | ~12s | 13 test files passed; 163 tests passed and 1 skipped across touched `rb-lab-engine` and `rb-logic-core` areas. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before typecheck-merge closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:encoding:check` | Passed before typecheck-merge closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final closeout docs. |
+| `git diff --check` | Passed before typecheck-merge closeout docs | <1s | No whitespace errors. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:doc:validate` | Passed after typecheck-merge closeout docs | ~1s | 36 passed, 0 failed after `26-typecheck-drift-cleanup-merge.md`, validation-log, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after typecheck-merge closeout docs | ~1s | No mojibake markers found after closeout docs. | N/A | No action. |
+| `git diff --check` | Passed after typecheck-merge closeout docs | <1s | No whitespace errors after closeout docs. | N/A | Ready to commit closeout docs. |
 | `git checkout -b release/typecheck-drift-cleanup-1` | Passed | <1s | Branch created from pushed `main` at `e98bae578c422006fffefbe530fc3edad052808b`. | N/A | Reproduce typecheck drift. |
 | `pnpm typecheck` | Failed before fix | ~6s | Full workspace stopped at `@redbyte/rb-lab-engine`; failures were stale `LabProjectV1` fixtures, stale action/evidence shapes, `rb-lab-engine` source narrowing errors, and pulled `rb-logic-core` strictness errors. | Pre-existing release-gate drift | Fix type/schema boundaries without exclusions or suppressions. |
 | `pnpm --filter @redbyte/rb-lab-engine typecheck` | Failed before fix | ~4s | Isolated the same `rb-lab-engine` and pulled `rb-logic-core` errors for the inventory. | Pre-existing release-gate drift | Update source strictness and stale tests. |

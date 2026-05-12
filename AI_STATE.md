@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-05-12 (merge: resolve workspace typecheck drift)
+
+**Subsystem:** Full workspace TypeScript release gate mainline validation.
+
+**Changes:**
+- Merged `origin/release/typecheck-drift-cleanup-1` into `main` with merge commit `e98f11b4`.
+- Added `docs/release/course-edition/26-typecheck-drift-cleanup-merge.md`.
+- Updated the course-edition validation log with merged-main typecheck cleanup validation.
+
+**Merged release stack now on local `main`:**
+- Full workspace `pnpm typecheck` is green.
+- `rb-lab-engine` stale `LabProjectV1`, action envelope, evidence snapshot, probe, and connection fixture drift is fixed.
+- `rb-lab-engine` source narrowing/import drift is fixed.
+- Pulled `rb-logic-core` registry typing, Circuit V1 conversion, serialization narrowing, public type exports, IR reset binding typing, and evidence example matching drift is fixed.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm --filter @redbyte/rb-lab-engine typecheck`, full `pnpm typecheck`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, `pnpm -s ui:lab-starter-load-gate`, and the focused typecheck-cleanup Vitest suite (13 files, 163 passed, 1 skipped) passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed after final closeout doc edits.
+
+**Safety:** No feature work, UI polish, install-script work, manual work, build/unified redirect cleanup, MarcusRPI work, active RedByte IDE behavior change, Vivado artifact behavior change, or E0/E1/E2/E3 evidence semantic change was performed. The Marcus/RPI/HQ/local-agent grep still returns historical notes, ignore patterns, retained generated/artifact material, lockfile substrings, and old historical references, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent IDE surfaces or scripts.
+
+**Remaining blocker:** `pnpm build:unified` still has the known `/os/` redirect contract drift and remains the next release-readiness target.
+
+**Next recommended task:** Start `release/build-unified-contract-cleanup-1` for build/deploy contract cleanup. Do not start install scripts or manuals before that build contract is green unless explicitly redirected.
+
 ## Change Log 2026-05-12 (fix: resolve workspace typecheck drift)
 
 **Subsystem:** Full workspace TypeScript release gate.
