@@ -6,6 +6,29 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed | ~3s | Local `main` was already up to date with `origin/main` at `f26869d16672cfc328265b8bc76383389be0d18b`. | N/A | Merge UI hierarchy branch. |
+| `git branch backup/pre-redbyte-ui-hierarchy-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
+| `git merge --no-ff origin/product/redbyte-ui-hierarchy-2 -m "merge: redbyte ui hierarchy hardening"` | Passed | ~1s | Merge commit `e0271c16`; no conflicts. | N/A | Validate merged `main`. |
+| Marcus/RPI/HQ/local-agent grep | Passed with known retained findings | ~1s | Grep still finds historical `AI_STATE.md` notes, ignore patterns, archive/artifact files, lockfile substrings, and tests that assert HQ absence; merge diff did not add active Marcus/RPI/HQ/local-agent IDE material. | Pre-existing/retained | Keep separate from UI hierarchy merge. |
+| `pnpm install --frozen-lockfile` | Passed on merged `main` | ~3s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed on merged `main` | ~34s | Node 20.19.0 and pnpm 10.24.0 detected; launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed on merged `main` | ~47s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed on merged `main` | ~52s | 4 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-clock-export` | Passed on merged `main` | ~35s | 2 Playwright tests passed. | N/A | No action. |
+| Parallel browser-gate attempt for `ece141-counter-clock-export` and `ece141-map-pins-recovery` | Failed one runner before test execution | ~6s | `ece141-map-pins-recovery` could not start because the Playwright web server port 4173 was already in use by the parallel gate. | Introduced runner scheduling issue | Rerun browser gates sequentially. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Passed on merged `main` rerun | ~31s | 1 Playwright test passed after sequential rerun. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-compare-pass` | Passed on merged `main` | ~33s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-project-persistence` | Passed on merged `main` | ~47s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-import-export-recovery` | Passed on merged `main` | ~53s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-vivado-artifacts` | Passed on merged `main` | ~49s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Passed on merged `main` | ~37s | 2 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Passed on merged `main` | ~38s | 2 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed on merged `main` | ~18s | 8 starter-load tests passed. | N/A | No action. |
+| Focused Sprint 7 Vitest surface suite | Passed on merged `main` | ~28s | 65 tests passed and 1 skipped across IdeApp, Project, Verify command bar, Hardware, Export, and Import tests. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before closeout docs | ~2s | 36 passed, 0 failed. | N/A | Rerun after final docs. |
+| `pnpm rb:encoding:check` | Passed before closeout docs | ~4s | No mojibake markers found. | N/A | Rerun after final docs. |
+| `git diff --check` | Passed before closeout docs | <1s | No whitespace errors. | N/A | Rerun after final docs. |
+| `pnpm typecheck` | Failed on merged `main` | ~13s | Known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` schema, stale fixture, and type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass; no new UI-specific type errors appeared. | Pre-existing/out of merge scope | Run full-workspace typecheck drift cleanup next. |
 | `git checkout -b product/redbyte-ui-hierarchy-2` | Passed | <1s | Sprint branch created from `origin/main` after UI art-direction merge closeout. | N/A | Start hierarchy sprint. |
 | `pnpm -s ide:gate:ece141-ui-hierarchy` | Failed before implementation | ~106s | New draft gate failed because Project did not expose explicit hierarchy roles yet. | Introduced test-first red state | Add focal/context/advanced/next hierarchy roles and UI weighting. |
 | `pnpm -s ide:gate:ece141-ui-hierarchy` | Failed during tightening | ~44s | Clicking the existing Design Fit control in the draft gate produced NaN SVG geometry console errors. | Introduced by draft gate action, not product change | Removed the unnecessary Fit click and kept rendered-node assertion. |

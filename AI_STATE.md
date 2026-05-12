@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-05-12 (merge: redbyte ui hierarchy hardening)
+
+**Subsystem:** RedByte ECE141 IDE surface hierarchy mainline validation.
+
+**Changes:**
+- Merged `origin/product/redbyte-ui-hierarchy-2` into `main` with merge commit `e0271c16`.
+- Added `docs/release/course-edition/24-redbyte-ui-hierarchy-merge.md`.
+- Updated the course-edition validation log with merged-main Sprint 7 product gate results.
+
+**Merged product stack now on local `main`:**
+- Explicit primary/context/advanced/next hierarchy roles across Project, Design, Verify, Hardware / Map Pins, Export, and Import.
+- Project certified course path as the primary starting point.
+- Hardware Basys3 board/mapping workbench as the primary focal object.
+- Export E0 handoff as the primary focal object while keeping E1/E2/E3 as external evidence steps.
+- Import restore / Vivado ZIP recovery path as the primary focal object.
+- Browser gate `pnpm -s ide:gate:ece141-ui-hierarchy`.
+- Sprint 7 screenshots under `.redbyte/product-immersion/sprint7-ui-hierarchy-2/`.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery` on rerun after an intentional runner scheduling correction, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, `pnpm -s ui:lab-starter-load-gate`, the focused Sprint 7 surface Vitest suite (65 passed, 1 skipped), `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` schema, stale fixture, and type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass.
+
+**Validation note:** A parallel browser-gate attempt started two Playwright web servers on port 4173 and made `pnpm -s ide:gate:ece141-map-pins-recovery` fail before the test ran. The gate was rerun sequentially and passed; no product code changed for that runner issue.
+
+**Safety:** No new UI work beyond the merged branch, typecheck cleanup, install-script work, manuals, MarcusRPI work, circuit engine change, simulator change, starter semantic change, Vivado artifact logic change, or E0/E1/E2/E3 semantic change was performed. The Marcus/RPI/HQ/local-agent scan still finds historical notes, ignore patterns, archive/artifact files, lockfile substrings, and tests asserting HQ absence, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent IDE material.
+
+**Remaining UI issues:** No remaining P1/P2 UI issues were identified in Sprint 7. P3 polish remains for Design screenshot framing/density and Export right-dock clipping.
+
+**Next recommended task:** Push merged `main`, then start `release/typecheck-drift-cleanup-1` for full-workspace `pnpm typecheck` drift cleanup. Do not start install scripts or manuals before that cleanup unless explicitly redirected.
+
 ## Change Log 2026-05-12 (ux: clarify RedByte surface hierarchy)
 
 **Subsystem:** RedByte ECE141 IDE surface hierarchy.
