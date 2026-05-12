@@ -46,7 +46,7 @@ Full workspace `pnpm typecheck` is expected to remain red only in the known `@re
 | Merge commit | `9614a04bae40b886c0f92660cf5cd01f81abdf75` |
 | Closeout commit | `aab82b6b52f69b8f16665323f73f3d444c237d2a` |
 | Merge status | `origin/product/redbyte-ui-art-direction-1` merged into local `main` with `--no-ff`; no conflicts. |
-| Remote sync | `git push origin main` succeeded; `main` and `origin/main` both resolved to `aab82b6b52f69b8f16665323f73f3d444c237d2a` after fetch. |
+| Remote sync | `git push origin main` succeeded for the merge closeout, followed by a pushed closeout-doc update for the required-status-check debt. |
 | Release-process debt | GitHub reported bypassed required `Classroom Truth Gates` status check expectation during push. |
 | Production/live impact | GitHub `main` has the source commit. This does not by itself prove live/student deployment unless the deploy pipeline ships the commit. |
 | Screenshots path | `.redbyte/product-immersion/sprint6-ui-art-direction/` |
