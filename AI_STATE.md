@@ -22,11 +22,13 @@
 
 **Validation note:** A parallel browser-gate attempt started two Playwright web servers on port 4173 and made `pnpm -s ide:gate:ece141-map-pins-recovery` fail before the test ran. The gate was rerun sequentially and passed; no product code changed for that runner issue.
 
+**Remote sync:** `git push origin main` succeeded for the merge closeout and delivered `73adf333a5482ea465d6e8282f3cb810f95d30bf` to GitHub `main`; this is source delivery, not a verified live/student deploy unless the deploy pipeline ships that commit. GitHub reported bypassed required `Classroom Truth Gates` status check expectation again; this remains release-process debt until the remote status check is enforced normally.
+
 **Safety:** No new UI work beyond the merged branch, typecheck cleanup, install-script work, manuals, MarcusRPI work, circuit engine change, simulator change, starter semantic change, Vivado artifact logic change, or E0/E1/E2/E3 semantic change was performed. The Marcus/RPI/HQ/local-agent scan still finds historical notes, ignore patterns, archive/artifact files, lockfile substrings, and tests asserting HQ absence, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent IDE material.
 
 **Remaining UI issues:** No remaining P1/P2 UI issues were identified in Sprint 7. P3 polish remains for Design screenshot framing/density and Export right-dock clipping.
 
-**Next recommended task:** Push merged `main`, then start `release/typecheck-drift-cleanup-1` for full-workspace `pnpm typecheck` drift cleanup. Do not start install scripts or manuals before that cleanup unless explicitly redirected.
+**Next recommended task:** Start `release/typecheck-drift-cleanup-1` for full-workspace `pnpm typecheck` drift cleanup. Do not start install scripts or manuals before that cleanup unless explicitly redirected.
 
 ## Change Log 2026-05-12 (ux: clarify RedByte surface hierarchy)
 

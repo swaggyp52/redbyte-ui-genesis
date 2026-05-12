@@ -81,6 +81,12 @@ The post-merge grep still finds historical `AI_STATE.md` notes, `.gitignore` ign
 
 Full workspace `pnpm typecheck` remains red in `@redbyte/rb-lab-engine` and pulled `rb-logic-core` sources. The next sprint should address this directly.
 
+## Remote Sync
+
+`git push origin main` succeeded and delivered `73adf333a5482ea465d6e8282f3cb810f95d30bf` to GitHub `main`.
+
+GitHub reported bypassed required `Classroom Truth Gates` status check expectation during the push. This is release-process debt until the required remote status check is enforced normally.
+
 ## Closeout
 
 Remaining UI work is P3 polish only:
