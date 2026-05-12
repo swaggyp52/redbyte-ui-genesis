@@ -6,6 +6,25 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `pnpm install --frozen-lockfile` | Passed on `product/redbyte-ui-art-direction-1` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed | ~31s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Failed before test adjustment | ~47s | New gate assumed certified starter cards would be strictly left-to-right by X position; at default width the cards wrapped with equal X values. | Introduced test draft issue | Changed the assertion to verify DOM/course order and reran. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Failed before test adjustment | ~56s | Import recovery copy matched three visible elements in strict mode. | Introduced test draft issue | Scoped assertion with `.first()` and reran. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Passed | ~50s | New UI art-direction gate passed; lab-flow ribbon, starter path, Design, Verify, Hardware, Export, Import, and narrow viewport assertions passed; screenshots captured under `.redbyte/product-immersion/sprint6-ui-art-direction/`. | N/A | Keep as UI hierarchy gate. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~38s | Existing Logic Gates starter Verify -> Export browser gate passed after UI recomposition. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed | ~69s | Existing four-workflow product immersion browser gate passed after UI recomposition. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-clock-export` | Passed | ~50s | Counter clock/reset policy and E0 export evidence gate passed; 2 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Passed | ~42s | Manual Map Pins edit and starter recovery gate passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-compare-pass` | Passed | ~51s | 2-Bit Counter Compare pass and E0-only Export gate passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-project-persistence` | Passed | ~68s | Project persistence and stale evidence browser gate passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-import-export-recovery` | Passed | ~74s | Import/export recovery browser gate passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-vivado-artifacts` | Passed | ~61s | Certified starter E0 Vivado ZIP inspection gate passed after UI recomposition. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed | ~11s | 8 starter-load tests passed. | N/A | No action. |
+| Focused Vitest surface suite | Passed | ~14s | 66 tests passed and 1 skipped across IdeApp wiring, Project, Verify command bar, Hardware, Export, and Import surface tests. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed after sprint docs | ~1s | 36 passed, 0 failed after `21-redbyte-ui-art-direction.md`, validation log, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after sprint docs | ~1s | No mojibake markers found after sprint docs. | N/A | No action. |
+| `git diff --check` | Passed after sprint docs | <1s | No whitespace errors after UI and doc changes. | N/A | No action. |
+| `pnpm typecheck` | Failed | ~7s | Same known pre-existing `@redbyte/rb-lab-engine` and pulled `rb-logic-core` schema/test-fixture/type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass. | Pre-existing/out of sprint scope | Keep as separate full-workspace typecheck cleanup task. |
 | `git status --short --branch` | Passed | <1s | Starting state had `main...origin/main [ahead 1]` plus untracked `.redbyte/pi-session-room/`. | Pre-existing | Keep untracked session material untouched. |
 | `git log --oneline -n 10` | Passed | <1s | None. | N/A | Recorded top commit in preflight. |
 | `node --version` | Passed | <1s | None; reported `v20.19.0`. | N/A | Meets package engine. |
