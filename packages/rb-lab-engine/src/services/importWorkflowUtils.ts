@@ -8,7 +8,8 @@
  * - Cross-app synchronization via unifiedProjectStore
  */
 
-import type { LabProjectV1, CircuitV1, Circuit } from '../schema/index.js';
+import type { LabProjectV1, CircuitV1 } from '@redbyte/rb-utils';
+import type { Circuit } from '@redbyte/rb-logic-core';
 // RC-P2: Use canonical converters from rb-logic-core (only source of conversion logic)
 import { toCircuitV1, fromCircuitV1 } from '@redbyte/rb-logic-core';
 
@@ -102,12 +103,13 @@ export function prepareImportedProjectState(
  * Virtual Lab uses these fields directly from the project.
  */
 export function getVirtualLabSimulationState(project: LabProjectV1) {
+  const simulation = project.simulation as LabProjectV1['simulation'] & { isRunning?: boolean };
   return {
-    tickRate: project.simulation?.tickRate ?? 20,
-    currentTick: project.simulation?.currentTick ?? 0,
-    isRunning: project.simulation?.isRunning ?? false,
-    breakpoints: project.simulation?.breakpoints ?? [],
-    probes: project.simulation?.probes ?? [],
+    tickRate: simulation?.tickRate ?? 20,
+    currentTick: simulation?.currentTick ?? 0,
+    isRunning: simulation?.isRunning ?? false,
+    breakpoints: simulation?.breakpoints ?? [],
+    probes: simulation?.probes ?? [],
   };
 }
 

@@ -31,7 +31,7 @@ const createTestProject = (): LabProjectV1 => ({
       { id: 'n2', type: 'LED', x: 300, y: 100, label: 'Y' },
     ],
     connections: [
-      { id: 'c1', from: 'n1', fromPort: 'out', to: 'n2', toPort: 'in' },
+      { id: 'c1', fromNodeId: 'n1', fromPin: 'out', toNodeId: 'n2', toPin: 'in' },
     ],
   },
   simulation: {
@@ -42,10 +42,9 @@ const createTestProject = (): LabProjectV1 => ({
   evidence: {
     actions: [
       {
-        v: 1,
-        t: 'circuit/addNode',
-        p: { nodeId: 'n1', componentType: 'SWITCH', x: 100, y: 100 },
-        meta: { timestamp: '2025-01-31T00:00:00.000Z', sessionId: 'test-session' },
+        timestamp: '2025-01-31T00:00:00.000Z',
+        sessionId: 'test-session',
+        action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'n1', componentType: 'SWITCH', x: 100, y: 100 } },
       },
     ],
     snapshots: [],

@@ -43,7 +43,24 @@ export { runReplay, validateEventLog } from './determinism/replay';
 export { getFaninCone } from './pathTrace';
 
 // Types
-export type * from './types';
+export type {
+  Circuit,
+  CircuitSchemaV1,
+  CircuitSchemaV1Node,
+  Connection,
+  LogicValue,
+  Node,
+  NodeBehavior,
+  NodeDefinition,
+  NodeInputs,
+  NodeOutputs,
+  PortRef,
+  Position,
+  RuntimeNode,
+  SerializedCircuitV1,
+  Signal,
+  TickEngineConfig,
+} from './types';
 
 // Core classes
 export { NodeRegistry } from './NodeRegistry';

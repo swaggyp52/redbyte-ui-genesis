@@ -48,7 +48,7 @@ const noImport = { importReconstruction: false } as const;
 const noAuthoring = { authoring: false, classroom: false } as const;
 const boundaryOnly = { importReconstruction: false } as const;
 
-export const COMPONENT_SUPPORT_REGISTRY = [
+export const COMPONENT_SUPPORT_REGISTRY: readonly ComponentSupportEntry[] = [
   {
     type: 'AND',
     label: 'AND gate',
@@ -359,7 +359,7 @@ export const COMPONENT_SUPPORT_REGISTRY = [
     capabilities: allCapabilities({ authoring: false, vhdlExport: false, importReconstruction: false }),
     vhdlKind: 'boundary',
   },
-] as const satisfies readonly ComponentSupportEntry[];
+];
 
 const SUPPORT_BY_TYPE = new Map<ComponentNodeType, ComponentSupportEntry>(
   COMPONENT_SUPPORT_REGISTRY.map((entry) => [entry.type, entry]),

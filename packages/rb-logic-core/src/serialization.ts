@@ -74,9 +74,10 @@ export function deserialize(json: SerializedCircuitV1 | string): Circuit {
   return {
     nodes: nodes.map(node => {
       // Handle both legacy format (x, y directly on node) and new format (position.x, position.y)
-      const x = Number.isFinite(node.position?.x) ? node.position.x :
+      const position = node.position;
+      const x = position && Number.isFinite(position.x) ? position.x :
                 Number.isFinite((node as any).x) ? (node as any).x : 0;
-      const y = Number.isFinite(node.position?.y) ? node.position.y :
+      const y = position && Number.isFinite(position.y) ? position.y :
                 Number.isFinite((node as any).y) ? (node as any).y : 0;
 
       return {

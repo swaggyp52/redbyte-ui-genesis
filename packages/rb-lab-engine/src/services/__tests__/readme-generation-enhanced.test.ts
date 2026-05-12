@@ -30,7 +30,6 @@ function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
     simulation: {
       tickRate: 20,
       currentTick: 0,
-      isRunning: false,
       breakpoints: [],
       probes: [],
     },
@@ -131,7 +130,7 @@ describe('README Generation (Phase 3.4)', () => {
               name: 'Full Adder',
               inputPins: ['a', 'b', 'c'],
               outputPins: ['sum', 'cout'],
-              definition: { nodes: [], connections: [] },
+              internalCircuit: { schemaVersion: '1.0', nodes: [], connections: [] },
             },
           ],
         },
@@ -152,7 +151,6 @@ describe('README Generation (Phase 3.4)', () => {
         simulation: {
           tickRate: 50,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [],
         },
@@ -170,7 +168,6 @@ describe('README Generation (Phase 3.4)', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [10, 20, 30],
           probes: [],
         },
@@ -188,11 +185,10 @@ describe('README Generation (Phase 3.4)', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [
-            { id: 'p1', nodeId: 'n1', label: 'Output A', signal: 'sig_a', color: '#ff0000' },
-            { id: 'p2', nodeId: 'n2', label: 'Output B', signal: 'sig_b', color: '#00ff00' },
+            { id: 'p1', label: 'Output A', signal: 'sig_a', color: '#ff0000' },
+            { id: 'p2', label: 'Output B', signal: 'sig_b', color: '#00ff00' },
           ],
         },
       });
@@ -209,7 +205,6 @@ describe('README Generation (Phase 3.4)', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [],
         },
@@ -226,8 +221,20 @@ describe('README Generation (Phase 3.4)', () => {
       const project = createTestProject({
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
-            { id: 'a2', type: 'wire_add', timestamp: '2026-02-02T10:01:00Z', details: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'a1', componentType: 'and', x: 0, y: 0 } },
+            },
+            {
+              timestamp: '2026-02-02T10:01:00Z',
+              sessionId: 'test-session',
+              action: {
+                v: 1,
+                t: 'circuit/addConnection',
+                p: { id: 'c1', fromNodeId: 'n1', fromPin: 'out', toNodeId: 'n2', toPin: 'in1' },
+              },
+            },
           ],
           snapshots: [],
         },
@@ -319,7 +326,11 @@ describe('README Generation (Phase 3.4)', () => {
         },
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'a1', componentType: 'and', x: 0, y: 0 } },
+            },
           ],
           snapshots: [],
         },
@@ -359,10 +370,9 @@ describe('README Generation (Phase 3.4)', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [
-            { id: 'p1', nodeId: 'n1', label: 'Output A', signal: 'sig_a', color: '#ff0000' },
+            { id: 'p1', label: 'Output A', signal: 'sig_a', color: '#ff0000' },
           ],
         },
       });

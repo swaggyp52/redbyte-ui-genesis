@@ -37,7 +37,6 @@ function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
     simulation: {
       tickRate: 20,
       currentTick: 0,
-      isRunning: false,
       breakpoints: [],
       probes: [],
     },
@@ -243,8 +242,8 @@ describe('Import Workflow Utilities', () => {
           currentTick: 42,
           isRunning: true,
           breakpoints: [10, 20],
-          probes: [{ id: 'p1', nodeId: 'n1', name: 'Test', color: '#ff0000' }],
-        },
+          probes: [{ id: 'p1', signal: 'n1', label: 'Test', color: '#ff0000' }],
+        } as LabProjectV1['simulation'] & { isRunning: boolean },
       });
 
       const state = getVirtualLabSimulationState(project);
@@ -294,17 +293,29 @@ describe('Import Workflow Utilities', () => {
       const project = createTestProject({
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
-            { id: 'a2', type: 'wire_add', timestamp: '2026-02-02T10:01:00Z', details: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'a1', componentType: 'and', x: 0, y: 0 } },
+            },
+            {
+              timestamp: '2026-02-02T10:01:00Z',
+              sessionId: 'test-session',
+              action: {
+                v: 1,
+                t: 'circuit/addConnection',
+                p: { id: 'c1', fromNodeId: 'n1', fromPin: 'out', toNodeId: 'n2', toPin: 'in1' },
+              },
+            },
           ],
           snapshots: [
             {
-              id: 's1',
               timestamp: '2026-02-02T10:02:00Z',
-              type: 'self_check',
-              passed: true,
-              score: 100,
-              results: {},
+              checkpointId: 'self-check',
+              tick: 2,
+              probeValues: {},
+              circuitHash: 'sha256:test-circuit',
+              projectHash: 'sha256:test-project',
             },
           ],
         },

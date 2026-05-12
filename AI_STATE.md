@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-12 (fix: resolve workspace typecheck drift)
+
+**Subsystem:** Full workspace TypeScript release gate.
+
+**Branch:** `release/typecheck-drift-cleanup-1` based on pushed `main` at `e98bae578c422006fffefbe530fc3edad052808b`.
+
+**Changes:**
+- Made full workspace `pnpm typecheck` pass without broad TypeScript suppressions, package exclusions, skipped tests, or `skipLibCheck` changes.
+- Fixed pulled `rb-logic-core` strictness/source-boundary issues in component support registry typing, Circuit V1 conversion, IR reset binding inference, serialization position narrowing, public type exports, and evidence example matching.
+- Fixed `rb-lab-engine` strictness issues in project adapters, reducer virtual I/O updates, import workflow schema imports, schema-version support checks, checkpoint narrowing, and verifier optional-spec handling.
+- Updated stale `rb-lab-engine` tests to canonical `LabProjectV1`, `CircuitConnection`, `LabActionEnvelope`, `EvidenceSnapshot`, and `ProbeDefinition` shapes.
+- Added a narrow `packages/rb-lab-engine/src/schema/index.ts` type barrel for package-local schema aliases used by tests.
+- Added `docs/release/course-edition/25-typecheck-drift-cleanup.md`.
+
+**Evidence:** `pnpm --filter @redbyte/rb-lab-engine typecheck`, full `pnpm typecheck`, the focused `rb-lab-engine` / `rb-logic-core` Vitest suite (13 test files, 163 passed, 1 skipped), `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, and `pnpm -s ui:lab-starter-load-gate` passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed after final closeout doc edits.
+
+**Validation note:** The first focused Vitest sweep found a real compatibility crash in `validateEvidenceAgainstLabSpec` for older evidence objects without `context`; the fix now reads `context.selectedExampleId` when present and falls back to legacy `exampleId`.
+
+**Safety:** No UI polish, install-script work, manual work, MarcusRPI work, `build:unified` redirect cleanup, Vivado artifact behavior change, active RedByte IDE workflow change, or E0/E1/E2/E3 evidence semantic change was performed.
+
+**Remaining blockers:** Full workspace `pnpm typecheck` is green. The next known release-readiness blocker remains `pnpm build:unified` `/os/` redirect contract drift.
+
+**Next recommended task:** Run build/deploy contract cleanup for `pnpm build:unified`, then proceed to Windows setup/launch/doctor scripts only after the build contract is green.
+
 ## Change Log 2026-05-12 (merge: redbyte ui hierarchy hardening)
 
 **Subsystem:** RedByte ECE141 IDE surface hierarchy mainline validation.

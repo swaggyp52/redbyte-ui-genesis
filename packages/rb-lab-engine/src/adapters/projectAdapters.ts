@@ -132,7 +132,7 @@ export function toLab2DModel(project: LabProjectV1): Lab2DModel {
     },
     labSpec: project.labSpec
       ? {
-          labId: project.labSpec.labId,
+          labId: project.labSpec.labId ?? project.labSpec.id ?? project.projectId,
           title: project.labSpec.title,
           checkpoints: (project.labSpec.checkpoints || []).map((cp) => ({
             id: cp.id,

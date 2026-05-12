@@ -4,7 +4,7 @@ import {
   convertCircuitToCircuitV1,
   prepareImportedProjectState,
 } from '../importWorkflowUtils';
-import type { LabProjectV1, CircuitV1, Circuit } from '../schema/index.js';
+import type { LabProjectV1, CircuitV1, Circuit } from '../../schema/index.js';
 
 const baseCircuit: Circuit = {
   nodes: [

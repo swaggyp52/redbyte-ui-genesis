@@ -17,11 +17,16 @@ export async function verifyCustom(
   project: LabProjectV1,
   checkpoint: CustomCheckpoint
 ): Promise<CheckpointResult> {
+  const customSpecId =
+    typeof checkpoint.spec?.customSpecId === 'string'
+      ? checkpoint.spec.customSpecId
+      : 'unknown';
+
   // TODO: Implement verifier registry after vertical slice
   return {
     passed: false,
     headline: '⚠ Custom verification not implemented',
-    failures: [{ message: `Custom verifier '${checkpoint.spec.customSpecId}' not registered` }],
+    failures: [{ message: `Custom verifier '${customSpecId}' not registered` }],
     evidence: { expected: checkpoint.spec, actual: null },
   };
 }

@@ -19,6 +19,9 @@ export function validateEvidenceAgainstLabSpec(
   labSpec: LabSpecV1
 ): ValidationResult {
   const result: ValidationResult = {};
+  const selectedExampleId =
+    evidence.context?.selectedExampleId ??
+    (evidence as EvidenceBundle & { exampleId?: string | null }).exampleId;
 
   // Probes check
   if (labSpec.requirements?.probes) {
@@ -48,7 +51,7 @@ export function validateEvidenceAgainstLabSpec(
   // Example ID check
   if (labSpec.requiredExampleId) {
     result.exampleMatch =
-      evidence.exampleId === labSpec.requiredExampleId
+      selectedExampleId === labSpec.requiredExampleId
         ? 'match'
         : 'mismatch';
   } else {

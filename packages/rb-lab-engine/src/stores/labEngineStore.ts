@@ -25,6 +25,7 @@ import type {
   IntegrityResult,
   EvidenceSnapshot,
   CircuitV1,
+  Checkpoint,
 } from '@redbyte/rb-utils';
 import { labReducer, recordAction, recordSnapshot } from '../reducer/labReducer';
 
@@ -102,6 +103,9 @@ export const useLabEngineStore = create<LabEngineState>((set, get) => ({
 
     const checkpoint = project.labSpec?.checkpoints.find((c) => c.id === checkpointId);
     if (!checkpoint) throw new Error(`Checkpoint ${checkpointId} not found`);
+    if (!isConcreteCheckpoint(checkpoint)) {
+      throw new Error(`Checkpoint ${checkpointId} is missing verifier configuration`);
+    }
 
     // Import verification service dynamically (to avoid circular deps)
     const { verifyCheckpoint: verifyFn } = await import('../verification/verifyCheckpoint');
@@ -198,4 +202,8 @@ async function hashProject(project: LabProjectV1): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return `sha256:${hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+}
+
+function isConcreteCheckpoint(checkpoint: NonNullable<LabProjectV1['labSpec']>['checkpoints'][number]): checkpoint is Checkpoint {
+  return checkpoint.config !== undefined;
 }
