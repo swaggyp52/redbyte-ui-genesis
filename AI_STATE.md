@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-12 (merge: redbyte ui art direction)
+
+**Subsystem:** RedByte ECE141 IDE shell and surface hierarchy mainline validation.
+
+**Changes:**
+- Merged `origin/product/redbyte-ui-art-direction-1` into `main` with merge commit `9614a04bae40b886c0f92660cf5cd01f81abdf75`.
+- Added `docs/release/course-edition/22-redbyte-ui-art-direction-merge.md`.
+- Updated the course-edition validation log with merged-main product gate results.
+
+**Merged product stack now on local `main`:**
+- Course Lab Workbench visual direction from `product/redbyte-ui-art-direction-1`.
+- Persistent IDE proof ribbon and lab-flow map.
+- Reweighted Project, Design, Verify, Hardware / Map Pins, Export, and Import hierarchy via CSS without changing engine, export, starter, or evidence semantics.
+- Browser gate `pnpm -s ide:gate:ece141-ui-art-direction`.
+- Sprint 6 screenshots under `.redbyte/product-immersion/sprint6-ui-art-direction/`.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ui:lab-starter-load-gate`, the focused 65-pass / 1-skipped merge-adjacent Vitest surface suite, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass.
+
+**Validation note:** A broader supplemental Vitest sweep also run during merge validation failed one unchanged `verifySurface.workstation.test.tsx` latch-helper assertion. Neither `VerifySurface.tsx` nor that test changed in the merge, so no product code was changed for it in this no-new-UI merge task.
+
+**Safety:** No new UI work, typecheck cleanup, install-script work, manuals, MarcusRPI work, E0/E1/E2/E3 semantic change, circuit engine change, simulator change, starter semantic change, or Vivado exporter behavior change was performed. The Marcus/RPI/HQ/local-agent scan still finds historical notes, ignore patterns, README companion references, lockfile substrings, tests asserting HQ absence, and retained known artifacts, but this merge did not reintroduce active Marcus/RPI/HQ/local-agent IDE material.
+
+**Next recommended task:** Push validated `main` to `origin/main`, then start `product/redbyte-ui-hierarchy-2` for RedByte UI Hierarchy Sprint 2. Do not start install scripts, manuals, or typecheck cleanup before that sprint unless explicitly redirected.
+
 ## Change Log 2026-05-12 (ux: establish RedByte lab workbench interface direction)
 
 **Subsystem:** RedByte ECE141 IDE shell and surface hierarchy.

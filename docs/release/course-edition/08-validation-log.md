@@ -1,11 +1,33 @@
 # Validation Log
 
-Date: 2026-05-11
+Date: 2026-05-12
 
 This log is updated by the course-edition triage branch. Failures must stay visible.
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed | ~2s | Local `main` was already up to date with `origin/main` at `7175ccfba1492e4eebd7598fad65c03eac1c1292`. | N/A | Merge UI art-direction branch. |
+| `git branch backup/pre-redbyte-ui-art-direction-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
+| `git merge --no-ff origin/product/redbyte-ui-art-direction-1 -m "merge: redbyte ui art direction"` | Passed | <1s | Merge commit `9614a04bae40b886c0f92660cf5cd01f81abdf75`; no conflicts. | N/A | Validate merged `main`. |
+| Marcus/RPI/HQ/local-agent grep | Passed with known retained findings | ~1s | Grep still finds historical notes, ignore patterns, README companion references, tests that assert HQ absence, lockfile integrity substrings, and retained historical/artifact material; merge diff did not add Marcus/RPI/HQ/local-agent files. | Pre-existing/retained | Keep separate from UI merge. |
+| `pnpm install --frozen-lockfile` | Passed on merged `main` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed on merged `main` | ~24s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed on merged `main` | ~41s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Passed on merged `main` | ~58s | 4 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-clock-export` | Passed on merged `main` | ~43s | 2 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Passed on merged `main` | ~39s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-compare-pass` | Passed on merged `main` | ~40s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-project-persistence` | Passed on merged `main` | ~56s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-import-export-recovery` | Passed on merged `main` | ~59s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-vivado-artifacts` | Passed on merged `main` | ~59s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Passed on merged `main` | ~49s | 2 Playwright tests passed; screenshots regenerated under `.redbyte/product-immersion/sprint6-ui-art-direction/`. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed on merged `main` | ~12s | 8 starter-load tests passed. | N/A | No action. |
+| Broad supplemental Vitest surface sweep | Failed | ~19s | 1 unchanged `verifySurface.workstation.test.tsx` latch-helper assertion failed; `VerifySurface.tsx` and that test were not changed by the merge. | Pre-existing or unrelated to merge | Do not fix in UI art-direction merge; keep visible for later Verify test cleanup if needed. |
+| Focused merge-adjacent Vitest surface suite | Passed | ~14s | 65 tests passed and 1 skipped across IdeApp wiring, Project, Verify command bar, Hardware, Export, and Import tests. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final doc updates. |
+| `pnpm rb:encoding:check` | Passed before closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final doc updates. |
+| `git diff --check` | Passed before closeout docs | <1s | No whitespace errors. | N/A | Rerun after final doc updates. |
+| `pnpm typecheck` | Failed on merged `main` | ~7s | Known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass; no UI-specific type errors appeared. | Pre-existing/out of merge scope | Keep as separate typecheck drift cleanup task. |
 | `pnpm install --frozen-lockfile` | Passed on `product/redbyte-ui-art-direction-1` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
 | `pnpm start:smoke` | Passed | ~31s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
 | `pnpm -s ide:gate:ece141-ui-art-direction` | Failed before test adjustment | ~47s | New gate assumed certified starter cards would be strictly left-to-right by X position; at default width the cards wrapped with equal X values. | Introduced test draft issue | Changed the assertion to verify DOM/course order and reran. |
