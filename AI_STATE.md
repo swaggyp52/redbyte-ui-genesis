@@ -1,5 +1,36 @@
 # AI State
 
+## Change Log 2026-05-12 (ux: establish RedByte lab workbench interface direction)
+
+**Subsystem:** RedByte ECE141 IDE shell and surface hierarchy.
+
+**Branch:** `product/redbyte-ui-art-direction-1` based on `7175ccfba1492e4eebd7598fad65c03eac1c1292`.
+
+**Interface architecture selected:** Course Lab Workbench. The current lab task is the workbench center, proof/trust state is a compact persistent ribbon, Project -> Design -> Verify -> Map Pins -> Export is the lab-flow map, Import remains a recovery utility, and E0/E1/E2/E3 stay distinct.
+
+**Surfaces audited:** Project, Design, Verify, Hardware / Map Pins, Export, Import, starter loading, stale/evidence states, and narrow viewport behavior through Playwright Chromium. Current and post-change screenshots are under `.redbyte/product-immersion/sprint6-ui-art-direction/`.
+
+**Changes:**
+- Added an IDE proof ribbon with Design, Verify, Mapping, Export, and Evidence state.
+- Added a visible lab-flow map above the workbench while preserving existing route/navigation behavior.
+- Added additive lab-workbench design tokens and CSS for workbench, proof, board, export, current/stale/draft/external states, depth, gutters, and focused small-screen stacking.
+- Reweighted Project, Design, Verify, Hardware / Map Pins, Export, and Import surfaces through CSS so each has a clearer focal object without changing product behavior.
+- Added browser gate `pnpm -s ide:gate:ece141-ui-art-direction`.
+- Added `tests/e2e/ece141-ui-art-direction.spec.ts`.
+- Added `docs/release/course-edition/21-redbyte-ui-art-direction.md` and updated the course-edition validation log.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s ide:gate:ece141-ui-art-direction`, the focused 66-test surface Vitest suite, `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass.
+
+**Safety:** No circuit engine, simulator, starter semantics, Vivado exporter behavior, E0/E1/E2/E3 evidence meaning, install scripts, manuals, MarcusRPI work, or repo cleanup changed.
+
+**Remaining UI issues:**
+- P1: Small-screen layouts now avoid severe overflow, but each surface still needs human screenshot review and a follow-up narrow-viewport pass.
+- P2: The left rail remains as secondary navigation; future work can collapse it further if the proof ribbon is accepted.
+- P2: Design, Verify, and Hardware still have dense advanced panels; this pass reweights hierarchy rather than restructuring all internals.
+- P2: Project starter progression is clearer, but advanced/deferred starter taxonomy still needs a dedicated hierarchy pass.
+
+**Next recommended task:** Run a focused "one focal object per surface" UI hierarchy sprint after human review. Do not add features or change behavior.
+
 ## Change Log 2026-05-11 (merge: vivado artifact correctness hardening)
 
 **Subsystem:** RedByte ECE141 Vivado handoff artifact correctness and mainline validation.
