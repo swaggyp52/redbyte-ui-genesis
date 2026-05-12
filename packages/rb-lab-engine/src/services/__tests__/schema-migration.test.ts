@@ -8,7 +8,7 @@ import {
   isFutureVersion,
   getSupportedVersionsInfo,
 } from '../schemaMigration.js';
-import type { LabProjectV1 } from '@redbyte/rb-utils';
+import type { LabActionEnvelope, LabProjectV1 } from '@redbyte/rb-utils';
 
 /**
  * Phase 3.5: Schema Versioning & Migration Tests
@@ -45,6 +45,18 @@ function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
       snapshots: [],
     },
     ...overrides,
+  };
+}
+
+function createActionEnvelope(id: string, timestamp: string): LabActionEnvelope {
+  return {
+    timestamp,
+    sessionId: 'test-session',
+    action: {
+      v: 1,
+      t: 'circuit/addNode',
+      p: { nodeId: id, componentType: 'and', x: 0, y: 0 },
+    },
   };
 }
 
@@ -150,8 +162,8 @@ describe('Schema Versioning (Phase 3.5)', () => {
       const project = createTestProject({
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
-            { id: 'a2', type: 'wire_add', timestamp: '2026-02-02T10:01:00Z', details: {} },
+            createActionEnvelope('a1', '2026-02-02T10:00:00Z'),
+            createActionEnvelope('a2', '2026-02-02T10:01:00Z'),
           ],
           snapshots: [],
         },
@@ -333,10 +345,7 @@ describe('Schema Versioning (Phase 3.5)', () => {
 
     it('should handle many evidence actions', () => {
       const actions = Array.from({ length: 100 }, (_, i) => ({
-        id: `a${i}`,
-        type: 'component_add',
-        timestamp: new Date(Date.now() + i * 1000).toISOString(),
-        details: {},
+        ...createActionEnvelope(`a${i}`, new Date(Date.now() + i * 1000).toISOString()),
       }));
 
       const project = createTestProject({

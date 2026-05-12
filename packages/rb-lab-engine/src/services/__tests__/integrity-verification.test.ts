@@ -18,10 +18,10 @@ import JSZip from 'jszip';
  */
 function createTestProject(): LabProjectV1 {
   return {
+    schemaVersion: '1.0',
     projectId: 'integrity-test-project',
     name: 'Integrity Test Project',
     description: 'Test project for SHA-256 verification',
-    labId: 'lab-001',
     createdAt: '2026-02-02T10:00:00.000Z',
     updatedAt: '2026-02-02T10:00:00.000Z',
     circuit: {
@@ -31,17 +31,22 @@ function createTestProject(): LabProjectV1 {
         { id: 'out', type: 'OUTPUT', x: 200, y: 100 },
       ],
       connections: [
-        { id: 'conn', from: { nodeId: 'in', portName: 'out' }, to: { nodeId: 'out', portName: 'in' } },
+        { id: 'conn', fromNodeId: 'in', fromPin: 'out', toNodeId: 'out', toPin: 'in' },
       ],
     },
     evidence: {
       snapshots: [],
-      actions: [{ timestamp: '2026-02-02T10:00:00.000Z', type: 'create', description: 'Created' }],
+      actions: [
+        {
+          timestamp: '2026-02-02T10:00:00.000Z',
+          sessionId: 'test-session',
+          action: { v: 1, t: 'sim/reset', p: {} },
+        },
+      ],
     },
     simulation: {
       currentTick: 0,
       tickRate: 20,
-      isRunning: false,
       breakpoints: [],
       probes: [],
     },
@@ -110,14 +115,7 @@ describe('SHA-256 Integrity Verification', () => {
       zip.remove('capsule.json');
       const corruptedBlob = await zip.generateAsync({ type: 'blob' });
 
-      // Import should fail gracefully
-      try {
-        await importEvidenceCapsule(corruptedBlob);
-        fail('Should have thrown error for missing capsule.json');
-      } catch (error) {
-        expect(error).toBeDefined();
-        expect(String(error)).toContain('capsule.json');
-      }
+      await expect(importEvidenceCapsule(corruptedBlob)).rejects.toThrow(/capsule\.json/);
     });
 
     it('should handle missing project.json gracefully', async () => {
@@ -130,13 +128,7 @@ describe('SHA-256 Integrity Verification', () => {
       zip.remove('project.json');
       const corruptedBlob = await zip.generateAsync({ type: 'blob' });
 
-      // Import should fail gracefully
-      try {
-        await importEvidenceCapsule(corruptedBlob);
-        fail('Should have thrown error for missing project.json');
-      } catch (error) {
-        expect(error).toBeDefined();
-      }
+      await expect(importEvidenceCapsule(corruptedBlob)).rejects.toThrow();
     });
   });
 

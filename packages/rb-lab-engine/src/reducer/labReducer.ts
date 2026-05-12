@@ -23,6 +23,7 @@ import type {
   CircuitNode,
   CircuitConnection,
   ProbeDefinition,
+  EvidenceSnapshot,
 } from '@redbyte/rb-utils';
 
 // ============================================================================
@@ -338,7 +339,7 @@ function setSwitches(state: LabProjectV1, payload: { switches: boolean[] }): Lab
     boardMap: {
       ...state.boardMap,
       virtualIOState: {
-        ...state.boardMap.virtualIOState,
+        buttons: state.boardMap.virtualIOState?.buttons ?? [],
         switches: payload.switches,
       },
     },
@@ -356,7 +357,7 @@ function setButtons(state: LabProjectV1, payload: { buttons: boolean[] }): LabPr
     boardMap: {
       ...state.boardMap,
       virtualIOState: {
-        ...state.boardMap.virtualIOState,
+        switches: state.boardMap.virtualIOState?.switches ?? [],
         buttons: payload.buttons,
       },
     },
@@ -397,7 +398,7 @@ export function recordAction(
  */
 export function recordSnapshot(
   state: LabProjectV1,
-  snapshot: import('@redbyte/rb-utils/labProjectSchema').EvidenceSnapshot
+  snapshot: EvidenceSnapshot
 ): LabProjectV1 {
   return {
     ...state,

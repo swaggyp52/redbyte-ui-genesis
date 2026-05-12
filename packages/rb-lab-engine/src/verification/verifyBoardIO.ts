@@ -23,7 +23,10 @@ export async function verifyBoardIO(
   checkpoint: BoardIOCheckpoint
 ): Promise<CheckpointResult> {
   const { switchSettings: inputSwitches, expectedLEDs } = checkpoint.config;
-  const ticksToStabilize = checkpoint.spec?.ticksToStabilize ?? 1;
+  const ticksToStabilize =
+    typeof checkpoint.spec?.ticksToStabilize === 'number'
+      ? checkpoint.spec.ticksToStabilize
+      : 1;
 
   if (!project.boardMap) {
     return {
@@ -74,7 +77,7 @@ export async function verifyBoardIO(
     );
     if (node) {
       const value = engine.getNodeValue(node.id, 'Q') ?? 0;
-      actualLEDs.push(value > 0);
+      actualLEDs.push(typeof value === 'number' ? value > 0 : false);
     } else {
       actualLEDs.push(false);
     }

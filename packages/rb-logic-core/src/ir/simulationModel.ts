@@ -83,24 +83,21 @@ export function buildSimulationModel(ir: CircuitIR): SimulationModel {
     )
     .sort(compareTemporalBinding);
 
-  const resets = Array.from(
-    new Map(
-      resetBindings
-        .filter((binding) => binding.boundarySourceNodeId)
-        .map((binding) => {
-          const port = portsBySourceNodeId.get(binding.boundarySourceNodeId as string);
-          if (!port) return null;
-          return [
-            port.portId,
-            {
-              ...port,
-              kind: 'reset' as const,
-            },
-          ] as const;
-        })
-        .filter((entry): entry is readonly [string, SimulationModelPortRef] => entry !== null)
-    ).values()
-  ).sort(comparePortRef);
+  const resetEntries: Array<readonly [string, SimulationModelPortRef]> = [];
+  for (const binding of resetBindings) {
+    if (!binding.boundarySourceNodeId) continue;
+    const port = portsBySourceNodeId.get(binding.boundarySourceNodeId);
+    if (!port) continue;
+    resetEntries.push([
+      port.portId,
+      {
+        ...port,
+        kind: 'reset',
+      },
+    ] as const);
+  }
+
+  const resets = Array.from(new Map(resetEntries).values()).sort(comparePortRef);
 
   const blockingDiagnostics = ir.diagnostics
     .filter((diagnostic) => diagnostic.severity === 'error')

@@ -2,19 +2,18 @@
 import { describe, it, expect } from 'vitest';
 import { labReducer } from '../reducer/labReducer';
 import { getSignalValue, getAvailableSignals } from '../signals/signalSemantics';
-import type { LabProject } from '@redbyte/rb-utils';
+import type { LabActionV1, LabProject } from '@redbyte/rb-utils';
 
 // Mock initial state
 const initialProject: LabProject = {
-    meta: {
-        name: 'Test Project',
-        version: '1.0.0',
-        created: 0,
-        modified: 0,
-        author: 'Test',
-        description: 'Test'
-    },
+    schemaVersion: '1.0',
+    projectId: 'test-project',
+    name: 'Test Project',
+    description: 'Test',
+    createdAt: '2026-02-02T10:00:00.000Z',
+    updatedAt: '2026-02-02T10:00:00.000Z',
     circuit: {
+        schemaVersion: '1.0',
         nodes: [
             { id: 'sw1', type: 'SWITCH', x: 0, y: 0, state: { output: 1 }, label: 'INPUT_A' },
             { id: 'gate1', type: 'AND', x: 100, y: 0, state: { output: 0 }, label: 'LOGIC' },
@@ -22,19 +21,30 @@ const initialProject: LabProject = {
         ],
         connections: []
     },
-    simState: { time: 0, events: [] },
+    simulation: {
+        tickRate: 20,
+        currentTick: 0,
+        probes: [],
+        breakpoints: []
+    },
     boardMap: {
         boardProfileId: 'basys3',
         signalToPinMap: {},
         virtualIOState: { switches: [], buttons: [] }
     },
-    labSpec: { id: 'test', checkpoints: [] },
-    evidence: { checkpoints: [], snapshots: [] }
+    labSpec: {
+        schemaVersion: '1.0',
+        id: 'test',
+        title: 'Test Lab',
+        objectives: [],
+        checkpoints: []
+    },
+    evidence: { actions: [], snapshots: [] }
 };
 
 describe('Board Mapping Logic', () => {
     it('should persist signal mapping via reducer', () => {
-        const action = {
+        const action: LabActionV1 = {
             v: 1,
             t: 'board/mapSignal',
             p: { signal: 'INPUT_A', pin: 'SW0' }

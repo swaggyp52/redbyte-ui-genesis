@@ -6,6 +6,23 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git checkout -b release/typecheck-drift-cleanup-1` | Passed | <1s | Branch created from pushed `main` at `e98bae578c422006fffefbe530fc3edad052808b`. | N/A | Reproduce typecheck drift. |
+| `pnpm typecheck` | Failed before fix | ~6s | Full workspace stopped at `@redbyte/rb-lab-engine`; failures were stale `LabProjectV1` fixtures, stale action/evidence shapes, `rb-lab-engine` source narrowing errors, and pulled `rb-logic-core` strictness errors. | Pre-existing release-gate drift | Fix type/schema boundaries without exclusions or suppressions. |
+| `pnpm --filter @redbyte/rb-lab-engine typecheck` | Failed before fix | ~4s | Isolated the same `rb-lab-engine` and pulled `rb-logic-core` errors for the inventory. | Pre-existing release-gate drift | Update source strictness and stale tests. |
+| `pnpm --filter @redbyte/rb-lab-engine typecheck` | Passed after fix | ~3s | `rb-lab-engine` package typecheck completed cleanly. | N/A | Run full workspace typecheck. |
+| `pnpm typecheck` | Passed after fix | ~6s | Full workspace typecheck completed: `rb-board-profiles`, `rb-viewport`, `rb-fpga-toolchain`, and `rb-lab-engine` passed. | N/A | Run focused runtime tests. |
+| Focused `rb-lab-engine` / `rb-logic-core` Vitest suite | Failed before final source guard | ~13s | 1 focused evidence-validator test crashed because older evidence objects can omit `context`; 162 tests passed and 1 skipped. | Introduced by strict evidence-path cleanup exposing legacy compatibility gap | Add optional context guard and legacy `exampleId` fallback. |
+| Focused `rb-lab-engine` / `rb-logic-core` Vitest suite | Passed after final source guard | ~12s | 13 test files passed; 163 tests passed and 1 skipped across board mapping, import/export, schema migration, integrity, readme generation, conversion, serialization, component registry, and evidence validation. | N/A | Run release product gates. |
+| `pnpm typecheck` | Passed after focused test fix | ~6s | Full workspace typecheck remained green after the evidence compatibility guard. | N/A | Continue product validation. |
+| `pnpm install --frozen-lockfile` | Passed on `release/typecheck-drift-cleanup-1` | ~2s | Lockfile was up to date. | N/A | No action. |
+| `pnpm start:smoke` | Passed on `release/typecheck-drift-cleanup-1` | ~20s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| Full ECE141 browser gate stack | Passed on `release/typecheck-drift-cleanup-1` | ~424s | `ide:gate:ece141-starter-verify-export`, `ide:gate:ece141-product-immersion`, `ide:gate:ece141-counter-clock-export`, `ide:gate:ece141-map-pins-recovery`, `ide:gate:ece141-counter-compare-pass`, `ide:gate:ece141-project-persistence`, `ide:gate:ece141-import-export-recovery`, `ide:gate:ece141-vivado-artifacts`, `ide:gate:ece141-ui-art-direction`, `ide:gate:ece141-ui-hierarchy`, and `ui:lab-starter-load-gate` all passed sequentially. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final docs. |
+| `pnpm rb:encoding:check` | Passed before closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final docs. |
+| `git diff --check` | Passed before closeout docs | <1s | No whitespace errors. | N/A | Rerun after final docs. |
+| `pnpm rb:doc:validate` | Passed after closeout docs | ~1s | 36 passed, 0 failed after `25-typecheck-drift-cleanup.md`, validation log, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after closeout docs | ~1s | No mojibake markers found after closeout docs. | N/A | No action. |
+| `git diff --check` | Passed after closeout docs | <1s | No whitespace errors after closeout docs. | N/A | Ready to commit typecheck cleanup branch. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed | ~3s | Local `main` was already up to date with `origin/main` at `f26869d16672cfc328265b8bc76383389be0d18b`. | N/A | Merge UI hierarchy branch. |
 | `git branch backup/pre-redbyte-ui-hierarchy-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
 | `git merge --no-ff origin/product/redbyte-ui-hierarchy-2 -m "merge: redbyte ui hierarchy hardening"` | Passed | ~1s | Merge commit `e0271c16`; no conflicts. | N/A | Validate merged `main`. |

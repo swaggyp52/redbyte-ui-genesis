@@ -41,25 +41,32 @@ export function toCircuitV1(src: Circuit): CircuitV1 {
         state: node.state || {},
       };
     }),
-    connections: src.connections.map((conn) => ({
-      id: conn.id,
-      fromNodeId: typeof conn.from === 'string' ? conn.from : (conn.from as PortRef).nodeId,
-      fromPin:
+    connections: src.connections.map((conn, index) => {
+      const fromNodeId = typeof conn.from === 'string' ? conn.from : (conn.from as PortRef).nodeId;
+      const fromPin =
         conn.fromPin ||
         conn.fromPort ||
         (typeof conn.from === 'string'
           ? undefined
           : (conn.from as PortRef).portName || (conn.from as PortRef).port) ||
-        'out',
-      toNodeId: typeof conn.to === 'string' ? conn.to : (conn.to as PortRef).nodeId,
-      toPin:
+        'out';
+      const toNodeId = typeof conn.to === 'string' ? conn.to : (conn.to as PortRef).nodeId;
+      const toPin =
         conn.toPin ||
         conn.toPort ||
         (typeof conn.to === 'string'
           ? undefined
           : (conn.to as PortRef).portName || (conn.to as PortRef).port) ||
-        'in',
-    })),
+        'in';
+
+      return {
+        id: conn.id ?? `conn-${index}-${fromNodeId}-${fromPin}-${toNodeId}-${toPin}`,
+        fromNodeId,
+        fromPin,
+        toNodeId,
+        toPin,
+      };
+    }),
     customChips: [],
   };
 }

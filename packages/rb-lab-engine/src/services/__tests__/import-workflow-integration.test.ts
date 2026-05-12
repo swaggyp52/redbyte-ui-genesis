@@ -54,7 +54,6 @@ function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
     simulation: {
       tickRate: 20,
       currentTick: 0,
-      isRunning: false,
       breakpoints: [],
       probes: [],
     },
@@ -126,7 +125,6 @@ describe('Import Workflow Integration', () => {
         simulation: {
           tickRate: 50,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [],
         },
@@ -138,7 +136,7 @@ describe('Import Workflow Integration', () => {
       expect(project.simulation).toBeDefined();
       expect(project.simulation.tickRate).toBe(50);
       expect(project.simulation.currentTick).toBe(0);
-      expect(project.simulation.isRunning).toBe(false);
+      expect('isRunning' in project.simulation).toBe(false);
     });
 
     it('should restore project metadata for UI display', async () => {
@@ -233,8 +231,8 @@ describe('Import Workflow Integration', () => {
       const node = project.circuit.nodes[0];
       expect(node.rotation).toBe(90);
       expect(node.label).toBe('SW1');
-      expect(node.params.momentary).toBe(true);
-      expect(node.state.value).toBe(false);
+      expect(node.params?.momentary).toBe(true);
+      expect(node.state?.value).toBe(false);
     });
 
     it('should restore custom labels and descriptions', async () => {
@@ -278,11 +276,10 @@ describe('Import Workflow Integration', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [],
           probes: [
-            { id: 'probe-1', nodeId: 'node-1', name: 'Output', color: '#ff0000' },
-            { id: 'probe-2', nodeId: 'node-1', name: 'Debug', color: '#00ff00' },
+            { id: 'probe-1', signal: 'node-1', label: 'Output', color: '#ff0000' },
+            { id: 'probe-2', signal: 'node-1', label: 'Debug', color: '#00ff00' },
           ],
         },
       });
@@ -291,8 +288,8 @@ describe('Import Workflow Integration', () => {
       const { project } = await importEvidenceCapsule(blob);
 
       expect(project.simulation.probes).toHaveLength(2);
-      expect(project.simulation.probes[0].name).toBe('Output');
-      expect(project.simulation.probes[1].name).toBe('Debug');
+      expect(project.simulation.probes[0].label).toBe('Output');
+      expect(project.simulation.probes[1].label).toBe('Debug');
     });
 
     it('should restore breakpoints for step debugging', async () => {
@@ -301,7 +298,6 @@ describe('Import Workflow Integration', () => {
         simulation: {
           tickRate: 20,
           currentTick: 0,
-          isRunning: false,
           breakpoints: [5, 10, 15],
           probes: [],
         },
@@ -319,7 +315,6 @@ describe('Import Workflow Integration', () => {
         simulation: {
           tickRate: 20,
           currentTick: 42,
-          isRunning: false,
           breakpoints: [],
           probes: [],
         },
@@ -343,10 +338,9 @@ describe('Import Workflow Integration', () => {
         evidence: {
           actions: [
             {
-              id: 'action-1',
-              type: 'component_add',
               timestamp: '2026-02-02T10:00:00Z',
-              details: { nodeId: 'node-1', type: 'and' },
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'node-1', componentType: 'and', x: 0, y: 0 } },
             },
           ],
           snapshots: [],
@@ -357,8 +351,8 @@ describe('Import Workflow Integration', () => {
       const { project } = await importEvidenceCapsule(blob);
 
       expect(project.evidence.actions).toHaveLength(1);
-      expect(project.evidence.actions[0].type).toBe('component_add');
-      expect(project.evidence.actions[0].details.nodeId).toBe('node-1');
+      expect(project.evidence.actions[0].action.t).toBe('circuit/addNode');
+      expect(project.evidence.actions[0].action.p).toMatchObject({ nodeId: 'node-1' });
     });
 
     it('should restore checkpoint snapshots', async () => {
@@ -368,17 +362,12 @@ describe('Import Workflow Integration', () => {
           actions: [],
           snapshots: [
             {
-              id: 'snap-1',
               timestamp: '2026-02-02T10:00:00Z',
-              type: 'self_check',
-              passed: true,
-              score: 100,
-              results: {
-                truthTable: [
-                  { inputs: { a: 0, b: 0 }, output: 0, passed: true },
-                  { inputs: { a: 0, b: 1 }, output: 0, passed: true },
-                ],
-              },
+              checkpointId: 'self-check',
+              tick: 0,
+              probeValues: { y: 0 },
+              circuitHash: 'sha256:test-circuit',
+              projectHash: 'sha256:test-project',
             },
           ],
         },
@@ -388,8 +377,8 @@ describe('Import Workflow Integration', () => {
       const { project } = await importEvidenceCapsule(blob);
 
       expect(project.evidence.snapshots).toHaveLength(1);
-      expect(project.evidence.snapshots[0].type).toBe('self_check');
-      expect(project.evidence.snapshots[0].passed).toBe(true);
+      expect(project.evidence.snapshots[0].checkpointId).toBe('self-check');
+      expect(project.evidence.snapshots[0].probeValues).toEqual({ y: 0 });
     });
 
     it('should preserve full checkpoint data for multi-lab projects', async () => {
@@ -397,17 +386,29 @@ describe('Import Workflow Integration', () => {
         name: 'Multi-Lab Checkpoint',
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
-            { id: 'a2', type: 'wire_add', timestamp: '2026-02-02T10:01:00Z', details: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'node-1', componentType: 'and', x: 0, y: 0 } },
+            },
+            {
+              timestamp: '2026-02-02T10:01:00Z',
+              sessionId: 'test-session',
+              action: {
+                v: 1,
+                t: 'circuit/addConnection',
+                p: { id: 'conn-1', fromNodeId: 'node-1', fromPin: 'out', toNodeId: 'node-2', toPin: 'in1' },
+              },
+            },
           ],
           snapshots: [
             {
-              id: 'snap-1',
               timestamp: '2026-02-02T10:02:00Z',
-              type: 'lab_checkpoint',
-              passed: true,
-              score: 95,
-              results: { testCount: 16, passCount: 15 },
+              checkpointId: 'lab-checkpoint',
+              tick: 16,
+              probeValues: { passCount: 15 },
+              circuitHash: 'sha256:test-circuit',
+              projectHash: 'sha256:test-project',
             },
           ],
         },
@@ -418,7 +419,7 @@ describe('Import Workflow Integration', () => {
 
       expect(project.evidence.actions).toHaveLength(2);
       expect(project.evidence.snapshots).toHaveLength(1);
-      expect(project.evidence.snapshots[0].score).toBe(95);
+      expect(project.evidence.snapshots[0].probeValues.passCount).toBe(15);
     });
   });
 
@@ -599,10 +600,9 @@ describe('Import Workflow Integration', () => {
         simulation: {
           tickRate: 25,
           currentTick: 50,
-          isRunning: false,
           breakpoints: [10, 20, 30],
           probes: [
-            { id: 'p1', nodeId: 'node-1', name: 'Test', color: '#ff0000' },
+            { id: 'p1', signal: 'node-1', label: 'Test', color: '#ff0000' },
           ],
         },
       });
@@ -646,10 +646,21 @@ describe('Import Workflow Integration', () => {
         name: 'Evidence Checksum Test',
         evidence: {
           actions: [
-            { id: 'a1', type: 'component_add', timestamp: '2026-02-02T10:00:00Z', details: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              sessionId: 'test-session',
+              action: { v: 1, t: 'circuit/addNode', p: { nodeId: 'node-1', componentType: 'and', x: 0, y: 0 } },
+            },
           ],
           snapshots: [
-            { id: 's1', timestamp: '2026-02-02T10:00:00Z', type: 'self_check', passed: true, score: 100, results: {} },
+            {
+              timestamp: '2026-02-02T10:00:00Z',
+              checkpointId: 'self-check',
+              tick: 0,
+              probeValues: {},
+              circuitHash: 'sha256:test-circuit',
+              projectHash: 'sha256:test-project',
+            },
           ],
         },
       });

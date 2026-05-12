@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { LabProjectV1, CircuitV1, CircuitConnection } from '@redbyte/rb-utils';
+import type { LabProjectV1 } from '@redbyte/rb-utils';
 import { exportEvidenceCapsule, importEvidenceCapsule } from '../exportService';
 
 /**
@@ -18,10 +18,10 @@ import { exportEvidenceCapsule, importEvidenceCapsule } from '../exportService';
  */
 function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
   return {
+    schemaVersion: '1.0',
     projectId: 'test-project-' + Math.random().toString(36).slice(2),
     name: 'Test Project',
     description: 'Test project for round-trip validation',
-    labId: 'lab-001',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     circuit: {
@@ -62,37 +62,40 @@ function createTestProject(overrides?: Partial<LabProjectV1>): LabProjectV1 {
       connections: [
         {
           id: 'conn1',
-          from: { nodeId: 'input1', portName: 'out' },
-          to: { nodeId: 'and1', portName: 'in1' },
+          fromNodeId: 'input1',
+          fromPin: 'out',
+          toNodeId: 'and1',
+          toPin: 'in1',
         },
         {
           id: 'conn2',
-          from: { nodeId: 'input2', portName: 'out' },
-          to: { nodeId: 'and1', portName: 'in2' },
+          fromNodeId: 'input2',
+          fromPin: 'out',
+          toNodeId: 'and1',
+          toPin: 'in2',
         },
         {
           id: 'conn3',
-          from: { nodeId: 'and1', portName: 'out' },
-          to: { nodeId: 'output1', portName: 'in' },
+          fromNodeId: 'and1',
+          fromPin: 'out',
+          toNodeId: 'output1',
+          toPin: 'in',
         },
       ],
     },
     evidence: {
-      checkpoints: [],
       snapshots: [],
       actions: [
         {
           timestamp: new Date().toISOString(),
-          type: 'create',
-          description: 'Project created',
+          sessionId: 'test-session',
+          action: { v: 1, t: 'sim/reset', p: {} },
         },
       ],
-      submissions: [],
     },
     simulation: {
       currentTick: 0,
       tickRate: 20,
-      isRunning: false,
       breakpoints: [],
       probes: [],
     },
@@ -142,11 +145,10 @@ describe('Export/Import Round-Trip Tests', () => {
       project.circuit.connections.forEach((conn, i) => {
         const originalConn = original.circuit.connections[i];
         expect(conn.id).toBe(originalConn.id);
-        if ('from' in conn && typeof conn.from !== 'string') {
-          expect(conn.from.nodeId).toBe(
-            typeof originalConn.from === 'string' ? originalConn.from : originalConn.from.nodeId
-          );
-        }
+        expect(conn.fromNodeId).toBe(originalConn.fromNodeId);
+        expect(conn.fromPin).toBe(originalConn.fromPin);
+        expect(conn.toNodeId).toBe(originalConn.toNodeId);
+        expect(conn.toPin).toBe(originalConn.toPin);
       });
     });
 
@@ -157,8 +159,7 @@ describe('Export/Import Round-Trip Tests', () => {
 
       expect(project.evidence.actions).toBeDefined();
       expect(project.evidence.actions.length).toBe(original.evidence.actions.length);
-      expect(project.evidence.checkpoints).toBeDefined();
-      expect(project.evidence.submissions).toBeDefined();
+      expect(project.evidence.snapshots).toBeDefined();
     });
   });
 
@@ -242,8 +243,10 @@ describe('Export/Import Round-Trip Tests', () => {
         if (i < 49) {
           connections.push({
             id: `conn-${i}`,
-            from: { nodeId: `gate-${i}`, portName: 'out' },
-            to: { nodeId: `gate-${i + 1}`, portName: 'in1' },
+            fromNodeId: `gate-${i}`,
+            fromPin: 'out',
+            toNodeId: `gate-${i + 1}`,
+            toPin: 'in1',
           });
         }
       }

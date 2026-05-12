@@ -59,7 +59,7 @@ const migrations: Record<string, MigrationFn> = {
  * Validate that schemaVersion is a known version
  */
 export function isSupportedVersion(version: unknown): version is SupportedSchemaVersion {
-  return (SUPPORTED_SCHEMA_VERSIONS as unknown[]).includes(version);
+  return typeof version === 'string' && SUPPORTED_SCHEMA_VERSIONS.includes(version as SupportedSchemaVersion);
 }
 
 /**
