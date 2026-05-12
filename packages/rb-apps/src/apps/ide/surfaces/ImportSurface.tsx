@@ -2904,7 +2904,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
         {importEntryAction && (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
-            <SurfacePanel className="ide-import-start-hero" testId="ide-import-start-hero">
+            <SurfacePanel
+              className="ide-import-start-hero"
+              testId="ide-import-start-hero"
+              hierarchySurface="import"
+              hierarchyRole="primary"
+              hierarchyFocal="manifest-restore"
+            >
               <div className="ide-import-start-hero__copy">
                 {isImportFirstLook ? (
                   <span className="ide-import-start-hero__eyebrow">Recommended path</span>
@@ -2915,11 +2921,22 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 </p>
               </div>
               <div className="ide-import-start-hero__actions">
-                <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-start-primary">
+                <IdeButton
+                  tone="primary"
+                  onClick={runImportPrimaryAction}
+                  testId="ide-import-start-primary"
+                  hierarchySurface="import"
+                  hierarchyRole="next"
+                >
                   {importEntryAction.primaryLabel}
                 </IdeButton>
                 {isImportFirstLook ? (
-                  <details className="ide-import-start-other-options" data-testid="ide-import-start-other-options">
+                  <details
+                    className="ide-import-start-other-options"
+                    data-testid="ide-import-start-other-options"
+                    data-hierarchy-surface="import"
+                    data-hierarchy-role="advanced"
+                  >
                     <summary data-testid="ide-import-start-other-options-toggle">Other ways to start</summary>
                     <div className="ide-inline-actions">
                       <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
@@ -2935,7 +2952,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </div>
             </SurfacePanel>
             {isImportFirstLook ? (
-              <SurfacePanel className="ide-import-start-guidance" testId="ide-import-start-guidance">
+              <SurfacePanel
+                className="ide-import-start-guidance"
+                testId="ide-import-start-guidance"
+                hierarchySurface="import"
+                hierarchyRole="context"
+              >
                 <div className="ide-import-start-guidance-grid">
                   <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-zip">
                     <span className="ide-import-start-guidance-eyebrow">Fastest path</span>

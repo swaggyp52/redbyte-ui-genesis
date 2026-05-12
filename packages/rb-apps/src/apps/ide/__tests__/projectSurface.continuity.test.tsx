@@ -174,7 +174,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
   });
 
-  it('shows primary actions (Build Fresh, Import) above the fold regardless of examples list', () => {
+  it('keeps secondary starts available while the certified course path stays primary', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -228,8 +228,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-featured-security-lock')).toBeNull();
     // Security lock example appears as a regular example card, not a featured panel
     expect(getByTestId('ide-project-landing-example-23_lab8-fsm-lock-starter-basys3')).toBeTruthy();
-    // Start column says "Examples", not "Other starting points"
-    expect(getByTestId('ide-project-start-column').textContent).toContain('Examples');
+    // Sprint 7: the starter column is now the certified course path, not generic examples.
+    expect(getByTestId('ide-project-start-column').textContent).toContain('Certified course path');
     expect(getByTestId('ide-project-start-column').textContent).not.toContain('Other starting points');
   });
 

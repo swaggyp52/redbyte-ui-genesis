@@ -1685,7 +1685,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             Add inputs and outputs in Design, then return here to assign board pins.
           </p>
         ) : mappingReady ? (
-          <IdeButton tone="secondary" onClick={onOpenExport} testId="ide-hardware-map-dock-primary">
+          <IdeButton
+            tone="secondary"
+            onClick={onOpenExport}
+            testId="ide-hardware-map-dock-primary"
+            hierarchySurface="hardware"
+            hierarchyRole="next"
+          >
             Open Export
           </IdeButton>
         ) : (
@@ -2668,6 +2674,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <div
             className="ide-hw-board-workspace ide-hw-board-workspace--map"
             data-testid="ide-hw-board-workspace"
+            data-hierarchy-surface="hardware"
+            data-hierarchy-role="primary"
+            data-hierarchy-focal="basys3-board-workbench"
           >
             <div className="ide-hw-board-planner-summary" data-testid="ide-hw-board-resource-summary">
               <button
@@ -2709,7 +2718,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </p>
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
-            <div className="ide-hw-map-table" data-testid="ide-hw-map-table">
+            <div
+              className="ide-hw-map-table"
+              data-testid="ide-hw-map-table"
+              data-hierarchy-surface="hardware"
+              data-hierarchy-role="context"
+            >
               {exportViewStatus === 'blocked' && exportBlockingDiagnostics.length > 0 ? (
                 <IdeCallout
                   tone="warn"
@@ -2776,7 +2790,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </IdeCallout>
               ) : null}
               {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
-                <details className="ide-hw-structured-editor" data-testid="ide-hw-structured-editor">
+                <details
+                  className="ide-hw-structured-editor"
+                  data-testid="ide-hw-structured-editor"
+                  data-hierarchy-surface="hardware"
+                  data-hierarchy-role="advanced"
+                >
                   <summary className="ide-hw-structured-summary">Advanced mapping editor</summary>
                   <IdeCallout
                     tone="info"
@@ -3354,7 +3373,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   }
                 }}
               />
-              <details className="ide-hw-resource-catalog" data-testid="ide-hw-resource-catalog">
+              <details
+                className="ide-hw-resource-catalog"
+                data-testid="ide-hw-resource-catalog"
+                data-hierarchy-surface="hardware"
+                data-hierarchy-role="advanced"
+              >
                 <summary>Supported Basys3 resource catalog</summary>
                 <div className="ide-hw-resource-catalog-grid">
                   {resourcePlannerGroups.map((group) => (

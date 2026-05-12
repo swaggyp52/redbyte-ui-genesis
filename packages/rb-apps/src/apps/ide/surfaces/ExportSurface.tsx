@@ -1735,6 +1735,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <section
             className="ide-export-section ide-mt-2"
             data-testid="ide-export-vivado-evidence-diagnostics"
+            data-hierarchy-surface="export"
+            data-hierarchy-role="context"
           >
             <header className="ide-export-section-header">
               <div>
