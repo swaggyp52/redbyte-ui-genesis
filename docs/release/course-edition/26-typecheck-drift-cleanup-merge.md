@@ -70,6 +70,13 @@ The Marcus/RPI/HQ/local-agent scan still returns historical `AI_STATE.md` notes,
 
 Full workspace `pnpm typecheck` now passes on `main`.
 
+Remote sync:
+
+- `git push origin main` delivered `1339d2422acdc6b6d7f185f35e142c41d85b6b03` to GitHub `main`.
+- `main` and `origin/main` matched at `1339d2422acdc6b6d7f185f35e142c41d85b6b03` after fetch.
+- GitHub reported bypassed required `Classroom Truth Gates` status check expectation during push; this remains release-process debt until the remote required check runs normally.
+- This is source delivery to GitHub `main`, not a verified live/student deploy unless the deploy pipeline ships that commit.
+
 Remaining known blocker:
 
 - `pnpm build:unified` `/os/` redirect contract drift.

@@ -21,6 +21,8 @@
 
 **Remaining blocker:** `pnpm build:unified` still has the known `/os/` redirect contract drift and remains the next release-readiness target.
 
+**Remote sync:** `git push origin main` succeeded for the merge closeout and delivered `1339d2422acdc6b6d7f185f35e142c41d85b6b03` to GitHub `main`; this is source delivery, not a verified live/student deploy unless the deploy pipeline ships that commit. GitHub reported bypassed required `Classroom Truth Gates` status check expectation again; this remains release-process debt until the remote status check is enforced normally.
+
 **Next recommended task:** Start `release/build-unified-contract-cleanup-1` for build/deploy contract cleanup. Do not start install scripts or manuals before that build contract is green unless explicitly redirected.
 
 ## Change Log 2026-05-12 (fix: resolve workspace typecheck drift)
