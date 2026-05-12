@@ -5939,7 +5939,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
               </IdeInspectorSection>
-              <IdeInspectorSection title="Details" testId="ide-design-inspector-details" defaultOpen={false}>
+              <IdeInspectorSection
+                title="Details"
+                testId="ide-design-inspector-details"
+                defaultOpen={false}
+                hierarchySurface="design"
+                hierarchyRole="advanced"
+              >
                 {renderAdvancedDetails()}
               </IdeInspectorSection>
             </React.Fragment>
@@ -6150,6 +6156,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               showWorkspaceStatusBar ? ' has-status' : ''
             }`}
             data-testid="ide-design-control-bar"
+            data-hierarchy-surface="design"
+            data-hierarchy-role="context"
           >
             <div
               className="ide-design-workspace-header"
@@ -6171,6 +6179,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     tone="primary"
                     onClick={onGoToVerify}
                     testId="ide-design-command-strip-primary-cta"
+                    hierarchySurface="design"
+                    hierarchyRole="next"
                   >
                     {activeVerifySignal || effectiveExternalDebugTick != null
                       ? 'Return to Verify waveform'
@@ -6357,7 +6367,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {starterContext.name}
                   </h3>
                   {starterContext.summary || starterContext.expectedBehavior ? (
-                    <details className="ide-design-starter-details" data-testid="ide-design-starter-details">
+                    <details
+                      className="ide-design-starter-details"
+                      data-testid="ide-design-starter-details"
+                      data-hierarchy-surface="design"
+                      data-hierarchy-role="advanced"
+                    >
                       <summary data-testid="ide-design-starter-details-summary">Starter brief</summary>
                       <div className="ide-design-starter-details-body" data-testid="ide-design-starter-details-body">
                         {starterContext.summary ? (
@@ -6678,7 +6693,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
 
               <div className="ide-design-layout ide-design-layout-canvas-only">
-                <section className="ide-design-canvas" data-testid="ide-design-canvas">
+                <section
+                  className="ide-design-canvas"
+                  data-testid="ide-design-canvas"
+                  data-hierarchy-surface="design"
+                  data-hierarchy-role="primary"
+                  data-hierarchy-focal="circuit-canvas"
+                >
                   <div
                     className={`ide-design-tool-hud${isPlacementMode ? ' is-placement-mode' : ''}`}
                     data-testid="ide-design-tool-hud"

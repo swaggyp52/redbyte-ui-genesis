@@ -957,14 +957,21 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-landing-header">
                 <p className="ide-surface-block-label">Project launch</p>
                 <h2 className="ide-project-landing-title">
-                  {projectKind === 'home' ? 'Project Home' : 'Start your lab'}
+                  {projectKind === 'home' ? 'Start with a certified lab' : 'Start with a certified lab'}
                 </h2>
                 <p className="ide-project-landing-sub">
-                  Build fresh, import existing HDL, or start from an example. The path is {STUDENT_WORKFLOW_SUMMARY}.
+                  Choose a certified starter first, then continue through {STUDENT_WORKFLOW_SUMMARY}.
+                  Other starts are secondary.
                 </p>
               </div>
-              <div className="ide-project-start-summary" data-testid="ide-project-start-summary">
+              <div
+                className="ide-project-start-summary"
+                data-testid="ide-project-start-summary"
+                data-hierarchy-surface="project"
+                data-hierarchy-role="context"
+              >
                 <span className="ide-project-start-summary-chip">No circuit loaded</span>
+                <span className="ide-project-start-summary-chip">Recommended: Logic Gates</span>
                 <span className="ide-project-start-summary-chip">Next up: Design</span>
                 <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
               </div>
@@ -1052,15 +1059,21 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     )}
                   </div>
                 ) : null}
-                <div className="ide-project-start-column" data-testid="ide-project-start-column">
+                <div
+                  className="ide-project-start-column"
+                  data-testid="ide-project-start-column"
+                  data-hierarchy-surface="project"
+                  data-hierarchy-role="primary"
+                  data-hierarchy-focal="certified-course-path"
+                >
                   <div className="ide-project-start-column-head">
-                    <p className="ide-project-recent-title">Examples</p>
+                    <p className="ide-project-recent-title">Certified course path</p>
                     <p className="ide-project-recent-sub">
-                      Worked designs — load one as a starting point and modify to your spec.
+                      Start here for the ECE141 sequence. Load a starter, then modify it to your lab spec.
                     </p>
                   </div>
                   <div className="ide-project-landing-options">
-                    {landingPrimaryExamples.map((ex) => {
+                    {landingPrimaryExamples.map((ex, index) => {
                       const preview = getExamplePreview(ex.id);
                       return (
                         <button
@@ -1069,6 +1082,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                           className="ide-project-landing-option"
                           onClick={() => { onOpenExample(ex.id); }}
                           data-testid={`ide-project-landing-example-${ex.id}`}
+                          data-hierarchy-surface={index === 0 ? 'project' : undefined}
+                          data-hierarchy-role={index === 0 ? 'next' : undefined}
                         >
                           <span className="ide-project-landing-option-eyebrow">{preview.eyebrow}</span>
                           <span className="ide-project-landing-option-title">{ex.name}</span>
@@ -1089,6 +1104,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             <details
               className="ide-project-lab-gallery-disclosure"
               data-testid="ide-project-lab-gallery-disclosure"
+              data-hierarchy-surface="project"
+              data-hierarchy-role="advanced"
             >
               <summary className="ide-project-lab-gallery-summary">All lab starters (8 labs)</summary>
               <div className="ide-project-lab-gallery" data-testid="ide-project-lab-gallery">

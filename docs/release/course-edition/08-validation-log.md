@@ -6,6 +6,31 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git checkout -b product/redbyte-ui-hierarchy-2` | Passed | <1s | Sprint branch created from `origin/main` after UI art-direction merge closeout. | N/A | Start hierarchy sprint. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Failed before implementation | ~106s | New draft gate failed because Project did not expose explicit hierarchy roles yet. | Introduced test-first red state | Add focal/context/advanced/next hierarchy roles and UI weighting. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Failed during tightening | ~44s | Clicking the existing Design Fit control in the draft gate produced NaN SVG geometry console errors. | Introduced by draft gate action, not product change | Removed the unnecessary Fit click and kept rendered-node assertion. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Passed | ~38s | 2 Playwright tests passed; screenshots captured under `.redbyte/product-immersion/sprint7-ui-hierarchy-2/`. | N/A | Keep as Sprint 7 gate. |
+| `pnpm install --frozen-lockfile` | Passed on `product/redbyte-ui-hierarchy-2` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm start:smoke` | Passed on `product/redbyte-ui-hierarchy-2` | ~21s | Node 20.19.0 and pnpm 10.24.0 detected; launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed | ~33s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-product-immersion` | Failed then passed on rerun | ~73s failed, ~55s rerun | First run blanked before `ide-root` in the empty-project audit; the other three workflows passed in that failed run. Immediate rerun passed all 4 workflows. | Transient startup/navigation miss; not reproduced | Keep visible; no product change made for the transient. |
+| `pnpm -s ide:gate:ece141-counter-clock-export` | Passed | ~38s | 2 Playwright tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-map-pins-recovery` | Passed | ~34s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-counter-compare-pass` | Passed | ~34s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-project-persistence` | Passed | ~49s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-import-export-recovery` | Passed | ~54s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-vivado-artifacts` | Passed | ~53s | 1 Playwright test passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-art-direction` | Passed | ~41s | 2 Playwright tests passed after Sprint 7 hierarchy changes. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Passed after full stack | ~42s | 2 Playwright tests passed after final screenshot/gate tightening. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed | ~12s | 8 starter-load tests passed. | N/A | No action. |
+| Focused Sprint 7 Vitest surface suite | Failed then passed | ~14s failed, ~13s rerun | First run failed one stale ProjectSurface assertion expecting the old `Examples` heading; test was updated to the new `Certified course path` hierarchy contract. Rerun passed 65 tests and 1 skipped across IdeApp, Project, Verify command bar, Hardware, Export, and Import. | Introduced test contract drift | No further action. |
+| `pnpm rb:doc:validate` | Passed before final closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final docs. |
+| `pnpm rb:encoding:check` | Passed before final closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final docs. |
+| `git diff --check` | Passed before final closeout docs | <1s | No whitespace errors. | N/A | Rerun after final docs. |
+| `pnpm typecheck` | Failed | ~7s | Same known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` schema, stale fixture, and type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass; no new UI-specific type errors appeared. | Pre-existing/out of Sprint 7 scope | Keep as next full-workspace typecheck cleanup task. |
+| `pnpm rb:doc:validate` | Passed after final closeout docs | ~1s | 36 passed, 0 failed after validation log, Sprint 7 doc, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after final closeout docs | ~1s | No mojibake markers found. | N/A | No action. |
+| `git diff --check` | Passed after final closeout docs | <1s | No whitespace errors after all code and doc edits. | N/A | No action. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed | ~2s | Local `main` was already up to date with `origin/main` at `7175ccfba1492e4eebd7598fad65c03eac1c1292`. | N/A | Merge UI art-direction branch. |
 | `git branch backup/pre-redbyte-ui-art-direction-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
 | `git merge --no-ff origin/product/redbyte-ui-art-direction-1 -m "merge: redbyte ui art direction"` | Passed | <1s | Merge commit `9614a04bae40b886c0f92660cf5cd01f81abdf75`; no conflicts. | N/A | Validate merged `main`. |

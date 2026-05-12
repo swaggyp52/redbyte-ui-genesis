@@ -4625,7 +4625,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
         </VerifyResultRegion>
 
-        <VerifyWorkspaceRegion>
+        <VerifyWorkspaceRegion
+          data-hierarchy-surface="verify"
+          data-hierarchy-role="context"
+        >
         <div className="ide-verify-lab-frame" data-testid="ide-verify-lab-frame">
         <div
           className="ide-verify-lab-grid"

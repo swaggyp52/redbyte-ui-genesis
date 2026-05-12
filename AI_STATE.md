@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-05-12 (ux: clarify RedByte surface hierarchy)
+
+**Subsystem:** RedByte ECE141 IDE surface hierarchy.
+
+**Branch:** `product/redbyte-ui-hierarchy-2` based on pushed `origin/main` at `f26869d16672cfc328265b8bc76383389be0d18b`.
+
+**Changes:**
+- Added browser gate `pnpm -s ide:gate:ece141-ui-hierarchy`.
+- Added `tests/e2e/ece141-ui-hierarchy.spec.ts`.
+- Added `docs/release/course-edition/23-redbyte-ui-hierarchy-2.md`.
+- Marked Project, Design, Verify, Hardware / Map Pins, Export, and Import with explicit hierarchy roles: primary focal object, secondary context layer, advanced/collapsed layer, and next action.
+- Reweighted Project so the certified course path is primary and recent work / blank / import / full starter gallery are secondary.
+- Reweighted Hardware so the Basys3 board/mapping workbench is primary, the mapping table is context, and structured editor/resource catalog stay advanced.
+- Reweighted Export so the E0 handoff is primary, the E0/E1/E2/E3 evidence ladder is context, and build/pipeline details stay advanced.
+- Kept Import restore / Vivado ZIP start primary while leaving other starts collapsed.
+- Updated the ProjectSurface continuity test to the new `Certified course path` hierarchy contract.
+
+**Screenshots:** `.redbyte/product-immersion/sprint7-ui-hierarchy-2/`.
+
+**Evidence:** `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion` on rerun, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, `pnpm -s ui:lab-starter-load-gate`, the focused Sprint 7 surface Vitest suite (65 passed, 1 skipped), `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before final closeout doc edits.
+
+**Validation notes:** The first `pnpm -s ide:gate:ece141-product-immersion` run blanked before `ide-root` in the empty-project audit; the other three workflows in that run passed, and the immediate rerun passed all four workflows. A draft hierarchy gate click on the existing Design Fit control produced NaN SVG geometry console errors, so the gate now asserts rendered nodes without clicking Fit. Full `pnpm typecheck` still fails in the known `@redbyte/rb-lab-engine` / pulled `rb-logic-core` schema, stale fixture, and type-boundary drift after `@redbyte/rb-board-profiles`, `@redbyte/rb-viewport`, and `@redbyte/rb-fpga-toolchain` pass; no new UI-specific type errors appeared.
+
+**Safety:** No product feature, circuit engine, simulator, starter semantics, Vivado artifact logic, install script, manual, MarcusRPI, or E0/E1/E2/E3 evidence semantic change was performed.
+
+**Next recommended task:** Merge `product/redbyte-ui-hierarchy-2` to `main` after review, then run the full-workspace `pnpm typecheck` drift cleanup.
+
 ## Change Log 2026-05-12 (merge: redbyte ui art direction)
 
 **Subsystem:** RedByte ECE141 IDE shell and surface hierarchy mainline validation.

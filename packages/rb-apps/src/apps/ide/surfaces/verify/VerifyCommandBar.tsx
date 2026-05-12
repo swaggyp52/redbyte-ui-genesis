@@ -284,6 +284,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     <div
       className={`ide-verify-command-bar${leadingPanel ? ' ide-verify-command-bar--with-leading' : ''}`}
       data-testid="ide-verify-command-bar"
+      data-hierarchy-surface="verify"
+      data-hierarchy-role="primary"
     >
       {leadingPanel ? <div className="ide-vcb-leading-slot">{leadingPanel}</div> : null}
       <div className="ide-vcb-row ide-vcb-row--primary">
@@ -304,6 +306,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             disabled={runDisabled}
             testId="ide-vcb-run"
             className={runPulsing ? 'is-pulsing' : undefined}
+            hierarchySurface="verify"
+            hierarchyRole="next"
           >
             {runLabel}
           </IdeButton>
@@ -454,7 +458,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             ) : null}
           </div>
           {referenceModeLabel ? (
-            <details className="ide-vcb-session-details" data-testid="ide-vcb-session-details">
+            <details
+              className="ide-vcb-session-details"
+              data-testid="ide-vcb-session-details"
+              data-hierarchy-surface="verify"
+              data-hierarchy-role="advanced"
+            >
               <summary className="ide-vcb-session-details-summary">Session details</summary>
               <span className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
                 {referenceModeLabel}

@@ -15,10 +15,16 @@ export const SurfacePanel: React.FC<{
   children: React.ReactNode;
   className?: string;
   testId?: string;
-}> = ({ children, className, testId }) => (
+  hierarchySurface?: string;
+  hierarchyRole?: string;
+  hierarchyFocal?: string;
+}> = ({ children, className, testId, hierarchySurface, hierarchyRole, hierarchyFocal }) => (
   <section
     className={`ide-surface-panel${className ? ` ${className}` : ''}`}
     data-testid={testId}
+    data-hierarchy-surface={hierarchySurface}
+    data-hierarchy-role={hierarchyRole}
+    data-hierarchy-focal={hierarchyFocal}
   >
     {children}
   </section>

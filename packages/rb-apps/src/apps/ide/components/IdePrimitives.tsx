@@ -114,7 +114,20 @@ export const IdeButton: React.FC<{
   type?: 'button' | 'submit';
   className?: string;
   title?: string;
-}> = ({ tone = 'secondary', children, onClick, disabled = false, testId, type = 'button', className, title }) => {
+  hierarchySurface?: string;
+  hierarchyRole?: string;
+}> = ({
+  tone = 'secondary',
+  children,
+  onClick,
+  disabled = false,
+  testId,
+  type = 'button',
+  className,
+  title,
+  hierarchySurface,
+  hierarchyRole,
+}) => {
   return (
     <button
       type={type}
@@ -122,6 +135,8 @@ export const IdeButton: React.FC<{
       onClick={onClick}
       disabled={disabled}
       data-testid={testId}
+      data-hierarchy-surface={hierarchySurface}
+      data-hierarchy-role={hierarchyRole}
       title={title}
     >
       {children}
@@ -222,7 +237,19 @@ export const IdeInspectorSection: React.FC<{
   defaultOpen?: boolean;
   accordionId?: string;
   disableCollapse?: boolean;
-}> = ({ title, children, testId, collapsible = true, defaultOpen = true, accordionId, disableCollapse = false }) => {
+  hierarchySurface?: string;
+  hierarchyRole?: string;
+}> = ({
+  title,
+  children,
+  testId,
+  collapsible = true,
+  defaultOpen = true,
+  accordionId,
+  disableCollapse = false,
+  hierarchySurface,
+  hierarchyRole,
+}) => {
   const [localOpen, setLocalOpen] = React.useState(defaultOpen);
   const accordion = React.useContext(IdeAccordionContext);
 
@@ -243,6 +270,8 @@ export const IdeInspectorSection: React.FC<{
       className={`ide-inspector-section ${collapsible ? 'is-collapsible' : ''}`}
       data-testid={testId}
       data-open={open ? 'true' : 'false'}
+      data-hierarchy-surface={hierarchySurface}
+      data-hierarchy-role={hierarchyRole}
     >
       {collapsible ? (
         <button

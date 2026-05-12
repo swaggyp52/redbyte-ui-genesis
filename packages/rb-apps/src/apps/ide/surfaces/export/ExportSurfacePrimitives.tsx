@@ -199,6 +199,9 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
     className="ide-export-summary-hero"
     data-layout-mode={layoutMode}
     data-testid="ide-export-readiness-hero"
+    data-hierarchy-surface="export"
+    data-hierarchy-role="primary"
+    data-hierarchy-focal="e0-handoff"
   >
     <div className="ide-export-summary-hero-main">
 
@@ -306,6 +309,8 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                 onClick={onPrimaryHandoff}
                 disabled={primaryHandoffDisabled}
                 testId="ide-export-rebuild-btn"
+                hierarchySurface="export"
+                hierarchyRole="next"
               >
                 {showPrimaryDownloadSpinner ? (
                   <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building...</>
@@ -343,7 +348,12 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
         </details>
 
         {/* Build pipeline steps */}
-        <details className="ide-export-pipeline-details ide-mt-1" data-testid="ide-export-pipeline-details">
+        <details
+          className="ide-export-pipeline-details ide-mt-1"
+          data-testid="ide-export-pipeline-details"
+          data-hierarchy-surface="export"
+          data-hierarchy-role="advanced"
+        >
           <summary>Build details</summary>
           <ol className="ide-export-buildSteps" data-testid="ide-export-rebuild-steps">
             {rebuildSteps.map((s) => (

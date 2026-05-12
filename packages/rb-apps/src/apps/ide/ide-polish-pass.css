@@ -2417,6 +2417,189 @@
     var(--rb-lab-bg-workbench);
 }
 
+/* ============================================================
+   RedByte IDE - UI Hierarchy Sprint 2 (2026-05-12)
+
+   Each surface gets one focal object, one context layer, one
+   advanced/collapsed layer, and one next action. These rules
+   only reweight existing controls and evidence boundaries.
+   ============================================================ */
+
+.ide-root [data-hierarchy-role='primary'] {
+  scroll-margin: 18px;
+}
+
+.ide-root details[data-hierarchy-role='advanced']:not([open]),
+.ide-root [data-hierarchy-role='advanced'][data-open='false'] {
+  opacity: 0.74;
+  border-color: rgba(154, 184, 214, 0.13);
+}
+
+.ide-root details[data-hierarchy-role='advanced'] > summary,
+.ide-root [data-hierarchy-role='advanced'] .ide-inspector-toggle {
+  color: rgba(190, 213, 236, 0.70);
+}
+
+.ide-root [data-hierarchy-role='next'] {
+  box-shadow: 0 0 0 1px rgba(46, 196, 182, 0.16), 0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+.ide-root .ide-left-rail {
+  width: 56px;
+  opacity: 0.76;
+}
+
+.ide-root .ide-left-rail:hover,
+.ide-root .ide-left-rail:focus-within {
+  opacity: 1;
+}
+
+.ide-root .ide-left-rail .ide-mode-label {
+  font-size: 10px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-start-hub {
+  gap: 14px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-start-grid {
+  order: 3;
+  grid-template-columns: minmax(0, 1.22fr) minmax(240px, 0.78fr);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-start-column {
+  order: 1;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-recent-panel {
+  order: 2;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-primary-actions {
+  order: 4;
+  margin-top: 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(154, 184, 214, 0.12);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-primary-action {
+  min-height: 92px;
+  padding: 12px 14px;
+  border-color: rgba(154, 184, 214, 0.17);
+  background: rgba(8, 18, 31, 0.56);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-start-column[data-hierarchy-role='primary'] {
+  padding: clamp(12px, 1.3vw, 18px);
+  border: 1px solid rgba(46, 196, 182, 0.28);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(46, 196, 182, 0.10), rgba(13, 27, 44, 0.72) 54%),
+    rgba(8, 18, 31, 0.86);
+  box-shadow: var(--rb-lab-depth-2);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-landing-options {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-landing-option[data-hierarchy-role='next'] {
+  border-color: rgba(46, 196, 182, 0.44);
+  background:
+    linear-gradient(180deg, rgba(46, 196, 182, 0.12), rgba(46, 196, 182, 0.035)),
+    rgba(8, 18, 31, 0.94);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-lab-gallery-disclosure {
+  border-color: rgba(154, 184, 214, 0.13);
+  background: rgba(8, 18, 31, 0.48);
+}
+
+.ide-root [data-ide-mode-marker='design'] [data-hierarchy-focal='circuit-canvas'] {
+  min-height: clamp(420px, 62vh, 780px);
+  border-color: rgba(125, 211, 252, 0.25);
+}
+
+.ide-root [data-ide-mode-marker='design'] [data-hierarchy-role='context'] {
+  border: 1px solid rgba(154, 184, 214, 0.14);
+  border-radius: 12px;
+  background: rgba(9, 19, 32, 0.78);
+}
+
+.ide-root [data-ide-mode-marker='verify'] [data-hierarchy-role='primary'] {
+  border: 1px solid rgba(74, 222, 128, 0.18);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(74, 222, 128, 0.08), rgba(9, 19, 32, 0.86) 58%),
+    rgba(9, 19, 32, 0.92);
+}
+
+.ide-root [data-ide-mode-marker='verify'] [data-hierarchy-role='context'] {
+  opacity: 0.92;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] [data-hierarchy-focal='basys3-board-workbench'] {
+  min-height: clamp(420px, 60vh, 760px);
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-command-strip {
+  padding: 12px 16px;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-command-strip .ide-surface-command-strip-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-board-planner-summary {
+  display: none;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-board-task-copy {
+  padding: 7px 12px;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] [data-hierarchy-role='context'] {
+  background: rgba(8, 18, 31, 0.56);
+}
+
+.ide-root [data-ide-mode-marker='export'] [data-hierarchy-focal='e0-handoff'] {
+  min-height: 220px;
+  overflow: visible;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-hero-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px) !important;
+  align-items: stretch !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-action-card {
+  align-self: stretch;
+}
+
+.ide-root [data-ide-mode-marker='export'] [data-hierarchy-role='context'] {
+  opacity: 0.88;
+}
+
+.ide-root [data-ide-mode-marker='import'] [data-hierarchy-focal='manifest-restore'] {
+  border-color: rgba(142, 199, 255, 0.32);
+  box-shadow: var(--rb-lab-depth-2);
+}
+
+.ide-root [data-ide-mode-marker='import'] [data-hierarchy-role='context'] {
+  opacity: 0.88;
+}
+
+@media (max-width: 900px) {
+  .ide-root [data-ide-mode-marker='project'] .ide-project-start-grid,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-hero-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
 @media (max-width: 1180px) {
   .ide-proof-ribbon {
     grid-template-columns: minmax(0, 1fr);
