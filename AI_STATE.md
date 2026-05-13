@@ -22,6 +22,8 @@
 
 **Safety:** No new product work, UI polish, install-script work, manuals, MarcusRPI work, circuit engine change, simulator change, Vivado artifact semantics change, or E0/E1/E2/E3 evidence semantic change was performed.
 
+**Remote sync:** `git push origin main` succeeded for the merge closeout and delivered `bdca2984` to GitHub `main`; this is source delivery, not a verified live/student deploy unless the deploy pipeline ships that commit. GitHub reported bypassed required `Classroom Truth Gates` status check expectation again; this remains release-process debt until the remote required check runs normally.
+
 **Remaining blockers:** No known `pnpm typecheck` or `pnpm build:unified` blocker remains on local merged `main`. The next release-readiness sprint is Windows course setup scripts.
 
 ## Change Log 2026-05-12 (fix: align unified build with redbyte course entry)

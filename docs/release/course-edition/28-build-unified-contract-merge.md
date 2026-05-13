@@ -99,3 +99,9 @@ Remaining blockers:
 
 - No known `pnpm typecheck` or `pnpm build:unified` blocker remains.
 - Windows course setup scripts are the next release-readiness sprint.
+
+Remote sync:
+
+- `git push origin main` delivered `bdca2984` to GitHub `main`.
+- GitHub reported a bypassed required `Classroom Truth Gates` status check expectation during push; this remains release-process debt until the remote required check runs normally.
+- This is source delivery to GitHub `main`, not a verified live/student deploy unless the deploy pipeline ships that commit.
