@@ -112,5 +112,6 @@ Final remaining blockers:
 - The scripts need a fresh clone / fresh Windows profile rehearsal.
 - Student Quick Start and Professor Quick Start still need to be written.
 - Professor-facing RC1 package has not been assembled in this task.
+- GitHub reported a bypassed required `Classroom Truth Gates` status check expectation during `main` push; this remains release-process debt until the remote required check runs normally.
 
 Next recommended sprint: Student Quick Start and Professor Quick Start.

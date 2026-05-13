@@ -23,6 +23,8 @@
 
 **Remaining blockers:** Fresh clone / fresh Windows profile rehearsal is still pending. Student Quick Start and Professor Quick Start are still pending. Professor-facing RC1 packaging is still pending.
 
+**Remote sync:** `git push origin main` succeeded for the merge closeout and delivered `8b734744f1afdabd0e691aa0558bf9f659fa6b9f` to GitHub `main`; this is source delivery, not a verified live/student deploy unless the deploy pipeline ships that commit. GitHub reported bypassed required `Classroom Truth Gates` status check expectation again; this remains release-process debt until the remote required check runs normally.
+
 **Next recommended task:** Start `docs/course-quick-starts-1` for Student Quick Start and Professor Quick Start.
 
 ## Change Log 2026-05-12 (chore: add windows course setup scripts)
