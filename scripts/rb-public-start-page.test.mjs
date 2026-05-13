@@ -66,6 +66,7 @@ assert(
   /^\s*\/\s+\/start\.html\s+302\s*$/m.test(redirects),
   'root redirect must send public visitors to /start.html'
 );
+assert(!/^\s*\/\s+\/os\/?\s+30[12]\s*$/m.test(redirects), 'root redirect must not send public visitors directly to /os/');
 assert(/^\s*\/os\s+\/os\/\s+302\s*$/m.test(redirects), '/os normalization redirect must remain');
 assert(/href="\/os\/"/.test(html), 'start page must include Open IDE link to /os/');
 

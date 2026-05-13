@@ -20,6 +20,7 @@ const DIST = path.join(__dirname, '..', 'dist');
 // Required files
 const REQUIRED_FILES = [
   'index.html',
+  'start.html',
   'build.json',
   '_redirects',
   '_headers',
@@ -69,10 +70,10 @@ const osIndex = path.join(DIST, 'os', 'index.html');
 
 if (fs.existsSync(rootIndex)) {
   const content = fs.readFileSync(rootIndex, 'utf8');
-  if (!content.includes('REDBYTE_MARKETING_ROOT')) {
-    errors.push('Root index.html missing REDBYTE_MARKETING_ROOT marker');
+  if (!content.includes('REDBYTE_PUBLIC_ROOT')) {
+    errors.push('Root index.html missing REDBYTE_PUBLIC_ROOT marker');
   } else {
-    console.log('✓ Root marker (REDBYTE_MARKETING_ROOT)');
+    console.log('✓ Root marker (REDBYTE_PUBLIC_ROOT)');
   }
 }
 

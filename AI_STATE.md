@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-05-12 (fix: align unified build with redbyte course entry)
+
+**Subsystem:** Unified build / Cloudflare Pages deploy contract.
+
+**Branch:** `release/build-unified-contract-cleanup-1` based on pushed `main` at `b83524526ea92dfdd776c92ac4a3addd06e5a146`.
+
+**Problem:** `pnpm build:unified` completed package build, playground build, and dist merge, then failed in `scripts/verify-dist.mjs` because the verifier still required the root `_redirects` rule to send `/` to `/os/`. Current product truth and `public/_redirects` already require `/ -> /start.html`, and the generated root `dist/start.html` was missing before this cleanup.
+
+**Changes:**
+- Added `pnpm rb:build:contract:test` and `scripts/rb-build-deploy-contract.test.mjs`.
+- Updated `scripts/merge-dist.mjs` so the unified artifact writes a root public-start fallback, copies `public/start.html` to `dist/start.html`, and keeps `/os/` as the IDE artifact path.
+- Updated `scripts/verify-dist.mjs` so it requires root `start.html`, requires `/ -> /start.html`, rejects root `/os/`, verifies the public start page, and keeps `/os/` IDE artifact checks.
+- Updated `scripts/verify-dist-manifest.mjs`, `scripts/rb-public-start-page.test.mjs`, and `scripts/verify-deploy.mjs` to align with the public start route.
+- Updated `docs/product/RED_BYTE_PUBLIC_START_PATH.md`.
+- Updated `docs/product/V1_RELEASE_READINESS_CHECKLIST.md` to mark the unified build/root dist gate green under the current route contract.
+- Added `docs/release/course-edition/27-build-unified-contract-cleanup.md` and updated the course-edition validation log.
+
+**Evidence:** `pnpm -s rb:build:contract:test` failed red before the fix and passed after. `pnpm build:unified`, `pnpm typecheck`, `pnpm install --frozen-lockfile`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s rb:site:start:test`, and `node scripts/verify-dist-manifest.mjs` passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed after final closeout doc edits.
+
+**Safety:** No UI polish, install-script work, manuals, MarcusRPI work, circuit engine change, simulator change, Vivado artifact semantics change, or E0/E1/E2/E3 evidence semantic change was performed. `/os/` remains the direct IDE route; only the root public/deploy contract changed from stale OS-era default to the current `/start.html` public entry.
+
+**Remaining blockers:** No known `pnpm build:unified` blocker remains after this branch. The next release-readiness work should be Windows course setup scripts, then student/professor quick starts and a professor-facing RC package sprint.
+
 ## Change Log 2026-05-12 (merge: resolve workspace typecheck drift)
 
 **Subsystem:** Full workspace TypeScript release gate mainline validation.

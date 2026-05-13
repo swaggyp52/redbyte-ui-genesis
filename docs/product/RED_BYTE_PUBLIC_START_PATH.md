@@ -31,6 +31,8 @@ The public root redirects to:
 /start.html
 ```
 
+The unified `dist/` artifact must include `start.html` at the root, and the root `index.html` fallback must also point to `/start.html` for static hosts that do not honor `_redirects`.
+
 The IDE remains available at:
 
 ```text
@@ -87,10 +89,12 @@ Run:
 
 ```powershell
 pnpm rb:site:start:test
+pnpm rb:build:contract:test
+pnpm build:unified
 pnpm --filter @redbyte/playground build
 ```
 
-The test checks that the page includes the product statement, workflow spine, E0/E1/E2/E3 language, local commands, and no forbidden E3/Vivado overclaims.
+The tests check that the page includes the product statement, workflow spine, E0/E1/E2/E3 language, local commands, and no forbidden E3/Vivado overclaims. The build contract test also checks that the deploy verifier accepts `/ -> /start.html`, rejects a stale `/ -> /os/` root redirect, and preserves `/os/` as the direct IDE entry.
 
 ## Update Rules
 

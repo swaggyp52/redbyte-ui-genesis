@@ -7,6 +7,8 @@ const ROOT = process.cwd();
 const FINAL_DIST = path.join(ROOT, 'dist');
 const STAGED_DIST = path.join(ROOT, 'dist.staged');
 const PLAYGROUND_DIST = path.join(ROOT, 'apps/playground/dist');
+const PUBLIC_START = path.join(ROOT, 'public/start.html');
+const PUBLIC_FAVICON = path.join(ROOT, 'public/favicon.svg');
 
 function resolveGitSha() {
     if (process.env.GIT_SHA) return process.env.GIT_SHA;
@@ -29,26 +31,38 @@ async function merge() {
         console.warn(`⚠️  Canonical dist/ is locked; writing merged output to ${finalDist} instead.`);
     }
 
-    // 2. Root index: generate minimal redirect stub (no marketing site in this repo).
-    // The stub satisfies the REDBYTE_MARKETING_ROOT contract and redirects users to the IDE.
-    console.log('⚠️  No marketing site found — writing canonical root redirect stub...');
+    // 2. Root entry: generate a minimal fallback and copy the static public start page.
+    // Cloudflare _redirects sends / to /start.html; index.html remains a fallback for hosts
+    // that serve the file directly instead of honoring _redirects.
+    console.log('⚠️  No root app found — writing canonical public start fallback...');
     const stubHtml = [
         '<!DOCTYPE html>',
         '<html lang="en">',
         '  <head>',
         '    <meta charset="UTF-8" />',
-        '    <!-- REDBYTE_MARKETING_ROOT: canonical root stub — the IDE lives at /os/ -->',
-        '    <meta http-equiv="refresh" content="0; url=/os/" />',
-        '    <title>RedByte OS</title>',
+        '    <!-- REDBYTE_PUBLIC_ROOT: canonical root fallback — the public start page lives at /start.html and the IDE lives at /os/ -->',
+        '    <meta http-equiv="refresh" content="0; url=/start.html" />',
+        '    <title>Start RedByte</title>',
         '  </head>',
         '  <body>',
-        '    <p>RedByte OS — <a href="/os/">Open the IDE</a></p>',
+        '    <p>RedByte — <a href="/start.html">Start page</a> — <a href="/os/">Open the IDE</a></p>',
         '  </body>',
         '</html>',
         '',
     ].join('\n');
     fs.writeFileSync(path.join(finalDist, 'index.html'), stubHtml, 'utf8');
-    console.log(`✅ Root redirect stub written to ${path.relative(ROOT, path.join(finalDist, 'index.html'))}`);
+    console.log(`✅ Root public fallback written to ${path.relative(ROOT, path.join(finalDist, 'index.html'))}`);
+
+    if (!fs.existsSync(PUBLIC_START)) {
+        console.error('❌ public/start.html is required for the root deploy contract.');
+        process.exit(1);
+    }
+    fs.copyFileSync(PUBLIC_START, path.join(finalDist, 'start.html'));
+    console.log(`✅ Public start page copied to ${path.relative(ROOT, path.join(finalDist, 'start.html'))}`);
+
+    if (fs.existsSync(PUBLIC_FAVICON)) {
+        fs.copyFileSync(PUBLIC_FAVICON, path.join(finalDist, 'favicon.svg'));
+    }
 
     // 3. Copy OS to /os subpath
     const osTarget = path.join(finalDist, 'os');
@@ -98,14 +112,14 @@ async function merge() {
         console.warn('⚠️ Warning: public/_headers not found at', rootPublicHeaders);
     }
 
-    // 5. Verify index.html at root is marketing (check for explicit marker)
+    // 5. Verify index.html at root is the public-start fallback (check for explicit marker)
     const rootIndex = path.join(finalDist, 'index.html');
     if (fs.existsSync(rootIndex)) {
         const content = fs.readFileSync(rootIndex, 'utf8');
-        if (content.includes('REDBYTE_MARKETING_ROOT')) {
-            console.log('✅ Verified: Marketing index is at root.');
+        if (content.includes('REDBYTE_PUBLIC_ROOT')) {
+            console.log('✅ Verified: Public start fallback is at root.');
         } else {
-            console.warn('⚠️ Warning: root index.html missing REDBYTE_MARKETING_ROOT marker. Contract violated.');
+            console.warn('⚠️ Warning: root index.html missing REDBYTE_PUBLIC_ROOT marker. Contract violated.');
         }
     } else {
         console.warn('⚠️ Warning: ' + rootIndex + ' does not exist.');
