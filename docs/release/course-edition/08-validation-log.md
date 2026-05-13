@@ -6,6 +6,24 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed for build-contract merge | ~2s | Local `main` was up to date with `origin/main` at `b83524526ea92dfdd776c92ac4a3addd06e5a146`. | N/A | Merge build-contract cleanup branch. |
+| `git branch backup/pre-build-unified-contract-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
+| `git merge --no-ff origin/release/build-unified-contract-cleanup-1 -m "merge: align unified build with course entry"` | Passed | ~1s | Merge commit `f40b3b7c`; no conflicts. | N/A | Validate merged `main`. |
+| `pnpm install --frozen-lockfile` | Passed on build-contract-merged `main` | ~2s | Lockfile up to date; no dependency changes. | N/A | No action. |
+| `pnpm typecheck` | Passed on build-contract-merged `main` | ~14s | Full workspace typecheck passed. | N/A | No action. |
+| `pnpm build:unified` | Passed on build-contract-merged `main` | ~155s | Unified build produced root `dist/start.html`, root fallback to `/start.html`, `/os/` IDE artifact, `/os/version.json`, current redirects, and current headers; dist verification passed. | N/A | No action. |
+| `pnpm start:smoke` | Passed on build-contract-merged `main` | ~41s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| Full ECE141 browser gate stack | Passed on build-contract-merged `main` | ~653s | Starter Verify/Export, product immersion, counter clock/export, map-pins recovery, counter compare, project persistence, import/export recovery, Vivado artifacts, UI art-direction, and UI hierarchy gates all passed sequentially. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed on build-contract-merged `main` | ~12s | 8 starter-loading tests passed. | N/A | No action. |
+| `pnpm -s rb:build:contract:test` | Passed on build-contract-merged `main` | ~1s | Current `/ -> /start.html` deploy contract accepted; stale root `/os/` redirect rejected. | N/A | No action. |
+| `pnpm -s rb:site:start:test` | Passed on build-contract-merged `main` | ~1s | Public start page source contract passed. | N/A | No action. |
+| `node scripts/verify-dist-manifest.mjs` | Passed on build-contract-merged `main` | <1s | Root `index.html`, root `start.html`, `_redirects`, `_headers`, `/os/index.html`, `/os/version.json`, and `/os/assets` were present with current root and IDE markers. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before build-contract merge closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:encoding:check` | Passed before build-contract merge closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final closeout docs. |
+| `git diff --check` | Passed before build-contract merge closeout docs | <1s | No whitespace errors. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:doc:validate` | Passed after build-contract merge closeout docs | ~1s | 36 passed, 0 failed after `28-build-unified-contract-merge.md`, validation-log, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after build-contract merge closeout docs | ~1s | No mojibake markers found after closeout docs. | N/A | No action. |
+| `git diff --check` | Passed after build-contract merge closeout docs | <1s | No whitespace errors after closeout docs. | N/A | Ready to commit closeout docs. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main && git checkout -b release/build-unified-contract-cleanup-1` | Passed | ~3s | Branch created from pushed `main` at `b83524526ea92dfdd776c92ac4a3addd06e5a146`. | N/A | Reproduce `build:unified` failure. |
 | `pnpm build:unified` | Failed before fix | ~130s | Package and playground builds passed, dist merge passed, then `scripts/verify-dist.mjs` failed at stale `dist/_redirects contains root redirect to /os/`; generated `dist/_redirects` already routed `/` to `/start.html`, but root `dist/start.html` was missing. | Pre-existing release-gate drift | Align merge and verifier scripts with current public start route. |
 | `pnpm -s rb:build:contract:test` | Failed before fix | ~1s | New hermetic test showed the current `/ -> /start.html` public deploy contract failed the old verifier. | Introduced red test | Update deploy verifier and merge script. |

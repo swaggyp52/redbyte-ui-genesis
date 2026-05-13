@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-12 (merge: align unified build with course entry)
+
+**Subsystem:** Unified build / Cloudflare Pages deploy contract mainline validation.
+
+**Changes:**
+- Merged `origin/release/build-unified-contract-cleanup-1` into `main` with merge commit `f40b3b7c`.
+- Added `docs/release/course-edition/28-build-unified-contract-merge.md`.
+- Updated the course-edition validation log with merged-main build/deploy contract validation.
+
+**Merged release stack now on local `main`:**
+- Full workspace `pnpm typecheck` is green.
+- `pnpm build:unified` is green.
+- `/` redirects to `/start.html`.
+- root `index.html` fallback points to `/start.html`.
+- `/start.html` is the public RedByte course entry.
+- `/os/` remains the direct IDE route.
+- root must not redirect directly to `/os/`.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm build:unified`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, `pnpm -s ui:lab-starter-load-gate`, `pnpm -s rb:build:contract:test`, `pnpm -s rb:site:start:test`, and `node scripts/verify-dist-manifest.mjs` passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed after final closeout doc edits.
+
+**Safety:** No new product work, UI polish, install-script work, manuals, MarcusRPI work, circuit engine change, simulator change, Vivado artifact semantics change, or E0/E1/E2/E3 evidence semantic change was performed.
+
+**Remaining blockers:** No known `pnpm typecheck` or `pnpm build:unified` blocker remains on local merged `main`. The next release-readiness sprint is Windows course setup scripts.
+
 ## Change Log 2026-05-12 (fix: align unified build with redbyte course entry)
 
 **Subsystem:** Unified build / Cloudflare Pages deploy contract.
