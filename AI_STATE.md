@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-05-12 (merge: windows course setup scripts)
+
+**Subsystem:** Windows course setup scripts mainline validation.
+
+**Changes:**
+- Merged `origin/release/windows-course-scripts-1` into `main` with merge commit `277e0f12`.
+- Added `docs/release/course-edition/30-windows-course-scripts-merge.md`.
+- Updated the course-edition validation log with merged-main Windows script validation.
+
+**Merged release stack now on local `main`:**
+- `scripts/course/windows/setup.ps1`, `launch.ps1`, `doctor.ps1`, `update.ps1`, `reset.ps1`, and `common.ps1`.
+- Root `setup.ps1`, `launch.ps1`, and `doctor.ps1` wrappers.
+- `pnpm -s rb:course-scripts:test`.
+- `docs/course/windows-quickstart.md`.
+
+**Evidence:** On merged `main`, `pnpm install --frozen-lockfile`, full `pnpm typecheck`, `pnpm build:unified`, `pnpm start:smoke`, `pnpm -s rb:course-scripts:test`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy`, and `pnpm -s ui:lab-starter-load-gate` passed. `powershell -NoProfile -ExecutionPolicy Bypass -File ./setup.ps1 -SkipInstall`, `powershell -NoProfile -ExecutionPolicy Bypass -File ./doctor.ps1`, `powershell -NoProfile -ExecutionPolicy Bypass -File ./launch.ps1 -SmokeTest -NoOpen`, and `powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/course/windows/reset.ps1 -DryRun` passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before closeout doc edits.
+
+**Manual validation note:** The branch intentionally added root wrappers for setup, launch, and doctor only. The reset dry-run validation used the real reset script path instead of adding a new root wrapper during this merge-only task.
+
+**Safety:** No new scripts beyond the merged branch, manual writing, UI polish, core product behavior change, MarcusRPI work, Vivado artifact logic change, or E0/E1/E2/E3 evidence semantic change was performed. Vivado and Basys3 remain optional advisory checks for normal app launch, and reset remains dry-run / explicit-confirmation guarded.
+
+**Remaining blockers:** Fresh clone / fresh Windows profile rehearsal is still pending. Student Quick Start and Professor Quick Start are still pending. Professor-facing RC1 packaging is still pending.
+
+**Next recommended task:** Start `docs/course-quick-starts-1` for Student Quick Start and Professor Quick Start.
+
 ## Change Log 2026-05-12 (chore: add windows course setup scripts)
 
 **Subsystem:** Windows course setup / launch / doctor scripts.

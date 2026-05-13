@@ -6,6 +6,23 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed for Windows scripts merge | ~2s | Local `main` was up to date with `origin/main` at `5e13981d8a4242a53314647578420e5bbebf60ec`. | N/A | Merge Windows course scripts branch. |
+| `git branch backup/pre-windows-course-scripts-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
+| `git merge --no-ff origin/release/windows-course-scripts-1 -m "merge: windows course setup scripts"` | Passed | ~1s | Merge commit `277e0f12`; no conflicts. | N/A | Validate merged `main`. |
+| `pnpm install --frozen-lockfile` | Passed on Windows-scripts-merged `main` | ~2s | Lockfile was up to date. | N/A | No action. |
+| `pnpm typecheck` | Passed on Windows-scripts-merged `main` | ~6s | Full workspace typecheck passed. | N/A | No action. |
+| `pnpm build:unified` | Passed on Windows-scripts-merged `main` | ~114s | Unified build and dist verification passed with `/ -> /start.html`, root `start.html`, `/os/` direct IDE route, and current headers/redirects. | N/A | No action. |
+| `pnpm start:smoke` | Passed on Windows-scripts-merged `main` | ~34s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s rb:course-scripts:test` | Passed on Windows-scripts-merged `main` | ~1s | Static Windows course-script contract passed. | N/A | No action. |
+| Full ECE141 browser gate stack | Passed on Windows-scripts-merged `main` | ~644s | Starter Verify/Export, product immersion, counter clock/export, map-pins recovery, counter compare, project persistence, import/export recovery, Vivado artifacts, UI art-direction, and UI hierarchy gates passed sequentially. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed on Windows-scripts-merged `main` | ~11s | 8 starter-load tests passed. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before Windows-scripts merge closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:encoding:check` | Passed before Windows-scripts merge closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final closeout docs. |
+| `git diff --check` | Passed before Windows-scripts merge closeout docs | <1s | No whitespace errors. | N/A | Rerun after final closeout docs. |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File ./setup.ps1 -SkipInstall` | Passed on Windows-scripts-merged `main` | ~2s | Root setup wrapper forwarded arguments; Node, pnpm, and no-Vivado normal-launch boundary were reported correctly. | N/A | No action. |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File ./doctor.ps1` | Passed with warnings on Windows-scripts-merged `main` | ~41s | Core checks, route contract, and startup smoke passed; Vivado and Basys3 were advisory WARNs because they were not detected. | Environment limitation | Keep Vivado/Basys3 optional for normal app launch. |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File ./launch.ps1 -SmokeTest -NoOpen` | Passed on Windows-scripts-merged `main` | ~38s | Course launcher served `http://127.0.0.1:5173/` with HTTP 200. | N/A | No action. |
+| `powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/course/windows/reset.ps1 -DryRun` | Passed on Windows-scripts-merged `main` | <1s | Dry-run listed allowlisted generated/cache targets and removed nothing. | N/A | No action. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main && git checkout -b release/windows-course-scripts-1` | Passed | ~3s | Branch created from pushed `main` at `5e13981d8a4242a53314647578420e5bbebf60ec`. | N/A | Add Windows course setup scripts. |
 | `pnpm -s rb:course-scripts:test` | Failed before implementation | ~1s | Red test failed because `scripts/course/windows/common.ps1` and the required course scripts did not exist. | Introduced red test | Implement course scripts and wrappers. |
 | `pnpm -s rb:course-scripts:test` | Passed after implementation | ~1s | Static contract verified required scripts, root wrappers, no `npm install`, safe reset markers, launch log path, package script, `.redbyte/course/` ignore coverage, and quickstart E0/E1/E2/E3 wording. | N/A | Keep as course-script gate. |
