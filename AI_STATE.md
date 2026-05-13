@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-05-12 (docs: add course quick starts)
+
+**Subsystem:** Course handoff documentation.
+
+**Branch:** `docs/course-quick-starts-1` based on pushed `main` at `08a324cfa1f8c27ec7f5a9387e0bc9563fa9e391`.
+
+**Changes:**
+- Added `docs/course/student-quick-start.md`.
+- Added `docs/course/professor-quick-start.md`.
+- Added `docs/course/evidence-levels.md`.
+- Added `docs/course/troubleshooting-fast-path.md`.
+- Updated `docs/course/windows-quickstart.md` with links to the new course docs.
+- Updated `docs/DOC_INDEX.md` with a Course Handoff section.
+- Updated `docs/product/V1_RELEASE_READINESS_CHECKLIST.md` to reflect merged Windows scripts and course quick-start docs.
+- Added `docs/release/course-edition/31-course-quick-starts.md` and updated the course-edition validation log.
+
+**Evidence:** `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed before final closeout doc edits. `pnpm typecheck`, `pnpm build:unified`, `pnpm -s rb:course-scripts:test`, `pnpm start:smoke`, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-ui-hierarchy`, and `pnpm -s ide:gate:ece141-vivado-artifacts` passed. `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, and `git diff --check` passed again after final closeout docs.
+
+**Safety:** No UI polish, product behavior change, script behavior change, MarcusRPI work, Vivado artifact logic change, full manual rewrite, or E0/E1/E2/E3 evidence semantic change was performed. The docs state that RedByte exports are E0 unless downstream Vivado or board evidence is collected.
+
+**Remaining blockers:** Fresh clone / fresh Windows profile rehearsal is still pending. Professor-facing RC1 packaging is still pending. The GitHub `main` push path has repeatedly reported a bypassed required `Classroom Truth Gates` status check expectation; this remains release-process debt until the remote check runs normally.
+
+**Next recommended task:** Run a fresh clone / fresh Windows rehearsal.
+
 ## Change Log 2026-05-12 (merge: windows course setup scripts)
 
 **Subsystem:** Windows course setup scripts mainline validation.

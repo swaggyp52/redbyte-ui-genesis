@@ -2,6 +2,13 @@
 
 Use these commands from the RedByte repo root in PowerShell.
 
+## Start Here
+
+- [Student Quick Start](./student-quick-start.md)
+- [Professor Quick Start](./professor-quick-start.md)
+- [Evidence Levels](./evidence-levels.md)
+- [Troubleshooting Fast Path](./troubleshooting-fast-path.md)
+
 ## Setup
 
 ```powershell

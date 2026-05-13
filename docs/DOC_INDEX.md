@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-05-12
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-05-06
+**Last Updated:** 2026-05-12
 
 Navigation hub for all RedByte documentation. Start with the **Active Work** section below.
 
@@ -48,6 +48,20 @@ Compact agent-control docs for current truth, work ordering, and repo/vault sync
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term queue with done criteria and commit expectations |
 | [product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md](./product/RED_BYTE_CURATED_LEARNING_PATH_SPEC.md) | Curated student learning path through existing examples — curation spec, no new circuits |
 | [product/RED_BYTE_PUBLIC_START_PATH.md](./product/RED_BYTE_PUBLIC_START_PATH.md) | Public `/start.html` doorway contract for product explanation, local setup, Vivado/Basys3 boundaries, and evidence honesty |
+
+---
+
+## Course Handoff
+
+Concise docs for student/professor use after the course setup scripts are available.
+
+| File | Purpose |
+|------|---------|
+| [course/student-quick-start.md](./course/student-quick-start.md) | Beginner-facing setup, launch, lab workflow, evidence, and stuck-path guidance |
+| [course/professor-quick-start.md](./course/professor-quick-start.md) | Instructor-facing rollout, support, grading, and evidence-boundary guidance |
+| [course/evidence-levels.md](./course/evidence-levels.md) | Short E0/E1/E2/E3 definitions, examples, and anti-examples |
+| [course/troubleshooting-fast-path.md](./course/troubleshooting-fast-path.md) | Symptom-based setup, launch, Verify, Export, Vivado, board, import, and PowerShell recovery |
+| [course/windows-quickstart.md](./course/windows-quickstart.md) | Windows setup, launch, doctor, update, and reset script commands |
 
 ---
 

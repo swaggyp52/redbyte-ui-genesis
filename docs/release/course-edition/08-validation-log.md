@@ -6,6 +6,20 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main && git checkout -b docs/course-quick-starts-1` | Passed | ~3s | Branch created from pushed `main` at `08a324cfa1f8c27ec7f5a9387e0bc9563fa9e391`. | N/A | Add course quick starts. |
+| `pnpm rb:doc:validate` | Passed before course-quick-start closeout docs | ~1s | 36 passed, 0 failed after adding student/professor/evidence/troubleshooting docs and links. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:encoding:check` | Passed before course-quick-start closeout docs | ~1s | No mojibake markers found. | N/A | Rerun after final closeout docs. |
+| `git diff --check` | Passed before course-quick-start closeout docs | <1s | No whitespace errors. | N/A | Rerun after final closeout docs. |
+| `pnpm typecheck` | Passed on `docs/course-quick-starts-1` | ~7s | Full workspace typecheck stayed green. | N/A | No action. |
+| `pnpm build:unified` | Passed on `docs/course-quick-starts-1` | ~119s | Unified build and dist verification passed with current `/ -> /start.html` and `/os/` route contract. | N/A | No action. |
+| `pnpm -s rb:course-scripts:test` | Passed on `docs/course-quick-starts-1` | ~1s | Static Windows course-script contract stayed green. | N/A | No action. |
+| `pnpm start:smoke` | Passed on `docs/course-quick-starts-1` | ~35s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-starter-verify-export` | Passed on `docs/course-quick-starts-1` | ~67s | Logic Gates starter Verify -> Export smoke passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-ui-hierarchy` | Passed on `docs/course-quick-starts-1` | ~85s | 2 UI hierarchy browser tests passed. | N/A | No action. |
+| `pnpm -s ide:gate:ece141-vivado-artifacts` | Passed on `docs/course-quick-starts-1` | ~87s | Certified starter E0 Vivado artifact ZIP gate passed. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed after course-quick-start closeout docs | ~1s | 36 passed, 0 failed after `31-course-quick-starts.md`, validation log, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after course-quick-start closeout docs | ~1s | No mojibake markers found after final docs. | N/A | No action. |
+| `git diff --check` | Passed after course-quick-start closeout docs | <1s | No whitespace errors after final docs. | N/A | Ready to commit course quick starts. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed for Windows scripts merge | ~2s | Local `main` was up to date with `origin/main` at `5e13981d8a4242a53314647578420e5bbebf60ec`. | N/A | Merge Windows course scripts branch. |
 | `git branch backup/pre-windows-course-scripts-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
 | `git merge --no-ff origin/release/windows-course-scripts-1 -m "merge: windows course setup scripts"` | Passed | ~1s | Merge commit `277e0f12`; no conflicts. | N/A | Validate merged `main`. |
