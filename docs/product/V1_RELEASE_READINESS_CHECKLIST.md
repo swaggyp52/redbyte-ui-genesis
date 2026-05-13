@@ -72,7 +72,7 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 - [x] `create_clock` constraint present and correct for CLK100MHZ / W5
 - [x] Draft/Trusted Export distinction enforced in UI and export service
 - [x] Export preview = ZIP bytes (single codepath)
-- [ ] `build:unified` root `dist/` verification — Windows directory lock issue (known blocker, workaround exists)
+- [x] `build:unified` root `dist/` verification passes with current `/start.html` public-entry contract (2026-05-12)
 
 ---
 
@@ -116,7 +116,6 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 |---------|-----|-----------|
 | `golden` E3 + custom row E3 | Requires manual board observation | Connected bench session |
 | `two-bit-counter` E3 | TA checklist §3 on hardware | Connected bench session |
-| `build:unified` `dist/` lock | Windows directory lock after merge | Identify locking process; harden build handoff |
 | Clean-tree classroom signoff | Not yet rehearsed | Schedule with instructor or TA |
 | Website demo assets | Screenshot/GIF not yet captured | Add a current product screenshot or GIF after this start-path slice |
 | Professor pitch / demo script | OS-era doc is stale | University pilot plan (this doc set) |

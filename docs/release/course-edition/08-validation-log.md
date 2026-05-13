@@ -6,6 +6,24 @@ This log is updated by the course-edition triage branch. Failures must stay visi
 
 | Command | Result | Duration | Failure summary | Pre-existing or introduced? | Next action |
 | --- | --- | --- | --- | --- | --- |
+| `git fetch origin --prune && git checkout main && git pull --ff-only origin main && git checkout -b release/build-unified-contract-cleanup-1` | Passed | ~3s | Branch created from pushed `main` at `b83524526ea92dfdd776c92ac4a3addd06e5a146`. | N/A | Reproduce `build:unified` failure. |
+| `pnpm build:unified` | Failed before fix | ~130s | Package and playground builds passed, dist merge passed, then `scripts/verify-dist.mjs` failed at stale `dist/_redirects contains root redirect to /os/`; generated `dist/_redirects` already routed `/` to `/start.html`, but root `dist/start.html` was missing. | Pre-existing release-gate drift | Align merge and verifier scripts with current public start route. |
+| `pnpm -s rb:build:contract:test` | Failed before fix | ~1s | New hermetic test showed the current `/ -> /start.html` public deploy contract failed the old verifier. | Introduced red test | Update deploy verifier and merge script. |
+| `pnpm -s rb:build:contract:test` | Passed after fix | ~1s | Test now accepts `/ -> /start.html`, rejects stale `/ -> /os/`, and proves verifier failure wording names the root redirect contract. | N/A | Keep as focused deploy-contract gate. |
+| `pnpm -s rb:site:start:test` | Passed after fix | ~1s | Public source start page still includes product truth, workflow, E0/E1/E2/E3 wording, local pnpm commands, and no forbidden overclaims; root `/os/` redirect is explicitly rejected. | N/A | No action. |
+| `pnpm build:unified` | Passed after fix | ~102s | Unified build produced root `dist/start.html`, root fallback to `/start.html`, `/os/` IDE artifact, `/os/version.json`, current redirects, and current headers; dist verification passed. | N/A | Continue release validation. |
+| `pnpm typecheck` | Passed after build-contract fix | ~6s | Full workspace typecheck stayed green. | N/A | No action. |
+| `pnpm install --frozen-lockfile` | Passed after build-contract fix | ~1s | Lockfile was up to date. | N/A | No action. |
+| `pnpm start:smoke` | Passed after build-contract fix | ~17s | Launcher served `http://127.0.0.1:5197/` with HTTP 200. | N/A | No action. |
+| Full ECE141 browser gate stack | Passed after build-contract fix | ~480s | Starter Verify/Export, product immersion, counter clock/export, map-pins recovery, counter compare, project persistence, import/export recovery, Vivado artifacts, UI art-direction, and UI hierarchy gates all passed sequentially. | N/A | No action. |
+| `pnpm -s ui:lab-starter-load-gate` | Passed after build-contract fix | ~41s | 8 starter-loading tests passed. | N/A | No action. |
+| `node scripts/verify-dist-manifest.mjs` | Passed after build-contract fix | <1s | Root `index.html`, root `start.html`, `_redirects`, `_headers`, `/os/index.html`, `/os/version.json`, and `/os/assets` were present with current root and IDE markers. | N/A | No action. |
+| `pnpm rb:doc:validate` | Passed before final build-contract closeout docs | ~1s | 36 passed, 0 failed. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:encoding:check` | Passed before final build-contract closeout docs | ~4s | No mojibake markers found. | N/A | Rerun after final closeout docs. |
+| `git diff --check` | Passed before final build-contract closeout docs | <1s | No whitespace errors. | N/A | Rerun after final closeout docs. |
+| `pnpm rb:doc:validate` | Passed after final build-contract closeout docs | ~1s | 36 passed, 0 failed after `27-build-unified-contract-cleanup.md`, validation-log, product docs, and `AI_STATE.md` updates. | N/A | No action. |
+| `pnpm rb:encoding:check` | Passed after final build-contract closeout docs | ~1s | No mojibake markers found after final closeout docs. | N/A | No action. |
+| `git diff --check` | Passed after final build-contract closeout docs | <1s | No whitespace errors after final closeout docs. | N/A | Ready to commit build-contract cleanup branch. |
 | `git fetch origin --prune && git checkout main && git pull --ff-only origin main` | Passed for typecheck merge | ~2s | Local `main` was up to date with `origin/main` at `e98bae578c422006fffefbe530fc3edad052808b`. | N/A | Merge typecheck cleanup branch. |
 | `git branch backup/pre-typecheck-drift-cleanup-merge` | Passed | <1s | Safety branch created at pre-merge `main`. | N/A | No action. |
 | `git merge --no-ff origin/release/typecheck-drift-cleanup-1 -m "merge: resolve workspace typecheck drift"` | Passed | ~1s | Merge commit `e98f11b4`; no conflicts. | N/A | Validate merged `main`. |
