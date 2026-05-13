@@ -8,8 +8,8 @@ role: v1 readiness gate — honest checklist of what is done, in-progress, and b
 
 # RedByte v1 — Release Readiness Checklist
 
-**Last updated:** 2026-05-05
-**Honest posture:** RC1 (frozen 2026-04-23). Core student workflow proven. Visual and pilot readiness not yet complete.
+**Last updated:** 2026-05-12
+**Honest posture:** RC1 (frozen 2026-04-23). Core student workflow proven. Release engineering gates are green; course setup rehearsal is the next handoff risk.
 
 Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]` = not done · `[!]` = known blocker
 
@@ -102,6 +102,7 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 - [x] Instructor quickstart materials exist in repo (`docs/INSTRUCTOR_QUICKSTART.md`)
 - [x] TA spot-check materials exist in repo
 - [x] Lab-day readiness doc exists (`docs/lab-day-vivado-basys3-readiness.md`)
+- [~] Windows course scripts added on `release/windows-course-scripts-1` (`setup.ps1`, `launch.ps1`, `doctor.ps1`, `update.ps1`, `reset.ps1`); merge and fresh Windows rehearsal still pending
 - [~] Classroom demo script exists but references OS-era framing — needs update
 - [ ] Clean-tree classroom signoff (instructor or TA walks full workflow from clean browser)
 - [ ] Live Basys3 classroom rehearsal (not just bench certification — actual lab environment)
@@ -117,6 +118,7 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 | `golden` E3 + custom row E3 | Requires manual board observation | Connected bench session |
 | `two-bit-counter` E3 | TA checklist §3 on hardware | Connected bench session |
 | Clean-tree classroom signoff | Not yet rehearsed | Schedule with instructor or TA |
+| Fresh Windows course-script rehearsal | Scripts exist on branch, but not yet tested from a fresh clone / fresh Windows profile | Merge branch, run setup/launch/doctor/update/reset rehearsal |
 | Website demo assets | Screenshot/GIF not yet captured | Add a current product screenshot or GIF after this start-path slice |
 | Professor pitch / demo script | OS-era doc is stale | University pilot plan (this doc set) |
 | Guided learning path copy | Starters exist but have no learning-goal text | Curation pass after examples certified |

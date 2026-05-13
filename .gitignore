@@ -33,6 +33,7 @@ yarn-error.log*
 .redbyte/work/
 .redbyte/agent/
 .redbyte/bench/runs/
+.redbyte/course/
 .redbyte/course-edition/
 .redbyte/pi-session-room/
 .redbyte/product-immersion/

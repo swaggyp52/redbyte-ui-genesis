@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-05-12 (chore: add windows course setup scripts)
+
+**Subsystem:** Windows course setup / launch / doctor scripts.
+
+**Branch:** `release/windows-course-scripts-1` based on pushed `main` at `5e13981d8a4242a53314647578420e5bbebf60ec`.
+
+**Changes:**
+- Added student/professor-safe Windows scripts under `scripts/course/windows/`: `setup.ps1`, `launch.ps1`, `doctor.ps1`, `update.ps1`, `reset.ps1`, and shared helper `common.ps1`.
+- Added short root wrappers: `setup.ps1`, `launch.ps1`, and `doctor.ps1`.
+- Added `pnpm -s rb:course-scripts:test` and `scripts/rb-course-scripts.test.mjs` for static script contract validation.
+- Added `.redbyte/course/` to `.gitignore` for local course-script logs.
+- Added concise usage doc `docs/course/windows-quickstart.md`.
+- Added `docs/release/course-edition/29-windows-course-scripts.md` and updated the course-edition validation log and V1 release readiness checklist.
+
+**Script contract:**
+- Normal app setup and launch do not require Vivado, Basys3, or admin rights.
+- `setup.ps1` checks PowerShell, Node, Corepack/pnpm, and runs `pnpm install --frozen-lockfile`.
+- `launch.ps1` wraps the existing RedByte launcher, handles occupied ports, writes logs under `.redbyte/course/logs`, supports smoke/foreground/background modes, and records a `taskkill /PID ... /T /F` stop command for background launches.
+- `doctor.ps1` reports PASS/WARN/FAIL for core tools, dependency state, required product scripts, startup smoke, route contract, optional Git, optional Vivado, and optional Basys3.
+- `update.ps1` fast-forward updates Git clones and explains ZIP replacement when `.git` is absent.
+- `reset.ps1` is dry-run by default, removes only allowlisted generated/cache paths with `-ConfirmReset`, and blocks possible student project export folders.
+
+**Evidence:** `pnpm -s rb:course-scripts:test` failed before implementation and passed after. `powershell -NoProfile -ExecutionPolicy Bypass -File ./setup.ps1 -SkipInstall`, `powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/course/windows/reset.ps1 -DryRun`, `powershell -NoProfile -ExecutionPolicy Bypass -File ./launch.ps1 -SmokeTest -NoOpen -Port 5198`, `powershell -NoProfile -ExecutionPolicy Bypass -File ./doctor.ps1`, and a background `./launch.ps1 -NoOpen -Port 5196` manual check passed. `pnpm install --frozen-lockfile`, full `pnpm typecheck`, `pnpm build:unified`, `pnpm start:smoke` on rerun, `pnpm -s ide:gate:ece141-starter-verify-export`, `pnpm -s ide:gate:ece141-product-immersion`, `pnpm -s ide:gate:ece141-counter-clock-export`, `pnpm -s ide:gate:ece141-map-pins-recovery`, `pnpm -s ide:gate:ece141-counter-compare-pass`, `pnpm -s ide:gate:ece141-project-persistence`, `pnpm -s ide:gate:ece141-import-export-recovery`, `pnpm -s ide:gate:ece141-vivado-artifacts`, `pnpm -s ide:gate:ece141-ui-art-direction`, `pnpm -s ide:gate:ece141-ui-hierarchy` on rerun, and `pnpm -s ui:lab-starter-load-gate` passed before final closeout doc checks.
+
+**Validation notes:** The first `pnpm start:smoke` after manual background launch timed out because a leftover Vite child process was still around the smoke port; stopping the repo dev-server child processes and rerunning passed. The first `pnpm -s ide:gate:ece141-ui-hierarchy` run blanked before `ide-root` on initial Project boot; immediate rerun passed both tests. No product code changed for either validation-environment issue.
+
+**Safety:** No UI polish, core product behavior change, MarcusRPI work, Vivado artifact logic change, install manual generation, evidence semantic change, or E0/E1/E2/E3 conflation was performed.
+
+**Next recommended task:** Merge `release/windows-course-scripts-1` to `main`, rerun the full stack, then write Student Quick Start and Professor Quick Start followed by a fresh clone / fresh Windows machine simulation.
+
 ## Change Log 2026-05-12 (merge: align unified build with course entry)
 
 **Subsystem:** Unified build / Cloudflare Pages deploy contract mainline validation.
