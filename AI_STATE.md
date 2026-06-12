@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-12 (docs: wire product immersion findings into cockpit)
+
+**Subsystem:** Product-brain routing and product-hardening cockpit.
+
+**Changes:**
+- Integrated the whole-app product immersion audit commit `5a55957b` into the current cockpit docs.
+- Linked the new audit, feature inventory, product-hardening roadmap, product-brain architecture, and commercialization readiness docs from the active routing layer.
+- Created `docs/plans/2026-06-12-redbyte-product-issue-index.md` as the compact routing index for the product-immersion findings.
+- Reordered the near-term work path around product-brain integration, first-viewport repair, Verify fail-edit-repair regression, broader student workflow browser coverage, Vivado/Basys3 proof restoration, instructor/student quickstarts, and later commercial packaging.
+- Recorded that the immersion pass made no application source, test, golden, or product behavior changes.
+- Recorded that RedByte is technically credible but not commercially ready yet, and that accounts/SaaS remain deferred until a concrete classroom-management or hosted-data need appears.
+
+**Evidence:** Docs-only validation for this pass: `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, `git diff --check`, and `git status --short`.
+
+**Safety:** Documentation routing and planning only. No application/product source, tests, golden artifacts, baselines, generated proof packs, remotes, or package scripts were intentionally modified.
+
+**Remaining risks:** The local `main` branch is ahead of `origin/main`; this environment still disallows remote operations, so pushing or creating a backup branch remains a manual user action. Node 20.19.0 proof is still pending in this shell. Fresh Vivado/Basys3 E1/E2/E3 proof is still pending on a machine with Vivado 2024.2 and hardware access. Tests and screenshots are evidence, not product readiness by themselves.
+
+**Next recommended task:** Implement the first approved product-hardening slice: first-viewport repair for Project, Design, Hardware/Map Pins, and Export, using the new product issue index and without changing simulation/export semantics.
+
 ## Change Log 2026-06-12 (test: rebaseline classroom golden ZIP hashes)
 
 **Subsystem:** Classroom Basys3 deterministic export gates.

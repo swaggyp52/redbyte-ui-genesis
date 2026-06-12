@@ -25,8 +25,9 @@ For a normal agent session:
 5. `docs/DOC_INDEX.md`
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
-8. `docs/STUDENT_RELEASE_READINESS.md`
-9. Relevant product manual, contract, surface spec, release proof, or audit docs for the requested slice
+8. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
+9. `docs/STUDENT_RELEASE_READINESS.md`
+10. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
 
 For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb:encoding:check`. For app/source/gate work, follow the proof obligations in the relevant surface and release docs.
 
@@ -60,7 +61,13 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md](./product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md) | Product-brain routing map for current, target, proof, audit, and stale docs |
+| [product/RED_BYTE_COMMERCIALIZATION_READINESS.md](./product/RED_BYTE_COMMERCIALIZATION_READINESS.md) | Current commercial readiness boundary and deployment/support posture |
 | [audits/2026-06-12-redbyte-backbone-reconciliation.md](./audits/2026-06-12-redbyte-backbone-reconciliation.md) | Current docs/backbone reconciliation note |
+| [audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md](./audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md) | Current whole-app student/product UX baseline |
+| [audits/2026-06-12-redbyte-feature-inventory.md](./audits/2026-06-12-redbyte-feature-inventory.md) | Feature and visible-control inventory from product immersion |
+| [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact actionable product issue index |
+| [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Sequenced product-hardening roadmap |
 
 ---
 
@@ -115,6 +122,8 @@ The manual describes current behavior. The contract describes target-state oblig
 | [ide/SURFACE_CONFORMANCE.md](./ide/SURFACE_CONFORMANCE.md) | Surface-change proof and conformance rules |
 | [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Local product-hardening ticket schema |
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
+| [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact issue routing extracted from the current whole-app audit |
+| [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Ordered implementation/proof roadmap derived from product immersion |
 | [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Historical product-legitimacy audit with current caveats added |
 
 ---
@@ -170,9 +179,13 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 ## Current Known Risk Snapshot
 
-- The next technical slice is the classroom golden export SHA investigation under Node 20.19.0.
-- The desktop audit ran under Node 24.15.0; treat runtime mismatch as a possible cause of SHA drift, not as a proven cause.
+- The 2026-06-12 whole-app product immersion audit is the current product UX baseline.
+- The next approved implementation slice is first-viewport repair for Project, Design, Hardware/Map Pins, and Export.
+- Verify fail-edit-repair needs a focused regression after the first-viewport slice.
+- Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
+- Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.
+- RedByte is not commercially ready for unsupervised paid classroom use; accounts/SaaS remain deferred until a concrete hosted-data or classroom-management need exists.
 - `build:unified` is not a current blocker unless a fresh run reproduces a failure; later validation logs record passing build/unified checks after the old drift was fixed.
 
 ---

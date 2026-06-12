@@ -20,10 +20,12 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Agent startup and latest repo posture | `AGENTS.md`, `AI_STATE.md`, `CLAUDE.md` | Read first. `AI_STATE.md` wins over prior prompt context. |
 | Current priorities | `docs/ACTIVE_WORK.md` | Cockpit for what should happen next. |
 | Ordered work | `docs/product/RED_BYTE_WORK_QUEUE.md` | Near-term queue for agents and maintainers. |
+| Product-brain routing | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md` | How current, target, proof, audit, and stale docs should be used. |
 | Current release truth | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/**` | Safe public, TA, and hardware claims. |
 | Current product behavior | `docs/manuals/RedByte_Product_Manual.md` | What the product does today. |
 | Target truth | `docs/contracts/RedByte_Product_Contract.md` | Quality bar and target promise. Do not treat as shipped behavior. |
 | UX debt ordering | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Ordered product follow-ups, not permission for broad redesign. |
+| Current product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`, `docs/plans/2026-06-12-redbyte-product-issue-index.md` | Dated whole-app evidence and compact issue routing. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | `docs/00-canon/**` unless explicitly current, `PRODUCT.md` if it conflicts, and the stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
 
@@ -91,6 +93,19 @@ Supporting truths:
 - Tracked proof docs under `docs/release/**` and `docs/STUDENT_RELEASE_READINESS.md` are portable.
 - Raw proof packs under `.redbyte/bench/runs/**`, `out/vivado-cert/**`, `dist/**`, `test-results/**`, and `playwright-report/**` are generated/local and may be absent in a clean clone.
 
+### Product immersion posture
+
+- The 2026-06-12 whole-app product immersion audit is the current student/product UX baseline.
+- The audit made no application source, test, golden, or product behavior changes.
+- RedByte is technically credible but not product-ready just because tests pass. The current blockers are student-facing hierarchy and trust issues, especially first-viewport Project, Design, Hardware/Map Pins, and Export.
+- The next approved implementation slice is first-viewport repair only: make the primary work area/action visible at 1366x768 without changing simulation, export generation, VHDL, XDC, or project data semantics.
+- The next Verify slice is a focused fail-edit-repair-pass regression and fix. Do not mix it into the first-viewport repair unless a narrow display/readiness dependency is proven.
+
+### Commercial posture
+
+- RedByte is not commercially ready for unsupervised paid classroom use.
+- Accounts/SaaS remain deferred. The likely v1 business shape is public/free hosted evaluation plus instructor/campus support or deployable classroom package after UX hardening, proof, and quickstarts.
+
 ### Repo / process hygiene
 
 - The initial desktop audit started from a clean tracked worktree at `main` commit `08a324cf`.
@@ -121,8 +136,12 @@ Supporting truths:
 
 The approved order is:
 
-1. Re-run or expand student workflow browser coverage now that golden artifact truth is understood.
-2. Restore Vivado/Basys3 proof on a machine with Vivado 2024.2 and hardware access.
-3. Start product feature work only after these truths are stable or after explicit user reprioritization.
+1. Product-brain integration: link the product immersion docs into the cockpit and keep the compact issue index current.
+2. First-viewport repair for Project, Design, Hardware/Map Pins, and Export.
+3. Verify fail-edit-repair-pass regression and fix.
+4. Broader student workflow browser suite.
+5. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+6. Student and instructor quickstarts.
+7. Commercial/license packaging later.
 
-Do not skip to website, pilot, broad example expansion, or new product features while the current proof posture remains unsettled.
+Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.
