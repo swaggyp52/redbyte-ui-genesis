@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-12 (test: rebaseline classroom golden ZIP hashes)
+
+**Subsystem:** Classroom Basys3 deterministic export gates.
+
+**Changes:**
+- Investigated the two failing classroom golden ZIP SHA gates from clean `main` after docs commit `91118512`.
+- Could not switch to `.nvmrc` Node 20.19.0 because no `nvm`, `fnm`, or `volta` command was available on PATH; investigation ran under Node `v24.15.0` and pnpm `10.24.0`.
+- Reproduced both failures twice with stable actual hashes: `golden-basys3-switch-and` produced `b2f0e35a9ca5c3e71859c68bb5bb986fe04f6dc12da54e4c66661cb6fd7ea569`; `golden-basys3-alu` produced `9f803cf1fc957fa3c484bcbfc16ceb62ef141675b3ba81bba302ff2a2513388f`.
+- Traced the byte drift to the intended `4bced313` README artifact change that added the E0/E1/E2/E3 evidence-boundary section to Basys3 export README output.
+- Proved the old expected SHAs by rebuilding each ZIP in memory with only the evidence-boundary README section removed; those reconstructed hashes exactly matched the committed old goldens.
+- Updated only `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-switch-and.zip.sha256` and `packages/rb-apps/src/__tests__/__goldens__/golden-basys3-alu.zip.sha256`.
+
+**Evidence:** `corepack pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts --reporter=verbose` passed (`2` files, `2` tests). Focused adjacent export/Vivado contracts passed: `basys3-bundle-gate.test.ts`, `ide-vivado-pack-contract.test.ts`, `ide-vivado-artifact-consistency.test.ts`, and `vivado-clean-export-gate.test.ts` (`4` files, `35` tests).
+
+**Safety:** Golden hash fixture rebaseline only. No application source, product behavior, UI, export generator source, classroom `.rbproj` fixture, scripts, API files, or generated proof packs were intentionally changed. The local `out/classroom/*.zip` artifacts were regenerated for inspection and remain ignored.
+
+**Remaining risks:** Node 20.19.0 was not available in this shell, so this pass did not produce direct Node 20 proof. The root cause was still source-explained and reproduced byte-for-byte independent of runtime switching. The companion `scripts/classroom-golden-basys3*.ts` scripts currently print `[object Promise]` for their SHA line because they do not await `sha256Hex`; this did not affect the Vitest gates or ZIP bytes and was left as follow-up script hygiene.
+
+**Next recommended task:** Run the broader student workflow browser suite now that the golden artifact truth is understood, then restore fresh Vivado/Basys3 proof on a machine with Vivado 2024.2 and hardware access.
+
 ## Change Log 2026-06-12 (docs: reconcile RedByte backbone truth)
 
 **Subsystem:** Agent/docs backbone reconciliation.

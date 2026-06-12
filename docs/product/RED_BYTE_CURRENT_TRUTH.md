@@ -72,12 +72,13 @@ Supporting truths:
 
 ## 4. Current Known Risks
 
-### Golden export SHA drift
+### Golden export SHA gate posture
 
 - The desktop audit found two failing classroom golden ZIP SHA gates under Node 24.15.0 and pnpm 10.24.0.
-- The repo-pinned Node version is 20.19.0 in `.nvmrc`.
-- Runtime mismatch is a possible cause of artifact drift, not a proven cause.
-- Do not update or re-bless golden SHAs until the artifact difference is reproduced and explained under the repo-pinned runtime.
+- The 2026-06-12 investigation reproduced both failures twice with stable actual hashes, traced the drift to the intended README evidence-boundary section added in `4bced313`, and re-blessed the two committed SHA fixture files.
+- The old expected SHAs were reproduced exactly by rebuilding each ZIP in memory with only that README section removed.
+- The repo-pinned Node version remains 20.19.0 in `.nvmrc`, but no local Node version manager was available during the investigation. The root cause is source-explained rather than runtime-random.
+- The two classroom golden gates now pass under the available Node 24.15.0 runtime.
 
 ### Vivado/Basys3 proof posture
 
@@ -120,10 +121,8 @@ Supporting truths:
 
 The approved order is:
 
-1. Complete docs/backbone reconciliation.
-2. Investigate the golden export SHA drift under Node 20.19.0 and pnpm 10.24.0.
-3. Re-run or expand student workflow browser coverage as needed after the golden artifact truth is understood.
-4. Restore Vivado/Basys3 proof on a machine with Vivado 2024.2 and hardware access.
-5. Start product feature work only after these truths are stable or after explicit user reprioritization.
+1. Re-run or expand student workflow browser coverage now that golden artifact truth is understood.
+2. Restore Vivado/Basys3 proof on a machine with Vivado 2024.2 and hardware access.
+3. Start product feature work only after these truths are stable or after explicit user reprioritization.
 
 Do not skip to website, pilot, broad example expansion, or new product features while the current proof posture remains unsettled.
