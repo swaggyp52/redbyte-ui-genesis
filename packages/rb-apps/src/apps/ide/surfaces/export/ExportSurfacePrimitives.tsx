@@ -234,6 +234,44 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             )}
           </div>
         )}
+        <div className="ide-export-handoff-summary" data-testid="ide-export-handoff-summary">
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-design">
+            <span className="ide-export-handoff-summary-label">Design</span>
+            <span className="ide-export-handoff-summary-value">{topModule}</span>
+            <span className="ide-export-handoff-summary-detail">Top module in this package</span>
+          </div>
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-board">
+            <span className="ide-export-handoff-summary-label">Board</span>
+            <span className="ide-export-handoff-summary-value">{boardTarget}</span>
+            <span className="ide-export-handoff-summary-detail">Target FPGA board for Vivado build</span>
+          </div>
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-mapping">
+            <span className="ide-export-handoff-summary-label">Pin mapping</span>
+            <span className="ide-export-handoff-summary-value">{mappingPlain}</span>
+            <span className="ide-export-handoff-summary-detail">Board controls bound to package pins</span>
+          </div>
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-verify">
+            <span className="ide-export-handoff-summary-label">Verification</span>
+            <span className="ide-export-handoff-summary-value">{verifyPlain}</span>
+            <span className="ide-export-handoff-summary-detail">Most recent scenario evidence status</span>
+          </div>
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-artifacts">
+            <span className="ide-export-handoff-summary-label">Artifacts</span>
+            <span className="ide-export-handoff-summary-value">{artifactsPlain}</span>
+            <span className="ide-export-handoff-summary-detail">Generated files align for handoff</span>
+          </div>
+          <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-state">
+            <span className="ide-export-handoff-summary-label">Export state</span>
+            <span className="ide-export-handoff-summary-value">{handoffStatusLabel}</span>
+            <span className="ide-export-handoff-summary-detail">
+              {trustCondition === 'trusted'
+                ? 'Trusted package available for Vivado handoff'
+                : isDraftExport
+                  ? 'Draft package available; trusted evidence still pending'
+                  : 'Resolve blockers before treating package as handoff-ready'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Checks dock — status pill, provenance rows, action buttons */}
@@ -507,46 +545,6 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                 Draft only - run Verify before relying on this handoff.
               </p>
             )}
-          </div>
-
-          {/* Handoff summary rows */}
-          <div className="ide-export-handoff-summary" data-testid="ide-export-handoff-summary">
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-design">
-              <span className="ide-export-handoff-summary-label">Design</span>
-              <span className="ide-export-handoff-summary-value">{topModule}</span>
-              <span className="ide-export-handoff-summary-detail">Top module in this package</span>
-            </div>
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-board">
-              <span className="ide-export-handoff-summary-label">Board</span>
-              <span className="ide-export-handoff-summary-value">{boardTarget}</span>
-              <span className="ide-export-handoff-summary-detail">Target FPGA board for Vivado build</span>
-            </div>
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-mapping">
-              <span className="ide-export-handoff-summary-label">Pin mapping</span>
-              <span className="ide-export-handoff-summary-value">{mappingPlain}</span>
-              <span className="ide-export-handoff-summary-detail">Board controls bound to package pins</span>
-            </div>
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-verify">
-              <span className="ide-export-handoff-summary-label">Verification</span>
-              <span className="ide-export-handoff-summary-value">{verifyPlain}</span>
-              <span className="ide-export-handoff-summary-detail">Most recent scenario evidence status</span>
-            </div>
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-artifacts">
-              <span className="ide-export-handoff-summary-label">Artifacts</span>
-              <span className="ide-export-handoff-summary-value">{artifactsPlain}</span>
-              <span className="ide-export-handoff-summary-detail">Generated files align for handoff</span>
-            </div>
-            <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-state">
-              <span className="ide-export-handoff-summary-label">Export state</span>
-              <span className="ide-export-handoff-summary-value">{handoffStatusLabel}</span>
-              <span className="ide-export-handoff-summary-detail">
-                {trustCondition === 'trusted'
-                  ? 'Trusted package available for Vivado handoff'
-                  : isDraftExport
-                    ? 'Draft package available; trusted evidence still pending'
-                    : 'Resolve blockers before treating package as handoff-ready'}
-              </span>
-            </div>
           </div>
 
           {/* Handoff facts */}

@@ -1503,11 +1503,13 @@ export const IdeApp: React.FC = () => {
         : 'E0 ready'
       : projectHealthCore.lastExport?.status === 'blocked'
         ? 'Blocked'
-        : workflowAuthority.exportAvailable
-          ? 'Ready to build'
+        : workflowAuthority.trustedVerifyCurrent
+          ? 'Build E0'
           : workflowAuthority.draftExportAvailable
-            ? 'Draft available'
-            : 'Draft';
+            ? 'Draft Export'
+            : workflowAuthority.exportAvailable
+              ? 'Needs Review'
+              : 'Draft';
 
     return [
       {
@@ -1572,6 +1574,7 @@ export const IdeApp: React.FC = () => {
     projectHealthCore.lastVerify?.status,
     workflowAuthority.draftExportAvailable,
     workflowAuthority.exportAvailable,
+    workflowAuthority.trustedVerifyCurrent,
   ]);
 
   return (

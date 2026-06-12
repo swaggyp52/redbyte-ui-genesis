@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-12 (fix: improve RedByte visual system integrity)
+
+**Subsystem:** RedByte IDE visual system integrity across Project, Design, Verify, Hardware, and Export.
+
+**Changes:**
+- Added `ide:gate:ece141-visual-system-integrity`, a focused Playwright gate covering first-viewport layout integrity, root overflow, scroll noise, clipped command text, Verify evidence visibility, Hardware readability, and Export draft/ready handoff visibility.
+- Promoted the Export handoff summary into the first hero area, compacted the Export command/action/evidence layout, and corrected the draft workflow rail so Draft Export no longer claims ready-to-build.
+- Tightened Verify command/result density, restored a real post-run stimulus canvas hit target, kept expected-output cells directly editable, and adjusted the Verify split so the waveform preview remains meaningful at `1366x768`.
+- Kept the opened Verify signal dock usable by revealing the filter count and signal list when the shell dock is restored.
+- Did not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, project data format, goldens, Vivado proof, or Basys3 proof.
+
+**Evidence:** Before/after screenshots and geometry live under `.redbyte/product-immersion/visual-system-integrity/`. At `1366x768`, Export ready evidence diagnostics moved from about `12%` to about `52%` first-viewport visibility, Export draft evidence moved from about `17%` to about `58%`, and the Export handoff summary moved from offscreen to fully visible. Verify header horizontal overflow was removed, and the waveform region widened from about `461px` to about `491px`. Passing checks: `ide:gate:ece141-visual-system-integrity` (`4`), `ide:gate:ece141-ui-hierarchy` (`2`), `ide:gate:ece141-first-viewport` (`4`), `ide:gate:ece141-product-immersion` (`4`), `ide:gate:ece141-hardware-visual-credibility` (`2`), `ide:gate:ece141-map-pins-recovery` (`1`), `ide:gate:verify-workbench-contract`, `ide:gate:export-download-contract`, `ide:gate:export-artifact-explorer-contract`, `ide:gate:viewport-overflow-contract`, and `build:unified`.
+
+**Known validation caveats:** `ide:gate:export-ready-contract` still fails before Export with `verify had neither a visible generate-basics action nor an existing ready-vector state`; this was already tracked separately. `ide:gate:verify-contract` still waits for the older blank-Verify `ide-verify-banner` path. A focused Verify/Export Vitest batch passed `114` tests and failed `2` stale expectations that already disagree with HEAD source posture: Export `rightDockMode="collapsed"` versus a test expecting `ide-inspector`, and collapsed first-run sequential helper rendering versus a test expecting it absent.
+
+**Safety:** This is E0 browser/layout evidence only. No fresh Vivado, bitstream, board-programming, or E3 physical observation proof was run or claimed. Screenshot and geometry artifacts are local and ignored.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub check/deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume the focused Verify fail-edit-repair-pass behavior regression and fix. Keep any remaining Verify density/evidence-workbench cleanup separate from that behavior slice.
+
 ## Change Log 2026-06-12 (fix: improve Hardware Map Pins visual credibility)
 
 **Subsystem:** Hardware / Map Pins first-viewport visual credibility and browser geometry proof.

@@ -49,6 +49,7 @@
         "ide:gate:ece141-product-immersion": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-product-immersion.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-first-viewport": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-first-viewport-product-contract.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-hardware-visual-credibility": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-hardware-visual-credibility.spec.ts --project=chromium --retries=0",
+        "ide:gate:ece141-visual-system-integrity": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-visual-system-integrity.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-counter-clock-export": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-counter-clock-export.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-counter-compare-pass": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-counter-compare-pass.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-map-pins-recovery": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-map-pins-recovery.spec.ts --project=chromium --retries=0",

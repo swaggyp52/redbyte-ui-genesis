@@ -66,6 +66,7 @@ When docs conflict:
 | [audits/2026-06-12-redbyte-backbone-reconciliation.md](./audits/2026-06-12-redbyte-backbone-reconciliation.md) | Current docs/backbone reconciliation note |
 | [audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md](./audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md) | Current whole-app student/product UX baseline |
 | [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline after first-viewport repair |
+| [audits/2026-06-12-redbyte-visual-system-integrity-audit.md](./audits/2026-06-12-redbyte-visual-system-integrity-audit.md) | Latest visual-system integrity sprint evidence and after-proof |
 | [audits/2026-06-12-redbyte-feature-inventory.md](./audits/2026-06-12-redbyte-feature-inventory.md) | Feature and visible-control inventory from product immersion |
 | [audits/2026-06-12-redbyte-ui-architecture-inventory.md](./audits/2026-06-12-redbyte-ui-architecture-inventory.md) | UI styling and surface architecture inventory for visual hardening |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact actionable product issue index |

@@ -26,7 +26,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Target truth | `docs/contracts/RedByte_Product_Contract.md` | Quality bar and target promise. Do not treat as shipped behavior. |
 | UX debt ordering | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Ordered product follow-ups, not permission for broad redesign. |
 | Current product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`, `docs/plans/2026-06-12-redbyte-product-issue-index.md` | Dated whole-app evidence and compact issue routing. |
-| Current visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`, `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md`, `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` | Browser-backed visual baseline and Course Lab Workbench hardening path. |
+| Current visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`, `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md`, `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md`, `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` | Browser-backed visual baseline, latest visual integrity proof, and Course Lab Workbench hardening path. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | `docs/00-canon/**` unless explicitly current, `PRODUCT.md` if it conflicts, and the stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
 
@@ -103,10 +103,13 @@ Supporting truths:
 - The repair was layout/hierarchy/copy only. It did not change simulation, export generation, VHDL, XDC, TCL, project data semantics, goldens, or Vivado/Basys3 proof.
 - The Hardware / Map Pins visual credibility slice is implemented: the left guide no longer wraps copy word-by-word, the board/table remain the focal workbench, and `ide:gate:ece141-hardware-visual-credibility` guards the 1366x768 geometry. Before/after local artifacts live under `.redbyte/product-immersion/hardware-visual-credibility/`.
 - The Hardware visual slice did not change pin mapping semantics, XDC generation, VHDL/testbench/Tcl export, project data format, goldens, Vivado proof, or Basys3 proof.
+- The visual-system integrity slice is implemented: Export handoff/evidence/action content is visible in the first viewport, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable in the compact workbench, and `ide:gate:ece141-visual-system-integrity` guards the cross-surface geometry. Before/after local artifacts live under `.redbyte/product-immersion/visual-system-integrity/`.
+- The visual-system integrity slice did not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, project data format, goldens, Vivado proof, or Basys3 proof.
 - The current visual direction is Course Lab Workbench: serious circuit/proof/board/export artifacts, calm density, consistent trust-state grammar, and no generic SaaS or toy simulator styling.
 - The next behavior/proof slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
-- The next visual slice after the Verify behavior fix is Verify density / evidence workbench cleanup, kept separate from fail-edit-repair.
+- The next visual slice after the Verify behavior fix is remaining Verify density / evidence workbench cleanup, kept separate from fail-edit-repair.
 - One preview-backed gate caveat remains: `ide:gate:export-ready-contract` currently fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; the first-viewport export flow, product immersion export flows, and export download contract pass.
+- Another older preview-backed caveat remains outside the visual-system slice: `ide:gate:verify-contract` still waits for the blank-Verify `ide-verify-banner` path, while the current ECE141 starter Verify workflow is covered by `ide:gate:verify-workbench-contract` and the ECE141 browser gates.
 
 ### Commercial posture
 
