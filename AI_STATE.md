@@ -16,6 +16,8 @@
 
 **Safety:** Worktree control, startup docs, local tool shim repair, and routing docs only. The OneDrive clone was not deleted. The previous non-git canonical-folder contents were archived, not deleted. The dev server used for proof was stopped. User authorization allows a normal non-force push after validation and push-safety checks; force push remains disallowed.
 
+**Remote sync:** `git push origin main` succeeded from canonical `main` and delivered `52b2af3959a60501ef3d46de27b79961e8e459ab` to GitHub `main`. GitHub reported bypassed rule debt again: required status check `Classroom Truth Gates` is expected. This is source delivery to GitHub, not verified live/student deployment unless the deploy pipeline ships that commit.
+
 **Remaining risks:** Node 20.19.0 proof is still pending in this shell; validation uses the available Node `v24.15.0` and pnpm `10.24.0` unless a Node version manager is installed. `corepack enable` still cannot write the Program Files shim. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Source pushed to GitHub `main` is not the same as verified live/student deployment unless the deploy pipeline confirms it.
 
 **Next recommended task:** After canonical sync and push closeout, start the narrow Hardware / Map Pins visual credibility slice from the current visual audit before broader design cleanup.
