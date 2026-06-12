@@ -1494,7 +1494,20 @@ export const IdeApp: React.FC = () => {
         : 'current'
       : projectHealthCore.lastExport?.status === 'blocked'
         ? 'attention'
-        : 'draft';
+        : workflowAuthority.exportAvailable
+          ? 'attention'
+          : 'draft';
+    const exportValue = projectHealthCore.lastExport?.status === 'ok'
+      ? projectHealthCore.dirtySinceExport
+        ? 'Stale E0'
+        : 'E0 ready'
+      : projectHealthCore.lastExport?.status === 'blocked'
+        ? 'Blocked'
+        : workflowAuthority.exportAvailable
+          ? 'Ready to build'
+          : workflowAuthority.draftExportAvailable
+            ? 'Draft available'
+            : 'Draft';
 
     return [
       {
@@ -1534,13 +1547,7 @@ export const IdeApp: React.FC = () => {
       {
         id: 'export',
         label: 'Export',
-        value: projectHealthCore.lastExport?.status === 'ok'
-          ? projectHealthCore.dirtySinceExport
-            ? 'Stale E0'
-            : 'E0 ready'
-          : projectHealthCore.lastExport?.status === 'blocked'
-            ? 'Blocked'
-            : 'Draft',
+        value: exportValue,
         detail: 'Vivado package only',
         tone: exportTone,
         mode: 'export',
@@ -1563,6 +1570,8 @@ export const IdeApp: React.FC = () => {
     projectHealthCore.dirtySinceVerify,
     projectHealthCore.lastExport?.status,
     projectHealthCore.lastVerify?.status,
+    workflowAuthority.draftExportAvailable,
+    workflowAuthority.exportAvailable,
   ]);
 
   return (

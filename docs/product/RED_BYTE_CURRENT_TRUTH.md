@@ -97,9 +97,10 @@ Supporting truths:
 
 - The 2026-06-12 whole-app product immersion audit is the current student/product UX baseline.
 - The audit made no application source, test, golden, or product behavior changes.
-- RedByte is technically credible but not product-ready just because tests pass. The current blockers are student-facing hierarchy and trust issues, especially first-viewport Project, Design, Hardware/Map Pins, and Export.
-- The next approved implementation slice is first-viewport repair only: make the primary work area/action visible at 1366x768 without changing simulation, export generation, VHDL, XDC, or project data semantics.
-- The next Verify slice is a focused fail-edit-repair-pass regression and fix. Do not mix it into the first-viewport repair unless a narrow display/readiness dependency is proven.
+- The first-viewport repair slice is implemented: Project, Design, Hardware/Map Pins, and Export now expose the core action/work area at 1366x768, and the Export rail no longer says Draft when the current state is ready to build.
+- The repair was layout/hierarchy/copy only. It did not change simulation, export generation, VHDL, XDC, TCL, project data semantics, goldens, or Vivado/Basys3 proof.
+- The next approved implementation slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with broad layout polish or export/hardware work.
+- One preview-backed gate caveat remains: `ide:gate:export-ready-contract` currently fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; the first-viewport export flow, product immersion export flows, and export download contract pass.
 
 ### Commercial posture
 
@@ -136,12 +137,10 @@ Supporting truths:
 
 The approved order is:
 
-1. Product-brain integration: link the product immersion docs into the cockpit and keep the compact issue index current.
-2. First-viewport repair for Project, Design, Hardware/Map Pins, and Export.
-3. Verify fail-edit-repair-pass regression and fix.
-4. Broader student workflow browser suite.
-5. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
-6. Student and instructor quickstarts.
-7. Commercial/license packaging later.
+1. Verify fail-edit-repair-pass regression and fix.
+2. Broader student workflow browser suite.
+3. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+4. Student and instructor quickstarts.
+5. Commercial/license packaging later.
 
 Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.

@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-12 (fix: repair first-viewport product hierarchy)
+
+**Subsystem:** IDE first-viewport product hierarchy for Project, Design, Hardware/Map Pins, and Export.
+
+**Changes:**
+- Added a focused Playwright gate, `ide:gate:ece141-first-viewport`, covering the 1366x768 first viewport for Project launch, Design starter canvas, Hardware Map Pins, and Export ready-to-build handoff.
+- Moved the visible Project launch actions into the Project launch header, updated the empty-state title to "Start your lab from Project Home", and compacted the certified starter cards so the primary actions and recommended Logic Gates CTA are visible without scrolling.
+- Compactly framed the Design starter chrome and canvas so the loaded circuit graph and first node are visible in the first viewport while preserving the existing wide-mode inspector contract.
+- Collapsed the Hardware and Export right support docks by default, tightened Map Pins table/board framing, and kept the mapping rows plus Basys3 board affordance visible in the first viewport.
+- Promoted the Export primary build/download action to the top of the Export readiness hero and aligned the lab-flow Export rail with the ready-to-build state instead of showing Draft when export inputs are ready.
+- Did not change simulation, Verify state repair, export generation, VHDL, XDC, TCL, project data semantics, classroom goldens, or Vivado/Basys3 proof.
+
+**Evidence:** `corepack pnpm -s ide:gate:ece141-first-viewport` passed (`4` tests). `corepack pnpm -s ide:gate:ece141-ui-hierarchy` passed (`2` tests). `corepack pnpm -s ide:gate:ece141-product-immersion` passed (`4` tests). `corepack pnpm -s build:unified` passed and refreshed `dist/`. Preview-backed contracts passed: `ide:gate:project-overview-contract`, `ide:gate:design-workbench-contract`, `ide:gate:design-fit-contract`, `ide:gate:hardware-checklist-contract`, `ide:gate:export-download-contract`, and `ide:gate:viewport-overflow-contract`. In-app browser spot check against `http://127.0.0.1:4173/os/` confirmed the Project launch title/actions/starter and Design canvas/node visibility at 1366x768.
+
+**Known validation caveat:** `corepack pnpm -s ide:gate:export-ready-contract` still fails before reaching Export with `verify had neither a visible generate-basics action nor an existing ready-vector state`. The targeted first-viewport export flow, product-immersion export flows, and export download contract pass; treat this as a separate Verify setup-path follow-up unless fresh evidence ties it to Export layout.
+
+**Safety:** Layout, hierarchy, copy, and focused proof only. No downstream artifact semantics or hardware proof claims changed. `build:unified` refreshed generated local `dist/` artifacts for preview validation; generated artifacts remain local proof/build output, not a live deployment claim.
+
+**Remaining risks:** The next product slice is still Verify fail-edit-repair-pass (`RB-VERIFY-001`). Node 20.19.0 proof remains pending in this shell; validation ran under the available Node `v24.15.0` and pnpm `10.24.0`. Fresh Vivado/Basys3 E1/E2/E3 proof is still pending on a machine with Vivado 2024.2 and hardware access. Remote operations are disallowed in this environment, so this slice is local until the user pushes it.
+
+**Next recommended task:** Add the focused Verify fail-edit-repair-pass regression, then fix only the state transition needed to prove fail -> edit repair -> rerun -> PASS.
+
 ## Change Log 2026-06-12 (docs: wire product immersion findings into cockpit)
 
 **Subsystem:** Product-brain routing and product-hardening cockpit.

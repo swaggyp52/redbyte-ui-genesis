@@ -957,12 +957,49 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <div className="ide-project-landing-header">
                 <p className="ide-surface-block-label">Project launch</p>
                 <h2 className="ide-project-landing-title">
-                  {projectKind === 'home' ? 'Start with a certified lab' : 'Start with a certified lab'}
+                  {projectKind === 'home' ? 'Start your lab from Project Home' : 'Start your lab from Project Home'}
                 </h2>
                 <p className="ide-project-landing-sub">
                   Choose a certified starter first, then continue through {STUDENT_WORKFLOW_SUMMARY}.
                   Other starts are secondary.
                 </p>
+                {/* Primary launch actions */}
+                <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
+                  <button
+                    type="button"
+                    className="ide-project-primary-action ide-project-primary-action--build"
+                    onClick={onStartBlankProject ?? onOpenDesign}
+                    data-testid="ide-project-build-fresh-primary"
+                  >
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">â—»</span>
+                    <span className="ide-project-primary-action-label">Build fresh</span>
+                    <span className="ide-project-primary-action-sub">Start from an empty canvas</span>
+                  </button>
+                  {onOpenImport && (
+                    <button
+                      type="button"
+                      className="ide-project-primary-action ide-project-primary-action--import"
+                      onClick={onOpenImport}
+                      data-testid="ide-project-import-primary"
+                    >
+                      <span className="ide-project-primary-action-icon" aria-hidden="true">â†“</span>
+                      <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
+                      <span className="ide-project-primary-action-sub">Bring in existing RTL or Vivado project</span>
+                    </button>
+                  )}
+                  {hasRecentEntryPoints && onOpenSavedProjects && (
+                    <button
+                      type="button"
+                      className="ide-project-primary-action ide-project-primary-action--open"
+                      onClick={onOpenSavedProjects}
+                      data-testid="ide-project-open-existing-primary"
+                    >
+                      <span className="ide-project-primary-action-icon" aria-hidden="true">â†©</span>
+                      <span className="ide-project-primary-action-label">Open saved project</span>
+                      <span className="ide-project-primary-action-sub">Resume previous work</span>
+                    </button>
+                  )}
+                </div>
               </div>
               <div
                 className="ide-project-start-summary"
@@ -976,12 +1013,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
               </div>
               {/* Primary launch actions */}
-              <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
+              <div className="ide-project-primary-actions ide-project-primary-actions--legacy" hidden>
                 <button
                   type="button"
                   className="ide-project-primary-action ide-project-primary-action--build"
                   onClick={onStartBlankProject ?? onOpenDesign}
-                  data-testid="ide-project-build-fresh-primary"
+                  data-legacy-testid="ide-project-build-fresh-primary"
                 >
                   <span className="ide-project-primary-action-icon" aria-hidden="true">◻</span>
                   <span className="ide-project-primary-action-label">Build fresh</span>
@@ -992,7 +1029,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     type="button"
                     className="ide-project-primary-action ide-project-primary-action--import"
                     onClick={onOpenImport}
-                    data-testid="ide-project-import-primary"
+                    data-legacy-testid="ide-project-import-primary"
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">↓</span>
                     <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
@@ -1004,7 +1041,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     type="button"
                     className="ide-project-primary-action ide-project-primary-action--open"
                     onClick={onOpenSavedProjects}
-                    data-testid="ide-project-open-existing-primary"
+                    data-legacy-testid="ide-project-open-existing-primary"
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">↩</span>
                     <span className="ide-project-primary-action-label">Open saved project</span>

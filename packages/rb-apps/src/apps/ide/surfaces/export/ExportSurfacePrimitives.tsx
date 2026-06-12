@@ -248,6 +248,38 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           </div>
           <IdeStatusPill tone={handoffTone}>{handoffStatusLabel}</IdeStatusPill>
         </div>
+
+        {/* Action buttons */}
+        <div className="ide-inline-actions ide-export-action-buttons">
+          <span data-testid="ide-export-primary-handoff-cta">
+            <span data-testid="ide-primary-cta">
+              <IdeButton
+                tone="primary"
+                onClick={onPrimaryHandoff}
+                disabled={primaryHandoffDisabled}
+                testId="ide-export-rebuild-btn"
+                hierarchySurface="export"
+                hierarchyRole="next"
+              >
+                {showPrimaryDownloadSpinner ? (
+                  <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building...</>
+                ) : (
+                  primaryCtaLabel
+                )}
+              </IdeButton>
+            </span>
+          </span>
+          {showSecondaryProjectDownload && (
+            <IdeButton
+              tone="secondary"
+              onClick={onDownloadProject}
+              disabled={downloadDisabled}
+              testId="ide-export-dock-download"
+            >
+              {projectDownloadLabel}
+            </IdeButton>
+          )}
+        </div>
         <p className="ide-copy ide-copy--flush ide-export-action-card-detail">
           {nextActionDetail}
         </p>
@@ -298,38 +330,6 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
               )}
             </span>
           </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="ide-inline-actions ide-export-action-buttons">
-          <span data-testid="ide-export-primary-handoff-cta">
-            <span data-testid="ide-primary-cta">
-              <IdeButton
-                tone="primary"
-                onClick={onPrimaryHandoff}
-                disabled={primaryHandoffDisabled}
-                testId="ide-export-rebuild-btn"
-                hierarchySurface="export"
-                hierarchyRole="next"
-              >
-                {showPrimaryDownloadSpinner ? (
-                  <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building...</>
-                ) : (
-                  primaryCtaLabel
-                )}
-              </IdeButton>
-            </span>
-          </span>
-          {showSecondaryProjectDownload && (
-            <IdeButton
-              tone="secondary"
-              onClick={onDownloadProject}
-              disabled={downloadDisabled}
-              testId="ide-export-dock-download"
-            >
-              {projectDownloadLabel}
-            </IdeButton>
-          )}
         </div>
 
         {/* Kit download (Other outputs) */}
