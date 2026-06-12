@@ -1,8 +1,8 @@
-# RedByte — Agent Operating Manual
+# RedByte - Agent Operating Manual
 
-RedByte is an **FPGA educational IDE**. Project is the dashboard/home surface; students then design circuits, verify behavior against test vectors, bind ports to Basys3 resources in Map Pins / Hardware, and export Vivado-ready packages. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado 2024.2.
+RedByte is an FPGA educational IDE. Project is the dashboard/home surface; students then design circuits, verify behavior against test vectors, bind ports to Basys3 resources in Map Pins / Hardware, and export Vivado-ready packages. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado target: 2024.2.
 
-The canonical product hierarchy is: **Project -> Design -> Verify -> Map Pins / Hardware -> Export.** Import is a utility action. Board programming is an external handoff after Export.
+The canonical product hierarchy is: Project -> Design -> Verify -> Map Pins / Hardware -> Export. Import is a utility action. Board programming is an external handoff after Export.
 
 ---
 
@@ -11,17 +11,18 @@ The canonical product hierarchy is: **Project -> Design -> Verify -> Map Pins / 
 When docs conflict, trust in this order:
 
 | Priority | Source | What it covers |
-|----------|--------|---------------|
-| 1 | Code + tests | Ground truth — code wins over all docs |
-| 2 | `docs/ACTIVE_WORK.md` | **Cockpit** — top 3 priorities, blocked, latest proof, next bench task |
-| 3 | `docs/STUDENT_RELEASE_READINESS.md` | Certified starters, E1/E2/E3 tiers |
-| 4 | `docs/ide/0{N}-{surface}.md` | Surface-level specs |
-| 5 | `docs/ARCHITECTURE.md` | Five-layer architecture |
-| 6 | `docs/DOC_INDEX.md` | Navigation for everything else |
-| IGNORE | `docs/00-canon/00–08-*.md` | OS-era (3D Redstone, CPU OS, bridge endpoints). Not current. |
-| IGNORE | `docs/STUDENT_WORKFLOW.md`, `IMPLEMENTATION_STATUS.md` | OS-era. Not current. |
+|----------|--------|----------------|
+| 1 | Code + tests | Runtime ground truth. Code wins over docs. |
+| 2 | `AGENTS.md` + `AI_STATE.md` | Agent startup, latest repo posture, recent closed work. `AI_STATE.md` wins over prior prompt context. |
+| 3 | `docs/ACTIVE_WORK.md` | Cockpit: current branch posture, blockers, latest proof, next target. |
+| 4 | `docs/product/RED_BYTE_CURRENT_TRUTH.md` + `docs/product/RED_BYTE_WORK_QUEUE.md` | Compact current product truth and ordered work queue. |
+| 5 | `docs/STUDENT_RELEASE_READINESS.md` | Certified starters, E0/E1/E2/E3 tier claims, TA-safe release posture. |
+| 6 | `docs/manuals/RedByte_Product_Manual.md` + `docs/contracts/RedByte_Product_Contract.md` | Current behavior reference and target-state contract. |
+| 7 | `docs/ide/0{N}-{surface}.md`, `docs/IDE_SYSTEM_MAP.md`, `docs/ide/SURFACE_CONFORMANCE.md` | Surface-level behavior and governance. |
+| 8 | `docs/ARCHITECTURE.md` and `docs/DOC_INDEX.md` | Architecture and navigation for everything else. |
+| Background only | `docs/00-canon/00-08-*.md`, `docs/STUDENT_WORKFLOW.md`, `docs/IMPLEMENTATION_STATUS.md` | OS-era, aspirational, or historical unless explicitly marked current. Current code/docs win. |
 
-**Trust signal:** Canonical docs declare `doc_status: current` and `used_by_claude: true` in YAML frontmatter. Treat any doc without these properties as background context, not authoritative truth.
+Canonical docs normally declare `doc_status: current` and `used_by_claude: true` in YAML frontmatter. Treat docs without those properties as background unless current docs point to them.
 
 ---
 
@@ -29,27 +30,44 @@ When docs conflict, trust in this order:
 
 Before starting any task:
 
-1. Read `docs/ACTIVE_WORK.md` — know what's in flight and what the priority ladder is.
-2. Run `pnpm verify:gates` if gates may be affected — never commit a batch that breaks a green gate.
-3. Check `docs/DOC_INDEX.md` if you need a surface spec, release proof, or roadmap doc.
+1. Start at the active clone root. This desktop clone is `C:\Users\conno\OneDrive\Documents\RedByte FPGA`. Older references to `C:\Users\conno\redbyte-ui` are historical/local aliases unless that path is explicitly selected by the user.
+2. Read `AGENTS.md`, then `AI_STATE.md`, then this file.
+3. Read `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
+4. For product/surface work, read the relevant product manual, contract, surface specs, readiness docs, and proof docs named by `docs/DOC_INDEX.md`.
+5. Run only the validation appropriate to the user-approved slice. For source or gate changes, use the relevant focused tests and `pnpm verify:gates`; for docs-only changes, prefer doc validation and encoding checks.
 
-For strategic direction or multi-surface work, use the **redbyte-prime** agent in `.claude/agents/redbyte-prime.md`.
+For strategic direction or multi-surface work, use the redbyte-prime agent in `.claude/agents/redbyte-prime.md` when that workflow is available.
 
 ---
 
 ## Runtime Constraints
 
-### Test Runner (Windows-only)
+### Windows and pnpm
 
-Tests must be run from Windows via Desktop Commander. The vitest binary has hardcoded Windows paths and cannot run from a Linux VM.
+Tests must be run from Windows. Some Vitest paths and scripts assume the Windows desktop clone.
 
+Use the repo-pinned runtime when possible:
+
+```powershell
+node -v      # expected from .nvmrc: v20.19.0
+corepack pnpm -v
 ```
-pnpm -w exec vitest run [pattern]
+
+If bare `pnpm` is not available on PATH, use:
+
+```powershell
+corepack pnpm <script-or-command>
 ```
 
-Run from: `C:\Users\conno\redbyte-ui`
+Known caveat: several package scripts invoke bare `pnpm` internally. If a root script fails only because the shim is missing, reproduce with the direct `corepack pnpm ...` equivalent before treating it as a product failure.
 
-**Current suite baseline:** use `AI_STATE.md` as the live source for focused/full-suite counts and known pre-existing failures. Do not treat the known BUG-003 render-family baseline as a regression unless the failure count or shape changes.
+### Test Runner
+
+```powershell
+corepack pnpm -w exec vitest run [pattern]
+```
+
+Current suite baseline and known failures live in `AI_STATE.md` and `docs/ACTIVE_WORK.md`. Do not treat a known baseline as a regression unless the failure count or shape changes.
 
 ### Connection Format
 
@@ -59,7 +77,7 @@ The canonical wire connection shape is:
 { id: string, from: { nodeId: string, portName: string }, to: { nodeId: string, portName: string } }
 ```
 
-The flat shape (`fromNodeId`, `toNodeId`, etc.) is **never valid**. `normalizePortRef` in `projectFormat.ts` will throw on it. All test fixtures must use the nested shape.
+The flat shape (`fromNodeId`, `toNodeId`, etc.) is never valid. `normalizePortRef` in `projectFormat.ts` will throw on it. All test fixtures must use the nested shape.
 
 ---
 
@@ -72,21 +90,24 @@ The flat shape (`fromNodeId`, `toNodeId`, etc.) is **never valid**. `normalizePo
 
 ---
 
-## Known Issues
+## Known Issues And Current Risks
 
-- **BUG-003 family**: the full IDE suite still carries pre-existing React 19 / testing-library render-family failures. Installed `@testing-library/react` is `16.3.2`; do not assume a simple version bump is the fix.
-- Vitest Windows-only constraint (see Runtime Constraints above).
+- Two classroom golden export SHA gates are currently the first technical investigation target. Under the desktop audit runtime (Node 24.15.0, pnpm 10.24.0), `classroom-golden-basys3-export-gate.test.ts` and `classroom-golden-basys3-alu-export-gate.test.ts` failed with generated ZIP SHA drift. Do not update the committed golden SHAs until the drift is reproduced and explained under the repo-pinned Node 20.19.0 runtime.
+- Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat` on this desktop during the audit. Do not claim fresh local E1/E2/E3 Vivado/Basys3 proof from this clone.
+- Clean clones may not contain ignored/generated raw proof packs such as `.redbyte/bench/runs/**`, `out/vivado-cert/**`, `dist/**`, `test-results/**`, or `playwright-report/**`. Tracked proof docs remain the portable source of proof history.
+- The older BUG-003 render-family baseline remains historical context in `AI_STATE.md`; verify the current failure shape before using it as active truth.
 
 ---
 
 ## Documentation Update Obligation
 
-After any meaningful implementation batch (new feature, bug fix, surface change, release proof):
+After any meaningful implementation batch:
 
 1. Update `docs/ACTIVE_WORK.md` in-flight table and blockers.
 2. Update the relevant surface spec in `docs/ide/` if behavior changed.
 3. Update `docs/STUDENT_RELEASE_READINESS.md` if a certification tier changed.
-4. Do **not** update OS-era docs — they are superseded and should remain labeled as such.
+4. Update `docs/product/RED_BYTE_CURRENT_TRUTH.md` or `docs/product/RED_BYTE_WORK_QUEUE.md` if the priority order changes.
+5. Do not update OS-era docs as if they were current. Label historical notes as historical instead.
 
 ---
 
@@ -98,10 +119,12 @@ After any meaningful implementation batch (new feature, bug fix, surface change,
 
 ## Obsidian Vault (Optional Context)
 
-The Obsidian engineering brain lives at `redbyte-ui/` (vault folders `00 Inbox/` through `10 Reference/`). It is useful working memory but is **not mandatory agent startup reading**. Key vault files if you need them:
+The Obsidian engineering brain lives in the repo-root vault folders (`00 Inbox/` through `10 Reference/`). It is useful working memory but is not mandatory startup reading unless the task needs it.
 
-- `08 Agents + Prompts/Claude Session Mode.md` — session operating rules
-- `08 Agents + Prompts/Canonical Notes Policy.md` — which vault notes are source of truth
-- `01 Dashboard/RedByte Engineering Brain.md` — master entry point
+Key vault files if needed:
 
-Obsidian notes are working memory. Repo markdown files (`docs/`) are canonical. When they conflict, repo markdown wins.
+- `08 Agents + Prompts/Claude Session Mode.md`
+- `08 Agents + Prompts/Canonical Notes Policy.md`
+- `01 Dashboard/RedByte Engineering Brain.md`
+
+Obsidian notes are working memory. Repo markdown files under `docs/` are canonical. When they conflict, current repo markdown wins.

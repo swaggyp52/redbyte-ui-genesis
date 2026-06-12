@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-06-12 (docs: reconcile RedByte backbone truth)
+
+**Subsystem:** Agent/docs backbone reconciliation.
+
+**Changes:**
+- Reconciled the correct desktop clone identity for `C:\Users\conno\OneDrive\Documents\RedByte FPGA` at `main` commit `08a324cf`.
+- Updated agent startup docs so `AGENTS.md`, this file, `CLAUDE.md`, `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, current product docs, and readiness/proof docs form the current reading hierarchy.
+- Marked `docs/00-canon/07-fpga-laboratory-constitution.md` and `docs/00-canon/08-fpga-agent-bootstrap.md` as background/aspirational when they conflict with current code/tests or current docs.
+- Refreshed `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md` so the next approved technical slice is classroom golden export SHA investigation under the repo-pinned Node 20.19.0 runtime.
+- Clarified that old `build:unified` route/lock drift is historical/resolved unless a fresh run reproduces it.
+- Added `docs/audits/2026-06-12-redbyte-backbone-reconciliation.md`.
+
+**Safety:** Documentation/backbone-only pass. No app source, package source, scripts, API files, tests, golden SHAs, or generated artifacts were intentionally modified. No product features were implemented.
+
+**Remaining risks:** Two classroom golden export SHA gates failed in the prior desktop audit under Node 24.15.0; `.nvmrc` pins Node 20.19.0, so runtime mismatch is a possible cause but not proven. Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, so no fresh local Vivado/Basys3 proof was run on this desktop.
+
+**Next recommended task:** Investigate the classroom golden export SHA drift under Node 20.19.0 / pnpm 10.24.0 before re-blessing any golden SHA or starting product feature work.
+
 ## Change Log 2026-05-12 (merge: windows course setup scripts)
 
 **Subsystem:** Windows course setup scripts mainline validation.

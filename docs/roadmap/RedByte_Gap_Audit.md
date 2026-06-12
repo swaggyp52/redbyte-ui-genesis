@@ -5,6 +5,8 @@
 **Owner:** Claude / Connor
 **Purpose:** Brutally honest audit of the gap between RedByte's current product reality and the target product standard.
 
+> **Current reading note (2026-06-12):** This is a historical gap audit, not the active cockpit. P0 README/manual truth fixes, sequential boundary enforcement, design-time feedback, workflow-spine fixes, and the old `build:unified` blocker have later closure evidence. For current startup truth, use `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
+
 ---
 
 ## 1. Executive Summary
@@ -34,7 +36,7 @@ Design-time feedback for critical circuit errors is now live (P2). Two classroom
 1. Two classroom blockers: Basys3 rehearsal + clean-tree signoff (GAP-013, GAP-014)
 
 ### Immediate recommendation
-Fix the README and remove manual overclaims (P0 truth fixes). These are the highest-leverage, lowest-risk changes. They can be done in a single batch and immediately improve credibility for anyone reading the repo or the manual.
+Historical recommendation at audit creation: fix the README and remove manual overclaims (P0 truth fixes). That work is now closed. Current next action is not another P0 truth rewrite; it is the docs/backbone reconciliation followed by the classroom golden export SHA investigation under the repo-pinned runtime.
 
 ---
 
@@ -84,13 +86,13 @@ Claims in this audit are based on:
 - Export: downloads allowed without verify pass
 - Latch execution: uses level-sensitive schedule — separate from clocked_macro but needs further validation
 
-### What is actively blocking pride / release / final-manual visuals
-1. README is the repo's front door and it lies
-2. Manual overclaims 6+ features that don't exist
-3. Sequential boundaries let invalid designs through
-4. 7+ obsolete spec docs create confusion
-5. Obsidian brain has cross-file misalignments
-6. Two pre-lab blockers remain (Basys3 rehearsal, clean-tree signoff)
+### Historical blockers from audit creation
+1. README front-door truth - resolved by later P0 cleanup.
+2. Manual overclaims - resolved by later P0 cleanup.
+3. Sequential boundaries - resolved by later P1 enforcement.
+4. Obsolete spec-doc confusion - mitigated by current `docs/DOC_INDEX.md` stale-zone routing.
+5. Obsidian brain cross-file misalignments - historical/background unless current docs point there.
+6. Remaining proof posture - current docs still require honest hardware proof and E3 observation, and the 2026-06-12 desktop audit adds a separate golden ZIP SHA drift investigation.
 
 ---
 
@@ -220,6 +222,8 @@ Claims in this audit are based on:
 
 **Reason:** README lies about the product. Manual overclaims ~6 features. Sequential boundaries let invalid designs through. Visual/interaction quality not yet assessed at runtime. The product may be close, but truth blockers must be resolved before any visual freeze.
 
+**Current note (2026-06-12):** The README/manual and sequential-boundary reasons above are historical and closed. The current reason to avoid final screenshot/manual freeze is proof/readiness reconciliation: golden ZIP SHA drift must be understood under Node 20.19.0, fresh Vivado/Basys3 proof was not run on this desktop, and visual/browser validation should follow the current work queue.
+
 ---
 
 ## 7. Recommended Phase Order
@@ -298,14 +302,16 @@ Claims in this audit are based on:
 
 ## 8. First Implementation Slice
 
-### Highest-leverage next slice: P0 Truth Fixes
-Fix the things that are provably wrong in documentation without touching application code.
+### Historical highest-leverage next slice: P0 Truth Fixes
+This was the correct first slice when the audit was written. It is no longer the active next slice.
 
 ### Why this slice is first
 - Zero risk of breaking product functionality
 - Highest credibility impact per line changed
 - Unblocks all downstream work by establishing honest baselines
 - Can be completed in a single batch
+
+**Current note (2026-06-12):** P0 truth fixes are closed. The active next slice is golden export SHA investigation under the repo-pinned runtime after the docs/backbone reconciliation.
 
 ### Scope
 1. **README.md rewrite** — Remove OS-era claims, update to match current IDE product (IdeApp, six surfaces, correct test counts, correct dev commands, correct branding)
@@ -378,6 +384,8 @@ RedByte is a working FPGA educational IDE with a deterministic simulation engine
 - [ ] implement workflow spine fix (P2 — needs runtime assessment)
 - [ ] implement design-legitimacy fix (P3 — needs runtime assessment)
 - [ ] create / refine target product contract (parallel with P0)
+
+**Current command decision (2026-06-12):** P0/P1 and several workflow-spine fixes are historical/closed. The active next slice is classroom golden export SHA drift investigation under Node 20.19.0.
 
 ---
 

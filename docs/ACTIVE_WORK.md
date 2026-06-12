@@ -1,161 +1,160 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-06-12
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
 ---
 
-# RedByte — Active Work Cockpit
+# RedByte - Active Work Cockpit
 
-**Branch:** main · **Release:** RC1 (frozen 2026-04-23) · **Vivado:** 2024.2 · **Board:** Basys3 (`xc7a35tcpg236-1`)
+**Branch:** main
+**Desktop clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
+**Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
+**Audited commit:** `08a324cf`
+**Target hardware:** Basys3 (`xc7a35tcpg236-1`)
+**Vivado target:** 2024.2
 
-> **What RedByte is right now:** an FPGA educational IDE. **Project** is the dashboard/home surface that routes the product spine **Project -> Design -> Verify -> Map Pins / Hardware -> Export**. Import is a utility. Board programming is an external handoff after Export. Primary package: `packages/rb-apps`.
-
----
-
-## Top 3 priorities
-
-1. **Close E3 observation honestly for fresh bench rows** - controlled pack now has explicit E1/E2/E3 classifier outputs (`pnpm rb:bench:evidence:classify`) confirming `golden-basys3-switch-and`, IDE `two-bit-counter`, and IDE `signal-tour` are E2 in that run; manual board observation is still required for E3 promotion.
-2. **~~Curate starter and example learning path~~** — Done (`13d77a3b`). 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier metadata, flagship flag, openProof notes, and numbered path strip in ExamplesBrowser.
+RedByte is an FPGA educational IDE. The current product spine is Project -> Design -> Verify -> Map Pins / Hardware -> Export. Import is a utility. Board programming is an external handoff after Export. Primary package: `packages/rb-apps`.
 
 ---
 
-## Blocked
+## Top Priorities
 
-| Blocker | Why | Unblock by |
-|---------|-----|-----------|
-| Final E3 notes for `golden`, `two-bit-counter`, `half-adder`, and custom rows | Requires manual board observation after programming the current bitstream | Keep the board on the active row long enough to record the behavior |
-| `build:unified` root `dist/` verification | Windows can hold the root `dist/` directory lock even after build + merge succeed | Identify the locking process and harden the unified-build handoff or recovery path |
-| Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds support matrix | Out of scope for RC1 |
+1. **Finish this docs/backbone reconciliation.** Keep startup docs, current-truth docs, proof routing, and stale-zone rules aligned so future agents do not trust stale Redstone/OS-era context.
+2. **Investigate the two failing classroom golden export SHA gates under the repo-pinned runtime.** Reproduce on Node 20.19.0 before changing any golden SHA. The Node 24.15.0 audit failure is evidence of drift, not proof of cause.
+3. **Restore fresh Vivado/Basys3 proof only on a machine with Vivado 2024.2 and hardware access.** This desktop did not have Vivado at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, so no fresh local E1/E2/E3 claim can be made from this clone.
+
+Do not start new product features until the golden SHA drift and proof posture are understood or the user explicitly reprioritizes.
 
 ---
 
-## Next bench / Vivado task
+## Current Blockers / Risks
 
-**Target:** Fill E3 observation notes for the controlled rows using the new observation templates, starting with `golden-basys3-switch-and` and IDE `two-bit-counter`.
+| Item | Current truth | Next action |
+|------|---------------|-------------|
+| Classroom golden ZIP SHA drift | Focused Vitest audit passed `basys3-bundle-gate`, `verilog-determinism-gate`, and `lab-starter-load-gate`, but failed the two classroom golden ZIP gates. | Reproduce under Node 20.19.0 and pnpm 10.24.0; inspect deterministic ZIP inputs before any golden update. |
+| Fresh Vivado/Basys3 proof on this desktop | Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no board proof was run here. | Use a machine with Vivado 2024.2 and a Basys3 board before making new E1/E2/E3 claims. |
+| E3 observation closure | Prior controlled proof classifies rows as E2 until physical behavior is observed and recorded. | Use the existing observation templates when hardware is available. |
+| Generated proof-pack availability | `.redbyte/bench/runs/**`, `out/vivado-cert/**`, `dist/**`, `test-results/**`, and `playwright-report/**` are local/ignored generated outputs and may be absent in clean clones. | Treat tracked release/proof docs as portable evidence; regenerate raw packs only when needed. |
+| Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds the current supported classroom matrix. | Keep out of scope unless the user explicitly starts that slice. |
+
+**Resolved/stale blocker:** `build:unified` root `dist/` lock/redirect drift is no longer a current blocker in this cockpit. `AI_STATE.md` and `docs/release/course-edition/08-validation-log.md` record later passing `pnpm build:unified` / dist verification on merged `main`. Reopen only with fresh failing evidence.
+
+---
+
+## Next Technical Task
+
+**Target:** Golden export SHA investigation under repo-pinned runtime.
+
+Use Node 20.19.0 from `.nvmrc` and pnpm 10.24.0 through Corepack when possible.
 
 ```powershell
-pnpm rb:bench:evidence:observe -- golden-basys3-switch-and
-pnpm rb:bench:evidence:observe -- two-bit-counter
-pnpm rb:bench:evidence:classify
+node -v
+corepack pnpm -v
+corepack pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts
 ```
 
-Planned E3 observation: use the generated `.redbyte/bench/runs/20260505-222402/<target>/board-observation.md` templates to record controls toggled, observed outputs, pass/fail/uncertain, observer, evidence type, and `can_promote_to_E3`. Do not mark proof closure complete from programming logs alone.
+Known audit results under Node 24.15.0:
 
-Full reproduce sequence: `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`, `docs/STUDENT_RELEASE_READINESS.md` section 3, and `scripts/vivado/README.md`.
+- `classroom-golden-basys3-export-gate.test.ts`: expected `ad6a09188772061ce462ffc7a6feca620946fbb90fc77c84f77c35125fb91264`; received `b2f0e35a9ca5c3e71859c68bb5bb986fe04f6dc12da54e4c66661cb6fd7ea569`.
+- `classroom-golden-basys3-alu-export-gate.test.ts`: expected `af6c5470f41b41a9d184bb9e39118a8e57cc53cdf86788e7b6a22a53ea63cef4`; received `9f803cf1fc957fa3c484bcbfc16ceb62ef141675b3ba81bba302ff2a2513388f`.
 
----
-
-## Latest proof / evidence
-
-| Evidence | Path |
-|----------|------|
-| Hardware mapped-row readability (2026-05-05): Map Pins rows now expose circuit signal, role chips, mapped status, board binding/package pin, and Edit Mapping as distinct regions; browser audit at 1366x768 and 1920x1080 confirmed the row no longer reads as a cramped badge list while Verify-first trust copy remains intact. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware mapped row readability) |
-| Bench evidence classifier + observation workflow (2026-05-06): new evidence model doc, `rb:bench:evidence:*` commands, and controlled-run classification outputs; all three controlled targets classify as E2 because board observation is still uncertain/manual. | `docs/release/redbyte-bench-evidence-model.md`; `scripts/rb-bench-evidence.mjs`; `.redbyte/bench/runs/20260505-222402/evidence-classification.md` |
-| Vivado/Basys3 bench intelligence (2026-05-05): real Vivado 2024.2 + detected Basys3 target; broad pass exported/built/programmed four rows, then controlled pack narrowed to `golden-basys3-switch-and`, `two-bit-counter`, and `signal-tour` with environment report, command log, matrix, warning taxonomy, RedByte gaps, and per-target board-observation templates. E3 remains manual except prior `signal-tour` proof. | `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`; `.redbyte/bench/runs/20260505-222402/` |
-| Curate v1 learning path (2026-05-05): 6-step guided path (logic-gates→half-adder→full-adder→signal-tour→two-bit-counter→lab8-fsm-lock) with tier/order/flagship/openProof metadata in examplesCatalog and labStarters; ExamplesBrowser path strip with numbered steps and openProof warnings; 10/10 path tests + 34/34 project surface tests + all gates green. | `AI_STATE.md` - Change Log 2026-05-05 (learning path) — commit `13d77a3b` |
-| F-H2/F-H3 fix (2026-05-05): 3-step mapping guide now collapses when all required signals are mapped; next-action hint names the specific Verify action per `failureTruth.condition` (stale/not-run/trace-only/ready) instead of generic 'Run Verify or open Export.' 40 hardware tests pass. | `AI_STATE.md` - Change Log 2026-05-05 (Hardware trust clarity) — commit `aeda6bc4` |
-| F-E1/F-E2 fix (2026-05-05): Export summary card now names the current state tier (`Draft export available`, `Trusted export ready`) and the next-action dock names the repair path (e.g. `Open Verify to create trusted export evidence`). 18 trust-clarity tests + 3 export gates pass. | `AI_STATE.md` - Change Log 2026-05-05 (Export trust language) — commit `4a248098` |
-| F-P1 fix: the Project next-action card now keeps Verify as the dominant story when Verify is the required next step. The status frame now reads `VERIFY NEXT`, the supporting line points to Verify before Export/hardware reliance, and focused Project continuity + CTA + first-load wiring checks all pass. | `AI_STATE.md` - Change Log 2026-05-04 (Project next-action semantics) |
-| RB-DEBT-011 fix (F-P2): first-load Project home now renders immediately on `/` and `/os/` with canonical mode fallback, active Project rail agreement, and updated first-load browser assertions in `ide-surface-baselines`. Browser checks run at 1366x768 and 1920x1080 with cleared storage and saved-project restore path. | `AI_STATE.md` - Change Log 2026-05-03 (Project first-load home render fix) |
-| Whole-product UX audit + flow model: all 5 surfaces inspected in browser at 1366x768 and 1920x1080; friction codes F-P1–F-P5, F-V1–F-V3, F-H1–F-H5, F-E1–F-E4 catalogued; implementation slices ordered by student impact; 3/3 browser gates reconfirmed green | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md` |
-| Verify clock section density cleanup (live browser pass): redundant Detected/Mode/Reset lines hidden, full cases grid now visible without scrolling; 23+33 tests pass, 3 browser gates pass | `AI_STATE.md` - Change Log 2026-05-03 (Verify clock section density cleanup) |
-| Verify visual reset hardening: compact stimulus strip, collapsed-by-default guidance and signal rail, command-row hit-target fix, hook-order stability fix, and full board-clock/export validation matrix | `AI_STATE.md` - Change Log 2026-05-03 (Verify visual reset hardening) |
-| Verify workbench layout cleanup pass: command-bar hierarchy rebalance, compact stimulus framing, segmented clock panel controls, collapsible signal rail, waveform pre-run guidance polish; board-clock/export semantics revalidated | `AI_STATE.md` - Change Log 2026-05-03 (Verify workbench layout cleanup) |
-| CSS audit gate wiring: `pnpm verify:gates` now runs `pnpm css:audit:ide` first so polish broad substring regressions block normal gate runs | `AI_STATE.md` - Change Log 2026-05-03 (CSS audit CI wiring) |
-| CSS selector guardrail policy: audit now fails on broad substring selectors in polish, reports root broad selectors as legacy warnings, and monitors overlap growth as warning-only (baseline overlap = 5) | `AI_STATE.md` - Change Log 2026-05-03 (CSS selector guardrail enforcement) |
-| CSS debt strategy instrumentation: reproducible IDE stylesheet inventory + overlap/risk metrics via `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`) | `AI_STATE.md` - Change Log 2026-05-03 (CSS debt strategy instrumentation) |
-| Export readiness-density cleanup pass: stronger trust/draft hero, explicit handoff summary rows, 8-step Vivado checklist, collapsed generated previews, and demoted detailed diagnostics/proof metadata with required gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Export density cleanup) |
-| Hardware / Map Pins density cleanup pass: calmer no-selection inspector, collapsed advanced map details by default, explicit board task framing, row action affordances, and required regression gates rerun | `AI_STATE.md` - Change Log 2026-05-03 (Hardware density cleanup) |
-| Verify stimulus usability cleanup (UI-only): compact `Test stimulus` header, mode summary, section guidance, and compare-check explainer with board-clock/browser/export proof rerun | `AI_STATE.md` — Change Log 2026-05-02 (Verify ScenarioBuilderPanel usability cleanup) |
-| Board-clock browser proof: auto `CLK100MHZ`/`W5` detected, no manual CLK row, counter waveform advances, manual-pulses override works, `clock_gen` process in exported VHDL | `artifacts/browser-proof-clock/BROWSER_PROOF_RESULTS.md` |
-| Board-clock Verify fidelity pass: auto `CLK100MHZ` / `W5` runtime policy, Verify UI clock mode, free-running VHDL clock process, targeted regressions | `AI_STATE.md` — Change Log 2026-05-02 (Board-clock verify fidelity pass) |
-| UI audit pass: Project bridge disclosure, Design idle inspector overview, Verify mode explainer, CSS debt note | `AI_STATE.md` — Change Log 2026-05-02 (UI audit pass) |
-| Product-state language unification (draft/trusted/proven copy) | `AI_STATE.md` — Change Log (state language unification) |
-| Batch 1 custom mixed-gate E1 refresh | `out/vivado-cert/custom-projects/b1-mixed/result.md` |
-| Batch 1 custom counter E1 refresh | `out/vivado-cert/custom-projects/b1-counter/result.md` |
-| Batch 1 browser/gate hardening ticket | `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md` |
-| `signal-tour` E2/E3 proof | `docs/release/proof/signal-tour-basys3-e2e-2026-04-29.md` |
-| `golden-basys3-switch-and` blocker fix + E1/E2 | `docs/release/proof/golden-basys3-switch-and-e2e-2026-04-29.md` |
-| Custom-project hardening ledger | `docs/release/custom-project-vivado-hardening-2026-04-29.md` |
-| Custom-project proof bundle | `docs/release/proof/custom-projects-2026-04-29.md` |
-| RC1 bench closeout | `docs/release/proof/rc1-bench-closeout-2026-04-23.md` |
-| `two-bit-counter` E1 + E2 + E3 path | `docs/release/proof/two-bit-counter-basys3-e2e-2026-04-23.md` |
-| From-scratch authoring cert | `docs/release/proof/from-scratch-authoring-cert-2026-04-23.md` |
-| Vivado export fidelity | `docs/release/proof/vivado-export-fidelity-board-rehearsal-2026-04-23.md` |
-| Complex multi-file round-trip | `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` |
+Do not re-bless either SHA until the artifact difference is explained and accepted.
 
 ---
 
-## Cockpit links — start here when you need detail
+## Latest Verified Evidence
+
+| Evidence | Result |
+|----------|--------|
+| Desktop clone preflight | `main` at `08a324cf`; `git status --short` clean; remote `origin` is `https://github.com/swaggyp52/redbyte-ui-genesis.git`; runtime observed as Node `v24.15.0`, pnpm `10.24.0`. |
+| Dependency/doc checks from audit | `corepack pnpm install --frozen-lockfile` passed; `corepack pnpm -s rb:doc:validate` passed (`36` passed, `0` failed); `corepack pnpm -s rb:encoding:check` passed. |
+| Runtime checks from audit | Direct `corepack pnpm -r --if-present run typecheck` passed; root `corepack pnpm typecheck` failed only because the package script invoked bare `pnpm` and the shim was not on PATH; `Start-RedByte.ps1 -SmokeTest -NoOpen -SkipInstall -Port 5197` passed with HTTP 200 after Corepack fallback. |
+| Focused docs/product support checks from audit | `corepack pnpm -s rb:site:start:test` passed; `corepack pnpm -s rb:bench:evidence:test` passed; focused ECE141 browser gate passed after installing the local Playwright Chromium cache. |
+| Focused classroom gate audit | `basys3-bundle-gate`, `verilog-determinism-gate`, and `lab-starter-load-gate` passed; the two classroom golden ZIP SHA gates failed as listed above. |
+| Prior merged-main validation | `docs/release/course-edition/08-validation-log.md` records later passing `pnpm typecheck`, `pnpm build:unified`, startup smoke, course-script checks, and the full ECE141 browser gate stack on Windows-scripts-merged `main`. |
+| Prior Vivado/Basys3 proof history | Tracked release proof docs record earlier Vivado/Basys3 evidence. This desktop pass did not run Vivado or hardware proof because Vivado was absent. |
+
+---
+
+## Tracked Proof vs Local Generated Proof
+
+Portable/tracked proof lives in docs:
+
+- `docs/STUDENT_RELEASE_READINESS.md`
+- `docs/release/vivado-basys3-certification-matrix.md`
+- `docs/release/redbyte-bench-evidence-model.md`
+- `docs/release/vivado-basys3-bench-intelligence-2026-05-05.md`
+- `docs/release/proof/**`
+- `docs/release/course-edition/08-validation-log.md`
+
+Local/generated proof packs may be useful but are not guaranteed in a clean clone:
+
+- `.redbyte/bench/runs/**`
+- `out/vivado-cert/**`
+- `dist/**`
+- `test-results/**`
+- `playwright-report/**`
+
+If a doc references a generated pack that is missing locally, do not treat the tracked doc as false. Treat the raw pack as local evidence that may need regeneration.
+
+---
+
+## In-Flight Work
+
+| Status | Item | Evidence |
+|--------|------|----------|
+| Current | Docs/backbone reconciliation: align agent startup, active cockpit, product truth, work queue, stale-zone rules, and proof-pack availability. | `docs/audits/2026-06-12-redbyte-backbone-reconciliation.md` |
+| Next | Golden export SHA investigation under Node 20.19.0. | This file and `docs/product/RED_BYTE_WORK_QUEUE.md` |
+| Board-gated | E3 observation closure for controlled rows and custom rows. | `docs/STUDENT_RELEASE_READINESS.md`; tracked proof docs |
+| Done / historical | Bench evidence classifier and observation workflow. | `AI_STATE.md` and `docs/release/redbyte-bench-evidence-model.md` |
+| Done / historical | Curated v1 learning path, Project/Export/Hardware trust clarity, Project first-load home render fixes. | `AI_STATE.md` change log and cited commits |
+
+---
+
+## Cockpit Links
 
 | What | Where |
 |------|-------|
-| Release readiness (TA surface, tier table) | [docs/STUDENT_RELEASE_READINESS.md](./STUDENT_RELEASE_READINESS.md) |
-| RC1 freeze (honest E1/E2/E3 posture) | [docs/RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) |
-| Certification matrix (E0–E3 + dated logs) | [docs/release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) |
-| Complex-project support (multi-file import) | [docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md](./release/proof/security-lock-complex-round-trip-audit-2026-04-23.md) |
-| Lab-day supported logic subset | [docs/lab-day-vivado-basys3-readiness.md](./lab-day-vivado-basys3-readiness.md) |
-| From-scratch authoring checklist | [docs/release/from-scratch-basys3-authoring-checklist.md](./release/from-scratch-basys3-authoring-checklist.md) |
-| Architecture (5-layer) | [docs/ARCHITECTURE.md](./ARCHITECTURE.md) |
-| Surface specs | [docs/ide/](./ide/) (00-ide-layout, 01-project, 02-design, 03-verify, 04-export, 05-import) |
-| Highest-priority engineering | This file, "Top 3 priorities" above |
+| Startup truth hierarchy | `AGENTS.md`, `CLAUDE.md`, `docs/DOC_INDEX.md` |
+| Compact current truth | `docs/product/RED_BYTE_CURRENT_TRUTH.md` |
+| Ordered work queue | `docs/product/RED_BYTE_WORK_QUEUE.md` |
+| Release readiness / TA surface | `docs/STUDENT_RELEASE_READINESS.md` |
+| Certification matrix | `docs/release/vivado-basys3-certification-matrix.md` |
+| Course-edition validation log | `docs/release/course-edition/08-validation-log.md` |
+| Product manual | `docs/manuals/RedByte_Product_Manual.md` |
+| Product contract | `docs/contracts/RedByte_Product_Contract.md` |
+| Architecture | `docs/ARCHITECTURE.md` |
+| Surface specs | `docs/ide/` |
 
 ---
 
-## In-flight work (last 5 batches)
+## Operational Commands
 
-| Status | Item | Commit |
-|--------|------|--------|
-| Done | Hardware mapped-row readability: mapped rows split signal identity, role chips, mapped status, board binding/package pin, and Edit Mapping into distinct regions while preserving Verify-first trust copy | `AI_STATE.md` - Change Log 2026-05-05 (Hardware mapped row readability) |
-| Local | Bench evidence classifier slice: added `scripts/rb-bench-evidence.mjs`, `rb:bench:evidence:*` scripts, durable E1/E2/E3 evidence model, controlled-run `evidence-classification.{md,json}`, and refreshed target-specific board-observation templates | `uncommitted` |
-| Done | Curate v1 learning path: 6-step path (gates→adders→signal-tour→counter→FSM lock) with tier/order/flagship/openProof metadata; ExamplesBrowser path strip with step numbers and openProof warnings; 10/10 path tests green | `13d77a3b` |
-| Done | F-H2/F-H3 hardware trust clarity: mapping guide collapses when all required signals mapped; next-action hint names specific Verify action per failureTruth condition | `aeda6bc4` |
-| Done | F-E1/F-E2 export trust language: summary card names current state tier; next-action dock names repair path | `4a248098` |
-| Done | Project next-action semantics (F-P1): Project card status framing follows Verify-first CTA when Verify is required next step | `34e07ab7` |
-| Done | Project first-load home render fix (RB-DEBT-011 / F-P2): canonical startup mode fallback, invalid-mode hardening in IdeApp, startup regression tests | `739adab5` |
+```powershell
+# Docs-only validation
+corepack pnpm rb:doc:validate
+corepack pnpm rb:encoding:check
 
----
+# Focused golden SHA investigation
+corepack pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts
 
-## Docs to update when work lands
-
-| When | Update these |
-|------|--------------|
-| Release tier changes (E1/E2/E3) | `docs/STUDENT_RELEASE_READINESS.md` (tier table), `docs/release/vivado-basys3-certification-matrix.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md` if posture shifts, **this file** (Latest proof + Next bench) |
-| Surface behavior changes (Design/Verify/Hardware/Export) | `docs/ide/0{N}-{surface}.md`, **this file** (Top 3 priorities, In-flight) |
-| Architecture changes (layer/schema/contract) | `docs/ARCHITECTURE.md`, `docs/contracts/RedByte_Product_Contract.md` if target-state shifts, **this file** |
-| Bug status flip | `05 Bugs/BUG-NNN.md` in vault, **this file** (Top 3 priorities, Blocked) |
-| Documentation authority/routing changes | `docs/IDE_SYSTEM_MAP.md`, `docs/ide/SURFACE_CONFORMANCE.md`, **this file** |
-
----
-
-## Operational commands
-
-```bash
-# Verify gates (run before any commit)
-pnpm verify:gates
-
-# Run a test (Windows-only — vitest has hardcoded Windows paths)
-pnpm -w exec vitest run [pattern]
-
-# Cert-export an IDE example
-pnpm exec tsx scripts/vivado-cert-export-ide-example.ts <id>
-
-# Hardware probe
-pnpm lab:vivado:hw-probe
+# Full gate only when the approved slice affects gates
+corepack pnpm verify:gates
 ```
 
 ---
 
-## How this file is updated
+## Update Rules
 
 After every meaningful batch:
-1. **Top 3 priorities** — reorder, replace done items
-2. **Blocked** — add new, remove resolved
-3. **Next bench / Vivado task** — replace with the next concrete bench action
-4. **Latest proof / evidence** — prepend new dated log
-5. **In-flight work** — rotate; keep newest 5
-6. **`last_validated`** in frontmatter — bump to today's date
 
-This file is imported into `CLAUDE.md` via `@docs/ACTIVE_WORK.md`. Every Claude session starts with this in context.
+1. Reorder Top Priorities.
+2. Add or resolve Blockers / Risks with evidence.
+3. Replace Next Technical Task with the next concrete action.
+4. Prepend Latest Verified Evidence when new validation or proof lands.
+5. Keep generated/local proof clearly separate from tracked proof.
+6. Bump `last_validated`.
+
+This file is imported into `CLAUDE.md` via `@docs/ACTIVE_WORK.md`. Every agent session should treat it as the current cockpit after `AI_STATE.md`.
