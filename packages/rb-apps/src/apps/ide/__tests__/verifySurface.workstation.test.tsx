@@ -405,7 +405,9 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
-    expect(queryByTestId('ide-verify-sequential-helper')).toBeNull();
+    expect(getByTestId('ide-verify-first-run-clock-policy').textContent).toContain('EN');
+    expect(getByTestId('ide-verify-first-run-clock-policy').textContent).toContain('Latch behavior detected');
+    expect(getByTestId('ide-verify-sequential-helper').textContent).toContain('EN');
 
     fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
 

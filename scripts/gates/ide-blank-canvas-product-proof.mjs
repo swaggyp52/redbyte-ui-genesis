@@ -4,11 +4,11 @@
  * IDE blank-canvas product proof gate.
  *
  * Proves a student can complete the full design workflow from a truly blank
- * canvas — no starter project loaded, no fixture injected — in the real browser:
+ * canvas - no starter project loaded, no fixture injected - in the real browser:
  *
- *   Design (empty state → add AND starter) →
- *   Verify (Observe → save outputs → Compare → PASS) →
- *   Hardware (map table shows rows, pin assignment attempted) →
+ *   Design (empty state -> add AND starter) ->
+ *   Verify (Observe -> save outputs -> Compare -> PASS) ->
+ *   Hardware (map table shows rows, pin assignment attempted) ->
  *   Export (panel renders, download button present)
  *
  * Proof level: L0 (UX valid) + E0 (export bundle reachable).
@@ -26,24 +26,60 @@ import {
 } from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
+const REQUIRED_EXPORT_ARTIFACTS = [
+  'top.vhd',
+  'top.xdc',
+  'testbench.vhd',
+  'readme.txt',
+  'vivado_import.tcl',
+  'project.rbproj.json',
+];
+
 await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, baseUrl }) => {
-  // ── Bootstrap ───────────────────────────────────────────────────────
+  // Bootstrap
   // Suppress onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => {
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
-  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/?mode=project`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
 
-  // ── PHASE 1: Reset to blank canvas ───────────────────────────────────
+  // PHASE 1: Reset to blank canvas
   console.log('  Phase 1: resetting to blank canvas...');
   await page.evaluate(() => {
+    const now = new Date().toISOString();
+    const blankProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+      name: 'From Scratch Gate',
+      description: 'Browser gate project seeded from an empty circuit.',
+      circuit: { nodes: [], connections: [] },
+      ioMapping: { inputs: [], outputs: [] },
+      vectors: [],
+      macros: [],
+      customComponents: [],
+      meta: {
+        projectId: 'rb-from-scratch-gate',
+        projectKind: 'blank',
+        sourceExampleId: null,
+        activeExampleId: null,
+      },
+    };
+    window.__RB_PROJECT_RUNTIME__?.getState()?.loadFromProject?.(blankProject);
+    window.__RB_PROJECT_RUNTIME__?.getState()?.startBlankProject?.();
     window.__RB_CIRCUIT_STORE__?.getState()?.reset();
   });
 
   // Navigate to Design surface.
-  await page.locator('[data-testid="mode-button-design"]').click();
+  const buildFresh = page.locator('[data-testid="ide-project-build-fresh-primary"]').first();
+  if (await buildFresh.isVisible().catch(() => false)) {
+    await buildFresh.click();
+  } else {
+    await page.locator('[data-testid="mode-button-design"]').click();
+  }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
 
   // Confirm empty state is shown (0 nodes).
@@ -54,9 +90,9 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
     () => window.__RB_CIRCUIT_STORE__?.getState()?.circuit?.nodes?.length ?? 0
   );
   assert(baseline === 0, `expected 0 nodes on blank canvas, got ${baseline}`);
-  console.log('  ✓ blank canvas confirmed (0 nodes)');
+  console.log('  PASS blank canvas confirmed (0 nodes)');
 
-  // ── PHASE 2: Add AND starter via real UI click ───────────────────────
+  // PHASE 2: Add AND starter via real UI click
   console.log('  Phase 2: clicking Add IO + AND gate quick action...');
   const addAndAction = page
     .locator('[data-testid="ide-design-empty-add-and"], [data-testid="ide-design-add-and-starter"]')
@@ -68,7 +104,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
     el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
   );
 
-  // Wait for 4+ nodes (2× INPUT, AND, OUTPUT) and 3+ connections (pre-wired by addAndGateStarter).
+  // Wait for 4+ nodes (2 INPUT, AND, OUTPUT) and 3+ connections (pre-wired by addAndGateStarter).
   await page.waitForFunction(
     (b) => (window.__RB_CIRCUIT_STORE__?.getState()?.circuit?.nodes?.length ?? 0) >= b + 4,
     baseline,
@@ -90,7 +126,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const connectionCount = await page.evaluate(
     () => window.__RB_CIRCUIT_STORE__?.getState()?.circuit?.connections?.length ?? 0
   );
-  console.log(`  ✓ circuit placed: ${inputCount} inputs, ${andCount} AND, ${outputCount} outputs, ${connectionCount} connections`);
+  console.log(`  PASS circuit placed: ${inputCount} inputs, ${andCount} AND, ${outputCount} outputs, ${connectionCount} connections`);
 
   // Wait for projectIoRows to be populated by addAndGateStarter (at least 3 rows:
   // 2 inputs + 1 output, now that addAndGateStarter uses addDesignIo for IO nodes).
@@ -102,15 +138,15 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const ioRowCount = await page.evaluate(
     () => window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectIoRows?.length ?? 0
   );
-  console.log(`  → IO rows confirmed: ${ioRowCount}`);
+  console.log(`  INFO IO rows confirmed: ${ioRowCount}`);
 
-  // ── PHASE 3: Verify — Observe → save outputs → Compare → PASS ────────
+  // PHASE 3: Verify - Observe -> save outputs -> Compare -> PASS
   console.log('  Phase 3: running Verify...');
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
   // Generate test vectors if none exist yet.  If they were just generated,
-  // wait for the table to appear before running — the generate click is async.
+  // wait for the table to appear before running - the generate click is async.
   const vectorsStatus = await ensureVerifyVectorsReady(page);
   if (vectorsStatus === 'generated') {
     // ensureVerifyVectorsReady already polls for run bar "N vectors" confirmation.
@@ -125,7 +161,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 15000 });
 
-  // Wait for the waveform workspace to render — the save button lives inside it.
+  // Wait for the waveform workspace to render - the save button lives inside it.
   await page
     .waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 })
     .catch(() => null);
@@ -138,7 +174,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
     savedSelector != null,
     'must be able to save observed outputs from blank-canvas Observe run'
   );
-  console.log(`  ✓ observed outputs saved (via ${savedSelector})`);
+  console.log(`  PASS observed outputs saved (via ${savedSelector})`);
 
   // Wait for expected values to persist through normalizeVectorsForLiveIo and
   // React re-render so the compare button reflects the saved checks.
@@ -162,7 +198,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   await page.waitForTimeout(150);
 
   await clickVerifyRun(page);
-  console.log('  → compare run clicked, waiting for terminal status...');
+  console.log('  INFO compare run clicked, waiting for terminal status...');
 
   // Use waitForVerifyResult which waits for stable terminal states (CHECKS ALIGNED, etc.)
   await waitForVerifyResult(page, { timeout: 20000 });
@@ -173,12 +209,12 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
       .first()
       .textContent()
       .catch(() => '')) ?? '';
-  const verifyStatus = verifyStatusText.trim();
+  let verifyStatus = verifyStatusText.trim();
 
   assert(isVerifyPass(verifyStatus), `Compare run must PASS, got "${verifyStatus}"`);
-  console.log(`  ✓ Verify Compare PASS (status: "${verifyStatus}")`);
+  console.log(`  PASS Verify Compare PASS (status: "${verifyStatus}")`);
 
-  // ── PHASE 4: Hardware — Map Pins ────────────────────────────────────
+  // PHASE 4: Hardware - Map Pins
   console.log('  Phase 4: checking Hardware / Map Pins...');
   await page.locator('[data-testid="mode-button-hardware"]').click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
@@ -193,18 +229,17 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const mapTable = page.locator('[data-testid="ide-hw-map-table"]').first();
   assert(await visible(mapTable), 'Hardware map table must be visible in Map Pins mode');
 
-  const mapRowCount = await page.locator('[data-testid^="ide-hw-map-row-"]').count();
+  const allMapRows = page.locator('button[data-testid^="ide-hw-map-row-"]');
+  const mapRowCount = await allMapRows.count();
   assert(
     mapRowCount > 0,
     `Hardware map table must show IO rows for a blank-canvas circuit, found ${mapRowCount}`
   );
-  console.log(`  ✓ map table visible (${mapRowCount} IO rows)`);
+  console.log(`  PASS map table visible (${mapRowCount} IO rows)`);
 
   // Attempt to assign the first row a switch pin and an LED pin.
   // Rows for a blank-canvas IO + AND circuit are derived at runtime from
   // node labels, so we use generic selectors rather than hardcoded row ids.
-  const allMapRows = page.locator('[data-testid^="ide-hw-map-row-"]');
-
   // Try to assign the first available row to SW0.
   const firstRow = allMapRows.nth(0);
   if (await firstRow.isVisible().catch(() => false)) {
@@ -215,7 +250,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
     if (await sw0.isVisible().catch(() => false)) {
       await sw0.click({ force: true }).catch(() => null);
       await page.waitForTimeout(300);
-      console.log('  ✓ first map row assigned to SW0 (attempted)');
+      console.log('  PASS first map row assigned to SW0 (attempted)');
     } else {
       console.log('  ! ide-hw-map-sw-0 not visible; skipping switch assignment');
     }
@@ -231,7 +266,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
       if (await sw1.isVisible().catch(() => false)) {
         await sw1.click({ force: true }).catch(() => null);
         await page.waitForTimeout(300);
-        console.log('  ✓ second map row assigned to SW1 (attempted)');
+        console.log('  PASS second map row assigned to SW1 (attempted)');
       }
     }
   }
@@ -246,12 +281,39 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
       if (await ld0.isVisible().catch(() => false)) {
         await ld0.click({ force: true }).catch(() => null);
         await page.waitForTimeout(300);
-        console.log('  ✓ third map row assigned to LD0 (attempted)');
+        console.log('  PASS third map row assigned to LD0 (attempted)');
       }
     }
   }
 
-  // ── PHASE 5: Export — panel visible + download button present ────────
+  // PHASE 5: Export - panel visible + download button present
+  await page.waitForFunction(
+    () => {
+      const rows = window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectIoRows ?? [];
+      const required = rows.filter((row) => row?.required);
+      return required.length >= 3 && required.every((row) => String(row.pin ?? '').trim().length > 0);
+    },
+    { timeout: 8000 }
+  );
+
+  console.log('  Phase 4b: rerunning Verify after Map Pins...');
+  await page.locator('[data-testid="mode-button-verify"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+  assert(
+    await setVerifyRunMode(page, 'compare'),
+    'mapped from-scratch proof requires Compare mode after Map Pins'
+  );
+  await clickVerifyRun(page);
+  await waitForVerifyResult(page, { timeout: 20000 });
+  verifyStatus =
+    ((await page
+      .locator('[data-testid="ide-verify-summary-status"]')
+      .first()
+      .textContent()
+      .catch(() => '')) ?? '').trim();
+  assert(isVerifyPass(verifyStatus), `Post-map Compare run must PASS, got "${verifyStatus}"`);
+  console.log(`  PASS post-map Verify Compare PASS (status: "${verifyStatus}")`);
+
   console.log('  Phase 5: checking Export surface...');
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
@@ -273,8 +335,83 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   if (!gateStackVisible) {
     console.log('  ! gate stack not visible (may be behind a details toggle)');
   } else {
-    console.log('  ✓ export gate stack visible');
+    console.log('  PASS export gate stack visible');
   }
+
+  async function readPreviewByPath(artifactPath) {
+    await page
+      .evaluate(() => {
+        const el = document.querySelector('[data-testid="ide-export-generated-previews"]');
+        if (el && 'open' in el) el.open = true;
+      })
+      .catch(() => null);
+
+    const tab = page
+      .locator('[data-testid^="ide-export-artifact-tab-"]')
+      .filter({ hasText: artifactPath })
+      .first();
+    assert(await tab.isVisible().catch(() => false), `artifact tab for "${artifactPath}" must be visible`);
+    await tab.click();
+
+    await page.waitForFunction(
+      (expected) => {
+        const marker = document.querySelector('[data-testid="ide-export-preview-path"]');
+        return (marker?.textContent ?? '').trim().toLowerCase() === expected.toLowerCase();
+      },
+      artifactPath,
+      { timeout: 10000 }
+    );
+
+    return (
+      (await page.locator('[data-testid="ide-export-preview-code"]').first().textContent().catch(() => '')) ?? ''
+    ).trim();
+  }
+
+  const artifactPreview = page.locator('[data-testid="ide-export-artifact-preview"]').first();
+  assert(await visible(artifactPreview), 'Export artifact workspace must be visible');
+
+  const artifactPaths = (await page
+    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .evaluateAll((elements) =>
+      elements.map((element) =>
+        (
+          element.querySelector('.ide-export-artifact-tab-name')?.textContent ??
+          element.textContent ??
+          ''
+        ).trim().toLowerCase()
+      )
+    ))
+    .filter((entry) => entry.length > 0);
+  assert(artifactPaths.length > 0, 'Export artifact tabs must be present for from-scratch circuit');
+
+  for (const artifact of REQUIRED_EXPORT_ARTIFACTS) {
+    assert(
+      artifactPaths.includes(artifact),
+      `from-scratch export artifact list missing ${artifact}`
+    );
+  }
+
+  const readmeText = await readPreviewByPath('README.txt');
+  console.log(`  export artifact tabs: ${artifactPaths.join(', ')}`);
+  console.log(`  README preview length: ${readmeText.length}`);
+  const exportDiagnosticsText =
+    (await page
+      .locator('[data-testid="ide-export-blockers-list"]')
+      .first()
+      .textContent()
+      .catch(() => '')) ?? '';
+  console.log(`  export diagnostics: ${exportDiagnosticsText.replace(/\s+/g, ' ').trim() || '(none visible)'}`);
+  assert(
+    !/\bERROR\b/.test(exportDiagnosticsText),
+    `Export diagnostics must not include blocking errors: ${exportDiagnosticsText.replace(/\s+/g, ' ').trim()}`
+  );
+  assert(readmeText.length > 0, 'README.txt preview must not be empty');
+  assert(/Vivado/i.test(readmeText), 'README.txt preview must include Vivado handoff guidance');
+  assert(
+    /E0|export/i.test(readmeText),
+    'README.txt preview must keep the export evidence boundary visible'
+  );
+  console.log('  ok export artifact list and README preview visible');
 
   // A download/build button must be present (primary CTA).
   const downloadBtn = page
@@ -295,6 +432,8 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
     downloadVisible,
     'Export primary action button must be present for a complete blank-canvas circuit after Verify PASS'
   );
+  const downloadEnabled = await downloadBtn.isEnabled().catch(() => false);
+  assert(downloadEnabled, 'Export primary action button must be enabled for the from-scratch circuit');
 
   // Capture trust tier label for the proof report.
   const trustLabel =
@@ -304,12 +443,12 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
       .textContent()
       .catch(() => '')) ?? '';
 
-  console.log(`  ✓ export download button present`);
+  console.log(`  PASS export download button present`);
   console.log('');
-  console.log('  ─── Blank-canvas proof summary ───');
+  console.log('  --- Blank-canvas proof summary ---');
   console.log(`  Verify status  : ${verifyStatus}`);
   console.log(`  IO map rows    : ${mapRowCount}`);
   console.log(`  Trust label    : ${trustLabel.trim() || '(not captured)'}`);
   console.log('  Proof level    : L0 (UX valid) + E0 (export bundle reachable)');
-  console.log('  ──────────────────────────────────');
+  console.log('  ----------------------------------');
 });

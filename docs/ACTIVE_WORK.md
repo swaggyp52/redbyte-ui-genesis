@@ -12,9 +12,9 @@ imported_by: CLAUDE.md
 **Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
-**Audited commit:** `5a55957b`
-**Latest local visual audit:** `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md`
-**Latest local implementation slice:** Visual system integrity repair
+**Audited commit:** `6498605d`
+**Latest local product audit:** `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`
+**Latest local implementation slice:** General Lab Workbench Sprint 0 / gate-truth repair
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -24,9 +24,9 @@ RedByte is an FPGA educational IDE. The current product spine is Project -> Desi
 
 ## Top Priorities
 
-1. **Start Verify fail-edit-repair as the next behavior/proof slice.** Do not mix the Verify stale-state regression with additional visual-system cleanup unless the user explicitly asks for that combined risk.
-2. **Keep remaining Verify density / evidence workbench cleanup as a separate later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, but it did not close every Verify workbench polish issue.
-3. **Keep broader browser coverage current after the next focused source slice.** The product-immersion, hierarchy, first-viewport, Hardware visual credibility, and visual-system integrity gates are green locally for this slice.
+1. **Start Verify fail-edit-repair as the next behavior/proof slice.** Sprint 0 proved a clean from-scratch success path; it did not prove intentional fail -> edit expected output -> repair -> PASS.
+2. **Keep lab-profile/course-pack implementation as a separate architecture slice.** `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` defines the target boundary; it is not implemented yet.
+3. **Keep remaining Verify density / evidence workbench cleanup as a later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, but it did not close every Verify workbench polish issue.
 4. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
 5. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
 
@@ -43,6 +43,7 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 | First-viewport product blockers | Fixed in the first-viewport repair slice: Project actions and recommended starter, Design canvas/graph, Hardware map table/board, Export primary action, and Export ready-to-build rail wording are visible/aligned at 1366x768. | Keep regressions covered by `ide:gate:ece141-first-viewport`; do not reopen without fresh failing screenshot or gate evidence. |
 | Hardware / Map Pins visual credibility | Fixed in the Hardware visual credibility slice: the left Map Pins guide no longer wraps authority copy word-by-word, the board/table remain the focal workbench, and `ide:gate:ece141-hardware-visual-credibility` guards the geometry at 1366x768. Local screenshots and geometry live under `.redbyte/product-immersion/hardware-visual-credibility/`. | Keep regressions covered by the new Hardware visual credibility gate and existing Map Pins recovery smoke. |
 | Visual system integrity | Fixed in the visual-system integrity slice: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable in the compact workbench, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. Local screenshots and geometry live under `.redbyte/product-immersion/visual-system-integrity/`. | Keep regressions covered by `ide:gate:ece141-visual-system-integrity` plus existing hierarchy, first-viewport, product-immersion, Hardware, and Verify workbench gates. |
+| General lab workbench / gate truth | Sprint 0 repaired stale Verify/Export gate assumptions and added `ide:gate:from-scratch-general-workflow`, proving a blank two-input AND project through Verify PASS, Map Pins, post-map Verify PASS, and Export artifacts/README at E0 browser level. | Keep from-scratch workflow covered; next separate architecture slice is lab-profile/course-pack implementation. |
 | Verify fail-edit-repair risk | Intentional expected-output edit produced a clear failure, but repair attempts in a dirty browser context could leave stale/run-disabled state. | Add a focused fail-edit-repair-pass regression after first-viewport work. |
 | Commercial readiness | RedByte is technically credible but not commercially ready for unsupervised paid classroom use. | Keep accounts/SaaS deferred; package support/licensing only after UX, proof, and quickstarts are stronger. |
 | Fresh Vivado/Basys3 proof on this desktop | Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no board proof was run here. | Use a machine with Vivado 2024.2 and a Basys3 board before making new E1/E2/E3 claims. |
@@ -56,6 +57,8 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 
 **Resolved/stale blocker:** `build:unified` root `dist/` lock/redirect drift is no longer a current blocker in this cockpit. `AI_STATE.md` and `docs/release/course-edition/08-validation-log.md` record later passing `pnpm build:unified` / dist verification on merged `main`. Reopen only with fresh failing evidence.
 
+**Resolved current blocker:** The stale `ide:gate:export-ready-contract` and `ide:gate:verify-contract` caveats from the visual-system integrity closeout were repaired on 2026-06-12. The export-ready gate now uses the shared Verify-vector readiness helper, and the Verify contract now targets the current starter-backed Verify workflow instead of the retired blank banner path.
+
 ---
 
 ## Next Technical Task
@@ -67,7 +70,7 @@ corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
 ```
 
-For the Verify source slice, start from `RB-VERIFY-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md` and the Verify surface specs/tests. Do not mix Verify fail-edit-repair with broad layout, Export, Hardware, Vivado, project data semantics, goldens, or hardware proof.
+For the Verify source slice, start from `RB-VERIFY-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md` and the Verify surface specs/tests. Do not mix Verify fail-edit-repair with broad layout, Export, Hardware, Vivado, lab-profile extraction, goldens, or hardware proof.
 
 ---
 
@@ -75,11 +78,12 @@ For the Verify source slice, start from `RB-VERIFY-001` in `docs/plans/2026-06-1
 
 | Evidence | Result |
 |----------|--------|
+| General Lab Workbench Sprint 0 | Added `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md` and `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; repaired stale Verify/Export gate truth; fixed blank-project IO naming and export aliasing defects exposed by the new from-scratch workflow; added `ide:gate:from-scratch-general-workflow`. Local E0 proof shows blank project -> two inputs -> AND -> output -> Verify Compare PASS -> Map Pins -> post-map Verify Compare PASS -> Export artifact tabs/README with no visible Export diagnostics. No Vivado or Basys3 board proof was run. |
 | Canonical worktree control | `C:\Users\conno\redbyte-ui-genesis-main` is now the canonical Git clone for `https://github.com/swaggyp52/redbyte-ui-genesis.git`. The prior non-git folder contents were preserved at `C:\Users\conno\redbyte-ui-genesis-main.archive-20260612-133417`, then the GitHub repo was cloned into the canonical path and fast-forwarded from the OneDrive clone through `fa116f90`. |
 | Canonical dev command | `pnpm install --frozen-lockfile` passed after a user-level `pnpm@10.24.0` shim repair under `C:\Users\conno\AppData\Roaming\npm`. `pnpm run dev` served `http://localhost:5173/` with HTTP 200 in the canonical clone. |
 | Visual direction stewardship audit | Browser capture covered 22 screenshots and 22 DOM summaries across public start, Project, Design, Verify, Hardware/Map Pins, Export, Import, and dirty Project resume states at `1366x768`, `1440x900`, and `1920x1080`. No console messages were recorded. The current visual direction is Course Lab Workbench; the next visual implementation path is shared token/panel/chip/action primitive cleanup before broad surface polish. Local artifacts live under ignored `.redbyte/product-immersion/visual-direction-audit/2026-06-12/`. |
 | Local dev server repair | `corepack enable` still fails with `EPERM` on `C:\Program Files\nodejs\pnpm`, but the user-level pnpm shim now makes bare `pnpm run dev` work. The root dev scripts still call `corepack pnpm --filter ...`, so `corepack pnpm run dev` remains a fallback. |
-| Visual system integrity repair | `ide:gate:ece141-visual-system-integrity` passed (`4` tests), proving Project/Design bounded first-viewport work areas, Verify command/evidence containment, Hardware guide/board/table visibility, and Export draft/ready handoff/evidence/action visibility. After artifacts under `.redbyte/product-immersion/visual-system-integrity/after/` show Export handoff summary fully visible at `1366x768`, evidence diagnostics materially higher in the viewport, and Verify header horizontal overflow removed. Existing hierarchy (`2`), first-viewport (`4`), product-immersion (`4`), Hardware visual credibility (`2`), Map Pins recovery (`1`), Verify workbench contract, Export download/artifact explorer contracts, viewport overflow contract, and `build:unified` passed. Caveats: `export-ready-contract` still fails before Export in the known Verify setup path; old blank `verify-contract` still waits for `ide-verify-banner`; a focused Verify/Export Vitest batch had two stale expectation failures already contradicted by HEAD source posture. |
+| Visual system integrity repair | `ide:gate:ece141-visual-system-integrity` passed (`4` tests), proving Project/Design bounded first-viewport work areas, Verify command/evidence containment, Hardware guide/board/table visibility, and Export draft/ready handoff/evidence/action visibility. After artifacts under `.redbyte/product-immersion/visual-system-integrity/after/` show Export handoff summary fully visible at `1366x768`, evidence diagnostics materially higher in the viewport, and Verify header horizontal overflow removed. Existing hierarchy (`2`), first-viewport (`4`), product-immersion (`4`), Hardware visual credibility (`2`), Map Pins recovery (`1`), Verify workbench contract, Export download/artifact explorer contracts, viewport overflow contract, and `build:unified` passed. Later Sprint 0 work repaired the stale `export-ready-contract`, stale `verify-contract`, and focused Verify/Export Vitest expectations that were still caveats at this visual-slice closeout. |
 | First-viewport repair | `ide:gate:ece141-first-viewport` passed (`4` tests), proving Project launch actions/recommended starter, Design starter canvas/node, Hardware map table/board, and Export primary action/ready wording in the 1366x768 first viewport. `ide:gate:ece141-ui-hierarchy` passed (`2` tests), `ide:gate:ece141-product-immersion` passed (`4` tests), `build:unified` passed, and preview-backed Project/Design/Hardware/Export download/viewport contracts passed. `ide:gate:export-ready-contract` still fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; track separately unless new evidence ties it to this slice. |
 | Hardware visual credibility repair | `ide:gate:ece141-hardware-visual-credibility` first failed on the old 115px Map Pins dock, then passed after the fix (`2` tests). After artifacts under `.redbyte/product-immersion/hardware-visual-credibility/after/` show the 1366x768 dock at about 187px, authority copy at 4 lines with no overflow, and the board/table still visible. Existing first-viewport, product-immersion, hierarchy, Map Pins recovery, focused Hardware Vitest, docs, encoding, diff, and unified build checks passed locally. |
 | GitHub classroom truth gate repair | GitHub inspection proved `Classroom Truth Gates` is an active required workflow/job, not stale protection. Focused repaired gates passed, full `pnpm -s classroom:gate` passed all steps, and the workflow-equivalent no-solution/golden/dev-guard commands passed locally after restoring the Lab 8 starter to `connections: []`. |
@@ -131,6 +135,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Done | GitHub Classroom Truth Gates repair and operations playbook. | `.agents/skills/redbyte-github-ops/SKILL.md`; `docs/development/RED_BYTE_GITHUB_OPERATIONS.md`; `classroom:gate`; workflow-equivalent no-solution/golden/dev-guard gates |
 | Done | Hardware / Map Pins visual credibility repair. | `tests/e2e/ece141-hardware-visual-credibility.spec.ts`; `.redbyte/product-immersion/hardware-visual-credibility/after/` |
 | Done | Visual system integrity repair for cross-surface first-viewport density, Export handoff, and Verify command containment. | `tests/e2e/ece141-visual-system-integrity.spec.ts`; `.redbyte/product-immersion/visual-system-integrity/after/`; `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md` |
+| Done | General Lab Workbench Sprint 0 and gate-truth repair. | `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `ide:gate:from-scratch-general-workflow` |
 | Current implementation | Verify fail-edit-repair-pass regression and fix. | `RB-VERIFY-001` in the issue index |
 | Next visual slice | Verify density / evidence workbench cleanup. | `RB-VERIFY-002`, `RB-WAVE-001` in the issue index |
 | Later proof slice | Broader student workflow browser suite. | Existing ECE141 browser gates and product-immersion screenshots |
@@ -150,6 +155,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Product-brain routing | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md` |
 | Whole-app product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md` |
 | Visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md` |
+| General lab workbench audit | `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md` |
+| Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` |
 | UI architecture inventory | `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md` |
 | Visual hardening plan | `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` |
 | Local dev server note | `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md` |

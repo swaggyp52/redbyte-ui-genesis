@@ -676,6 +676,56 @@ describe('buildExportViewModel canonical naming', () => {
     expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
   });
 
+  it('resolves collapsed blank-project labels in the runtime-backed export path', () => {
+    const { project } = createRuntimeStableIdScenarioFixture();
+    project.circuit.nodes.find((node) => node.id === 'sw0_node')!.label = 'Input 1';
+    project.circuit.nodes.find((node) => node.id === 'sw1_node')!.label = 'Input 2';
+    project.circuit.nodes.find((node) => node.id === 'ld0_node')!.label = 'Output 1';
+    project.ioMapping!.inputs[0] = {
+      ...project.ioMapping!.inputs[0]!,
+      id: 'input_1',
+      label: 'Input 1',
+    };
+    project.ioMapping!.inputs[1] = {
+      ...project.ioMapping!.inputs[1]!,
+      id: 'input_2',
+      label: 'Input 2',
+    };
+    project.ioMapping!.outputs[0] = {
+      ...project.ioMapping!.outputs[0]!,
+      id: 'output_1',
+      label: 'Output 1',
+    };
+    const activeScenario: VerifyScenario = {
+      id: 'blank-collapsed-labels',
+      name: 'Blank Collapsed Labels',
+      version: 1,
+      createdAt: '2026-06-12T00:00:00.000Z',
+      updatedAt: '2026-06-12T00:00:00.000Z',
+      vectors: [
+        { tick: 0, inputs: { input1: 0, input2: 0 }, expected: { output1: 0 } },
+        { tick: 1, inputs: { input1: 0, input2: 1 }, expected: { output1: 0 } },
+        { tick: 2, inputs: { input1: 1, input2: 0 }, expected: { output1: 0 } },
+        { tick: 3, inputs: { input1: 1, input2: 1 }, expected: { output1: 1 } },
+      ],
+    };
+    const viewModel = buildExportViewModel(project, undefined, activeScenario);
+
+    expect(viewModel.status).toBe('ok');
+    expect(viewModel.errors).toEqual([]);
+
+    const topVhd = getArtifactContentFromViewModel(viewModel, 'top.vhd');
+    const testbenchVhd = getArtifactContentFromViewModel(viewModel, 'testbench.vhd');
+
+    expect(testbenchVhd).toContain("SW(0) <= '0';");
+    expect(testbenchVhd).toContain("SW(1) <= '0';");
+    expect(testbenchVhd).toContain('assert LED =');
+    expect(testbenchVhd).not.toContain('input1 <=');
+    expect(testbenchVhd).not.toContain('input2 <=');
+    expect(testbenchVhd).not.toContain('assert output1 =');
+    expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
+  });
+
   it('flags undeclared stimulus refs even when component ports still match the entity', () => {
     const { project } = createRuntimeStableIdScenarioFixture();
     const topVhd = getArtifactContent(project, 'top.vhd');

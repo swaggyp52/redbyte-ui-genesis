@@ -3,6 +3,7 @@
 import {
   assert,
   clickVerifyRun,
+  ensureVerifyVectorsReady,
   loadStarterProject,
   runIdeGate,
   setVerifyRunMode,
@@ -12,33 +13,6 @@ import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
-}
-
-async function ensureVerifyVectorsReady(page) {
-  const candidates = [
-    '[data-testid="ide-verify-generate-basic-vectors"]',
-    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
-    '[data-testid="ide-verify-generate-all-combos"]',
-    '[data-testid="ide-verify-guided-clock-pattern"]',
-    '[data-testid="ide-verify-trace-generate-basics"]',
-  ];
-  for (const selector of candidates) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (isVisible) {
-      await button.click();
-      return 'generated';
-    }
-  }
-
-  const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
-  const runBarVisible = await visible(runBar).catch(() => false);
-  const runBarText = runBarVisible ? await text(runBar) : '';
-  if (/vector/i.test(runBarText)) {
-    return 'existing';
-  }
-
-  throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
 }
 
 await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }) => {

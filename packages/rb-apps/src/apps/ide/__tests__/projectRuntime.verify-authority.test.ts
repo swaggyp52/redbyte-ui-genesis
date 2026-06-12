@@ -141,9 +141,9 @@ function buildSequentialAuthorityFixture(): RBProject {
       outputs: [{ id: 'q', nodeId: 'q_node', port: 'in', label: 'q', pin: 'LD0' }],
     },
     vectors: [
-      { tick: 0, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+      { tick: 0, inputs: { d: 1, clk: 0 }, expected: { q: 1 } },
       { tick: 1, inputs: { d: 1, clk: 1 }, expected: { q: 1 } },
-      { tick: 2, inputs: { d: 0, clk: 0 }, expected: { q: 1 } },
+      { tick: 2, inputs: { d: 0, clk: 0 }, expected: { q: 0 } },
       { tick: 3, inputs: { d: 0, clk: 1 }, expected: { q: 0 } },
     ],
     meta: {
@@ -637,6 +637,44 @@ describe('projectRuntime verify authority', () => {
           row.required === true
       )
     ).toBe(true);
+  });
+
+  it('names blank-project generic IO rows with stable numbered labels and ids', () => {
+    const blankProject: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-06-12T00:00:00.000Z',
+      updatedAt: '2026-06-12T00:00:00.000Z',
+      name: 'Blank IO Naming Fixture',
+      description: 'Blank project IO labels should be stable export aliases.',
+      circuit: { nodes: [], connections: [] },
+      ioMapping: { inputs: [], outputs: [] },
+      vectors: [],
+      meta: {
+        projectId: 'rb-blank-io-naming-fixture',
+      },
+    };
+
+    useProjectRuntime.getState().loadFromProject(blankProject);
+    useProjectRuntime.getState().startBlankProject();
+    useProjectRuntime.getState().addDesignIo('input', { x: 120, y: 120 });
+    useProjectRuntime.getState().addDesignIo('input', { x: 120, y: 220 });
+    useProjectRuntime.getState().addDesignIo('output', { x: 420, y: 170 });
+
+    const state = useProjectRuntime.getState();
+
+    expect(
+      state.projectIoRows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        direction: row.direction,
+      }))
+    ).toEqual([
+      { id: 'input_1', label: 'Input 1', direction: 'in' },
+      { id: 'input_2', label: 'Input 2', direction: 'in' },
+      { id: 'output_1', label: 'Output 1', direction: 'out' },
+    ]);
+    expect(state.circuit.nodes.map((node) => node.label)).toEqual(['Input 1', 'Input 2', 'Output 1']);
   });
 
   it('uses the live verification session vectors instead of only stored project vectors', () => {

@@ -62,9 +62,11 @@ When docs conflict:
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
 | [product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md](./product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md) | Product-brain routing map for current, target, proof, audit, and stale docs |
+| [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target lab-profile and course-pack architecture model |
 | [product/RED_BYTE_COMMERCIALIZATION_READINESS.md](./product/RED_BYTE_COMMERCIALIZATION_READINESS.md) | Current commercial readiness boundary and deployment/support posture |
 | [audits/2026-06-12-redbyte-backbone-reconciliation.md](./audits/2026-06-12-redbyte-backbone-reconciliation.md) | Current docs/backbone reconciliation note |
 | [audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md](./audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md) | Current whole-app student/product UX baseline |
+| [audits/2026-06-12-redbyte-general-lab-workbench-audit.md](./audits/2026-06-12-redbyte-general-lab-workbench-audit.md) | General lab workbench, hardcoded-assumption, and gate-truth audit |
 | [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline after first-viewport repair |
 | [audits/2026-06-12-redbyte-visual-system-integrity-audit.md](./audits/2026-06-12-redbyte-visual-system-integrity-audit.md) | Latest visual-system integrity sprint evidence and after-proof |
 | [audits/2026-06-12-redbyte-feature-inventory.md](./audits/2026-06-12-redbyte-feature-inventory.md) | Feature and visible-control inventory from product immersion |
@@ -110,6 +112,7 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 | File | Purpose |
 |------|---------|
 | [manuals/RedByte_Product_Manual.md](./manuals/RedByte_Product_Manual.md) | Canonical current product reference |
+| [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target model for professor-authored labs, course packs, and from-scratch student projects |
 | [manuals/MANUAL_CLAIM_AUDIT.md](./manuals/MANUAL_CLAIM_AUDIT.md) | Claim audit against source |
 | [manuals/MANUAL_TRACEABILITY_MATRIX.md](./manuals/MANUAL_TRACEABILITY_MATRIX.md) | Manual claims mapped to source |
 | [manuals/MANUAL_CONFORMANCE.md](./manuals/MANUAL_CONFORMANCE.md) | Manual maintenance rules |
@@ -133,6 +136,7 @@ The manual describes current behavior. The contract describes target-state oblig
 | [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline and top visual issues |
 | [audits/2026-06-12-redbyte-ui-architecture-inventory.md](./audits/2026-06-12-redbyte-ui-architecture-inventory.md) | Styling architecture inventory and design-system refactor risks |
 | [plans/2026-06-12-redbyte-visual-design-hardening-plan.md](./plans/2026-06-12-redbyte-visual-design-hardening-plan.md) | Visual hardening phases and proof obligations |
+| [audits/2026-06-12-redbyte-general-lab-workbench-audit.md](./audits/2026-06-12-redbyte-general-lab-workbench-audit.md) | Gate-truth and general lab workbench audit |
 | [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Historical product-legitimacy audit with current caveats added |
 
 ---
@@ -189,8 +193,9 @@ The primary package under active development is `packages/rb-apps`. Other packag
 ## Current Known Risk Snapshot
 
 - The 2026-06-12 whole-app product immersion audit is the current product UX baseline, and the visual product direction audit is the current visual baseline after first-viewport repair.
+- The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; the next visual implementation path starts with design-system/token/primitive cleanup before broad surface polish.
-- Verify fail-edit-repair still needs a focused regression as the next behavior/proof slice.
+- Verify fail-edit-repair still needs a focused regression as the next behavior/proof slice. Lab-profile/course-pack extraction is a separate architecture slice after that.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.

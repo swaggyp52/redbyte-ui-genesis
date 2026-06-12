@@ -111,7 +111,8 @@ function buildLabelToEntityRef(
     if (!trimmed) return;
     if (!allowAmbiguous && ambiguousLabels.has(trimmed.toLowerCase())) return;
 
-    const variants = [trimmed, trimmed.toUpperCase(), trimmed.toLowerCase()];
+    const normalized = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    const variants = [trimmed, trimmed.toUpperCase(), trimmed.toLowerCase(), normalized].filter(Boolean);
     for (const variant of variants) {
       const existing = result.get(variant);
       if (!existing || existing === ref) {

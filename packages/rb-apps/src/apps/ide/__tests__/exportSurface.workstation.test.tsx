@@ -160,14 +160,15 @@ function makeWorkflowAuthority(options: {
 describe('ExportSurface workstation redesign', () => {
   afterEach(() => { cleanup(); });
 
-  it('starts with the export inspector visible and the console minimized so the handoff context is not hidden', () => {
-    const { getByTestId } = render(
+  it('starts with the export support dock collapsed and the console minimized so the handoff context is not hidden', () => {
+    const { getByTestId, queryByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
     expect(getByTestId('ide-export-command-strip').textContent).toContain('Export');
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
+    expect(getByTestId('ide-mode-export')).toHaveAttribute('data-right-dock-state', 'collapsed');
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
   });
 

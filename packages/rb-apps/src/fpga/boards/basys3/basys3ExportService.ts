@@ -671,6 +671,7 @@ function normalizeMappings(
   ir?: CircuitIR
 ): MappingRecord[] {
   const entries = direction === 'input' ? ioMapping.inputs ?? [] : ioMapping.outputs ?? [];
+  const irBoundaryAliasesByNodeId = buildIrBoundaryAliasesByNodeId(ir, direction);
   const bindingRefs = buildTopLevelBindingRefs(ioMapping, ir);
   const bindingRefByEntryId = new Map(
     [...(bindingRefs?.inputRefs ?? []), ...(bindingRefs?.outputRefs ?? [])].map((ref) => [ref.entryId, ref] as const)
@@ -692,6 +693,7 @@ function normalizeMappings(
         bindingRef?.portName ?? '',
         bindingRef?.signalRef ?? '',
         bindingRef?.xdcRef ?? '',
+        ...(irBoundaryAliasesByNodeId.get(entry.nodeId) ?? []),
       ];
       const aliases = Array.from(
         new Set(
@@ -717,6 +719,27 @@ function normalizeMappings(
       };
     })
     .sort((left, right) => compareCodepoint(left.key, right.key));
+}
+
+function buildIrBoundaryAliasesByNodeId(
+  ir: CircuitIR | undefined,
+  direction: MappingDirection
+): Map<string, string[]> {
+  const aliases = new Map<string, string[]>();
+  if (!ir) return aliases;
+
+  for (const port of ir.ports ?? []) {
+    if (direction === 'input' && port.kind === 'output') continue;
+    if (direction === 'output' && port.kind !== 'output') continue;
+    const nodeId = (port.sourceNodeId ?? '').trim();
+    const name = (port.name ?? '').trim();
+    if (!nodeId || !name) continue;
+    const existing = aliases.get(nodeId) ?? [];
+    existing.push(name);
+    aliases.set(nodeId, existing);
+  }
+
+  return aliases;
 }
 
 /**

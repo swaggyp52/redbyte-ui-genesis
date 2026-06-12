@@ -25,7 +25,8 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Current product behavior | `docs/manuals/RedByte_Product_Manual.md` | What the product does today. |
 | Target truth | `docs/contracts/RedByte_Product_Contract.md` | Quality bar and target promise. Do not treat as shipped behavior. |
 | UX debt ordering | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Ordered product follow-ups, not permission for broad redesign. |
-| Current product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`, `docs/plans/2026-06-12-redbyte-product-issue-index.md` | Dated whole-app evidence and compact issue routing. |
+| Current product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, `docs/plans/2026-06-12-redbyte-product-issue-index.md` | Dated whole-app evidence, general lab workbench/gate-truth audit, and compact issue routing. |
+| Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` | Target architecture boundary for professor-authored labs and course packs; not yet an implementation claim. |
 | Current visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`, `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md`, `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md`, `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` | Browser-backed visual baseline, latest visual integrity proof, and Course Lab Workbench hardening path. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | `docs/00-canon/**` unless explicitly current, `PRODUCT.md` if it conflicts, and the stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
@@ -105,11 +106,13 @@ Supporting truths:
 - The Hardware visual slice did not change pin mapping semantics, XDC generation, VHDL/testbench/Tcl export, project data format, goldens, Vivado proof, or Basys3 proof.
 - The visual-system integrity slice is implemented: Export handoff/evidence/action content is visible in the first viewport, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable in the compact workbench, and `ide:gate:ece141-visual-system-integrity` guards the cross-surface geometry. Before/after local artifacts live under `.redbyte/product-immersion/visual-system-integrity/`.
 - The visual-system integrity slice did not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, project data format, goldens, Vivado proof, or Basys3 proof.
+- The General Lab Workbench Sprint 0 slice is implemented: stale `ide:gate:export-ready-contract` and `ide:gate:verify-contract` assumptions were repaired, `ide:gate:from-scratch-general-workflow` was added, and a blank two-input AND project now has E0 browser proof through Verify PASS, Map Pins, post-map Verify PASS, and Export artifacts/README.
+- The Sprint 0 slice fixed real blank-project workflow defects in generic IO row naming, export alias validation, and runtime-backed testbench alias resolution. It also added `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` as a target architecture model for future course/lab profile data.
+- The Sprint 0 slice did not implement course-pack loading, new board support, Vivado proof, Basys3 programming, physical observation, or the intentional Verify fail-edit-repair loop.
 - The current visual direction is Course Lab Workbench: serious circuit/proof/board/export artifacts, calm density, consistent trust-state grammar, and no generic SaaS or toy simulator styling.
 - The next behavior/proof slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
+- The next architecture slice after Verify fail-edit-repair should extract the first lab-profile/course-pack seam without moving Basys3 board logic out of core.
 - The next visual slice after the Verify behavior fix is remaining Verify density / evidence workbench cleanup, kept separate from fail-edit-repair.
-- One preview-backed gate caveat remains: `ide:gate:export-ready-contract` currently fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; the first-viewport export flow, product immersion export flows, and export download contract pass.
-- Another older preview-backed caveat remains outside the visual-system slice: `ide:gate:verify-contract` still waits for the blank-Verify `ide-verify-banner` path, while the current ECE141 starter Verify workflow is covered by `ide:gate:verify-workbench-contract` and the ECE141 browser gates.
 
 ### Commercial posture
 
@@ -151,10 +154,11 @@ Supporting truths:
 The approved order is:
 
 1. Verify fail-edit-repair-pass regression and fix.
-2. Verify density / evidence workbench cleanup.
-3. Broader student workflow browser suite.
-4. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
-5. Student and instructor quickstarts.
-6. Commercial/license packaging later.
+2. First lab-profile/course-pack data seam.
+3. Verify density / evidence workbench cleanup.
+4. Broader student workflow browser suite.
+5. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+6. Student and instructor quickstarts.
+7. Commercial/license packaging later.
 
 Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.

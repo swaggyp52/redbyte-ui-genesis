@@ -1163,10 +1163,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const type = direction === 'input' ? 'INPUT' : 'OUTPUT';
           const rowDirection = direction === 'input' ? 'in' : 'out';
           const rowPort = direction === 'input' ? 'out' : 'in';
-          const rowId = getNextIoRowId(
-            state.projectIoRows,
-            direction === 'input' ? 'input' : 'output'
-          );
+          const rowLabelBase = direction === 'input' ? 'Input' : 'Output';
+          const existingBoundaryCount = state.circuit.nodes.filter((node) => node.type === type).length;
+          const rowLabel = `${rowLabelBase} ${existingBoundaryCount + 1}`;
+          const rowId = getNextIoRowId(state.projectIoRows, normalizeBoardRowId(rowLabel));
           const nodeId = getNextDesignNodeId(state.circuit);
           const normalizedPosition = {
             x: roundToMill(position.x),
@@ -1176,7 +1176,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           nextCircuit.nodes.push({
             id: nodeId,
             type,
-            label: rowId,
+            label: rowLabel,
             position: normalizedPosition,
             x: normalizedPosition.x,
             y: normalizedPosition.y,
@@ -1189,7 +1189,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             id: rowId,
             nodeId,
             port: rowPort,
-            label: rowId,
+            label: rowLabel,
             direction: rowDirection,
             pin: '',
             required: true,

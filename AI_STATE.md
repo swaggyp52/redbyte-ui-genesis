@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-12 (test: prove general RedByte lab workflow)
+
+**Subsystem:** RedByte general lab workbench posture, gate truth, and blank-project Verify/Map Pins/Export path.
+
+**Changes:**
+- Added `ide:gate:from-scratch-general-workflow` as a course-neutral entry point for the blank-canvas product proof.
+- Strengthened the blank-canvas browser proof so it seeds a truly blank project, builds a two-input AND circuit, runs Observe -> save expected outputs -> Compare PASS, maps three Basys3 rows, reruns Compare after mapping, and verifies Export artifact tabs plus README preview with no visible Export errors.
+- Repaired stale `ide:gate:export-ready-contract` and `ide:gate:verify-contract` assumptions so they target the current Verify readiness/helper and starter-backed Verify workflow instead of retired blank/banner paths.
+- Fixed blank-project generic IO creation so generated boundaries use stable numbered labels and row IDs such as `Input 1`, `Input 2`, and `Output 1`.
+- Fixed Basys3 export alias matching so mapping validation includes IR boundary aliases for the same node, and fixed runtime-backed testbench aliasing so collapsed scenario keys such as `input1` and `output1` resolve to generated entity references.
+- Updated focused Verify/Export workstation tests and a stale sequential runtime fixture expectation to match current source truth.
+- Added `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md` and `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, then updated the cockpit, current truth, work queue, issue index, and doc index.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/playground build`; `pnpm -s ide:gate:from-scratch-general-workflow`; `pnpm -s ide:gate:export-ready-contract`; `pnpm -s ide:gate:verify-contract`; focused Vitest alias/runtime batch (`36` tests); focused Verify/Export workstation batch (`51` tests); `pnpm -s ide:gate:ece141-visual-system-integrity` (`4`); `pnpm -s ide:gate:ece141-first-viewport` (`4`); `pnpm -s ide:gate:ece141-product-immersion` (`4`); `pnpm -s ide:gate:ece141-ui-hierarchy` (`2`); `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate`; `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This is E0 browser/runtime/source proof only. It does not claim Vivado synthesis, implementation, bitstream generation, Basys3 programming, physical observation, new board support, course-pack loading, or a complete lab-profile implementation. The new lab-profile document is a target architecture model, not shipped product behavior.
+
+**Known remaining risks:** Verify fail-edit-repair-pass remains the next behavior/proof slice. Lab-profile/course-pack extraction remains a separate architecture slice. Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Add the focused Verify fail-edit-repair-pass regression and fix only the state transition needed to prove pass -> intentional expected-output failure -> repair -> rerun PASS.
+
 ## Change Log 2026-06-12 (fix: improve RedByte visual system integrity)
 
 **Subsystem:** RedByte IDE visual system integrity across Project, Design, Verify, Hardware, and Export.
