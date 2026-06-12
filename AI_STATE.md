@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-12 (chore: stabilize local RedByte dev workflow)
+
+**Subsystem:** Resident RedByte stewardship, local dev-server startup, repo-local playbooks, and visual product direction routing.
+
+**Changes:**
+- Added repo-local RedByte agent playbooks under `.agents/skills/` for resident stewardship, visual product review, browser proof, test strategy, and design direction.
+- Updated `AGENTS.md` and `CLAUDE.md` so future sessions route recurring RedByte workflows through the repo-owned playbooks.
+- Repaired the root `dev`, `dev:lab3`, `dev:manual`, and `dev:playground` package scripts so their internal workspace calls use `corepack pnpm --filter ...` instead of bare `pnpm`.
+- Adjusted `.gitignore` so only `.agents/skills/**/SKILL.md` can be tracked while other `.agents/` runtime files stay ignored.
+- Added `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md` to record the current Windows dev-server command, Corepack caveat, launcher options, and evidence boundary.
+- Added the browser-backed visual direction audit, UI architecture inventory, and visual design hardening plan.
+- Updated `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md` so the next visual implementation path starts with design-system/token/shared primitive cleanup while Verify fail-edit-repair remains the next behavior/proof slice.
+- Did not change product UI source, circuit semantics, Verify behavior, export generation, VHDL, XDC, TCL, classroom goldens, Vivado proof, or Basys3 proof.
+
+**Evidence:** `corepack pnpm install --frozen-lockfile` passed. Bare `pnpm -v` still failed because no global pnpm shim is on PATH; `corepack enable` failed with `EPERM` on `C:\Program Files\nodejs\pnpm`, and `corepack prepare pnpm@10.24.0 --activate` did not make bare `pnpm` available. After the package-script repair, `corepack pnpm run dev` served `http://localhost:5173/`, and `Invoke-WebRequest http://localhost:5173/` returned HTTP 200. Browser capture produced 22 screenshots and 22 DOM summaries across public start, Project, Design, Verify, Hardware/Map Pins, Export, Import, and dirty Project resume states at `1366x768`, `1440x900`, and `1920x1080`, with no console messages recorded. `corepack pnpm rb:doc:validate` passed (`29` passed, `0` failed). `corepack pnpm rb:encoding:check` passed. `git diff --check` passed with only Git LF-to-CRLF working-copy warnings.
+
+**Safety:** Stewardship docs, routing docs, local dev-script repair, and browser evidence only. Screenshot and DOM artifacts are local/ignored under `.redbyte/product-immersion/visual-direction-audit/2026-06-12/`. The app launch proof is E0/browser evidence only; it is not Vivado, bitstream, board-programming, or E3 physical hardware evidence.
+
+**Remaining risks:** The local `main` branch was already ahead of `origin/main`, and this slice is local until the user explicitly pushes. Node 20.19.0 proof is still pending in this shell; validation ran under the available Node `v24.15.0` and pnpm `10.24.0`. Bare `pnpm run dev` cannot work in this shell until the Windows Corepack/pnpm shim is repaired outside the repo, but `corepack pnpm run dev` is now the working repo command. Fresh Vivado/Basys3 E1/E2/E3 proof is still pending on a machine with Vivado 2024.2 and hardware access.
+
+**Next recommended task:** Implement the visual design-system/token/shared primitive cleanup slice from `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md`, then keep Verify fail-edit-repair as the next behavior/proof slice.
+
 ## Change Log 2026-06-12 (fix: repair first-viewport product hierarchy)
 
 **Subsystem:** IDE first-viewport product hierarchy for Project, Design, Hardware/Map Pins, and Export.

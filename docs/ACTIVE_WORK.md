@@ -12,7 +12,7 @@ imported_by: CLAUDE.md
 **Desktop clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited commit:** `5a55957b`
-**Latest local audit commit:** `5a55957b`
+**Latest local visual audit:** `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`
 **Latest local implementation slice:** first-viewport repair for Project, Design, Hardware/Map Pins, and Export
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
@@ -23,12 +23,13 @@ RedByte is an FPGA educational IDE. The current product spine is Project -> Desi
 
 ## Top Priorities
 
-1. **Add Verify fail-edit-repair proof next.** The first-viewport repair is implemented and validated; the next approved product slice is the stale repair risk after intentional expected-output editing.
-2. **Keep broader browser coverage current after the Verify repair.** The product-immersion and hierarchy gates are green for the first-viewport slice, but the broader suite still matters after the next Verify fix.
-3. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
-4. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
+1. **Start visual design-system cleanup from the new visual baseline.** The user explicitly reprioritized visual stewardship after the first-viewport repair. Begin with tokens, shared panel/chip/action primitives, and browser-backed geometry proof before broad surface polish.
+2. **Keep Verify fail-edit-repair as the next behavior/proof slice.** Do not mix the Verify stale-state regression with visual-system cleanup unless the user explicitly asks for that combined risk.
+3. **Keep broader browser coverage current after the next focused source slice.** The product-immersion and hierarchy gates are green for the first-viewport slice, but the broader suite still matters after visual or Verify changes.
+4. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+5. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
 
-Do not jump to broad polish, new features, accounts/SaaS, or commercial packaging. The current operating loop is audit -> issue index -> narrow implementation slice -> proof -> docs update.
+Do not jump to new features, accounts/SaaS, or commercial packaging. The current operating loop is audit -> issue index or visual plan -> narrow implementation slice -> proof -> docs update.
 
 ---
 
@@ -37,6 +38,7 @@ Do not jump to broad polish, new features, accounts/SaaS, or commercial packagin
 | Item | Current truth | Next action |
 |------|---------------|-------------|
 | Product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md` is the current whole-app student/product baseline. Tests passing did not prove product readiness. | Use `docs/plans/2026-06-12-redbyte-product-issue-index.md` to route implementation slices. |
+| Visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md` is the current visual baseline after first-viewport repair. It classifies RedByte as directionally credible but not visually finished. | Use `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md` and `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` for the next visual-system cleanup slice. |
 | First-viewport product blockers | Fixed in the first-viewport repair slice: Project actions and recommended starter, Design canvas/graph, Hardware map table/board, Export primary action, and Export ready-to-build rail wording are visible/aligned at 1366x768. | Keep regressions covered by `ide:gate:ece141-first-viewport`; do not reopen without fresh failing screenshot or gate evidence. |
 | Verify fail-edit-repair risk | Intentional expected-output edit produced a clear failure, but repair attempts in a dirty browser context could leave stale/run-disabled state. | Add a focused fail-edit-repair-pass regression after first-viewport work. |
 | Commercial readiness | RedByte is technically credible but not commercially ready for unsupervised paid classroom use. | Keep accounts/SaaS deferred; package support/licensing only after UX, proof, and quickstarts are stronger. |
@@ -53,23 +55,24 @@ Do not jump to broad polish, new features, accounts/SaaS, or commercial packagin
 
 ## Next Technical Task
 
-**Target:** Verify fail-edit-repair-pass regression and fix.
+**Target:** Visual design-system/token/primitive cleanup, then surface-by-surface first-viewport hardening.
 
 ```powershell
 corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
 ```
 
-For the Verify source slice, start from:
+For the visual source slice, start from:
 
-- `docs/plans/2026-06-12-redbyte-product-issue-index.md`
-- `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`
-- `docs/audits/2026-06-12-redbyte-feature-inventory.md`
-- `docs/plans/2026-06-12-redbyte-product-hardening-roadmap.md`
-- `docs/ide/03-verify.md`
-- `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`
+- `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`
+- `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md`
+- `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md`
+- `.agents/skills/redbyte-design-direction/SKILL.md`
+- `.agents/skills/redbyte-browser-proof/SKILL.md`
+- `docs/ide/style-guide.md`
+- `docs/ide/design-system-v1.md`
 
-Do not mix the Verify repair with broad layout polish, export generation, VHDL, XDC, project data semantics, goldens, or Vivado proof. Add the failing browser regression first, then fix only the stale/run-disabled transition needed to reach terminal PASS/FAIL after repair.
+Do not mix visual-system cleanup with export generation, VHDL, XDC, project data semantics, goldens, or Vivado proof. Preserve Verify fail-edit-repair as a separate behavior/proof slice unless the user explicitly reprioritizes it again.
 
 ---
 
@@ -77,6 +80,8 @@ Do not mix the Verify repair with broad layout polish, export generation, VHDL, 
 
 | Evidence | Result |
 |----------|--------|
+| Visual direction stewardship audit | Browser capture covered 22 screenshots and 22 DOM summaries across public start, Project, Design, Verify, Hardware/Map Pins, Export, Import, and dirty Project resume states at `1366x768`, `1440x900`, and `1920x1080`. No console messages were recorded. The current visual direction is Course Lab Workbench; the next visual implementation path is shared token/panel/chip/action primitive cleanup before broad surface polish. Local artifacts live under ignored `.redbyte/product-immersion/visual-direction-audit/2026-06-12/`. |
+| Local dev server repair | Bare `pnpm` remains unavailable on PATH in this shell and `corepack enable` failed with `EPERM` on `C:\Program Files\nodejs\pnpm`. The root dev scripts now call `corepack pnpm --filter ...`, and `corepack pnpm run dev` served `http://localhost:5173/` with HTTP 200. |
 | First-viewport repair | `ide:gate:ece141-first-viewport` passed (`4` tests), proving Project launch actions/recommended starter, Design starter canvas/node, Hardware map table/board, and Export primary action/ready wording in the 1366x768 first viewport. `ide:gate:ece141-ui-hierarchy` passed (`2` tests), `ide:gate:ece141-product-immersion` passed (`4` tests), `build:unified` passed, and preview-backed Project/Design/Hardware/Export download/viewport contracts passed. `ide:gate:export-ready-contract` still fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; track separately unless new evidence ties it to this slice. |
 | Whole-app product immersion audit | Commit `5a55957b` added the current product UX baseline: whole-app audit, feature inventory, hardening roadmap, product-brain architecture, and commercialization readiness. It found concrete P1 product blockers in first viewport hierarchy, Verify failure repair, Hardware visibility, and Export action/trust wording; no app source, tests, goldens, or baselines changed. |
 | Classroom golden SHA investigation | Under Node `v24.15.0` / pnpm `10.24.0`, both golden gate failures reproduced twice with stable actual hashes. Removing only the README evidence-boundary section added in `4bced313` recreated both old expected SHAs exactly. The two SHA fixture files were re-blessed to current deterministic output; both classroom golden gates then passed (`2` files, `2` tests), and adjacent export/Vivado contracts passed (`4` files, `35` tests). |
@@ -122,7 +127,9 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Done | Whole-app product immersion audit. | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`; commit `5a55957b` |
 | Done | Product-brain integration and issue-index routing. | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`; `docs/plans/2026-06-12-redbyte-product-issue-index.md` |
 | Done | First-viewport repair for Project, Design, Hardware/Map Pins, and Export. | `tests/e2e/ece141-first-viewport-product-contract.spec.ts`; `ide:gate:ece141-first-viewport` |
-| Current implementation | Verify fail-edit-repair-pass regression and fix. | `RB-VERIFY-001` in the issue index |
+| Done | Resident visual stewardship pass: repo-local RedByte playbooks, visual direction audit, UI architecture inventory, visual hardening plan, and local dev-server note. | `.agents/skills/*/SKILL.md`; `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`; `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md` |
+| Current implementation | Visual design-system/token/primitive cleanup. | `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` |
+| Next behavior/proof slice | Verify fail-edit-repair-pass regression and fix. | `RB-VERIFY-001` in the issue index |
 | Later proof slice | Broader student workflow browser suite. | Existing ECE141 browser gates and product-immersion screenshots |
 | Board-gated | E3 observation closure for controlled rows and custom rows. | `docs/STUDENT_RELEASE_READINESS.md`; tracked proof docs |
 | Done / historical | Bench evidence classifier and observation workflow. | `AI_STATE.md` and `docs/release/redbyte-bench-evidence-model.md` |
@@ -139,6 +146,10 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Ordered work queue | `docs/product/RED_BYTE_WORK_QUEUE.md` |
 | Product-brain routing | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md` |
 | Whole-app product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md` |
+| Visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md` |
+| UI architecture inventory | `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md` |
+| Visual hardening plan | `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` |
+| Local dev server note | `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md` |
 | Feature/control inventory | `docs/audits/2026-06-12-redbyte-feature-inventory.md` |
 | Product issue index | `docs/plans/2026-06-12-redbyte-product-issue-index.md` |
 | Product-hardening roadmap | `docs/plans/2026-06-12-redbyte-product-hardening-roadmap.md` |
@@ -159,6 +170,9 @@ If a doc references a generated pack that is missing locally, do not treat the t
 # Docs-only validation
 corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
+
+# Local dev server in this Windows shell
+corepack pnpm run dev
 
 # Focused golden SHA regression
 corepack pnpm exec vitest run packages/rb-apps/src/__tests__/classroom-golden-basys3-export-gate.test.ts packages/rb-apps/src/__tests__/classroom-golden-basys3-alu-export-gate.test.ts

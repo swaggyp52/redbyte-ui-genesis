@@ -26,6 +26,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Target truth | `docs/contracts/RedByte_Product_Contract.md` | Quality bar and target promise. Do not treat as shipped behavior. |
 | UX debt ordering | `docs/RED_BYTE_IDE_PRODUCT_FLOW_MODEL.md`, `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Ordered product follow-ups, not permission for broad redesign. |
 | Current product UX baseline | `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`, `docs/plans/2026-06-12-redbyte-product-issue-index.md` | Dated whole-app evidence and compact issue routing. |
+| Current visual direction baseline | `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`, `docs/audits/2026-06-12-redbyte-ui-architecture-inventory.md`, `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` | Browser-backed visual baseline and Course Lab Workbench hardening path. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | `docs/00-canon/**` unless explicitly current, `PRODUCT.md` if it conflicts, and the stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
 
@@ -96,10 +97,13 @@ Supporting truths:
 ### Product immersion posture
 
 - The 2026-06-12 whole-app product immersion audit is the current student/product UX baseline.
+- The 2026-06-12 visual product direction audit is the current browser-backed visual baseline after the first-viewport repair.
 - The audit made no application source, test, golden, or product behavior changes.
 - The first-viewport repair slice is implemented: Project, Design, Hardware/Map Pins, and Export now expose the core action/work area at 1366x768, and the Export rail no longer says Draft when the current state is ready to build.
 - The repair was layout/hierarchy/copy only. It did not change simulation, export generation, VHDL, XDC, TCL, project data semantics, goldens, or Vivado/Basys3 proof.
-- The next approved implementation slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with broad layout polish or export/hardware work.
+- The current visual direction is Course Lab Workbench: serious circuit/proof/board/export artifacts, calm density, consistent trust-state grammar, and no generic SaaS or toy simulator styling.
+- The next visual implementation slice is design-system/token/shared primitive cleanup before broad surface polish.
+- The next behavior/proof slice remains the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
 - One preview-backed gate caveat remains: `ide:gate:export-ready-contract` currently fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; the first-viewport export flow, product immersion export flows, and export download contract pass.
 
 ### Commercial posture
@@ -111,7 +115,9 @@ Supporting truths:
 
 - The initial desktop audit started from a clean tracked worktree at `main` commit `08a324cf`.
 - Bare `pnpm` was unavailable on PATH during the audit; `corepack pnpm` worked.
-- Root scripts that call bare `pnpm` internally may fail for environment reasons even when their direct `corepack pnpm ...` equivalent passes.
+- Root dev scripts now call `corepack pnpm --filter ...` internally, so `corepack pnpm run dev` works in this shell and serves the app at `http://localhost:5173/`.
+- Bare `pnpm` remains unavailable on PATH unless the Windows Corepack shim is repaired outside the repo. `corepack enable` failed locally with `EPERM` on `C:\Program Files\nodejs\pnpm`.
+- Other root scripts that call bare `pnpm` internally may still fail for environment reasons even when their direct `corepack pnpm ...` equivalent passes.
 - `build:unified` is no longer a current known blocker. Later `AI_STATE.md` and course-edition validation-log entries record passing `build:unified` and dist verification after the old route/lock drift.
 
 ---
@@ -137,10 +143,11 @@ Supporting truths:
 
 The approved order is:
 
-1. Verify fail-edit-repair-pass regression and fix.
-2. Broader student workflow browser suite.
-3. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
-4. Student and instructor quickstarts.
-5. Commercial/license packaging later.
+1. Visual design-system/token/shared primitive cleanup from the Course Lab Workbench baseline.
+2. Verify fail-edit-repair-pass regression and fix as the next behavior/proof slice.
+3. Broader student workflow browser suite.
+4. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+5. Student and instructor quickstarts.
+6. Commercial/license packaging later.
 
 Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.

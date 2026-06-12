@@ -45,7 +45,10 @@ yarn-error.log*
 .redbyte/**/server.mjs
 .redbyte/**/server-contract*
 .redbyte/**/marcus-doctor*
-.agents/
+.agents/*
+!.agents/skills/
+!.agents/skills/**/
+!.agents/skills/**/SKILL.md
 .codex/
 fuzz_log*.txt
 

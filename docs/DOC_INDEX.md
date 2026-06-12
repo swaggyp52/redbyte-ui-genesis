@@ -65,9 +65,13 @@ When docs conflict:
 | [product/RED_BYTE_COMMERCIALIZATION_READINESS.md](./product/RED_BYTE_COMMERCIALIZATION_READINESS.md) | Current commercial readiness boundary and deployment/support posture |
 | [audits/2026-06-12-redbyte-backbone-reconciliation.md](./audits/2026-06-12-redbyte-backbone-reconciliation.md) | Current docs/backbone reconciliation note |
 | [audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md](./audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md) | Current whole-app student/product UX baseline |
+| [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline after first-viewport repair |
 | [audits/2026-06-12-redbyte-feature-inventory.md](./audits/2026-06-12-redbyte-feature-inventory.md) | Feature and visible-control inventory from product immersion |
+| [audits/2026-06-12-redbyte-ui-architecture-inventory.md](./audits/2026-06-12-redbyte-ui-architecture-inventory.md) | UI styling and surface architecture inventory for visual hardening |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact actionable product issue index |
 | [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Sequenced product-hardening roadmap |
+| [plans/2026-06-12-redbyte-visual-design-hardening-plan.md](./plans/2026-06-12-redbyte-visual-design-hardening-plan.md) | Course Lab Workbench visual hardening sequence |
+| [development/RED_BYTE_LOCAL_DEV_SERVER.md](./development/RED_BYTE_LOCAL_DEV_SERVER.md) | Current local dev server startup and pnpm/Corepack caveats |
 
 ---
 
@@ -124,6 +128,9 @@ The manual describes current behavior. The contract describes target-state oblig
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact issue routing extracted from the current whole-app audit |
 | [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Ordered implementation/proof roadmap derived from product immersion |
+| [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline and top visual issues |
+| [audits/2026-06-12-redbyte-ui-architecture-inventory.md](./audits/2026-06-12-redbyte-ui-architecture-inventory.md) | Styling architecture inventory and design-system refactor risks |
+| [plans/2026-06-12-redbyte-visual-design-hardening-plan.md](./plans/2026-06-12-redbyte-visual-design-hardening-plan.md) | Visual hardening phases and proof obligations |
 | [roadmap/RedByte_Gap_Audit.md](./roadmap/RedByte_Gap_Audit.md) | Historical product-legitimacy audit with current caveats added |
 
 ---
@@ -179,9 +186,9 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 ## Current Known Risk Snapshot
 
-- The 2026-06-12 whole-app product immersion audit is the current product UX baseline.
-- The next approved implementation slice is first-viewport repair for Project, Design, Hardware/Map Pins, and Export.
-- Verify fail-edit-repair needs a focused regression after the first-viewport slice.
+- The 2026-06-12 whole-app product immersion audit is the current product UX baseline, and the visual product direction audit is the current visual baseline after first-viewport repair.
+- The user explicitly reprioritized visual stewardship on 2026-06-12; the next visual implementation path starts with design-system/token/primitive cleanup before broad surface polish.
+- Verify fail-edit-repair still needs a focused regression as the next behavior/proof slice.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.

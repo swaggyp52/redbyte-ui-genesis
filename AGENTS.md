@@ -9,6 +9,13 @@ Also follow:
 - `docs/DOC_INDEX.md` (current startup order, stale-zone routing, proof-storage rules)
 - `docs/ACTIVE_WORK.md` (current cockpit and next technical target)
 
+Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKILL.md` playbook when the task matches it:
+- `redbyte-resident-steward` for repo stewardship, current cockpit routing, evidence boundaries, and closeout.
+- `redbyte-visual-product-review` for browser-backed visual/product direction audits.
+- `redbyte-browser-proof` for local app launch, viewport captures, screenshots, and Playwright proof.
+- `redbyte-test-strategy` for selecting focused gates and golden/build validation.
+- `redbyte-design-direction` for visual hardening and Course Lab Workbench direction.
+
 For any product, UX, workflow, or surface task, read these in order before proposing or implementing changes:
 1. `docs/contracts/RedByte_Product_Contract.md`
 2. `docs/manuals/RedByte_Product_Manual.md`
