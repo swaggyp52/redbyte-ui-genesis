@@ -3,6 +3,7 @@
 import {
   assert,
   clickVerifyRun,
+  ensureVerifyVectorsReady,
   loadStarterProject,
   runIdeGate,
   setVerifyRunMode,
@@ -10,32 +11,15 @@ import {
 } from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
-async function ensureVerifyVectorsReady(page) {
-  const candidates = [
-    '[data-testid="ide-verify-generate-basic-vectors"]',
-    '[data-testid="ide-verify-generate-basic-vectors-footer"]',
-    '[data-testid="ide-verify-generate-all-combos"]',
-    '[data-testid="ide-verify-guided-clock-pattern"]',
-    '[data-testid="ide-verify-trace-generate-basics"]',
-  ];
-  for (const selector of candidates) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (isVisible) {
-      await button.click();
-      return;
-    }
-  }
-}
-
 await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  await loadStarterProject(page);
+  await loadStarterProject(page, { exactExampleId: 'signal-tour' });
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
@@ -95,8 +79,15 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
     assert(await visible(leftDockToggle), 'left dock toggle must be visible when signal list is collapsed');
     await leftDockToggle.click();
   }
+
+  const signalRailToggle = page.locator('[data-testid="ide-verify-signal-rail-toggle"]').first();
+  const railExpanded = (await signalRailToggle.getAttribute('aria-expanded').catch(() => 'true')) === 'true';
+  if (!railExpanded) {
+    await signalRailToggle.click();
+  }
+
   assert(await visible(signalList), 'signal list must be visible after run');
 
-  const signalRows = await page.locator('[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
+  const signalRows = await page.locator('.ide-signal-row[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
   assert(signalRows >= 1, `signal list must show at least one signal, got ${signalRows}`);
 });

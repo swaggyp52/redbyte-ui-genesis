@@ -77,50 +77,77 @@ async function loadExampleIntoDesign(page, exampleId) {
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
   }
 
-  const examplesDisclosure = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
-  const hasExamplesDisclosure = await examplesDisclosure.count().catch(() => 0);
-  if (hasExamplesDisclosure) {
-    const disclosureOpen = await examplesDisclosure.evaluate((element) =>
-      element instanceof HTMLDetailsElement ? element.open : false
-    ).catch(() => false);
-    const summary = examplesDisclosure.locator('summary').first();
-    const summaryVisible = await summary.isVisible().catch(() => false);
-    if (!disclosureOpen && summaryVisible) {
-      await summary.click();
+  await openExamplesBrowserIfPresent(page);
+  let clicked = await clickExampleSelector(page, exampleId);
+  if (!clicked) {
+    const landingStarter = page.locator('[data-testid^="ide-project-landing-example-"]').first();
+    if (await landingStarter.isVisible().catch(() => false)) {
+      await clickElement(landingStarter);
+      await confirmExampleReplacementIfNeeded(page);
+      await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+      await page.locator('[data-testid="mode-button-project"]').click();
+      await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+      await openExamplesBrowserIfPresent(page);
+      clicked = await clickExampleSelector(page, exampleId);
     }
-  }
-
-  const selectors = [
-    `[data-testid="ide-project-load-start-${exampleId}"]`,
-    `[data-testid="ide-project-landing-example-${exampleId}"]`,
-    `[data-testid="ide-project-lab-card-${exampleId}"]`,
-  ];
-  let clicked = false;
-  for (const selector of selectors) {
-    const candidate = page.locator(selector).first();
-    if (!(await candidate.isVisible().catch(() => false))) {
-      continue;
-    }
-    await candidate.click();
-    clicked = true;
-    break;
   }
   assert(clicked, `expected project example selector for ${exampleId}`);
 
-  const confirmVisible = await page
-    .locator('[data-testid="ide-example-confirm-modal"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (confirmVisible) {
-    await page.locator('[data-testid="ide-example-confirm"]').click();
-  }
+  await confirmExampleReplacementIfNeeded(page);
 
   if (!(await page.locator('[data-testid="ide-mode-design"]').isVisible().catch(() => false))) {
     await page.locator('[data-testid="mode-button-design"]').click();
   }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-inspector-io-state"]', { timeout: 10000 });
+}
+
+async function openExamplesBrowserIfPresent(page) {
+  const browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  if (!(await browser.count().catch(() => 0))) return;
+
+  const expanded = (await browser.getAttribute('data-expanded').catch(() => 'true')) !== 'false';
+  if (expanded) return;
+
+  const toggle = page.locator('[data-testid="ide-projectx-examples-toggle"]').first();
+  if (await toggle.isVisible().catch(() => false)) {
+    await clickElement(toggle);
+  }
+}
+
+async function clickExampleSelector(page, exampleId) {
+  const selectors = [
+    `[data-testid="ide-project-load-start-${exampleId}"]`,
+    `[data-testid="ide-projectx-example-load-${exampleId}"] button`,
+    `[data-testid="ide-projectx-path-step-${exampleId}"]`,
+    `[data-testid="ide-project-landing-example-${exampleId}"]`,
+    `[data-testid="ide-project-lab-card-${exampleId}"]`,
+  ];
+  for (const selector of selectors) {
+    const candidate = page.locator(selector).first();
+    if (!(await candidate.isVisible().catch(() => false))) {
+      continue;
+    }
+    await clickElement(candidate);
+    return true;
+  }
+  return false;
+}
+
+async function confirmExampleReplacementIfNeeded(page) {
+  const confirmButton = page.locator('[data-testid="ide-example-confirm"]').first();
+  if (await confirmButton.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await confirmButton.click();
+  }
+}
+
+async function clickElement(locator) {
+  await locator.evaluate((element) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('expected clickable HTMLElement');
+    }
+    element.click();
+  });
 }
 
 async function ensureSimPaused(page) {

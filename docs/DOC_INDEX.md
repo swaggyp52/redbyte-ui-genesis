@@ -72,6 +72,7 @@ When docs conflict:
 | [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Sequenced product-hardening roadmap |
 | [plans/2026-06-12-redbyte-visual-design-hardening-plan.md](./plans/2026-06-12-redbyte-visual-design-hardening-plan.md) | Course Lab Workbench visual hardening sequence |
 | [development/RED_BYTE_LOCAL_DEV_SERVER.md](./development/RED_BYTE_LOCAL_DEV_SERVER.md) | Current local dev server startup and pnpm/Corepack caveats |
+| [development/RED_BYTE_GITHUB_OPERATIONS.md](./development/RED_BYTE_GITHUB_OPERATIONS.md) | GitHub Actions, required checks, safe push, and remote-green verification playbook |
 
 ---
 

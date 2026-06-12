@@ -2,6 +2,29 @@
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
+async function openBridgeDisclosure(page) {
+  const disclosure = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
+  await disclosure.waitFor({ state: 'visible', timeout: 10000 });
+
+  const isOpen = await disclosure.evaluate((element) => {
+    if (!(element instanceof HTMLDetailsElement)) {
+      throw new Error('project bridge disclosure must be a details element');
+    }
+    return element.open;
+  });
+
+  if (!isOpen) {
+    await disclosure.evaluate((element) => {
+      if (!(element instanceof HTMLDetailsElement)) {
+        throw new Error('project bridge disclosure must be a details element');
+      }
+      element.open = true;
+    });
+  }
+
+  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
+}
+
 await runIdeGate('IDE examples catalog and guarded open contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -33,19 +56,44 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
+  const bridgeDisclosure = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
+  await bridgeDisclosure.waitFor({ state: 'visible', timeout: 10000 });
+  const bridgeStartsCollapsed = await bridgeDisclosure.evaluate((element) => {
+    if (!(element instanceof HTMLDetailsElement)) {
+      throw new Error('project bridge disclosure must be a details element');
+    }
+    return !element.open;
+  });
+  assert(bridgeStartsCollapsed, 'project bridge internals must start tucked behind a closed disclosure');
+  await openBridgeDisclosure(page);
 
-  const targetLoad = page.locator('[data-testid="ide-project-example-load"]').nth(1);
-  const targetExampleId = (await targetLoad.getAttribute('data-example-id')) ?? '';
+  const loadButtons = page.locator('[data-testid^="ide-project-load-start-"]');
+  const loadButtonCount = await loadButtons.count();
+  assert(loadButtonCount >= 2, `expected >=2 loaded-state example actions, found ${loadButtonCount}`);
+
+  let targetLoad = loadButtons.first();
+  let targetExampleId = '';
+  for (let index = 0; index < loadButtonCount; index += 1) {
+    const candidate = loadButtons.nth(index);
+    const candidateId =
+      (await candidate.getAttribute('data-testid'))
+        ?.replace('ide-project-load-start-', '')
+        .trim() ?? '';
+    if (candidateId && candidateId !== initialTargetId) {
+      targetLoad = candidate;
+      targetExampleId = candidateId;
+      break;
+    }
+  }
   assert(targetExampleId.length > 0, 'target example load row must carry data-example-id');
 
-  const targetCard = page.locator(`[data-testid="ide-project-example-${targetExampleId}"]`);
+  const targetCard = page.locator(`[data-testid="ide-projectx-example-${targetExampleId}"]`);
   const expectedName = (
-    await targetCard.locator('.ide-project-example-btn-name').first().textContent().catch(() => '')
+    await targetCard.locator('.ide-projectx-example-card-title').first().textContent().catch(() => '')
   )?.trim() ?? '';
   assert(expectedName.length > 0, 'target example card must include a visible name');
 
-  await targetLoad.locator('button').first().evaluate((button) => {
+  await targetLoad.evaluate((button) => {
     if (!(button instanceof HTMLElement)) {
       throw new Error('expected example load button element');
     }
@@ -68,7 +116,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   }
 
   // After loading an example the surface is STATE B (bridge visible, not start dock).
-  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
+  await openBridgeDisclosure(page);
 
   const loadedButtonClass = await targetCard.getAttribute('class');
   assert(

@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-06-12 (test: repair GitHub classroom truth gates)
+
+**Subsystem:** GitHub Actions required check truth, classroom gate contracts, and Lab 8 starter safety.
+
+**Changes:**
+- Investigated GitHub directly from the canonical clone. `Classroom Truth Gates` is an active workflow/job in `.github/workflows/pr-truth-gates.yml`, and classic branch protection requires that context on `main`; the problem was a real failed check, not a missing workflow or stale required status.
+- Repaired stale browser gate contracts for the current Project, Design, Verify, and Export surfaces without removing the required check.
+- Restored the Lab 8 JSON starter to an unsolved scaffold by keeping `connections: []` while preserving the board I/O, labeled subsystem nodes, IO mapping, and Lab 8 checkpoints.
+- Added `.agents/skills/redbyte-github-ops/SKILL.md` and `docs/development/RED_BYTE_GITHUB_OPERATIONS.md`.
+- Updated `docs/ai-usage-rules.md` so explicit user authorization allows normal non-force GitHub operations while force push remains forbidden.
+
+**Evidence:** Focused gates passed for `ide:gate:examples-contract`, `ide:gate:student-loop-contract`, `ide:gate:design-correctness-contract`, `ide:gate:design-palette-build-contract`, and `ide:gate:verify-reality-contract`. Full `pnpm -s classroom:gate` passed all steps in 435772ms. Workflow-equivalent local gates passed for `ci:no-solution:lab1`, `lab2`, `lab3`, `lab4`, `lab5`, `lab6`, `lab7`, `lab8`, `rc:e1:golden-basys3-export-gate`, `rc:e1:golden-basys3-alu-export-gate`, and `ui:dev-guards-contract-gate` after the Lab 8 starter repair.
+
+**Safety:** No tests, workflows, or required checks were removed. GitHub branch protection was inspected, not weakened. The Lab 8 change removes prewired solution-path connections from the starter rather than changing the gate to accept them. This is automated E0/classroom evidence only; fresh Vivado/Basys3 E1/E2/E3 proof still requires the proper toolchain and hardware.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** After GitHub required checks are remotely green, resume the planned visual design-system/token/shared primitive cleanup or the Verify fail-edit-repair regression slice from the current work queue.
+
 ## Change Log 2026-06-12 (docs: establish canonical RedByte worktree)
 
 **Subsystem:** Canonical worktree control, local dev command repair, and GitHub main sync preparation.

@@ -14,7 +14,7 @@ imported_by: CLAUDE.md
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited commit:** `5a55957b`
 **Latest local visual audit:** `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`
-**Latest local implementation slice:** first-viewport repair for Project, Design, Hardware/Map Pins, and Export
+**Latest local implementation slice:** GitHub Classroom Truth Gates repair and Lab 8 no-solution starter restoration
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -49,6 +49,8 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 | Lab 8 / SSD-heavy / hierarchical-bus starters | Not RC1 turnkey; complexity exceeds the current supported classroom matrix. | Keep out of scope unless the user explicitly starts that slice. |
 
 **Resolved current blocker:** Classroom golden ZIP SHA drift was investigated on 2026-06-12. The current output was stable across repeated runs, the old SHAs were reproduced by removing only the intended README evidence-boundary section added in `4bced313`, and both golden gates pass after re-blessing the two SHA fixture files. Node 20.19.0 was not available in this shell, but the drift is source-explained rather than runtime-random.
+
+**Resolved current blocker:** GitHub required check debt was investigated on 2026-06-12. `Classroom Truth Gates` exists as an active workflow/job and required branch-protection context; the blocker was real gate failure, not a missing workflow or stale required status. Local `classroom:gate` now passes, the workflow-equivalent no-solution/golden/dev-guard gates pass, and the Lab 8 starter is restored to an unsolved no-connection scaffold.
 
 **Resolved/stale blocker:** `build:unified` root `dist/` lock/redirect drift is no longer a current blocker in this cockpit. `AI_STATE.md` and `docs/release/course-edition/08-validation-log.md` record later passing `pnpm build:unified` / dist verification on merged `main`. Reopen only with fresh failing evidence.
 
@@ -86,6 +88,7 @@ Do not mix visual-system cleanup with export generation, VHDL, XDC, project data
 | Visual direction stewardship audit | Browser capture covered 22 screenshots and 22 DOM summaries across public start, Project, Design, Verify, Hardware/Map Pins, Export, Import, and dirty Project resume states at `1366x768`, `1440x900`, and `1920x1080`. No console messages were recorded. The current visual direction is Course Lab Workbench; the next visual implementation path is shared token/panel/chip/action primitive cleanup before broad surface polish. Local artifacts live under ignored `.redbyte/product-immersion/visual-direction-audit/2026-06-12/`. |
 | Local dev server repair | `corepack enable` still fails with `EPERM` on `C:\Program Files\nodejs\pnpm`, but the user-level pnpm shim now makes bare `pnpm run dev` work. The root dev scripts still call `corepack pnpm --filter ...`, so `corepack pnpm run dev` remains a fallback. |
 | First-viewport repair | `ide:gate:ece141-first-viewport` passed (`4` tests), proving Project launch actions/recommended starter, Design starter canvas/node, Hardware map table/board, and Export primary action/ready wording in the 1366x768 first viewport. `ide:gate:ece141-ui-hierarchy` passed (`2` tests), `ide:gate:ece141-product-immersion` passed (`4` tests), `build:unified` passed, and preview-backed Project/Design/Hardware/Export download/viewport contracts passed. `ide:gate:export-ready-contract` still fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; track separately unless new evidence ties it to this slice. |
+| GitHub classroom truth gate repair | GitHub inspection proved `Classroom Truth Gates` is an active required workflow/job, not stale protection. Focused repaired gates passed, full `pnpm -s classroom:gate` passed all steps, and the workflow-equivalent no-solution/golden/dev-guard commands passed locally after restoring the Lab 8 starter to `connections: []`. |
 | Whole-app product immersion audit | Commit `5a55957b` added the current product UX baseline: whole-app audit, feature inventory, hardening roadmap, product-brain architecture, and commercialization readiness. It found concrete P1 product blockers in first viewport hierarchy, Verify failure repair, Hardware visibility, and Export action/trust wording; no app source, tests, goldens, or baselines changed. |
 | Classroom golden SHA investigation | Under Node `v24.15.0` / pnpm `10.24.0`, both golden gate failures reproduced twice with stable actual hashes. Removing only the README evidence-boundary section added in `4bced313` recreated both old expected SHAs exactly. The two SHA fixture files were re-blessed to current deterministic output; both classroom golden gates then passed (`2` files, `2` tests), and adjacent export/Vivado contracts passed (`4` files, `35` tests). |
 | Desktop clone preflight | `main` at `08a324cf`; `git status --short` clean; remote `origin` is `https://github.com/swaggyp52/redbyte-ui-genesis.git`; runtime observed as Node `v24.15.0`, pnpm `10.24.0`. |
@@ -131,6 +134,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Done | Product-brain integration and issue-index routing. | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`; `docs/plans/2026-06-12-redbyte-product-issue-index.md` |
 | Done | First-viewport repair for Project, Design, Hardware/Map Pins, and Export. | `tests/e2e/ece141-first-viewport-product-contract.spec.ts`; `ide:gate:ece141-first-viewport` |
 | Done | Resident visual stewardship pass: repo-local RedByte playbooks, visual direction audit, UI architecture inventory, visual hardening plan, and local dev-server note. | `.agents/skills/*/SKILL.md`; `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`; `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md` |
+| Done | GitHub Classroom Truth Gates repair and operations playbook. | `.agents/skills/redbyte-github-ops/SKILL.md`; `docs/development/RED_BYTE_GITHUB_OPERATIONS.md`; `classroom:gate`; workflow-equivalent no-solution/golden/dev-guard gates |
 | Current implementation | Visual design-system/token/primitive cleanup. | `docs/plans/2026-06-12-redbyte-visual-design-hardening-plan.md` |
 | Next behavior/proof slice | Verify fail-edit-repair-pass regression and fix. | `RB-VERIFY-001` in the issue index |
 | Later proof slice | Broader student workflow browser suite. | Existing ECE141 browser gates and product-immersion screenshots |

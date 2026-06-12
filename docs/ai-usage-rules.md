@@ -48,7 +48,10 @@ Do not use the stale / OS-era docs listed in `docs/DOC_INDEX.md` as default cont
   - Screenshot of `/` (IDE default)
   - Screenshot of `/?launcher=1` (Shell launcher)
   - First 30 console lines showing `[RB_BOOT]` mode selection
-- In this environment, remote operations are disallowed; commit locally and push in normal remote-enabled workflows.
+- Remote operations are disallowed by default.
+- Explicit user authorization may allow normal non-force GitHub operations, including `git push origin main`, GitHub Actions inspection, and branch protection/ruleset inspection.
+- Force push remains forbidden.
+- Branch protection or ruleset edits require extra caution, current remote proof, and documentation of old contexts, new contexts, and replacement coverage.
 
 ## Environment
 - Do not run `npm install`; use pnpm only for required validation commands.

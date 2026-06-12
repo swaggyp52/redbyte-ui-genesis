@@ -20,6 +20,7 @@ Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKI
 - `redbyte-browser-proof` for local app launch, viewport captures, screenshots, and Playwright proof.
 - `redbyte-test-strategy` for selecting focused gates and golden/build validation.
 - `redbyte-design-direction` for visual hardening and Course Lab Workbench direction.
+- `redbyte-github-ops` for GitHub Actions, required checks, branch protection/rulesets, safe push, and remote-green verification.
 
 For any product, UX, workflow, or surface task, read these in order before proposing or implementing changes:
 1. `docs/contracts/RedByte_Product_Contract.md`

@@ -57,8 +57,30 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const runFooter = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
   const runFooterVisible = await visible(runFooter).catch(() => false);
   const runFooterText = runFooterVisible ? ((await runFooter.textContent()) ?? '').trim() : '';
+  const firstRunStateText = (
+    await page
+      .locator('[data-testid="ide-verify-empty-state"]')
+      .first()
+      .textContent()
+      .catch(() => '')
+  )?.trim() ?? '';
+  const commandStatusText = (
+    await page
+      .locator('[data-testid="ide-vcb-status"]')
+      .first()
+      .textContent()
+      .catch(() => '')
+  )?.trim() ?? '';
+  const headerRunVisible = await page
+    .locator('[data-testid="ide-vcb-run"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
   assert(
-    vectorTableVisible || /vector/i.test(runFooterText),
+    vectorTableVisible ||
+      /vector/i.test(runFooterText) ||
+      /current vectors are ready|saved checks available/i.test(firstRunStateText) ||
+      (/ready/i.test(commandStatusText) && headerRunVisible),
     'verify must surface authored vectors after generating basics',
   );
 

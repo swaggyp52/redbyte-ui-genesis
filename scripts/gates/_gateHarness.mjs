@@ -18,9 +18,26 @@ export async function visible(locator) {
 }
 
 export async function loadStarterProject(page, options = {}) {
-  const { preferredLabStarterTestId } = options;
+  const { preferredLabStarterTestId, exactExampleId } = options;
 
   await ensureProjectMode(page);
+
+  if (exactExampleId) {
+    if (await loadExactExample(page, exactExampleId)) return;
+
+    await loadAnyVisibleStarter(page, { preferredLabStarterTestId });
+    await ensureProjectMode(page);
+
+    if (await loadExactExample(page, exactExampleId)) return;
+
+    throw new Error(`exact starter example "${exactExampleId}" was not visible in any supported Project state`);
+  }
+
+  await loadAnyVisibleStarter(page, { preferredLabStarterTestId });
+}
+
+async function loadAnyVisibleStarter(page, options = {}) {
+  const { preferredLabStarterTestId } = options;
 
   const starterSelectors = [
     preferredLabStarterTestId ? `[data-testid="${preferredLabStarterTestId}"]` : null,
@@ -28,6 +45,7 @@ export async function loadStarterProject(page, options = {}) {
     '[data-testid="ide-project-landing-example-signal-tour"]',
     '[data-testid="ide-project-load-start-logic-gates"]',
     '[data-testid^="ide-project-landing-example-"]',
+    '[data-testid^="ide-project-load-start-"]',
     '[data-testid="ide-project-example-load"] button',
     '[data-testid^="ide-project-lab-card-"]',
   ].filter(Boolean);
@@ -49,7 +67,48 @@ export async function loadStarterProject(page, options = {}) {
   );
 }
 
+async function loadExactExample(page, exampleId) {
+  await openExamplesBrowserIfPresent(page);
+
+  const selectors = [
+    `[data-testid="ide-project-load-start-${exampleId}"]`,
+    `[data-testid="ide-projectx-example-load-${exampleId}"] button`,
+    `[data-testid="ide-projectx-path-step-${exampleId}"]`,
+    `[data-testid="ide-project-landing-example-${exampleId}"]`,
+    `[data-testid="ide-project-lab-card-${exampleId}"]`,
+  ];
+
+  for (const selector of selectors) {
+    const starter = page.locator(selector).first();
+    if (!(await starter.isVisible().catch(() => false))) {
+      continue;
+    }
+
+    await clickLocatorElement(starter);
+    await confirmExampleReplacementIfNeeded(page);
+    await waitForStarterToLoad(page);
+    return true;
+  }
+
+  return false;
+}
+
+async function openExamplesBrowserIfPresent(page) {
+  const browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  if (!(await browser.count().catch(() => 0))) return;
+
+  const expanded = (await browser.getAttribute('data-expanded').catch(() => 'true')) !== 'false';
+  if (expanded) return;
+
+  const toggle = page.locator('[data-testid="ide-projectx-examples-toggle"]').first();
+  if (await toggle.isVisible().catch(() => false)) {
+    await clickLocatorElement(toggle);
+  }
+}
+
 export async function ensureVerifyVectorsReady(page) {
+  if (await hasCurrentVerifyVectors(page)) return 'existing';
+
   const hasExistingVectors = await page
     .locator('[data-testid="ide-verify-vectors-table"]')
     .first()
@@ -80,7 +139,14 @@ export async function ensureVerifyVectorsReady(page) {
         .waitForFunction(
           () => {
             const rb = document.querySelector('[data-testid="ide-verify-workstation-run-bar"]');
-            return rb && /\d+\s+vector/i.test(rb.textContent || '');
+            const empty = document.querySelector('[data-testid="ide-verify-empty-state"]');
+            const status = document.querySelector('[data-testid="ide-vcb-status"]');
+            const run = document.querySelector('[data-testid="ide-vcb-run"]');
+            return (
+              (rb && /\d+\s+vector/i.test(rb.textContent || '')) ||
+              (empty && /current vectors are ready|saved checks available/i.test(empty.textContent || '')) ||
+              (status && /ready/i.test(status.textContent || '') && run)
+            );
           },
           { timeout: 10000 }
         )
@@ -90,6 +156,24 @@ export async function ensureVerifyVectorsReady(page) {
   }
 
   throw new Error('verify had neither a visible generate-basics action nor an existing ready-vector state');
+}
+
+async function hasCurrentVerifyVectors(page) {
+  const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
+  if (await vectorTable.isVisible().catch(() => false)) return true;
+
+  const runBar = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
+  const runBarText = (await runBar.textContent().catch(() => ''))?.trim() ?? '';
+  if (/\d+\s+vector/i.test(runBarText)) return true;
+
+  const emptyState = page.locator('[data-testid="ide-verify-empty-state"]').first();
+  const emptyStateText = (await emptyState.textContent().catch(() => ''))?.trim() ?? '';
+  if (/current vectors are ready|saved checks available/i.test(emptyStateText)) return true;
+
+  const statusText =
+    (await page.locator('[data-testid="ide-vcb-status"]').first().textContent().catch(() => ''))?.trim() ?? '';
+  const runVisible = await page.locator('[data-testid="ide-vcb-run"]').first().isVisible().catch(() => false);
+  return /ready/i.test(statusText) && runVisible;
 }
 
 export async function clickVerifyRun(page) {
