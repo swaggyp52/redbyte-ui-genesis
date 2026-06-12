@@ -9,7 +9,8 @@ imported_by: CLAUDE.md
 # RedByte - Active Work Cockpit
 
 **Branch:** main
-**Desktop clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
+**Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
+**Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited commit:** `5a55957b`
 **Latest local visual audit:** `docs/audits/2026-06-12-redbyte-visual-product-direction-audit.md`
@@ -80,8 +81,10 @@ Do not mix visual-system cleanup with export generation, VHDL, XDC, project data
 
 | Evidence | Result |
 |----------|--------|
+| Canonical worktree control | `C:\Users\conno\redbyte-ui-genesis-main` is now the canonical Git clone for `https://github.com/swaggyp52/redbyte-ui-genesis.git`. The prior non-git folder contents were preserved at `C:\Users\conno\redbyte-ui-genesis-main.archive-20260612-133417`, then the GitHub repo was cloned into the canonical path and fast-forwarded from the OneDrive clone through `fa116f90`. |
+| Canonical dev command | `pnpm install --frozen-lockfile` passed after a user-level `pnpm@10.24.0` shim repair under `C:\Users\conno\AppData\Roaming\npm`. `pnpm run dev` served `http://localhost:5173/` with HTTP 200 in the canonical clone. |
 | Visual direction stewardship audit | Browser capture covered 22 screenshots and 22 DOM summaries across public start, Project, Design, Verify, Hardware/Map Pins, Export, Import, and dirty Project resume states at `1366x768`, `1440x900`, and `1920x1080`. No console messages were recorded. The current visual direction is Course Lab Workbench; the next visual implementation path is shared token/panel/chip/action primitive cleanup before broad surface polish. Local artifacts live under ignored `.redbyte/product-immersion/visual-direction-audit/2026-06-12/`. |
-| Local dev server repair | Bare `pnpm` remains unavailable on PATH in this shell and `corepack enable` failed with `EPERM` on `C:\Program Files\nodejs\pnpm`. The root dev scripts now call `corepack pnpm --filter ...`, and `corepack pnpm run dev` served `http://localhost:5173/` with HTTP 200. |
+| Local dev server repair | `corepack enable` still fails with `EPERM` on `C:\Program Files\nodejs\pnpm`, but the user-level pnpm shim now makes bare `pnpm run dev` work. The root dev scripts still call `corepack pnpm --filter ...`, so `corepack pnpm run dev` remains a fallback. |
 | First-viewport repair | `ide:gate:ece141-first-viewport` passed (`4` tests), proving Project launch actions/recommended starter, Design starter canvas/node, Hardware map table/board, and Export primary action/ready wording in the 1366x768 first viewport. `ide:gate:ece141-ui-hierarchy` passed (`2` tests), `ide:gate:ece141-product-immersion` passed (`4` tests), `build:unified` passed, and preview-backed Project/Design/Hardware/Export download/viewport contracts passed. `ide:gate:export-ready-contract` still fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; track separately unless new evidence ties it to this slice. |
 | Whole-app product immersion audit | Commit `5a55957b` added the current product UX baseline: whole-app audit, feature inventory, hardening roadmap, product-brain architecture, and commercialization readiness. It found concrete P1 product blockers in first viewport hierarchy, Verify failure repair, Hardware visibility, and Export action/trust wording; no app source, tests, goldens, or baselines changed. |
 | Classroom golden SHA investigation | Under Node `v24.15.0` / pnpm `10.24.0`, both golden gate failures reproduced twice with stable actual hashes. Removing only the README evidence-boundary section added in `4bced313` recreated both old expected SHAs exactly. The two SHA fixture files were re-blessed to current deterministic output; both classroom golden gates then passed (`2` files, `2` tests), and adjacent export/Vivado contracts passed (`4` files, `35` tests). |
@@ -172,6 +175,9 @@ corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
 
 # Local dev server in this Windows shell
+pnpm run dev
+
+# Fallback if the bare pnpm shim is missing
 corepack pnpm run dev
 
 # Focused golden SHA regression

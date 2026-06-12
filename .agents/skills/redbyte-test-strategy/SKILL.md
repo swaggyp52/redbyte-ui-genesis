@@ -30,4 +30,6 @@ Use the smallest proof that matches the claim:
 
 ## Package Manager
 
-Use `corepack pnpm ...` on this Windows clone. Do not run `npm install`.
+Use `pnpm ...` when the user-level shim is available. Use `corepack pnpm ...` as the reliable fallback when bare `pnpm` is missing.
+
+Do not run `npm install` in the workspace. A user-level `npm install -g pnpm@<repo-version>` is only acceptable when the user explicitly authorizes repairing the local pnpm shim, the npm prefix is user-scoped, and no admin elevation is needed.

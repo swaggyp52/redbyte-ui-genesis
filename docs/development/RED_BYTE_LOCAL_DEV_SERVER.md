@@ -8,18 +8,22 @@ role: local dev server startup and troubleshooting note
 
 # RedByte Local Dev Server
 
-This note records the current Windows desktop startup path for the RedByte FPGA clone.
+This note records the current Windows desktop startup path for the canonical RedByte clone:
+
+```text
+C:\Users\conno\redbyte-ui-genesis-main
+```
 
 ## Current Working Command
 
 From the repo root:
 
 ```powershell
-corepack pnpm install --frozen-lockfile
-corepack pnpm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
-On 2026-06-12, this served the playground at:
+On 2026-06-12, after a user-level pnpm shim repair, this served the playground at:
 
 ```text
 http://localhost:5173/
@@ -31,9 +35,9 @@ http://localhost:5173/
 
 The root `dev`, `dev:lab3`, `dev:manual`, and `dev:playground` scripts now call `corepack pnpm --filter ...` internally. This keeps `corepack pnpm run dev` working in shells where the bare `pnpm` shim is missing.
 
-## Bare pnpm Caveat
+## Bare pnpm Status
 
-In this shell, bare `pnpm` is still unavailable:
+In the OneDrive clone before canonical worktree control, bare `pnpm` was unavailable:
 
 ```text
 pnpm : The term 'pnpm' is not recognized as the name of a cmdlet, function, script file, or operable program.
@@ -45,7 +49,28 @@ pnpm : The term 'pnpm' is not recognized as the name of a cmdlet, function, scri
 EPERM: operation not permitted, open 'C:\Program Files\nodejs\pnpm'
 ```
 
-`corepack prepare pnpm@10.24.0 --activate` completed, but did not put a bare `pnpm` command on PATH. Treat `corepack pnpm ...` as the canonical command for this desktop until the Windows Node/Corepack shim is repaired outside the repo.
+`corepack prepare pnpm@10.24.0 --activate` completed, but did not put a bare `pnpm` command on PATH.
+
+The canonical worktree pass then verified the user-scoped npm prefix:
+
+```text
+C:\Users\conno\AppData\Roaming\npm
+```
+
+That prefix is on PATH and writable without admin rights, so `npm install -g pnpm@10.24.0` was used as a user-level pnpm shim repair. After that:
+
+```powershell
+pnpm -v
+pnpm run dev
+```
+
+returned `10.24.0` and served `http://localhost:5173/` with HTTP 200.
+
+If bare `pnpm` breaks again, use the working fallback:
+
+```powershell
+corepack pnpm run dev
+```
 
 ## Course And Production-Style Launchers
 

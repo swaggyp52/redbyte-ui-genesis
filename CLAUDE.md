@@ -30,7 +30,7 @@ Canonical docs normally declare `doc_status: current` and `used_by_claude: true`
 
 Before starting any task:
 
-1. Start at the active clone root. This desktop clone is `C:\Users\conno\OneDrive\Documents\RedByte FPGA`. Older references to `C:\Users\conno\redbyte-ui` are historical/local aliases unless that path is explicitly selected by the user.
+1. Start at the active clone root. The canonical desktop clone is `C:\Users\conno\redbyte-ui-genesis-main`. `C:\Users\conno\OneDrive\Documents\RedByte FPGA` is historical/local source context only unless the user explicitly selects it again.
 2. Read `AGENTS.md`, then `AI_STATE.md`, then this file.
 3. Read `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
 4. For product/surface work, read the relevant product manual, contract, surface specs, readiness docs, and proof docs named by `docs/DOC_INDEX.md`.
@@ -54,13 +54,19 @@ node -v      # expected from .nvmrc: v20.19.0
 corepack pnpm -v
 ```
 
+The normal dev command should work after the user-level pnpm shim repair:
+
+```powershell
+pnpm run dev
+```
+
 If bare `pnpm` is not available on PATH, use:
 
 ```powershell
 corepack pnpm <script-or-command>
 ```
 
-Known caveat: several package scripts invoke bare `pnpm` internally. If a root script fails only because the shim is missing, reproduce with the direct `corepack pnpm ...` equivalent before treating it as a product failure.
+Known caveat: `corepack enable` can fail without permission to write `C:\Program Files\nodejs\pnpm`. If a root script fails only because the shim is missing, reproduce with the direct `corepack pnpm ...` equivalent before treating it as a product failure.
 
 ### Test Runner
 

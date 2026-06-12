@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-12 (docs: establish canonical RedByte worktree)
+
+**Subsystem:** Canonical worktree control, local dev command repair, and GitHub main sync preparation.
+
+**Changes:**
+- Preserved the previous non-git `C:\Users\conno\redbyte-ui-genesis-main` folder contents under `C:\Users\conno\redbyte-ui-genesis-main.archive-20260612-133417`.
+- Cloned `https://github.com/swaggyp52/redbyte-ui-genesis.git` into `C:\Users\conno\redbyte-ui-genesis-main` and made it the canonical local RedByte worktree.
+- Added the OneDrive clone as a temporary local remote, fetched it, fast-forwarded `main` through `fa116f90`, and removed the temporary remote.
+- Repaired bare `pnpm` for the current Windows user by installing `pnpm@10.24.0` into the user-scoped npm prefix `C:\Users\conno\AppData\Roaming\npm` after `corepack enable` failed on `C:\Program Files\nodejs\pnpm`.
+- Updated `AGENTS.md`, `CLAUDE.md`, `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/development/RED_BYTE_LOCAL_DEV_SERVER.md`, and repo-local RedByte skills so future agents use the canonical folder and verify push safety before remote delivery.
+- Did not change product UI source, circuit semantics, Verify behavior, export generation, VHDL, XDC, TCL, classroom goldens, Vivado proof, or Basys3 proof.
+
+**Evidence:** Phase 1 proved `C:\Users\conno\redbyte-ui-genesis-main` was a non-git RedByte file archive and `C:\Users\conno\OneDrive\Documents\RedByte FPGA` was the real clean Git repo at `fa116f90`, `main...origin/main [ahead 6]`, with `origin` set to `https://github.com/swaggyp52/redbyte-ui-genesis.git`. The canonical clone is now `main...origin/main [ahead 6]` at `fa116f90`. `corepack pnpm install --frozen-lockfile` passed. Initial bare `pnpm run dev` failed because `pnpm` was missing. `corepack enable` failed with `EPERM`, `corepack prepare pnpm@10.24.0 --activate` completed but did not expose `pnpm`, and the user-scoped `npm install -g pnpm@10.24.0` made `pnpm -v` return `10.24.0`. `pnpm run dev` then served `http://localhost:5173/` with HTTP 200. Pre-push validation passed: `corepack pnpm rb:doc:validate` (`29` passed, `0` failed), `corepack pnpm rb:encoding:check`, `corepack pnpm -s ide:gate:ece141-first-viewport` (`4` passed), `corepack pnpm -s ide:gate:ece141-product-immersion` (`4` passed), `corepack pnpm -s ide:gate:ece141-ui-hierarchy` (`2` passed), `corepack pnpm -s build:unified`, and `git diff --check` with only Git LF-to-CRLF working-copy warnings.
+
+**Safety:** Worktree control, startup docs, local tool shim repair, and routing docs only. The OneDrive clone was not deleted. The previous non-git canonical-folder contents were archived, not deleted. The dev server used for proof was stopped. User authorization allows a normal non-force push after validation and push-safety checks; force push remains disallowed.
+
+**Remaining risks:** Node 20.19.0 proof is still pending in this shell; validation uses the available Node `v24.15.0` and pnpm `10.24.0` unless a Node version manager is installed. `corepack enable` still cannot write the Program Files shim. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Source pushed to GitHub `main` is not the same as verified live/student deployment unless the deploy pipeline confirms it.
+
+**Next recommended task:** After canonical sync and push closeout, start the narrow Hardware / Map Pins visual credibility slice from the current visual audit before broader design cleanup.
+
 ## Change Log 2026-06-12 (chore: stabilize local RedByte dev workflow)
 
 **Subsystem:** Resident RedByte stewardship, local dev-server startup, repo-local playbooks, and visual product direction routing.

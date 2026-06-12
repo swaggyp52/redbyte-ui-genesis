@@ -9,6 +9,11 @@ Also follow:
 - `docs/DOC_INDEX.md` (current startup order, stale-zone routing, proof-storage rules)
 - `docs/ACTIVE_WORK.md` (current cockpit and next technical target)
 
+Canonical local worktree:
+- Use `C:\Users\conno\redbyte-ui-genesis-main` as the default RedByte working directory.
+- Treat `C:\Users\conno\OneDrive\Documents\RedByte FPGA` as historical/local source context only unless the user explicitly selects it again.
+- Before any push, verify folder, branch, remote, local/remote commit delta, validation results, and clean status. Never force push.
+
 Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKILL.md` playbook when the task matches it:
 - `redbyte-resident-steward` for repo stewardship, current cockpit routing, evidence boundaries, and closeout.
 - `redbyte-visual-product-review` for browser-backed visual/product direction audits.

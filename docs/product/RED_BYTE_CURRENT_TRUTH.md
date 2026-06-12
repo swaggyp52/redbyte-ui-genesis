@@ -113,11 +113,13 @@ Supporting truths:
 
 ### Repo / process hygiene
 
+- The canonical local RedByte worktree is now `C:\Users\conno\redbyte-ui-genesis-main`.
+- The prior `C:\Users\conno\OneDrive\Documents\RedByte FPGA` clone is historical/local source context only unless the user explicitly selects it again.
 - The initial desktop audit started from a clean tracked worktree at `main` commit `08a324cf`.
 - Bare `pnpm` was unavailable on PATH during the audit; `corepack pnpm` worked.
 - Root dev scripts now call `corepack pnpm --filter ...` internally, so `corepack pnpm run dev` works in this shell and serves the app at `http://localhost:5173/`.
-- Bare `pnpm` remains unavailable on PATH unless the Windows Corepack shim is repaired outside the repo. `corepack enable` failed locally with `EPERM` on `C:\Program Files\nodejs\pnpm`.
-- Other root scripts that call bare `pnpm` internally may still fail for environment reasons even when their direct `corepack pnpm ...` equivalent passes.
+- Bare `pnpm` now works in the canonical clone after a user-level `pnpm@10.24.0` install to `C:\Users\conno\AppData\Roaming\npm`. `corepack enable` still fails locally with `EPERM` on `C:\Program Files\nodejs\pnpm`.
+- If the user-level shim disappears, `corepack pnpm ...` remains the reliable fallback.
 - `build:unified` is no longer a current known blocker. Later `AI_STATE.md` and course-edition validation-log entries record passing `build:unified` and dist verification after the old route/lock drift.
 
 ---
