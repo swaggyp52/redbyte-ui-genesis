@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-06-12 (fix: improve Hardware Map Pins visual credibility)
+
+**Subsystem:** Hardware / Map Pins first-viewport visual credibility and browser geometry proof.
+
+**Changes:**
+- Added `ide:gate:ece141-hardware-visual-credibility`, a focused Playwright gate that asserts the Hardware Map Pins guide remains readable at `1366x768`, the Basys3 board and mapping table stay visible in the first viewport, and the secondary Open Export action does not dominate the mapping workbench.
+- Widened the Hardware-only left workbench dock policy and adjusted the Map Pins dock header/progress layout so guide copy no longer wraps into word fragments.
+- Shortened the Map Pins dock authority copy to: "Map signals to Basys3 controls. Export reads these pins for constraints."
+- Updated stale Hardware Map Pins tests that expected hidden right-inspector content to be mounted by default; tests now open the collapsed inspector before inspecting inspector-only details and assert visible row selection for the default mapping loop.
+- Did not change pin mapping semantics, XDC generation, VHDL/testbench/Tcl export, project data format, classroom goldens, Vivado proof, or Basys3 proof.
+
+**Evidence:** Before screenshots and geometry under `.redbyte/product-immersion/hardware-visual-credibility/before/` showed the `1366x768` Map Pins dock at about `115px` wide with the authority copy squeezed to about `60px` over roughly `12` lines. After screenshots and geometry under `.redbyte/product-immersion/hardware-visual-credibility/after/` show the `1366x768` dock at about `187px`, authority copy at about `127px` over `4` lines with no overflow, and the board/table still visible as the focal work area. The new gate first failed on old geometry, then passed after the fix (`2` tests). Existing checks passed: `ide:gate:ece141-first-viewport` (`4`), `ide:gate:ece141-product-immersion` (`4`), `ide:gate:ece141-ui-hierarchy` (`2`), `ide:gate:ece141-map-pins-recovery` (`1`), focused Hardware Vitest files (`29`), `rb:doc:validate` (`29`), `rb:encoding:check`, `git diff --check` with LF-to-CRLF working-copy warnings only, and `build:unified`.
+
+**Safety:** This is E0/browser/layout evidence only. The slice preserved E0/E1/E2/E3 evidence boundaries and did not run or claim fresh Vivado/Basys3 hardware proof. Screenshot and geometry artifacts are local and ignored.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Start the focused Verify fail-edit-repair-pass regression and fix. Keep Verify density/evidence-workbench cleanup as a separate later visual slice.
+
 ## Change Log 2026-06-12 (test: repair GitHub classroom truth gates)
 
 **Subsystem:** GitHub Actions required check truth, classroom gate contracts, and Lab 8 starter safety.

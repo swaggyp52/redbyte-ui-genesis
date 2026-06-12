@@ -101,9 +101,11 @@ Supporting truths:
 - The audit made no application source, test, golden, or product behavior changes.
 - The first-viewport repair slice is implemented: Project, Design, Hardware/Map Pins, and Export now expose the core action/work area at 1366x768, and the Export rail no longer says Draft when the current state is ready to build.
 - The repair was layout/hierarchy/copy only. It did not change simulation, export generation, VHDL, XDC, TCL, project data semantics, goldens, or Vivado/Basys3 proof.
+- The Hardware / Map Pins visual credibility slice is implemented: the left guide no longer wraps copy word-by-word, the board/table remain the focal workbench, and `ide:gate:ece141-hardware-visual-credibility` guards the 1366x768 geometry. Before/after local artifacts live under `.redbyte/product-immersion/hardware-visual-credibility/`.
+- The Hardware visual slice did not change pin mapping semantics, XDC generation, VHDL/testbench/Tcl export, project data format, goldens, Vivado proof, or Basys3 proof.
 - The current visual direction is Course Lab Workbench: serious circuit/proof/board/export artifacts, calm density, consistent trust-state grammar, and no generic SaaS or toy simulator styling.
-- The next visual implementation slice is design-system/token/shared primitive cleanup before broad surface polish.
-- The next behavior/proof slice remains the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
+- The next behavior/proof slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
+- The next visual slice after the Verify behavior fix is Verify density / evidence workbench cleanup, kept separate from fail-edit-repair.
 - One preview-backed gate caveat remains: `ide:gate:export-ready-contract` currently fails before Export in Verify setup with `verify had neither a visible generate-basics action nor an existing ready-vector state`; the first-viewport export flow, product immersion export flows, and export download contract pass.
 
 ### Commercial posture
@@ -145,8 +147,8 @@ Supporting truths:
 
 The approved order is:
 
-1. Visual design-system/token/shared primitive cleanup from the Course Lab Workbench baseline.
-2. Verify fail-edit-repair-pass regression and fix as the next behavior/proof slice.
+1. Verify fail-edit-repair-pass regression and fix.
+2. Verify density / evidence workbench cleanup.
 3. Broader student workflow browser suite.
 4. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
 5. Student and instructor quickstarts.

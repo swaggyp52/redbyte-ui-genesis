@@ -1638,7 +1638,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className="ide-hw-map-dock-head-main">
           <h3>Map Pins</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
-            Saved board bindings live here. Export reads these pins for constraints and handoff files.
+            Map signals to Basys3 controls. Export reads these pins for constraints.
           </p>
         </div>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>

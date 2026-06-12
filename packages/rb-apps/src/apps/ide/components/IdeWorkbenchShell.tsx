@@ -388,6 +388,12 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
               : layoutMode === 'standard'
                 ? { left: { min: 124, max: 144 }, right: { min: 232, max: 292 } }
                 : { left: { min: 116, max: 136 }, right: { min: 216, max: 272 } }
+            : mode === 'hardware'
+              ? layoutMode === 'wide'
+                ? { left: { min: 268, max: 296 }, right: { min: 220, max: 248 } }
+                : layoutMode === 'standard'
+                  ? { left: { min: 256, max: 284 }, right: { min: 208, max: 236 } }
+                  : { left: { min: 236, max: 260 }, right: { min: 196, max: 224 } }
             : usesCalmerNonDesignShell
               ? layoutMode === 'wide'
                 ? { left: { min: 168, max: 188 }, right: { min: 220, max: 248 } }

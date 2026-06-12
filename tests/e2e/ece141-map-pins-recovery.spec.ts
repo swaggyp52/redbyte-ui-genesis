@@ -62,7 +62,8 @@ test('ECE141 Map Pins manual edit and starter recovery smoke', async ({ page }) 
   await expect(page.getByTestId('ide-hw-map-row-binding-sw0')).toContainText(/SW0 \(pin V17\)/i);
 
   await page.getByTestId('ide-hw-map-row-sw0').click();
-  await expect(page.getByTestId('ide-hw-selected-signal-card')).toContainText(/SW0/i);
+  await expect(page.getByTestId('ide-hw-map-row-sw0')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('ide-hw-map-row-sw0')).toHaveClass(/is-selected/);
   await expect(page.getByTestId('ide-hw-map-sw-2-hit')).toBeVisible({ timeout: 15_000 });
   await page.getByTestId('ide-hw-map-sw-2-hit').click();
   await expect(page.getByTestId('ide-hw-map-row-binding-sw0')).toContainText(/SW2 \(pin W16\)/i);

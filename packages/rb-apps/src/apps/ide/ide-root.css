@@ -22075,7 +22075,15 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-left: 3px solid rgba(56, 189, 248, 0.65);
 }
 [data-ide-mode-marker='hardware'] .ide-hw-map-dock-header.ide-workbench-placeholder-header {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 8px;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-map-dock-header.ide-workbench-placeholder-header > .ide-status-pill {
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-map-dock-head-main {
   flex: 1;
@@ -22086,6 +22094,23 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-size: var(--rb-font-size-1);
   color: var(--ide-text-soft);
   line-height: var(--rb-line-height-2);
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock--map .ide-hw-map-progress-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 4px;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock--map .ide-hw-map-progress-row > span:nth-child(2) {
+  min-width: 0;
+}
+[data-ide-mode-marker='hardware'] .ide-hw-dock--map .ide-hw-map-progress-row > .ide-status-pill {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
 }
 [data-ide-mode-marker='hardware'] .ide-hw-dock-panel.ide-hw-dock--bringup {
   border-left: 3px solid rgba(52, 211, 153, 0.65);

@@ -131,10 +131,10 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
     expect(queryByTestId('ide-hw-callout')).toBeNull();
-    expect(getByTestId('ide-inspector')).toBeTruthy();
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
     expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('LD0');
     expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('pin U16');
-    expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
@@ -613,8 +613,7 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(row);
     expect(row.getAttribute('aria-pressed')).toBe('true');
-    // Selected signal card still shows the current pin assignment even without the guide.
-    expect(getByTestId('ide-hw-selected-signal-card').textContent).toContain('V17');
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('SW0 / V17');
     fireEvent.click(getByTestId('ide-hw-map-sw-1'));
 
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
@@ -655,7 +654,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('shows board planner clock truth, supported resources, and xdc preview in Hardware', () => {
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getByText, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Clock planner"
@@ -675,7 +674,10 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    // No inspector-heavy defaults until the user picks a signal or board control.
+    // Inspector details are on demand; open them before checking inspector-specific copy.
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
+    expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Ready to map');
     fireEvent.click(getByTestId('ide-hw-clock-resource-card'));
 
@@ -713,6 +715,9 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
+    expect(getByTestId('ide-inspector')).toBeTruthy();
     expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Select a signal row');
     expect(queryByTestId('ide-hw-xdc-preview')).toBeNull();
     expect(queryByTestId('ide-hw-map-preflight-details')).toBeNull();
