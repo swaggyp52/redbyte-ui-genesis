@@ -227,6 +227,7 @@ User picks file
 | `ide-design-live-sim-contract.mjs` | Simulation ticks advance and pause |
 | `ide-export-generates-hdl.mjs` | Export produces VHDL with entity/architecture |
 | `ide-export-ready-contract.mjs` | Export shows correct blocked/ready state |
+| `ide-export-trust-integrity.mjs` | Export trust gate proves visible previews, ZIP entries, README/provenance, and E0/E1/E2/E3 wording agree |
 | `ide-layout-contract.mjs` | Shell layout elements and resize handles present |
 | `ide-persistence-contract.mjs` | Project state survives page reload |
 | `ide-project-readiness-contract.mjs` | Project surface readiness checklist renders |

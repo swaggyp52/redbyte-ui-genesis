@@ -60,6 +60,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:export-e2e-contract'],
   },
   {
+    name: 'ide:gate:export-trust-integrity',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:export-trust-integrity'],
+  },
+  {
     name: 'ide:gate:shell-layout-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:shell-layout-integrity'],

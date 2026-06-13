@@ -28,12 +28,14 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:design-workbench-integrity`
+- `ide:gate:export-trust-integrity`
 - `ide:gate:shell-layout-integrity`
 
 Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
+- Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
 
 ## Choosing The Right Test
@@ -82,7 +84,6 @@ For hardening slices, closeout is not done at local green:
 
 | Gap | Recommended next gate |
 |---|---|
-| Export generated artifact count, visible preview, downloaded ZIP, and trust labels are not proven together. | `ide:gate:export-trust-integrity` |
 | Import utility access is ambiguous after a project is loaded. | `ide:gate:import-utility-access` after product contract decision |
 | Verify workbench still needs visual hierarchy repair, even though behavior is covered. | `ide:gate:verify-evidence-workbench-integrity` after the Verify slice |
 

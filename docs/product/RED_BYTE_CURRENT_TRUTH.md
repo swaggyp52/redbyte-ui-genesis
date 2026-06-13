@@ -91,7 +91,7 @@ Supporting truths:
 - The authoritative source/state docs are `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, and `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`.
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
-- Two findings remain open: Export generated-artifact preview is not obvious in the normal workflow, and Import utility access is ambiguous after a project is loaded.
+- The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; Import utility access remains ambiguous after a project is loaded.
 - New invariant gates `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
@@ -99,7 +99,7 @@ Supporting truths:
 - Project, Hardware, and Export are materially stronger than earlier audits, but the V1 workbench hierarchy is still not done.
 - Design still fails the V1 target at `1366x768`: the loaded circuit graph is not the first-viewport focal object.
 - Verify behavior is credible and fail-edit-repair is covered, but the evidence workbench remains dense.
-- Export distinguishes draft versus E0-ready states, but the current screenshot evidence shows a mapping-summary contradiction risk: `5/5 mapped` can coexist with "No required board I/O for this export."
+- Export distinguishes draft versus E0-ready states, generated previews are visible by default, and `ide:gate:export-trust-integrity` proves visible preview/ZIP/README/provenance agreement. Later Export Handoff Station work should focus on visual hierarchy, not reopening the fixed mapping-summary contradiction without new evidence.
 - Hardware / Map Pins shows board/table mapping well, but hardware-ready wording must stay E0-scoped and not imply E1/E2/E3.
 
 ### Vivado/Basys3 proof posture
@@ -137,6 +137,7 @@ Supporting truths:
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
 - Design graph/camera integrity is covered by `ide:gate:design-canvas-zoom-integrity` and strengthened by `ide:gate:design-workbench-integrity`.
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
+- Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -158,10 +159,10 @@ Approved V1 order:
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after the under-the-hood sprint is:
+The next audit-driven product slice after Export Trust Integrity is:
 
 ```text
-test/fix: prove Export trust integrity
+fix: rebuild Verify evidence workbench
 ```
 
-It should prove that Export handoff summary, generated artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agree. After that, resume the V1 visual queue with Verify Evidence Workbench and shell/workbench hierarchy work as scoped slices. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should make PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path first-order while preserving current Verify semantics. After that, continue with shell/workbench hierarchy work as a scoped slice. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

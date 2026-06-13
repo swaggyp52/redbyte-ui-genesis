@@ -28,8 +28,8 @@ Import is a utility. Vivado build, board programming, and board observation are 
 ## Top Priorities
 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
-2. **Next audit-driven code slice: Export Trust Integrity.** The normal-use breakage audit found Export generated-artifact preview visibility as the clearest P1 gap. Prove handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
-3. **Then resume the V1 surface sequence with Verify Evidence Workbench and shell/workbench hierarchy work as separate slices.** Verify behavior is credible; density and repair hierarchy remain a V1 product issue.
+2. **Export Trust Integrity is closed.** `ide:gate:export-trust-integrity` now proves the mapped/verified Export handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
+3. **Next audit-driven code slice: Verify Evidence Workbench.** Verify behavior is credible; density and repair hierarchy remain the next V1 product issue.
 4. **Keep Import / Recovery as a scoped utility-contract slice.** The audit found Import access ambiguity after loaded Project, but it is P2 and should not be mixed into Export.
 5. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
 6. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
@@ -45,9 +45,8 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Under-the-hood state authority | The sprint maps project runtime, circuitStore, logic-view camera/selection, Verify health, mapping, Export, Import, persistence, and proof-tier ownership. | Read the under-the-hood map and state authority matrix before changing stateful product code. |
 | Shell/status hierarchy | Shell repeats state across top ribbon, left rail, evidence box, surface hero, right rail, and bottom status. New shell-layout integrity gate proves visibility/no-overflow but does not redesign hierarchy. | Keep shell hierarchy as a future scoped visual/workbench slice; do not confuse the gate with visual redesign completion. |
 | Design first viewport | Current `1366x768` screenshot still does not make the actual circuit graph the first-viewport focal object. | Fix in the scoped Design Workbench slice after higher-risk trust gaps are closed. |
-| Verify evidence density | Verify PASS/FAIL behavior is strong, but the evidence/repair loop is visually dense. | Rebuild as Verify Evidence Workbench after Export Trust Integrity unless a new audit reprioritizes it. |
-| Export artifact evidence | Normal-use audit reached generated-artifact state but did not find an obvious artifact preview in the primary workflow. | Next slice should add/prove Export Trust Integrity. |
-| Export mapping summary | Current screenshots show risk of same-viewport contradiction: `5/5 mapped` can coexist with "No required board I/O for this export." | Include in Export Trust Integrity / Export Handoff Station work. |
+| Verify evidence density | Verify PASS/FAIL behavior is strong, but the evidence/repair loop is visually dense. | Rebuild as the next scoped product slice unless a new audit reprioritizes it. |
+| Export trust integrity | Closed 2026-06-13: generated previews are visible by default, the focused gate compares visible previews with downloaded ZIP entries, and the mapping summary no longer contradicts mapped board I/O rows. | Keep `ide:gate:export-trust-integrity` in `classroom:gate` and `verify:gates:classroom`; later Export Handoff Station work should focus on visual hierarchy, not reopening byte/trust proof without new evidence. |
 | Import utility access | Import is demoted from the primary spine, but loaded Project did not expose an obvious Import utility while the manual still describes Import in the left rail. | Resolve contract and add an Import utility-access gate later. |
 | Hardware proof language | Hardware / Map Pins is visually stronger, but "ready to build hardware" can be read beyond E0. | Tighten wording in Hardware / Basys3 Workbench slice. |
 | Lab profile/course-pack seam | Target model exists, but implementation is intentionally deferred to queue item 11. | Do not start until workbench hierarchy and trust slices land or user reprioritizes. |
@@ -56,29 +55,30 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Export Trust Integrity.
+**Target:** Verify Evidence Workbench.
 
 Structured hardening ticket fields to start from:
 
-- Title: Prove Export trust integrity.
-- Surface: Export.
-- Journey segment: verified/mapped project to Vivado handoff.
-- Observed behavior: normal-use audit reached generated-artifact state but did not find an obvious artifact preview; older V1 screenshots also show mapping-summary contradiction risk.
-- Expected behavior: Export handoff summary, generated artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agree in one normal workflow.
-- Minimum acceptance proof: focused Export browser gate; export download/e2e/artifact explorer gates; generated ZIP inspection; no export-generation/golden changes unless source-explained.
+- Title: Rebuild Verify evidence workbench.
+- Surface: Verify.
+- Journey segment: Compare PASS, intentional expected-output FAIL, repair back to PASS.
+- Observed behavior: Verify behavior is credible and fail-edit-repair is gate-backed, but evidence, first mismatch, expected/observed values, waveform, and repair path are visually dense.
+- Expected behavior: PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path are first-order and readable without changing Verify semantics.
+- Minimum acceptance proof: focused Verify workbench browser gate or strengthened existing Verify gate; `ide:gate:verify-fail-edit-repair`; relevant Verify contract tests; before/after screenshots at common classroom viewports; no simulation or Verify result semantics changes unless explicitly targeted and tested.
 
 Suggested commit:
 
 ```text
-test: prove Export trust integrity
+fix: rebuild Verify evidence workbench
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Export Trust Integrity | Closed 2026-06-13: added `ide:gate:export-trust-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves mapped Logic Gates -> Verify Compare PASS -> Export READY -> Build Current Bundle, visible generated previews, downloaded Vivado ZIP entries, preview body parity, README/provenance E0/E1/E2/E3 boundary wording, XDC mapped pin count, and `EXPECTED_IO.json` output evidence. |
 | Under-the-Hood Mastery Sprint | Created source-level subsystem map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc. Added `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. |
-| Normal-use breakage audit | Fresh local server at `http://127.0.0.1:5175` showed `Buildd235823`; audit recorded no console/page errors and no Design blank-canvas regression. Deferred findings: Export artifact preview visibility P1, Import utility-access ambiguity P2. |
+| Normal-use breakage audit | Fresh local server at `http://127.0.0.1:5175` showed `Buildd235823`; audit recorded no console/page errors and no Design blank-canvas regression. Export artifact preview visibility is now closed by the Export Trust Integrity slice; Import utility-access ambiguity remains P2. |
 | V1 contract reset screenshot capture | 30 screenshots captured under `.redbyte/product-immersion/v1-contract-reset/screenshots/` across Project, Design, Verify observation, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, Import, and public start states at `1366x768`, `1440x900`, and `1920x1080`. Capture summary recorded zero console/page errors, zero root horizontal overflow, base URL `http://127.0.0.1:5174`, and UI build `2d17655` matching HEAD `2d176550`. |
 | V1 competitive/workflow research | Official/primary-source research covered AMD Vivado UG892/UG908, Digilent Basys3/XDC, CircuitVerse, Logisim Evolution, Digital, HDLBits, and public university Basys3/Vivado lab workflows. |
 | GitHub main pre-reset health | Before this docs slice, `main` at `2d176550` was in sync with `origin/main`. GitHub check-runs for `Classroom Truth Gates`, deploy, and manual Nightly Heavy Suites were green; optional manual screenshot/UI smoke jobs were skipped by design. |
@@ -113,9 +113,9 @@ If a doc references a generated pack that is missing locally, do not treat the t
 
 | Status | Item | Evidence |
 |---|---|---|
-| Current | Under-the-Hood Mastery Sprint. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`; `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`; `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`; normal-use audit; invariant gates. |
-| Next | Export Trust Integrity. | `RB-EXPORT-TRUST-001`; normal-use breakage audit. |
-| Later | Verify Evidence Workbench. | `RB-VERIFY-EVIDENCE-001` in issue index after reset. |
+| Closed | Under-the-Hood Mastery Sprint. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`; `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`; `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`; normal-use audit; invariant gates. |
+| Closed | Export Trust Integrity. | `RB-EXPORT-TRUST-001`; `ide:gate:export-trust-integrity`. |
+| Next | Verify Evidence Workbench. | `RB-VERIFY-EVIDENCE-001` in issue index after reset. |
 | Later | Shell and Workbench Layout Reset. | `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`; V1 visual audit. |
 | Later | Project Command Center. | `RB-PROJECT-CC-001` in issue index after reset. |
 | Later | Export Handoff Station. | `RB-EXPORT-HANDOFF-001` in issue index after reset. |

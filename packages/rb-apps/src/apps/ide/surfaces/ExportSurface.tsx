@@ -476,9 +476,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     return (effectivePinsByPortKey[toPortKey(r.port)] ?? '').trim().length > 0;
   }).length;
   const mappingPlain = useMemo(() => {
-    if (requiredCount === 0) return 'No required board I/O for this export.';
+    if (requiredCount === 0) {
+      if (mappedCount > 0) {
+        return `${mappedCount} mapped board I/O row${mappedCount === 1 ? '' : 's'}; no missing required pins.`;
+      }
+      return 'No board I/O rows for this export.';
+    }
     return `${requiredMappedCount} of ${requiredCount} required ports have Basys3 pin assignments.`;
-  }, [requiredCount, requiredMappedCount]);
+  }, [mappedCount, requiredCount, requiredMappedCount]);
   // Use diagnostic codes rather than regex-on-message-text so that RBEX3001
   // ("Ignoring source XDC directive "create_clock"…") is never mistaken for a
   // clock-domain blocker.  Clock blockers are RBEX4200–RBEX4204 only.
@@ -1897,7 +1902,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                         ))}
                       </div>
                       {selectedArtifact && (
-                        <details className="ide-export-generated-previews" data-testid="ide-export-generated-previews">
+                        <details className="ide-export-generated-previews" data-testid="ide-export-generated-previews" open>
                           <summary className="ide-summary-toggle">Generated file previews</summary>
                           <div className="ide-export-artifact-preview ide-export-artifact-preview-v2">
                             <div className="ide-export-artifact-preview-header">

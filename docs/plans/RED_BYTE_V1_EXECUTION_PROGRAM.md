@@ -78,6 +78,8 @@ Rollback:
 
 ## Phase 1.6 - Export Trust Integrity
 
+Status: Closed 2026-06-13 by `ide:gate:export-trust-integrity`.
+
 Goal: Prove that Export's visible trust state and generated artifact evidence agree in a normal student workflow.
 
 Why: The normal-use breakage audit reached generated-artifact state but did not find an obvious artifact preview. Earlier V1 evidence also showed mapping-summary contradiction risk. Export is the most consequential handoff, so its summary, artifact count, preview, ZIP bytes, README/provenance, Draft/Trusted labels, and proof-tier language must agree.
@@ -102,6 +104,7 @@ Acceptance:
 - Trusted Export requires current Compare PASS, current mapping, and current bundle.
 - Artifact preview matches ZIP contents.
 - Export does not claim Vivado build, programming, or physical observation.
+- The 2026-06-13 closeout also fixed the mapped board I/O summary contradiction and made generated previews visible by default without changing generated artifact bytes.
 
 Rollback:
 
@@ -196,24 +199,24 @@ Rollback:
 
 Goal: Make Export the single source for draft/E0-ready package trust and Vivado handoff.
 
-Why: Export is the most consequential handoff. Any contradictory mapping or readiness language weakens trust.
+Why: Export is the most consequential handoff. Trust integrity is now gate-backed, but the surface still needs later visual/workbench hierarchy work so package readiness, mapping/provenance, and Vivado next steps read as one handoff station.
 
 Implementation slices:
 
 - One trust state.
-- Mapping summary correction.
+- Mapping summary correction already closed by Phase 1.6; preserve it.
 - Artifact provenance.
 - Vivado next steps and E0/E1/E2/E3 ladder.
 
 Proof:
 
 - Export draft and ready screenshots.
-- Export download/artifact explorer/ready gates.
+- Export download/artifact explorer/ready/trust gates.
 - Package generation tests if generation code changes.
 
 Acceptance:
 
-- No same-viewport contradiction such as `5/5 mapped` plus `No required board I/O`.
+- No regression of the fixed mapped board I/O summary.
 - E0 ready never implies E1/E2/E3.
 
 Rollback:

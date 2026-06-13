@@ -55,14 +55,14 @@ Evidence inputs:
 | Hardware table | Valuable and visible. | Map signals. | Trace assignment IO. | Keep/Rebuild locally | `HardwareSurface.tsx` | Signal rows visible with board at `1366x768`. |
 | Basys3 board visual | Valuable and differentiating. | See physical target. | Confirms board-specific workflow. | Keep/Rebuild locally | `Basys3BoardView.tsx`, `HardwareSurface.tsx` | Highlight and mapped state remain synchronized. |
 | Hardware ready language | "Ready to build hardware" can read beyond E0. | Next action. | Proof safety. | Rebuild | `HardwareSurface.tsx`, workflow authority | Copy says E0 handoff / Vivado next, not hardware proof. |
-| Export handoff summary | Right concept, but mapping summary can contradict mapped state. | Trust package. | Grade/support evidence. | Rebuild | `ExportSurface.tsx`, export primitives, workflow authority | No contradictory mapped/unmapped text. |
+| Export handoff summary | Trust integrity is now gate-backed, but later visual station work should make readiness, mapping/provenance, and Vivado next steps read as one handoff. | Trust package. | Grade/support evidence. | Keep/Rebuild locally | `ExportSurface.tsx`, export primitives, workflow authority | No regression of mapped summary; Export trust gate and screenshots pass. |
 | Export evidence ladder | Essential, but dense and low in viewport. | Know what package proves. | Safe classroom language. | Rebuild | `ExportSurface.tsx` | E0/E1/E2/E3 ladder readable and first-order enough. |
 | Export primary action | Visible now, but surface still repeats trust state. | Download/build package. | Handoff to Vivado. | Keep/Rebuild locally | `ExportSurface.tsx` | One trust state, one primary action. |
 | Import wizard | Correct as utility, but too prominent if treated as main spine. | Recover/import work. | Instructor migration path. | Demote | `ImportSurface.tsx` | Utility path clear; not primary workflow. |
 | Debug/dev details | Some internal proof/data details appear in student path. | Low. | Support only. | Demote | Multiple surfaces | Advanced/details disclosures hold support content. |
 | Chips/status pills | Useful language, but too many styles and authorities. | Quick scan. | Review readiness. | Rebuild | shared primitives/CSS | Shared state grammar across surfaces. |
 | Accounts/SaaS/classroom groups | Not present and not currently needed for V1 trust. | Later convenience. | Later management layer. | Defer | Future hosted layer | Concrete hosted-data requirement before work starts. |
-| Lab profile/course-pack seam | Important, but less urgent than trust and workbench hierarchy repair. | Instructor-authored labs later. | Core future value. | Defer to queue item 11 | `RED_BYTE_LAB_PROFILE_MODEL.md`, starter data | First profile-backed lab after Export trust, Verify, shell/Project/Export/HW/Design stability. |
+| Lab profile/course-pack seam | Important, but less urgent than trust and workbench hierarchy repair. | Instructor-authored labs later. | Core future value. | Defer to queue item 11 | `RED_BYTE_LAB_PROFILE_MODEL.md`, starter data | First profile-backed lab after Verify, shell/Project/Export/HW/Design stability. |
 
 ## Near-Term Deletion / Demotion Rules
 
@@ -77,12 +77,12 @@ Evidence inputs:
 
 Use this structured ticket before the next code slice:
 
-- Title: Reset RedByte workbench shell layout.
-- Surface: Global shell and first-viewport frame across Project, Design, Verify, Hardware, Export, Import.
-- Journey segment: first lab start through verified mapped export.
-- Observed behavior: repeated shell/status authorities and surface-local chrome compete with the work object.
-- Expected behavior: one compact shell/status authority; each surface first viewport focuses on the current job.
-- Acceptance proof: before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; no root overflow; existing behavior gates green; no semantics/export/golden/hardware changes.
+- Title: Rebuild Verify evidence workbench.
+- Surface: Verify.
+- Journey segment: Compare PASS, intentional expected-output FAIL, repair back to PASS.
+- Observed behavior: Verify behavior is gate-backed, but evidence, first mismatch, expected/observed values, waveform, and repair path remain dense.
+- Expected behavior: PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path are first-order without changing Verify semantics.
+- Acceptance proof: focused Verify workbench gate or strengthened Verify gate; `ide:gate:verify-fail-edit-repair`; before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; no simulation, export, golden, or hardware changes.
 
 ## Attribution
 

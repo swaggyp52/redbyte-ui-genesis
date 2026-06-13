@@ -201,16 +201,19 @@ Must not:
 The approved execution order is:
 
 1. V1 Contract Reset.
-2. Shell and Workbench Layout Reset.
-3. Verify Evidence Workbench.
-4. Project Command Center.
-5. Export Handoff Station.
-6. Hardware / Basys3 Workbench.
-7. Design Workbench.
-8. Lab Profile / Course Pack Data Seam.
-9. Import / Recovery.
-10. Student/Instructor Quickstarts.
-11. Vivado/Basys3 Proof Restoration.
+2. Under-the-Hood Mastery Sprint.
+3. Export Trust Integrity.
+4. Verify Evidence Workbench.
+5. Shell and Workbench Layout Reset.
+6. Project Command Center.
+7. Export Handoff Station.
+8. Hardware / Basys3 Workbench.
+9. Design Workbench.
+10. Import / Recovery.
+11. Lab Profile / Course Pack Data Seam.
+12. Student/Instructor Quickstarts.
+13. Vivado/Basys3 Proof Restoration.
+14. Packaging/Commercial Readiness.
 12. Packaging/Commercial Readiness.
 
 ## Non-Negotiables

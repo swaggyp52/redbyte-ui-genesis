@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset and Under-the-Hood Mastery Sprint. The next implementation slice should be selected from the normal-use breakage audit, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, and Export Trust Integrity closeout. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -16,11 +16,11 @@ This is the ordered near-term queue after the V1 product contract reset and Unde
 |---|---|---|---|---|---|
 | 1 | V1 Contract Reset | Establish the research, visual evidence, contract, delete/demote/rebuild inventory, and execution program before more product code. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`, `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md` | `docs:` | Closed before this queue update. |
 | 2 | Under-the-Hood Mastery Sprint | Build the source/state/proof model and add invariant gates so normal user actions do not break trust silently. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, state authority matrix, invariant matrix, normal-use audit, gate ownership doc | `test:` / `docs:` | Subsystem map, state matrix, invariant matrix, normal-use audit, and at least two invariant gates committed and pushed; classroom and deploy checks green. |
-| 3 | Export Trust Integrity | The normal-use audit found generated artifacts but no obvious artifact preview, and earlier V1 evidence found mapping-summary contradiction risk. | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`, `RB-EXPORT-TRUST-001`, `RB-EXPORT-HANDOFF-001` | `test:` or `fix:` | Export handoff summary, artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agree. |
+| 3 | Export Trust Integrity | The normal-use audit found generated artifacts but no obvious artifact preview, and earlier V1 evidence found mapping-summary contradiction risk. | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`, `RB-EXPORT-TRUST-001`, `RB-EXPORT-HANDOFF-001` | `test:` or `fix:` | Closed 2026-06-13: `ide:gate:export-trust-integrity` proves handoff summary, artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agreement. |
 | 4 | Verify Evidence Workbench | Verify behavior is strong, but the evidence/repair loop still reads like a dense instrument panel. | V1 contract Verify section, visual audit, `RB-VERIFY-EVIDENCE-001` in the issue index | `fix:` or `refactor:` | PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path are first-order; Verify gates remain green. |
 | 5 | Shell and Workbench Layout Reset | The shell repeats too many status authorities and every surface inherits that first-viewport problem. New shell-layout gate guards visibility, but the hierarchy still needs product design work. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`, visual audit | `fix:` | One compact shell/status authority; Project/Design/Verify/Hardware/Export/Import screenshots at common viewports; behavior gates still green; no semantics/export/hardware changes. |
 | 6 | Project Command Center | Project should be a command center for blank, starter, saved, import/recovery, and future instructor lab paths, not a starter gallery. | V1 contract Project section, visual audit, `RB-PROJECT-CC-001` | `fix:` | No-circuit copy is neutral; next action visible without scroll; ECE141-specific identity is demoted. |
-| 7 | Export Handoff Station | After trust integrity is proven, finish the visual/workbench handoff station around the same authority. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Draft/E0-ready states are singular; mapping summary agrees with actual mapping; export gates and artifact checks pass. |
+| 7 | Export Handoff Station | After trust integrity is proven, finish the visual/workbench handoff station around the same authority. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Draft/E0-ready states are singular in the first-viewport hierarchy; mapping summary remains aligned with actual mapping; export gates and artifact checks pass. |
 | 8 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Signal -> board resource -> package pin -> XDC chain is visible; no E1/E2/E3 overclaim. |
 | 9 | Design Workbench | The circuit graph must become the first object after a starter or project loads. | V1 contract Design section, visual audit, `RB-DESIGN-WB-001` | `fix:` | Meaningful nodes/connections are visible at `1366x768`; palette/toolbar/inspector support the graph instead of displacing it. |
 | 10 | Import / Recovery | Import stays a utility but needs access contract alignment and representative fidelity/recovery proof. | V1 contract Import section, normal-use audit, `RB-IMPORT-001`, `RB-IMPORT-ACCESS-001` | `fix:` or `test:` | Documented Import utility path is visible, failed import does not replace current project, and representative import/recovery paths prove fidelity messages. |
@@ -33,8 +33,9 @@ This is the ordered near-term queue after the V1 product contract reset and Unde
 
 | Item | Status |
 |---|---|
+| Export Trust Integrity | Closed 2026-06-13: generated file previews open by default, mapped board I/O summary no longer contradicts actual mapping, and `ide:gate:export-trust-integrity` is wired into focused, classroom, and broad classroom gates. |
 | Design canvas zoom integrity | Closed 2026-06-13: root cause was React click event forwarded to `fitToCircuit`; `ide:gate:design-canvas-zoom-integrity` guards non-finite camera and blank graph regression. |
-| Under-the-Hood Mastery Sprint | Current closeout slice: created source/state/proof docs, normal-use audit, and invariant gates. |
+| Under-the-Hood Mastery Sprint | Closed 2026-06-13: created source/state/proof docs, normal-use audit, and invariant gates. |
 | Nightly FPGA Bridge Proof port isolation | Closed and green on GitHub before this reset: `Classroom Truth Gates`, deploy, and manual Nightly Heavy Suites were green for commit `2d176550`; optional manual screenshot/UI smoke jobs were skipped by design. |
 | Verify fail-edit-repair regression | Done 2026-06-12: `ide:gate:verify-fail-edit-repair` proves PASS -> expected-output edit/stale -> FAIL -> repair/stale -> PASS, Project PASS/CLEAN, and Export Checks match / READY TO BUILD. |
 | General Lab Workbench Sprint 0 / gate truth | Done 2026-06-12: stale Verify/Export gate assumptions repaired; `ide:gate:from-scratch-general-workflow` added; blank-project IO/export aliasing defects fixed; lab profile target model documented. |
@@ -48,7 +49,7 @@ This is the ordered near-term queue after the V1 product contract reset and Unde
 
 ## Queue Rules
 
-- The next code slice after the under-the-hood sprint is `test: prove Export trust integrity`.
+- The next code slice after Export Trust Integrity is `fix: rebuild Verify evidence workbench`.
 - Lab profile / course-pack work is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-13 (fix: prove Export trust integrity)
+
+**Subsystem:** RedByte IDE Export trust integrity, artifact preview, and Vivado handoff evidence.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `fdd1abd9735c2ccb15ce0cd45c662e2a00d030c1`.
+- Added `ide:gate:export-trust-integrity` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- The new gate proves the mapped Logic Gates starter path through Verify Compare PASS, Export `READY TO BUILD`, Build Current Bundle, visible generated previews, downloaded Vivado Project ZIP entries, preview body parity, README E0/E1/E2/E3 boundary text, provenance headers, XDC mapping count, and `EXPECTED_IO.json` output evidence.
+- Made Export generated file previews open by default so the artifact body is visible in the normal workflow instead of hidden behind a closed disclosure.
+- Fixed the Export mapping summary contradiction: mapped rows now report mapped board I/O rows with no missing required pins instead of saying there is no required board I/O.
+- Updated current-truth/work-queue/invariant/gate ownership docs so Export Trust Integrity is closed and the next product slice is Verify Evidence Workbench.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/playground build`; focused Export Vitest batch covering Export surface/workstation/trust/handoff/package/Vivado contracts; `pnpm -s ide:gate:export-download-contract`; `pnpm -s ide:gate:export-artifact-explorer-contract`; `pnpm -s ide:gate:export-ready-contract`; `pnpm -s ide:gate:export-trust-integrity`; `pnpm -s ide:gate:from-scratch-general-workflow`; `pnpm -s ide:gate:verify-fail-edit-repair`; `pnpm -s ide:gate:design-workbench-integrity`; `pnpm -s ide:gate:shell-layout-integrity`; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate`; `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. In-app browser smoke on fresh static preview `http://127.0.0.1:5176/os/?mode=export&e2e=1` showed `Buildfdd1abd`, Export visible, preview details open, and mapping summary/handoff mapping both reading "No board I/O rows for this export." for the blank blocked state.
+
+**Safety:** This slice changes Export presentation and browser proof only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, golden artifacts, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Full `pnpm repo:status` is not green in this shell because existing `ide:gate:project-health-live-contract` times out waiting for `[data-testid="ide-verify-add-vector-form"]`; this is outside the Export Trust Integrity files and aligns with the next Verify Evidence Workbench slice. Verify Evidence Workbench, shell/workbench hierarchy, Project Command Center, Import utility access, and later visual Export Handoff Station work remain product slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: rebuild Verify evidence workbench` from `RB-VERIFY-EVIDENCE-001`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (test: harden RedByte state authority invariants)
 
 **Subsystem:** RedByte IDE under-the-hood state authority, normal-use proof, and invariant gates.
