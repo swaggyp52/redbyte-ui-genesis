@@ -44,6 +44,7 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 ### Shell chrome controls
 
 - **User chrome toggles** (`IdeWorkbenchShell.tsx`, `chromeToggles.ts`): the shell owns persistent visibility controls under `rb.ide.chrome.toggles.v1` for side rails, console, the Design toolbar, and Verify command-bar inner rows. The controls live outside surface `CHROME_CONTRACT.topStripSlots`, so they do not add a new top-strip slot or hide Hardware sub-mode exit banners.
+- **Workflow/status authority** (`IdeApp.tsx`, `IdeLeftRail.tsx`, `IdeStatusBar.tsx`, `ide-polish-pass.css`): the compact proof ribbon is now the single shell workflow/status authority. The left rail is route navigation with numeric step labels and completion dots only; the bottom footer is support/check context, not a second workflow readiness bar. `ide:gate:shell-workbench-hierarchy` guards this split across Project, Design, Verify, Hardware, Export, and Import at the classroom viewport.
 
 ### Design chrome (layout system)
 

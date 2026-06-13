@@ -112,7 +112,7 @@ Rollback:
 
 ## Phase 2 - Shell And Workbench Layout Reset
 
-Status: Next after the 2026-06-13 Verify Evidence Workbench closeout.
+Status: Closed 2026-06-13 by `ide:gate:shell-workbench-hierarchy`.
 
 Goal: Create one compact shell/status authority and a stable first-viewport workbench frame for all core surfaces.
 
@@ -120,21 +120,23 @@ Why: Current shell repeats stage state across top ribbon, left rail, surface hea
 
 Implementation slices:
 
-- Rebuild global workflow/status ownership.
-- Demote debug/support chrome.
-- Normalize first-viewport workbench frame.
-- Preserve route/mode behavior.
+- Rebuilt global workflow/status ownership into the compact proof ribbon.
+- Demoted bottom footer to support chrome and left rail to navigation without visible `OK` completion labels.
+- Normalized the first-viewport workbench frame so the shell boundary starts at `y=96` at the classroom viewport.
+- Preserved route/mode behavior.
 
 Proof:
 
 - Before/after screenshots for Project, Design, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, Import at `1366x768`.
-- Cross-viewport no-overflow geometry.
+- `ide:gate:shell-workbench-hierarchy`.
+- Cross-viewport no-overflow geometry from `ide:gate:shell-layout-integrity`.
 - Existing product-immersion, viewport, Verify, Hardware, Export gates green.
 
 Acceptance:
 
 - Each surface has one obvious job object and one primary next action.
 - No behavior/export/hardware semantics changed.
+- After screenshot summary recorded proof ribbon `48px`, evidence capsule `30px`, support footer `20px`, workbench top `96px`, and no root horizontal overflow at `1366x768`.
 
 Rollback:
 
@@ -174,6 +176,8 @@ Rollback:
 - Revert Verify presentation slice; behavior tests protect semantics.
 
 ## Phase 4 - Project Command Center
+
+Status: Next after the 2026-06-13 Shell and Workbench Layout Reset closeout.
 
 Goal: Make Project the command center for blank, starter, saved, import/recovery, and future instructor lab paths.
 

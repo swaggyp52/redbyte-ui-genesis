@@ -48,6 +48,10 @@
   /* Reusable focus ring */
   --rbp-focus-ring: 0 0 0 2px #060c14, 0 0 0 4px rgba(46, 196, 182, 0.55);
 
+  /* Shell hierarchy: proof ribbon owns workflow state; footer is support chrome. */
+  --ide-proof-ribbon-height: 48px;
+  --ide-status-height: 20px;
+
   /* Status backgrounds (used by chips and metrics) */
   --rbp-state-success-bg: rgba(82, 210, 115, 0.10);
   --rbp-state-warning-bg: rgba(244, 185, 66, 0.10);
@@ -150,10 +154,21 @@
   max-width: 68px;
 }
 .ide-root .ide-mode-button .ide-step-num {
+  position: relative;
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: rgba(122, 158, 192, 0.55);
+}
+.ide-root .ide-step-complete-dot {
+  position: absolute;
+  top: -3px;
+  right: -5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(126, 231, 135, 0.88);
+  box-shadow: 0 0 0 2px rgba(7, 16, 27, 0.9);
 }
 .ide-root .ide-mode-button--step.is-active {
   background: rgba(46, 196, 182, 0.12);
@@ -2084,7 +2099,7 @@
 }
 
 .ide-root {
-  grid-template-rows: var(--ide-topbar-height) auto minmax(0, 1fr) var(--ide-status-height);
+  grid-template-rows: var(--ide-topbar-height) var(--ide-proof-ribbon-height) minmax(0, 1fr) var(--ide-status-height);
   background:
     radial-gradient(circle at 18% -10%, rgba(46, 196, 182, 0.10), transparent 34%),
     radial-gradient(circle at 82% 8%, rgba(142, 199, 255, 0.08), transparent 32%),
@@ -2102,18 +2117,21 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--rb-lab-gutter);
-  min-height: 76px;
-  padding: 10px clamp(14px, 2vw, 28px);
+  gap: 12px;
+  height: var(--ide-proof-ribbon-height);
+  min-height: var(--ide-proof-ribbon-height);
+  padding: 5px clamp(14px, 1.4vw, 22px);
   border-bottom: 1px solid var(--rb-lab-border-subtle);
   background:
     linear-gradient(90deg, rgba(7, 16, 27, 0.94) 0%, rgba(13, 27, 44, 0.96) 48%, rgba(7, 16, 27, 0.94) 100%);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
 }
 
 .ide-proof-ribbon__flow {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -2123,28 +2141,28 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(190, 213, 236, 0.58);
+  white-space: nowrap;
 }
 
 .ide-proof-ribbon__steps {
   display: flex;
-  align-items: stretch;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  overflow: hidden;
 }
 
 .ide-proof-step {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 9px;
-  min-width: 145px;
-  max-width: 184px;
-  min-height: 42px;
-  padding: 7px 10px;
+  gap: 7px;
+  min-width: 124px;
+  max-width: 158px;
+  min-height: 30px;
+  padding: 4px 8px;
   border: 1px solid rgba(154, 184, 214, 0.14);
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.025);
   color: var(--rb-text-2);
   text-align: left;
@@ -2176,12 +2194,12 @@
 .ide-proof-step__index {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 18px;
+  height: 18px;
   border-radius: 999px;
   background: rgba(154, 184, 214, 0.10);
   color: rgba(220, 238, 252, 0.78);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -2202,44 +2220,51 @@
 
 .ide-proof-step__copy {
   display: grid;
-  gap: 1px;
+  gap: 0;
   min-width: 0;
 }
 
 .ide-proof-step__label {
   color: rgba(202, 220, 238, 0.70);
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 700;
+  line-height: 1.1;
 }
 
 .ide-proof-step__value {
   overflow: hidden;
   color: #f2f8ff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0;
+  line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .ide-proof-ribbon__connector {
   align-self: center;
-  flex: 0 0 20px;
+  flex: 0 0 10px;
   height: 1px;
   background: linear-gradient(90deg, rgba(154, 184, 214, 0.12), rgba(154, 184, 214, 0.36), rgba(154, 184, 214, 0.12));
 }
 
 .ide-proof-ribbon__evidence {
-  display: grid;
+  display: flex;
+  align-items: center;
   justify-items: end;
-  min-width: 190px;
+  min-width: 218px;
+  min-height: 30px;
 }
 
 .ide-proof-evidence {
-  display: grid;
-  gap: 1px;
-  min-width: 178px;
-  padding: 9px 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  max-width: 260px;
+  min-height: 30px;
+  padding: 4px 9px;
   border: 1px solid rgba(142, 199, 255, 0.24);
   border-radius: var(--rb-lab-radius-md);
   background: rgba(142, 199, 255, 0.08);
@@ -2248,7 +2273,7 @@
 
 .ide-proof-evidence__label {
   color: rgba(202, 220, 238, 0.66);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2256,12 +2281,57 @@
 
 .ide-proof-evidence strong {
   color: #e8f7ff;
-  font-size: 15px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .ide-proof-evidence span:last-child {
+  min-width: 0;
+  overflow: hidden;
   color: var(--rb-text-3);
-  font-size: 11px;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root .ide-status-bar {
+  height: var(--ide-status-height);
+  min-height: var(--ide-status-height);
+  padding: 0 12px !important;
+  border-top: 1px solid rgba(154, 184, 214, 0.08) !important;
+  background: rgba(5, 10, 18, 0.82);
+  color: rgba(158, 180, 203, 0.70);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.ide-root .ide-status-bar--quiet {
+  opacity: 0.72;
+}
+
+.ide-root .ide-status-item,
+.ide-root .ide-status-support {
+  display: inline-flex;
+  align-items: center;
+  min-height: 14px;
+  white-space: nowrap;
+}
+
+.ide-root .ide-status-support {
+  margin-left: 8px;
+  color: rgba(190, 213, 236, 0.68);
+}
+
+.ide-root .ide-status-support--pass {
+  color: rgba(126, 231, 135, 0.78);
+}
+
+.ide-root .ide-status-support--warn {
+  color: rgba(244, 185, 66, 0.80);
+}
+
+.ide-root .ide-status-support--fail {
+  color: rgba(255, 144, 144, 0.78);
 }
 
 .ide-root .ide-layout-shell {

@@ -632,7 +632,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     setDraftExpected((prev) => ({ ...prev, [fieldId]: value }));
   }, []);
 
-  const ROW_H_MAP: Record<string, number> = { small: 40, normal: 60, large: 76 };
+  const ROW_H_MAP: Record<string, number> = { small: 40, normal: 48, large: 76 };
 
   useEffect(() => {
     setDraftInputs((prev) => withInputFieldDefaults(prev, editableInputFields));

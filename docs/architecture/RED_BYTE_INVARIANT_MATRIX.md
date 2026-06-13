@@ -10,7 +10,7 @@ role: RedByte product invariant and gate ownership matrix
 
 This matrix maps product invariants to concrete proof. If an invariant has only a screenshot or only a unit test, say that plainly and add the missing gate before claiming full coverage.
 
-Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base, and Verify Evidence Workbench proof was added from the later `fdf17b7` base.
+Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base, Verify Evidence Workbench proof was added from the later `fdf17b7` base, and Shell Workbench Hierarchy proof was added from the later `9a5fb0b` base.
 
 ## Gate Ownership Summary
 
@@ -29,8 +29,8 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 |---|---|---|---|---|---|---|
 | RB-INV-001 | The app boots to the intended IDE mode and route marker matches the visible surface. | App boot/routing | route/layout gates | covered by `ide:gate:shell-layout-integrity` mode sweep | none current | P1 |
 | RB-INV-002 | A stale local dev server must not be used as current proof unless the visible build hash matches HEAD. | Proof process | prior audits and AI_STATE entries | normal-use audit records `Buildd235823` on fresh `127.0.0.1:5175` | keep checking before screenshots | P1 |
-| RB-INV-003 | The shell must not create horizontal root overflow at supported classroom/desktop/wide viewports. | Shell/workbench | viewport overflow and visual-system gates | `ide:gate:shell-layout-integrity` checks root width in Project, Design, Verify, Hardware, Export at 3 viewports | Import still needs future utility path coverage | P1 |
-| RB-INV-004 | Each primary surface must expose a visible first-viewport focal object. | Shell/surfaces | visual audits and surface gates | `ide:gate:shell-layout-integrity` adds cross-mode focal assertions | qualitative hierarchy still needs surface redesign | P1 |
+| RB-INV-003 | The shell must not create horizontal root overflow at supported classroom/desktop/wide viewports. | Shell/workbench | viewport overflow and visual-system gates | `ide:gate:shell-layout-integrity` checks root width in Project, Design, Verify, Hardware, Export at 3 viewports; `ide:gate:shell-workbench-hierarchy` also checks Project, Design, Verify, Hardware, Export, and Import at the classroom viewport | loaded-project Import access still needs a future utility path gate | P1 |
+| RB-INV-004 | Each primary surface must expose a visible first-viewport focal object without competing shell status authorities. | Shell/surfaces | visual audits and surface gates | `ide:gate:shell-workbench-hierarchy` proves compact proof ribbon/evidence, support-only footer, rail labels without `OK` status copy, workbench top at the compact shell boundary, and visible focal objects across Project, Design, Verify, Hardware, Export, and Import | Project Command Center and Design canvas-first hierarchy remain separate surface slices | P1 |
 | RB-INV-005 | Loaded starter circuit nodes and wires must remain visible after zoom, Fit, Center, resize, navigation, and reload. | Design canvas | design canvas zoom integrity | `ide:gate:design-workbench-integrity` extends movement/delete/undo/view-mode coverage | none current for starter graph visibility | P1 |
 | RB-INV-006 | Canvas camera and SVG attributes must stay finite. | Logic view | design canvas zoom integrity | design workbench integrity also checks finite runtime/editor graph after edit | none current | P1 |
 | RB-INV-007 | Design select/drag/delete/undo must mutate the same project graph authority. | Design interaction/history | projectRuntime history tests, design gates | design workbench integrity deletes one visible node and verifies undo restore | redo is covered by runtime tests, not browser integrity gate | P1 |
@@ -39,7 +39,7 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 | RB-INV-010 | Observe-only output is not equivalent to Compare PASS. | Verify | verify contract/reality tests | normal-use audit exercised Observe then Compare | no new gate needed | P1 |
 | RB-INV-011 | Expected-output edits stale old PASS, can create intentional FAIL, and can be repaired to PASS. | Verify expected grid | `ide:gate:verify-fail-edit-repair`; workflow tests | `ide:gate:verify-evidence-workbench-integrity` also proves visible first-run editing, intentional FAIL, first mismatch expected/observed evidence, and repair PASS | none current for the covered starter path | P1 |
 | RB-INV-012 | PASS/FAIL/STALE must be derived from the same circuit/vector/mapping state. | Project health/trust | projectWorkflowAuthority tests | classroom gate includes verify and export checks | no additional invariant gate added here | P1 |
-| RB-INV-013 | Waveform and mismatch UI explain Verify proof but do not own trust. | Verify waveform | verify workbench/summary gates | `ide:gate:verify-evidence-workbench-integrity` checks waveform/mismatch visibility and no meaningful overlap in PASS, FAIL, and repaired PASS states | broader visual hierarchy work belongs to shell/workbench reset, not Verify semantics | P2 |
+| RB-INV-013 | Waveform and mismatch UI explain Verify proof but do not own trust. | Verify waveform | verify workbench/summary gates | `ide:gate:verify-evidence-workbench-integrity` checks waveform/mismatch visibility and no meaningful overlap in PASS, FAIL, and repaired PASS states; `ide:gate:ece141-visual-system-integrity` passes with the default waveform density fitting the first viewport | broader Design/Verify visual hierarchy work remains surface-specific, not Verify semantics | P2 |
 | RB-INV-014 | Hardware mapping V2 and flat project IO rows must remain synchronized. | Hardware mapping | mapping authority/editor/bridge tests; hardware gates | normal-use audit mapped pins and checked board/table alignment; `ide:gate:export-trust-integrity` checks Export mapped count against XDC rows | none current for mapped Export summary agreement | P1 |
 | RB-INV-015 | Board wording must not imply E1/E2/E3 proof from browser evidence. | Hardware/Export copy | release docs, visual audits | normal-use audit saw no Vivado overclaim in Export | Hardware wording still queued for tightening | P1 |
 | RB-INV-016 | Export Draft is allowed but must be visibly distinct from Trusted/current E0-ready export. | Export trust | export ready/blockers/download/e2e gates; workflow tests | `ide:gate:export-trust-integrity` proves READY/Trusted path labels, README proof-tier language, and no E1/E2/E3 browser overclaim | future visual hierarchy work can improve density without reopening trust semantics | P1 |
@@ -51,8 +51,8 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 | RB-INV-022 | Lab profile/course pack data must not become the next source of hardcoded course behavior before workbench hierarchy stabilizes. | Product architecture | work queue and V1 execution program | this sprint keeps it deferred | future data seam needs explicit profile-backed gate | P2 |
 | RB-INV-023 | Persistence must not resurrect stale trusted proof after reload. | Runtime persistence | persistence tests/gate; projectRuntime persistence | normal-use audit included reload persistence | browser gate does not exhaust every mutation sequence | P1 |
 | RB-INV-024 | Browser gates must use current selectors and current user flows. | Gate harness | recent gate repairs | new shell/design integrity gates use visible runtime assertions | selector drift remains an ongoing risk | P1 |
-| RB-INV-025 | `classroom:gate` must include trust-critical lightweight browser gates. | CI/Classroom | classroom gate script | includes design workbench, shell layout, Export trust, and Verify evidence workbench integrity gates | runtime duration can grow; monitor CI time | P1 |
-| RB-INV-026 | Broader classroom verifier must include the same invariant gates for local/nightly breadth. | CI/Classroom | `verify-gates-classroom.mjs` | includes design workbench, shell layout, Export trust, and Verify evidence workbench integrity gates | broad suite can be slow | P2 |
+| RB-INV-025 | `classroom:gate` must include trust-critical lightweight browser gates. | CI/Classroom | classroom gate script | includes design workbench, shell layout, shell workbench hierarchy, Export trust, and Verify evidence workbench integrity gates | runtime duration can grow; monitor CI time | P1 |
+| RB-INV-026 | Broader classroom verifier must include the same invariant gates for local/nightly breadth. | CI/Classroom | `verify-gates-classroom.mjs` | includes design workbench, shell layout, shell workbench hierarchy, Export trust, and Verify evidence workbench integrity gates | broad suite can be slow | P2 |
 | RB-INV-027 | Pushed source is not the same as live-student deployment. | GitHub/deploy | GitHub operations docs | closeout must watch deploy checks | final status depends on live GitHub run | P1 |
 
 ## New Gates In This Slice
@@ -66,6 +66,12 @@ This gate is now part of `classroom:gate` and `verify:gates:classroom`.
 ### `ide:gate:shell-layout-integrity`
 
 Protects the main RedByte spine against invisible or collapsed work surfaces. It loads the Logic Gates starter and checks Project, Design, Verify, Hardware, and Export at `1366x768`, `1440x900`, and `1920x1080` for current mode marker, no root overflow, visible top bar/left rail/mode root, visible focal object, and Design graph visibility.
+
+This gate is now part of `classroom:gate` and `verify:gates:classroom`.
+
+### `ide:gate:shell-workbench-hierarchy`
+
+Protects the shell reset boundary. It loads the Logic Gates starter and checks Project, Design, Verify, Hardware, Export, and Import at `1366x768` for one compact proof/status authority: proof ribbon height, inline evidence height, proof-step count and density, support-only footer copy, rail step labels without visible `OK` status text, workbench top at the compact shell boundary, visible focal object, and no root overflow.
 
 This gate is now part of `classroom:gate` and `verify:gates:classroom`.
 
@@ -85,7 +91,7 @@ This gate is now part of `classroom:gate` and `verify:gates:classroom`.
 
 | Proposed gate | Why |
 |---|---|
-| `ide:gate:shell-workbench-hierarchy` or strengthened `ide:gate:shell-layout-integrity` | After the shell/workbench reset, prove one compact shell/status authority and first-viewport work objects across the core spine. |
+| `ide:gate:project-command-center` or strengthened Project readiness gate | After the Project command-center slice, prove neutral no-circuit copy, visible blank/starter/saved/import paths, and one primary next action. |
 | `ide:gate:import-utility-access` | Resolve whether Import is a Project utility, command, route, or removed rail item, then prove the documented path is visible and review-before-apply safe. |
 
 ## Attribution

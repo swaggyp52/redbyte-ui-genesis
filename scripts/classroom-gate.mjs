@@ -75,6 +75,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:shell-layout-integrity'],
   },
   {
+    name: 'ide:gate:shell-workbench-hierarchy',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:shell-workbench-hierarchy'],
+  },
+  {
     name: 'ide:gate:zip-import-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:zip-import-contract'],

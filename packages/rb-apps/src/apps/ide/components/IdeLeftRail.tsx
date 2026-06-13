@@ -196,7 +196,8 @@ export const IdeLeftRail: React.FC<IdeLeftRailProps> = ({
         title={`Step ${step.step}: ${step.label}`}
       >
         <span className="ide-step-num" aria-hidden="true">
-          {isDone && !isActive ? 'OK' : step.step}
+          {step.step}
+          {isDone && !isActive ? <span className="ide-step-complete-dot" /> : null}
         </span>
         <span className="ide-mode-icon">{step.icon}</span>
         <span className="ide-mode-copy">

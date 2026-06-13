@@ -30,6 +30,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:export-trust-integrity`
 - `ide:gate:shell-layout-integrity`
+- `ide:gate:shell-workbench-hierarchy`
 - `ide:gate:verify-evidence-workbench-integrity`
 
 Why:
@@ -38,6 +39,7 @@ Why:
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
+- Shell workbench hierarchy proves the global shell has one compact proof/status authority, a support-only footer, rail navigation without visible completion-status copy, and a visible workbench object across Project, Design, Verify, Hardware, Export, and Import.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
 
 ## Choosing The Right Test
@@ -51,7 +53,7 @@ Why:
 | Export trust or visible handoff | export authority tests plus browser gate proving visible labels, preview, download, and no overclaim |
 | Hardware/Map Pins layout only | hardware browser gate and screenshots; mapping tests if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus zip/import browser gate |
-| Shell or first-viewport layout | `ide:gate:shell-layout-integrity`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
+| Shell or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules
@@ -87,7 +89,7 @@ For hardening slices, closeout is not done at local green:
 | Gap | Recommended next gate |
 |---|---|
 | Import utility access is ambiguous after a project is loaded. | `ide:gate:import-utility-access` after product contract decision |
-| Shell hierarchy still repeats too many status authorities even though visibility/no-overflow is covered. | Strengthen `ide:gate:shell-layout-integrity` or add a shell hierarchy gate after the shell/workbench reset |
+| Project command-center hierarchy is still not gate-owned. | Add or strengthen a Project command-center gate after the Project slice |
 
 ## Attribution
 

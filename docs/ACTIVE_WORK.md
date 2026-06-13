@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Verify Evidence Workbench
+**Latest product/control slice:** Shell and Workbench Layout Reset
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -30,10 +30,11 @@ Import is a utility. Vivado build, board programming, and board observation are 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
 2. **Export Trust Integrity is closed.** `ide:gate:export-trust-integrity` now proves the mapped/verified Export handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
 3. **Verify Evidence Workbench is closed.** `ide:gate:verify-evidence-workbench-integrity` now proves visible first-run stimulus authoring, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, and repair back to PASS without hiding the editor.
-4. **Next audit-driven code slice: Shell and Workbench Layout Reset.** The shell-layout gate proves visibility/no-overflow, but the product hierarchy still repeats too many status authorities.
-5. **Keep Import / Recovery as a scoped utility-contract slice.** The audit found Import access ambiguity after loaded Project, but it is P2 and should not be mixed into Verify or shell hierarchy.
-6. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
-7. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
+4. **Shell and Workbench Layout Reset is closed.** `ide:gate:shell-workbench-hierarchy` now proves one compact shell/status authority, demoted support footer, rail navigation without `OK` status copy, and first-viewport workbench frame geometry across Project, Design, Verify, Hardware, Export, and Import.
+5. **Next audit-driven code slice: Project Command Center.** Project should become a command center for blank, starter, saved, import/recovery, and future instructor lab paths, not a starter/course gallery.
+6. **Keep Import / Recovery as a scoped utility-contract slice.** The audit found Import access ambiguity after loaded Project, but it is P2 and should not be mixed into Project command-center unless the Project entry point is the direct chosen fix.
+7. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
+8. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or lab-profile extraction unless the user explicitly reprioritizes.
 
@@ -44,7 +45,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | V1 product contract | New V1 contract reset is the active target route. The older `RedByte_Product_Contract.md` remains broad/historical target context. | Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` for near-term V1 surface work. |
 | Runtime screenshot identity | Existing local servers have repeatedly been stale: old `localhost:5173` showed `a4fc624`, the user-visible `127.0.0.1:5174` showed `Build9a639a4`, and current sprint evidence used fresh `127.0.0.1:5175` with `Buildd235823`. | For future screenshot proof, verify the UI build hash before using an existing server. |
 | Under-the-hood state authority | The sprint maps project runtime, circuitStore, logic-view camera/selection, Verify health, mapping, Export, Import, persistence, and proof-tier ownership. | Read the under-the-hood map and state authority matrix before changing stateful product code. |
-| Shell/status hierarchy | Shell repeats state across top ribbon, left rail, evidence box, surface hero, right rail, and bottom status. New shell-layout integrity gate proves visibility/no-overflow but does not redesign hierarchy. | Keep shell hierarchy as a future scoped visual/workbench slice; do not confuse the gate with visual redesign completion. |
+| Shell/status hierarchy | Closed 2026-06-13: proof ribbon is the compact workflow/status authority, left rail is navigation without visible `OK` status copy, and the bottom footer is support chrome. `ide:gate:shell-workbench-hierarchy` guards the geometry and copy split. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future surface slices should build on this shell rather than reopening global chrome by assumption. |
 | Design first viewport | Current `1366x768` screenshot still does not make the actual circuit graph the first-viewport focal object. | Fix in the scoped Design Workbench slice after higher-risk trust gaps are closed. |
 | Verify evidence workbench | Closed 2026-06-13: first-run stimulus editing stays visible, post-run stimulus chrome is denser, first mismatch expected/observed evidence is first-order, and `ide:gate:verify-evidence-workbench-integrity` guards PASS -> intentional FAIL -> repair PASS with overlap checks and screenshots. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future Verify work should start from fresh evidence rather than reopening density by assumption. |
 | Export trust integrity | Closed 2026-06-13: generated previews are visible by default, the focused gate compares visible previews with downloaded ZIP entries, and the mapping summary no longer contradicts mapped board I/O rows. | Keep `ide:gate:export-trust-integrity` in `classroom:gate` and `verify:gates:classroom`; later Export Handoff Station work should focus on visual hierarchy, not reopening byte/trust proof without new evidence. |
@@ -56,27 +57,28 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Shell and Workbench Layout Reset.
+**Target:** Project Command Center.
 
 Structured hardening ticket fields to start from:
 
-- Title: Reset shell and workbench hierarchy.
-- Surface: Global shell / workbench frame.
-- Journey segment: Project -> Design -> Verify -> Hardware -> Export at common classroom viewports.
-- Observed behavior: `ide:gate:shell-layout-integrity` proves visibility and no root overflow, but stage/status state still repeats across top ribbon, left rail, evidence box, surface headers, right rail, and bottom status.
-- Expected behavior: one compact shell/status authority, one obvious work object per surface, and one primary next action without changing mode routing or product semantics.
-- Minimum acceptance proof: `ide:gate:shell-layout-integrity`; before/after screenshots for Project, Design, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, and Import at `1366x768`; relevant existing Verify/Hardware/Export gates; no simulation, export, pin mapping, Vivado, or hardware semantics changes.
+- Title: Rebuild Project as a command center.
+- Surface: Project.
+- Journey segment: first launch, loaded starter, blank project, saved/recent project, Import/recovery entry, next action.
+- Observed behavior: Project still reads as starter/course-first and can surface downstream readiness/mapping language before a student has clearly chosen the current job.
+- Expected behavior: one clear current project state, one primary next action, neutral no-circuit copy, and visible paths for blank, starter, saved/recent, and Import/recovery without reopening shell chrome.
+- Minimum acceptance proof: clean first-launch and loaded-project screenshots at `1366x768`; relevant Project readiness/workflow authority tests; existing shell hierarchy, first-viewport, and classroom gates; no simulation, Verify, export, pin mapping, Vivado, or hardware semantics changes.
 
 Suggested commit:
 
 ```text
-fix: reset RedByte workbench shell layout
+fix: rebuild RedByte project command center
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Shell and Workbench Layout Reset | Closed 2026-06-13: added `ide:gate:shell-workbench-hierarchy` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves compact proof ribbon/evidence, support-only footer, rail navigation without `OK` status labels, workbench top at the compact shell boundary, visible focal objects, and no root overflow across Project, Design, Verify, Hardware, Export, and Import. After screenshots and geometry summary are local-only under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
 | Verify Evidence Workbench | Closed 2026-06-13: added `ide:gate:verify-evidence-workbench-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves visible first-run stimulus editor and expected-output cells, Compare PASS, intentional expected-output edit to FAIL, visible first mismatch expected/observed values, waveform evidence, repair back to PASS, and no meaningful overlap among stimulus/waveform evidence regions. Browser screenshots are local-only under `.redbyte/product-immersion/verify-evidence-workbench/2026-06-13-after/`. |
 | Export Trust Integrity | Closed 2026-06-13: added `ide:gate:export-trust-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves mapped Logic Gates -> Verify Compare PASS -> Export READY -> Build Current Bundle, visible generated previews, downloaded Vivado ZIP entries, preview body parity, README/provenance E0/E1/E2/E3 boundary wording, XDC mapped pin count, and `EXPECTED_IO.json` output evidence. |
 | Under-the-Hood Mastery Sprint | Created source-level subsystem map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc. Added `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. |
@@ -118,8 +120,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Under-the-Hood Mastery Sprint. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`; `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`; `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`; normal-use audit; invariant gates. |
 | Closed | Export Trust Integrity. | `RB-EXPORT-TRUST-001`; `ide:gate:export-trust-integrity`. |
 | Closed | Verify Evidence Workbench. | `RB-VERIFY-EVIDENCE-001`; `ide:gate:verify-evidence-workbench-integrity`; screenshots under `.redbyte/product-immersion/verify-evidence-workbench/2026-06-13-after/`. |
-| Next | Shell and Workbench Layout Reset. | `RB-SHELL-001`; `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`; V1 visual audit. |
-| Later | Project Command Center. | `RB-PROJECT-CC-001` in issue index after reset. |
+| Closed | Shell and Workbench Layout Reset. | `RB-SHELL-001`; `ide:gate:shell-workbench-hierarchy`; screenshots under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
+| Next | Project Command Center. | `RB-PROJECT-CC-001` in issue index after reset. |
 | Later | Export Handoff Station. | `RB-EXPORT-HANDOFF-001` in issue index after reset. |
 | Later | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001` in issue index after reset. |
 | Later | Design Workbench. | `RB-DESIGN-WB-001` in issue index after reset. |

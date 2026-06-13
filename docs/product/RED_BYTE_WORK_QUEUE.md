@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, and Verify Evidence Workbench closeout. The next implementation slice should be selected from the current issue index, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, and Shell and Workbench Layout Reset closeout. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -18,7 +18,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 | 2 | Under-the-Hood Mastery Sprint | Build the source/state/proof model and add invariant gates so normal user actions do not break trust silently. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, state authority matrix, invariant matrix, normal-use audit, gate ownership doc | `test:` / `docs:` | Subsystem map, state matrix, invariant matrix, normal-use audit, and at least two invariant gates committed and pushed; classroom and deploy checks green. |
 | 3 | Export Trust Integrity | The normal-use audit found generated artifacts but no obvious artifact preview, and earlier V1 evidence found mapping-summary contradiction risk. | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`, `RB-EXPORT-TRUST-001`, `RB-EXPORT-HANDOFF-001` | `test:` or `fix:` | Closed 2026-06-13: `ide:gate:export-trust-integrity` proves handoff summary, artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agreement. |
 | 4 | Verify Evidence Workbench | Verify behavior was strong, but the evidence/repair loop still read like a dense instrument panel. | V1 contract Verify section, visual audit, `RB-VERIFY-EVIDENCE-001` in the issue index | `fix:` | Closed 2026-06-13: `ide:gate:verify-evidence-workbench-integrity` proves first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap. |
-| 5 | Shell and Workbench Layout Reset | The shell repeats too many status authorities and every surface inherits that first-viewport problem. New shell-layout gate guards visibility, but the hierarchy still needs product design work. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`, visual audit | `fix:` | Next: one compact shell/status authority; Project/Design/Verify/Hardware/Export/Import screenshots at common viewports; behavior gates still green; no semantics/export/hardware changes. |
+| 5 | Shell and Workbench Layout Reset | The shell repeated too many status authorities and every surface inherited that first-viewport problem. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`, visual audit | `fix:` | Closed 2026-06-13: `ide:gate:shell-workbench-hierarchy` proves one compact proof/status authority, support-only footer, rail navigation without `OK` status labels, and visible workbench objects across Project/Design/Verify/Hardware/Export/Import. |
 | 6 | Project Command Center | Project should be a command center for blank, starter, saved, import/recovery, and future instructor lab paths, not a starter gallery. | V1 contract Project section, visual audit, `RB-PROJECT-CC-001` | `fix:` | No-circuit copy is neutral; next action visible without scroll; ECE141-specific identity is demoted. |
 | 7 | Export Handoff Station | After trust integrity is proven, finish the visual/workbench handoff station around the same authority. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Draft/E0-ready states are singular in the first-viewport hierarchy; mapping summary remains aligned with actual mapping; export gates and artifact checks pass. |
 | 8 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Signal -> board resource -> package pin -> XDC chain is visible; no E1/E2/E3 overclaim. |
@@ -33,6 +33,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 | Item | Status |
 |---|---|
+| Shell and Workbench Layout Reset | Closed 2026-06-13: `ide:gate:shell-workbench-hierarchy` is wired into focused, classroom, and broad classroom gates; after screenshots and geometry summary are under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
 | Verify Evidence Workbench | Closed 2026-06-13: first-run Verify editor remains visible for starter checks; post-run stimulus and waveform chrome are condensed; `ide:gate:verify-evidence-workbench-integrity` is wired into focused, classroom, and broad classroom gates with PASS -> FAIL -> repair PASS evidence and overlap checks. |
 | Export Trust Integrity | Closed 2026-06-13: generated file previews open by default, mapped board I/O summary no longer contradicts actual mapping, and `ide:gate:export-trust-integrity` is wired into focused, classroom, and broad classroom gates. |
 | Design canvas zoom integrity | Closed 2026-06-13: root cause was React click event forwarded to `fitToCircuit`; `ide:gate:design-canvas-zoom-integrity` guards non-finite camera and blank graph regression. |
@@ -50,7 +51,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 ## Queue Rules
 
-- The next code slice after Verify Evidence Workbench is `fix: reset RedByte workbench shell layout`.
+- The next code slice after Shell and Workbench Layout Reset is `fix: rebuild RedByte project command center`.
 - Lab profile / course-pack work is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

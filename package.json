@@ -251,6 +251,7 @@
         "ide:gate:from-scratch-general-workflow": "node ./scripts/gates/ide-from-scratch-general-workflow.mjs",
         "ide:gate:viewport-overflow-contract": "node ./scripts/gates/ide-viewport-overflow-contract.mjs",
         "ide:gate:shell-layout-integrity": "node ./scripts/gates/ide-shell-layout-integrity.mjs",
+        "ide:gate:shell-workbench-hierarchy": "node ./scripts/gates/ide-shell-workbench-hierarchy.mjs",
         "ide:gate:zoom-presets-contract": "node ./scripts/gates/ide-zoom-presets-contract.mjs",
         "ide:gate:verify-reality-contract": "node ./scripts/gates/ide-verify-reality-contract.mjs",
         "ide:gate:verify-no-trace-guard-contract": "node ./scripts/gates/ide-verify-no-trace-guard-contract.mjs",

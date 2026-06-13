@@ -92,13 +92,14 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; Import utility access remains ambiguous after a project is loaded.
-- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:shell-layout-integrity`, `ide:gate:export-trust-integrity`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
-- Project, Hardware, and Export are materially stronger than earlier audits, but the V1 workbench hierarchy is still not done.
+- Project, Hardware, Export, and the global shell are materially stronger than earlier audits, but surface-level V1 hierarchy is still not done.
 - Design still fails the V1 target at `1366x768`: the loaded circuit graph is not the first-viewport focal object.
 - Verify Evidence Workbench is now closed by `ide:gate:verify-evidence-workbench-integrity`: first-run stimulus authoring stays visible, Compare PASS/FAIL/repair is browser-proved, first mismatch expected/observed values are visible, and the gate checks for meaningful evidence-region overlap.
+- Shell and Workbench Layout Reset is now closed by `ide:gate:shell-workbench-hierarchy`: the proof ribbon is the compact workflow/status authority, the footer is support-only chrome, rail step labels no longer repeat completion status, and the workbench frame starts at the compact shell boundary across Project, Design, Verify, Hardware, Export, and Import.
 - Export distinguishes draft versus E0-ready states, generated previews are visible by default, and `ide:gate:export-trust-integrity` proves visible preview/ZIP/README/provenance agreement. Later Export Handoff Station work should focus on visual hierarchy, not reopening the fixed mapping-summary contradiction without new evidence.
 - Hardware / Map Pins shows board/table mapping well, but hardware-ready wording must stay E0-scoped and not imply E1/E2/E3.
 
@@ -135,6 +136,7 @@ Supporting truths:
 - Project first-load black-screen issue is resolved.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`.
 - Verify evidence workbench integrity is covered by `ide:gate:verify-evidence-workbench-integrity`, including visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair back to PASS, and layout overlap checks.
+- Shell/workbench hierarchy is covered by `ide:gate:shell-workbench-hierarchy`, including compact proof ribbon/evidence geometry, support-only footer copy, rail labels without visible `OK` status text, visible focal objects, and no root overflow across Project, Design, Verify, Hardware, Export, and Import.
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
 - Design graph/camera integrity is covered by `ide:gate:design-canvas-zoom-integrity` and strengthened by `ide:gate:design-workbench-integrity`.
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
@@ -160,10 +162,10 @@ Approved V1 order:
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Verify Evidence Workbench is:
+The next audit-driven product slice after Shell and Workbench Layout Reset is:
 
 ```text
-fix: reset RedByte workbench shell layout
+fix: rebuild RedByte project command center
 ```
 
-It should reduce repeated shell/status authority and stabilize the first-viewport workbench frame across Project, Design, Verify, Hardware, Export, and Import while preserving current route, Verify, mapping, export, Vivado, and hardware semantics. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should make Project a neutral command center for blank, starter, saved, import/recovery, and future instructor lab paths while preserving current route, Verify, mapping, export, Vivado, and hardware semantics. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

@@ -1504,7 +1504,7 @@ export const IdeApp: React.FC = () => {
       : projectHealthCore.lastExport?.status === 'blocked'
         ? 'Blocked'
         : workflowAuthority.trustedVerifyCurrent
-          ? 'Build E0'
+          ? 'E0 ready'
           : workflowAuthority.draftExportAvailable
             ? 'Draft Export'
             : workflowAuthority.exportAvailable
@@ -2250,7 +2250,7 @@ const IdeProofRibbon: React.FC<{
     aria-label="Lab proof and workflow state"
   >
     <div className="ide-proof-ribbon__flow" data-testid="ide-lab-flow-map">
-      <span className="ide-proof-ribbon__eyebrow">Lab flow</span>
+      <span className="ide-proof-ribbon__eyebrow">Workflow state</span>
       <div className="ide-proof-ribbon__steps" role="list">
         {items
           .filter((item) => item.mode)

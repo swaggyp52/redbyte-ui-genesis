@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-13 (fix: reset RedByte workbench shell layout)
+
+**Subsystem:** RedByte IDE global shell, workbench frame hierarchy, proof ribbon, left rail, support footer, and Verify waveform first-viewport fit.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `9a5fb0b3fcac64334f9b327054346487d3b8bb21`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `ide:gate:shell-workbench-hierarchy` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: the proof ribbon was `97px` tall at the classroom viewport, the workbench started at `y=165`, and the bottom footer repeated workflow readiness.
+- Rebuilt the proof ribbon as the single compact workflow/status authority: it is now one `48px` row, keeps the four workflow proof steps and E0/E1-E3 evidence language, and keeps existing `ide-proof-ribbon` / `ide-proof-step-*` test IDs.
+- Demoted the left rail to navigation by replacing visible `OK` completion labels with small completion dots while keeping route buttons and `data-complete` state.
+- Demoted the bottom status bar to support chrome: it no longer repeats `Workflow Ready/Review/Blocked`; it now reports compact support/check context in a `20px` footer.
+- Corrected the Export proof-ribbon state grammar from action copy `Build E0` to state copy `E0 ready`, leaving the Export primary button/action copy unchanged.
+- Adjusted Verify's default waveform lane height from `60px` to `48px` so the PASS waveform SVG meets the existing first-viewport visibility contract while keeping Large density available.
+- Captured after screenshots and geometry summary under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`, including Project, Design, Verify PASS, Hardware, Export draft, Export ready, Import, and the Verify FAIL/repair gate screenshots.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/system-map/execution/issue-index docs so Shell and Workbench Layout Reset is closed and the next product slice is Project Command Center.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/playground build`; focused Vitest batch (`IdeStatusBar`, left rail grammar, workflow authority, waveform layout fill; `17` tests); `pnpm -s ide:gate:shell-workbench-hierarchy`; `pnpm -s ide:gate:shell-layout-integrity`; `pnpm -s ide:gate:verify-evidence-workbench-integrity`; `pnpm -s ide:gate:export-trust-integrity`; `pnpm -s ide:gate:verify-fail-edit-repair`; `pnpm -s ide:gate:ece141-ui-art-direction`; `pnpm -s ide:gate:ece141-visual-system-integrity`; and `pnpm -s classroom:gate` with the new hierarchy gate included. After screenshot summary recorded zero console/page findings; key geometry at `1366x768`: proof ribbon `48px`, evidence capsule `30px`, left rail `72px`, support footer `20px`, workbench top `96px`, no root horizontal overflow, and rail step labels `1/2/3/4` with no `OK` status copy.
+
+**Safety:** This slice changes shell/workbench presentation, proof wording, a browser hierarchy gate, and Verify waveform default density only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Design still needs a canvas-first workbench slice; Project still needs command-center hierarchy; Import utility access, Hardware wording, Export handoff station, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, and packaging remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: rebuild RedByte project command center` from `RB-PROJECT-CC-001`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (fix: rebuild Verify evidence workbench)
 
 **Subsystem:** RedByte IDE Verify evidence workbench, Compare PASS/FAIL repair loop, and classroom gate truth.

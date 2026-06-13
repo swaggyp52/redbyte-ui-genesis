@@ -1,5 +1,4 @@
 import React from 'react';
-import { IdeStatusPill } from './IdePrimitives';
 
 export interface IdeStatusBarProps {
   mode: string;
@@ -8,22 +7,26 @@ export interface IdeStatusBarProps {
 }
 
 export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, gateStatus }) => {
-  const gateTone = gateStatus === 'pass' ? 'ok' : gateStatus === 'warn' ? 'warn' : 'error';
   const isQuietDesignMode = mode === 'design';
-  const gateLabel =
+  const supportLabel =
     gateStatus === 'pass'
-      ? 'Workflow Ready'
+      ? 'Checks synced'
       : gateStatus === 'warn'
-        ? 'Workflow Review'
-        : 'Workflow Blocked';
+        ? 'Checks need review'
+        : 'Checks flagged';
 
   return (
     <footer
       className={`ide-status-bar${isQuietDesignMode ? ' ide-status-bar--quiet' : ''}`}
       data-testid="ide-status-bar"
+      aria-label="Workbench support context"
     >
-      {!isQuietDesignMode ? <span className="ide-status-item">Mode: {mode}</span> : null}
-      <IdeStatusPill tone={gateTone}>{gateLabel}</IdeStatusPill>
+      <span className="ide-status-item">
+        {isQuietDesignMode ? 'Support context' : `Support: ${mode}`}
+      </span>
+      <span className={`ide-status-support ide-status-support--${gateStatus}`}>
+        {supportLabel}
+      </span>
     </footer>
   );
 };
