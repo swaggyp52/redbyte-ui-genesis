@@ -15,7 +15,8 @@ This section routes product truth to existing canonical docs so RedByte does not
 | Current working state, latest bench result, immediate priorities | `AI_STATE.md` for session history; `docs/ACTIVE_WORK.md` for the cockpit | Any meaningful agent batch, proof run, blocker, or priority change |
 | Current stable truths and open IDE product debt | `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Stable proofs land, open surface debt changes, browser audits change the ranking, or cleanup preconditions change |
 | CSS debt inventory and overlap/risk metrics | `scripts/ide-css-audit.mjs` via `pnpm css:audit:ide`; summarized in `AI_STATE.md` and `docs/IDE_PRODUCT_DEBT_REGISTER.md` | Any CSS strategy pass, selector-pruning plan, or surface cleanup where deletion risk must be measured before edits |
-| Product promise, product boundaries, non-goals, target readiness vocabulary | `docs/contracts/RedByte_Product_Contract.md` | RedByte's promise, workflow spine, supported/caveated scope, or proof obligation changes |
+| Active V1 product promise, product boundaries, non-goals, target readiness vocabulary, and execution order | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` | RedByte's V1 promise, workflow spine, supported/caveated scope, proof obligation, or work order changes |
+| Older broad target-state contract | `docs/contracts/RedByte_Product_Contract.md` | Historical/broader target context changes; do not let it override the V1 reset queue |
 | Surface responsibilities, runtime authorities, state-flow ownership, gate inventory | This file plus `docs/ide/SURFACE_CONFORMANCE.md` | Surface ownership, runtime authority, workflow-state language, or required gates change |
 | User-facing instructions and current product behavior | `docs/manuals/RedByte_Product_Manual.md` | Student-visible workflow, terms, export/hardware instructions, or supported behavior changes |
 | Manual claim governance | `docs/manuals/MANUAL_TRACEABILITY_MATRIX.md`, `docs/manuals/MANUAL_CLAIM_AUDIT.md`, `docs/manuals/MANUAL_CONFORMANCE.md` | Manual claims are added, removed, softened, or newly proven |
@@ -25,7 +26,7 @@ This section routes product truth to existing canonical docs so RedByte does not
 | Hardening tickets | `docs/release/product-hardening-ticket-*.md` or GitHub product-hardening issues | A concrete product bug/blocker has repro, violated truth source, and acceptance proof |
 | Historical/reference docs | `docs/DOC_INDEX.md` decides which stale or OS-era docs are excluded from default context | Only historical cleanup or legacy-shell work should edit or rely on them |
 
-Do not create a new product-definition, whole-app-audit, or proof-matrix doc when one of the owners above can hold the truth cleanly. New dated docs are appropriate only for a concrete proof record, hardening ticket, or topic with no canonical home. Use `docs/IDE_PRODUCT_DEBT_REGISTER.md` for persistent UI/CSS/testing debt instead of scattering that truth across session summaries.
+Do not create a new product-definition, whole-app-audit, or proof-matrix doc when one of the owners above can hold the truth cleanly. The 2026-06-13 V1 contract reset is the active exception because it replaced the near-term product execution order; future changes should update the V1 contract, execution program, work queue, or issue index instead of creating parallel roadmaps. Use `docs/IDE_PRODUCT_DEBT_REGISTER.md` for persistent UI/CSS/testing debt instead of scattering that truth across session summaries.
 
 ---
 

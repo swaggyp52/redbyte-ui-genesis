@@ -3,61 +3,51 @@ doc_status: current
 last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
-role: ordered near-term RedByte work queue for agents and maintainers
+role: ordered near-term RedByte V1 work queue for agents and maintainers
 ---
 
 # RedByte Work Queue
 
-This is the ordered near-term queue. Do not skip ahead unless the user explicitly reprioritizes.
-
----
+This is the ordered near-term queue after the V1 product contract reset. Do not skip ahead unless the user explicitly reprioritizes.
 
 ## Queue
 
 | # | Slice | Why it matters now | Source docs | Expected commit type | Done criteria |
 |---|---|---|---|---|---|
-| 0 | Nightly FPGA Bridge Proof repair and GitHub closeout | Scheduled Nightly Heavy Suites failed at `FPGA Bridge Proof` with `EADDRINUSE` on `0.0.0.0:4242`. Product work should wait until this proof-harness failure is fixed and verified on GitHub. | `AI_STATE.md`, `docs/development/RED_BYTE_GITHUB_OPERATIONS.md`, `.github/workflows/nightly.yml`, `packages/rb-fpga-bridge/src/proof-runner.js` | `ci:` or `test:` | Proof remains enabled; no broad port killing; local fixed/dynamic bridge proofs and artifact verification pass; pushed `main` has green required checks and a green manual/scheduled nightly proof |
-| 1 | First lab-profile/course-pack seam | Sprint 0 defined the target lab profile model, but ECE141 lab data and starter IDs still live too close to core app source. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, `RB-LAB-001` in the issue index | `refactor:` or `feat:` | One small profile/course-pack data seam exists; Basys3 board logic stays core; no-solution policy remains enforced |
-| 2 | Remaining Verify density / evidence workbench cleanup | Verify behavior is now covered by RB-VERIFY-001, but Verify still needs a focused visual pass so waveform/evidence density reads as a repair workbench rather than crowded chrome. The visual-system integrity sprint reduced the worst overflow but did not close all Verify polish debt. | `RB-VERIFY-002`, `RB-WAVE-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`, Verify surface specs | `fix:` or `refactor:` | Browser proof at 1366x768 shows clearer evidence hierarchy without changing simulation semantics |
-| 3 | Broader student workflow browser suite | After the lab-profile seam and Verify density slice, confirm the full student path behaves coherently in browser. | `docs/release/course-edition/08-validation-log.md`, ECE141 Playwright gates, `docs/STUDENT_RELEASE_READINESS.md` | `test:` or `chore:` | Relevant Project -> Design -> Verify -> Map Pins / Hardware -> Export browser gates pass or failures are logged honestly |
-| 4 | Vivado/Basys3 proof restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, proof docs | `docs:` or `chore:` | Vivado path confirmed; board run captured; E1/E2/E3 claims updated only from evidence; generated packs and tracked proof docs reconciled |
-| 5 | Student and instructor quickstarts | Commercial/classroom readiness requires public-facing instructions, not just agent docs. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, manual | `docs:` | Student first-lab quickstart and instructor setup/support quickstart exist and match current app truth |
-| 6 | Commercial/license packaging | RedByte is not commercially ready yet; packaging comes after UX, proof, and quickstarts. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md` | `docs:` or `chore:` | License/support/deployment posture reviewed; accounts/SaaS remain deferred unless a real hosted-data need is proven |
-
----
+| 1 | V1 Contract Reset | Establish the research, visual evidence, contract, delete/demote/rebuild inventory, and execution program before more product code. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`, `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md` | `docs:` | Docs/control slice committed and pushed; docs/encoding/diff checks pass; no app source, tests, goldens, or hardware proof changed. |
+| 2 | Shell and Workbench Layout Reset | The shell repeats too many status authorities and every surface inherits that first-viewport problem. Fix the frame before deeper surface work. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`, visual audit | `fix:` | One compact shell/status authority; Project/Design/Verify/Hardware/Export/Import screenshots at common viewports; behavior gates still green; no semantics/export/hardware changes. |
+| 3 | Verify Evidence Workbench | Verify behavior is strong, but the evidence/repair loop still reads like a dense instrument panel. | V1 contract Verify section, visual audit, `RB-VERIFY-EVIDENCE-001` in the issue index | `fix:` or `refactor:` | PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path are first-order; Verify gates remain green. |
+| 4 | Project Command Center | Project should be a command center for blank, starter, saved, import/recovery, and future instructor lab paths, not a starter gallery. | V1 contract Project section, visual audit, `RB-PROJECT-CC-001` | `fix:` | No-circuit copy is neutral; next action visible without scroll; ECE141-specific identity is demoted. |
+| 5 | Export Handoff Station | Export must be the one trustworthy Vivado handoff state and currently has visible mapping-summary contradiction risk. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Draft/E0-ready states are singular; mapping summary agrees with actual mapping; export gates and artifact checks pass. |
+| 6 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Signal -> board resource -> package pin -> XDC chain is visible; no E1/E2/E3 overclaim. |
+| 7 | Design Workbench | The circuit graph must become the first object after a starter or project loads. | V1 contract Design section, visual audit, `RB-DESIGN-WB-001` | `fix:` | Meaningful nodes/connections are visible at `1366x768`; palette/toolbar/inspector support the graph instead of displacing it. |
+| 8 | Lab Profile / Course Pack Data Seam | Course-pack data is important, but it should follow the workbench reset so the data seam plugs into a stable product shell. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, general lab audit, `RB-LAB-001` | `refactor:` or `feat:` | One small profile-backed lab path; Basys3 logic stays core; no-solution policy remains enforced. |
+| 9 | Import / Recovery | Import stays a utility but needs representative fidelity/recovery proof after the primary spine stabilizes. | V1 contract Import section, `RB-IMPORT-001` | `fix:` or `test:` | Representative import/recovery paths prove fidelity messages and review-before-apply behavior. |
+| 10 | Student/Instructor Quickstarts | Classroom readiness requires public-facing docs after UI/proof posture stabilizes. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, V1 contract | `docs:` | Student first-lab and instructor setup/support quickstarts exist and match current app truth. |
+| 11 | Vivado/Basys3 Proof Restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, certification matrix, proof docs | `docs:` or `chore:` | E1/E2/E3 evidence updated only from Vivado/board runs; no screenshots-only hardware claim. |
+| 12 | Packaging/Commercial Readiness | Commercial packaging belongs after product trust, quickstarts, and hardware proof. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, V1 execution program | `docs:` or `chore:` | Hosted/support/local package posture reviewed; accounts/SaaS deferred unless concrete hosted-data need is proven. |
 
 ## Recently Closed / Historical Items
 
 | Item | Status |
-|------|--------|
-| Nightly FPGA Bridge Proof port isolation | Done locally 2026-06-13, pending GitHub closeout: bridge/proof port drift repaired, broad `fuser` workflow cleanup removed, dynamic CI proof ports enabled, and `bridge:proof-port-contract` verifies an unrelated `4242` holder survives while proof artifacts validate. |
-| Verify fail-edit-repair regression | Done 2026-06-12: `ide:gate:verify-fail-edit-repair` proves PASS -> expected-output edit/stale -> FAIL -> repair/stale -> PASS, Project PASS/CLEAN, and Export Checks match / READY TO BUILD. No product source fix was needed. |
+|---|---|
+| Nightly FPGA Bridge Proof port isolation | Closed and green on GitHub before this reset: `Classroom Truth Gates`, deploy, and manual Nightly Heavy Suites were green for commit `2d176550`; optional manual screenshot/UI smoke jobs were skipped by design. |
+| Verify fail-edit-repair regression | Done 2026-06-12: `ide:gate:verify-fail-edit-repair` proves PASS -> expected-output edit/stale -> FAIL -> repair/stale -> PASS, Project PASS/CLEAN, and Export Checks match / READY TO BUILD. |
 | General Lab Workbench Sprint 0 / gate truth | Done 2026-06-12: stale Verify/Export gate assumptions repaired; `ide:gate:from-scratch-general-workflow` added; blank-project IO/export aliasing defects fixed; lab profile target model documented. |
 | Visual system integrity | Done 2026-06-12: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. |
-| Hardware / Map Pins visual credibility | Done 2026-06-12: left Map Pins guide no longer wraps copy word-by-word; board/table remain focal; `ide:gate:ece141-hardware-visual-credibility` and existing Map Pins recovery/viewport/product gates pass locally. |
-| First-viewport repair | Done 2026-06-12: Project, Design, Hardware/Map Pins, and Export first viewport hierarchy fixed and covered by `ide:gate:ece141-first-viewport`; no simulation/export/Vivado semantics changed. |
-| Resident visual stewardship pass | Done 2026-06-12: repo-local RedByte playbooks, browser-backed visual direction audit, UI architecture inventory, visual hardening plan, and local dev-server note added. |
-| Product-brain integration | Done 2026-06-12 in commit `4b4e0b3e`; product immersion docs linked into cockpit and issue index created. |
-| Docs/backbone reconciliation | Done 2026-06-12 in commit `91118512`. |
-| Golden export SHA investigation under repo-pinned runtime | Done 2026-06-12 under available Node 24.15.0 runtime: root cause source-explained as intended README evidence-boundary byte change; two SHA fixtures re-blessed; both classroom golden gates pass. Node 20.19.0 was not available in this shell. |
+| Hardware / Map Pins visual credibility | Done 2026-06-12: left Map Pins guide no longer wraps copy word-by-word; board/table remain focal; Hardware visual credibility and Map Pins recovery gates passed locally. |
+| First-viewport repair | Done 2026-06-12: Project, Design, Hardware/Map Pins, and Export first viewport hierarchy improved and covered by `ide:gate:ece141-first-viewport`; no simulation/export/Vivado semantics changed. |
+| GitHub Classroom Truth Gates repair | Done 2026-06-12: required check was repaired rather than removed; branch protection still requires `Classroom Truth Gates`. |
+| Canonical worktree establishment | Done 2026-06-12: `C:\Users\conno\redbyte-ui-genesis-main` is the canonical clone for `https://github.com/swaggyp52/redbyte-ui-genesis.git`. |
+| Golden export SHA investigation | Done 2026-06-12 under available Node 24.15.0 runtime: drift was source-explained as intended README evidence-boundary byte change; two SHA fixtures re-blessed; classroom golden gates passed. |
 | Whole-app product immersion audit | Done 2026-06-12 in commit `5a55957b`; no app source, tests, goldens, or baselines changed. |
-| Project `F-P1` next-action semantics | Done. Do not reopen without new evidence. |
-| Export `F-E1` / `F-E2` trust language | Done. Do not reopen without new evidence. |
-| Map Pins `F-H2` / `F-H3` trust language | Done. Do not reopen without new evidence. |
-| Curated starter and example learning path | Done. Do not reopen without new evidence. |
-| `build:unified` route/lock drift | Done in later validation logs. Reopen only with a fresh failing run. |
-
----
 
 ## Queue Rules
 
-- Item 0 temporarily supersedes product work only because GitHub/nightly proof is red.
-- Item 1 is the next approved architecture/data-boundary slice after Item 0 is verified green.
-- Item 2 is the next approved visual slice and must stay separate from item 1.
-- Item 4 is board/manual-evidence gated and cannot be completed on a desktop without Vivado 2024.2 and Basys3 hardware.
-- Do not re-bless golden SHAs unless the artifact difference is source-explained and accepted.
-- Do not reopen stricken or historical queue items unless new repo evidence shows the closure was wrong.
-- If a new request conflicts with this order, update this file and `docs/ACTIVE_WORK.md` together.
-- Do not create a new big roadmap doc when this queue and `docs/ACTIVE_WORK.md` can carry the plan.
-- Tests passing is evidence, not product readiness. Use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
-- Accounts/SaaS remain deferred until a concrete classroom-management or hosted-data requirement exists.
+- The next code slice after this docs/control reset is `fix: reset RedByte workbench shell layout`.
+- Lab profile / course-pack work is intentionally demoted to item 8, not cancelled.
+- Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization slices unless a direct dependency is proven.
+- Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.
+- Do not update goldens or screenshots as a substitute for explaining behavior.
+- Screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
+- Accounts/SaaS remain deferred until a real hosted-data or classroom-management need exists.

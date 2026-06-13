@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-13 (docs: reset RedByte V1 product contract)
+
+**Subsystem:** RedByte V1 product contract, product research, visual audit, cockpit routing, and work queue control.
+
+**Changes:**
+- Created the V1 product contract reset as a docs/control slice, not a product source slice.
+- Added primary-source competitive/workflow research covering AMD Vivado, Digilent Basys3/XDC, CircuitVerse, Logisim Evolution, Digital, HDLBits, and public Basys3/Vivado university lab workflows.
+- Captured current-HEAD RedByte screenshots for public start, Project, Design, Verify Observe, Verify Compare PASS, Verify FAIL, Hardware/Map Pins, Export draft, Export ready, and Import at `1366x768`, `1440x900`, and `1920x1080`.
+- Added a screenshot-backed visual audit that translates the next code slice into product-hardening-ticket fields.
+- Added the active V1 product contract, delete/demote/rebuild inventory, and ordered V1 execution program.
+- Updated `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_WORK_QUEUE.md`, `docs/DOC_INDEX.md`, `docs/IDE_SYSTEM_MAP.md`, and `docs/plans/2026-06-12-redbyte-product-issue-index.md` so the near-term queue is now V1 Contract Reset -> Shell and Workbench Layout Reset -> Verify Evidence Workbench -> Project Command Center -> Export Handoff Station -> Hardware / Basys3 Workbench -> Design Workbench -> Lab Profile / Course Pack Data Seam -> Import / Recovery -> Quickstarts -> Vivado/Basys3 Proof -> Packaging/Commercial Readiness.
+- Added a routing note to the older `docs/contracts/RedByte_Product_Contract.md` so future agents treat `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` as the active near-term V1 contract.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm rb:doc:validate` (`29` passed, `0` failed), `corepack pnpm rb:encoding:check`, and `git diff --check` with LF-to-CRLF working-copy warnings only. Screenshot capture ran against a fresh local Vite server at `http://127.0.0.1:5174` because the pre-existing `localhost:5173` server showed stale UI build `a4fc624`. The reset capture summary recorded `30` screenshots, UI build `2d17655` matching repo HEAD `2d176550`, zero console/page errors, and zero root horizontal overflow.
+
+**Safety:** This is a docs/research/control reset only. It did not change app source, tests, gates, workflows, package scripts, classroom goldens, simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, project data format, Vivado proof, Basys3 programming proof, or E3 physical observation proof. The `.redbyte/product-immersion/v1-contract-reset/` screenshots and harness are local ignored artifacts and are not intended for commit.
+
+**Known remaining risks:** The next code slice must prove shell/workbench layout changes in browser before it is considered done. Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Lab-profile/course-pack extraction is intentionally queue item 8, not the next slice.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` / deploy / Nightly status must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: reset RedByte workbench shell layout` from the structured hardening-ticket fields in the V1 visual audit and delete/demote/rebuild inventory. Do not start lab-profile extraction unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (ci: fix nightly FPGA bridge proof port isolation)
 
 **Subsystem:** Nightly Heavy Suites / FPGA Bridge Proof CI reliability.

@@ -1,55 +1,82 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
-role: compact product issue routing index from whole-app immersion audit
+role: compact product issue routing index for RedByte V1 hardening
 ---
 
 # RedByte Product Issue Index
 
-Source audit: `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`
-Feature inventory: `docs/audits/2026-06-12-redbyte-feature-inventory.md`
-Roadmap: `docs/plans/2026-06-12-redbyte-product-hardening-roadmap.md`
+Primary reset docs:
 
-This is a routing index, not a replacement for the audit. Use one issue per implementation slice unless a direct dependency is proven.
+- `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
+- `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`
+- `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
+- `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`
+- `docs/plans/RED_BYTE_V1_EXECUTION_PROGRAM.md`
+
+Prior source audits:
+
+- `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`
+- `docs/audits/2026-06-12-redbyte-feature-inventory.md`
+- `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`
+
+This is a routing index, not a replacement for hardening tickets. Use one issue per implementation slice unless a direct dependency is proven.
 
 ## Current Work Order
 
-1. First lab-profile/course-pack data seam.
-2. Remaining Verify density / evidence workbench cleanup.
-3. Broader student workflow browser suite.
-4. Vivado/Basys3 proof restoration.
-5. Student and instructor quickstarts.
-6. Commercial packaging later.
+1. V1 Contract Reset.
+2. Shell and Workbench Layout Reset.
+3. Verify Evidence Workbench.
+4. Project Command Center.
+5. Export Handoff Station.
+6. Hardware / Basys3 Workbench.
+7. Design Workbench.
+8. Lab Profile / Course Pack Data Seam.
+9. Import / Recovery.
+10. Student/Instructor Quickstarts.
+11. Vivado/Basys3 Proof Restoration.
+12. Packaging/Commercial Readiness.
 
-## Issue Index
+## Active Issue Index
 
 | ID | Severity | Surface | Problem | Student impact | Recommended fix | Likely files | Proof/gate needed | Status |
 |---|---|---|---|---|---|---|---|---|
-| RB-UX-001 | P1 | Project | Fresh first-launch Project path can push the dominant starter/start CTA below the first viewport. | New students may not see the correct next action in the first 10 seconds. | Compress/reorder Project launch so identity, recommended path, and primary start CTA are visible at 1366x768. | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`; `packages/rb-apps/src/apps/ide/components/ProjectOverviewPanel.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css` | `ide:gate:ece141-first-viewport`; product immersion/browser proof; docs/encoding checks. | Fixed 2026-06-12 |
-| RB-UX-002 | P1 | Design | Starter Design first viewport hides or de-emphasizes the circuit graph behind chrome, palette, health, banner, and inspector content. | Students cannot immediately inspect what loaded or where circuit work happens. | Make the canvas/graph visibly primary while keeping palette, health, and inspector supportive. | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css` | `ide:gate:ece141-first-viewport`; `ide:gate:design-workbench-contract`; `ide:gate:design-fit-contract`; browser proof. | Fixed 2026-06-12 |
-| RB-UX-003 | P1 | Hardware / Map Pins | First viewport hides board/table mapping work and can show cramped left-rail copy. | Students cannot see the real board-binding task or confirm mapped state. | Promote mapping rows and Basys3 board affordance into first viewport; simplify no-selection guidance. | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx`; `packages/rb-apps/src/apps/ide/surfaces/hardware/HardwareSurfacePrimitives.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css` | `ide:gate:ece141-first-viewport`; `ide:gate:ece141-hardware-visual-credibility`; browser proof. | Fixed 2026-06-12; visual credibility guard added 2026-06-12 |
-| RB-UX-004 | P1 | Export | Primary export/download/repair action can sit below the first viewport. | Students reach the handoff surface but cannot immediately see what to do next. | Move or duplicate the primary action into the first viewport while keeping E0/E1-E3 language honest. | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`; `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css` | `ide:gate:ece141-first-viewport`; `ide:gate:export-download-contract`; product immersion export flows. | Fixed 2026-06-12 |
-| RB-UX-005 | P1 | Export / workflow rail | Export hero can say Ready to Build while the lab-flow rail says Export Draft. | Contradictory readiness language weakens trust at the Vivado handoff. | Use one current trust state and keep Draft versus Trusted vocabulary consistent across rail, hero, and CTA. | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`; `packages/rb-apps/src/apps/ide/workflowStages.ts`; `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | `ide:gate:ece141-first-viewport`; product immersion export flows; no E1/E2/E3 overclaim. | Fixed 2026-06-12 |
-| RB-VISUAL-001 | P1 | Cross-surface visual system | Export handoff/evidence/action content, Verify command density, and shell scroll rhythm could break first-viewport trust even when individual behavior tests passed. | Students can miss whether they should Verify, Map Pins, or Export, and browser gates can miss visual contradictions. | Add a focused visual integrity gate and make bounded Export/Verify/shell fixes without changing simulation, mapping, export generation, or project data semantics. | `tests/e2e/ece141-visual-system-integrity.spec.ts`; `packages/rb-apps/src/apps/IdeApp.tsx`; `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx`; `packages/rb-apps/src/apps/ide/surfaces/export/ExportSurfacePrimitives.tsx`; `packages/rb-apps/src/apps/ide/ide-polish-pass.css` | `ide:gate:ece141-visual-system-integrity`; hierarchy, first-viewport, product-immersion, Hardware, Verify workbench, Export, and viewport contracts; before/after screenshots. | Fixed 2026-06-12 |
-| RB-GATE-001 | P1 | Gates / proof truth | Verify and Export gate contracts retained stale setup assumptions after the product surfaces changed. | Agents could treat false gate failures as product failures or ignore real browser proof. | Align gate setup with current Verify readiness and starter-backed Verify workflow; add from-scratch general workflow gate. | `scripts/gates/ide-export-ready-contract.mjs`; `scripts/gates/ide-verify-contract.mjs`; `scripts/gates/ide-blank-canvas-product-proof.mjs`; `scripts/gates/ide-from-scratch-general-workflow.mjs`; `package.json` | `ide:gate:export-ready-contract`; `ide:gate:verify-contract`; `ide:gate:from-scratch-general-workflow`; relevant Vitest contracts. | Fixed 2026-06-12 |
-| RB-FS-001 | P1 | Project / Design / Verify / Map Pins / Export | Blank projects could expose weak generic IO labels and export alias mismatches that starters did not hit. | Students building from scratch could verify or export a small circuit with one mapped boundary silently ignored or with generated testbench refs that did not match entity refs. | Generate stable numbered blank IO labels/row IDs; alias export mapping to IR boundary names; resolve collapsed scenario labels in testbench generation. | `packages/rb-apps/src/apps/ide/projectRuntime.ts`; `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`; `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`; focused tests | From-scratch browser gate; runtime IO test; export canonical-naming test. | Fixed 2026-06-12 |
-| RB-LAB-001 | P2 | Product architecture / course data | ECE141 lab data, starter IDs, and product-general gate names still sit too close to core product behavior. | Professors cannot yet define new labs cleanly without code changes, and future agents may confuse course data with core board/product logic. | Introduce the first small lab-profile/course-pack data seam while keeping Basys3 board semantics and proof-tier logic in core. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; starter/catalog modules; future course-pack data path | Tests proving one profile-backed lab path and no-solution policy; docs/encoding validation. | Open |
-| RB-VERIFY-001 | P1 | Verify | Fail-edit-repair flow needed browser proof because a dirty expected-output edit could plausibly strand stale/running or disabled state. | Students can lose trust in the debugging loop after making the correct repair. | Added a focused browser regression; no production source fix was needed because the current code already recovered correctly once covered. | `scripts/gates/ide-verify-fail-edit-repair.mjs`; `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts`; `package.json` | `ide:gate:verify-fail-edit-repair`: pass -> flip expected -> FAIL -> restore expected -> rerun -> PASS; Project PASS/CLEAN; Export Checks match / READY TO BUILD. | Fixed 2026-06-12 |
-| RB-VERIFY-002 | P2 | Verify | Verify deck/status text can still truncate or crowd the run-mode and session state in deeper workflows, though the visual-system integrity sprint removed the worst first-viewport command/header overflow. | Students may miss whether they are observing, comparing, stale, or ready. | Tighten remaining run deck copy/layout without changing verification semantics. | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`; `packages/rb-apps/src/apps/ide/surfaces/verify/VerifySurfacePrimitives.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css`; `packages/rb-apps/src/apps/ide/ide-polish-pass.css` | Verify layout screenshot/gate at 1366x768; existing Verify contract gates. | Open / partially mitigated 2026-06-12 |
-| RB-WAVE-001 | P2 | Verify waveform | Waveform area is credible but crowded in common laptop viewport; the visual-system integrity sprint preserved meaningful waveform width but did not finish a dedicated waveform polish pass. | Debugging is harder because signal/tick evidence competes with surrounding chrome. | Improve waveform density/framing after first-viewport repair, preserving tick lock-step. | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css`; `packages/rb-apps/src/apps/ide/ide-polish-pass.css` | Waveform screenshot proof and existing waveform/tick-lock gates. | Open / partially mitigated 2026-06-12 |
-| RB-HW-001 | P1 | Project / workflow status | No-circuit state can say `Mapping 0 missing`, which sounds like an error before a circuit exists. | First-time students may think they are already blocked by mapping. | Use neutral no-circuit copy until there are top-level signals that actually require mapping. | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`; `packages/rb-apps/src/apps/ide/workflowStages.ts`; `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Clean first-launch screenshot and workflow-authority test for no-circuit state. | Open |
-| RB-IMPORT-001 | P2 | Import | Import is visible and smoke-tested but not sufficiently proven across real Vivado ZIP/HDL fidelity cases. | Instructors cannot yet rely on broad import recovery without manual verification. | Keep Import as a utility; expand representative ZIP/HDL/corrupt-package proof after first-viewport and Verify repair. | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx`; `packages/rb-apps/src/import/**`; import tests | `ece141-import-export-recovery.spec.ts` plus representative good/corrupt import cases. | Open |
-| RB-ENV-001 | P2 | Runtime environment | Repo pins Node 20.19.0, but recent local proof ran under Node 24.15.0. | Artifact determinism claims remain slightly weaker until pinned-runtime proof exists. | Re-run relevant artifact/doc/browser gates under Node 20.19.0 when available; label Node 24 evidence honestly. | `.nvmrc`; `package.json`; docs cockpit | `node -v` shows 20.19.0, then relevant focused gates pass. | Open / environment-gated |
-| RB-HWPROOF-001 | P1 | Vivado / Basys3 proof | Vivado 2024.2 was absent on this desktop; no fresh E1/E2/E3 proof was produced. | Hardware-readiness claims cannot be renewed from this machine. | Restore Vivado/Basys3 proof only on a machine with Vivado 2024.2 and board access. | `docs/STUDENT_RELEASE_READINESS.md`; `docs/release/vivado-basys3-certification-matrix.md`; proof docs/scripts | E1/E2/E3 proof docs/logs and observation notes; no screenshots-only claim. | Open / hardware-gated |
-| RB-COMM-001 | P2 | Commercial readiness | RedByte is not ready for unsupervised paid classroom deployment. | Universities would need more support, proof, quickstarts, and deployment clarity before depending on it. | Keep commercial packaging after UX hardening, proof restoration, and quickstarts; defer SaaS. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`; release/readiness docs | Commercial readiness checklist reviewed after product hardening and rehearsal proof. | Open |
-| RB-DOC-001 | P2 | Student/instructor docs | Student and instructor quickstarts are missing as current public-facing package docs. | Instructors cannot assign RedByte cleanly without Connor/agent context. | Write concise Student First Lab and Instructor Setup/Support quickstarts after first-viewport and proof posture stabilize. | `docs/course/**`; `docs/product/**`; `docs/STUDENT_RELEASE_READINESS.md` | Docs validation; manual walkthrough using only public-facing docs. | Open |
+| RB-V1-001 | P1 | Docs / product control | Prior queue routed directly to lab-profile work even though current UI evidence shows shell/workbench hierarchy is the stronger bottleneck. | Agents could build data seams before the core workbench feels coherent to students. | Create research, visual audit, V1 contract, delete/demote/rebuild inventory, execution program, and cockpit updates. | `docs/research/**`; `docs/audits/**`; `docs/contracts/**`; `docs/plans/**`; cockpit docs | Docs validation, encoding check, diff check; commit/push/GitHub closeout. | Current slice |
+| RB-SHELL-001 | P1 | Global shell / workbench frame | Workflow/status state repeats across top ribbon, left rail, evidence box, surface heroes, right rail, and bottom status. | The current job object is harder to find, especially on common laptop viewports. | Rebuild one compact shell/status authority and stabilize the first-viewport frame across surfaces. | `IdeApp.tsx`; `IdeWorkbenchShell.tsx`; `IdeLeftRail.tsx`; `workflowStages.ts`; `ide-root.css` | Before/after screenshots at 3 viewports; no root overflow; product/viewport/Verify/Hardware/Export gates. | Open / next |
+| RB-VERIFY-EVIDENCE-001 | P1 | Verify | Verify PASS/FAIL behavior is credible, but the evidence/repair hierarchy remains dense and instrument-panel-like. | Students may miss the relation between stimulus, expected output, observed output, mismatch, waveform, and repair action. | Rebuild Verify as an evidence workbench with first-order PASS/FAIL/repair hierarchy. | `VerifySurface.tsx`; `VerifyCommandBar.tsx`; `WaveformInstrument.tsx`; Verify CSS | `ide:gate:verify-fail-edit-repair`; Verify contract/workbench gates; PASS/FAIL screenshots. | Open |
+| RB-PROJECT-CC-001 | P1 | Project | Project still reads as starter/course-first and can show mapping failure copy before a circuit exists. | New students can think they are blocked before starting, and advanced/from-scratch paths feel secondary. | Rebuild Project as command center for blank, starter, saved, import/recovery, and future instructor lab paths. | `ProjectSurface.tsx`; project panels; `projectWorkflowAuthority.ts`; `workflowStages.ts`; CSS | Clean first-launch screenshot; workflow-authority tests; product immersion Project path. | Open |
+| RB-EXPORT-HANDOFF-001 | P1 | Export | Current screenshots show a mapping-summary contradiction risk: `5/5 mapped` can coexist with "No required board I/O for this export." | Students may distrust whether Export is reading Hardware/Map Pins truth. | Make Export one trust state and one mapping/provenance authority for draft and E0-ready handoff. | `ExportSurface.tsx`; export primitives; workflow authority; export view models | Export ready/draft gates; artifact explorer/download gates; screenshots. | Open |
+| RB-HARDWARE-WB-001 | P2 | Hardware / Map Pins | Hardware table/board are strong, but ready language can read beyond E0 and toward hardware readiness. | Students may conflate browser/export readiness with Vivado build/programming/observation proof. | Tighten wording and keep signal -> board resource -> package pin -> XDC first-order. | `HardwareSurface.tsx`; `Basys3BoardView.tsx`; workflow authority | Hardware visual credibility; Map Pins recovery; screenshots. | Open |
+| RB-DESIGN-WB-001 | P1 | Design | At `1366x768`, the loaded circuit graph is not the first-viewport focal object. | Students cannot immediately inspect what loaded or where circuit work happens. | Rebuild Design around canvas/graph first, with palette, toolbar, starter context, and inspector demoted. | `DesignSurface.tsx`; `DesignWorkspaceFrame.tsx`; `LogicCanvas`; CSS | Design screenshot showing meaningful nodes/connections; design workbench/wire/placement gates. | Open |
+| RB-LAB-001 | P2 | Product architecture / course data | ECE141 lab data, starter IDs, and product-general gate names still sit too close to core product behavior. | Professors cannot yet define new labs cleanly without code changes. | Introduce first profile/course-pack data seam after workbench contract stabilizes. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; starter/catalog modules; future data path | Profile-backed lab test; no-solution policy gate; starter paths still work. | Open / queue item 8 |
+| RB-IMPORT-001 | P2 | Import | Import is visible and smoke-tested but not proven across representative Vivado ZIP/HDL fidelity cases. | Instructors cannot rely on broad import recovery without manual verification. | Keep Import utility-scoped; expand representative good/corrupt package proof later. | `ImportSurface.tsx`; `packages/rb-apps/src/import/**`; import tests | Import/export recovery plus representative fixtures and screenshots. | Open / queue item 9 |
+| RB-DOC-001 | P2 | Student/instructor docs | Student and instructor quickstarts are missing as current public-facing package docs. | Instructors cannot assign RedByte cleanly without Connor/agent context. | Write concise student first-lab and instructor setup/support quickstarts after workbench/proof posture stabilizes. | `docs/course/**`; `docs/product/**`; release docs | Docs validation; manual walkthrough using only public-facing docs. | Open / queue item 10 |
+| RB-HWPROOF-001 | P1 | Vivado / Basys3 proof | Vivado 2024.2 and hardware proof were not run in this reset. | Hardware-readiness claims cannot be renewed from this machine. | Restore Vivado/Basys3 proof only on a machine with Vivado 2024.2 and board access. | `docs/STUDENT_RELEASE_READINESS.md`; certification matrix; proof scripts/docs | E1/E2/E3 proof docs/logs and observation notes. | Open / hardware-gated |
+| RB-COMM-001 | P2 | Commercial readiness | RedByte is not ready for unsupervised paid classroom deployment. | Universities would need stronger support, proof, quickstarts, deployment, and legal posture. | Keep commercial packaging after workbench hardening, quickstarts, proof restoration, and deployment review. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`; release docs | Commercial readiness checklist after product/proof work. | Open / queue item 12 |
+| RB-ENV-001 | P2 | Runtime environment | Repo pins Node 20.19.0, but recent local proof ran under Node 24.15.0. | Artifact determinism claims remain slightly weaker until pinned-runtime proof exists. | Re-run relevant artifact/doc/browser gates under Node 20.19.0 when available. | `.nvmrc`; docs cockpit | `node -v` shows 20.19.0, then relevant gates pass. | Open / environment-gated |
+
+## Recently Fixed / Historical Issues
+
+| ID | Status |
+|---|---|
+| RB-UX-001 | Fixed 2026-06-12: Project first-viewport starter/start action improved. V1 still reopens Project at command-center level, not as the same old issue. |
+| RB-UX-002 | Fixed 2026-06-12: first-viewport Design gate improved. V1 evidence still finds circuit graph priority insufficient, tracked as RB-DESIGN-WB-001. |
+| RB-UX-003 | Fixed 2026-06-12: Hardware first-viewport board/table improved and visual credibility guard added. |
+| RB-UX-004 | Fixed 2026-06-12: Export primary action visibility improved. |
+| RB-UX-005 | Fixed 2026-06-12: Export Draft versus ready rail mismatch repaired. V1 Export handoff now tracks a different mapping-summary contradiction risk. |
+| RB-VISUAL-001 | Fixed 2026-06-12: visual-system integrity gate and bounded Export/Verify/shell fixes added. |
+| RB-GATE-001 | Fixed 2026-06-12: stale Verify/Export gate setup assumptions repaired; from-scratch general workflow gate added. |
+| RB-FS-001 | Fixed 2026-06-12: blank-project IO labels and export/testbench aliasing repaired. |
+| RB-VERIFY-001 | Fixed 2026-06-12: fail-edit-repair browser regression added and passed. |
+| RB-WAVE-001 | Folded into RB-VERIFY-EVIDENCE-001 for the V1 Verify Evidence Workbench slice. |
+| RB-HW-001 | Folded into RB-PROJECT-CC-001 for neutral no-circuit state and command center work. |
 
 ## Non-Negotiables
 
-- Do not mix lab-profile extraction, Verify visual cleanup, Export, Hardware, Vivado, or commercial packaging work unless a direct dependency is proven.
-- Do not change simulation, export generation, VHDL, XDC, or project data semantics in layout-only slices.
+- Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization work unless a direct dependency is proven.
+- Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, or project data semantics in layout-only slices.
 - Do not update goldens or screenshots as a substitute for explaining behavior.
 - Screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Accounts/SaaS stay deferred until a real hosted-data or classroom-management need exists.

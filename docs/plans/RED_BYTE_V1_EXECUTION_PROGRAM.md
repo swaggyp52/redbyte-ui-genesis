@@ -1,0 +1,358 @@
+---
+doc_status: current
+last_validated: 2026-06-13
+owner: Connor Angiel
+used_by_claude: true
+role: ordered RedByte V1 execution program after contract reset
+---
+
+# RedByte V1 Execution Program
+
+This program is the authoritative near-term execution sequence for RedByte V1 product work. It replaces the previous "lab-profile next" queue with a contract-first workbench reset.
+
+## Program Rules
+
+- One logical slice per commit.
+- Start each product complaint from the hardening-ticket fields.
+- Do not combine layout, Verify behavior, lab-profile data, Export generation, Hardware proof, or commercial packaging unless a direct dependency is proven.
+- Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
+- Preserve E0/E1/E2/E3 truth at every phase.
+
+## Phase 1 - V1 Contract Reset
+
+Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.
+
+Why now: The previous queue was technically coherent but strategically premature. The live product still needs a workbench hierarchy reset before course-pack data extraction becomes the highest leverage slice.
+
+Inputs:
+
+- Current cockpit docs.
+- Official/primary-source research.
+- Current-HEAD screenshots at `1366x768`, `1440x900`, `1920x1080`.
+
+Output artifacts:
+
+- `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`
+- `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
+- `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
+- `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`
+- `docs/plans/RED_BYTE_V1_EXECUTION_PROGRAM.md`
+- Cockpit/current-truth/work-queue/issue-index/doc-index updates.
+
+Acceptance criteria:
+
+- Docs validate.
+- Encoding check passes.
+- `git diff --check` passes.
+- No app source, tests, gates, goldens, or hardware proof changed.
+
+Rollback:
+
+- Revert the docs commit only.
+
+## Phase 2 - Shell And Workbench Layout Reset
+
+Goal: Create one compact shell/status authority and a stable first-viewport workbench frame for all core surfaces.
+
+Why: Current shell repeats stage state across top ribbon, left rail, surface headers, evidence box, right rail, and bottom status. This weakens first-viewport hierarchy and makes every surface harder to fix.
+
+Implementation slices:
+
+- Rebuild global workflow/status ownership.
+- Demote debug/support chrome.
+- Normalize first-viewport workbench frame.
+- Preserve route/mode behavior.
+
+Proof:
+
+- Before/after screenshots for Project, Design, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, Import at `1366x768`.
+- Cross-viewport no-overflow geometry.
+- Existing product-immersion, viewport, Verify, Hardware, Export gates green.
+
+Acceptance:
+
+- Each surface has one obvious job object and one primary next action.
+- No behavior/export/hardware semantics changed.
+
+Rollback:
+
+- Revert shell/layout commit; no data migrations.
+
+## Phase 3 - Verify Evidence Workbench
+
+Goal: Rebuild Verify around stimulus, expected output, observed output, mismatch/pass, waveform, and repair action.
+
+Why: The evidence loop is the learning loop. Current behavior is strong, but visual density still reads as a control deck.
+
+Implementation slices:
+
+- Evidence hierarchy.
+- Failure repair first viewport.
+- Waveform and tick/case readability.
+- Expected-output editing containment.
+
+Proof:
+
+- `ide:gate:verify-fail-edit-repair`.
+- Verify workbench and contract gates.
+- PASS and FAIL screenshots at `1366x768`, `1440x900`, `1920x1080`.
+
+Acceptance:
+
+- Observe/Compare distinction remains visible.
+- First mismatch is easier to inspect.
+- No simulation or Verify result semantics changed unless the ticket explicitly targets behavior and tests prove it.
+
+Rollback:
+
+- Revert Verify presentation slice; behavior tests protect semantics.
+
+## Phase 4 - Project Command Center
+
+Goal: Make Project the command center for blank, starter, saved, import/recovery, and future instructor lab paths.
+
+Why: Project currently remains starter/course-first. V1 needs a product-general command center before course packs become first-class.
+
+Implementation slices:
+
+- Neutral no-circuit state.
+- Blank/starter/saved/import path hierarchy.
+- Current lab status and next action.
+- Course-specific copy demotion.
+
+Proof:
+
+- Clean first-launch screenshot at `1366x768`.
+- Project readiness/workflow authority tests.
+- Product immersion project path.
+
+Acceptance:
+
+- No-circuit state does not report false mapping failure.
+- A new student can identify the next action without scrolling.
+
+Rollback:
+
+- Revert Project surface copy/layout slice.
+
+## Phase 5 - Export Handoff Station
+
+Goal: Make Export the single source for draft/E0-ready package trust and Vivado handoff.
+
+Why: Export is the most consequential handoff. Any contradictory mapping or readiness language weakens trust.
+
+Implementation slices:
+
+- One trust state.
+- Mapping summary correction.
+- Artifact provenance.
+- Vivado next steps and E0/E1/E2/E3 ladder.
+
+Proof:
+
+- Export draft and ready screenshots.
+- Export download/artifact explorer/ready gates.
+- Package generation tests if generation code changes.
+
+Acceptance:
+
+- No same-viewport contradiction such as `5/5 mapped` plus `No required board I/O`.
+- E0 ready never implies E1/E2/E3.
+
+Rollback:
+
+- Revert Export surface slice; no golden update unless artifact bytes intentionally changed and are source-explained.
+
+## Phase 6 - Hardware / Basys3 Workbench
+
+Goal: Make Map Pins a direct Basys3 binding workbench.
+
+Why: This is RedByte's FPGA differentiation: project signal to board resource to package pin to XDC.
+
+Implementation slices:
+
+- E0 handoff wording.
+- Signal/table/board synchronized hierarchy.
+- XDC preview containment.
+- Clock/resource language.
+
+Proof:
+
+- Hardware visual credibility gate.
+- Map Pins recovery gate.
+- Board/table screenshots.
+
+Acceptance:
+
+- Students see signal rows and board together.
+- No hardware-ready claim without E1/E2/E3 proof.
+
+Rollback:
+
+- Revert Hardware presentation slice; pin mapping tests protect semantics.
+
+## Phase 7 - Design Workbench
+
+Goal: Make the circuit graph the first object in Design.
+
+Why: RedByte cannot be credible as a lab workbench if the loaded circuit is not visible immediately.
+
+Implementation slices:
+
+- Canvas-first first viewport.
+- Palette and toolbar compaction.
+- Starter/context demotion.
+- Inspector demotion unless selection exists.
+
+Proof:
+
+- Starter Design screenshot shows meaningful nodes/connections at `1366x768`.
+- Design workbench, placement, wire interaction, and focused gates green.
+
+Acceptance:
+
+- A student can inspect the loaded circuit before scrolling.
+- No circuit graph/editor behavior regression.
+
+Rollback:
+
+- Revert Design layout slice.
+
+## Phase 8 - Lab Profile / Course Pack Data Seam
+
+Goal: Introduce the first small data seam for professor-authored labs and course packs.
+
+Why: Course packs are important, but should build on a stable workbench contract.
+
+Implementation slices:
+
+- One minimal profile-backed lab path.
+- Course-specific starter data moved toward data boundary.
+- No-solution guard retained.
+
+Proof:
+
+- Profile-backed lab test.
+- No-solution policy gate.
+- Existing starter paths still work.
+
+Acceptance:
+
+- A professor can define one supported lab shape without editing core board/export semantics.
+- Basys3 resource and proof-tier logic stays core.
+
+Rollback:
+
+- Revert data seam; starter behavior remains intact.
+
+## Phase 9 - Import / Recovery
+
+Goal: Make Import a trustworthy utility path for RedByte project recovery and representative Vivado/HDL inputs.
+
+Why: Import is useful but not the main V1 spine.
+
+Implementation slices:
+
+- Fidelity messaging.
+- Representative good/corrupt ZIP paths.
+- Review-before-apply reinforcement.
+
+Proof:
+
+- Import/export recovery gates.
+- Representative import fixtures.
+- Screenshots.
+
+Acceptance:
+
+- User understands Full/Reconstructed/Partial before applying import.
+
+Rollback:
+
+- Revert Import slice; no project data migration.
+
+## Phase 10 - Student/Instructor Quickstarts
+
+Goal: Create public-facing quickstarts that do not depend on agent context.
+
+Why: Classroom adoption requires readable instructions and support boundaries.
+
+Implementation slices:
+
+- Student first lab.
+- Instructor setup/support.
+- Known limitations and proof tiers.
+
+Proof:
+
+- Docs validation.
+- Manual walkthrough against current UI.
+
+Acceptance:
+
+- A student can follow the first lab without internal docs.
+- An instructor can understand E0/E1/E2/E3 requirements.
+
+Rollback:
+
+- Revert docs.
+
+## Phase 11 - Vivado/Basys3 Proof Restoration
+
+Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.
+
+Why: Hardware claims are the riskiest public claims and cannot be renewed on this desktop.
+
+Implementation slices:
+
+- Environment check.
+- Vivado build proof.
+- Board programming proof.
+- Board observation notes.
+- Release docs update.
+
+Proof:
+
+- Vivado logs.
+- Programming logs.
+- E3 observation procedure and evidence.
+
+Acceptance:
+
+- Every hardware-safe claim points to named evidence.
+
+Rollback:
+
+- Revert docs/evidence claim updates; do not erase raw generated proof unless explicitly requested.
+
+## Phase 12 - Packaging / Commercial Readiness
+
+Goal: Decide public hosted, campus support, local package, license/privacy, and support posture.
+
+Why: Commercial packaging depends on product trust, proof, and quickstarts.
+
+Implementation slices:
+
+- Public/free hosted evaluation posture.
+- Instructor/campus support package.
+- Local/campus deploy package notes.
+- Privacy/license/support review.
+
+Proof:
+
+- Deploy proof when applicable.
+- Support docs.
+- License/privacy review.
+
+Acceptance:
+
+- No SaaS/accounts unless concrete hosted-data need is proven.
+- "Pushed to GitHub" is not called "live for students" unless deployment proof confirms it.
+
+Rollback:
+
+- Revert packaging docs/config; preserve source truth.
+
+## Attribution
+
+Connor Angiel

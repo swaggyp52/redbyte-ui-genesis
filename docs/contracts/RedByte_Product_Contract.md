@@ -17,6 +17,11 @@ role: target-state product blueprint
 > It defines the intended product behavior, quality bar, and proof obligations.
 > The manual documents current truth. This contract defines target truth.
 
+> **Current routing note (2026-06-13):** The active near-term V1 execution contract is
+> `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`. Use this older contract as broad
+> target-state context only when it does not conflict with the V1 reset, current code,
+> or current proof docs.
+
 ---
 
 ## 1. Product Identity

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-12
+**Last Updated:** 2026-06-13
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -25,9 +25,10 @@ For a normal agent session:
 5. `docs/DOC_INDEX.md`
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
-8. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
-9. `docs/STUDENT_RELEASE_READINESS.md`
-10. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
+8. `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
+9. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
+10. `docs/STUDENT_RELEASE_READINESS.md`
+11. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
 
 For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb:encoding:check`. For app/source/gate work, follow the proof obligations in the relevant surface and release docs.
 
@@ -61,6 +62,11 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
+| [research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md](./research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md) | Primary-source competitive/workflow research for V1 |
+| [audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md](./audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md) | Current-HEAD screenshot-backed V1 visual audit |
+| [plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md](./plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md) | V1 delete/demote/rebuild inventory |
+| [plans/RED_BYTE_V1_EXECUTION_PROGRAM.md](./plans/RED_BYTE_V1_EXECUTION_PROGRAM.md) | Ordered V1 execution program |
 | [product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md](./product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md) | Product-brain routing map for current, target, proof, audit, and stale docs |
 | [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target lab-profile and course-pack architecture model |
 | [product/RED_BYTE_COMMERCIALIZATION_READINESS.md](./product/RED_BYTE_COMMERCIALIZATION_READINESS.md) | Current commercial readiness boundary and deployment/support posture |
@@ -112,11 +118,12 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 | File | Purpose |
 |------|---------|
 | [manuals/RedByte_Product_Manual.md](./manuals/RedByte_Product_Manual.md) | Canonical current product reference |
+| [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 target contract and execution order |
 | [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target model for professor-authored labs, course packs, and from-scratch student projects |
 | [manuals/MANUAL_CLAIM_AUDIT.md](./manuals/MANUAL_CLAIM_AUDIT.md) | Claim audit against source |
 | [manuals/MANUAL_TRACEABILITY_MATRIX.md](./manuals/MANUAL_TRACEABILITY_MATRIX.md) | Manual claims mapped to source |
 | [manuals/MANUAL_CONFORMANCE.md](./manuals/MANUAL_CONFORMANCE.md) | Manual maintenance rules |
-| [contracts/RedByte_Product_Contract.md](./contracts/RedByte_Product_Contract.md) | Target-state quality bar and product contract |
+| [contracts/RedByte_Product_Contract.md](./contracts/RedByte_Product_Contract.md) | Older broad target-state quality bar; do not let it override the active V1 reset queue |
 | [contracts/Sequential_Support_Boundary.md](./contracts/Sequential_Support_Boundary.md) | Enforced single-clock sequential support boundary |
 
 The manual describes current behavior. The contract describes target-state obligations. Do not promote target-state text into current-state claims without proof.
@@ -132,6 +139,11 @@ The manual describes current behavior. The contract describes target-state oblig
 | [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Local product-hardening ticket schema |
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact issue routing extracted from the current whole-app audit |
+| [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset |
+| [research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md](./research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md) | V1 research basis |
+| [audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md](./audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md) | V1 visual audit and next hardening-ticket translation |
+| [plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md](./plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md) | V1 delete/demote/rebuild control layer |
+| [plans/RED_BYTE_V1_EXECUTION_PROGRAM.md](./plans/RED_BYTE_V1_EXECUTION_PROGRAM.md) | V1 phase program and acceptance proof |
 | [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Ordered implementation/proof roadmap derived from product immersion |
 | [audits/2026-06-12-redbyte-visual-product-direction-audit.md](./audits/2026-06-12-redbyte-visual-product-direction-audit.md) | Browser-backed visual direction baseline and top visual issues |
 | [audits/2026-06-12-redbyte-ui-architecture-inventory.md](./audits/2026-06-12-redbyte-ui-architecture-inventory.md) | Styling architecture inventory and design-system refactor risks |
@@ -192,10 +204,11 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 ## Current Known Risk Snapshot
 
-- The 2026-06-12 whole-app product immersion audit is the current product UX baseline, and the visual product direction audit is the current visual baseline after first-viewport repair.
+- The 2026-06-13 V1 product contract reset is the active near-term product route. Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, the V1 visual audit, and the V1 execution program before starting new product code.
+- The 2026-06-12 whole-app product immersion audit remains historical baseline input, and the 2026-06-13 V1 visual audit is the current screenshot-backed reset evidence.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; the next visual implementation path starts with design-system/token/primitive cleanup before broad surface polish.
-- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`; the next implementation slice is the first lab-profile/course-pack seam, and remaining Verify density cleanup is a separate later visual slice.
+- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`; the next implementation slice is Shell and Workbench Layout Reset. The first lab-profile/course-pack seam is intentionally queue item 8.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.
