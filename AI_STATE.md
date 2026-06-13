@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-06-13 (test: harden RedByte state authority invariants)
+
+**Subsystem:** RedByte IDE under-the-hood state authority, normal-use proof, and invariant gates.
+
+**Changes:**
+- Confirmed the sprint base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `d235823a248f42534b4ed1b2545c86a1656cc799`.
+- Verified the pushed base was green on GitHub before work: `Classroom Truth Gates`, `Deploy to Cloudflare Pages`, and the Cloudflare Pages check all succeeded for `d235823a`.
+- Created `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, mapping 27 RedByte subsystems to files, state owners, mutation paths, persistence, gates, risks, and invariants.
+- Created `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, making runtime project state, circuitStore, logic-view camera/selection, Verify proof, mapping, Export, Import, persistence, and E0/E1/E2/E3 ownership explicit.
+- Created `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, mapping product invariants to current proof, missing proof, severity, and future gate recommendations.
+- Ran a normal-use breakage audit on a fresh current local server at `http://127.0.0.1:5175/`, which rendered `Buildd235823`; saved the tracked audit at `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`.
+- Added `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md` for Vitest, Playwright, classroom, golden, manual screenshot, Vivado, and Basys3 proof ownership.
+- Added `ide:gate:design-workbench-integrity`, covering starter graph visibility, finite camera/SVG state, runtime/editor graph agreement, node drag, delete, undo restore, Design view-mode changes, Design -> Verify -> Design, and direct Design reload.
+- Added `ide:gate:shell-layout-integrity`, covering Project, Design, Verify, Hardware, and Export at `1366x768`, `1440x900`, and `1920x1080` for active mode marker, no root overflow, visible shell, visible mode root, visible focal object, and Design graph visibility.
+- Wired both new gates into `classroom:gate` and `verify:gates:classroom`.
+- Updated cockpit/current-truth/work-queue/execution/issue-index docs so future work starts from the under-the-hood source/state/invariant docs and the audit-driven next slice is Export Trust Integrity.
+
+**Normal-use findings:** No console/page errors were recorded. Design zoom/Fit/Center/dense/resize/navigation/reload, select/drag/delete/undo, Verify observe/compare/fail/repair/pass/persistence, Hardware map/table/board alignment, and multi-viewport geometry passed in the exercised normal-use audit. Deferred findings: Export reached generated-artifact state but did not expose an obvious artifact preview in the normal workflow (P1), and loaded Project did not expose an obvious Import utility entry while manual text still describes Import in the left rail (P2).
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm -s ide:gate:design-workbench-integrity`; `pnpm -s ide:gate:shell-layout-integrity`; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate` (`29` passed, `0` failed); `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. `classroom:gate` included the new Design workbench and Shell layout integrity gates plus the determinism/parity suite.
+
+**Safety:** This is a docs/gate/proof-control slice. It does not change simulation semantics, Verify result semantics, Basys3 pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, golden artifacts, lab-profile/course-pack implementation, SaaS/accounts, Vivado proof, Basys3 programming proof, physical observation proof, or product visual redesign.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Export Trust Integrity remains open and should prove artifact preview, ZIP contents, README/provenance, Draft/Trusted labels, mapping summary, and E0/E1/E2/E3 wording together. Import utility access remains a separate P2 product-control issue.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `test: prove Export trust integrity` from `RB-EXPORT-TRUST-001` and `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`. After that, continue with Verify Evidence Workbench and shell/workbench hierarchy slices without mixing in lab profiles, Vivado proof, or commercial packaging.
+
 ## Change Log 2026-06-13 (fix: stabilize Design canvas zoom integrity)
 
 **Subsystem:** RedByte IDE Design Workbench canvas / zoom / viewport stability.

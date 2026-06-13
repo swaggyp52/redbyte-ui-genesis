@@ -12,8 +12,8 @@ imported_by: CLAUDE.md
 **Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
-**Audited base commit for this reset:** `2d176550`
-**Latest product/control slice:** V1 Product Contract Reset
+**Audited base commit for this reset:** `d235823a`
+**Latest product/control slice:** Under-the-Hood Mastery Sprint / invariant gates
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -27,12 +27,12 @@ Import is a utility. Vivado build, board programming, and board observation are 
 
 ## Top Priorities
 
-1. **Close the V1 Contract Reset docs/control slice.** This slice creates the V1 research, visual audit, product contract, delete/demote/rebuild inventory, execution program, and cockpit routing.
-2. **Next code slice: Shell and Workbench Layout Reset.** Use `fix: reset RedByte workbench shell layout`. The shell/status frame must be reset before deeper surface work.
-3. **Then rebuild Verify as an evidence workbench.** Behavior is already credible; density and repair hierarchy need workbench-level treatment.
-4. **Then rebuild Project, Export, Hardware, and Design in the V1 order.** Design graph visibility remains a P1, but it should follow the shell reset so the frame is stable.
-5. **Keep lab-profile/course-pack work as item 8.** It is important, not next.
-6. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this docs slice.
+1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
+2. **Next audit-driven code slice: Export Trust Integrity.** The normal-use breakage audit found Export generated-artifact preview visibility as the clearest P1 gap. Prove handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
+3. **Then resume the V1 surface sequence with Verify Evidence Workbench and shell/workbench hierarchy work as separate slices.** Verify behavior is credible; density and repair hierarchy remain a V1 product issue.
+4. **Keep Import / Recovery as a scoped utility-contract slice.** The audit found Import access ambiguity after loaded Project, but it is P2 and should not be mixed into Export.
+5. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
+6. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or lab-profile extraction unless the user explicitly reprioritizes.
 
@@ -41,39 +41,44 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Item | Current truth | Next action |
 |---|---|---|
 | V1 product contract | New V1 contract reset is the active target route. The older `RedByte_Product_Contract.md` remains broad/historical target context. | Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` for near-term V1 surface work. |
-| Runtime screenshot identity | Existing `localhost:5173` responded but showed stale UI build `a4fc624`. The audit screenshots were recaptured on `127.0.0.1:5174` and show build `2d17655`, matching HEAD `2d176550`. | For future screenshot proof, verify the UI build hash before using an existing server. |
-| Shell/status hierarchy | Shell repeats state across top ribbon, left rail, evidence box, surface hero, right rail, and bottom status. | Next slice resets shell/workbench frame with screenshot proof and no semantics changes. |
-| Design first viewport | Current `1366x768` screenshot still does not make the actual circuit graph the first-viewport focal object. | Fix after shell reset in the Design Workbench slice. |
-| Verify evidence density | Verify PASS/FAIL behavior is strong, but the evidence/repair loop is visually dense. | Rebuild as Verify Evidence Workbench after shell reset. |
-| Export mapping summary | Current screenshots show risk of same-viewport contradiction: `5/5 mapped` can coexist with "No required board I/O for this export." | Fix in Export Handoff Station slice. |
+| Runtime screenshot identity | Existing local servers have repeatedly been stale: old `localhost:5173` showed `a4fc624`, the user-visible `127.0.0.1:5174` showed `Build9a639a4`, and current sprint evidence used fresh `127.0.0.1:5175` with `Buildd235823`. | For future screenshot proof, verify the UI build hash before using an existing server. |
+| Under-the-hood state authority | The sprint maps project runtime, circuitStore, logic-view camera/selection, Verify health, mapping, Export, Import, persistence, and proof-tier ownership. | Read the under-the-hood map and state authority matrix before changing stateful product code. |
+| Shell/status hierarchy | Shell repeats state across top ribbon, left rail, evidence box, surface hero, right rail, and bottom status. New shell-layout integrity gate proves visibility/no-overflow but does not redesign hierarchy. | Keep shell hierarchy as a future scoped visual/workbench slice; do not confuse the gate with visual redesign completion. |
+| Design first viewport | Current `1366x768` screenshot still does not make the actual circuit graph the first-viewport focal object. | Fix in the scoped Design Workbench slice after higher-risk trust gaps are closed. |
+| Verify evidence density | Verify PASS/FAIL behavior is strong, but the evidence/repair loop is visually dense. | Rebuild as Verify Evidence Workbench after Export Trust Integrity unless a new audit reprioritizes it. |
+| Export artifact evidence | Normal-use audit reached generated-artifact state but did not find an obvious artifact preview in the primary workflow. | Next slice should add/prove Export Trust Integrity. |
+| Export mapping summary | Current screenshots show risk of same-viewport contradiction: `5/5 mapped` can coexist with "No required board I/O for this export." | Include in Export Trust Integrity / Export Handoff Station work. |
+| Import utility access | Import is demoted from the primary spine, but loaded Project did not expose an obvious Import utility while the manual still describes Import in the left rail. | Resolve contract and add an Import utility-access gate later. |
 | Hardware proof language | Hardware / Map Pins is visually stronger, but "ready to build hardware" can be read beyond E0. | Tighten wording in Hardware / Basys3 Workbench slice. |
-| Lab profile/course-pack seam | Target model exists, but implementation is intentionally demoted to queue item 8. | Do not start until workbench hierarchy slices land or user reprioritizes. |
+| Lab profile/course-pack seam | Target model exists, but implementation is intentionally deferred to queue item 11. | Do not start until workbench hierarchy and trust slices land or user reprioritizes. |
 | Fresh Vivado/Basys3 proof | Vivado 2024.2 and board proof were not run in this reset. | Use a Vivado 2024.2 + Basys3 machine before making new E1/E2/E3 claims. |
 | Node pinned runtime | `.nvmrc` is `20.19.0`; current local proof uses Node `v24.15.0` and pnpm `10.24.0`. | Label Node 24 evidence honestly; rerun pinned-runtime proof when available. |
 
 ## Next Technical Task
 
-**Target:** Shell and Workbench Layout Reset.
+**Target:** Export Trust Integrity.
 
 Structured hardening ticket fields to start from:
 
-- Title: Reset RedByte workbench shell layout.
-- Surface: Global shell and first-viewport frame across Project, Design, Verify, Hardware, Export, Import.
-- Journey segment: first lab start through verified mapped export.
-- Observed behavior: repeated shell/status authorities and surface-local chrome compete with the work object.
-- Expected behavior: one compact shell/status authority; each surface first viewport focuses on the current job.
-- Minimum acceptance proof: before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; no root overflow; existing behavior gates green; no simulation/export/golden/hardware changes.
+- Title: Prove Export trust integrity.
+- Surface: Export.
+- Journey segment: verified/mapped project to Vivado handoff.
+- Observed behavior: normal-use audit reached generated-artifact state but did not find an obvious artifact preview; older V1 screenshots also show mapping-summary contradiction risk.
+- Expected behavior: Export handoff summary, generated artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agree in one normal workflow.
+- Minimum acceptance proof: focused Export browser gate; export download/e2e/artifact explorer gates; generated ZIP inspection; no export-generation/golden changes unless source-explained.
 
 Suggested commit:
 
 ```text
-fix: reset RedByte workbench shell layout
+test: prove Export trust integrity
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Under-the-Hood Mastery Sprint | Created source-level subsystem map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc. Added `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. |
+| Normal-use breakage audit | Fresh local server at `http://127.0.0.1:5175` showed `Buildd235823`; audit recorded no console/page errors and no Design blank-canvas regression. Deferred findings: Export artifact preview visibility P1, Import utility-access ambiguity P2. |
 | V1 contract reset screenshot capture | 30 screenshots captured under `.redbyte/product-immersion/v1-contract-reset/screenshots/` across Project, Design, Verify observation, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, Import, and public start states at `1366x768`, `1440x900`, and `1920x1080`. Capture summary recorded zero console/page errors, zero root horizontal overflow, base URL `http://127.0.0.1:5174`, and UI build `2d17655` matching HEAD `2d176550`. |
 | V1 competitive/workflow research | Official/primary-source research covered AMD Vivado UG892/UG908, Digilent Basys3/XDC, CircuitVerse, Logisim Evolution, Digital, HDLBits, and public university Basys3/Vivado lab workflows. |
 | GitHub main pre-reset health | Before this docs slice, `main` at `2d176550` was in sync with `origin/main`. GitHub check-runs for `Classroom Truth Gates`, deploy, and manual Nightly Heavy Suites were green; optional manual screenshot/UI smoke jobs were skipped by design. |
@@ -108,14 +113,15 @@ If a doc references a generated pack that is missing locally, do not treat the t
 
 | Status | Item | Evidence |
 |---|---|---|
-| Current | V1 Product Contract Reset. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`; research; visual audit; inventory; execution program. |
-| Next | Shell and Workbench Layout Reset. | `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`; V1 visual audit. |
+| Current | Under-the-Hood Mastery Sprint. | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`; `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`; `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`; normal-use audit; invariant gates. |
+| Next | Export Trust Integrity. | `RB-EXPORT-TRUST-001`; normal-use breakage audit. |
 | Later | Verify Evidence Workbench. | `RB-VERIFY-EVIDENCE-001` in issue index after reset. |
+| Later | Shell and Workbench Layout Reset. | `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`; V1 visual audit. |
 | Later | Project Command Center. | `RB-PROJECT-CC-001` in issue index after reset. |
 | Later | Export Handoff Station. | `RB-EXPORT-HANDOFF-001` in issue index after reset. |
 | Later | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001` in issue index after reset. |
 | Later | Design Workbench. | `RB-DESIGN-WB-001` in issue index after reset. |
-| Later | Lab Profile / Course Pack Data Seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 8. |
+| Later | Lab Profile / Course Pack Data Seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
 | Board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links
@@ -126,6 +132,11 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Compact current truth | `docs/product/RED_BYTE_CURRENT_TRUTH.md` |
 | Ordered V1 work queue | `docs/product/RED_BYTE_WORK_QUEUE.md` |
 | V1 product contract | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` |
+| Under-the-hood subsystem map | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md` |
+| State authority matrix | `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md` |
+| Invariant matrix | `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md` |
+| Normal-use breakage audit | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md` |
+| Test/gate ownership | `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md` |
 | V1 research | `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md` |
 | V1 visual audit | `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md` |
 | V1 delete/demote/rebuild inventory | `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md` |

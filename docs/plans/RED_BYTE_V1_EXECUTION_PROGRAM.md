@@ -8,7 +8,7 @@ role: ordered RedByte V1 execution program after contract reset
 
 # RedByte V1 Execution Program
 
-This program is the authoritative near-term execution sequence for RedByte V1 product work. It replaces the previous "lab-profile next" queue with a contract-first workbench reset.
+This program is the authoritative near-term execution sequence for RedByte V1 product work. It replaces the previous "lab-profile next" queue with a contract-first and invariant-first workbench reset.
 
 ## Program Rules
 
@@ -49,6 +49,63 @@ Acceptance criteria:
 Rollback:
 
 - Revert the docs commit only.
+
+## Phase 1.5 - Under-The-Hood Mastery Sprint
+
+Goal: Build source-level ownership of RedByte internals before more reactive product patching.
+
+Why: The Design zoom bug was fixed, but the fact that normal Fit controls could forward a React event into camera math showed that RedByte needed explicit invariants around state authorities, canvas geometry, trust derivation, persistence, and gate truth.
+
+Output artifacts:
+
+- `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
+- `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
+- `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
+- `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md`
+- `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`
+- `ide:gate:design-workbench-integrity`
+- `ide:gate:shell-layout-integrity`
+
+Acceptance:
+
+- At least two high-value invariant gates are part of `classroom:gate` and `verify:gates:classroom`.
+- Normal-use audit records console/page errors, blank screens, invisible graphs, incorrect trust labels, state mismatch, overflow, and deferred product findings.
+- No simulation, export generation, Basys3 mapping semantics, goldens, lab profiles, SaaS/accounts, or visual redesign changes are mixed into the sprint.
+
+Rollback:
+
+- Revert docs/gate commit only; no data migrations or generated artifact changes.
+
+## Phase 1.6 - Export Trust Integrity
+
+Goal: Prove that Export's visible trust state and generated artifact evidence agree in a normal student workflow.
+
+Why: The normal-use breakage audit reached generated-artifact state but did not find an obvious artifact preview. Earlier V1 evidence also showed mapping-summary contradiction risk. Export is the most consequential handoff, so its summary, artifact count, preview, ZIP bytes, README/provenance, Draft/Trusted labels, and proof-tier language must agree.
+
+Implementation slices:
+
+- Add focused Export trust integrity browser proof.
+- Make the visible artifact preview unavoidable in the normal workflow if the gate proves it is missing.
+- Verify downloaded ZIP entries and README/provenance against visible artifact state.
+- Preserve export generation bytes unless a source-explained generator bug is found.
+
+Proof:
+
+- New `ide:gate:export-trust-integrity` or equivalent.
+- Existing export artifact explorer, download, ready, blockers, and e2e gates.
+- ZIP entry inspection.
+- No E1/E2/E3 overclaim in browser-only proof.
+
+Acceptance:
+
+- Draft Export cannot look Trusted.
+- Trusted Export requires current Compare PASS, current mapping, and current bundle.
+- Artifact preview matches ZIP contents.
+- Export does not claim Vivado build, programming, or physical observation.
+
+Rollback:
+
+- Revert Export trust slice; do not update goldens unless generator bytes intentionally changed and are source-explained.
 
 ## Phase 2 - Shell And Workbench Layout Reset
 

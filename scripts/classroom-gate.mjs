@@ -30,6 +30,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-canvas-zoom-integrity'],
   },
   {
+    name: 'ide:gate:design-workbench-integrity',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-workbench-integrity'],
+  },
+  {
     name: 'ide:gate:design-correctness-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-correctness-contract'],
@@ -53,6 +58,11 @@ const STEPS = [
     name: 'ide:gate:export-e2e-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-e2e-contract'],
+  },
+  {
+    name: 'ide:gate:shell-layout-integrity',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:shell-layout-integrity'],
   },
   {
     name: 'ide:gate:zip-import-contract',

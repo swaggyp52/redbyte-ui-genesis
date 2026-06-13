@@ -26,9 +26,12 @@ For a normal agent session:
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
 8. `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
-9. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
-10. `docs/STUDENT_RELEASE_READINESS.md`
-11. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
+9. `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
+10. `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
+11. `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
+12. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
+13. `docs/STUDENT_RELEASE_READINESS.md`
+14. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
 
 For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb:encoding:check`. For app/source/gate work, follow the proof obligations in the relevant surface and release docs.
 
@@ -63,7 +66,11 @@ When docs conflict:
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
+| [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |
+| [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | Canonical state owners, mirrors, invalidation, persistence, and proof |
+| [architecture/RED_BYTE_INVARIANT_MATRIX.md](./architecture/RED_BYTE_INVARIANT_MATRIX.md) | Product invariants, existing proof, missing proof, and gate ownership |
 | [research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md](./research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md) | Primary-source competitive/workflow research for V1 |
+| [audits/2026-06-13-redbyte-normal-use-breakage-audit.md](./audits/2026-06-13-redbyte-normal-use-breakage-audit.md) | Current normal-use breakage audit and deferred findings |
 | [audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md](./audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md) | Current-HEAD screenshot-backed V1 visual audit |
 | [plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md](./plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md) | V1 delete/demote/rebuild inventory |
 | [plans/RED_BYTE_V1_EXECUTION_PROGRAM.md](./plans/RED_BYTE_V1_EXECUTION_PROGRAM.md) | Ordered V1 execution program |
@@ -81,6 +88,7 @@ When docs conflict:
 | [plans/2026-06-12-redbyte-product-hardening-roadmap.md](./plans/2026-06-12-redbyte-product-hardening-roadmap.md) | Sequenced product-hardening roadmap |
 | [plans/2026-06-12-redbyte-visual-design-hardening-plan.md](./plans/2026-06-12-redbyte-visual-design-hardening-plan.md) | Course Lab Workbench visual hardening sequence |
 | [development/RED_BYTE_LOCAL_DEV_SERVER.md](./development/RED_BYTE_LOCAL_DEV_SERVER.md) | Current local dev server startup and pnpm/Corepack caveats |
+| [development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md](./development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md) | Test/gate ownership and invariant proof routing |
 | [development/RED_BYTE_GITHUB_OPERATIONS.md](./development/RED_BYTE_GITHUB_OPERATIONS.md) | GitHub Actions, required checks, safe push, and remote-green verification playbook |
 
 ---
@@ -138,6 +146,10 @@ The manual describes current behavior. The contract describes target-state oblig
 | [ide/SURFACE_CONFORMANCE.md](./ide/SURFACE_CONFORMANCE.md) | Surface-change proof and conformance rules |
 | [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Local product-hardening ticket schema |
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
+| [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level map for RedByte subsystem ownership |
+| [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | State authority matrix for project, graph, Verify, mapping, Export, Import, and proof tiers |
+| [architecture/RED_BYTE_INVARIANT_MATRIX.md](./architecture/RED_BYTE_INVARIANT_MATRIX.md) | Invariant matrix and missing-gate routing |
+| [development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md](./development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md) | Gate ownership, proof layer selection, and closeout rules |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact issue routing extracted from the current whole-app audit |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset |
 | [research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md](./research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md) | V1 research basis |
@@ -158,6 +170,9 @@ The manual describes current behavior. The contract describes target-state oblig
 | File | Purpose |
 |------|---------|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Five-layer architecture |
+| [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level RedByte subsystem map |
+| [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | Canonical state authority matrix |
+| [architecture/RED_BYTE_INVARIANT_MATRIX.md](./architecture/RED_BYTE_INVARIANT_MATRIX.md) | Invariant and proof coverage matrix |
 | [STUDENT_UX_LAYER.md](./STUDENT_UX_LAYER.md) | Student-facing content and diagnostic language rules |
 | [VIVADO_INTEGRATION.md](./VIVADO_INTEGRATION.md) | Vivado export workflow and generated file expectations |
 | [ide/00-ide-layout.md](./ide/00-ide-layout.md) | IDE layout contract |
@@ -204,7 +219,9 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 ## Current Known Risk Snapshot
 
-- The 2026-06-13 V1 product contract reset is the active near-term product route. Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, the V1 visual audit, and the V1 execution program before starting new product code.
+- The 2026-06-13 Under-the-Hood Mastery Sprint is the current source/state/proof control layer. Use the architecture map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc before touching a stateful product path.
+- The 2026-06-13 V1 product contract reset remains the active near-term product route. Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, the V1 visual audit, and the V1 execution program before starting new product code.
+- The normal-use breakage audit found Export artifact preview visibility as the clearest audit-driven P1 next target, plus Import utility-access ambiguity as a P2 product-control issue.
 - The 2026-06-12 whole-app product immersion audit remains historical baseline input, and the 2026-06-13 V1 visual audit is the current screenshot-backed reset evidence.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; the next visual implementation path starts with design-system/token/primitive cleanup before broad surface polish.

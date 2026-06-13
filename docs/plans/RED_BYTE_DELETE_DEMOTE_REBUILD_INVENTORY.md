@@ -62,7 +62,7 @@ Evidence inputs:
 | Debug/dev details | Some internal proof/data details appear in student path. | Low. | Support only. | Demote | Multiple surfaces | Advanced/details disclosures hold support content. |
 | Chips/status pills | Useful language, but too many styles and authorities. | Quick scan. | Review readiness. | Rebuild | shared primitives/CSS | Shared state grammar across surfaces. |
 | Accounts/SaaS/classroom groups | Not present and not currently needed for V1 trust. | Later convenience. | Later management layer. | Defer | Future hosted layer | Concrete hosted-data requirement before work starts. |
-| Lab profile/course-pack seam | Important, but less urgent than the workbench hierarchy reset. | Instructor-authored labs later. | Core future value. | Defer to queue item 8 | `RED_BYTE_LAB_PROFILE_MODEL.md`, starter data | First profile-backed lab after shell/Verify/Project/Export/HW/Design stability. |
+| Lab profile/course-pack seam | Important, but less urgent than trust and workbench hierarchy repair. | Instructor-authored labs later. | Core future value. | Defer to queue item 11 | `RED_BYTE_LAB_PROFILE_MODEL.md`, starter data | First profile-backed lab after Export trust, Verify, shell/Project/Export/HW/Design stability. |
 
 ## Near-Term Deletion / Demotion Rules
 

@@ -19,13 +19,18 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Current priorities | `docs/ACTIVE_WORK.md` | Cockpit for what should happen next. |
 | Ordered work | `docs/product/RED_BYTE_WORK_QUEUE.md` | Near-term V1 queue for agents and maintainers. |
 | V1 product contract | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` | Current V1 target contract and work order. |
+| Under-the-hood source map | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md` | Concrete subsystem, state owner, mutation, persistence, proof, and risk map. |
+| State authority matrix | `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md` | Canonical state owners and invalidation rules. |
+| Invariant matrix | `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md` | Product invariants, existing proof, missing proof, and gate routing. |
+| Gate ownership | `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md` | How to choose and wire Vitest, Playwright, classroom, golden, manual, and hardware proof. |
+| Normal-use breakage audit | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md` | Current normal-use audit and deferred findings. |
 | V1 research and audit | `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`, `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md` | Why the V1 reset exists and what the current UI evidence shows. |
 | V1 execution/inventory | `docs/plans/RED_BYTE_V1_EXECUTION_PROGRAM.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md` | Implementation order and delete/demote/rebuild decisions. |
 | Product-brain routing | `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md` | How current, target, proof, audit, and stale docs should be used. |
 | Current release truth | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/**` | Safe public, TA, and hardware claims. |
 | Current product behavior | `docs/manuals/RedByte_Product_Manual.md` | What the product does today. |
 | Older target contract | `docs/contracts/RedByte_Product_Contract.md` | Historical/broader target standard; do not let it override the V1 reset queue. |
-| Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` | Target architecture boundary for course packs; now queue item 8. |
+| Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` | Target architecture boundary for course packs; now queue item 11. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | Stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
 
@@ -39,6 +44,7 @@ Practical read order for a normal session:
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
 8. Relevant contract, manual, release, proof, audit, or issue docs for the requested slice
+9. For stateful product work, `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`
 
 ## 2. Current Product Thesis
 
@@ -78,6 +84,15 @@ Supporting truths:
 - The screenshot harness captured 30 images across `1366x768`, `1440x900`, and `1920x1080` with zero console/page errors and no root horizontal overflow.
 - The captured UI build hash was `2d17655`, matching repo HEAD `2d176550`.
 - The reset did not change product source, tests, gates, goldens, export generation, Vivado evidence, or Basys3 evidence.
+
+### Under-the-hood mastery posture
+
+- The 2026-06-13 Under-the-Hood Mastery Sprint mapped 27 RedByte subsystems, their state owners, mutation paths, persistence paths, proof coverage, and known risks.
+- The authoritative source/state docs are `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, and `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`.
+- The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
+- The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
+- Two findings remain open: Export generated-artifact preview is not obvious in the normal workflow, and Import utility access is ambiguous after a project is loaded.
+- New invariant gates `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
@@ -120,6 +135,8 @@ Supporting truths:
 - Project first-load black-screen issue is resolved.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`.
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
+- Design graph/camera integrity is covered by `ide:gate:design-canvas-zoom-integrity` and strengthened by `ide:gate:design-workbench-integrity`.
+- Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -127,22 +144,24 @@ Supporting truths:
 Approved V1 order:
 
 1. V1 Contract Reset.
-2. Shell and Workbench Layout Reset.
-3. Verify Evidence Workbench.
-4. Project Command Center.
-5. Export Handoff Station.
-6. Hardware / Basys3 Workbench.
-7. Design Workbench.
-8. Lab Profile / Course Pack Data Seam.
-9. Import / Recovery.
-10. Student/Instructor Quickstarts.
-11. Vivado/Basys3 Proof Restoration.
-12. Packaging/Commercial Readiness.
+2. Under-the-Hood Mastery Sprint.
+3. Export Trust Integrity.
+4. Verify Evidence Workbench.
+5. Shell and Workbench Layout Reset.
+6. Project Command Center.
+7. Export Handoff Station.
+8. Hardware / Basys3 Workbench.
+9. Design Workbench.
+10. Import / Recovery.
+11. Lab Profile / Course Pack Data Seam.
+12. Student/Instructor Quickstarts.
+13. Vivado/Basys3 Proof Restoration.
+14. Packaging/Commercial Readiness.
 
-The next code slice after this docs/control reset is:
+The next audit-driven product slice after the under-the-hood sprint is:
 
 ```text
-fix: reset RedByte workbench shell layout
+test/fix: prove Export trust integrity
 ```
 
-Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should prove that Export handoff summary, generated artifact count, visible preview, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording agree. After that, resume the V1 visual queue with Verify Evidence Workbench and shell/workbench hierarchy work as scoped slices. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
