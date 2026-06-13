@@ -25,6 +25,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-wire-interaction-contract'],
   },
   {
+    name: 'ide:gate:design-canvas-zoom-integrity',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-canvas-zoom-integrity'],
+  },
+  {
     name: 'ide:gate:design-correctness-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-correctness-contract'],

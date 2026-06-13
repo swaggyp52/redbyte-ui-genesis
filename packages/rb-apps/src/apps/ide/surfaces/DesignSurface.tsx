@@ -704,6 +704,21 @@ function snapFitZoom(rawZoom: number): number {
   );
 }
 
+type DesignCanvasViewport = { width: number; height: number };
+
+function isDesignCanvasViewport(value: unknown): value is DesignCanvasViewport {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<DesignCanvasViewport>;
+  return (
+    typeof candidate.width === 'number' &&
+    typeof candidate.height === 'number' &&
+    Number.isFinite(candidate.width) &&
+    Number.isFinite(candidate.height) &&
+    candidate.width > 0 &&
+    candidate.height > 0
+  );
+}
+
 const DESIGN_DEBUG_DOWNSTREAM_KEYS = [
   'xor_node.out',
   'ld2_node.in',
@@ -2291,8 +2306,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return { width, height };
   }, []);
 
-  const fitToCircuit = useCallback((viewportOverride?: { width: number; height: number } | null) => {
-    const viewport = viewportOverride ?? measureCanvasViewport() ?? canvasSize;
+  const fitToCircuit = useCallback((viewportOverride?: unknown) => {
+    const viewport = isDesignCanvasViewport(viewportOverride)
+      ? viewportOverride
+      : measureCanvasViewport() ?? canvasSize;
     if (viewport.width !== canvasSize.width || viewport.height !== canvasSize.height) {
       setCanvasSize((previous) =>
         previous.width === viewport.width && previous.height === viewport.height ? previous : viewport
@@ -6215,7 +6232,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     Stage the circuit against {primaryArtifactLabel} with minimal build chrome and keep code slightly favored.
                   </span>
                   <div className="ide-inline-actions ide-design-split-compare-tools" data-testid="ide-design-split-compare-tools">
-                    <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-split">
+                    <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-split">
                       Fit Circuit
                     </IdeButton>
                     <IdeButton
@@ -6269,7 +6286,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
                       Redo
                     </IdeButton>
-                    <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-primary">
+                    <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-primary">
                       Fit
                     </IdeButton>
                     <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
@@ -6319,7 +6336,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </span>
                 <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">-</IdeButton>
                 <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">+</IdeButton>
-                <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit">Zoom to Fit</IdeButton>
+                <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit">Zoom to Fit</IdeButton>
                 <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">Reset Zoom</IdeButton>
                 <IdeButton
                   tone="ghost"
@@ -6820,7 +6837,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         className="ide-design-canvas-controls"
                         data-testid="ide-design-canvas-controls"
                       >
-                        <IdeButton tone="ghost" onClick={fitToCircuit} testId="ide-design-fit-circuit-canvas">
+                        <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-canvas">
                           Fit
                         </IdeButton>
                         {!showSplitCompareToolbar ? (
@@ -6862,7 +6879,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <button
                             type="button"
                             className="ide-design-zoom-preset"
-                            onClick={fitToCircuit}
+                            onClick={() => fitToCircuit()}
                             data-testid="ide-design-zoom-preset-fit"
                           >
                             Fit

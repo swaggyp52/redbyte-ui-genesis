@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-06-13 (fix: stabilize Design canvas zoom integrity)
+
+**Subsystem:** RedByte IDE Design Workbench canvas / zoom / viewport stability.
+
+**Changes:**
+- Confirmed the user-visible `http://localhost:5173/?mode=project&e2e=1` tab was stale: it rendered `Build a4fc624` from a June 12 dev server while repo HEAD was `9a639a43`.
+- Started a fresh current-HEAD dev server at `http://127.0.0.1:5174/?mode=project&e2e=1`, which rendered `Build 9a639a4`.
+- Reproduced the reported Design blank-canvas failure on current HEAD: after numeric zoom presets, clicking Fit passed React's click event into `fitToCircuit` as the optional viewport override, producing `NaN` camera `x/y`, React SVG attribute errors, and zero rendered nodes/wires due to viewport culling.
+- Hardened `fitToCircuit` so it only accepts a finite `{ width, height }` viewport override and otherwise measures the live canvas viewport.
+- Wrapped all Design Fit button handlers so user clicks call `fitToCircuit()` without forwarding the React event object.
+- Added `ide:gate:design-canvas-zoom-integrity`, covering starter graph visibility, finite camera geometry, nonzero canvas/SVG bounds, no `NaN`/`Infinity` SVG attributes, repeated zoom presets, Fit, Dense/Classroom toggle, Center with a selected node, resize, Design -> Verify -> Design, and direct Design reload across `1366x768` and `1440x900`.
+- Added the new gate to `classroom:gate` and `verify:gates:classroom`.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/playground build`; `RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR=.redbyte/product-immersion/design-canvas-zoom-integrity/after pnpm -s ide:gate:design-canvas-zoom-integrity`; `pnpm -s ide:gate:design-fit-contract`; `pnpm -s ide:gate:zoom-presets-contract`; `pnpm -s ide:gate:design-wire-interaction-contract`; and `pnpm -s classroom:gate`. The first `classroom:gate` attempt failed once in `ide:gate:design-wire-interaction-contract`, but the exact failed command passed directly afterward and the full aggregate passed on rerun.
+
+**Proof artifacts:** Before/after browser evidence is local-only under `.redbyte/product-immersion/design-canvas-zoom-integrity/`: before diagnostics include `before/current-head-zoom-diagnostics.json`, `before/current-head-before-zoom.png`, `before/current-head-after-zoom-and-nav.png`, and `before/current-head-after-direct-design-reload.png`; after screenshots include `after/classroom-loaded.png`, `after/classroom-final.png`, `after/desktop-loaded.png`, and `after/desktop-final.png`.
+
+**Safety:** This changes only Design viewport/camera handling and gate coverage. It does not change simulation semantics, wiring semantics, Verify result semantics, pin mapping semantics, export generation, VHDL/XDC/testbench/Tcl/ZIP generation, classroom goldens, Vivado proof, Basys3 proof, Lab Profile, SaaS/accounts, or hardware claims.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The existing `localhost:5173` process remains stale and should not be used as current product proof unless restarted.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume the V1 Contract Reset queue with the shell/workbench layout reset slice unless the user reprioritizes another Design Workbench trust defect.
+
 ## Change Log 2026-06-13 (test: stabilize design wire interaction gate)
 
 **Subsystem:** Required Classroom Truth Gates / IDE Design wire interaction contract.

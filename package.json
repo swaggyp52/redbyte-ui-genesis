@@ -201,6 +201,7 @@
         "ide:gate:design-fit-contract": "node ./scripts/gates/ide-design-fit-contract.mjs",
         "ide:gate:design-build-fast-contract": "node ./scripts/gates/ide-design-build-fast-contract.mjs",
         "ide:gate:design-wire-interaction-contract": "node ./scripts/gates/ide-design-wire-interaction-contract.mjs",
+        "ide:gate:design-canvas-zoom-integrity": "node ./scripts/gates/ide-design-canvas-zoom-integrity.mjs",
         "ide:gate:design-correctness-contract": "node ./scripts/gates/ide-design-correctness-contract.mjs",
         "ide:gate:design-palette-build-contract": "node ./scripts/gates/ide-design-palette-build-contract.mjs",
         "ide:gate:design-live-sim-contract": "node ./scripts/gates/ide-design-live-sim-contract.mjs",
