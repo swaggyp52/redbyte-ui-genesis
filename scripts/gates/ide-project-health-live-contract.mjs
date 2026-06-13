@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, runIdeGate, setVerifyRunMode } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
@@ -204,6 +204,7 @@ await runIdeGate('IDE project health live contract satisfied', async ({ page, ba
 
   await authorMinimalVerifyVector(page);
   await clickGenerateBasicsIfVisible(page);
+  assert(await setVerifyRunMode(page, 'compare'), 'project-health gate requires Compare checks before recording Project verify health');
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 10000 });
 

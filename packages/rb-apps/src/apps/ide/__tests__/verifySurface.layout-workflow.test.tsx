@@ -204,7 +204,7 @@ describe('VerifySurface layout workflow architecture', () => {
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
   });
 
-  it('keeps the clock helper inside the editor for sequential circuits until the editor is opened', () => {
+  it('shows the clock helper inside the first-run editor for sequential circuits', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...baseProps}
@@ -213,11 +213,7 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
-    expect(queryByTestId('ide-verify-sequential-helper')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
-
+    expect(queryByTestId('ide-verify-first-run-collapsed-strip')).toBeNull();
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
   });

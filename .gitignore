@@ -36,6 +36,7 @@ yarn-error.log*
 .redbyte/canonical-worktree-control/
 .redbyte/course/
 .redbyte/course-edition/
+.redbyte/logs/
 .redbyte/pi-session-room/
 .redbyte/product-immersion/
 .redbyte/session/

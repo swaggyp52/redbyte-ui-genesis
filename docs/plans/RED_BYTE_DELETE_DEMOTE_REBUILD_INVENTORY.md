@@ -77,12 +77,12 @@ Evidence inputs:
 
 Use this structured ticket before the next code slice:
 
-- Title: Rebuild Verify evidence workbench.
-- Surface: Verify.
-- Journey segment: Compare PASS, intentional expected-output FAIL, repair back to PASS.
-- Observed behavior: Verify behavior is gate-backed, but evidence, first mismatch, expected/observed values, waveform, and repair path remain dense.
-- Expected behavior: PASS/FAIL evidence, first mismatch, expected/observed values, waveform, and repair path are first-order without changing Verify semantics.
-- Acceptance proof: focused Verify workbench gate or strengthened Verify gate; `ide:gate:verify-fail-edit-repair`; before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; no simulation, export, golden, or hardware changes.
+- Title: Reset shell and workbench hierarchy.
+- Surface: Global shell / workbench frame.
+- Journey segment: Project -> Design -> Verify -> Hardware -> Export at common classroom viewports.
+- Observed behavior: `ide:gate:shell-layout-integrity` proves visibility and no root overflow, but stage/status state still repeats across top ribbon, left rail, evidence box, surface headers, right rail, and bottom status.
+- Expected behavior: one compact shell/status authority, one obvious work object per surface, and one primary next action without changing mode routing or product semantics.
+- Acceptance proof: `ide:gate:shell-layout-integrity`; before/after screenshots for Project, Design, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, and Import at `1366x768`; relevant existing Verify/Hardware/Export gates; no simulation, export, pin mapping, Vivado, or hardware changes.
 
 ## Attribution
 

@@ -3,7 +3,7 @@
 // These tests describe the target: one blocked surface, one Run action, one sequential entry.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
 const minProps = {
@@ -93,7 +93,7 @@ describe('VerifySurface entry state — B-12 Slice 2', () => {
 
   // ── SEQUENTIAL mode — first-run entry ───────────────────────────────────────
 
-  it('sequential mode keeps the clock helper inside the editor until the student opens it', () => {
+  it('sequential mode shows the clock helper with the first-run editor', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface
         {...withVectors}
@@ -102,11 +102,7 @@ describe('VerifySurface entry state — B-12 Slice 2', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
-    expect(queryByTestId('ide-verify-sequential-helper')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
-
+    expect(queryByTestId('ide-verify-first-run-collapsed-strip')).toBeNull();
     expect(getByTestId('ide-verify-sequential-helper')).toBeTruthy();
     expect(getByTestId('ide-verify-empty-state').contains(getByTestId('ide-verify-sequential-helper'))).toBe(true);
   });

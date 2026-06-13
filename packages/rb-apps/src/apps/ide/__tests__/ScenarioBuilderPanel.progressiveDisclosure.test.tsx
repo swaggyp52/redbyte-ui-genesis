@@ -131,18 +131,14 @@ describe('ScenarioBuilderPanel progressive disclosure', () => {
     expect(getByTestId('ide-verify-generate-sweep-vectors')).toBeTruthy();
   });
 
-  it('tucks the first-run editor away until the student chooses to edit stimulus', () => {
+  it('shows the first-run stimulus editor when ready vectors already exist', () => {
     const { getByTestId, queryByTestId } = renderPanel({
       isFirstRun: true,
       authoringModeSummary: 'Auto board clock',
     });
 
-    expect(getByTestId('ide-verify-first-run-collapsed-strip')).toBeTruthy();
-    expect(queryByTestId('ide-verify-add-vector-form')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-verify-first-run-edit-stimulus'));
-
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(queryByTestId('ide-verify-first-run-collapsed-strip')).toBeNull();
   });
 
   it('shows a manual clock row only when a clock lane config is provided', () => {

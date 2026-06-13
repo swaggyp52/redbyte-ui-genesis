@@ -33173,3 +33173,202 @@ button:disabled,
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Verify evidence workbench Sprint 1: keep post-run proof dense without overlap. */
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun {
+  max-height: min(48vh, 380px) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-workbench-header {
+  padding: 8px 10px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-workbench-body {
+  gap: 6px !important;
+  padding: 8px 10px 10px !important;
+  overflow: hidden !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-workbench-banner-row,
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-compact-stats,
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-how {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-header-main {
+  min-width: 0 !important;
+  gap: 2px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-header-title {
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-header-copy {
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-stimulus-mode-summary {
+  min-width: 0 !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(72, 118, 158, 0.2) !important;
+  background: rgba(9, 18, 30, 0.78) !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-run-summary-slot--inline {
+  display: none !important;
+  padding: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-testbench-summary {
+  padding: 5px 6px !important;
+  border-radius: 8px !important;
+  background: rgba(7, 14, 24, 0.64) !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-verify-testbench-summary-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px 6px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 6px !important;
+  overflow: visible !important;
+  padding-bottom: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar-group {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar-group--advanced-toggle {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar-label {
+  font-size: 10px !important;
+  line-height: 1 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-selection-chip {
+  max-width: 132px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-target-select {
+  min-width: 0 !important;
+  max-width: 170px !important;
+  min-height: 28px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-mini-btn {
+  min-height: 28px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-toolbar-note {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--postrun .ide-stimulus-grid-scroll {
+  min-height: 168px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-waveform-bar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-waveform-transport {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-left,
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-center,
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-right {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-left {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-center,
+[data-ide-mode-marker='verify'] .ide-verify-wfbar-right {
+  justify-content: flex-start !important;
+  flex-wrap: wrap !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scrubber-field {
+  min-width: min(100%, 220px) !important;
+  max-width: 100% !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary {
+  max-width: 100% !important;
+  border-radius: 10px !important;
+  white-space: normal !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-fail-nav-summary__values {
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-fail-nav-waveform-hint {
+  display: none !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-results-summary {
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-results-summary-headline,
+[data-ide-mode-marker='verify'] .ide-verify-results-summary-subline {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}

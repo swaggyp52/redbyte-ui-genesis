@@ -50,6 +50,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-reality-contract'],
   },
   {
+    name: 'ide:gate:verify-evidence-workbench-integrity',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],
+  },
+  {
     name: 'ide:gate:export-download-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-download-contract'],

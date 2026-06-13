@@ -1,29 +1,16 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import {
+  assert,
+  clickVerifyRun,
+  loadStarterProject,
+  runIdeGate,
+  setVerifyRunMode,
+} from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
 async function text(locator) {
   return ((await locator.first().textContent().catch(() => '')) ?? '').trim();
-}
-
-async function clickVerifyRun(page) {
-  const runSelectors = [
-    '[data-testid="ide-vcb-run"]',
-    '[data-testid="ide-verify-run"]',
-    '[data-testid="ide-verify-run-secondary"]',
-    '[data-testid="ide-verify-empty-run"]',
-    '[data-testid="ide-verify-stale-primary-rerun"]',
-  ];
-  for (const selector of runSelectors) {
-    const button = page.locator(selector).first();
-    const isVisible = await button.isVisible().catch(() => false);
-    if (isVisible) {
-      await button.click();
-      return;
-    }
-  }
-  throw new Error('verify run button not visible');
 }
 
 await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseUrl }) => {
@@ -37,6 +24,7 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
 
   await page.locator('[data-testid="mode-button-verify"]').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+  assert(await setVerifyRunMode(page, 'compare'), 'evidence capsule gate requires Compare checks before Export trust inspection');
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 15000 });
 
@@ -57,21 +45,29 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
     }
   }
 
-  const verifyHashContext = await text(page.locator('[data-testid="ide-export-context-verify-hash"]'));
+  const verifyProvenance = await text(page.locator('[data-testid="ide-export-provenance-verify"]'));
   assert(
-    verifyHashContext.length > 0 && verifyHashContext.toLowerCase() !== 'pending',
-    `export context verify hash must be materialized, got "${verifyHashContext}"`
+    /Checks match/i.test(verifyProvenance),
+    `export provenance must show Compare evidence, got "${verifyProvenance}"`
   );
 
   // The current Export surface no longer exposes the old capsule build/file-list flow for
   // this starter project. Evidence and rebuild/download behavior are now split: dedicated
   // export gates cover download actions, while this contract verifies the evidence metadata,
   // trust/advisory state, and debug report UI rendered on the Export surface.
-  const evidenceState = await text(page.locator('[data-testid="ide-export-capsule-build-state"] span:last-child'));
+  const evidenceState = await text(page.locator('[data-testid="ide-export-handoff-summary-state"]'));
   assert(
-    /Blocked|Available|Verified|Downloaded|Building|Needs Review/i.test(evidenceState),
+    /Blocked|Available|Verified|Downloaded|Building|Needs Review|Ready/i.test(evidenceState),
     `export evidence state must be materialized, got "${evidenceState}"`
   );
+
+  const advancedDetails = page.locator('[data-testid="ide-export-advanced-details"]').first();
+  if (await advancedDetails.isVisible().catch(() => false)) {
+    const advancedOpen = (await advancedDetails.getAttribute('open').catch(() => null)) != null;
+    if (!advancedOpen) {
+      await advancedDetails.locator('summary').first().click();
+    }
+  }
 
   const verifyDeterminismVisible = await page
     .locator('[data-testid="ide-export-determinism-verify"]')

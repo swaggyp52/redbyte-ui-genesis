@@ -10,7 +10,7 @@ role: RedByte product invariant and gate ownership matrix
 
 This matrix maps product invariants to concrete proof. If an invariant has only a screenshot or only a unit test, say that plainly and add the missing gate before claiming full coverage.
 
-Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base.
+Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base, and Verify Evidence Workbench proof was added from the later `fdf17b7` base.
 
 ## Gate Ownership Summary
 
@@ -37,9 +37,9 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 | RB-INV-008 | Wiring cancellation and view mode toggles must not corrupt graph state. | Design interaction | wire interaction and design workbench contract | design workbench integrity checks graph after view toggles/navigation | future from-scratch integrity can broaden | P2 |
 | RB-INV-009 | Circuit edits must stale previous Verify and Export trust. | Runtime/project health | projectRuntime and projectWorkflowAuthority tests | covered indirectly by classroom and fail-edit-repair gates | no new source changes this slice | P1 |
 | RB-INV-010 | Observe-only output is not equivalent to Compare PASS. | Verify | verify contract/reality tests | normal-use audit exercised Observe then Compare | no new gate needed | P1 |
-| RB-INV-011 | Expected-output edits stale old PASS, can create intentional FAIL, and can be repaired to PASS. | Verify expected grid | `ide:gate:verify-fail-edit-repair`; workflow tests | normal-use audit repeated compare fail/repair path | visual density remains product issue | P1 |
+| RB-INV-011 | Expected-output edits stale old PASS, can create intentional FAIL, and can be repaired to PASS. | Verify expected grid | `ide:gate:verify-fail-edit-repair`; workflow tests | `ide:gate:verify-evidence-workbench-integrity` also proves visible first-run editing, intentional FAIL, first mismatch expected/observed evidence, and repair PASS | none current for the covered starter path | P1 |
 | RB-INV-012 | PASS/FAIL/STALE must be derived from the same circuit/vector/mapping state. | Project health/trust | projectWorkflowAuthority tests | classroom gate includes verify and export checks | no additional invariant gate added here | P1 |
-| RB-INV-013 | Waveform and mismatch UI explain Verify proof but do not own trust. | Verify waveform | verify workbench/summary gates | normal-use audit reached waveform states | Verify Evidence Workbench still needed | P2 |
+| RB-INV-013 | Waveform and mismatch UI explain Verify proof but do not own trust. | Verify waveform | verify workbench/summary gates | `ide:gate:verify-evidence-workbench-integrity` checks waveform/mismatch visibility and no meaningful overlap in PASS, FAIL, and repaired PASS states | broader visual hierarchy work belongs to shell/workbench reset, not Verify semantics | P2 |
 | RB-INV-014 | Hardware mapping V2 and flat project IO rows must remain synchronized. | Hardware mapping | mapping authority/editor/bridge tests; hardware gates | normal-use audit mapped pins and checked board/table alignment; `ide:gate:export-trust-integrity` checks Export mapped count against XDC rows | none current for mapped Export summary agreement | P1 |
 | RB-INV-015 | Board wording must not imply E1/E2/E3 proof from browser evidence. | Hardware/Export copy | release docs, visual audits | normal-use audit saw no Vivado overclaim in Export | Hardware wording still queued for tightening | P1 |
 | RB-INV-016 | Export Draft is allowed but must be visibly distinct from Trusted/current E0-ready export. | Export trust | export ready/blockers/download/e2e gates; workflow tests | `ide:gate:export-trust-integrity` proves READY/Trusted path labels, README proof-tier language, and no E1/E2/E3 browser overclaim | future visual hierarchy work can improve density without reopening trust semantics | P1 |
@@ -51,8 +51,8 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 | RB-INV-022 | Lab profile/course pack data must not become the next source of hardcoded course behavior before workbench hierarchy stabilizes. | Product architecture | work queue and V1 execution program | this sprint keeps it deferred | future data seam needs explicit profile-backed gate | P2 |
 | RB-INV-023 | Persistence must not resurrect stale trusted proof after reload. | Runtime persistence | persistence tests/gate; projectRuntime persistence | normal-use audit included reload persistence | browser gate does not exhaust every mutation sequence | P1 |
 | RB-INV-024 | Browser gates must use current selectors and current user flows. | Gate harness | recent gate repairs | new shell/design integrity gates use visible runtime assertions | selector drift remains an ongoing risk | P1 |
-| RB-INV-025 | `classroom:gate` must include trust-critical lightweight browser gates. | CI/Classroom | classroom gate script | added design workbench integrity and shell layout integrity | runtime duration can grow; monitor CI time | P1 |
-| RB-INV-026 | Broader classroom verifier must include the same invariant gates for local/nightly breadth. | CI/Classroom | `verify-gates-classroom.mjs` | added both new gates | broad suite can be slow | P2 |
+| RB-INV-025 | `classroom:gate` must include trust-critical lightweight browser gates. | CI/Classroom | classroom gate script | includes design workbench, shell layout, Export trust, and Verify evidence workbench integrity gates | runtime duration can grow; monitor CI time | P1 |
+| RB-INV-026 | Broader classroom verifier must include the same invariant gates for local/nightly breadth. | CI/Classroom | `verify-gates-classroom.mjs` | includes design workbench, shell layout, Export trust, and Verify evidence workbench integrity gates | broad suite can be slow | P2 |
 | RB-INV-027 | Pushed source is not the same as live-student deployment. | GitHub/deploy | GitHub operations docs | closeout must watch deploy checks | final status depends on live GitHub run | P1 |
 
 ## New Gates In This Slice
@@ -75,12 +75,18 @@ Protects Export handoff trust for the mapped/verified Logic Gates path. It prove
 
 This gate is now part of `classroom:gate` and `verify:gates:classroom`.
 
+### `ide:gate:verify-evidence-workbench-integrity`
+
+Protects the Verify evidence workbench for the Logic Gates starter path. It proves the first-run stimulus editor and expected-output cells remain visible, Compare PASS works from saved checks, an expected-output edit creates an intentional Compare FAIL, the first mismatch shows expected/observed values near the waveform, and repairing the expected output returns to PASS. It also checks meaningful overlap among stimulus and waveform evidence regions at the classroom viewport.
+
+This gate is now part of `classroom:gate` and `verify:gates:classroom`.
+
 ## Recommended Next Gates
 
 | Proposed gate | Why |
 |---|---|
+| `ide:gate:shell-workbench-hierarchy` or strengthened `ide:gate:shell-layout-integrity` | After the shell/workbench reset, prove one compact shell/status authority and first-viewport work objects across the core spine. |
 | `ide:gate:import-utility-access` | Resolve whether Import is a Project utility, command, route, or removed rail item, then prove the documented path is visible and review-before-apply safe. |
-| `ide:gate:verify-evidence-workbench-integrity` | After the Verify Evidence Workbench slice, prove first mismatch, expected/observed rows, waveform, and repair CTA remain in coherent first-viewport hierarchy. |
 
 ## Attribution
 

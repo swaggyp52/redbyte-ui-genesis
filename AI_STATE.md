@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-13 (fix: rebuild Verify evidence workbench)
+
+**Subsystem:** RedByte IDE Verify evidence workbench, Compare PASS/FAIL repair loop, and classroom gate truth.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `fdf17b778089652410b64f6eb35a33df18d9df50`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Kept ready starter vectors from hiding the first-run Verify stimulus/expected-output editor by disabling the collapsed first-run editor path.
+- Retuned Verify post-run stimulus and waveform layout so the editable check table, first mismatch, expected/observed values, waveform controls, and repair loop remain visible without overlapping at the classroom viewport.
+- Added `ide:gate:verify-evidence-workbench-integrity` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- The new gate proves visible first-run stimulus authoring and expected-output cells, Compare PASS, intentional expected-output edit to FAIL, first mismatch expected/observed evidence near the waveform, repair back to PASS, and no meaningful overlap among stimulus/waveform evidence regions.
+- Corrected two stale gate assumptions exposed by the visible first-run editor: Project Health now explicitly selects Compare before expecting PASS/CLEAN, and Evidence Capsule now checks the current Export provenance/handoff details instead of stale inspector selectors.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/system-map/Verify docs so Verify Evidence Workbench is closed and the next product slice is Shell and Workbench Layout Reset.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ScenarioBuilderPanel.progressiveDisclosure.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.entryState.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` (`64` tests); `RB_VERIFY_EVIDENCE_WORKBENCH_SCREENSHOTS_DIR=.redbyte/product-immersion/verify-evidence-workbench/2026-06-13-after pnpm -s ide:gate:verify-evidence-workbench-integrity`; `pnpm -s ide:gate:project-health-live-contract`; `pnpm -s ide:gate:evidence-capsule-contract`; `pnpm -s ide:gate:verify-fail-edit-repair`; `pnpm -s ide:gate:verify-workbench-contract`; `pnpm -s ide:gate:verify-summary-contract`; `pnpm -s ide:gate:shell-layout-integrity`; `pnpm -s classroom:gate`; `pnpm -s rb:doc:validate`; `pnpm -s rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Fresh screenshots were visually inspected at `.redbyte/product-immersion/verify-evidence-workbench/2026-06-13-after/01-first-run-editor-visible.png`, `02-compare-pass-evidence-workbench.png`, `03-compare-fail-first-mismatch.png`, and `04-repaired-compare-pass-evidence-workbench.png`. In-app browser smoke on fresh static preview `http://127.0.0.1:5177/os/?mode=project&e2e=1` showed visible `BUILD fdf17b7`, Verify mode marker, visible `ide-verify-add-vector-form`, `12` expected-output cells, and no visible `ide-verify-first-run-collapsed-strip`.
+
+**Safety:** This slice changes Verify presentation and gate truth only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, golden artifacts, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The broad `verify:gates:classroom` script was updated to include the new Verify evidence gate but was not run end to end in this closeout; the required `classroom:gate` aggregate passed. Shell/workbench hierarchy, Project Command Center, Import utility access, Hardware wording, Design first-viewport graph priority, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, and packaging remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: reset RedByte workbench shell layout` from `RB-SHELL-001`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (fix: prove Export trust integrity)
 
 **Subsystem:** RedByte IDE Export trust integrity, artifact preview, and Vivado handoff evidence.

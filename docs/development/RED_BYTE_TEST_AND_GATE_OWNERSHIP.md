@@ -30,6 +30,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:export-trust-integrity`
 - `ide:gate:shell-layout-integrity`
+- `ide:gate:verify-evidence-workbench-integrity`
 
 Why:
 
@@ -37,6 +38,7 @@ Why:
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
+- Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
 
 ## Choosing The Right Test
 
@@ -44,7 +46,7 @@ Why:
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Design gesture, canvas, zoom, selection, visible graph | focused Design browser gate; add Vitest only if source state semantics change |
-| Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair` or a new Verify browser gate |
+| Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust or visible handoff | export authority tests plus browser gate proving visible labels, preview, download, and no overclaim |
 | Hardware/Map Pins layout only | hardware browser gate and screenshots; mapping tests if map state changes |
@@ -85,7 +87,7 @@ For hardening slices, closeout is not done at local green:
 | Gap | Recommended next gate |
 |---|---|
 | Import utility access is ambiguous after a project is loaded. | `ide:gate:import-utility-access` after product contract decision |
-| Verify workbench still needs visual hierarchy repair, even though behavior is covered. | `ide:gate:verify-evidence-workbench-integrity` after the Verify slice |
+| Shell hierarchy still repeats too many status authorities even though visibility/no-overflow is covered. | Strengthen `ide:gate:shell-layout-integrity` or add a shell hierarchy gate after the shell/workbench reset |
 
 ## Attribution
 

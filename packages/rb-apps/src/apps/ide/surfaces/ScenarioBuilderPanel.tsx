@@ -122,7 +122,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   const selectedTickLabel = selectedTick != null ? `t${selectedTick}` : 'No case selected';
   const hasVectorsReady = hasVectors && !isUsingFallbackSignals;
   const effectiveModeSummary = authoringModeSummary ?? (isSequential ? 'Clocked stimulus' : 'Combinational no clock');
-  const shouldCollapseFirstRunEditor = isFirstRun && hasVectorsReady && !isUsingFallbackSignals;
+  const shouldCollapseFirstRunEditor = false;
   const [uncontrolledWorkbenchExpanded, setUncontrolledWorkbenchExpanded] = React.useState(
     () => initialExpanded ?? !isFirstRun
   );

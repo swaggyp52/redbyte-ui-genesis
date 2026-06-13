@@ -112,6 +112,8 @@ Rollback:
 
 ## Phase 2 - Shell And Workbench Layout Reset
 
+Status: Next after the 2026-06-13 Verify Evidence Workbench closeout.
+
 Goal: Create one compact shell/status authority and a stable first-viewport workbench frame for all core surfaces.
 
 Why: Current shell repeats stage state across top ribbon, left rail, surface headers, evidence box, right rail, and bottom status. This weakens first-viewport hierarchy and makes every surface harder to fix.
@@ -140,6 +142,8 @@ Rollback:
 
 ## Phase 3 - Verify Evidence Workbench
 
+Status: Closed 2026-06-13 by `ide:gate:verify-evidence-workbench-integrity`. This phase landed before the shell reset because the preceding control checkpoint selected Verify as the trust-critical next slice.
+
 Goal: Rebuild Verify around stimulus, expected output, observed output, mismatch/pass, waveform, and repair action.
 
 Why: The evidence loop is the learning loop. Current behavior is strong, but visual density still reads as a control deck.
@@ -153,6 +157,7 @@ Implementation slices:
 
 Proof:
 
+- `ide:gate:verify-evidence-workbench-integrity`.
 - `ide:gate:verify-fail-edit-repair`.
 - Verify workbench and contract gates.
 - PASS and FAIL screenshots at `1366x768`, `1440x900`, `1920x1080`.
@@ -162,6 +167,7 @@ Acceptance:
 - Observe/Compare distinction remains visible.
 - First mismatch is easier to inspect.
 - No simulation or Verify result semantics changed unless the ticket explicitly targets behavior and tests prove it.
+- First-run starter vectors no longer hide the expected-output editor behind a collapsed strip.
 
 Rollback:
 
