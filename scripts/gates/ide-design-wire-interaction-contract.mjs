@@ -78,7 +78,7 @@ await runIdeGate('IDE design wire interaction contract satisfied', async ({ page
   await waitForWireSelectionCount(page, 0, 'canvas click should clear wire selection');
   await waitForWireDomSelection(page, selectedWire.wireId, false, 'canvas click should clear selected wire styling');
 
-  await clickWireHitPath(page, wireLocator);
+  await clickWireHitPath(page, wireLocatorForId(page, selectedWire.wireId), selectedWire.wireId);
   await waitForSingleWireSelection(page, selectedWire.wireId, 'second wire click should reselect the same wire');
 
   await page.keyboard.press('Delete');
@@ -123,18 +123,16 @@ await runIdeGate('IDE design wire interaction contract satisfied', async ({ page
   );
 });
 
-async function clickWireHitPath(page, wireLocator) {
-  const hitPath = wireLocator.locator('path').first();
-  const point = await hitPath
-    .evaluate((path) => {
-      if (!(path instanceof SVGPathElement)) return null;
-      const ctm = path.getScreenCTM();
-      if (!ctm) return null;
-      const midpoint = path.getPointAtLength(path.getTotalLength() / 2);
-      const screenPoint = new DOMPoint(midpoint.x, midpoint.y).matrixTransform(ctm);
-      return { x: screenPoint.x, y: screenPoint.y };
-    })
-    .catch(() => null);
+function wireLocatorForId(page, wireId) {
+  return page.locator(`[data-wire-id="${escapeCssAttributeString(wireId)}"]`).first();
+}
+
+function escapeCssAttributeString(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+async function clickWireHitPath(page, wireLocator, expectedWireId = null) {
+  const point = await waitForStableWireHitPoint(page, wireLocator, expectedWireId);
 
   if (point) {
     await page.mouse.click(point.x, point.y);
@@ -142,6 +140,56 @@ async function clickWireHitPath(page, wireLocator) {
   }
 
   await wireLocator.click({ force: true });
+}
+
+async function waitForStableWireHitPoint(page, wireLocator, expectedWireId) {
+  let previousPoint = null;
+
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const point = await wireLocator
+      .locator('path')
+      .first()
+      .evaluate((path, expected) => {
+        if (!(path instanceof SVGPathElement)) return null;
+        const wire = path.closest('[data-wire-id]');
+        const wireId = wire?.getAttribute('data-wire-id') ?? null;
+        if (expected && wireId !== expected) return null;
+
+        const ctm = path.getScreenCTM();
+        if (!ctm) return null;
+        const midpoint = path.getPointAtLength(path.getTotalLength() / 2);
+        const screenPoint = new DOMPoint(midpoint.x, midpoint.y).matrixTransform(ctm);
+        const hitWire = document
+          .elementFromPoint(screenPoint.x, screenPoint.y)
+          ?.closest?.('[data-wire-id]');
+
+        return {
+          x: screenPoint.x,
+          y: screenPoint.y,
+          wireId,
+          hitWireId: hitWire?.getAttribute('data-wire-id') ?? null,
+        };
+      }, expectedWireId)
+      .catch(() => null);
+
+    const hitsExpectedWire = point?.wireId && point.hitWireId === point.wireId;
+    const isStable =
+      point &&
+      previousPoint &&
+      Math.abs(previousPoint.x - point.x) < 0.5 &&
+      Math.abs(previousPoint.y - point.y) < 0.5 &&
+      previousPoint.hitWireId === point.hitWireId &&
+      previousPoint.wireId === point.wireId;
+
+    if (hitsExpectedWire && isStable) {
+      return { x: point.x, y: point.y };
+    }
+
+    previousPoint = point;
+    await page.waitForTimeout(50);
+  }
+
+  return null;
 }
 
 async function waitForSingleWireSelection(page, expectedWireId, label) {

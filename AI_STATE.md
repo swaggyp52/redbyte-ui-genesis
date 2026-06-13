@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-13 (test: stabilize design wire interaction gate)
+
+**Subsystem:** Required Classroom Truth Gates / IDE Design wire interaction contract.
+
+**Changes:**
+- Investigated the failed GitHub `Classroom Truth Gates` run `27473587604`, where `ide:gate:design-wire-interaction-contract` timed out while trying to reselect the same wire after a blank-canvas deselect.
+- Confirmed the product could select the target wire, and isolated the failure to the gate computing a wire midpoint during a transient post-deselect canvas layout position.
+- Updated the gate to re-target the exact previously selected wire ID for the second click and wait until the SVG midpoint both hits that wire and remains stable before dispatching the mouse click.
+- Preserved the original assertion that the same wire must reselect; no gate step was removed or skipped.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: one diagnostic run showed the transient wire Y-position shift after deselect; `pnpm -s ide:gate:design-wire-interaction-contract` passed once, then passed three more consecutive focused reruns; `pnpm -s classroom:gate` passed all steps, including build, examples contract, student-loop contract, design wire interaction, design correctness, design palette build, verify reality, export download, export e2e, zip import, and determinism/parity.
+
+**Safety:** This is a test/gate harness stabilization only. It did not change product UI/source behavior, project data, simulation semantics, Verify semantics, pin mapping, export generation, VHDL/XDC/testbench/Tcl/ZIP generation, classroom goldens, Vivado proof, Basys3 proof, or hardware claims.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Final push and GitHub `Classroom Truth Gates` / deploy verification are recorded in the session closeout after this entry.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** After `main` is green on GitHub again, resume the V1 Contract Reset queue with the shell/workbench layout reset slice. Do not start lab-profile extraction unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (docs: reset RedByte V1 product contract)
 
 **Subsystem:** RedByte V1 product contract, product research, visual audit, cockpit routing, and work queue control.
