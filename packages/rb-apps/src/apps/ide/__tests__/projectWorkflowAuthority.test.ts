@@ -94,6 +94,141 @@ describe('project workflow authority', () => {
     expect(authority.statusBarGateStatus).toBe('warn');
   });
 
+  it('keeps Project and Export trust truthful through expected-output fail edit repair', () => {
+    const initialPass = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-initial-hash',
+          reportHash: 'verify-initial-report',
+          ranAtIso: '2026-06-12T10:00:00.000Z',
+        },
+      },
+      currentVerifyProjectHash: 'verify-initial-hash',
+      verifyRunHistory: [{ projectHash: 'verify-initial-hash' }],
+    });
+
+    expect(initialPass.verifyState).toBe('assertions-match');
+    expect(initialPass.compareMatches).toBe(true);
+    expect(initialPass.trustedVerifyCurrent).toBe(true);
+
+    const staleAfterWrongExpectedEdit = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-initial-hash',
+          reportHash: 'verify-initial-report',
+          ranAtIso: '2026-06-12T10:00:00.000Z',
+        },
+        dirtySinceVerify: true,
+        dirtySinceExport: true,
+      },
+      currentVerifyProjectHash: 'verify-wrong-expected-hash',
+      verifyRunHistory: [{ projectHash: 'verify-initial-hash' }],
+    });
+
+    expect(staleAfterWrongExpectedEdit.verifyState).toBe('stale');
+    expect(staleAfterWrongExpectedEdit.compareMatches).toBe(false);
+    expect(staleAfterWrongExpectedEdit.exportTrusted).toBe(false);
+    expect(staleAfterWrongExpectedEdit.primaryCta).toEqual({
+      label: 'Verify',
+      mode: 'verify',
+      code: 'RBP1004',
+    });
+
+    const failedCompare = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'fail',
+          hash: 'verify-wrong-expected-hash',
+          reportHash: 'verify-fail-report',
+          failingTick: 0,
+          ranAtIso: '2026-06-12T10:01:00.000Z',
+        },
+        dirtySinceExport: true,
+      },
+      currentVerifyProjectHash: 'verify-wrong-expected-hash',
+      verifyRunHistory: [{ projectHash: 'verify-wrong-expected-hash' }],
+    });
+
+    expect(failedCompare.verifyState).toBe('assertions-differ');
+    expect(failedCompare.compareDiffers).toBe(true);
+    expect(failedCompare.compareMatches).toBe(false);
+    expect(failedCompare.exportTrusted).toBe(false);
+    expect(
+      deriveHardwareExportFailureTruth({
+        workflowAuthority: failedCompare,
+        hasRequiredMappingGap: false,
+        hasOtherBlockingIssue: false,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        condition: 'assertions-differ',
+        severity: 'advisory',
+        primaryCtaIntent: 'verify',
+      })
+    );
+
+    const staleAfterRepairEdit = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'fail',
+          hash: 'verify-wrong-expected-hash',
+          reportHash: 'verify-fail-report',
+          failingTick: 0,
+          ranAtIso: '2026-06-12T10:01:00.000Z',
+        },
+        dirtySinceVerify: true,
+        dirtySinceExport: true,
+      },
+      currentVerifyProjectHash: 'verify-repaired-expected-hash',
+      verifyRunHistory: [{ projectHash: 'verify-wrong-expected-hash' }],
+    });
+
+    expect(staleAfterRepairEdit.verifyState).toBe('stale');
+    expect(staleAfterRepairEdit.compareDiffers).toBe(false);
+    expect(staleAfterRepairEdit.exportTrusted).toBe(false);
+
+    const repairedPass = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-repaired-expected-hash',
+          reportHash: 'verify-repaired-report',
+          ranAtIso: '2026-06-12T10:02:00.000Z',
+        },
+        dirtySinceExport: true,
+      },
+      currentVerifyProjectHash: 'verify-repaired-expected-hash',
+      verifyRunHistory: [{ projectHash: 'verify-repaired-expected-hash' }],
+    });
+
+    expect(repairedPass.verifyState).toBe('assertions-match');
+    expect(repairedPass.verifyCurrent).toBe(true);
+    expect(repairedPass.compareMatches).toBe(true);
+    expect(repairedPass.trustedVerifyCurrent).toBe(true);
+    expect(repairedPass.exportTrusted).toBe(false);
+    expect(repairedPass.primaryCta).toEqual({
+      label: 'Export',
+      mode: 'export',
+      code: 'RBP2002',
+    });
+    expect(
+      deriveHardwareExportFailureTruth({
+        workflowAuthority: repairedPass,
+        hasRequiredMappingGap: false,
+        hasOtherBlockingIssue: false,
+      })
+    ).toEqual(
+      expect.objectContaining({
+        condition: 'export-missing',
+        severity: 'advisory',
+        statusLabel: 'READY TO BUILD',
+        primaryCtaLabel: 'Build Current Bundle',
+      })
+    );
+  });
+
   it('marks current passing verify and export as fully ready', () => {
     const authority = deriveAuthority({
       core: {

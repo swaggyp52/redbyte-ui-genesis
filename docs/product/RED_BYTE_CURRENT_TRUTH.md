@@ -110,9 +110,9 @@ Supporting truths:
 - The Sprint 0 slice fixed real blank-project workflow defects in generic IO row naming, export alias validation, and runtime-backed testbench alias resolution. It also added `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` as a target architecture model for future course/lab profile data.
 - The Sprint 0 slice did not implement course-pack loading, new board support, Vivado proof, Basys3 programming, physical observation, or the intentional Verify fail-edit-repair loop.
 - The current visual direction is Course Lab Workbench: serious circuit/proof/board/export artifacts, calm density, consistent trust-state grammar, and no generic SaaS or toy simulator styling.
-- The next behavior/proof slice is the focused Verify fail-edit-repair-pass regression and fix. Do not mix it with visual-system cleanup or export/hardware work unless explicitly reprioritized.
-- The next architecture slice after Verify fail-edit-repair should extract the first lab-profile/course-pack seam without moving Basys3 board logic out of core.
-- The next visual slice after the Verify behavior fix is remaining Verify density / evidence workbench cleanup, kept separate from fail-edit-repair.
+- The Verify fail-edit-repair slice is implemented: `ide:gate:verify-fail-edit-repair` proves Compare PASS -> expected-output edit/stale -> rerun FAIL -> repair expected output/stale -> rerun PASS, with Project PASS/CLEAN and Export current-Verify/ready-to-build truth. No product source fix was needed because the current behavior already passed once covered.
+- The next architecture slice should extract the first lab-profile/course-pack seam without moving Basys3 board logic out of core.
+- The next visual slice is remaining Verify density / evidence workbench cleanup, kept separate from lab-profile extraction.
 
 ### Commercial posture
 
@@ -153,12 +153,11 @@ Supporting truths:
 
 The approved order is:
 
-1. Verify fail-edit-repair-pass regression and fix.
-2. First lab-profile/course-pack data seam.
-3. Verify density / evidence workbench cleanup.
-4. Broader student workflow browser suite.
-5. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
-6. Student and instructor quickstarts.
-7. Commercial/license packaging later.
+1. First lab-profile/course-pack data seam.
+2. Verify density / evidence workbench cleanup.
+3. Broader student workflow browser suite.
+4. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+5. Student and instructor quickstarts.
+6. Commercial/license packaging later.
 
 Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.

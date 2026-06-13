@@ -195,7 +195,7 @@ The primary package under active development is `packages/rb-apps`. Other packag
 - The 2026-06-12 whole-app product immersion audit is the current product UX baseline, and the visual product direction audit is the current visual baseline after first-viewport repair.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; the next visual implementation path starts with design-system/token/primitive cleanup before broad surface polish.
-- Verify fail-edit-repair still needs a focused regression as the next behavior/proof slice. Lab-profile/course-pack extraction is a separate architecture slice after that.
+- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`; the next implementation slice is the first lab-profile/course-pack seam, and remaining Verify density cleanup is a separate later visual slice.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.

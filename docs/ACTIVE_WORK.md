@@ -12,9 +12,9 @@ imported_by: CLAUDE.md
 **Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
-**Audited commit:** `6498605d`
+**Audited commit:** `afc26f63`
 **Latest local product audit:** `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`
-**Latest local implementation slice:** General Lab Workbench Sprint 0 / gate-truth repair
+**Latest local implementation slice:** Verify fail-edit-repair browser proof
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -24,11 +24,10 @@ RedByte is an FPGA educational IDE. The current product spine is Project -> Desi
 
 ## Top Priorities
 
-1. **Start Verify fail-edit-repair as the next behavior/proof slice.** Sprint 0 proved a clean from-scratch success path; it did not prove intentional fail -> edit expected output -> repair -> PASS.
-2. **Keep lab-profile/course-pack implementation as a separate architecture slice.** `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` defines the target boundary; it is not implemented yet.
-3. **Keep remaining Verify density / evidence workbench cleanup as a later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, but it did not close every Verify workbench polish issue.
-4. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
-5. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
+1. **Start the first lab-profile/course-pack implementation seam next.** `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` defines the target boundary; it is not implemented yet.
+2. **Keep remaining Verify density / evidence workbench cleanup as a later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, and RB-VERIFY-001 now covers the behavior loop, but it did not close every Verify workbench polish issue.
+3. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+4. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
 
 Do not jump to new features, accounts/SaaS, or commercial packaging. The current operating loop is audit -> issue index or visual plan -> narrow implementation slice -> proof -> docs update.
 
@@ -44,7 +43,7 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 | Hardware / Map Pins visual credibility | Fixed in the Hardware visual credibility slice: the left Map Pins guide no longer wraps authority copy word-by-word, the board/table remain the focal workbench, and `ide:gate:ece141-hardware-visual-credibility` guards the geometry at 1366x768. Local screenshots and geometry live under `.redbyte/product-immersion/hardware-visual-credibility/`. | Keep regressions covered by the new Hardware visual credibility gate and existing Map Pins recovery smoke. |
 | Visual system integrity | Fixed in the visual-system integrity slice: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable in the compact workbench, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. Local screenshots and geometry live under `.redbyte/product-immersion/visual-system-integrity/`. | Keep regressions covered by `ide:gate:ece141-visual-system-integrity` plus existing hierarchy, first-viewport, product-immersion, Hardware, and Verify workbench gates. |
 | General lab workbench / gate truth | Sprint 0 repaired stale Verify/Export gate assumptions and added `ide:gate:from-scratch-general-workflow`, proving a blank two-input AND project through Verify PASS, Map Pins, post-map Verify PASS, and Export artifacts/README at E0 browser level. | Keep from-scratch workflow covered; next separate architecture slice is lab-profile/course-pack implementation. |
-| Verify fail-edit-repair risk | Intentional expected-output edit produced a clear failure, but repair attempts in a dirty browser context could leave stale/run-disabled state. | Add a focused fail-edit-repair-pass regression after first-viewport work. |
+| Verify fail-edit-repair loop | Covered 2026-06-12. `ide:gate:verify-fail-edit-repair` proves Compare PASS -> expected-output edit/stale -> rerun FAIL -> expected-output repair/stale -> rerun PASS, with Project showing PASS/CLEAN and Export showing current Verify evidence / ready-to-build. No product source fix was needed. | Keep covered by `ide:gate:verify-fail-edit-repair`; keep visual/density cleanup separate. |
 | Commercial readiness | RedByte is technically credible but not commercially ready for unsupervised paid classroom use. | Keep accounts/SaaS deferred; package support/licensing only after UX, proof, and quickstarts are stronger. |
 | Fresh Vivado/Basys3 proof on this desktop | Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no board proof was run here. | Use a machine with Vivado 2024.2 and a Basys3 board before making new E1/E2/E3 claims. |
 | E3 observation closure | Prior controlled proof classifies rows as E2 until physical behavior is observed and recorded. | Use the existing observation templates when hardware is available. |
@@ -63,14 +62,14 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 
 ## Next Technical Task
 
-**Target:** Verify fail-edit-repair-pass regression and fix.
+**Target:** First lab-profile/course-pack data seam.
 
 ```powershell
 corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
 ```
 
-For the Verify source slice, start from `RB-VERIFY-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md` and the Verify surface specs/tests. Do not mix Verify fail-edit-repair with broad layout, Export, Hardware, Vivado, lab-profile extraction, goldens, or hardware proof.
+For the lab-profile slice, start from `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, and `RB-LAB-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`. Keep Basys3 board semantics and proof-tier logic in core; do not mix this with remaining Verify visual/density cleanup, Vivado proof, goldens, or hardware proof.
 
 ---
 
@@ -78,6 +77,7 @@ For the Verify source slice, start from `RB-VERIFY-001` in `docs/plans/2026-06-1
 
 | Evidence | Result |
 |----------|--------|
+| Verify fail-edit-repair proof | Added `ide:gate:verify-fail-edit-repair` and a focused workflow-authority regression. The browser gate proves Logic Gates Compare PASS -> rendered expected-output cell edit -> stale Verify -> rerun FAIL -> repair expected-output cell -> stale Verify -> rerun PASS, then Project diagnostics show PASS/CLEAN and Export provenance shows Checks match / READY TO BUILD. Before/after screenshots live under `.redbyte/product-immersion/verify-fail-edit-repair/`. No simulation, pin mapping, export generation, Vivado, Basys3, project format, or golden behavior changed. |
 | General Lab Workbench Sprint 0 | Added `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md` and `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; repaired stale Verify/Export gate truth; fixed blank-project IO naming and export aliasing defects exposed by the new from-scratch workflow; added `ide:gate:from-scratch-general-workflow`. Local E0 proof shows blank project -> two inputs -> AND -> output -> Verify Compare PASS -> Map Pins -> post-map Verify Compare PASS -> Export artifact tabs/README with no visible Export diagnostics. No Vivado or Basys3 board proof was run. |
 | Canonical worktree control | `C:\Users\conno\redbyte-ui-genesis-main` is now the canonical Git clone for `https://github.com/swaggyp52/redbyte-ui-genesis.git`. The prior non-git folder contents were preserved at `C:\Users\conno\redbyte-ui-genesis-main.archive-20260612-133417`, then the GitHub repo was cloned into the canonical path and fast-forwarded from the OneDrive clone through `fa116f90`. |
 | Canonical dev command | `pnpm install --frozen-lockfile` passed after a user-level `pnpm@10.24.0` shim repair under `C:\Users\conno\AppData\Roaming\npm`. `pnpm run dev` served `http://localhost:5173/` with HTTP 200 in the canonical clone. |
@@ -136,7 +136,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Done | Hardware / Map Pins visual credibility repair. | `tests/e2e/ece141-hardware-visual-credibility.spec.ts`; `.redbyte/product-immersion/hardware-visual-credibility/after/` |
 | Done | Visual system integrity repair for cross-surface first-viewport density, Export handoff, and Verify command containment. | `tests/e2e/ece141-visual-system-integrity.spec.ts`; `.redbyte/product-immersion/visual-system-integrity/after/`; `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md` |
 | Done | General Lab Workbench Sprint 0 and gate-truth repair. | `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `ide:gate:from-scratch-general-workflow` |
-| Current implementation | Verify fail-edit-repair-pass regression and fix. | `RB-VERIFY-001` in the issue index |
+| Done | Verify fail-edit-repair-pass regression. | `scripts/gates/ide-verify-fail-edit-repair.mjs`; `.redbyte/product-immersion/verify-fail-edit-repair/after/` |
+| Current implementation | First lab-profile/course-pack data seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `RB-LAB-001` in the issue index |
 | Next visual slice | Verify density / evidence workbench cleanup. | `RB-VERIFY-002`, `RB-WAVE-001` in the issue index |
 | Later proof slice | Broader student workflow browser suite. | Existing ECE141 browser gates and product-immersion screenshots |
 | Board-gated | E3 observation closure for controlled rows and custom rows. | `docs/STUDENT_RELEASE_READINESS.md`; tracked proof docs |

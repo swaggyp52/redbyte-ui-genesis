@@ -16,13 +16,12 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 | # | Slice | Why it matters now | Source docs | Expected commit type | Done criteria |
 |---|---|---|---|---|---|
-| 1 | Verify fail-edit-repair regression | The audit found that repairing an intentional expected-output mismatch can strand stale/run-disabled state in a dirty browser context. | `RB-VERIFY-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`, Verify surface specs | `test:` then `fix:` | Focused browser regression proves fail -> edit repair -> rerun -> PASS before and after the fix |
-| 2 | First lab-profile/course-pack seam | Sprint 0 defined the target lab profile model, but ECE141 lab data and starter IDs still live too close to core app source. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, `RB-LAB-001` in the issue index | `refactor:` or `feat:` | One small profile/course-pack data seam exists; Basys3 board logic stays core; no-solution policy remains enforced |
-| 3 | Remaining Verify density / evidence workbench cleanup | After the behavior loop is trustworthy, Verify still needs a focused visual pass so waveform/evidence density reads as a repair workbench rather than crowded chrome. The visual-system integrity sprint reduced the worst overflow but did not close all Verify polish debt. | `RB-VERIFY-002`, `RB-WAVE-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`, Verify surface specs | `fix:` or `refactor:` | Browser proof at 1366x768 shows clearer evidence hierarchy without changing simulation semantics |
-| 4 | Broader student workflow browser suite | After the Verify behavior and density slices, confirm the full student path behaves coherently in browser. | `docs/release/course-edition/08-validation-log.md`, ECE141 Playwright gates, `docs/STUDENT_RELEASE_READINESS.md` | `test:` or `chore:` | Relevant Project -> Design -> Verify -> Map Pins / Hardware -> Export browser gates pass or failures are logged honestly |
-| 5 | Vivado/Basys3 proof restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, proof docs | `docs:` or `chore:` | Vivado path confirmed; board run captured; E1/E2/E3 claims updated only from evidence; generated packs and tracked proof docs reconciled |
-| 6 | Student and instructor quickstarts | Commercial/classroom readiness requires public-facing instructions, not just agent docs. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, manual | `docs:` | Student first-lab quickstart and instructor setup/support quickstart exist and match current app truth |
-| 7 | Commercial/license packaging | RedByte is not commercially ready yet; packaging comes after UX, proof, and quickstarts. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md` | `docs:` or `chore:` | License/support/deployment posture reviewed; accounts/SaaS remain deferred unless a real hosted-data need is proven |
+| 1 | First lab-profile/course-pack seam | Sprint 0 defined the target lab profile model, but ECE141 lab data and starter IDs still live too close to core app source. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, `RB-LAB-001` in the issue index | `refactor:` or `feat:` | One small profile/course-pack data seam exists; Basys3 board logic stays core; no-solution policy remains enforced |
+| 2 | Remaining Verify density / evidence workbench cleanup | Verify behavior is now covered by RB-VERIFY-001, but Verify still needs a focused visual pass so waveform/evidence density reads as a repair workbench rather than crowded chrome. The visual-system integrity sprint reduced the worst overflow but did not close all Verify polish debt. | `RB-VERIFY-002`, `RB-WAVE-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`, Verify surface specs | `fix:` or `refactor:` | Browser proof at 1366x768 shows clearer evidence hierarchy without changing simulation semantics |
+| 3 | Broader student workflow browser suite | After the lab-profile seam and Verify density slice, confirm the full student path behaves coherently in browser. | `docs/release/course-edition/08-validation-log.md`, ECE141 Playwright gates, `docs/STUDENT_RELEASE_READINESS.md` | `test:` or `chore:` | Relevant Project -> Design -> Verify -> Map Pins / Hardware -> Export browser gates pass or failures are logged honestly |
+| 4 | Vivado/Basys3 proof restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/vivado-basys3-certification-matrix.md`, proof docs | `docs:` or `chore:` | Vivado path confirmed; board run captured; E1/E2/E3 claims updated only from evidence; generated packs and tracked proof docs reconciled |
+| 5 | Student and instructor quickstarts | Commercial/classroom readiness requires public-facing instructions, not just agent docs. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, manual | `docs:` | Student first-lab quickstart and instructor setup/support quickstart exist and match current app truth |
+| 6 | Commercial/license packaging | RedByte is not commercially ready yet; packaging comes after UX, proof, and quickstarts. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md` | `docs:` or `chore:` | License/support/deployment posture reviewed; accounts/SaaS remain deferred unless a real hosted-data need is proven |
 
 ---
 
@@ -30,6 +29,7 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 | Item | Status |
 |------|--------|
+| Verify fail-edit-repair regression | Done 2026-06-12: `ide:gate:verify-fail-edit-repair` proves PASS -> expected-output edit/stale -> FAIL -> repair/stale -> PASS, Project PASS/CLEAN, and Export Checks match / READY TO BUILD. No product source fix was needed. |
 | General Lab Workbench Sprint 0 / gate truth | Done 2026-06-12: stale Verify/Export gate assumptions repaired; `ide:gate:from-scratch-general-workflow` added; blank-project IO/export aliasing defects fixed; lab profile target model documented. |
 | Visual system integrity | Done 2026-06-12: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. |
 | Hardware / Map Pins visual credibility | Done 2026-06-12: left Map Pins guide no longer wraps copy word-by-word; board/table remain focal; `ide:gate:ece141-hardware-visual-credibility` and existing Map Pins recovery/viewport/product gates pass locally. |
@@ -49,10 +49,9 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 ## Queue Rules
 
-- Item 1 is the next approved behavior/proof slice.
-- Item 2 is the next approved architecture/data-boundary slice and must stay separate from item 1.
-- Item 3 is the next approved visual slice and must stay separate from items 1 and 2.
-- Item 5 is board/manual-evidence gated and cannot be completed on a desktop without Vivado 2024.2 and Basys3 hardware.
+- Item 1 is the next approved architecture/data-boundary slice.
+- Item 2 is the next approved visual slice and must stay separate from item 1.
+- Item 4 is board/manual-evidence gated and cannot be completed on a desktop without Vivado 2024.2 and Basys3 hardware.
 - Do not re-bless golden SHAs unless the artifact difference is source-explained and accepted.
 - Do not reopen stricken or historical queue items unless new repo evidence shows the closure was wrong.
 - If a new request conflicts with this order, update this file and `docs/ACTIVE_WORK.md` together.

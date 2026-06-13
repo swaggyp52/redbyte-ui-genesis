@@ -16,13 +16,12 @@ This is a routing index, not a replacement for the audit. Use one issue per impl
 
 ## Current Work Order
 
-1. Verify fail-edit-repair regression.
-2. First lab-profile/course-pack data seam.
-3. Remaining Verify density / evidence workbench cleanup.
-4. Broader student workflow browser suite.
-5. Vivado/Basys3 proof restoration.
-6. Student and instructor quickstarts.
-7. Commercial packaging later.
+1. First lab-profile/course-pack data seam.
+2. Remaining Verify density / evidence workbench cleanup.
+3. Broader student workflow browser suite.
+4. Vivado/Basys3 proof restoration.
+5. Student and instructor quickstarts.
+6. Commercial packaging later.
 
 ## Issue Index
 
@@ -37,7 +36,7 @@ This is a routing index, not a replacement for the audit. Use one issue per impl
 | RB-GATE-001 | P1 | Gates / proof truth | Verify and Export gate contracts retained stale setup assumptions after the product surfaces changed. | Agents could treat false gate failures as product failures or ignore real browser proof. | Align gate setup with current Verify readiness and starter-backed Verify workflow; add from-scratch general workflow gate. | `scripts/gates/ide-export-ready-contract.mjs`; `scripts/gates/ide-verify-contract.mjs`; `scripts/gates/ide-blank-canvas-product-proof.mjs`; `scripts/gates/ide-from-scratch-general-workflow.mjs`; `package.json` | `ide:gate:export-ready-contract`; `ide:gate:verify-contract`; `ide:gate:from-scratch-general-workflow`; relevant Vitest contracts. | Fixed 2026-06-12 |
 | RB-FS-001 | P1 | Project / Design / Verify / Map Pins / Export | Blank projects could expose weak generic IO labels and export alias mismatches that starters did not hit. | Students building from scratch could verify or export a small circuit with one mapped boundary silently ignored or with generated testbench refs that did not match entity refs. | Generate stable numbered blank IO labels/row IDs; alias export mapping to IR boundary names; resolve collapsed scenario labels in testbench generation. | `packages/rb-apps/src/apps/ide/projectRuntime.ts`; `packages/rb-apps/src/fpga/boards/basys3/basys3ExportService.ts`; `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts`; focused tests | From-scratch browser gate; runtime IO test; export canonical-naming test. | Fixed 2026-06-12 |
 | RB-LAB-001 | P2 | Product architecture / course data | ECE141 lab data, starter IDs, and product-general gate names still sit too close to core product behavior. | Professors cannot yet define new labs cleanly without code changes, and future agents may confuse course data with core board/product logic. | Introduce the first small lab-profile/course-pack data seam while keeping Basys3 board semantics and proof-tier logic in core. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; starter/catalog modules; future course-pack data path | Tests proving one profile-backed lab path and no-solution policy; docs/encoding validation. | Open |
-| RB-VERIFY-001 | P1 | Verify | Fail-edit-repair flow can strand stale/running or disabled state after intentionally editing an expected output and trying to repair it. | Students can lose trust in the debugging loop after making the correct repair. | Add a focused regression first; then fix only the state transition needed to reach terminal PASS/FAIL after repair. | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`; `packages/rb-apps/src/apps/ide/projectRuntime.ts`; Verify primitives/helpers | Browser regression: pass -> flip expected -> FAIL -> restore expected -> rerun -> PASS with enabled controls. | Open |
+| RB-VERIFY-001 | P1 | Verify | Fail-edit-repair flow needed browser proof because a dirty expected-output edit could plausibly strand stale/running or disabled state. | Students can lose trust in the debugging loop after making the correct repair. | Added a focused browser regression; no production source fix was needed because the current code already recovered correctly once covered. | `scripts/gates/ide-verify-fail-edit-repair.mjs`; `packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts`; `package.json` | `ide:gate:verify-fail-edit-repair`: pass -> flip expected -> FAIL -> restore expected -> rerun -> PASS; Project PASS/CLEAN; Export Checks match / READY TO BUILD. | Fixed 2026-06-12 |
 | RB-VERIFY-002 | P2 | Verify | Verify deck/status text can still truncate or crowd the run-mode and session state in deeper workflows, though the visual-system integrity sprint removed the worst first-viewport command/header overflow. | Students may miss whether they are observing, comparing, stale, or ready. | Tighten remaining run deck copy/layout without changing verification semantics. | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`; `packages/rb-apps/src/apps/ide/surfaces/verify/VerifySurfacePrimitives.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css`; `packages/rb-apps/src/apps/ide/ide-polish-pass.css` | Verify layout screenshot/gate at 1366x768; existing Verify contract gates. | Open / partially mitigated 2026-06-12 |
 | RB-WAVE-001 | P2 | Verify waveform | Waveform area is credible but crowded in common laptop viewport; the visual-system integrity sprint preserved meaningful waveform width but did not finish a dedicated waveform polish pass. | Debugging is harder because signal/tick evidence competes with surrounding chrome. | Improve waveform density/framing after first-viewport repair, preserving tick lock-step. | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`; `packages/rb-apps/src/apps/ide/ide-root.css`; `packages/rb-apps/src/apps/ide/ide-polish-pass.css` | Waveform screenshot proof and existing waveform/tick-lock gates. | Open / partially mitigated 2026-06-12 |
 | RB-HW-001 | P1 | Project / workflow status | No-circuit state can say `Mapping 0 missing`, which sounds like an error before a circuit exists. | First-time students may think they are already blocked by mapping. | Use neutral no-circuit copy until there are top-level signals that actually require mapping. | `packages/rb-apps/src/apps/ide/projectWorkflowAuthority.ts`; `packages/rb-apps/src/apps/ide/workflowStages.ts`; `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Clean first-launch screenshot and workflow-authority test for no-circuit state. | Open |
@@ -49,7 +48,7 @@ This is a routing index, not a replacement for the audit. Use one issue per impl
 
 ## Non-Negotiables
 
-- Do not mix Verify state repair with broad layout, Export, Hardware, Vivado, lab-profile extraction, or commercial packaging work unless a direct dependency is proven.
+- Do not mix lab-profile extraction, Verify visual cleanup, Export, Hardware, Vivado, or commercial packaging work unless a direct dependency is proven.
 - Do not change simulation, export generation, VHDL, XDC, or project data semantics in layout-only slices.
 - Do not update goldens or screenshots as a substitute for explaining behavior.
 - Screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.

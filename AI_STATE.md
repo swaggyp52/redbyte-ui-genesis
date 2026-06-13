@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-12 (test: prove Verify fail-edit-repair loop)
+
+**Subsystem:** Verify expected-output repair loop, Project trust state, and Export handoff truth.
+
+**Changes:**
+- Added `ide:gate:verify-fail-edit-repair`, a focused browser gate that loads the Logic Gates starter, runs Compare to PASS, edits one rendered expected-output cell wrong, verifies the rerun FAIL, restores the expected output, reruns to PASS, and checks Project / Export trust readouts.
+- Added a focused `projectWorkflowAuthority` regression for the expected-output fail-edit-repair state sequence: current PASS -> stale after expected edit -> current FAIL -> stale after repair edit -> repaired current PASS -> Export ready-to-build until the E0 bundle is rebuilt.
+- Proved the current product code already handles the repair loop correctly once the browser path is covered; no production source fix was needed.
+- Captured before/after browser evidence under `.redbyte/product-immersion/verify-fail-edit-repair/` and updated the cockpit/current-truth/work-queue/issue-index docs.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm -s ide:gate:verify-fail-edit-repair`; screenshot-backed rerun with `RB_VERIFY_FAIL_EDIT_REPAIR_SCREENSHOTS_DIR=.redbyte/product-immersion/verify-fail-edit-repair/after`; focused Vitest batch for Verify/projectHealth/export trust (`4` files, `60` tests); `pnpm -s ide:gate:verify-contract`; `pnpm -s ide:gate:verify-workbench-contract`; `pnpm -s ide:gate:verify-summary-contract`; `pnpm -s ide:gate:from-scratch-general-workflow`; `pnpm -s ide:gate:ece141-product-immersion` (`4`); `pnpm -s ide:gate:ece141-visual-system-integrity` (`4`); `pnpm -s ide:gate:ece141-first-viewport` (`4`); `pnpm -s classroom:gate`; and `pnpm -s build:unified`. Final docs, encoding, and diff checks are recorded in the session closeout after this entry.
+
+**Safety:** This is E0 browser/runtime/source proof only. It did not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation, project data format, goldens, lab profiles, Vivado proof, or Basys3 proof.
+
+**Known remaining risks:** Lab-profile/course-pack extraction remains the next architecture slice. Remaining Verify density / evidence workbench cleanup is still a separate visual slice. Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Start the first lab-profile/course-pack data seam. Keep Basys3 board semantics and proof-tier logic in core, and keep remaining Verify density cleanup as a separate later visual slice.
+
 ## Change Log 2026-06-12 (test: prove general RedByte lab workflow)
 
 **Subsystem:** RedByte general lab workbench posture, gate truth, and blank-project Verify/Map Pins/Export path.

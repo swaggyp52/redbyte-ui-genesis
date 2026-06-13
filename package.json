@@ -226,6 +226,7 @@
         "ide:gate:screenshots:update": "pnpm --filter @redbyte/playground build && cross-env CI=1 PW_MODE=ci SCREENSHOT_STRICT=1 pnpm exec playwright test tests/e2e/ide-screenshot-baseline.spec.ts --project chromium --update-snapshots",
         "ide:gate:fast": "node ./scripts/gates/ide-gate-fast.mjs",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
+        "ide:gate:verify-fail-edit-repair": "node ./scripts/gates/ide-verify-fail-edit-repair.mjs",
         "ide:gate:synth-subset-contract": "node ./scripts/gates/ide-synth-subset-contract.mjs",
         "ide:gate:vivado-pack-contract": "node ./scripts/gates/ide-vivado-pack-contract.mjs",
         "ide:gate:export-includes-rbproj-contract": "node ./scripts/gates/ide-export-includes-rbproj-contract.mjs",
