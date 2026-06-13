@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -114,6 +114,13 @@ Supporting truths:
 - The next architecture slice should extract the first lab-profile/course-pack seam without moving Basys3 board logic out of core.
 - The next visual slice is remaining Verify density / evidence workbench cleanup, kept separate from lab-profile extraction.
 
+### Nightly FPGA Bridge Proof posture
+
+- Scheduled Nightly Heavy Suites run `27457841958` failed on 2026-06-13 at commit `763c580b` in `FPGA Bridge Proof` with `listen EADDRINUSE: address already in use 0.0.0.0:4242`.
+- The root cause was bridge/proof-harness port-contract drift: the bridge defaulted HTTP and WS to `4242`, while the proof runner and smoke path expected HTTP `4242` / WS `4243`; the nightly workflow also used broad `fuser` cleanup before proof.
+- The local repair keeps the proof enabled, defaults WS to `4243`, uses dynamic isolated proof ports in CI, removes broad nightly port killing, and verifies generated proof artifacts without assuming the captured event window starts at global sequence `1`.
+- This is CI/proof harness truth only. It does not change product UX, simulation, Verify, Map Pins, Export artifacts, goldens, Vivado proof, or Basys3 proof.
+
 ### Commercial posture
 
 - RedByte is not commercially ready for unsupervised paid classroom use.
@@ -153,11 +160,12 @@ Supporting truths:
 
 The approved order is:
 
-1. First lab-profile/course-pack data seam.
-2. Verify density / evidence workbench cleanup.
-3. Broader student workflow browser suite.
-4. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
-5. Student and instructor quickstarts.
-6. Commercial/license packaging later.
+1. Close the Nightly Heavy Suites / FPGA Bridge Proof repair and verify GitHub is green.
+2. First lab-profile/course-pack data seam.
+3. Verify density / evidence workbench cleanup.
+4. Broader student workflow browser suite.
+5. Vivado/Basys3 proof restoration on a machine with Vivado 2024.2 and hardware access.
+6. Student and instructor quickstarts.
+7. Commercial/license packaging later.
 
 Do not skip to website, pilot, broad polish, accounts/SaaS, or new product features while the current product UX and proof posture remain unsettled.

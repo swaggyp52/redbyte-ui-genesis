@@ -15,14 +15,17 @@ import { createWriteStream, mkdirSync } from "fs";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 import http from "http";
+import net from "net";
 import WebSocket from "ws";
 import { createHmac } from "crypto";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const PROOF_DIR = resolve(__dirname, "../../..", "ops", "proof");
-const HTTP_PORT = 4242;
-const WS_PORT = 4243;
+const PROOF_DIR = process.env.RB_FPGA_PROOF_ARTIFACT_DIR
+  ? resolve(process.env.RB_FPGA_PROOF_ARTIFACT_DIR)
+  : resolve(__dirname, "../../..", "ops", "proof");
+let HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
+let WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
 const WAIT_TIMEOUT = 10000; // 10s to start
 const EVENT_TIMEOUT = 5000; // 5s to collect 3 events
 
@@ -50,42 +53,99 @@ function logError(msg, error) {
   if (error?.stack) results.push(error.stack);
 }
 
-async function killProcessOnPort(port) {
-  // CI is almost certainly linux. Do the reliable thing first.
-  try {
-    const { execSync } = await import("child_process");
-    execSync(`bash -lc "lsof -ti tcp:${port} | xargs -r kill -9"`, { stdio: "ignore" });
-    return;
-  } catch {}
+function isValidPort(port) {
+  return Number.isInteger(port) && port > 0 && port < 65536;
+}
 
-  // Fallback if lsof isn't present:
-  try {
-    const { execSync } = await import("child_process");
-    execSync(`bash -lc "fuser -k ${port}/tcp || true"`, { stdio: "ignore" });
-    return;
-  } catch {}
-
-  // Windows best-effort (won't run in ubuntu CI, but harmless to keep):
-  try {
-    const { execSync } = await import("child_process");
-    const out = execSync(`powershell -NoProfile -Command "(Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue).OwningProcess"`, { encoding: "utf8" });
-    const pids = out.split(/\s+/).filter(Boolean);
-    for (const pid of pids) {
-      execSync(`powershell -NoProfile -Command "Stop-Process -Id ${pid} -Force -ErrorAction SilentlyContinue"`, { stdio: "ignore" });
+function canUsePort(port) {
+  return new Promise((resolvePort) => {
+    if (!isValidPort(port)) {
+      resolvePort(false);
+      return;
     }
-  } catch {}
+
+    const server = net.createServer();
+    server.once("error", () => resolvePort(false));
+    server.listen(port, "127.0.0.1", () => {
+      server.close(() => resolvePort(true));
+    });
+  });
+}
+
+function getFreePort() {
+  return new Promise((resolvePort, rejectPort) => {
+    const server = net.createServer();
+    server.once("error", rejectPort);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      const selected = typeof address === "object" && address ? address.port : null;
+      server.close(() => {
+        if (isValidPort(selected)) {
+          resolvePort(selected);
+        } else {
+          rejectPort(new Error("Could not allocate a free proof port"));
+        }
+      });
+    });
+  });
+}
+
+async function getDistinctFreePorts() {
+  const httpPort = await getFreePort();
+  let wsPort = await getFreePort();
+  while (wsPort === httpPort) {
+    wsPort = await getFreePort();
+  }
+  return { httpPort, wsPort };
+}
+
+async function resolveProofPorts() {
+  const mode = String(process.env.RB_FPGA_PROOF_PORT_MODE || (process.env.CI ? "dynamic" : "auto")).toLowerCase();
+  const requestedHttpPort = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
+  const requestedWsPort = Number(process.env.RB_FPGA_WS_PORT || 4243);
+
+  if (mode === "dynamic") {
+    return { ...(await getDistinctFreePorts()), mode };
+  }
+
+  const fixedPortsValid =
+    isValidPort(requestedHttpPort) && isValidPort(requestedWsPort) && requestedHttpPort !== requestedWsPort;
+  const fixedPortsAvailable =
+    fixedPortsValid && (await canUsePort(requestedHttpPort)) && (await canUsePort(requestedWsPort));
+
+  if (fixedPortsAvailable) {
+    return { httpPort: requestedHttpPort, wsPort: requestedWsPort, mode: "fixed" };
+  }
+
+  if (mode === "fixed") {
+    throw new Error(
+      `Requested proof ports unavailable or invalid: HTTP ${requestedHttpPort}, WS ${requestedWsPort}. ` +
+        "Use RB_FPGA_PROOF_PORT_MODE=dynamic for isolated CI proof ports."
+    );
+  }
+
+  return { ...(await getDistinctFreePorts()), mode: "auto-dynamic" };
 }
 
 async function cleanup() {
   if (bridgeProcess) {
+    if (bridgeProcess.exitCode !== null || bridgeProcess.signalCode !== null) {
+      bridgeProcess = null;
+      return;
+    }
+
     log("[PROOF] Cleaning up bridge process...");
     bridgeProcess.kill("SIGTERM");
-    await new Promise((r) => setTimeout(r, 500));
-    if (!bridgeProcess.killed) bridgeProcess.kill("SIGKILL");
+    const exited = await new Promise((resolveExit) => {
+      const timeout = setTimeout(() => resolveExit(false), 1000);
+      bridgeProcess.once("exit", () => {
+        clearTimeout(timeout);
+        resolveExit(true);
+      });
+    });
+    if (!exited) bridgeProcess.kill("SIGKILL");
+    bridgeProcess = null;
   }
-  // Clean up ports
-  await killProcessOnPort(HTTP_PORT);
-  await killProcessOnPort(WS_PORT);
 }
 
 async function waitForHealth() {
@@ -93,7 +153,7 @@ async function waitForHealth() {
     const start = Date.now();
     const checkHealth = () => {
       http.get(
-        { hostname: "localhost", port: HTTP_PORT, path: "/api/health" },
+        { hostname: "127.0.0.1", port: HTTP_PORT, path: "/api/health" },
         (res) => {
           let data = "";
           res.on("data", (chunk) => (data += chunk));
@@ -129,7 +189,7 @@ async function testWebSocket() {
     let eventCount = 0;
     const events = [];
     let lastSeq = -1;
-    const ws = new WebSocket(`ws://localhost:${WS_PORT}`);
+    const ws = new WebSocket(`ws://127.0.0.1:${WS_PORT}`);
 
     const timeout = setTimeout(() => {
       ws.close();
@@ -189,10 +249,10 @@ async function runProof() {
     log("[PROOF] === FPGA Bridge Proof Runner ===");
     log("════════════════════════════════════════");
 
-    // Clean up any lingering processes on the ports
-    log("[PROOF] Cleaning up ports...");
-    await killProcessOnPort(HTTP_PORT);
-    await killProcessOnPort(WS_PORT);
+    const proofPorts = await resolveProofPorts();
+    HTTP_PORT = proofPorts.httpPort;
+    WS_PORT = proofPorts.wsPort;
+    log(`[PROOF] Using ${proofPorts.mode} ports: HTTP ${HTTP_PORT}, WS ${WS_PORT}`);
 
     // Start bridge
     log("[PROOF] Starting bridge in MOCK mode...");
@@ -200,6 +260,8 @@ async function runProof() {
     const bridgeEnv = {
       ...process.env,
       RB_FPGA_MOCK: "1",
+      RB_FPGA_HTTP_PORT: String(HTTP_PORT),
+      RB_FPGA_WS_PORT: String(WS_PORT),
       RB_FPGA_HMAC_SECRET: process.env.RB_FPGA_HMAC_SECRET || "local-dev-secret-changeme",
     };
     bridgeProcess = spawn("node", [bridgePath], {

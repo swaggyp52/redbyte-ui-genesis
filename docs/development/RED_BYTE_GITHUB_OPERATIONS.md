@@ -51,7 +51,7 @@ Never force push.
 | --- | --- | --- | --- | --- |
 | Classroom Truth Gates | `.github/workflows/pr-truth-gates.yml` | `Classroom Truth Gates` | `push`/`pull_request` to `main`, manual dispatch | Automated classroom safety gate: no-solution labs, IDE classroom loop, golden export gates, and UI dev guards. |
 | Deploy to Cloudflare Pages | `.github/workflows/deploy-cloudflare.yml` | Not the classroom required check | `main` deploy path | Builds and deploys the site when configured secrets and Cloudflare pipeline permit it. Treat success as deployment evidence only when the run verifies the shipped SHA. |
-| Nightly Heavy Suites | `.github/workflows/nightly-heavy.yml` | Not a default push blocker | Scheduled/manual | Expensive or broader health checks that should not be confused with required push truth. |
+| Nightly Heavy Suites | `.github/workflows/nightly.yml` | Not a default push blocker | Scheduled/manual | Expensive or broader health checks that should not be confused with required push truth. Includes `FPGA Bridge Proof`, which must remain enabled and use isolated proof ports rather than broad runner process cleanup. |
 
 ## Required Checks
 
@@ -87,6 +87,18 @@ It is not Vivado hardware proof. Vivado/Basys3 E1/E2/E3 evidence remains release
 3. Reproduce the closest command locally before editing.
 
 4. Fix the root cause. Do not delete a check only to stop notifications. Remove or quarantine a check only when it is obsolete, duplicated, stale, or manual-only, and document replacement coverage.
+
+## Nightly FPGA Bridge Proof
+
+`FPGA Bridge Proof` is an automated E0 bridge/mock proof inside `Nightly Heavy Suites`. It is not Vivado, bitstream, Basys3 programming, or physical observation evidence.
+
+The proof should not kill arbitrary processes on fixed ports. In CI, run it with:
+
+```yaml
+RB_FPGA_PROOF_PORT_MODE: dynamic
+```
+
+The local fixed-port convention is HTTP `4242` and WS `4243`. If either fixed port is occupied in local auto mode, the proof runner may fall back to dynamic isolated ports. Use `pnpm -s bridge:proof-port-contract` to prove an unrelated listener on `4242` survives while the bridge proof and proof verifier pass.
 
 ## Verifying Remote Green
 

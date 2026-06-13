@@ -83,7 +83,7 @@ const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
 
 const HTTP_PORT = Number(process.env.RB_FPGA_HTTP_PORT || 4242);
-const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4242);
+const WS_PORT = Number(process.env.RB_FPGA_WS_PORT || 4243);
 const BAUD = Number(process.env.RB_FPGA_BAUD || 115200);
 const OVERRIDE_PORT = process.env.REDBYTE_FPGA_PORT || ""; // e.g. "COM5"
 const MOCK_MODE = process.env.RB_FPGA_MOCK === "1" || process.env.RB_FPGA_MOCK === "true";
@@ -5544,6 +5544,11 @@ app.get("/api/synthesize/:jobId/bitstream", (req, res) => {
 const server = app.listen(HTTP_PORT, "0.0.0.0", () => {
   console.log(`HTTP listening on http://localhost:${HTTP_PORT}`);
   console.log(`Mode: ${MOCK_MODE ? "MOCK" : "REAL"}`);
+});
+
+server.on("error", (err) => {
+  console.error(`[fpga-bridge] Failed to start HTTP server on ${HTTP_PORT}: ${err.message}`);
+  process.exit(1);
 });
 
 // WebSocket with port fallback on EADDRINUSE

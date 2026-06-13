@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -12,9 +12,9 @@ imported_by: CLAUDE.md
 **Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
-**Audited commit:** `afc26f63`
+**Audited commit:** `763c580b` plus the 2026-06-13 Nightly FPGA Bridge Proof repair slice
 **Latest local product audit:** `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`
-**Latest local implementation slice:** Verify fail-edit-repair browser proof
+**Latest local implementation slice:** Nightly FPGA Bridge Proof port-isolation repair
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -24,10 +24,11 @@ RedByte is an FPGA educational IDE. The current product spine is Project -> Desi
 
 ## Top Priorities
 
-1. **Start the first lab-profile/course-pack implementation seam next.** `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` defines the target boundary; it is not implemented yet.
-2. **Keep remaining Verify density / evidence workbench cleanup as a later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, and RB-VERIFY-001 now covers the behavior loop, but it did not close every Verify workbench polish issue.
-3. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
-4. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
+1. **Close the Nightly Heavy Suites / FPGA Bridge Proof repair before product work.** The scheduled run failed at bridge startup on `0.0.0.0:4242`; this is a CI/proof-harness repair, not a V1/lab-profile feature slice.
+2. **Start the first lab-profile/course-pack implementation seam after GitHub/nightly proof is green.** `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` defines the target boundary; it is not implemented yet.
+3. **Keep remaining Verify density / evidence workbench cleanup as a later visual slice.** The visual-system integrity sprint reduced the worst command/Export/handoff overflow, and RB-VERIFY-001 now covers the behavior loop, but it did not close every Verify workbench polish issue.
+4. **Restore Vivado/Basys3 proof only on a machine with the right tools.** Fresh E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+5. **Write student/instructor quickstarts after UX/proof posture stabilizes.** Do not jump to commercial packaging, accounts/SaaS, or broad polish.
 
 Do not jump to new features, accounts/SaaS, or commercial packaging. The current operating loop is audit -> issue index or visual plan -> narrow implementation slice -> proof -> docs update.
 
@@ -44,6 +45,7 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 | Visual system integrity | Fixed in the visual-system integrity slice: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable in the compact workbench, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. Local screenshots and geometry live under `.redbyte/product-immersion/visual-system-integrity/`. | Keep regressions covered by `ide:gate:ece141-visual-system-integrity` plus existing hierarchy, first-viewport, product-immersion, Hardware, and Verify workbench gates. |
 | General lab workbench / gate truth | Sprint 0 repaired stale Verify/Export gate assumptions and added `ide:gate:from-scratch-general-workflow`, proving a blank two-input AND project through Verify PASS, Map Pins, post-map Verify PASS, and Export artifacts/README at E0 browser level. | Keep from-scratch workflow covered; next separate architecture slice is lab-profile/course-pack implementation. |
 | Verify fail-edit-repair loop | Covered 2026-06-12. `ide:gate:verify-fail-edit-repair` proves Compare PASS -> expected-output edit/stale -> rerun FAIL -> expected-output repair/stale -> rerun PASS, with Project showing PASS/CLEAN and Export showing current Verify evidence / ready-to-build. No product source fix was needed. | Keep covered by `ide:gate:verify-fail-edit-repair`; keep visual/density cleanup separate. |
+| Nightly FPGA Bridge Proof | Scheduled Nightly Heavy Suites run `27457841958` failed at commit `763c580b` with `EADDRINUSE` on `0.0.0.0:4242`. Root cause was proof/bridge port-contract drift: the bridge defaulted both HTTP and WS to `4242`, while the proof harness expected HTTP `4242` / WS `4243`; the workflow also used broad `fuser` cleanup. | Keep the proof active. Use dynamic proof ports in CI, remove broad port killing, and verify the pushed GitHub nightly run before resuming product work. |
 | Commercial readiness | RedByte is technically credible but not commercially ready for unsupervised paid classroom use. | Keep accounts/SaaS deferred; package support/licensing only after UX, proof, and quickstarts are stronger. |
 | Fresh Vivado/Basys3 proof on this desktop | Vivado 2024.2 was not found at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no board proof was run here. | Use a machine with Vivado 2024.2 and a Basys3 board before making new E1/E2/E3 claims. |
 | E3 observation closure | Prior controlled proof classifies rows as E2 until physical behavior is observed and recorded. | Use the existing observation templates when hardware is available. |
@@ -58,18 +60,20 @@ Do not jump to new features, accounts/SaaS, or commercial packaging. The current
 
 **Resolved current blocker:** The stale `ide:gate:export-ready-contract` and `ide:gate:verify-contract` caveats from the visual-system integrity closeout were repaired on 2026-06-12. The export-ready gate now uses the shared Verify-vector readiness helper, and the Verify contract now targets the current starter-backed Verify workflow instead of the retired blank banner path.
 
+**Resolved local blocker pending GitHub verification:** The Nightly FPGA Bridge Proof port collision was repaired locally on 2026-06-13. The bridge now defaults to HTTP `4242` and WS `4243`, the proof runner uses dynamic isolated ports in CI, the nightly workflow no longer kills arbitrary `4242` listeners, and `bridge:proof-port-contract` proves an unrelated `4242` process survives while the proof and verifier pass.
+
 ---
 
 ## Next Technical Task
 
-**Target:** First lab-profile/course-pack data seam.
+**Target:** GitHub closeout for Nightly FPGA Bridge Proof repair, then first lab-profile/course-pack data seam.
 
 ```powershell
 corepack pnpm rb:doc:validate
 corepack pnpm rb:encoding:check
 ```
 
-For the lab-profile slice, start from `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, and `RB-LAB-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`. Keep Basys3 board semantics and proof-tier logic in core; do not mix this with remaining Verify visual/density cleanup, Vivado proof, goldens, or hardware proof.
+Before product work, verify the pushed `Nightly Heavy Suites` / `FPGA Bridge Proof` run is green. For the lab-profile slice after that, start from `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, and `RB-LAB-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`. Keep Basys3 board semantics and proof-tier logic in core; do not mix this with remaining Verify visual/density cleanup, Vivado proof, goldens, or hardware proof.
 
 ---
 
@@ -77,6 +81,7 @@ For the lab-profile slice, start from `docs/product/RED_BYTE_LAB_PROFILE_MODEL.m
 
 | Evidence | Result |
 |----------|--------|
+| Nightly FPGA Bridge Proof port-isolation repair | Scheduled Nightly run `27457841958` failed on `0.0.0.0:4242` before proof artifacts. Local repair keeps the proof active, changes the bridge default WS port to `4243`, uses dynamic proof ports in CI, removes broad workflow port killing, and adds `bridge:proof-port-contract`. Local evidence passed for fixed-port proof, dynamic-port proof, generated proof verification, the regression that keeps an unrelated `4242` holder alive, five consecutive hardened design-wire gate runs, `classroom:gate`, `build:unified`, docs, encoding, and diff checks. No product, export, Vivado, Basys3, or golden semantics changed. |
 | Verify fail-edit-repair proof | Added `ide:gate:verify-fail-edit-repair` and a focused workflow-authority regression. The browser gate proves Logic Gates Compare PASS -> rendered expected-output cell edit -> stale Verify -> rerun FAIL -> repair expected-output cell -> stale Verify -> rerun PASS, then Project diagnostics show PASS/CLEAN and Export provenance shows Checks match / READY TO BUILD. Before/after screenshots live under `.redbyte/product-immersion/verify-fail-edit-repair/`. No simulation, pin mapping, export generation, Vivado, Basys3, project format, or golden behavior changed. |
 | General Lab Workbench Sprint 0 | Added `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md` and `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; repaired stale Verify/Export gate truth; fixed blank-project IO naming and export aliasing defects exposed by the new from-scratch workflow; added `ide:gate:from-scratch-general-workflow`. Local E0 proof shows blank project -> two inputs -> AND -> output -> Verify Compare PASS -> Map Pins -> post-map Verify Compare PASS -> Export artifact tabs/README with no visible Export diagnostics. No Vivado or Basys3 board proof was run. |
 | Canonical worktree control | `C:\Users\conno\redbyte-ui-genesis-main` is now the canonical Git clone for `https://github.com/swaggyp52/redbyte-ui-genesis.git`. The prior non-git folder contents were preserved at `C:\Users\conno\redbyte-ui-genesis-main.archive-20260612-133417`, then the GitHub repo was cloned into the canonical path and fast-forwarded from the OneDrive clone through `fa116f90`. |
@@ -137,7 +142,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Done | Visual system integrity repair for cross-surface first-viewport density, Export handoff, and Verify command containment. | `tests/e2e/ece141-visual-system-integrity.spec.ts`; `.redbyte/product-immersion/visual-system-integrity/after/`; `docs/audits/2026-06-12-redbyte-visual-system-integrity-audit.md` |
 | Done | General Lab Workbench Sprint 0 and gate-truth repair. | `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `ide:gate:from-scratch-general-workflow` |
 | Done | Verify fail-edit-repair-pass regression. | `scripts/gates/ide-verify-fail-edit-repair.mjs`; `.redbyte/product-immersion/verify-fail-edit-repair/after/` |
-| Current implementation | First lab-profile/course-pack data seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `RB-LAB-001` in the issue index |
+| Closeout in progress | Nightly FPGA Bridge Proof port-isolation repair. | `packages/rb-fpga-bridge/src/proof-runner.js`; `packages/rb-fpga-bridge/tests/proof-runner-port-contract.test.js`; `.github/workflows/nightly.yml` |
+| Current implementation after CI closeout | First lab-profile/course-pack data seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `RB-LAB-001` in the issue index |
 | Next visual slice | Verify density / evidence workbench cleanup. | `RB-VERIFY-002`, `RB-WAVE-001` in the issue index |
 | Later proof slice | Broader student workflow browser suite. | Existing ECE141 browser gates and product-immersion screenshots |
 | Board-gated | E3 observation closure for controlled rows and custom rows. | `docs/STUDENT_RELEASE_READINESS.md`; tracked proof docs |

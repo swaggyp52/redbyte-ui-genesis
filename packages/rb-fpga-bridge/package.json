@@ -9,6 +9,7 @@
     "dev:mock": "cross-env RB_FPGA_MOCK=1 node src/index.js",
     "smoke": "node src/smoke.js",
     "proof:run": "node src/proof-runner.js",
+    "proof:port-contract": "node tests/proof-runner-port-contract.test.js",
     "proof:verify": "node scripts/proof-verify.js",
     "proof:replay": "node scripts/proof-replay.js",
     "buildpack:hash": "node scripts/buildpack-hash.js",

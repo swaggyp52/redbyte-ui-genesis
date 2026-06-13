@@ -50,9 +50,9 @@ if (!Array.isArray(proof.events)) {
   }
 }
 
-// 2. Seq validation (contiguous starting from 1)
+// 2. Seq validation (contiguous within the captured proof window)
 if (proof.events && proof.events.length > 0) {
-  let expectedSeq = 1;
+  let expectedSeq = proof.events[0].seq;
   for (let i = 0; i < proof.events.length; i++) {
     const curr = proof.events[i];
     if (curr.seq !== expectedSeq) {

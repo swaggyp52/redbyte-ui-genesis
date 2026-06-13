@@ -160,12 +160,10 @@ jobs:
       - name: Create proof directory
         run: mkdir -p ops/proof
 
-      - name: Clear port 4242 (prevent EADDRINUSE from stale runners)
-        run: fuser -k 4242/tcp 2>/dev/null || true
-
       - name: Run FPGA Bridge Proof
         env:
           RB_FPGA_HMAC_SECRET: ci-test-secret-do-not-use-in-production
+          RB_FPGA_PROOF_PORT_MODE: dynamic
         run: pnpm --filter @redbyte/fpga-bridge proof:run
 
       - name: Verify proof artifacts

@@ -25,7 +25,8 @@ await runIdeGate('IDE design wire interaction contract satisfied', async ({ page
 
   const wireLocator = page.locator('[data-wire-id]').first();
   assert((await page.locator('[data-wire-id]').count()) > 0, 'expected at least one wire after starter insertion');
-  await wireLocator.click({ force: true });
+  await clickWireHitPath(page, wireLocator);
+  await waitForSingleWireSelection(page, null, 'initial wire click should select one wire');
 
   const selectedWire = await page.evaluate(() => {
     const logicStore = window.__RB_LOGIC_VIEW_STORE__;
@@ -74,26 +75,11 @@ await runIdeGate('IDE design wire interaction contract satisfied', async ({ page
   assert(selectedWire.wireCount > 0, 'wire count should be positive before delete');
 
   await page.locator('[data-testid="logic-canvas-svg"]').click({ position: { x: 10, y: 10 } });
-  await page.waitForFunction(
-    () => {
-      const logicStore = window.__RB_LOGIC_VIEW_STORE__;
-      if (!logicStore?.getState) return false;
-      return (logicStore.getState().selection?.wires?.size ?? 0) === 0;
-    },
-    undefined,
-    { timeout: 10000 }
-  );
+  await waitForWireSelectionCount(page, 0, 'canvas click should clear wire selection');
+  await waitForWireDomSelection(page, selectedWire.wireId, false, 'canvas click should clear selected wire styling');
 
-  await wireLocator.click({ force: true });
-  await page.waitForFunction(
-    () => {
-      const logicStore = window.__RB_LOGIC_VIEW_STORE__;
-      if (!logicStore?.getState) return false;
-      return (logicStore.getState().selection?.wires?.size ?? 0) === 1;
-    },
-    undefined,
-    { timeout: 10000 }
-  );
+  await clickWireHitPath(page, wireLocator);
+  await waitForSingleWireSelection(page, selectedWire.wireId, 'second wire click should reselect the same wire');
 
   await page.keyboard.press('Delete');
   await page.waitForFunction(
@@ -136,3 +122,81 @@ await runIdeGate('IDE design wire interaction contract satisfied', async ({ page
     { timeout: 10000 }
   );
 });
+
+async function clickWireHitPath(page, wireLocator) {
+  const hitPath = wireLocator.locator('path').first();
+  const point = await hitPath
+    .evaluate((path) => {
+      if (!(path instanceof SVGPathElement)) return null;
+      const ctm = path.getScreenCTM();
+      if (!ctm) return null;
+      const midpoint = path.getPointAtLength(path.getTotalLength() / 2);
+      const screenPoint = new DOMPoint(midpoint.x, midpoint.y).matrixTransform(ctm);
+      return { x: screenPoint.x, y: screenPoint.y };
+    })
+    .catch(() => null);
+
+  if (point) {
+    await page.mouse.click(point.x, point.y);
+    return;
+  }
+
+  await wireLocator.click({ force: true });
+}
+
+async function waitForSingleWireSelection(page, expectedWireId, label) {
+  await waitForWireSelection(page, { label, expectedWireId, expectedCount: 1 });
+}
+
+async function waitForWireSelectionCount(page, expectedCount, label) {
+  await waitForWireSelection(page, { label, expectedCount });
+}
+
+async function waitForWireSelection(page, expectation) {
+  try {
+    await page.waitForFunction(
+      ({ label, expectedWireId, expectedCount }) => {
+        const logicStore = window.__RB_LOGIC_VIEW_STORE__;
+        if (!logicStore?.getState) return false;
+        const selected = Array.from(logicStore.getState().selection?.wires ?? []);
+        window.__RB_DESIGN_WIRE_GATE_LAST_SELECTION__ = { label, selected, expectedWireId, expectedCount };
+        if (selected.length !== expectedCount) return false;
+        return expectedWireId ? selected[0] === expectedWireId : true;
+      },
+      expectation,
+      { timeout: 10000 }
+    );
+  } catch (error) {
+    const state = await page
+      .evaluate(() => window.__RB_DESIGN_WIRE_GATE_LAST_SELECTION__ ?? null)
+      .catch(() => null);
+    throw new Error(
+      `${expectation.label}: ${error instanceof Error ? error.message : String(error)}; state=${JSON.stringify(state)}`
+    );
+  }
+}
+
+async function waitForWireDomSelection(page, wireId, expectedSelected, label) {
+  try {
+    await page.waitForFunction(
+      ({ expectedWireId, selected }) => {
+        const wire = document.querySelector(`[data-wire-id="${expectedWireId}"]`);
+        return wire?.getAttribute('data-wire-selected') === (selected ? '1' : '0');
+      },
+      { expectedWireId: wireId, selected: expectedSelected },
+      { timeout: 10000 }
+    );
+  } catch (error) {
+    const state = await page
+      .evaluate((expectedWireId) => {
+        const wire = document.querySelector(`[data-wire-id="${expectedWireId}"]`);
+        return {
+          wireId: expectedWireId,
+          dataWireSelected: wire?.getAttribute('data-wire-selected') ?? null,
+          selected: Array.from(window.__RB_LOGIC_VIEW_STORE__?.getState?.().selection?.wires ?? []),
+        };
+      }, wireId)
+      .catch(() => null);
+    throw new Error(`${label}: ${error instanceof Error ? error.message : String(error)}; state=${JSON.stringify(state)}`);
+  }
+}

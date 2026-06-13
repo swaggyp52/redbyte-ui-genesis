@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
 role: ordered near-term RedByte work queue for agents and maintainers
@@ -16,6 +16,7 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 | # | Slice | Why it matters now | Source docs | Expected commit type | Done criteria |
 |---|---|---|---|---|---|
+| 0 | Nightly FPGA Bridge Proof repair and GitHub closeout | Scheduled Nightly Heavy Suites failed at `FPGA Bridge Proof` with `EADDRINUSE` on `0.0.0.0:4242`. Product work should wait until this proof-harness failure is fixed and verified on GitHub. | `AI_STATE.md`, `docs/development/RED_BYTE_GITHUB_OPERATIONS.md`, `.github/workflows/nightly.yml`, `packages/rb-fpga-bridge/src/proof-runner.js` | `ci:` or `test:` | Proof remains enabled; no broad port killing; local fixed/dynamic bridge proofs and artifact verification pass; pushed `main` has green required checks and a green manual/scheduled nightly proof |
 | 1 | First lab-profile/course-pack seam | Sprint 0 defined the target lab profile model, but ECE141 lab data and starter IDs still live too close to core app source. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, `docs/audits/2026-06-12-redbyte-general-lab-workbench-audit.md`, `RB-LAB-001` in the issue index | `refactor:` or `feat:` | One small profile/course-pack data seam exists; Basys3 board logic stays core; no-solution policy remains enforced |
 | 2 | Remaining Verify density / evidence workbench cleanup | Verify behavior is now covered by RB-VERIFY-001, but Verify still needs a focused visual pass so waveform/evidence density reads as a repair workbench rather than crowded chrome. The visual-system integrity sprint reduced the worst overflow but did not close all Verify polish debt. | `RB-VERIFY-002`, `RB-WAVE-001` in `docs/plans/2026-06-12-redbyte-product-issue-index.md`, Verify surface specs | `fix:` or `refactor:` | Browser proof at 1366x768 shows clearer evidence hierarchy without changing simulation semantics |
 | 3 | Broader student workflow browser suite | After the lab-profile seam and Verify density slice, confirm the full student path behaves coherently in browser. | `docs/release/course-edition/08-validation-log.md`, ECE141 Playwright gates, `docs/STUDENT_RELEASE_READINESS.md` | `test:` or `chore:` | Relevant Project -> Design -> Verify -> Map Pins / Hardware -> Export browser gates pass or failures are logged honestly |
@@ -29,6 +30,7 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 | Item | Status |
 |------|--------|
+| Nightly FPGA Bridge Proof port isolation | Done locally 2026-06-13, pending GitHub closeout: bridge/proof port drift repaired, broad `fuser` workflow cleanup removed, dynamic CI proof ports enabled, and `bridge:proof-port-contract` verifies an unrelated `4242` holder survives while proof artifacts validate. |
 | Verify fail-edit-repair regression | Done 2026-06-12: `ide:gate:verify-fail-edit-repair` proves PASS -> expected-output edit/stale -> FAIL -> repair/stale -> PASS, Project PASS/CLEAN, and Export Checks match / READY TO BUILD. No product source fix was needed. |
 | General Lab Workbench Sprint 0 / gate truth | Done 2026-06-12: stale Verify/Export gate assumptions repaired; `ide:gate:from-scratch-general-workflow` added; blank-project IO/export aliasing defects fixed; lab profile target model documented. |
 | Visual system integrity | Done 2026-06-12: Export handoff/evidence/action content is first-viewport visible, Draft Export no longer claims ready-to-build, Verify command/header overflow is removed, expected-output cells remain editable, and `ide:gate:ece141-visual-system-integrity` guards cross-surface layout. |
@@ -49,7 +51,8 @@ This is the ordered near-term queue. Do not skip ahead unless the user explicitl
 
 ## Queue Rules
 
-- Item 1 is the next approved architecture/data-boundary slice.
+- Item 0 temporarily supersedes product work only because GitHub/nightly proof is red.
+- Item 1 is the next approved architecture/data-boundary slice after Item 0 is verified green.
 - Item 2 is the next approved visual slice and must stay separate from item 1.
 - Item 4 is board/manual-evidence gated and cannot be completed on a desktop without Vivado 2024.2 and Basys3 hardware.
 - Do not re-bless golden SHAs unless the artifact difference is source-explained and accepted.

@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-13 (ci: fix nightly FPGA bridge proof port isolation)
+
+**Subsystem:** Nightly Heavy Suites / FPGA Bridge Proof CI reliability.
+
+**Changes:**
+- Investigated the failed scheduled Nightly Heavy Suites run `27457841958` at commit `763c580b`, where the `FPGA Bridge Proof` job failed with `listen EADDRINUSE: address already in use 0.0.0.0:4242`.
+- Fixed the bridge/proof port contract so the bridge defaults to HTTP `4242` and WS `4243`, matching the smoke/readme expectation instead of letting both listeners default to `4242`.
+- Reworked the proof runner to choose isolated dynamic HTTP/WS ports in CI or when `RB_FPGA_PROOF_PORT_MODE=dynamic`, to use fixed local ports only when available, and to clean up only its own child bridge process.
+- Removed the nightly workflow's broad `fuser -k 4242/tcp` cleanup and made the workflow request dynamic proof ports explicitly.
+- Added `bridge:proof-port-contract`, which holds an unrelated process on `4242`, runs the proof in dynamic mode, verifies the unrelated process survives, checks selected ports are distinct/released, and validates the generated proof JSON.
+- Repaired `proof-verify` so it enforces contiguous ordering within the captured proof-event window instead of incorrectly requiring the first captured event to be global sequence `1`.
+- Hardened `ide:gate:design-wire-interaction-contract` after local `classroom:gate` exposed a pre-existing flaky wire reselect click; the gate now clicks the actual SVG wire path midpoint and waits for store/DOM selection state before continuing.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/fpga-bridge proof:run`; `pnpm -s bridge:proof-port-contract`; dynamic-mode `pnpm --filter @redbyte/fpga-bridge proof:run` with `RB_FPGA_PROOF_PORT_MODE=dynamic`; `node packages/rb-fpga-bridge/scripts/proof-verify.js <latest proof JSON>`; five consecutive `pnpm -s ide:gate:design-wire-interaction-contract` runs; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate`; `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This is a CI/proof harness repair only. It did not change product UI, project data, simulation semantics, Verify semantics, pin mapping, export generation, VHDL/XDC/testbench/Tcl/ZIP generation, goldens, Vivado proof, or Basys3 proof. It keeps the FPGA Bridge Proof active rather than disabling, quarantining, or weakening the nightly suite.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Final push and GitHub `Classroom Truth Gates` / deploy / manual Nightly Heavy Suites verification are recorded in the session closeout after this entry.
+
+**Remote sync:** This entry was written before the closeout push. Final push and GitHub results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** After `main` and Nightly Heavy Suites are green on GitHub, resume the first lab-profile/course-pack data seam. Keep remaining Verify density cleanup and Vivado/Basys3 proof as separate later slices.
+
 ## Change Log 2026-06-12 (test: prove Verify fail-edit-repair loop)
 
 **Subsystem:** Verify expected-output repair loop, Project trust state, and Export handoff truth.
