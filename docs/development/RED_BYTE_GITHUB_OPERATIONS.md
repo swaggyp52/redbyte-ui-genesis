@@ -92,6 +92,8 @@ It is not Vivado hardware proof. Vivado/Basys3 E1/E2/E3 evidence remains release
 
 `FPGA Bridge Proof` is an automated E0 bridge/mock proof inside `Nightly Heavy Suites`. It is not Vivado, bitstream, Basys3 programming, or physical observation evidence.
 
+Default scheduled and manual Nightly runs include the maintained bridge proof. Optional strict screenshot baselines and FPGA UI Smoke are opt-in workflow-dispatch inputs because the screenshot job requires committed Linux baselines and the UI smoke job requires a maintained Hardware Panel Playwright target.
+
 The proof should not kill arbitrary processes on fixed ports. In CI, run it with:
 
 ```yaml

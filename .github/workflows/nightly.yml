@@ -4,6 +4,17 @@ on:
   schedule:
     - cron: '0 4 * * *'
   workflow_dispatch:
+    inputs:
+      include_screenshot_baselines:
+        description: 'Run optional strict screenshot baselines. Requires committed Linux snapshots.'
+        required: false
+        default: false
+        type: boolean
+      include_fpga_ui_smoke:
+        description: 'Run optional FPGA UI smoke. Requires a maintained Hardware Panel Playwright target.'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: nightly-heavy-${{ github.ref }}
@@ -37,7 +48,7 @@ jobs:
 
   ide-screenshot-baselines:
     name: IDE Screenshot Baselines (optional)
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.SCREENSHOT_STRICT == '1' }}
+    if: ${{ vars.SCREENSHOT_STRICT == '1' || inputs.include_screenshot_baselines == true }}
     continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -289,7 +300,7 @@ jobs:
 
   fpga-ui-smoke:
     name: FPGA UI Smoke (manual)
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ inputs.include_fpga_ui_smoke == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

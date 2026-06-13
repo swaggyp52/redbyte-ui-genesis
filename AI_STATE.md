@@ -12,6 +12,7 @@
 - Added `bridge:proof-port-contract`, which holds an unrelated process on `4242`, runs the proof in dynamic mode, verifies the unrelated process survives, checks selected ports are distinct/released, and validates the generated proof JSON.
 - Repaired `proof-verify` so it enforces contiguous ordering within the captured proof-event window instead of incorrectly requiring the first captured event to be global sequence `1`.
 - Hardened `ide:gate:design-wire-interaction-contract` after local `classroom:gate` exposed a pre-existing flaky wire reselect click; the gate now clicks the actual SVG wire path midpoint and waits for store/DOM selection state before continuing.
+- After the first manual Nightly rerun proved `FPGA Bridge Proof` green but left the workflow red on stale optional/manual jobs, made strict screenshot baselines and FPGA UI Smoke opt-in `workflow_dispatch` inputs. The bridge proof remains a default scheduled/manual nightly job.
 
 **Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/fpga-bridge proof:run`; `pnpm -s bridge:proof-port-contract`; dynamic-mode `pnpm --filter @redbyte/fpga-bridge proof:run` with `RB_FPGA_PROOF_PORT_MODE=dynamic`; `node packages/rb-fpga-bridge/scripts/proof-verify.js <latest proof JSON>`; five consecutive `pnpm -s ide:gate:design-wire-interaction-contract` runs; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate`; `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
 
