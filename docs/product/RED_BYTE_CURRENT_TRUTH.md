@@ -96,12 +96,12 @@ Supporting truths:
 
 ### Product immersion posture
 
-- Project, Export, and the global shell are materially stronger than earlier audits, but surface-level V1 hierarchy is still not done.
+- Project, Export, Hardware, and the global shell are materially stronger than earlier audits, but surface-level V1 hierarchy is still not done.
 - Design still fails the V1 target at `1366x768`: the loaded circuit graph is not the first-viewport focal object.
 - Verify Evidence Workbench is now closed by `ide:gate:verify-evidence-workbench-integrity`: first-run stimulus authoring stays visible, Compare PASS/FAIL/repair is browser-proved, first mismatch expected/observed values are visible, and the gate checks for meaningful evidence-region overlap.
 - Shell and Workbench Layout Reset is now closed by `ide:gate:shell-workbench-hierarchy`: the proof ribbon is the compact workflow/status authority, the footer is support-only chrome, rail step labels no longer repeat completion status, and the workbench frame starts at the compact shell boundary across Project, Design, Verify, Hardware, Export, and Import.
 - Export Handoff Station is now closed by `ide:gate:export-handoff-station`: Draft/Needs Review, Ready-to-build, and Trusted post-download states share one visible station; package handoff and artifact workspace are visible; README E0 and E1/E2/E3 boundaries are browser-proved; mapping summaries agree; Vivado next steps stay downstream; and the primary station action remains repair/build/download rather than hardware proof.
-- Hardware / Map Pins shows board/table mapping well, but hardware-ready wording must stay E0-scoped and not imply E1/E2/E3.
+- Hardware / Basys3 Workbench is now closed by `ide:gate:hardware-basys3-workbench`: selected rows expose project signal, board resource, package pin, and XDC lines, and ready-state copy stays E0-only with Vivado build, bitstream programming, and board observation external.
 
 ### Vivado/Basys3 proof posture
 
@@ -142,6 +142,7 @@ Supporting truths:
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
 - Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
 - Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
+- Hardware / Basys3 Workbench is covered by `ide:gate:hardware-basys3-workbench`, including first-viewport Basys3 workbench proof at `1366x768` and `1440x900`, selected signal -> board resource -> package pin -> XDC hierarchy, and E0-only ready wording.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -163,10 +164,10 @@ Approved V1 order:
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Export Handoff Station is:
+The next audit-driven product slice after Hardware / Basys3 Workbench is:
 
 ```text
-fix: rebuild RedByte hardware / Basys3 workbench
+fix: rebuild RedByte design workbench
 ```
 
-It should make Hardware / Map Pins a clearer Basys3 binding workbench while preserving pin mapping semantics and generated VHDL/XDC/testbench/Tcl/ZIP/golden bytes unless generator tests explicitly prove a requested behavior change. It must not imply E1/E2/E3 proof from browser readiness. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should make the loaded circuit graph the first-viewport focal object while preserving simulation, Verify, mapping, and export-generation semantics unless a dedicated source test proves a requested behavior change. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: rebuild RedByte Hardware Basys3 workbench)
+
+**Subsystem:** RedByte IDE Hardware / Map Pins Basys3 workbench, E0 evidence boundary, browser gate wiring, focused tests, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `729b57e8d75ba28874bae6c95f29f53fafab9aad`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Classified `packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts` before UI work as a stale expectation, not a generator defect: structured bus/slice mapping rows already materialize scalar aliases that can satisfy entity-port validation. The test now covers the successful alias path plus an adjacent missing-port regression.
+- Added `ide:gate:hardware-basys3-workbench` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: the Hardware workbench did not keep the Basys3 resource summary visible at both `1366x768` and `1440x900`, and selected rows did not expose a first-order signal -> board resource -> package pin -> XDC consequence chain.
+- Rebuilt the selected Hardware row path so Map Pins shows the selected project signal, Basys3 board resource, package pin, and generated XDC binding lines together.
+- Made the Hardware resource summary visible in the first viewport, kept the board and mapping table first-order, and tightened ready-state copy to E0-only wording that keeps Vivado build, bitstream programming, and board observation proof external.
+- Changed the terminal workflow language from browser-proven Vivado completion to `Vivado proof pending`.
+- Hardened the Map Pins recovery E2E helper to reopen the current Project examples disclosure before selecting another starter, matching current Project Command Center behavior.
+- Captured before screenshots under `.redbyte/product-immersion/hardware-basys3-workbench/before/` and after screenshots under `.redbyte/product-immersion/hardware-basys3-workbench/after/` at `1366x768` and `1440x900`.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/execution/issue-index/inventory docs so Hardware / Basys3 Workbench is closed and Design Workbench is the next product slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: focused Hardware/Map Pins/Export Vitest batch (`4` files, `41` tests); `corepack pnpm -s build`; `corepack pnpm -s build:unified`; `RB_HARDWARE_BASYS3_WORKBENCH_SCREENSHOTS_DIR=.redbyte/product-immersion/hardware-basys3-workbench/after corepack pnpm -s ide:gate:hardware-basys3-workbench`; `corepack pnpm -s ide:gate:ece141-hardware-visual-credibility`; `corepack pnpm -s ide:gate:ece141-map-pins-recovery`; `corepack pnpm -s ide:gate:export-handoff-station`; `corepack pnpm -s ide:gate:export-trust-integrity`; `corepack pnpm -s classroom:gate`; `corepack pnpm rb:doc:validate` (`29` passed, `0` failed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. The aggregate `classroom:gate` included the new Hardware workbench gate.
+
+**Safety:** This slice changes Hardware presentation, selected-binding explanation, E0 proof wording, one Map Pins recovery test helper, browser gate coverage, focused tests, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Design canvas-first hierarchy, Import utility fidelity/recovery, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, packaging, and future hardware evidence remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: rebuild RedByte design workbench`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (fix: rebuild RedByte export handoff station)
 
 **Subsystem:** RedByte IDE Export handoff station, visible E0 package workflow, browser gate wiring, focused Export tests, and cockpit docs.

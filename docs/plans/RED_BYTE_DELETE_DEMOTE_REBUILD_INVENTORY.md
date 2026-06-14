@@ -17,7 +17,7 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
-Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Future Project work should start from `ide:gate:project-command-center`, and future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`.
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, and future Hardware work should start from `ide:gate:hardware-basys3-workbench`.
 
 ## Decision Terms
 
@@ -56,7 +56,7 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 | Hardware guide | Now readable, but still takes first-order rail space. | Understand mapping task. | Board handoff clarity. | Demote | `HardwareSurface.tsx` | Board/table remain first-order. |
 | Hardware table | Valuable and visible. | Map signals. | Trace assignment IO. | Keep/Rebuild locally | `HardwareSurface.tsx` | Signal rows visible with board at `1366x768`. |
 | Basys3 board visual | Valuable and differentiating. | See physical target. | Confirms board-specific workflow. | Keep/Rebuild locally | `Basys3BoardView.tsx`, `HardwareSurface.tsx` | Highlight and mapped state remain synchronized. |
-| Hardware ready language | "Ready to build hardware" can read beyond E0. | Next action. | Proof safety. | Rebuild | `HardwareSurface.tsx`, workflow authority | Copy says E0 handoff / Vivado next, not hardware proof. |
+| Hardware ready language | Closed 2026-06-14: ready copy is E0-only, selected rows expose signal -> board resource -> package pin -> XDC, and Vivado build/programming/observation proof stays external. | Next action. | Proof safety. | Keep/Rebuild locally | `HardwareSurface.tsx`, workflow authority | `ide:gate:hardware-basys3-workbench`; Hardware visual credibility; Map Pins recovery. |
 | Export handoff summary | Closed 2026-06-14: readiness, mapping/provenance, package handoff, and Vivado next steps now read as one visible station. | Trust package. | Grade/support evidence. | Keep/Rebuild locally | `ExportSurface.tsx`, export primitives, workflow authority | `ide:gate:export-handoff-station`; no regression of mapped summary; Export trust gate and screenshots pass. |
 | Export evidence ladder | Closed 2026-06-14 for Export: README preview and evidence boundary keep E0/E1/E2/E3 visible and external/manual beyond E0. | Know what package proves. | Safe classroom language. | Keep | `ExportSurface.tsx` | `ide:gate:export-handoff-station`; no E1/E2/E3 browser overclaim. |
 | Export primary action | Closed 2026-06-14: Draft routes to repair/review, Ready builds, Trusted remains download-oriented instead of jumping to hardware proof. | Download/build package. | Handoff to Vivado. | Keep | `ExportSurface.tsx` | One trust state, one primary repair/build/download action. |
@@ -79,12 +79,12 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 Use this structured ticket before the next code slice:
 
-- Title: Rebuild Hardware / Basys3 as an E0 board-mapping workbench.
-- Surface: Hardware / Map Pins.
-- Journey segment: signal -> board resource -> package pin -> XDC handoff at common classroom viewports.
-- Observed behavior: board/table direction is strong, but ready language can still read beyond E0 and toward hardware readiness.
-- Expected behavior: one visible Basys3 binding workbench with no wording that implies Vivado build, board programming, or physical observation proof.
-- Acceptance proof: Hardware screenshots at `1366x768` and `1440x900`; Hardware visual credibility / Map Pins recovery gates; Export trust and handoff station gates; classroom gate; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated generator test proves the need.
+- Title: Rebuild Design as a canvas-first circuit workbench.
+- Surface: Design.
+- Journey segment: loaded starter/current project graph, palette, placement, wiring, inspector, and next action at common classroom viewports.
+- Observed behavior: the loaded circuit graph is not yet the first-viewport focal object at `1366x768`.
+- Expected behavior: meaningful nodes and connections are visible immediately, with controls supporting the graph instead of competing with it.
+- Acceptance proof: Design screenshots at `1366x768` and `1440x900`; Design workbench/placement/wiring/zoom gates; classroom gate; no simulation, Verify, mapping, Export, or golden changes unless a dedicated source test proves the need.
 
 ## Attribution
 

@@ -19,18 +19,33 @@ async function openMode(page: Page, mode: 'project' | 'design' | 'verify' | 'har
 async function loadExample(page: Page, exampleId: string): Promise<void> {
   await openProject(page);
   const landingExample = page.getByTestId(`ide-project-landing-example-${exampleId}`);
-  if ((await landingExample.count()) > 0) {
+  if (await landingExample.isVisible().catch(() => false)) {
     await landingExample.click();
   } else {
+    await openExamplesDisclosure(page);
+    const pathStep = page.getByTestId(`ide-projectx-path-step-${exampleId}`);
+    if (await pathStep.isVisible().catch(() => false)) {
+      await pathStep.click();
+      await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
+      return;
+    }
     const browserExample = page.getByTestId(`ide-project-load-start-${exampleId}`);
-    if ((await browserExample.count()) === 0) {
+    if (!(await browserExample.isVisible().catch(() => false))) {
       await page.getByTestId('ide-project-landing-example-logic-gates').click();
       await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
       await openMode(page, 'project');
+      await openExamplesDisclosure(page);
     }
     await page.getByTestId(`ide-project-load-start-${exampleId}`).click();
   }
   await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
+}
+
+async function openExamplesDisclosure(page: Page): Promise<void> {
+  const disclosure = page.getByTestId('ide-project-examples-disclosure');
+  if ((await disclosure.count()) === 0) return;
+  if ((await disclosure.getAttribute('data-expanded').catch(() => 'true')) === 'true') return;
+  await page.getByTestId('ide-projectx-examples-toggle').click();
 }
 
 function captureConsoleFailures(page: Page): string[] {
@@ -76,9 +91,7 @@ test('ECE141 Map Pins manual edit and starter recovery smoke', async ({ page }) 
   await page.locator('summary').filter({ hasText: /Pin binding/i }).click();
   await expect(page.getByTestId('ide-export-mapping-table')).toContainText(/SW2 \(pin W16\)/i);
 
-  await openMode(page, 'project');
-  await page.getByTestId('ide-project-load-start-half-adder').click();
-  await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
+  await loadExample(page, 'half-adder');
   await openMode(page, 'hardware');
   await expect(page.getByTestId('ide-hw-map-row-binding-sw0')).toContainText(/SW0 \(pin V17\)/i);
   await expect(page.getByTestId('ide-hw-map-row-binding-sw1')).toContainText(/SW1 \(pin V16\)/i);

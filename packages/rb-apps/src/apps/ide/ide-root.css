@@ -21954,6 +21954,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 /* Framed board workspace — central, higher contrast */
 [data-ide-mode-marker='hardware'] .ide-hw-board-workspace {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: clamp(360px, 54vh, 640px);
@@ -32285,45 +32286,139 @@ button:disabled,
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   padding: 0 12px 8px;
+  position: absolute;
+  z-index: 3;
+  top: 54px;
+  right: 12px;
+  width: min(520px, calc(100% - 260px));
+  pointer-events: none;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-summary-card {
   display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 10px;
+  gap: 1px;
+  min-height: 34px;
+  padding: 5px 7px;
+  border-radius: 8px;
   border: 1px solid rgba(70, 104, 132, 0.56);
   background: rgba(8, 18, 32, 0.76);
   color: rgba(205, 225, 241, 0.9);
   text-align: left;
+  overflow: hidden;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] button.ide-hw-resource-summary-card {
   cursor: pointer;
+  pointer-events: auto;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-summary-card span {
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(148, 178, 204, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-summary-card strong {
-  font-size: 18px;
+  font-size: 12px;
   color: rgba(241, 248, 255, 0.98);
+  line-height: 1.1;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-summary-card em {
   font-style: normal;
-  font-size: 12px;
+  font-size: 9px;
   color: rgba(184, 209, 228, 0.84);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-summary-card--clock {
   border-color: rgba(56, 189, 248, 0.52);
   background: linear-gradient(135deg, rgba(9, 26, 42, 0.92), rgba(7, 17, 31, 0.82));
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-basys3-binding-chain {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.75fr) auto minmax(104px, 0.8fr) auto minmax(88px, 0.7fr) minmax(210px, 1.45fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(140, 168, 196, 0.22);
+  background: linear-gradient(90deg, rgba(8, 23, 36, 0.9), rgba(6, 16, 27, 0.74));
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-node {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-node span {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(143, 174, 201, 0.74);
+  white-space: nowrap;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-node strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: rgba(241, 248, 255, 0.98);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-arrow {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(46, 196, 182, 0.74);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-xdc {
+  margin: 0;
+  min-width: 0;
+  max-height: 34px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--ide-font-mono);
+  font-size: 9px;
+  line-height: 1.25;
+  color: rgba(199, 232, 229, 0.9);
+}
+
+@media (max-width: 1120px) {
+  [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-planner-summary {
+    position: static;
+    width: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 6px 10px;
+  }
+
+  [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-basys3-binding-chain {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-arrow {
+    display: none;
+  }
+
+  [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-chain-xdc {
+    grid-column: 1 / -1;
+  }
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-catalog {

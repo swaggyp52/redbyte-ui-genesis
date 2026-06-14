@@ -1134,6 +1134,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           failureTruth.condition === 'trace-only'
         ? 'info'
         : 'warn';
+  const hardwareReadinessTitle =
+    failureTruth.condition === 'ready'
+      ? 'E0 handoff ready'
+      : failureTruth.title;
+  const hardwareReadinessMessage =
+    failureTruth.condition === 'ready'
+      ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
+      : failureTruth.message;
   const mappingReadyFollowUp = useMemo(() => {
     switch (failureTruth.condition) {
       case 'verify-not-run':
@@ -1171,9 +1179,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'ready':
         return {
           commandStrip:
-            'Pin mapping, Verify, and Export are current. Continue to Program Handoff when you are ready for the Basys3.',
+            'E0 only: pin mapping, Verify Compare, and Export are current. RedByte does not prove Vivado build, bitstream programming, or board observation; E1/E2/E3 remain external.',
           headerHint:
-            'Mapping complete — Verify and Export are current. Continue to Program Handoff when you are ready.',
+            'Mapping complete - E0 export package is current; E1/E2/E3 proof stays external.',
         };
       default:
         return {
@@ -1323,7 +1331,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (vectorsCount === 0) {
       return {
         title: 'Generate bring-up steps',
-        body: 'Create a guided bring-up sequence so you can set inputs, verify assertions, and then move to programming with less guesswork.',
+        body: 'Create a guided browser bring-up sequence so you can set inputs and verify assertions before leaving RedByte for downstream Vivado work.',
         primaryLabel: 'Generate Bring-Up Steps',
         primaryAction: onGenerateBringUpVectors,
         primaryTestId: 'ide-hardware-next-primary',
@@ -1334,8 +1342,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
     if (hwMode !== 'bringup') {
       return {
-        title: 'Prepare the board with guided bring-up',
-        body: 'Use the board-first bring-up checklist to set inputs, watch the highlighted outputs, and confirm behavior before you program the Basys3.',
+        title: 'Review board inputs with guided bring-up',
+        body: 'Use the board-first bring-up checklist to set inputs and watch highlighted outputs before you leave RedByte for the external Vivado flow.',
         primaryLabel: 'Open Board Check',
         primaryAction: () => setHwMode('bringup'),
         primaryTestId: 'ide-hardware-next-primary',
@@ -1345,8 +1353,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
 
     return {
-      title: 'Follow the board test steps, then check pre-flight',
-      body: 'Once the guided checks match, open Pre-flight for the final Vivado Hardware Manager handoff.',
+      title: 'Follow the board check steps, then review pre-flight',
+      body: 'Once the guided checks match, open Pre-flight for E0 handoff notes and downstream Vivado steps.',
       primaryLabel: 'Open Pre-flight',
       primaryAction: () => setHwMode('proof'),
       primaryTestId: 'ide-hardware-next-primary',
@@ -1517,7 +1525,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       return { label: 'Combinational — no clock domain', pass: true };
     }
     return {
-      label: `${effectiveTimingGuidance.signalLabelSingular} ready for board`,
+      label: `${effectiveTimingGuidance.signalLabelSingular} mapped for XDC`,
       pass: hasClockMapping,
     };
   }, [effectiveTimingGuidance.signalLabelSingular, explicitTimingMode, hasClockMapping]);
@@ -1638,7 +1646,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className="ide-hw-map-dock-head-main">
           <h3>Map Pins</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
-            Map signals to Basys3 controls. Export reads these pins for constraints.
+            Map signal -&gt; board control -&gt; package pin -&gt; XDC constraint.
           </p>
         </div>
         <IdeStatusPill tone={mappingReady ? 'ok' : 'warn'}>
@@ -2242,7 +2250,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <section
       className="ide-hw-workflow-ribbon"
       data-testid="ide-hw-workflow-ribbon"
-      aria-label="Board programming workflow: verify, export, then program"
+      aria-label="Hardware workflow: verify, export, then external Vivado proof"
     >
       <div className="ide-hardware-dep-chain" data-testid="ide-hardware-dep-chain">
         <button
@@ -2285,22 +2293,22 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         </span>
         <span
           className={`ide-hardware-dep-step ide-hardware-dep-step--terminal ${
-            failureTruth.condition === 'ready' ? 'is-ok' : 'is-locked'
+            failureTruth.condition === 'ready' ? 'is-warn' : 'is-locked'
           }`}
         >
           <span className="ide-hardware-dep-step__num">3</span>
           <span className="ide-hardware-dep-step__label">{PROGRAM_STAGE_LABEL}</span>
           <span className="ide-hardware-dep-step__status">
-            {failureTruth.condition === 'ready' ? '✓ In Vivado' : 'Locked'}
+            {failureTruth.condition === 'ready' ? 'Vivado proof pending' : 'Locked'}
           </span>
         </span>
       </div>
       <IdeCallout
         tone={readinessCalloutTone}
-        title={failureTruth.title}
+        title={hardwareReadinessTitle}
         testId="ide-hardware-readiness-callout"
       >
-        {failureTruth.message}
+        {hardwareReadinessMessage}
       </IdeCallout>
     </section>
   );
@@ -2330,7 +2338,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     >
       <IdePanel
         title="Hardware"
-        description="Map pins, prepare the board, and program the Basys3."
+        description="Map pins, inspect export constraints, and keep Vivado/board proof external."
         right={
           <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
             {failureTruth.statusLabel}
@@ -2713,9 +2721,35 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 <em>CA-CG, DP, AN0-AN3</em>
               </div>
             </div>
-            <p className="ide-copy ide-copy--flush ide-hw-board-task-copy" data-testid="ide-hw-board-task-copy">
-              {boardWorkspacePrompt}
-            </p>
+            {selectedMappingRow ? (
+              <div
+                className="ide-hardware-basys3-binding-chain"
+                data-testid="ide-hardware-basys3-binding-chain"
+                aria-label="Selected Basys3 binding chain"
+              >
+                <span className="ide-hardware-chain-node" data-testid="ide-hardware-chain-signal">
+                  <span>Project signal</span>
+                  <strong>{selectedMappingLabel}</strong>
+                </span>
+                <span className="ide-hardware-chain-arrow" aria-hidden="true">to</span>
+                <span className="ide-hardware-chain-node" data-testid="ide-hardware-chain-board">
+                  <span>Board resource</span>
+                  <strong>{selectedMappingBoardControl}</strong>
+                </span>
+                <span className="ide-hardware-chain-arrow" aria-hidden="true">to</span>
+                <span className="ide-hardware-chain-node" data-testid="ide-hardware-chain-pin">
+                  <span>Package pin</span>
+                  <strong>{selectedMappingPackagePin}</strong>
+                </span>
+                <pre className="ide-hardware-chain-xdc" data-testid="ide-hardware-basys3-binding-xdc">
+                  {selectedBoardResourceXdc || 'Assign a board resource to preview the XDC constraint.'}
+                </pre>
+              </div>
+            ) : (
+              <p className="ide-copy ide-copy--flush ide-hw-board-task-copy" data-testid="ide-hw-board-task-copy">
+                {boardWorkspacePrompt}
+              </p>
+            )}
             <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div

@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Export Handoff Station
+**Latest product/control slice:** Hardware / Basys3 Workbench
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -28,14 +28,15 @@ Import is a utility. Vivado build, board programming, and board observation are 
 ## Top Priorities
 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
-2. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
-3. **Export Trust Integrity is closed.** `ide:gate:export-trust-integrity` now proves the mapped/verified Export handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
-4. **Verify Evidence Workbench is closed.** `ide:gate:verify-evidence-workbench-integrity` now proves visible first-run stimulus authoring, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, and repair back to PASS without hiding the editor.
-5. **Shell and Workbench Layout Reset is closed.** `ide:gate:shell-workbench-hierarchy` now proves one compact shell/status authority, demoted support footer, rail navigation without `OK` status copy, and first-viewport workbench frame geometry across Project, Design, Verify, Hardware, Export, and Import.
-6. **Project Command Center is closed locally.** `ide:gate:project-command-center` now proves Project as a neutral command center with blank, starter, saved/recent, Import/recovery, loaded-project peer paths, no false no-circuit mapping/export failure copy, and a guarded loaded-project Build Fresh action.
-7. **Next audit-driven code slice: Hardware / Basys3 Workbench.** Hardware must keep the signal -> board resource -> package pin -> XDC chain visible while tightening E0 wording so browser readiness cannot read as Vivado, programming, or physical proof.
-8. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
-9. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
+2. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
+3. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
+4. **Export Trust Integrity is closed.** `ide:gate:export-trust-integrity` now proves the mapped/verified Export handoff summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and E0/E1/E2/E3 wording together.
+5. **Verify Evidence Workbench is closed.** `ide:gate:verify-evidence-workbench-integrity` now proves visible first-run stimulus authoring, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, and repair back to PASS without hiding the editor.
+6. **Shell and Workbench Layout Reset is closed.** `ide:gate:shell-workbench-hierarchy` now proves one compact shell/status authority, demoted support footer, rail navigation without `OK` status copy, and first-viewport workbench frame geometry across Project, Design, Verify, Hardware, Export, and Import.
+7. **Project Command Center is closed locally.** `ide:gate:project-command-center` now proves Project as a neutral command center with blank, starter, saved/recent, Import/recovery, loaded-project peer paths, no false no-circuit mapping/export failure copy, and a guarded loaded-project Build Fresh action.
+8. **Next audit-driven code slice: Design Workbench.** The loaded circuit graph must become the first-viewport focal object at the classroom viewport.
+9. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
+10. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or lab-profile extraction unless the user explicitly reprioritizes.
 
@@ -52,34 +53,35 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Export trust integrity | Closed 2026-06-13: generated previews are visible by default, the focused gate compares visible previews with downloaded ZIP entries, and the mapping summary no longer contradicts mapped board I/O rows. | Keep `ide:gate:export-trust-integrity` in `classroom:gate` and `verify:gates:classroom`; do not reopen byte/trust proof without new evidence. |
 | Export Handoff Station | Closed 2026-06-14: Draft, Ready-to-build, and Trusted post-download states now sit in one visible station with package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and browser-only evidence boundaries proved by `ide:gate:export-handoff-station`. | Keep the gate in `classroom:gate` and `verify:gates:classroom`; future Export changes should preserve build/download as the primary station action unless product contract changes. |
 | Import utility access | Project Command Center now exposes Import / Recover on first launch and loaded Project. Broader representative Import/recovery fidelity remains a separate utility-contract slice. | Add a dedicated Import utility/fidelity gate later if Import behavior changes. |
-| Hardware proof language | Hardware / Map Pins is visually stronger, but "ready to build hardware" can be read beyond E0. | Tighten wording in Hardware / Basys3 Workbench slice. |
+| Hardware proof language | Closed 2026-06-14: Hardware ready state now says E0 only, the selected binding chain exposes signal, board resource, package pin, and XDC, and `ide:gate:hardware-basys3-workbench` is wired into classroom gates. | Preserve the gate and do not claim Vivado build, bitstream programming, or board observation without external E1/E2/E3 evidence. |
 | Lab profile/course-pack seam | Target model exists, but implementation is intentionally deferred to queue item 11. | Do not start until workbench hierarchy and trust slices land or user reprioritizes. |
 | Fresh Vivado/Basys3 proof | Vivado 2024.2 and board proof were not run in this reset. | Use a Vivado 2024.2 + Basys3 machine before making new E1/E2/E3 claims. |
 | Node pinned runtime | `.nvmrc` is `20.19.0`; current local proof uses Node `v24.15.0` and pnpm `10.24.0`. | Label Node 24 evidence honestly; rerun pinned-runtime proof when available. |
 
 ## Next Technical Task
 
-**Target:** Hardware / Basys3 Workbench.
+**Target:** Design Workbench.
 
 Structured hardening ticket fields to start from:
 
-- Title: Rebuild Hardware / Basys3 as an E0 board-mapping workbench.
-- Surface: Hardware / Map Pins.
-- Journey segment: signal rows, board resources, package pins, XDC handoff, proof boundary.
-- Observed behavior: Hardware board/table direction is strong, but ready language can still read beyond E0 and toward hardware readiness.
-- Expected behavior: one visible Basys3 workbench where signal -> board resource -> package pin -> XDC is first-order, with no wording that implies Vivado build, board programming, or physical observation proof.
-- Minimum acceptance proof: Hardware screenshots at `1366x768` and `1440x900`; Hardware visual credibility / Map Pins recovery gates; Export trust/handoff gates stay green; classroom gate; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated generator test proves the need.
+- Title: Rebuild Design as a canvas-first circuit workbench.
+- Surface: Design.
+- Journey segment: loaded starter/current project graph, palette, placement, wiring, inspector, and next action.
+- Observed behavior: Design works, but the loaded circuit graph is still not the obvious first-viewport focal object at `1366x768`.
+- Expected behavior: meaningful nodes and connections are visible immediately after loading a starter or project; palette, toolbar, starter context, and inspector support the graph instead of displacing it.
+- Minimum acceptance proof: Design screenshots at `1366x768` and `1440x900`; existing design workbench, wire interaction, placement, zoom integrity, and classroom gates; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated source test proves the need.
 
 Suggested commit:
 
 ```text
-fix: rebuild RedByte hardware / Basys3 workbench
+fix: rebuild RedByte design workbench
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Hardware / Basys3 Workbench | Closed locally 2026-06-14: added `ide:gate:hardware-basys3-workbench` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves the Basys3 workbench at `1366x768` and `1440x900`, the selected SW0 chain from project signal to board resource to package pin to XDC lines, ready-state E0-only wording, no Vivado/programming/board-observation browser overclaim, and no root overflow. Before/after screenshots are local-only under `.redbyte/product-immersion/hardware-basys3-workbench/`. |
 | Export Handoff Station | Closed locally 2026-06-14: added `ide:gate:export-handoff-station` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves Draft/Needs Review is not trusted and has a repair path, Ready-to-build and Trusted post-download keep one build/download primary action, package handoff is visible, artifact workspace includes README/top.vhd/top.xdc/testbench/vivado_import.tcl, README preview states E0 and E1/E2/E3 boundaries, mapping summaries agree, Vivado next steps are downstream, and the browser has no root overflow or key-region overlap. Before/after screenshots are local-only under `.redbyte/product-immersion/export-handoff-station/`. |
 | Project Command Center | Closed locally 2026-06-13: added `ide:gate:project-command-center` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves neutral first-launch Project command center copy, blank/starter/saved/import paths, loaded-project peer entry paths, loaded Build Fresh guard, collapsed loaded starter browser, no premature no-circuit mapping/export failure copy, and first-viewport launch fit. After screenshots are local-only under `.redbyte/product-immersion/project-command-center/after/`. |
 | Shell and Workbench Layout Reset | Closed 2026-06-13: added `ide:gate:shell-workbench-hierarchy` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves compact proof ribbon/evidence, support-only footer, rail navigation without `OK` status labels, workbench top at the compact shell boundary, visible focal objects, and no root overflow across Project, Design, Verify, Hardware, Export, and Import. After screenshots and geometry summary are local-only under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
@@ -127,8 +129,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Shell and Workbench Layout Reset. | `RB-SHELL-001`; `ide:gate:shell-workbench-hierarchy`; screenshots under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
 | Closed | Project Command Center. | `RB-PROJECT-CC-001`; `ide:gate:project-command-center`; screenshots under `.redbyte/product-immersion/project-command-center/after/`. |
 | Closed | Export Handoff Station. | `RB-EXPORT-HANDOFF-001`; `ide:gate:export-handoff-station`; screenshots under `.redbyte/product-immersion/export-handoff-station/after/`. |
-| Next | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001` in issue index after reset. |
-| Later | Design Workbench. | `RB-DESIGN-WB-001` in issue index after reset. |
+| Closed | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001`; `ide:gate:hardware-basys3-workbench`; screenshots under `.redbyte/product-immersion/hardware-basys3-workbench/after/`. |
+| Next | Design Workbench. | `RB-DESIGN-WB-001` in issue index after reset. |
 | Later | Lab Profile / Course Pack Data Seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
 | Board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 

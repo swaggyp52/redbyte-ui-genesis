@@ -93,6 +93,7 @@ function main() {
     runGate('ide:export-ready-contract', 'pnpm -s ide:gate:export-ready-contract', true),
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),
     runGate('ide:export-trust-integrity', 'pnpm -s ide:gate:export-trust-integrity', true),
+    runGate('ide:hardware-basys3-workbench', 'pnpm -s ide:gate:hardware-basys3-workbench', true),
     runGate('ide:hardware-checklist-contract', 'pnpm -s ide:gate:hardware-checklist-contract', true),
     runGate('ide:student-loop-contract', 'pnpm -s ide:gate:student-loop-contract', true),
     runGate('ide:viewport-overflow-contract', 'pnpm -s ide:gate:viewport-overflow-contract', true),

@@ -240,27 +240,33 @@ Rollback:
 
 ## Phase 6 - Hardware / Basys3 Workbench
 
+Status: Closed 2026-06-14 by `ide:gate:hardware-basys3-workbench`.
+
 Goal: Make Map Pins a direct Basys3 binding workbench.
 
 Why: This is RedByte's FPGA differentiation: project signal to board resource to package pin to XDC.
 
 Implementation slices:
 
-- E0 handoff wording.
-- Signal/table/board synchronized hierarchy.
-- XDC preview containment.
-- Clock/resource language.
+- E0 handoff wording tightened so Hardware ready state does not imply Vivado build, bitstream programming, or board observation.
+- Selected-row signal/table/board hierarchy now exposes project signal -> board resource -> package pin -> XDC consequence.
+- Basys3 resource summary remains visible without displacing the board/table workbench.
+- Clock/resource language now stays mapping/XDC-oriented.
 
 Proof:
 
+- `ide:gate:hardware-basys3-workbench`.
 - Hardware visual credibility gate.
 - Map Pins recovery gate.
-- Board/table screenshots.
+- Export trust/handoff gates.
+- Before/after screenshots at `1366x768` and `1440x900`.
 
 Acceptance:
 
 - Students see signal rows and board together.
+- The selected signal -> board resource -> package pin -> XDC chain is visible.
 - No hardware-ready claim without E1/E2/E3 proof.
+- The 2026-06-14 closeout changed Hardware presentation, gate coverage, and tests only; no VHDL/XDC/testbench/Tcl/ZIP/golden bytes were changed.
 
 Rollback:
 

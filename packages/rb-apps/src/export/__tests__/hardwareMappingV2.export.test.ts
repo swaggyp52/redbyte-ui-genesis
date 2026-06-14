@@ -92,8 +92,8 @@ describe('Basys3 export with hardwareMappingV2', () => {
     expect(result.bundle?.topXdc).toMatch(/U16/);
   });
 
-  it('reports required-port gaps when structured bus/slice ids do not match entity ports', () => {
-    const project: RBProject = {
+  function buildStructuredBusSliceProject(): RBProject {
+    return {
       ...buildMinimalMappedProject(),
       ioMapping: undefined,
       hardwareMappingV2: {
@@ -131,9 +131,49 @@ describe('Basys3 export with hardwareMappingV2', () => {
         ],
       },
     };
+  }
+
+  it('exports structured bus/slice rows when node boundary aliases match entity ports', () => {
+    const result = exportProjectAsBasys3(buildStructuredBusSliceProject());
+
+    expect(result.success).toBe(true);
+    expect(result.errors.filter((error) => error.severity === 'error')).toHaveLength(0);
+    expect(result.bundle?.topXdc).toMatch(/V17/);
+    expect(result.bundle?.topXdc).toMatch(/U16/);
+  });
+
+  it('reports required-port gaps when no materialized row aliases the entity port', () => {
+    const project: RBProject = {
+      ...buildStructuredBusSliceProject(),
+      hdl: {
+        top: 'top',
+        sources: [
+          {
+            path: 'top.vhd',
+            language: 'vhdl',
+            text: [
+              'library IEEE;',
+              'use IEEE.STD_LOGIC_1164.ALL;',
+              '',
+              'entity top is',
+              '  port (',
+              '    sw0 : in std_logic;',
+              '    ld_missing : out std_logic',
+              '  );',
+              'end top;',
+              '',
+              'architecture rtl of top is',
+              'begin',
+              '  ld_missing <= sw0;',
+              'end rtl;',
+            ].join('\n'),
+          },
+        ],
+      },
+    };
 
     const result = exportProjectAsBasys3(project);
     expect(result.success).toBe(false);
-    expect(result.errors.some((error) => /ld0/i.test(error.message))).toBe(true);
+    expect(result.errors.some((error) => /ld_missing/i.test(error.message))).toBe(true);
   });
 });

@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, and Export Handoff Station closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, and Hardware / Basys3 Workbench closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -21,7 +21,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 | 5 | Shell and Workbench Layout Reset | The shell repeated too many status authorities and every surface inherited that first-viewport problem. | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, `docs/plans/RED_BYTE_DELETE_DEMOTE_REBUILD_INVENTORY.md`, visual audit | `fix:` | Closed 2026-06-13: `ide:gate:shell-workbench-hierarchy` proves one compact proof/status authority, support-only footer, rail navigation without `OK` status labels, and visible workbench objects across Project/Design/Verify/Hardware/Export/Import. |
 | 6 | Project Command Center | Project should be a command center for blank, starter, saved, import/recovery, and future instructor lab paths, not a starter gallery. | V1 contract Project section, visual audit, `RB-PROJECT-CC-001` | `fix:` | Closed 2026-06-13: `ide:gate:project-command-center` proves neutral no-circuit copy, peer start paths, loaded-project entry paths, and guarded loaded Build Fresh without changing trust semantics. |
 | 7 | Export Handoff Station | After trust integrity is proven, finish the visual/workbench handoff station around the same authority. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Closed 2026-06-14: `ide:gate:export-handoff-station` proves Draft/E0-ready/Trusted station states, one repair/build/download action, visible package/artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and no E1/E2/E3 overclaim. |
-| 8 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Signal -> board resource -> package pin -> XDC chain is visible; no E1/E2/E3 overclaim. |
+| 8 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Closed 2026-06-14: `ide:gate:hardware-basys3-workbench` proves selected signal -> board resource -> package pin -> XDC hierarchy at `1366x768` and `1440x900`, ready-state E0-only wording, and no E1/E2/E3 overclaim. |
 | 9 | Design Workbench | The circuit graph must become the first object after a starter or project loads. | V1 contract Design section, visual audit, `RB-DESIGN-WB-001` | `fix:` | Meaningful nodes/connections are visible at `1366x768`; palette/toolbar/inspector support the graph instead of displacing it. |
 | 10 | Import / Recovery | Import stays a utility but needs access contract alignment and representative fidelity/recovery proof. | V1 contract Import section, normal-use audit, `RB-IMPORT-001`, `RB-IMPORT-ACCESS-001` | `fix:` or `test:` | Documented Import utility path is visible, failed import does not replace current project, and representative import/recovery paths prove fidelity messages. |
 | 11 | Lab Profile / Course Pack Data Seam | Course-pack data is important, but it should follow the workbench/proof contract so the data seam plugs into a stable product shell. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, general lab audit, `RB-LAB-001` | `refactor:` or `feat:` | One small profile-backed lab path; Basys3 logic stays core; no-solution policy remains enforced. |
@@ -33,6 +33,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 | Item | Status |
 |---|---|
+| Hardware / Basys3 Workbench | Closed 2026-06-14: `ide:gate:hardware-basys3-workbench` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/hardware-basys3-workbench/`. |
 | Export Handoff Station | Closed 2026-06-14: `ide:gate:export-handoff-station` is wired into focused, classroom, and broad classroom gates; after screenshots and summary are under `.redbyte/product-immersion/export-handoff-station/after/`. |
 | Project Command Center | Closed 2026-06-13: Project first launch is neutral command-center copy; Build Fresh, course starters, saved/recent, and Import / Recover are peer paths; loaded Project has continue/build/starter/import/open-recent entry paths; `ide:gate:project-command-center` is wired into focused, classroom, and broad classroom gates. |
 | Shell and Workbench Layout Reset | Closed 2026-06-13: `ide:gate:shell-workbench-hierarchy` is wired into focused, classroom, and broad classroom gates; after screenshots and geometry summary are under `.redbyte/product-immersion/shell-workbench-layout-reset/after/`. |
@@ -53,7 +54,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 ## Queue Rules
 
-- The next code slice after Export Handoff Station is `fix: rebuild RedByte hardware / Basys3 workbench`.
+- The next code slice after Hardware / Basys3 Workbench is `fix: rebuild RedByte design workbench`.
 - Lab profile / course-pack work is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

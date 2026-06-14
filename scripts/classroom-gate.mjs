@@ -80,6 +80,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:export-trust-integrity'],
   },
   {
+    name: 'ide:gate:hardware-basys3-workbench',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:hardware-basys3-workbench'],
+  },
+  {
     name: 'ide:gate:shell-layout-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:shell-layout-integrity'],

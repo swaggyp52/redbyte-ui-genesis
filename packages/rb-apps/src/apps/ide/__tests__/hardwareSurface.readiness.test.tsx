@@ -613,7 +613,12 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(row);
     expect(row.getAttribute('aria-pressed')).toBe('true');
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('SW0 / V17');
+    const chain = getByTestId('ide-hardware-basys3-binding-chain');
+    expect(chain.textContent).toContain('IN0');
+    expect(chain.textContent).toContain('SW0');
+    expect(chain.textContent).toContain('V17');
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN V17');
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('get_ports');
     fireEvent.click(getByTestId('ide-hw-map-sw-1'));
 
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
@@ -748,9 +753,13 @@ describe('HardwareSurface readiness', () => {
 
     expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Select a signal row');
     fireEvent.click(getByTestId('ide-hw-map-row-sw0'));
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Choose a Basys3 control for SW0');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('SW0');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('Choose on board');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('Not assigned');
     fireEvent.click(getByTestId('ide-hw-map-row-ld0'));
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('This signal is mapped to LD0 / U16');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('LD0');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('U16');
+    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN U16');
   });
 
   it('keeps the structured mapping editor collapsed behind an advanced affordance', () => {

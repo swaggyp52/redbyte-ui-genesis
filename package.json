@@ -247,6 +247,7 @@
         "ide:gate:export-download-contract": "node ./scripts/gates/ide-export-download-contract.mjs",
         "ide:gate:export-e2e-contract": "node ./scripts/gates/ide-export-e2e-contract.mjs",
         "ide:gate:export-trust-integrity": "node ./scripts/gates/ide-export-trust-integrity.mjs",
+        "ide:gate:hardware-basys3-workbench": "node ./scripts/gates/ide-hardware-basys3-workbench.mjs",
         "ide:gate:hardware-checklist-contract": "node ./scripts/gates/ide-hardware-checklist-contract.mjs",
         "ide:gate:student-loop-contract": "node ./scripts/gates/ide-student-loop-contract.mjs",
         "ide:gate:blank-canvas-product-proof": "node ./scripts/gates/ide-blank-canvas-product-proof.mjs",

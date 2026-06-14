@@ -2862,7 +2862,7 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'] .ide-hw-board-planner-summary {
-  display: none;
+  display: grid;
 }
 
 .ide-root [data-ide-mode-marker='hardware'] .ide-hw-board-task-copy {
