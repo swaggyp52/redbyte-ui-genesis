@@ -48,7 +48,7 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 | Design toolbar | Necessary, but too much first-order chrome. | Tool selection. | Demonstrates editor seriousness. | Rebuild | `DesignSurface.tsx`, `DesignWorkspaceFrame.tsx` | Tool controls stable; graph first. |
 | Design starter banner | Context helps, but it displaces the circuit in first viewport. | Know what loaded. | Assignment context. | Demote | `DesignSurface.tsx` | Circuit graph visible after starter load. |
 | Design inspector | Useful when selection exists, but default idle inspector consumes workbench space. | Contextual detail. | Debug/review. | Demote | `DesignSurface.tsx`, right dock | Default idle inspector not first-order. |
-| Circuit graph/canvas | The most important Design object is not first-viewport primary at `1366x768`. | Inspect and edit actual circuit. | Trust loaded lab state. | Rebuild | `DesignSurface.tsx`, `LogicCanvas`, layout CSS | Visible nodes/connections without scroll after starter load. |
+| Circuit graph/canvas | Closed 2026-06-14: Design Canvas mode makes the graph/canvas first-order at `1366x768` and `1440x900`, with palette/inspector supporting rather than displacing authoring. | Inspect and edit actual circuit. | Trust loaded lab state. | Keep/Rebuild locally | `DesignSurface.tsx`, `LogicCanvas`, layout CSS | `ide:gate:design-workbench-v1`; before/after screenshots under `.redbyte/product-immersion/design-workbench-v1/`. |
 | Verify command strip | Behavior is correct, but controls dominate evidence. | Run/compare/repair. | Proof clarity. | Rebuild | `VerifySurface.tsx`, `VerifyCommandBar.tsx` | Evidence hierarchy visible at `1366x768`. |
 | Verify stimulus grid | Real and editable, but dense and partially clipped in first viewport. | Author checks. | Assignment vectors. | Rebuild | `VerifySurface.tsx`, scenario builder CSS | Inputs/expected/observed layout readable. |
 | Verify failure explainer | Strongest current learning affordance. | Debug wrong circuit/check. | Better student self-repair. | Keep/Rebuild locally | `VerifySurface.tsx` | First mismatch remains primary after layout reset. |
@@ -79,12 +79,12 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 Use this structured ticket before the next code slice:
 
-- Title: Rebuild Design as a canvas-first circuit workbench.
-- Surface: Design.
-- Journey segment: loaded starter/current project graph, palette, placement, wiring, inspector, and next action at common classroom viewports.
-- Observed behavior: the loaded circuit graph is not yet the first-viewport focal object at `1366x768`.
-- Expected behavior: meaningful nodes and connections are visible immediately, with controls supporting the graph instead of competing with it.
-- Acceptance proof: Design screenshots at `1366x768` and `1440x900`; Design workbench/placement/wiring/zoom gates; classroom gate; no simulation, Verify, mapping, Export, or golden changes unless a dedicated source test proves the need.
+- Title: Harden Import / Recovery as a utility path.
+- Surface: Import and Project utility access.
+- Journey segment: loaded-project Import / Recover entry point, representative good/corrupt package import, review-before-apply, and recovery messaging.
+- Observed behavior: Project now exposes Import / Recover, but representative import fidelity, failure recovery, and review-before-apply safety remain broader than the Project entry gate.
+- Expected behavior: the utility is easy to find, successful imports can be reviewed before replacing active work, and failure states are recoverable and specific.
+- Acceptance proof: dedicated Import utility/fidelity gate; representative import/recovery tests; Project/Import screenshots if UI changes; classroom gate; no simulation, Verify, mapping, Export, or golden changes unless a dedicated source test proves the need.
 
 ## Attribution
 

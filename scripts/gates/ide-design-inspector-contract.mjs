@@ -66,14 +66,15 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
   const nodeIdText = (await page.locator('[data-testid="ide-design-selection-id"]').first().textContent())?.trim();
   assert(Boolean(nodeIdText && nodeIdText.length > 0), 'selection inspector must show node id');
 
-  await page.waitForSelector('[data-testid="ide-design-inspector-health"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-selection-issues"]', { timeout: 10000 });
   const issueTitle = (await page.locator('[data-testid="ide-design-selection-issue-title"]').textContent())?.trim();
   assert(issueTitle === 'Input not wired yet', `expected live issue title in selection inspector, got ${issueTitle}`);
 
   const actionsText = (await page.locator('[data-testid="ide-design-inspector-actions"]').textContent())?.trim() ?? '';
-  assert(actionsText.includes('Rename'), 'primary actions must expose rename');
+  assert(actionsText.includes('Copy'), 'primary actions must expose copy');
+  assert(actionsText.includes('Duplicate'), 'primary actions must expose duplicate');
   assert(actionsText.includes('Trace net'), 'primary actions must expose trace net');
 
-  const propertiesText = (await page.locator('[data-testid="ide-design-inspector-properties"]').textContent())?.trim() ?? '';
-  assert(propertiesText.includes('Add label'), 'properties section must surface rename field');
+  const labelEditText = (await page.locator('[data-testid="ide-design-label-edit-btn"]').textContent())?.trim() ?? '';
+  assert(labelEditText.includes('Add label'), `label editor must surface Add label, got ${labelEditText}`);
 });

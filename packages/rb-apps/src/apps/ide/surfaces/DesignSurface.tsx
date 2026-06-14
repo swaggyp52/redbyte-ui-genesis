@@ -6726,7 +6726,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span className="ide-design-tool-hud-hint">{toolHint}</span>
                     {toolMode === 'wire' && !isPlacementMode ? (
                       <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
-                        {wireStartPort ? 'Source selected — click the destination port.' : 'Click any port to start wiring.'}
+                        {wireStartPort ? 'Source selected — click the destination port.' : 'Click any port to start a wire.'}
                       </span>
                     ) : null}
                     {wireFeedback ? (

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: rebuild RedByte design workbench)
+
+**Subsystem:** RedByte IDE Design workbench, canvas-first authoring hierarchy, Design browser gate wiring, focused Design tests, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `15b587df3b535b99762517f5d87da8c34d259b26`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `ide:gate:design-workbench-v1` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: blank and loaded Design states started too low in the classroom viewport and did not keep the canvas/graph as the first-viewport focal object.
+- Rebuilt Design's compact Canvas mode so the palette, canvas, and inspector share one workbench row; the canvas owns the center, the palette/inspector stay useful but narrower, the starter banner no longer pushes graph work down, and the status summary overlays the canvas instead of consuming another vertical band.
+- Kept blank-canvas start guidance and board I/O authoring visible while making loaded starter nodes, selected nodes, selected wires, wire start/cancel, move, delete/undo, and zoom/fit/center states browser-proved at `1366x768` and `1440x900`.
+- Updated current test/gate expectations for the existing inspector label-edit control and Hardware readiness/export callouts after older selectors were already retired by prior slices.
+- Captured before screenshots under `.redbyte/product-immersion/design-workbench-v1/before/` and after screenshots under `.redbyte/product-immersion/design-workbench-v1/after/`.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/execution/issue-index/inventory/Design spec docs so Design Workbench v1 is closed and Import / Recovery is the next product slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm -s ide:gate:design-workbench-v1`; `corepack pnpm -s ide:gate:design-workbench-integrity`; `corepack pnpm -s ide:gate:design-canvas-zoom-integrity`; `corepack pnpm -s ide:gate:design-wire-interaction-contract`; `corepack pnpm -s ide:gate:design-placement-contract`; `corepack pnpm -s ide:gate:design-workbench-contract`; `corepack pnpm -s ide:gate:design-fit-contract`; `corepack pnpm -s ide:gate:design-palette-build-contract`; `corepack pnpm -s ide:gate:design-correctness-contract`; `corepack pnpm -s ide:gate:design-build-contract`; `corepack pnpm -s ide:gate:design-build-fast-contract`; `corepack pnpm -s ide:gate:design-inspector-contract`; focused Design/runtime Vitest batch (`6` files, `66` tests); `corepack pnpm -s classroom:gate` with `ide:gate:design-workbench-v1` included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate` (`29` passed, `0` failed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This slice changes Design presentation, blank/selection/wire guidance copy, browser gate coverage, focused tests, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Import utility fidelity/recovery, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, packaging, and future hardware evidence remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: harden RedByte import and recovery utility`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (fix: rebuild RedByte Hardware Basys3 workbench)
 
 **Subsystem:** RedByte IDE Hardware / Map Pins Basys3 workbench, E0 evidence boundary, browser gate wiring, focused tests, and cockpit docs.

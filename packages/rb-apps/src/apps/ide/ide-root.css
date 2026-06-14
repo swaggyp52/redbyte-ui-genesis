@@ -33467,3 +33467,222 @@ button:disabled,
   min-width: 0 !important;
   overflow-wrap: anywhere !important;
 }
+
+/* 2026-06-14 Design Workbench v1: canvas-first hierarchy.
+   Keep Project -> Design -> Verify -> Map Pins -> Export semantics unchanged;
+   this pass only reclaims first-viewport space from Design support chrome. */
+.ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: 196px !important;
+  --ide-workbench-right-width: 224px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-slot-width) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-dock-left {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-workspace {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-dock-right {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  max-height: none !important;
+  border-top: 0 !important;
+  border-left: 1px solid rgba(52, 86, 118, 0.22) !important;
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-surface-command-stack > .ide-design-control-bar,
+[data-ide-mode-marker='design'] .ide-design-control-bar {
+  clip-path: none !important;
+  overflow: visible !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-control-bar {
+  padding: 4px 10px 6px !important;
+  border-radius: 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-header {
+  min-height: 28px !important;
+  gap: 6px !important;
+  padding: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-title {
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-actions .ide-button {
+  min-height: 26px !important;
+  padding: 3px 9px !important;
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='design'] [data-testid='ide-design-command-strip-secondary-cta'] {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='split']
+  [data-testid='ide-design-command-strip-primary-cta'],
+[data-ide-mode-marker='design'] .ide-design-frame[data-design-view='hdl']
+  [data-testid='ide-design-command-strip-primary-cta'] {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbar {
+  gap: 5px !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group {
+  gap: 5px !important;
+  flex: 0 0 auto !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-utils {
+  margin-left: auto !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-tool-segment,
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-view-btn,
+[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-toggle {
+  min-height: 26px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-tool-text kbd {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-starter-banner {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-bar {
+  position: absolute !important;
+  z-index: 8 !important;
+  left: 14px !important;
+  right: 14px !important;
+  top: calc(100% + 6px) !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-bar > * {
+  pointer-events: auto !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-bar .ide-design-workspace-health,
+[data-ide-mode-marker='design'] .ide-design-workspace-status-bar .ide-design-sim-story-strip {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  max-width: min(58vw, 620px) !important;
+  min-height: 26px !important;
+  padding: 3px 7px !important;
+  border-radius: 8px !important;
+  background: rgba(5, 13, 23, 0.88) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-bar .ide-design-workspace-health {
+  display: flex !important;
+  align-items: center !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-health-main,
+[data-ide-mode-marker='design'] .ide-design-workspace-health-row,
+[data-ide-mode-marker='design'] .ide-design-workspace-runtime .ide-design-sim-story-topline,
+[data-ide-mode-marker='design'] .ide-design-workspace-runtime .ide-design-sim-story-main {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-health-label {
+  font-size: 9px !important;
+  letter-spacing: 0.08em !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-health-count,
+[data-ide-mode-marker='design'] .ide-design-workspace-health-status,
+[data-ide-mode-marker='design'] .ide-design-sim-story-pill,
+[data-ide-mode-marker='design'] .ide-design-verify-link-badge {
+  min-height: 18px !important;
+  padding: 1px 6px !important;
+  font-size: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-note,
+[data-ide-mode-marker='design'] .ide-design-workspace-runtime .ide-design-sim-story-summary {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-actions {
+  margin-left: auto !important;
+  gap: 5px !important;
+  flex: 0 0 auto !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-workspace-status-actions .ide-button {
+  min-height: 24px !important;
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  border-radius: 8px !important;
+  background: rgba(4, 12, 22, 0.86) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-pane-row {
+  margin-top: 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas {
+  min-height: clamp(430px, 62vh, 780px) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  min-height: clamp(380px, 56vh, 720px) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-empty-state {
+  max-width: min(440px, calc(100% - 36px)) !important;
+  padding: 18px 20px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-inspector-canvas-default {
+  min-height: 0 !important;
+  padding: 14px 12px !important;
+  margin: 8px 0 0 !important;
+  align-items: flex-start !important;
+  text-align: left !important;
+}

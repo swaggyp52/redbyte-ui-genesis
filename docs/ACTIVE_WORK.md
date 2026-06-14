@@ -34,9 +34,10 @@ Import is a utility. Vivado build, board programming, and board observation are 
 5. **Verify Evidence Workbench is closed.** `ide:gate:verify-evidence-workbench-integrity` now proves visible first-run stimulus authoring, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, and repair back to PASS without hiding the editor.
 6. **Shell and Workbench Layout Reset is closed.** `ide:gate:shell-workbench-hierarchy` now proves one compact shell/status authority, demoted support footer, rail navigation without `OK` status copy, and first-viewport workbench frame geometry across Project, Design, Verify, Hardware, Export, and Import.
 7. **Project Command Center is closed locally.** `ide:gate:project-command-center` now proves Project as a neutral command center with blank, starter, saved/recent, Import/recovery, loaded-project peer paths, no false no-circuit mapping/export failure copy, and a guarded loaded-project Build Fresh action.
-8. **Next audit-driven code slice: Design Workbench.** The loaded circuit graph must become the first-viewport focal object at the classroom viewport.
-9. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
-10. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
+8. **Design Workbench v1 is closed locally.** `ide:gate:design-workbench-v1` now proves blank, loaded starter, selected node, selected wire, wire start/cancel, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the canvas/graph as the focal object.
+9. **Next audit-driven code slice: Import / Recovery.** Import remains utility-scoped; representative import fidelity, failure recovery, and loaded-project access need a dedicated gate before lab-profile work.
+10. **Keep lab-profile/course-pack work deferred.** It remains important, not next.
+11. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or lab-profile extraction unless the user explicitly reprioritizes.
 
@@ -48,7 +49,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Runtime screenshot identity | Existing local servers have repeatedly been stale: old `localhost:5173` showed `a4fc624`, the user-visible `127.0.0.1:5174` showed `Build9a639a4`, and current sprint evidence used fresh `127.0.0.1:5175` with `Buildd235823`. | For future screenshot proof, verify the UI build hash before using an existing server. |
 | Under-the-hood state authority | The sprint maps project runtime, circuitStore, logic-view camera/selection, Verify health, mapping, Export, Import, persistence, and proof-tier ownership. | Read the under-the-hood map and state authority matrix before changing stateful product code. |
 | Shell/status hierarchy | Closed 2026-06-13: proof ribbon is the compact workflow/status authority, left rail is navigation without visible `OK` status copy, and the bottom footer is support chrome. `ide:gate:shell-workbench-hierarchy` guards the geometry and copy split. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future surface slices should build on this shell rather than reopening global chrome by assumption. |
-| Design first viewport | Current `1366x768` screenshot still does not make the actual circuit graph the first-viewport focal object. | Fix in the scoped Design Workbench slice after higher-risk trust gaps are closed. |
+| Design first viewport | Closed locally 2026-06-14: Design Canvas mode now keeps the canvas/graph primary, narrows palette/inspector pressure, keeps blank/I/O guidance visible, and `ide:gate:design-workbench-v1` covers blank, starter, selection, wire, move, delete/undo, split/code, and zoom/fit/center states at classroom and desktop viewports. | Preserve the new gate in `classroom:gate` and `verify:gates:classroom`; future Design changes should keep the graph first unless a stronger product contract replaces it. |
 | Verify evidence workbench | Closed 2026-06-13: first-run stimulus editing stays visible, post-run stimulus chrome is denser, first mismatch expected/observed evidence is first-order, and `ide:gate:verify-evidence-workbench-integrity` guards PASS -> intentional FAIL -> repair PASS with overlap checks and screenshots. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future Verify work should start from fresh evidence rather than reopening density by assumption. |
 | Export trust integrity | Closed 2026-06-13: generated previews are visible by default, the focused gate compares visible previews with downloaded ZIP entries, and the mapping summary no longer contradicts mapped board I/O rows. | Keep `ide:gate:export-trust-integrity` in `classroom:gate` and `verify:gates:classroom`; do not reopen byte/trust proof without new evidence. |
 | Export Handoff Station | Closed 2026-06-14: Draft, Ready-to-build, and Trusted post-download states now sit in one visible station with package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and browser-only evidence boundaries proved by `ide:gate:export-handoff-station`. | Keep the gate in `classroom:gate` and `verify:gates:classroom`; future Export changes should preserve build/download as the primary station action unless product contract changes. |
@@ -60,27 +61,28 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Design Workbench.
+**Target:** Import / Recovery.
 
 Structured hardening ticket fields to start from:
 
-- Title: Rebuild Design as a canvas-first circuit workbench.
-- Surface: Design.
-- Journey segment: loaded starter/current project graph, palette, placement, wiring, inspector, and next action.
-- Observed behavior: Design works, but the loaded circuit graph is still not the obvious first-viewport focal object at `1366x768`.
-- Expected behavior: meaningful nodes and connections are visible immediately after loading a starter or project; palette, toolbar, starter context, and inspector support the graph instead of displacing it.
-- Minimum acceptance proof: Design screenshots at `1366x768` and `1440x900`; existing design workbench, wire interaction, placement, zoom integrity, and classroom gates; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated source test proves the need.
+- Title: Harden Import / Recovery as a utility path.
+- Surface: Import and Project utility access.
+- Journey segment: loaded project import/recovery entry point, representative good/corrupt package import, review-before-apply, and recovery messaging.
+- Observed behavior: Project exposes Import / Recover entry points, but broader representative import fidelity and failure recovery are still deferred.
+- Expected behavior: students and instructors can find the utility, import/recover without replacing the active project before review/apply, and understand fidelity or failure results.
+- Minimum acceptance proof: dedicated Import utility/fidelity gate, representative import/recovery tests, Project/Import screenshots if UI changes, existing classroom gate, no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated source test proves the need.
 
 Suggested commit:
 
 ```text
-fix: rebuild RedByte design workbench
+fix: harden RedByte import and recovery utility
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Design Workbench v1 | Closed locally 2026-06-14: added `ide:gate:design-workbench-v1` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves blank, loaded starter, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`; after screenshots are local-only under `.redbyte/product-immersion/design-workbench-v1/after/`. |
 | Hardware / Basys3 Workbench | Closed locally 2026-06-14: added `ide:gate:hardware-basys3-workbench` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves the Basys3 workbench at `1366x768` and `1440x900`, the selected SW0 chain from project signal to board resource to package pin to XDC lines, ready-state E0-only wording, no Vivado/programming/board-observation browser overclaim, and no root overflow. Before/after screenshots are local-only under `.redbyte/product-immersion/hardware-basys3-workbench/`. |
 | Export Handoff Station | Closed locally 2026-06-14: added `ide:gate:export-handoff-station` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves Draft/Needs Review is not trusted and has a repair path, Ready-to-build and Trusted post-download keep one build/download primary action, package handoff is visible, artifact workspace includes README/top.vhd/top.xdc/testbench/vivado_import.tcl, README preview states E0 and E1/E2/E3 boundaries, mapping summaries agree, Vivado next steps are downstream, and the browser has no root overflow or key-region overlap. Before/after screenshots are local-only under `.redbyte/product-immersion/export-handoff-station/`. |
 | Project Command Center | Closed locally 2026-06-13: added `ide:gate:project-command-center` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves neutral first-launch Project command center copy, blank/starter/saved/import paths, loaded-project peer entry paths, loaded Build Fresh guard, collapsed loaded starter browser, no premature no-circuit mapping/export failure copy, and first-viewport launch fit. After screenshots are local-only under `.redbyte/product-immersion/project-command-center/after/`. |
@@ -130,7 +132,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Project Command Center. | `RB-PROJECT-CC-001`; `ide:gate:project-command-center`; screenshots under `.redbyte/product-immersion/project-command-center/after/`. |
 | Closed | Export Handoff Station. | `RB-EXPORT-HANDOFF-001`; `ide:gate:export-handoff-station`; screenshots under `.redbyte/product-immersion/export-handoff-station/after/`. |
 | Closed | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001`; `ide:gate:hardware-basys3-workbench`; screenshots under `.redbyte/product-immersion/hardware-basys3-workbench/after/`. |
-| Next | Design Workbench. | `RB-DESIGN-WB-001` in issue index after reset. |
+| Closed | Design Workbench v1. | `RB-DESIGN-WB-001`; `ide:gate:design-workbench-v1`; screenshots under `.redbyte/product-immersion/design-workbench-v1/after/`. |
+| Next | Import / Recovery. | `RB-IMPORT-001` and `RB-IMPORT-ACCESS-001` in issue index after reset. |
 | Later | Lab Profile / Course Pack Data Seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
 | Board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 

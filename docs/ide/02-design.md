@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -8,7 +8,7 @@ role: Design surface spec
 
 # Design Mode Spec
 
-Status: Phase 2A foundation
+Status: Design Workbench v1
 Mode ID: `design`
 
 ## Purpose
@@ -36,22 +36,33 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 3. Center workspace
 - The canvas is the primary region and should win the page.
+- In Canvas mode, the left library, canvas, and right inspector share one workbench row; the canvas must remain the focal object at `1366x768` and `1440x900`.
 - The tools row stays attached to the workbench header; expanded tool options open as a compact popup instead of adding another horizontal band.
-- Starter-loaded guidance is compact by default: starter name, tags, next action, and navigation stay visible, while long summary / expected-behavior copy lives behind the `Starter brief` disclosure.
+- Starter-loaded guidance is compact by default and must not push the graph below the first viewport; long summary / expected-behavior copy lives behind the `Starter brief` disclosure.
+- The Design status summary is allowed to overlay the canvas as a compact secondary cue, but it should not consume a standalone vertical band above the graph.
 - The compact authoring card is the readiness owner for design issues.
 - The simulation strip is contextual and appears only when replay, stale replay, verify-linked focus, active simulation, or another real simulation story exists.
 - When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect.
 
 4. Right inspector
 - Owns selection, focused-asset, mapping, and signal context.
+- Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
 - Idle fallback stays secondary, but it is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts, current I/O values, a Verify-owns-proof boundary, and an empty-canvas branch.
 - In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.
 
 ## Empty / Idle State
 
 - Blank-state teaching stays inside the canvas region.
+- Blank-state guidance must expose a clear build path and board I/O authoring path without forcing a starter-first workflow.
 - The floating shortcut strip no longer exists.
 - Idle rails should feel secondary, not like co-equal dashboard bands.
+
+## Workbench v1 Proof Contract
+
+- `ide:gate:design-workbench-v1` is the scoped Design Workbench v1 gate.
+- It proves blank/fresh Design, Logic Gates starter, Half Adder, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`.
+- It must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by the gate.
+- Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
 
 ## Error / Status Rules
 

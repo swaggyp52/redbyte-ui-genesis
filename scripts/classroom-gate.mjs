@@ -40,6 +40,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-workbench-integrity'],
   },
   {
+    name: 'ide:gate:design-workbench-v1',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-workbench-v1'],
+  },
+  {
     name: 'ide:gate:design-correctness-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-correctness-contract'],

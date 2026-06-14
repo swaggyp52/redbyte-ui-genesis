@@ -48,18 +48,18 @@ Status terms:
 
 | Feature/control | Status | Evidence | Recommendation |
 |---|---|---|---|
-| Blank Design empty state | Verified | `workflow-empty-design.png` | Keep; bring empty-state action higher and ensure canvas area is obvious. |
+| Blank Design empty state | Closed by Design Workbench v1 | `ide:gate:design-workbench-v1`; `.redbyte/product-immersion/design-workbench-v1/after/` | Keep; blank guidance and build/I/O actions now stay inside the primary canvas region. |
 | Add IO + AND quick action | Verified | `ide:gate:blank-canvas-product-proof` | Keep; this is a good first manual-build proof path. |
-| Build library / component palette | Verified | Design screenshots | Keep; compress enough that the circuit graph remains first-viewport primary. |
+| Build library / component palette | Closed by Design Workbench v1 | `ide:gate:design-workbench-v1`; Design screenshots | Keep; palette is useful but narrower than the canvas-first workbench. |
 | Search in palette | Not exercised | `workflow-empty-design.png` | Exercise in a focused editor-control pass. |
 | Board resource chips (SW, button, LED groups) | Partial | `workflow-empty-design.png` | Keep, but test drag/click insertion separately. |
-| Select and Wire mode controls | Partial | Design screenshots | Keep; test manual wiring and wire repair as a focused pass. |
-| Snap, undo, redo, fit, delete | Not exercised | Design screenshots | Keep only if keyboard/mouse interactions are reliable; add focused proof. |
-| Canvas/Code/Split segmented control | Partial | Design screenshots | Keep; Code/Split were not deeply audited. |
+| Select and Wire mode controls | Closed for v1 path | `ide:gate:design-workbench-v1`; wire interaction gate | Keep; future deeper manual wiring can broaden beyond start/cancel and selected-wire proof. |
+| Snap, undo, redo, fit, delete | Closed for v1 path | `ide:gate:design-workbench-v1`; zoom integrity gate | Keep; v1 proves move, delete/undo, and zoom/fit/center, while redo remains covered outside the browser v1 path. |
+| Canvas/Code/Split segmented control | Closed for v1 path | `ide:gate:design-workbench-v1` | Keep; split/code no longer undermines the visual authoring layout in the covered path. |
 | Circuit health row | Verified | Design screenshots | Keep; make errors/warnings/drafts actionable. |
-| Inspector | Verified | Design screenshots | Keep; it currently consumes prominent vertical space before the circuit is visible. |
-| Starter banner | Works but confusing | `logic-gates-design.png`, `half-adder-design.png` | Reduce or reposition after starter load; the circuit should dominate. |
-| Actual schematic/circuit graph | Works but confusing | Starter Design screenshots | Promote into first viewport. This is the most important Design repair. |
+| Inspector | Closed by Design Workbench v1 | `ide:gate:design-workbench-v1`; inspector contract | Keep; it is a side context panel and no longer stacks below the canvas in Canvas mode. |
+| Starter banner | Closed by Design Workbench v1 | `logic-gates-design.png`, `half-adder-design.png`; after screenshots | Keep compact; it should not push the graph below the first viewport. |
+| Actual schematic/circuit graph | Closed by Design Workbench v1 | `ide:gate:design-workbench-v1`; after screenshots | Keep first-order; this is now guarded by the v1 gate at `1366x768` and `1440x900`. |
 | Live simulation / signal controls | Partial | Design and Verify screenshots | Keep; deeper failure-linked debug pass still needed. |
 
 ## Verify Surface

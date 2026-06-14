@@ -142,7 +142,7 @@ describe('DesignSurface label editing — Rename button visibility', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
   });
 
@@ -154,7 +154,7 @@ describe('DesignSurface label editing — Rename button visibility', () => {
     });
 
     await waitFor(() => {
-      const btn = view.getByTestId('ide-design-context-rename');
+      const btn = view.getByTestId('ide-design-label-edit-btn');
       expect((btn as HTMLButtonElement).disabled).toBe(false);
     });
   });
@@ -171,11 +171,11 @@ describe('DesignSurface label editing — Rename button opens editor', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -191,11 +191,11 @@ describe('DesignSurface label editing — Rename button opens editor', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -212,11 +212,11 @@ describe('DesignSurface label editing — Rename button opens editor', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -236,11 +236,11 @@ describe('DesignSurface label editing — Save commits new label', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -271,11 +271,11 @@ describe('DesignSurface label editing — Save commits new label', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -308,11 +308,11 @@ describe('DesignSurface label editing — Save commits new label', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {
@@ -343,11 +343,11 @@ describe('DesignSurface label editing — Cancel discards changes', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn')).toBeTruthy();
     });
 
     act(() => {
-      fireEvent.click(view.getByTestId('ide-design-context-rename'));
+      fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
     });
 
     await waitFor(() => {

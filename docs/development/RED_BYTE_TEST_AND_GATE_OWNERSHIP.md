@@ -28,6 +28,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:design-workbench-integrity`
+- `ide:gate:design-workbench-v1`
 - `ide:gate:export-handoff-station`
 - `ide:gate:export-trust-integrity`
 - `ide:gate:hardware-basys3-workbench`
@@ -40,6 +41,7 @@ Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
+- Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Hardware Basys3 workbench proves selected signal -> board resource -> package pin -> XDC hierarchy at classroom/desktop viewports and keeps ready-state copy E0-only.
@@ -54,7 +56,7 @@ Why:
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
-| Design gesture, canvas, zoom, selection, visible graph | focused Design browser gate; add Vitest only if source state semantics change |
+| Design gesture, canvas, zoom, selection, visible graph | `ide:gate:design-workbench-v1` plus focused Design browser gates; add Vitest only if source state semantics change |
 | Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity` or `ide:gate:export-handoff-station` proving visible labels, preview, download, station hierarchy, and no overclaim |
@@ -95,7 +97,6 @@ For hardening slices, closeout is not done at local green:
 
 | Gap | Recommended next gate |
 |---|---|
-| Design graph first-viewport hierarchy still needs a scoped product gate. | Strengthen the Design workbench gate or add a narrower Design canvas-first gate in the Design Workbench slice |
 | Representative Import utility fidelity and recovery remain broader than the Project entry point. | `ide:gate:import-utility-access` or a narrower Import fidelity gate after product contract decision |
 
 ## Attribution

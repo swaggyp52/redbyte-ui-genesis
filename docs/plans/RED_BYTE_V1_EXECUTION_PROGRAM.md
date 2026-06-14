@@ -274,6 +274,8 @@ Rollback:
 
 ## Phase 7 - Design Workbench
 
+Status: Closed 2026-06-14 by `ide:gate:design-workbench-v1`.
+
 Goal: Make the circuit graph the first object in Design.
 
 Why: RedByte cannot be credible as a lab workbench if the loaded circuit is not visible immediately.
@@ -288,18 +290,51 @@ Implementation slices:
 Proof:
 
 - Starter Design screenshot shows meaningful nodes/connections at `1366x768`.
-- Design workbench, placement, wire interaction, and focused gates green.
+- `ide:gate:design-workbench-v1`.
+- Design workbench, placement, wire interaction, zoom integrity, and focused gates green.
+- Before/after screenshots at `1366x768` and `1440x900`.
 
 Acceptance:
 
 - A student can inspect the loaded circuit before scrolling.
 - No circuit graph/editor behavior regression.
+- The 2026-06-14 closeout changed Design presentation, browser gate coverage, and focused tests only; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden bytes were changed.
 
 Rollback:
 
 - Revert Design layout slice.
 
-## Phase 8 - Lab Profile / Course Pack Data Seam
+## Phase 8 - Import / Recovery
+
+Goal: Make Import a trustworthy utility path for RedByte project recovery and representative Vivado/HDL inputs.
+
+Why: Project now exposes Import / Recover entry points, but broader representative Vivado ZIP/HDL fidelity, failure recovery, and review-before-apply safety remain deferred. Import is useful but not the main V1 spine.
+
+Implementation slices:
+
+- Clarify the loaded-project Import / Recover utility path.
+- Prove good-package import fidelity and corrupt/unsupported package recovery messages.
+- Keep active projects from being replaced before review/apply.
+- Preserve Export generation, Verify, simulation, and mapping semantics.
+
+Proof:
+
+- New `ide:gate:import-utility-access` or narrower Import fidelity gate.
+- Import parser/runtime tests for representative good/corrupt packages.
+- Project/Import screenshots only if UI entry points change.
+- Classroom gate.
+
+Acceptance:
+
+- A student or instructor can find Import / Recover from the current product flow.
+- Import review is explicit before replacing active work.
+- Failure messages are recoverable and do not corrupt the current project.
+
+Rollback:
+
+- Revert Import utility slice; no golden update unless import/export bytes intentionally change and are source-explained.
+
+## Phase 9 - Lab Profile / Course Pack Data Seam
 
 Goal: Introduce the first small data seam for professor-authored labs and course packs.
 
@@ -325,32 +360,6 @@ Acceptance:
 Rollback:
 
 - Revert data seam; starter behavior remains intact.
-
-## Phase 9 - Import / Recovery
-
-Goal: Make Import a trustworthy utility path for RedByte project recovery and representative Vivado/HDL inputs.
-
-Why: Import is useful but not the main V1 spine.
-
-Implementation slices:
-
-- Fidelity messaging.
-- Representative good/corrupt ZIP paths.
-- Review-before-apply reinforcement.
-
-Proof:
-
-- Import/export recovery gates.
-- Representative import fixtures.
-- Screenshots.
-
-Acceptance:
-
-- User understands Full/Reconstructed/Partial before applying import.
-
-Rollback:
-
-- Revert Import slice; no project data migration.
 
 ## Phase 10 - Student/Instructor Quickstarts
 

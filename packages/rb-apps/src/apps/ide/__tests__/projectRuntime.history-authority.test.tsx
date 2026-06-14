@@ -2,7 +2,7 @@
 
 import React, { useLayoutEffect } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor, type RenderResult } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { RBProject } from '../../../export/projectFormat';
 import {
@@ -146,6 +146,15 @@ function buildTwoOutputHistoryFixture(): RBProject {
       projectId: 'rb-runtime-two-output-fixture',
     },
   };
+}
+
+function assertHardwareStaleStatus(getByTestId: RenderResult['getByTestId']): void {
+  fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+  expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
+  expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+  const readinessText = getByTestId('ide-hardware-readiness-callout').textContent ?? '';
+  expect(readinessText).not.toContain('E0 handoff ready');
+  expect(readinessText).toMatch(/Verify evidence is stale|Complete required pin mapping/);
 }
 
 function buildProjectFromRuntimeState(): RBProject {
@@ -872,9 +881,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
   });
 
   it('undo and redo preserve the current pruned vector state after output deletion and vector edits', () => {
@@ -1046,9 +1053,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1185,9 +1190,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1308,9 +1311,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1427,9 +1428,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1550,9 +1549,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
 
     act(() => {
       useProjectRuntime.getState().undoProjectEdit();
@@ -1693,9 +1690,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
   });
 
   it('keeps Project, Verify, Export, and Hardware aligned across the full custom-design authority mutation matrix', () => {
@@ -1773,9 +1768,7 @@ describe('projectRuntime history authority', () => {
         </BoardSignalProvider>
       );
 
-      expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-      expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-      expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+      assertHardwareStaleStatus(getByTestId);
       unmount();
     };
 
@@ -2113,9 +2106,7 @@ describe('projectRuntime history authority', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-callout').textContent).toContain('Compare: STALE');
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
-    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('Complete required pin mapping');
+    assertHardwareStaleStatus(getByTestId);
   });
 });
 

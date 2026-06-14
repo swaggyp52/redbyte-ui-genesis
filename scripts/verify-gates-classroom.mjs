@@ -45,6 +45,7 @@ function main() {
     runGate('ide:design-fit-contract', 'pnpm -s ide:gate:design-fit-contract', true),
     runGate('ide:design-canvas-zoom-integrity', 'pnpm -s ide:gate:design-canvas-zoom-integrity', true),
     runGate('ide:design-workbench-integrity', 'pnpm -s ide:gate:design-workbench-integrity', true),
+    runGate('ide:design-workbench-v1', 'pnpm -s ide:gate:design-workbench-v1', true),
     runGate('ide:design-build-fast-contract', 'pnpm -s ide:gate:design-build-fast-contract', true),
     runGate('ide:design-live-sim-contract', 'pnpm -s ide:gate:design-live-sim-contract', true),
     runGate('ide:live-sim-contract', 'pnpm -s ide:gate:live-sim-contract', true),
