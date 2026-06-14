@@ -17,7 +17,7 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
-Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Import utility/recovery rows were addressed locally on 2026-06-14 by the Import / Recovery slice. The first lab profile/course-pack seam was addressed locally on 2026-06-14 by `lab:profile-contract`. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, future Hardware work should start from `ide:gate:hardware-basys3-workbench`, future Import work should start from `ide:gate:import-recovery-contract`, and future profile/course-pack work should start from `lab:profile-contract`.
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Import utility/recovery rows were addressed locally on 2026-06-14 by the Import / Recovery slice. The first lab profile/course-pack seam was addressed locally on 2026-06-14 by `lab:profile-contract`. Current student/instructor/TA quickstarts were addressed locally on 2026-06-14 under `docs/course/`. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, future Hardware work should start from `ide:gate:hardware-basys3-workbench`, future Import work should start from `ide:gate:import-recovery-contract`, future profile/course-pack work should start from `lab:profile-contract`, and future course-doc work should start from `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md`.
 
 ## Decision Terms
 
@@ -77,14 +77,14 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 ## Next Ticket To Code
 
-Use this structured ticket before the next code slice:
+Use this structured ticket before the next proof slice:
 
-- Title: Create current RedByte student and instructor quickstarts.
-- Surface: Public-facing student first-lab docs and instructor setup/support docs.
-- Journey segment: student starts a supported lab and instructor understands local setup, assignment handoff, and proof limits without agent-only context.
-- Observed behavior: the first lab profile seam is now closed locally, but quickstarts still lag the current Project -> Design -> Verify -> Map Pins -> Export posture.
-- Expected behavior: quickstarts match current app truth, identify Import as a utility, keep Vivado/Basys3 proof external, and avoid SaaS/classroom-management claims.
-- Acceptance proof: docs validation; encoding check; manual cross-check against current product/manual/release docs; no product source changes; no Vivado/Basys3 E1-E3 claims.
+- Title: Restore fresh RedByte Vivado/Basys3 proof.
+- Surface: Release proof, certification matrix, and hardware evidence docs.
+- Journey segment: RedByte export package moves through Vivado build, Basys3 programming, and physical observation when evidence exists.
+- Observed behavior: browser/package proof and quickstarts are current, but fresh Vivado 2024.2 and Basys3 E1/E2/E3 proof was not run in this reset.
+- Expected behavior: named project rows gain only the proof tiers actually produced by Vivado and board runs; no screenshot-only or browser-only hardware claims.
+- Acceptance proof: Vivado 2024.2 environment check; E1 logs; E2 programming logs when board access exists; E3 observation notes only when behavior is actually observed; release docs updated; docs validation and encoding check pass.
 
 ## Attribution
 

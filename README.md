@@ -106,6 +106,15 @@ RedByte generates the Vivado project files. Synthesis and board programming happ
 
 ## Documentation
 
+### Course Quickstarts
+
+| File | Description |
+|------|-------------|
+| [STUDENT_QUICKSTART.md](./docs/course/STUDENT_QUICKSTART.md) | First-lab path for students: Project -> Design -> Verify -> Map Pins -> Export |
+| [INSTRUCTOR_QUICKSTART.md](./docs/course/INSTRUCTOR_QUICKSTART.md) | Assignment setup, proof tiers, and classroom support boundaries |
+| [TA_TROUBLESHOOTING_GUIDE.md](./docs/course/TA_TROUBLESHOOTING_GUIDE.md) | Stage-by-stage triage for setup, Verify, Export, Vivado, board, and Import issues |
+| [windows-quickstart.md](./docs/course/windows-quickstart.md) | Windows setup, launch, doctor, update, and reset scripts |
+
 ### Product Manual
 
 The canonical product reference is maintained in `docs/manuals/`:

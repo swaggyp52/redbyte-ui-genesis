@@ -100,7 +100,7 @@ For hardening slices, closeout is not done at local green:
 
 | Gap | Recommended next gate |
 |---|---|
-| Student/instructor quickstarts are not yet current public-facing release docs. | Add docs walkthrough evidence after the quickstart slice starts. |
+| Fresh Vivado/Basys3 proof is not current in this reset. | Run E1/E2/E3 proof only on a machine with Vivado 2024.2 and Basys3 hardware; update release evidence without promoting browser E0 proof. |
 
 ## Attribution
 

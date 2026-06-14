@@ -70,7 +70,7 @@ The 2026-06-13 normal-use audit found the main student spine coherent on current
 - Export artifact preview and handoff station visibility are covered by `ide:gate:export-trust-integrity` and `ide:gate:export-handoff-station`.
 - Import utility access and recovery language are covered by `ide:gate:import-recovery-contract`.
 
-The next open product-control gap is public student/instructor quickstart documentation, not a runtime authority change.
+The public student/instructor/TA quickstart gap is closed under `docs/course/`. The next open proof-control gap is fresh Vivado/Basys3 evidence restoration, which requires Vivado 2024.2 and board access rather than runtime authority changes.
 
 ## Attribution
 

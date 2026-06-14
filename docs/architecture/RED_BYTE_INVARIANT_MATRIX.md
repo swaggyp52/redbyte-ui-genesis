@@ -127,7 +127,7 @@ This gate is a focused Vitest contract, not a browser, Vivado, or hardware proof
 
 | Proposed gate | Why |
 |---|---|
-| Quickstart doc walkthrough | Prove student and instructor quickstarts match current app truth and proof-tier limits without changing product source. |
+| Vivado/Basys3 proof restoration | Refresh E1/E2/E3 evidence only from real Vivado 2024.2 and board runs, keeping browser E0 proof separate. |
 
 ## Attribution
 

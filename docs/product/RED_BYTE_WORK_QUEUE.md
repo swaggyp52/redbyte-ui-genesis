@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, Design Workbench v1, Import / Recovery, and Lab Profile / Course Pack Data Seam closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, Design Workbench v1, Import / Recovery, Lab Profile / Course Pack Data Seam, and Student/Instructor Quickstarts closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -25,7 +25,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 | 9 | Design Workbench | The circuit graph must become the first object after a starter or project loads. | V1 contract Design section, visual audit, `RB-DESIGN-WB-001` | `fix:` | Closed 2026-06-14: `ide:gate:design-workbench-v1` proves blank, loaded starter, selection, wiring, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the graph/canvas as the focal object. |
 | 10 | Import / Recovery | Import stays a utility but needs access contract alignment and representative fidelity/recovery proof. | V1 contract Import section, normal-use audit, `RB-IMPORT-001`, `RB-IMPORT-ACCESS-001` | `fix:` | Closed 2026-06-14: `ide:gate:import-recovery-contract` proves Project Import / Recover discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/Basys3 overclaim. |
 | 11 | Lab Profile / Course Pack Data Seam | Course-pack data is important, but it should follow the workbench/proof contract so the data seam plugs into a stable product shell. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, general lab audit, `RB-LAB-001` | `feat:` | Closed 2026-06-14: `lab:profile-contract` proves deterministic built-in profiles, existing starter references, IO/export/proof validation, course/runtime separation, and Lab 8 no-solution rejection. |
-| 12 | Student/Instructor Quickstarts | Classroom readiness requires public-facing docs after UI/proof posture stabilizes. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, V1 contract | `docs:` | Student first-lab and instructor setup/support quickstarts exist and match current app truth. |
+| 12 | Student/Instructor Quickstarts | Classroom readiness requires public-facing docs after UI/proof posture stabilizes. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, V1 contract | `docs:` | Closed 2026-06-14: student first-lab, instructor setup/support, TA troubleshooting, and Windows setup docs exist under `docs/course/` and match current app truth. |
 | 13 | Vivado/Basys3 Proof Restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, certification matrix, proof docs | `docs:` or `chore:` | E1/E2/E3 evidence updated only from Vivado/board runs; no screenshots-only hardware claim. |
 | 14 | Packaging/Commercial Readiness | Commercial packaging belongs after product trust, quickstarts, and hardware proof. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, V1 execution program | `docs:` or `chore:` | Hosted/support/local package posture reviewed; accounts/SaaS deferred unless concrete hosted-data need is proven. |
 
@@ -33,6 +33,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 | Item | Status |
 |---|---|
+| Student/Instructor Quickstarts | Closed 2026-06-14: `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md` now cover the current Project -> Design -> Verify -> Map Pins / Hardware -> Export path, E0/E1/E2/E3 proof tiers, Import as a utility, and TA triage; `docs/course/windows-quickstart.md` remains the setup-script reference. |
 | Lab Profile / Course Pack Data Seam | Closed 2026-06-14: `packages/rb-apps/src/apps/ide/labProfiles/` now holds the first typed data-only seam; `lab:profile-contract` covers Logic Gates, Half Adder, 2-Bit Counter, and Lab 8 profile references, validation, E0-only proof claims, and no-solution policy. |
 | Import / Recovery | Closed 2026-06-14: `ide:gate:import-recovery-contract` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/import-recovery-contract/`. |
 | Design Workbench v1 | Closed 2026-06-14: `ide:gate:design-workbench-v1` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/design-workbench-v1/`. |
@@ -57,7 +58,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 ## Queue Rules
 
-- The next slice after Lab Profile / Course Pack Data Seam is `docs: add RedByte student and instructor quickstarts`.
+- The next slice after Student/Instructor Quickstarts is Vivado/Basys3 Proof Restoration, and it is board-gated.
 - Deeper course-pack authoring is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, quickstarts, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

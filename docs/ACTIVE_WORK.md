@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Lab Profile / Course Pack Data Seam v1
+**Latest product/control slice:** Student/Instructor Quickstarts v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -37,8 +37,9 @@ Import is a utility. Vivado build, board programming, and board observation are 
 8. **Design Workbench v1 is closed locally.** `ide:gate:design-workbench-v1` now proves blank, loaded starter, selected node, selected wire, wire start/cancel, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the canvas/graph as the focal object.
 9. **Import / Recovery is closed locally.** `ide:gate:import-recovery-contract` now proves Project Import / Recover discoverability, RedByte manifest restore as the highest-fidelity path, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/hardware overclaim.
 10. **Lab Profile / Course Pack Data Seam is closed locally.** `lab:profile-contract` now proves deterministic built-in profile metadata for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold; validates starter references, IO coverage, export artifact expectations, E0-only proof claims, and solution-forbidden Lab 8 evidence.
-11. **Next audit-driven docs slice: Student/Instructor Quickstarts.** Write public-facing quickstarts against current app truth; do not change product behavior or make E1-E3 hardware claims.
-12. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
+11. **Student/Instructor Quickstarts are closed locally.** Current student, instructor, TA troubleshooting, and Windows course quickstart docs now live under `docs/course/` and match the Project -> Design -> Verify -> Map Pins / Hardware -> Export posture.
+12. **Next board-gated slice: Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
+13. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or deeper course-pack authoring unless the user explicitly reprioritizes.
 
@@ -57,32 +58,34 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Import utility access | Closed locally 2026-06-14: Project exposes Import / Recover, Import leads with RedByte manifest restore as highest fidelity, Vivado/VHDL is reconstruction-limited, corrupt import leaves current project intact, and imported Verify PASS is not trusted automatically. | Keep `ide:gate:import-recovery-contract` in `classroom:gate` and `verify:gates:classroom`; future arbitrary HDL migration work needs separate parser/source tests. |
 | Hardware proof language | Closed 2026-06-14: Hardware ready state now says E0 only, the selected binding chain exposes signal, board resource, package pin, and XDC, and `ide:gate:hardware-basys3-workbench` is wired into classroom gates. | Preserve the gate and do not claim Vivado build, bitstream programming, or board observation without external E1/E2/E3 evidence. |
 | Lab profile/course-pack seam | Closed locally 2026-06-14 as a data-only seam under `packages/rb-apps/src/apps/ide/labProfiles/`; built-ins reference existing public starter/example IDs and keep Lab 8 scaffold solution-forbidden at E0 only. | Preserve `lab:profile-contract`; future course-pack work should build on the seam without moving simulation, Basys3, Verify, mapping, or export semantics into course data. |
+| Student/instructor quickstarts | Closed locally 2026-06-14 under `docs/course/`: student first-lab path, instructor setup/support/proof-tier path, TA troubleshooting triage, and Windows course launcher reference. | Keep these docs as the current public-facing course path; legacy root quickstarts remain stale unless separately rewritten. |
 | Fresh Vivado/Basys3 proof | Vivado 2024.2 and board proof were not run in this reset. | Use a Vivado 2024.2 + Basys3 machine before making new E1/E2/E3 claims. |
 | Node pinned runtime | `.nvmrc` is `20.19.0`; current local proof uses Node `v24.15.0` and pnpm `10.24.0`. | Label Node 24 evidence honestly; rerun pinned-runtime proof when available. |
 
 ## Next Technical Task
 
-**Target:** Student/Instructor Quickstarts.
+**Target:** Vivado/Basys3 Proof Restoration.
 
 Structured hardening ticket fields to start from:
 
-- Title: Create current student and instructor RedByte quickstarts.
-- Surface: Public-facing docs for first-lab use, instructor setup/support, and proof-tier limits.
-- Journey segment: student starts a supported lab and instructor understands local setup, assignment handoff, and support boundaries without agent-only context.
-- Observed behavior: RedByte now has a profile data seam, but public quickstarts still lag the current Project -> Design -> Verify -> Map Pins -> Export posture.
-- Expected behavior: concise quickstarts match current product truth, identify Import as a utility, keep Vivado/Basys3 proof external, and do not imply SaaS/classroom-management features.
-- Minimum acceptance proof: docs validation, encoding check, manual cross-check against current cockpit/manual/release proof docs, and no product source or E1-E3 claim changes.
+- Title: Restore fresh RedByte Vivado/Basys3 proof.
+- Surface: Release proof, certification matrix, and hardware evidence docs.
+- Journey segment: exported RedByte package is built in Vivado, programmed onto Basys3, and observed against an explicit procedure.
+- Observed behavior: Current browser/package proof is strong, but fresh Vivado 2024.2 and Basys3 proof was not run in this reset.
+- Expected behavior: named project rows gain E1/E2/E3 evidence only from real Vivado and board runs, with warnings and observation limits recorded.
+- Minimum acceptance proof: Vivado 2024.2 environment check, E1 build logs, E2 programming logs if a board is connected, E3 observation notes only when observed behavior is actually recorded, docs validation, encoding check, and no screenshots-only hardware claims.
 
 Suggested commit:
 
 ```text
-docs: add RedByte student and instructor quickstarts
+docs: restore RedByte Vivado Basys3 proof
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Student/Instructor Quickstarts | Closed locally 2026-06-14: added current `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; routed README/DOC_INDEX/current-truth docs toward the `docs/course/` path; kept Import utility-scoped, E0/E1/E2/E3 separated, and Vivado/Basys3 proof external. |
 | Lab Profile / Course Pack Data Seam | Closed locally 2026-06-14: added `packages/rb-apps/src/apps/ide/labProfiles/` with typed built-in profile metadata, `validateLabProfile`, `validateLabProfiles`, `assertNoSolutionLeak`, `listBuiltInLabProfiles`, and `getLabProfileById`; added `lab:profile-contract` to prove deterministic profile IDs, existing starter/example references, course metadata separation from runtime circuit state, IO/export/proof validation, duplicate/missing-reference diagnostics, and Lab 8 scaffold no-solution rejection. |
 | Import / Recovery Utility Contract v1 | Closed locally 2026-06-14: added `ide:gate:import-recovery-contract` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves Project Import / Recover discoverability, RedByte manifest restore as highest fidelity, Vivado ZIP/VHDL reconstruction limits, corrupt import leaves the active project intact, manifest restore routes to editable project state, imported Verify PASS is not automatically trusted, and no Vivado/Basys3 proof is claimed. Before/after screenshots are local-only under `.redbyte/product-immersion/import-recovery-contract/`. |
 | Design Workbench v1 | Closed locally 2026-06-14: added `ide:gate:design-workbench-v1` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves blank, loaded starter, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`; after screenshots are local-only under `.redbyte/product-immersion/design-workbench-v1/after/`. |
@@ -138,8 +141,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Design Workbench v1. | `RB-DESIGN-WB-001`; `ide:gate:design-workbench-v1`; screenshots under `.redbyte/product-immersion/design-workbench-v1/after/`. |
 | Closed | Import / Recovery. | `RB-IMPORT-001`; `RB-IMPORT-ACCESS-001`; `ide:gate:import-recovery-contract`; screenshots under `.redbyte/product-immersion/import-recovery-contract/after/`. |
 | Closed | Lab Profile / Course Pack Data Seam. | `packages/rb-apps/src/apps/ide/labProfiles/`; `lab:profile-contract`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
-| Next | Student/Instructor Quickstarts. | queue item 12; current product/manual/release docs. |
-| Board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
+| Closed | Student/Instructor Quickstarts. | `docs/course/STUDENT_QUICKSTART.md`; `docs/course/INSTRUCTOR_QUICKSTART.md`; `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; queue item 12. |
+| Next / board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links
 
@@ -160,6 +163,9 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | V1 execution program | `docs/plans/RED_BYTE_V1_EXECUTION_PROGRAM.md` |
 | Product issue index | `docs/plans/2026-06-12-redbyte-product-issue-index.md` |
 | Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` |
+| Student quickstart | `docs/course/STUDENT_QUICKSTART.md` |
+| Instructor quickstart | `docs/course/INSTRUCTOR_QUICKSTART.md` |
+| TA troubleshooting guide | `docs/course/TA_TROUBLESHOOTING_GUIDE.md` |
 | Product manual | `docs/manuals/RedByte_Product_Manual.md` |
 | Release readiness / TA surface | `docs/STUDENT_RELEASE_READINESS.md` |
 | Certification matrix | `docs/release/vivado-basys3-certification-matrix.md` |

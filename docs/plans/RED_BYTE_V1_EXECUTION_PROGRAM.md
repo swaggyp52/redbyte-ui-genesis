@@ -374,25 +374,33 @@ Rollback:
 
 ## Phase 10 - Student/Instructor Quickstarts
 
+Status: Closed 2026-06-14 by the current course quickstart docs under `docs/course/`.
+
 Goal: Create public-facing quickstarts that do not depend on agent context.
 
 Why: Classroom adoption requires readable instructions and support boundaries.
 
 Implementation slices:
 
-- Student first lab.
-- Instructor setup/support.
+- Student first lab: `docs/course/STUDENT_QUICKSTART.md`.
+- Instructor setup/support: `docs/course/INSTRUCTOR_QUICKSTART.md`.
+- TA troubleshooting and support triage: `docs/course/TA_TROUBLESHOOTING_GUIDE.md`.
+- Windows setup and launch reference: `docs/course/windows-quickstart.md`.
 - Known limitations and proof tiers.
 
 Proof:
 
 - Docs validation.
-- Manual walkthrough against current UI.
+- Encoding check.
+- Diff whitespace check.
+- Manual cross-check against current cockpit, product manual, release readiness, certification matrix, proof-tier docs, and current IDE surface specs.
 
 Acceptance:
 
 - A student can follow the first lab without internal docs.
 - An instructor can understand E0/E1/E2/E3 requirements.
+- A TA can triage setup, Verify, Hardware, Export, Vivado, board observation, and Import issues without OS-era quickstarts.
+- Import stays a utility path and no new Vivado/Basys3 proof is claimed.
 
 Rollback:
 

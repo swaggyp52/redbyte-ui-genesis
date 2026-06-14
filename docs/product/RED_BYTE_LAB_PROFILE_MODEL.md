@@ -134,12 +134,13 @@ As of 2026-06-14:
 - Lab/profile architecture is still not a full course-pack authoring system.
 - ECE141 lab definitions and starter data still live in app source modules.
 - Some product-general gates still carry ECE141 names.
-- The blank-project AND workflow and Verify fail-edit-repair loop have E0 browser proof, but fresh Vivado/Basys3 proof remains pending.
+- The blank-project AND workflow, Verify fail-edit-repair loop, and current course quickstarts have E0/browser/docs proof, but fresh Vivado/Basys3 proof remains pending.
 
 ## Near-Term Implementation Order
 
 1. Preserve the `lab:profile-contract` gate.
-2. Write student/instructor quickstarts against current product truth before deeper course-pack authoring.
-3. Move more course-specific starter metadata toward course-pack data without changing core Basys3 logic.
-4. Extend course-pack no-solution gates only when new scaffold/profile data is added.
-5. Defer hosted classroom tooling until a concrete hosted-data requirement exists.
+2. Preserve the current `docs/course/` student, instructor, TA, and Windows quickstarts.
+3. Restore fresh Vivado/Basys3 proof on a machine with Vivado 2024.2 and board access before expanding hardware claims.
+4. Move more course-specific starter metadata toward course-pack data without changing core Basys3 logic.
+5. Extend course-pack no-solution gates only when new scaffold/profile data is added.
+6. Defer hosted classroom tooling until a concrete hosted-data requirement exists.

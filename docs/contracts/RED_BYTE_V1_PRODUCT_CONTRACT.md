@@ -210,11 +210,10 @@ The approved execution order is:
 8. Hardware / Basys3 Workbench.
 9. Design Workbench.
 10. Import / Recovery.
-11. Lab Profile / Course Pack Data Seam.
-12. Student/Instructor Quickstarts.
+11. Lab Profile / Course Pack Data Seam. Closed locally 2026-06-14.
+12. Student/Instructor Quickstarts. Closed locally 2026-06-14.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
-12. Packaging/Commercial Readiness.
 
 ## Non-Negotiables
 

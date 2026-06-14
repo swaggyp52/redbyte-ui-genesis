@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-14 (docs: add RedByte student and instructor quickstarts)
+
+**Subsystem:** RedByte public course quickstarts, instructor setup/support guidance, TA troubleshooting, proof-tier routing, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `af2baf47b6125d74af825c42f13cecbc2bf1f696`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added current course docs under `docs/course/`: `STUDENT_QUICKSTART.md`, `INSTRUCTOR_QUICKSTART.md`, and `TA_TROUBLESHOOTING_GUIDE.md`.
+- Routed README and `docs/DOC_INDEX.md` toward the current `docs/course/` quickstarts and marked legacy root quickstarts as stale historical context.
+- Updated current-truth, active-work, work-queue, V1 execution, product issue index, delete/demote/rebuild inventory, commercialization readiness, release readiness, lab-profile model, invariant/gate ownership, and V1 contract docs so Student/Instructor Quickstarts are closed and Vivado/Basys3 Proof Restoration is the next board-gated slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm rb:doc:validate` (`29` passed, `0` failed); `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. No README route/build behavior changed, so `rb:site:start:test` and `build:unified` were not required for this docs-only slice.
+
+**Safety:** This slice changes documentation only. It does not change rendered UI, routes, simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, export goldens, Import parser behavior, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. E0/E1/E2/E3 separation remains explicit, and Import remains a recovery/review utility rather than the main student spine.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The new quickstarts do not make RedByte commercially ready, do not create a full course-pack authoring system, and do not refresh any hardware evidence.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware. Do not start commercial packaging, SaaS/accounts, deeper course-pack authoring, or broad UI work unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (feat: add RedByte lab profile data seam)
 
 **Subsystem:** RedByte IDE lab profile/course-pack metadata seam, built-in profile validation, no-solution policy guard, and cockpit docs.

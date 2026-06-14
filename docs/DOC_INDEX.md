@@ -50,7 +50,7 @@ When docs conflict:
 7. Current IDE surface specs and architecture docs
 8. Historical / aspirational docs
 
-**Stale zone:** `docs/00-canon/00-08-*.md`, `docs/STUDENT_WORKFLOW.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/PRODUCT_SURFACES.md`, `docs/INTERACTION_CONTRACT.md`, `docs/PROJECT_MODEL.md`, `docs/P*_SMOKE_CHECKLIST.md`. These may be useful history, but they do not override current code/tests or current docs.
+**Stale zone:** `docs/00-canon/00-08-*.md`, `docs/STUDENT_WORKFLOW.md`, `docs/IMPLEMENTATION_STATUS.md`, `docs/PRODUCT_SURFACES.md`, `docs/INTERACTION_CONTRACT.md`, `docs/PROJECT_MODEL.md`, `docs/P*_SMOKE_CHECKLIST.md`, legacy root quickstarts such as `docs/INSTRUCTOR_QUICKSTART.md`, `docs/TA_QUICKSTART.md`, and `docs/TA_VIVADO_HANDOFF_ONE_PAGE.md`. These may be useful history, but they do not override current code/tests or current docs.
 
 `docs/00-canon/07-fpga-laboratory-constitution.md` and `docs/00-canon/08-fpga-agent-bootstrap.md` are background / aspirational unless a future edit marks a section current. This resolves the old contradiction between "read 00-canon/08" and "ignore 00-canon/00-08": read them only for historical or aspirational context, not as current product truth.
 
@@ -77,6 +77,10 @@ When docs conflict:
 | [product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md](./product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md) | Product-brain routing map for current, target, proof, audit, and stale docs |
 | [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target lab-profile and course-pack architecture model |
 | [product/RED_BYTE_COMMERCIALIZATION_READINESS.md](./product/RED_BYTE_COMMERCIALIZATION_READINESS.md) | Current commercial readiness boundary and deployment/support posture |
+| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart |
+| [course/INSTRUCTOR_QUICKSTART.md](./course/INSTRUCTOR_QUICKSTART.md) | Current instructor setup, assignment, and proof-tier quickstart |
+| [course/TA_TROUBLESHOOTING_GUIDE.md](./course/TA_TROUBLESHOOTING_GUIDE.md) | Current TA troubleshooting and support triage guide |
+| [course/windows-quickstart.md](./course/windows-quickstart.md) | Windows course setup, launch, doctor, update, and reset scripts |
 | [audits/2026-06-12-redbyte-backbone-reconciliation.md](./audits/2026-06-12-redbyte-backbone-reconciliation.md) | Current docs/backbone reconciliation note |
 | [audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md](./audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md) | Current whole-app student/product UX baseline |
 | [audits/2026-06-12-redbyte-general-lab-workbench-audit.md](./audits/2026-06-12-redbyte-general-lab-workbench-audit.md) | General lab workbench, hardcoded-assumption, and gate-truth audit |
@@ -125,6 +129,10 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 
 | File | Purpose |
 |------|---------|
+| [course/STUDENT_QUICKSTART.md](./course/STUDENT_QUICKSTART.md) | Current student first-lab quickstart for Project -> Design -> Verify -> Map Pins -> Export |
+| [course/INSTRUCTOR_QUICKSTART.md](./course/INSTRUCTOR_QUICKSTART.md) | Current instructor setup/support quickstart and proof-tier boundary |
+| [course/TA_TROUBLESHOOTING_GUIDE.md](./course/TA_TROUBLESHOOTING_GUIDE.md) | Current TA triage guide for setup, RedByte surfaces, Vivado, board, and Import |
+| [course/windows-quickstart.md](./course/windows-quickstart.md) | Current Windows course launcher and doctor reference |
 | [manuals/RedByte_Product_Manual.md](./manuals/RedByte_Product_Manual.md) | Canonical current product reference |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 target contract and execution order |
 | [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target model for professor-authored labs, course packs, and from-scratch student projects |
@@ -225,7 +233,7 @@ The primary package under active development is `packages/rb-apps`. Other packag
 - The 2026-06-12 whole-app product immersion audit remains historical baseline input, and the 2026-06-13 V1 visual audit is the current screenshot-backed reset evidence.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; keep visual work scoped to the ordered V1 queue rather than broad polish.
-- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`, and the first lab-profile/course-pack seam is covered by `lab:profile-contract`. The next implementation slice is Student/Instructor Quickstarts.
+- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`, the first lab-profile/course-pack seam is covered by `lab:profile-contract`, and current student/instructor/TA quickstarts live under `docs/course/`. The next implementation slice is Vivado/Basys3 Proof Restoration.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.

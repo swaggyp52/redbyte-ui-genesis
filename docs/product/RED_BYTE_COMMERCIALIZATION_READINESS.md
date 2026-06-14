@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte commercialization and deployment readiness assessment
@@ -8,7 +8,7 @@ role: RedByte commercialization and deployment readiness assessment
 
 # RedByte Commercialization Readiness
 
-Date: 2026-06-12
+Date: 2026-06-14
 Source audit: `docs/audits/2026-06-12-redbyte-whole-app-product-immersion-audit.md`
 
 ## Verdict
@@ -42,7 +42,7 @@ Do not market it as a Vivado replacement. RedByte is a learning IDE and proof-ha
 | Verify failure-repair risk | Debugging is the learning loop. A stuck repair path becomes support debt. | Focused regression and fix for expected-output edit -> fail -> repair -> pass. |
 | Export action/state ambiguity | Export is the handoff to Vivado; contradictory state hurts trust. | One visible trust state and one primary next action. |
 | No fresh local Vivado/Basys3 proof | Hardware claims are the riskiest public promise. | Run E1/E2/E3 proof on a Vivado 2024.2 + Basys3 machine before claiming hardware readiness. |
-| Support packaging incomplete | Paid users buy reliability, docs, and response paths as much as software. | Instructor quickstart, student quickstart, known limitations, troubleshooting, and support triage. |
+| Support packaging still incomplete | Paid users buy reliability, docs, and response paths as much as software. | Student, instructor, TA, and Windows quickstarts now exist under `docs/course/`; still need fresh Vivado/Basys3 proof, support response boundaries, license/privacy review, and deployment posture before paid classroom use. |
 | License/privacy/compliance posture not finalized | Institutions need clear terms and data boundaries. | Decide free/public, support license, local package, and privacy posture before selling. |
 
 ## Deployment Options
@@ -145,8 +145,10 @@ Proof:
 
 Docs:
 
-- Instructor quickstart.
-- Student first-lab quickstart.
+- Instructor quickstart: `docs/course/INSTRUCTOR_QUICKSTART.md`.
+- Student first-lab quickstart: `docs/course/STUDENT_QUICKSTART.md`.
+- TA troubleshooting guide: `docs/course/TA_TROUBLESHOOTING_GUIDE.md`.
+- Windows setup quickstart: `docs/course/windows-quickstart.md`.
 - Known-good starter list.
 - Known limitations and external proof tiers.
 - Vivado handoff troubleshooting.
@@ -183,10 +185,10 @@ Possible paid offer after readiness bar:
 
 1. Finish first-viewport product hardening.
 2. Fix Verify failure-repair risk.
-3. Run two clean classroom rehearsal passes.
-4. Restore fresh Vivado/Basys3 proof on hardware.
-5. Publish a free hosted evaluation build with honest E0/E1/E2/E3 language.
-6. Package instructor/student docs.
+3. Package current student/instructor/TA quickstarts.
+4. Run two clean classroom rehearsal passes.
+5. Restore fresh Vivado/Basys3 proof on hardware.
+6. Publish a free hosted evaluation build with honest E0/E1/E2/E3 language.
 7. Pilot with one trusted course or instructor.
 8. Only then define pricing and support terms.
 
@@ -195,12 +197,12 @@ Possible paid offer after readiness bar:
 | Area | Status | Notes |
 |---|---|---|
 | Core product concept | Strong | Narrow and differentiated. |
-| Student workflow spine | Strong but needs UX hardening | Browser gates pass, first-viewport UX needs repair. |
-| Verification trust | Strong with one repair risk | Compare/failure explanation works; edit-repair path needs regression. |
+| Student workflow spine | Stronger | Browser gates cover current Project, Design, Verify, Hardware, Export, Import, and quickstart docs now explain the path. |
+| Verification trust | Stronger | Compare/failure explanation and edit-repair path are gate-backed. |
 | Export package | Strong E0 | Artifact inspection passes; no local Vivado run. |
 | Hardware proof | Not current on this desktop | Vivado absent locally. |
-| Import/recovery | Promising | Smoke gates pass; broader import fidelity still needed. |
+| Import/recovery | Stronger but utility-scoped | Representative manifest/corrupt recovery is browser-gated; broad arbitrary HDL migration remains outside current claims. |
 | Deployment | Not assessed as live | Local servers only in this audit. |
-| Support/docs | Partial | Current docs are strong for agents; instructor/student docs need packaging. |
+| Support/docs | Improved but still partial | Current student, instructor, TA, and Windows quickstarts exist under `docs/course/`; support process, license/privacy, deployment, and hardware proof remain open. |
 | SaaS readiness | Not justified | Defer accounts and hosted data. |
 

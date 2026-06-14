@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-06
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: v1 readiness gate — honest checklist of what is done, in-progress, and blocked
@@ -8,7 +8,7 @@ role: v1 readiness gate — honest checklist of what is done, in-progress, and b
 
 # RedByte v1 — Release Readiness Checklist
 
-**Last updated:** 2026-05-12
+**Last updated:** 2026-06-14
 **Honest posture:** RC1 (frozen 2026-04-23). Core student workflow proven. Release engineering gates are green; course setup rehearsal is the next handoff risk.
 
 Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]` = not done · `[!]` = known blocker
@@ -99,8 +99,9 @@ Key: `[x]` = done and verified · `[~]` = partially done or in-progress · `[ ]`
 
 ## G. University Pilot Readiness
 
-- [x] Instructor quickstart materials exist in repo (`docs/INSTRUCTOR_QUICKSTART.md`)
-- [x] TA spot-check materials exist in repo
+- [x] Current instructor quickstart materials exist in repo (`docs/course/INSTRUCTOR_QUICKSTART.md`)
+- [x] Current student quickstart materials exist in repo (`docs/course/STUDENT_QUICKSTART.md`)
+- [x] Current TA troubleshooting materials exist in repo (`docs/course/TA_TROUBLESHOOTING_GUIDE.md`)
 - [x] Lab-day readiness doc exists (`docs/lab-day-vivado-basys3-readiness.md`)
 - [~] Windows course scripts added on `release/windows-course-scripts-1` (`setup.ps1`, `launch.ps1`, `doctor.ps1`, `update.ps1`, `reset.ps1`); merge and fresh Windows rehearsal still pending
 - [~] Classroom demo script exists but references OS-era framing — needs update
