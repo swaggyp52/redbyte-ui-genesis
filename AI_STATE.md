@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-14 (feat: add RedByte lab profile data seam)
+
+**Subsystem:** RedByte IDE lab profile/course-pack metadata seam, built-in profile validation, no-solution policy guard, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `28a47950d26b98708db4424ec18cccee98ed4c8d`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `packages/rb-apps/src/apps/ide/labProfiles/` as a data-only seam for built-in lab/course metadata.
+- Added built-in profiles for Logic Gates: AND / OR / XOR, Half Adder, 2-Bit Counter, and the Lab 8 Security Lock scaffold.
+- Added typed profile fields for goals, required IO, verification expectations, mapping requirements, export artifact expectations, proof-tier expectations, starter references, and no-solution policy.
+- Added validators and helpers: `listBuiltInLabProfiles`, `getLabProfileById`, `validateLabProfile`, `validateLabProfiles`, and `assertNoSolutionLeak`.
+- Added `lab:profile-contract` and Vitest coverage proving deterministic profile IDs, existing starter/example references, course metadata separation from runtime circuit state, duplicate and missing-reference diagnostics, IO/export/proof validation, E0-only profile claims, and Lab 8 solved-starter rejection.
+- Updated cockpit/current-truth/work-queue/lab-profile-model/invariant/gate-ownership/execution/issue-index/inventory/doc-index/source-map docs so Lab Profile / Course Pack Data Seam is closed locally and Student/Instructor Quickstarts are the next slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: the intentional red `pnpm -s lab:profile-contract` run failed on missing `../index` before implementation; the final `pnpm -s lab:profile-contract` passed (`4` tests); `pnpm -s ide:gate:from-scratch-general-workflow`; `pnpm -s ide:gate:project-command-center`; `pnpm -s ide:gate:import-recovery-contract`; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate`; `pnpm rb:encoding:check`; and `git diff --check`.
+
+**Safety:** This slice changes profile metadata, profile validation, one focused Vitest gate, package scripts, and cockpit docs only. It does not change rendered UI, simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, export goldens, Import parser behavior, browser workflow copy, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Built-in profiles reference existing public starter/example IDs and keep Lab 8 scaffold solution-forbidden.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The profile seam is not a full course-pack authoring system, instructor solution store, runtime enforcement layer, or SaaS classroom-management feature.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `docs: add RedByte student and instructor quickstarts`. Do not start Vivado proof, commercial packaging, SaaS/accounts, or deeper course-pack authoring unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (fix: rebuild RedByte import recovery contract)
 
 **Subsystem:** RedByte IDE Import / Recovery utility, Project Import / Recover entry copy, browser gate wiring, import/export recovery helper, and cockpit docs.

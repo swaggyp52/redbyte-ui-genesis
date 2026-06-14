@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-13
+**Last Updated:** 2026-06-14
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -221,11 +221,11 @@ The primary package under active development is `packages/rb-apps`. Other packag
 
 - The 2026-06-13 Under-the-Hood Mastery Sprint is the current source/state/proof control layer. Use the architecture map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc before touching a stateful product path.
 - The 2026-06-13 V1 product contract reset remains the active near-term product route. Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, the V1 visual audit, and the V1 execution program before starting new product code.
-- The normal-use breakage audit found Export artifact preview visibility as the clearest audit-driven P1 target; that target is now closed by `ide:gate:export-trust-integrity`. Import utility-access ambiguity remains a P2 product-control issue.
+- The normal-use breakage audit found Export artifact preview visibility and Import utility-access ambiguity; both are now closed by `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:import-recovery-contract`.
 - The 2026-06-12 whole-app product immersion audit remains historical baseline input, and the 2026-06-13 V1 visual audit is the current screenshot-backed reset evidence.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; keep visual work scoped to the ordered V1 queue rather than broad polish.
-- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, and Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`; the next implementation slice is Shell and Workbench Layout Reset. The first lab-profile/course-pack seam is intentionally queue item 11.
+- Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`, and the first lab-profile/course-pack seam is covered by `lab:profile-contract`. The next implementation slice is Student/Instructor Quickstarts.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
 - Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.

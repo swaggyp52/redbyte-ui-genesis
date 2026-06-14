@@ -344,26 +344,29 @@ Rollback:
 
 ## Phase 9 - Lab Profile / Course Pack Data Seam
 
+Status: Closed 2026-06-14 by `lab:profile-contract`.
+
 Goal: Introduce the first small data seam for professor-authored labs and course packs.
 
 Why: Course packs are important, but should build on a stable workbench contract.
 
 Implementation slices:
 
-- One minimal profile-backed lab path.
-- Course-specific starter data moved toward data boundary.
-- No-solution guard retained.
+- Added one data-only profile-backed seam under `packages/rb-apps/src/apps/ide/labProfiles/`.
+- Added built-in profiles for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 Security Lock scaffold.
+- Kept course/profile metadata separate from runtime circuit state and kept no-solution policy explicit.
 
 Proof:
 
-- Profile-backed lab test.
-- No-solution policy gate.
-- Existing starter paths still work.
+- `lab:profile-contract`.
+- Existing starter/example references are validated against the IDE catalog.
+- No-solution policy rejects solved Lab 8 starter evidence.
 
 Acceptance:
 
-- A professor can define one supported lab shape without editing core board/export semantics.
+- A supported lab shape can be represented as profile metadata without editing core board/export semantics.
 - Basys3 resource and proof-tier logic stays core.
+- No browser, Vivado, Basys3, generator, golden, or project-format claim changed in this phase.
 
 Rollback:
 

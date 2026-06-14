@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte subsystem, state, and proof ownership map
@@ -48,7 +48,7 @@ Base audited for this map: `d235823a` on `main`.
 | 19 | VHDL/XDC/testbench/Tcl generation | `fpga/boards/basys3/basys3ExportService.ts`; `testbenchGenerator.ts`; `vivadoImportTcl.ts`; `packages/rb-fpga-toolchain/src/**` | generator inputs from runtime circuit/scenarios/mapping | export build | ZIP contents and hashes | golden export gates; vivado artifact tests; export e2e | Generation changes require source-explained hash/golden updates, not screenshot-only proof. |
 | 20 | Import and project recovery | `surfaces/ImportSurface.tsx`; `zipImport.ts`; import fixtures/tests; `projectPersistence.ts` | Import surface local candidate until apply; runtime after apply | upload ZIP, parse, review, apply, route to Design | runtime after apply; archive helpers | zip import gates; import render/roundtrip tests | Normal loaded-project access is currently ambiguous; Import must not replace project before review/apply. |
 | 21 | Examples, starters, no-solution | `examples/**`; `examplesCatalog.ts`; `starterKits/**`; no-solution tests | catalog/source JSON plus starter load into runtime | starter select/load | project runtime after load | examples contract; no-solution CI; lab starter tests | Starters must be general enough for V1 and must not leak solution answers where blocked. |
-| 22 | Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; future data seam; starter/catalog modules | not yet a runtime authority for V1 | future profile-backed lab load | future data, not active project proof | docs only plus future gate needed | Course packs are deferred to queue item 11; do not hardcode new lab behavior before trust/workbench slices. |
+| 22 | Lab profile data seam | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `packages/rb-apps/src/apps/ide/labProfiles/**`; starter/catalog modules | profile metadata only; not runtime circuit authority | profile lookup and validation; future profile-backed lab load | future course data, not active project proof | `lab:profile-contract` | Course metadata must not own Basys3, Verify, mapping, export, proof-tier, or project-runtime semantics. |
 | 23 | Persistence, local storage, archive | `projectRuntime.ts`; `apps/ide/projectPersistence.ts`; `services/projectPersistence.ts` | runtime persisted subset and archive helpers | autosave, load, reset, import/export roundtrip | `rb.ide.project-runtime.v1`, `.rbproj`, ZIP | persistence contract/tests; rbproject roundtrip | Persisted proof must invalidate when source state changes, not resurrect old trust. |
 | 24 | Browser gates and Playwright harness | `scripts/gates/_gateHarness.mjs`; `scripts/gates/*.mjs`; `scripts/classroom-gate.mjs` | test harness launches preview/dev app and browser state | gate scripts, screenshots, seeded localStorage | generated local artifacts only | classroom gate; focused gates; new integrity gates | Gates must assert current UI truth, not stale selectors or retired flows. |
 | 25 | Vitest and pure logic tests | `packages/**/__tests__/**`; `vitest.config.*`; `scripts/verify-gates-classroom.mjs` | source modules under test | unit/integration test updates | no app persistence | determinism/parity suite; focused runtime tests | Use Vitest for state/logic contracts and browser gates for rendered workflows. |
@@ -65,12 +65,12 @@ Base audited for this map: `d235823a` on `main`.
 
 ## Current Audit Findings
 
-The 2026-06-13 normal-use audit found the main student spine coherent on current build `Buildd235823`, with no console or page errors across the exercised Project, Design, Verify, Hardware, and Export paths. Two product-control findings remain open:
+The 2026-06-13 normal-use audit found the main student spine coherent on current build `Buildd235823`, with no console or page errors across the exercised Project, Design, Verify, Hardware, and Export paths. Later slices closed the two product-control findings from that audit:
 
-- Export reports generated artifacts but does not expose an obvious artifact preview in the normal-use first workflow.
-- Import is treated as a utility, but the loaded Project spine did not expose an Import entry point while the manual still says the left rail includes Import.
+- Export artifact preview and handoff station visibility are covered by `ide:gate:export-trust-integrity` and `ide:gate:export-handoff-station`.
+- Import utility access and recovery language are covered by `ide:gate:import-recovery-contract`.
 
-Those are tracked in the normal-use audit and issue index. They were not fixed in this invariant-gate slice.
+The next open product-control gap is public student/instructor quickstart documentation, not a runtime authority change.
 
 ## Attribution
 

@@ -10,7 +10,7 @@ role: RedByte product invariant and gate ownership matrix
 
 This matrix maps product invariants to concrete proof. If an invariant has only a screenshot or only a unit test, say that plainly and add the missing gate before claiming full coverage.
 
-Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base, Verify Evidence Workbench proof was added from the later `fdf17b7` base, Shell Workbench Hierarchy proof was added from the later `9a5fb0b` base, Project Command Center proof was added from the later `3b55d92` base, Export Handoff Station proof was added from the later `06bbb6a` base, Hardware / Basys3 Workbench proof was added from the later 2026-06-14 local hardware slice, Design Workbench v1 proof was added from the later `7bb1a00` base, and Import / Recovery proof was added from the later 2026-06-14 local import slice.
+Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof was added from the later `fdd1abd` base, Verify Evidence Workbench proof was added from the later `fdf17b7` base, Shell Workbench Hierarchy proof was added from the later `9a5fb0b` base, Project Command Center proof was added from the later `3b55d92` base, Export Handoff Station proof was added from the later `06bbb6a` base, Hardware / Basys3 Workbench proof was added from the later 2026-06-14 local hardware slice, Design Workbench v1 proof was added from the later `7bb1a00` base, Import / Recovery proof was added from the later 2026-06-14 local import slice, and Lab Profile / Course Pack Data Seam proof was added from the later 2026-06-14 local lab-profile slice.
 
 ## Gate Ownership Summary
 
@@ -48,7 +48,7 @@ Base audited for this matrix: `d235823a` on `main`; Export Trust Integrity proof
 | RB-INV-019 | Import must not replace the active project before review/apply. | Import | Import surface tests, zip import gates | `ide:gate:import-recovery-contract` proves corrupt manifest ZIP failure does not replace the active Logic Gates project and manifest restore still requires Review Import plus Confirm Replace Project | arbitrary unsupported user files remain parser-specific future coverage | P2 |
 | RB-INV-020 | Import access must match docs and product contract. | Import/product control | manual and V1 docs disagree with current loaded Project visibility | `ide:gate:project-command-center` and `ide:gate:import-recovery-contract` prove Import / Recover is visible from first-launch and loaded Project command centers and opens the utility route | none current for representative manifest/corrupt paths | P2 |
 | RB-INV-021 | Starter examples must not leak blocked solution content. | Examples/no-solution | no-solution gates, examples contract | classroom gate still includes examples/no-solution layers | no new risk | P1 |
-| RB-INV-022 | Lab profile/course pack data must not become the next source of hardcoded course behavior before workbench hierarchy stabilizes. | Product architecture | work queue and V1 execution program | this sprint keeps it deferred | future data seam needs explicit profile-backed gate | P2 |
+| RB-INV-022 | Lab profile/course pack data must remain metadata and must not move Basys3, Verify, mapping, export, or proof-tier semantics out of core product authority. | Product architecture | work queue and V1 execution program | `lab:profile-contract` proves deterministic profile data, existing starter references, course/runtime separation, IO/export/proof validation, and Lab 8 no-solution rejection | deeper course-pack authoring and runtime enforcement remain future work | P2 |
 | RB-INV-023 | Persistence must not resurrect stale trusted proof after reload. | Runtime persistence | persistence tests/gate; projectRuntime persistence | normal-use audit included reload persistence | browser gate does not exhaust every mutation sequence | P1 |
 | RB-INV-024 | Browser gates must use current selectors and current user flows. | Gate harness | recent gate repairs | new shell/design integrity gates use visible runtime assertions | selector drift remains an ongoing risk | P1 |
 | RB-INV-025 | `classroom:gate` must include trust-critical lightweight browser gates. | CI/Classroom | classroom gate script | includes design workbench, Design Workbench v1, shell layout, shell workbench hierarchy, Project command center, Export trust, Export handoff station, Hardware Basys3 workbench, Import recovery, and Verify evidence workbench integrity gates | runtime duration can grow; monitor CI time | P1 |
@@ -117,11 +117,17 @@ Protects Import / Recovery as a utility path. It proves Project Import / Recover
 
 This gate is now part of `classroom:gate` and `verify:gates:classroom`.
 
+### `lab:profile-contract`
+
+Protects the first lab-profile data seam. It proves the built-in profile IDs are deterministic, profile metadata references existing public starter/example IDs, course metadata does not include runtime circuit state, validators report duplicate IDs and missing starter/output coverage, required IO/export/proof expectations stay explicit, and Lab 8 solved starter evidence is rejected by the no-solution policy.
+
+This gate is a focused Vitest contract, not a browser, Vivado, or hardware proof.
+
 ## Recommended Next Gates
 
 | Proposed gate | Why |
 |---|---|
-| Profile-backed lab data seam gate | Prove one professor-authored lab/profile path without changing Basys3 board, Verify, Export, or no-solution semantics. |
+| Quickstart doc walkthrough | Prove student and instructor quickstarts match current app truth and proof-tier limits without changing product source. |
 
 ## Attribution
 

@@ -30,7 +30,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Current release truth | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/**` | Safe public, TA, and hardware claims. |
 | Current product behavior | `docs/manuals/RedByte_Product_Manual.md` | What the product does today. |
 | Older target contract | `docs/contracts/RedByte_Product_Contract.md` | Historical/broader target standard; do not let it override the V1 reset queue. |
-| Lab profile target model | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md` | Target architecture boundary for course packs; now queue item 11. |
+| Lab profile model and seam | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; `packages/rb-apps/src/apps/ide/labProfiles/` | Current data-only course/profile boundary; deeper course-pack authoring remains future work. |
 | Historical audit | `docs/roadmap/RedByte_Gap_Audit.md` | Closure history and remaining audit context. |
 | Background / stale | Stale zone in `docs/DOC_INDEX.md` | Do not use as default context for current product work. |
 
@@ -96,13 +96,14 @@ Supporting truths:
 
 ### Product immersion posture
 
-- Project, Design, Export, Hardware, Import, and the global shell are materially stronger than earlier audits; the next gap is the Lab Profile / Course Pack Data Seam.
+- Project, Design, Export, Hardware, Import, the global shell, and the first lab-profile data seam are materially stronger than earlier audits; the next gap is public student/instructor quickstart documentation.
 - Import / Recovery is now closed locally by `ide:gate:import-recovery-contract`: Project exposes Import / Recover, the Import first look identifies RedByte manifest restore as highest fidelity, Vivado ZIP/VHDL is reconstruction-limited, corrupt import leaves the current project intact, imported Verify PASS is not trusted automatically, and no Vivado/Basys3 proof is claimed.
 - Design Workbench v1 is now closed by `ide:gate:design-workbench-v1`: blank, loaded starter, selected node, selected wire, wire start/cancel, moved node, delete/undo, split/code, and zoom/fit/center states are browser-proved at `1366x768` and `1440x900`, with the graph/canvas as the first-viewport focal object.
 - Verify Evidence Workbench is now closed by `ide:gate:verify-evidence-workbench-integrity`: first-run stimulus authoring stays visible, Compare PASS/FAIL/repair is browser-proved, first mismatch expected/observed values are visible, and the gate checks for meaningful evidence-region overlap.
 - Shell and Workbench Layout Reset is now closed by `ide:gate:shell-workbench-hierarchy`: the proof ribbon is the compact workflow/status authority, the footer is support-only chrome, rail step labels no longer repeat completion status, and the workbench frame starts at the compact shell boundary across Project, Design, Verify, Hardware, Export, and Import.
 - Export Handoff Station is now closed by `ide:gate:export-handoff-station`: Draft/Needs Review, Ready-to-build, and Trusted post-download states share one visible station; package handoff and artifact workspace are visible; README E0 and E1/E2/E3 boundaries are browser-proved; mapping summaries agree; Vivado next steps stay downstream; and the primary station action remains repair/build/download rather than hardware proof.
 - Hardware / Basys3 Workbench is now closed by `ide:gate:hardware-basys3-workbench`: selected rows expose project signal, board resource, package pin, and XDC lines, and ready-state copy stays E0-only with Vivado build, bitstream programming, and board observation external.
+- Lab Profile / Course Pack Data Seam is now closed locally by `lab:profile-contract`: built-in profile metadata references existing Logic Gates, Half Adder, 2-Bit Counter, and Lab 8 starter IDs; course metadata stays separate from runtime circuit state; Lab 8 remains scaffold/solution-forbidden; and all profile claims stay E0-only.
 
 ### Vivado/Basys3 proof posture
 
@@ -145,6 +146,7 @@ Supporting truths:
 - Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
 - Hardware / Basys3 Workbench is covered by `ide:gate:hardware-basys3-workbench`, including first-viewport Basys3 workbench proof at `1366x768` and `1440x900`, selected signal -> board resource -> package pin -> XDC hierarchy, and E0-only ready wording.
 - Import / Recovery is covered by `ide:gate:import-recovery-contract`, including Project utility discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no browser Vivado/Basys3 overclaim.
+- Lab Profile / Course Pack Data Seam is covered by `lab:profile-contract`, including deterministic profile IDs, existing starter/example references, required IO coverage, export artifact expectations, E0-only profile proof claims, and no-solution rejection for Lab 8 solved evidence.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -161,15 +163,15 @@ Approved V1 order:
 8. Hardware / Basys3 Workbench.
 9. Design Workbench.
 10. Import / Recovery. Closed locally 2026-06-14.
-11. Lab Profile / Course Pack Data Seam.
+11. Lab Profile / Course Pack Data Seam. Closed locally 2026-06-14.
 12. Student/Instructor Quickstarts.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Import / Recovery is:
+The next audit-driven slice after Lab Profile / Course Pack Data Seam is:
 
 ```text
-fix: introduce RedByte lab profile data seam
+docs: add RedByte student and instructor quickstarts
 ```
 
-It should introduce one small profile-backed lab data boundary while preserving Basys3 board semantics, Verify behavior, pin mapping, export generation, no-solution policy, and E0/E1/E2/E3 proof boundaries. Do not skip to quickstarts, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should create public-facing quickstarts that match current app truth, identify Import as a utility, explain E0/E1/E2/E3 limits, and avoid product source changes or new hardware claims. Do not skip to website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

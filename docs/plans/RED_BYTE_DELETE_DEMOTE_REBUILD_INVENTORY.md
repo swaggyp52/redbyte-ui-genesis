@@ -17,7 +17,7 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
-Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Import utility/recovery rows were addressed locally on 2026-06-14 by the Import / Recovery slice. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, future Hardware work should start from `ide:gate:hardware-basys3-workbench`, and future Import work should start from `ide:gate:import-recovery-contract`.
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Import utility/recovery rows were addressed locally on 2026-06-14 by the Import / Recovery slice. The first lab profile/course-pack seam was addressed locally on 2026-06-14 by `lab:profile-contract`. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, future Hardware work should start from `ide:gate:hardware-basys3-workbench`, future Import work should start from `ide:gate:import-recovery-contract`, and future profile/course-pack work should start from `lab:profile-contract`.
 
 ## Decision Terms
 
@@ -64,7 +64,7 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 | Debug/dev details | Some internal proof/data details appear in student path. | Low. | Support only. | Demote | Multiple surfaces | Advanced/details disclosures hold support content. |
 | Chips/status pills | Useful language, but too many styles and authorities. | Quick scan. | Review readiness. | Rebuild | shared primitives/CSS | Shared state grammar across surfaces. |
 | Accounts/SaaS/classroom groups | Not present and not currently needed for V1 trust. | Later convenience. | Later management layer. | Defer | Future hosted layer | Concrete hosted-data requirement before work starts. |
-| Lab profile/course-pack seam | Important, but less urgent than trust and workbench hierarchy repair. | Instructor-authored labs later. | Core future value. | Defer to queue item 11 | `RED_BYTE_LAB_PROFILE_MODEL.md`, starter data | First profile-backed lab after Verify, shell/Project/Export/HW/Design stability. |
+| Lab profile/course-pack seam | First data-only seam is now present; deeper authoring and course-pack distribution remain future work. | Instructor-authored labs later. | Core future value. | Keep / extend later | `RED_BYTE_LAB_PROFILE_MODEL.md`, `packages/rb-apps/src/apps/ide/labProfiles/`, starter data | `lab:profile-contract`; future profile-backed UI only after a specific ticket. |
 
 ## Near-Term Deletion / Demotion Rules
 
@@ -79,12 +79,12 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 Use this structured ticket before the next code slice:
 
-- Title: Introduce the first RedByte lab profile data seam.
-- Surface: Project starter/course data and selected profile-backed lab path.
-- Journey segment: one professor-authored lab/profile path through the existing Project -> Design -> Verify -> Map Pins -> Export spine.
-- Observed behavior: Import / Recovery is now utility-gated and closed locally; course/starter data still sits too close to core product behavior.
-- Expected behavior: one supported lab shape can be profile-backed without changing Basys3 board semantics, Verify semantics, Export generation, or no-solution policy.
-- Acceptance proof: profile-backed lab data test; existing starter checks; no-solution gate; classroom gate; docs update; no Vivado/Basys3 E1-E3 claims.
+- Title: Create current RedByte student and instructor quickstarts.
+- Surface: Public-facing student first-lab docs and instructor setup/support docs.
+- Journey segment: student starts a supported lab and instructor understands local setup, assignment handoff, and proof limits without agent-only context.
+- Observed behavior: the first lab profile seam is now closed locally, but quickstarts still lag the current Project -> Design -> Verify -> Map Pins -> Export posture.
+- Expected behavior: quickstarts match current app truth, identify Import as a utility, keep Vivado/Basys3 proof external, and avoid SaaS/classroom-management claims.
+- Acceptance proof: docs validation; encoding check; manual cross-check against current product/manual/release docs; no product source changes; no Vivado/Basys3 E1-E3 claims.
 
 ## Attribution
 

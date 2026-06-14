@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Import / Recovery Utility Contract v1
+**Latest product/control slice:** Lab Profile / Course Pack Data Seam v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -36,10 +36,11 @@ Import is a utility. Vivado build, board programming, and board observation are 
 7. **Project Command Center is closed locally.** `ide:gate:project-command-center` now proves Project as a neutral command center with blank, starter, saved/recent, Import/recovery, loaded-project peer paths, no false no-circuit mapping/export failure copy, and a guarded loaded-project Build Fresh action.
 8. **Design Workbench v1 is closed locally.** `ide:gate:design-workbench-v1` now proves blank, loaded starter, selected node, selected wire, wire start/cancel, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the canvas/graph as the focal object.
 9. **Import / Recovery is closed locally.** `ide:gate:import-recovery-contract` now proves Project Import / Recover discoverability, RedByte manifest restore as the highest-fidelity path, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/hardware overclaim.
-10. **Next audit-driven code slice: Lab Profile / Course Pack Data Seam.** Keep it small and profile-backed; do not change Basys3/export/proof semantics.
-11. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
+10. **Lab Profile / Course Pack Data Seam is closed locally.** `lab:profile-contract` now proves deterministic built-in profile metadata for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold; validates starter references, IO coverage, export artifact expectations, E0-only proof claims, and solution-forbidden Lab 8 evidence.
+11. **Next audit-driven docs slice: Student/Instructor Quickstarts.** Write public-facing quickstarts against current app truth; do not change product behavior or make E1-E3 hardware claims.
+12. **Keep Vivado/Basys3 proof and commercialization gated.** No new hardware or commercial claim comes from this sprint.
 
-Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or lab-profile extraction unless the user explicitly reprioritizes.
+Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or deeper course-pack authoring unless the user explicitly reprioritizes.
 
 ## Current Blockers / Risks
 
@@ -55,33 +56,34 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Export Handoff Station | Closed 2026-06-14: Draft, Ready-to-build, and Trusted post-download states now sit in one visible station with package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and browser-only evidence boundaries proved by `ide:gate:export-handoff-station`. | Keep the gate in `classroom:gate` and `verify:gates:classroom`; future Export changes should preserve build/download as the primary station action unless product contract changes. |
 | Import utility access | Closed locally 2026-06-14: Project exposes Import / Recover, Import leads with RedByte manifest restore as highest fidelity, Vivado/VHDL is reconstruction-limited, corrupt import leaves current project intact, and imported Verify PASS is not trusted automatically. | Keep `ide:gate:import-recovery-contract` in `classroom:gate` and `verify:gates:classroom`; future arbitrary HDL migration work needs separate parser/source tests. |
 | Hardware proof language | Closed 2026-06-14: Hardware ready state now says E0 only, the selected binding chain exposes signal, board resource, package pin, and XDC, and `ide:gate:hardware-basys3-workbench` is wired into classroom gates. | Preserve the gate and do not claim Vivado build, bitstream programming, or board observation without external E1/E2/E3 evidence. |
-| Lab profile/course-pack seam | Target model exists, but implementation is intentionally deferred to queue item 11. | Do not start until workbench hierarchy and trust slices land or user reprioritizes. |
+| Lab profile/course-pack seam | Closed locally 2026-06-14 as a data-only seam under `packages/rb-apps/src/apps/ide/labProfiles/`; built-ins reference existing public starter/example IDs and keep Lab 8 scaffold solution-forbidden at E0 only. | Preserve `lab:profile-contract`; future course-pack work should build on the seam without moving simulation, Basys3, Verify, mapping, or export semantics into course data. |
 | Fresh Vivado/Basys3 proof | Vivado 2024.2 and board proof were not run in this reset. | Use a Vivado 2024.2 + Basys3 machine before making new E1/E2/E3 claims. |
 | Node pinned runtime | `.nvmrc` is `20.19.0`; current local proof uses Node `v24.15.0` and pnpm `10.24.0`. | Label Node 24 evidence honestly; rerun pinned-runtime proof when available. |
 
 ## Next Technical Task
 
-**Target:** Lab Profile / Course Pack Data Seam.
+**Target:** Student/Instructor Quickstarts.
 
 Structured hardening ticket fields to start from:
 
-- Title: Introduce the first RedByte lab profile data seam.
-- Surface: Project starter/course data and any lab-profile-backed runtime boundary selected for the slice.
-- Journey segment: one small professor-authored lab/profile path that plugs into the existing Project -> Design -> Verify -> Map Pins -> Export spine.
-- Observed behavior: RedByte still has course/starter data near core product behavior, while Import / Recovery is now utility-gated and closed locally.
-- Expected behavior: one profile-backed lab shape can be defined without changing Basys3 board semantics, export generation, Verify semantics, or no-solution policy.
-- Minimum acceptance proof: profile-backed data test, existing starter path checks, no-solution gate, classroom gate, docs update, and no Vivado/Basys3 E1-E3 claims.
+- Title: Create current student and instructor RedByte quickstarts.
+- Surface: Public-facing docs for first-lab use, instructor setup/support, and proof-tier limits.
+- Journey segment: student starts a supported lab and instructor understands local setup, assignment handoff, and support boundaries without agent-only context.
+- Observed behavior: RedByte now has a profile data seam, but public quickstarts still lag the current Project -> Design -> Verify -> Map Pins -> Export posture.
+- Expected behavior: concise quickstarts match current product truth, identify Import as a utility, keep Vivado/Basys3 proof external, and do not imply SaaS/classroom-management features.
+- Minimum acceptance proof: docs validation, encoding check, manual cross-check against current cockpit/manual/release proof docs, and no product source or E1-E3 claim changes.
 
 Suggested commit:
 
 ```text
-fix: introduce RedByte lab profile data seam
+docs: add RedByte student and instructor quickstarts
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Lab Profile / Course Pack Data Seam | Closed locally 2026-06-14: added `packages/rb-apps/src/apps/ide/labProfiles/` with typed built-in profile metadata, `validateLabProfile`, `validateLabProfiles`, `assertNoSolutionLeak`, `listBuiltInLabProfiles`, and `getLabProfileById`; added `lab:profile-contract` to prove deterministic profile IDs, existing starter/example references, course metadata separation from runtime circuit state, IO/export/proof validation, duplicate/missing-reference diagnostics, and Lab 8 scaffold no-solution rejection. |
 | Import / Recovery Utility Contract v1 | Closed locally 2026-06-14: added `ide:gate:import-recovery-contract` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves Project Import / Recover discoverability, RedByte manifest restore as highest fidelity, Vivado ZIP/VHDL reconstruction limits, corrupt import leaves the active project intact, manifest restore routes to editable project state, imported Verify PASS is not automatically trusted, and no Vivado/Basys3 proof is claimed. Before/after screenshots are local-only under `.redbyte/product-immersion/import-recovery-contract/`. |
 | Design Workbench v1 | Closed locally 2026-06-14: added `ide:gate:design-workbench-v1` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves blank, loaded starter, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`; after screenshots are local-only under `.redbyte/product-immersion/design-workbench-v1/after/`. |
 | Hardware / Basys3 Workbench | Closed locally 2026-06-14: added `ide:gate:hardware-basys3-workbench` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves the Basys3 workbench at `1366x768` and `1440x900`, the selected SW0 chain from project signal to board resource to package pin to XDC lines, ready-state E0-only wording, no Vivado/programming/board-observation browser overclaim, and no root overflow. Before/after screenshots are local-only under `.redbyte/product-immersion/hardware-basys3-workbench/`. |
@@ -91,7 +93,7 @@ fix: introduce RedByte lab profile data seam
 | Verify Evidence Workbench | Closed 2026-06-13: added `ide:gate:verify-evidence-workbench-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves visible first-run stimulus editor and expected-output cells, Compare PASS, intentional expected-output edit to FAIL, visible first mismatch expected/observed values, waveform evidence, repair back to PASS, and no meaningful overlap among stimulus/waveform evidence regions. Browser screenshots are local-only under `.redbyte/product-immersion/verify-evidence-workbench/2026-06-13-after/`. |
 | Export Trust Integrity | Closed 2026-06-13: added `ide:gate:export-trust-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The gate proves mapped Logic Gates -> Verify Compare PASS -> Export READY -> Build Current Bundle, visible generated previews, downloaded Vivado ZIP entries, preview body parity, README/provenance E0/E1/E2/E3 boundary wording, XDC mapped pin count, and `EXPECTED_IO.json` output evidence. |
 | Under-the-Hood Mastery Sprint | Created source-level subsystem map, state authority matrix, invariant matrix, normal-use breakage audit, and test/gate ownership doc. Added `ide:gate:design-workbench-integrity` and `ide:gate:shell-layout-integrity` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. |
-| Normal-use breakage audit | Fresh local server at `http://127.0.0.1:5175` showed `Buildd235823`; audit recorded no console/page errors and no Design blank-canvas regression. Export artifact preview visibility is now closed by the Export Trust Integrity slice; Import utility-access ambiguity remains P2. |
+| Normal-use breakage audit | Fresh local server at `http://127.0.0.1:5175` showed `Buildd235823`; audit recorded no console/page errors and no Design blank-canvas regression. Export artifact preview visibility is now closed by the Export Trust Integrity / Export Handoff Station slices, and Import utility-access ambiguity is closed by the Import / Recovery slice. |
 | V1 contract reset screenshot capture | 30 screenshots captured under `.redbyte/product-immersion/v1-contract-reset/screenshots/` across Project, Design, Verify observation, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, Import, and public start states at `1366x768`, `1440x900`, and `1920x1080`. Capture summary recorded zero console/page errors, zero root horizontal overflow, base URL `http://127.0.0.1:5174`, and UI build `2d17655` matching HEAD `2d176550`. |
 | V1 competitive/workflow research | Official/primary-source research covered AMD Vivado UG892/UG908, Digilent Basys3/XDC, CircuitVerse, Logisim Evolution, Digital, HDLBits, and public university Basys3/Vivado lab workflows. |
 | GitHub main pre-reset health | Before this docs slice, `main` at `2d176550` was in sync with `origin/main`. GitHub check-runs for `Classroom Truth Gates`, deploy, and manual Nightly Heavy Suites were green; optional manual screenshot/UI smoke jobs were skipped by design. |
@@ -135,7 +137,8 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Hardware / Basys3 Workbench. | `RB-HARDWARE-WB-001`; `ide:gate:hardware-basys3-workbench`; screenshots under `.redbyte/product-immersion/hardware-basys3-workbench/after/`. |
 | Closed | Design Workbench v1. | `RB-DESIGN-WB-001`; `ide:gate:design-workbench-v1`; screenshots under `.redbyte/product-immersion/design-workbench-v1/after/`. |
 | Closed | Import / Recovery. | `RB-IMPORT-001`; `RB-IMPORT-ACCESS-001`; `ide:gate:import-recovery-contract`; screenshots under `.redbyte/product-immersion/import-recovery-contract/after/`. |
-| Next | Lab Profile / Course Pack Data Seam. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
+| Closed | Lab Profile / Course Pack Data Seam. | `packages/rb-apps/src/apps/ide/labProfiles/`; `lab:profile-contract`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
+| Next | Student/Instructor Quickstarts. | queue item 12; current product/manual/release docs. |
 | Board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links

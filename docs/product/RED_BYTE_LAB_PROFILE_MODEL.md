@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-12
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: target architecture model for RedByte lab profiles and course packs
@@ -8,7 +8,7 @@ role: target architecture model for RedByte lab profiles and course packs
 
 # RedByte Lab Profile Model
 
-This document defines the target data model boundary for professor-authored labs, course packs, and from-scratch student work. It is not an implementation claim. As of 2026-06-12, RedByte remains a Basys3-focused browser IDE with starter data still present in app source.
+This document defines the target data model boundary for professor-authored labs, course packs, and from-scratch student work. As of 2026-06-14, RedByte has a first data-only lab-profile seam for selected built-in profiles, while broader course-pack authoring and instructor solution storage remain future work.
 
 ## Purpose
 
@@ -123,20 +123,23 @@ Examples:
 
 Core logic should enforce these requirements through the same Verify, Map Pins, Export, and proof-tier mechanisms used for all projects.
 
-## Current Implementation Gap
+## Current Implementation Status
 
-As of 2026-06-12:
+As of 2026-06-14:
 
-- Lab/profile architecture is defined here but not fully implemented.
+- A first data-only implementation exists at `packages/rb-apps/src/apps/ide/labProfiles/`.
+- Built-in profiles cover Logic Gates: AND / OR / XOR, Half Adder, 2-Bit Counter, and the Lab 8 Security Lock scaffold.
+- The seam exposes `listBuiltInLabProfiles`, `getLabProfileById`, `validateLabProfile`, `validateLabProfiles`, and `assertNoSolutionLeak`.
+- `lab:profile-contract` validates deterministic profile IDs, existing starter/example references, IO coverage, export artifact expectations, E0-only proof claims, course/runtime separation, duplicate and missing-reference diagnostics, and Lab 8 no-solution evidence.
+- Lab/profile architecture is still not a full course-pack authoring system.
 - ECE141 lab definitions and starter data still live in app source modules.
 - Some product-general gates still carry ECE141 names.
-- The blank-project AND workflow has E0 browser proof, but intentional fail-edit-repair and fresh Vivado/Basys3 proof remain pending.
+- The blank-project AND workflow and Verify fail-edit-repair loop have E0 browser proof, but fresh Vivado/Basys3 proof remains pending.
 
 ## Near-Term Implementation Order
 
-1. Keep fixing gate truth and student workflow blockers first.
-2. Add the Verify fail-edit-repair-pass regression.
-3. Introduce a small lab-profile data seam for one existing lab or one new generic lab.
-4. Move course-specific starter metadata toward course-pack data without changing core Basys3 logic.
-5. Add course-pack no-solution gates that operate on profile/scaffold data.
-6. Defer hosted classroom tooling until a concrete hosted-data requirement exists.
+1. Preserve the `lab:profile-contract` gate.
+2. Write student/instructor quickstarts against current product truth before deeper course-pack authoring.
+3. Move more course-specific starter metadata toward course-pack data without changing core Basys3 logic.
+4. Extend course-pack no-solution gates only when new scaffold/profile data is added.
+5. Defer hosted classroom tooling until a concrete hosted-data requirement exists.

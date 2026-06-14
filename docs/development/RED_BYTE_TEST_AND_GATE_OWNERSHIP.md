@@ -64,6 +64,7 @@ Why:
 | Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity` or `ide:gate:export-handoff-station` proving visible labels, preview, download, station hierarchy, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
+| Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
 | Shell or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
@@ -99,7 +100,7 @@ For hardening slices, closeout is not done at local green:
 
 | Gap | Recommended next gate |
 |---|---|
-| First lab-profile/course-pack data seam is not yet profile-backed. | Add one profile-backed lab data seam gate after the profile slice starts. |
+| Student/instructor quickstarts are not yet current public-facing release docs. | Add docs walkthrough evidence after the quickstart slice starts. |
 
 ## Attribution
 
