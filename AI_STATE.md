@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: remove bridge fatal path from Design workspace)
+
+**Subsystem:** RedByte IDE Design workspace error boundary, student-facing error mapping, hardware bridge client default, browser gate wiring, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `112534921589985c1eaeb0a1ddab22a15e49bd8d`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Classified the Design fatal bridge screen as an error-boundary / stale-message boundary bug with a latent hardware-client import risk: generic `Failed to fetch` errors were mapped to `BRIDGE_UNREACHABLE`, and an explicit off hardware client could still inherit persisted `rb-hardware-mode=on`.
+- Narrowed student-facing bridge classification so generic browser fetch/chunk failures no longer render `RedByte Bridge Unreachable`; explicit bridge errors still keep bridge guidance.
+- Made explicit `HardwareClient({ mode: 'off' })` authoritative over persisted hardware mode and kept the shared `hardwareClient` singleton opt-in/off by default.
+- Added focused regressions for generic fetch error classification and persisted hardware-mode override.
+- Added `ide:gate:design-no-bridge-required` and wired it into `classroom:gate` and `verify:gates:classroom`. The gate opens Design with persisted hardware mode set to `on`, loads the Logic Gates starter at `1366x768` and `1440x900`, asserts the visible build hash, rejects bridge fatal copy/error boundaries/boot crashes, and fails on any `127.0.0.1:4242` bridge request.
+- Captured local proof screenshots and a JSON manifest under `.redbyte/product-immersion/design-no-bridge-required/`.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `corepack pnpm exec vitest run packages/rb-apps/src/__tests__/hardware-client-boundary.test.ts` failed before the constructor fix; focused final Vitest batch passed (`packages/rb-utils/src/__tests__/studentError.test.ts`, `packages/rb-apps/src/__tests__/hardware-client-boundary.test.ts`, `packages/rb-apps/src/__tests__/error-boundary-gate.test.tsx`; `4` tests); `corepack pnpm -s rb-utils:public-api-gate`; `corepack pnpm -s build:unified`; `corepack pnpm -s ide:gate:design-no-bridge-required`; `corepack pnpm -s classroom:gate` with `ide:gate:design-no-bridge-required` included; `corepack pnpm rb:doc:validate` (`29` passed, `0` failed); `corepack pnpm rb:encoding:check`; `node --check` for the new gate and classroom gate scripts; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This slice changes Design error classification, hardware bridge opt-in behavior, focused tests/gates, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, export goldens, Import parser behavior, lab profiles, quickstarts, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser E0 proof remains separate from E1/E2/E3 hardware evidence.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The no-bridge gate proves Design does not require or contact the local bridge before Hardware mode; it does not prove Vivado, programming, or board observation.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware. Do not start commercial packaging, SaaS/accounts, deeper course-pack authoring, or broad UI work unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (docs: add RedByte student and instructor quickstarts)
 
 **Subsystem:** RedByte public course quickstarts, instructor setup/support guidance, TA troubleshooting, proof-tier routing, and cockpit docs.

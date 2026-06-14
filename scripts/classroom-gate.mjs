@@ -30,6 +30,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-wire-interaction-contract'],
   },
   {
+    name: 'ide:gate:design-no-bridge-required',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-no-bridge-required'],
+  },
+  {
     name: 'ide:gate:design-canvas-zoom-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-canvas-zoom-integrity'],

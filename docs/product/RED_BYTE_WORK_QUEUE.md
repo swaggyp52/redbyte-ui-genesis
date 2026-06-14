@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, Design Workbench v1, Import / Recovery, Lab Profile / Course Pack Data Seam, and Student/Instructor Quickstarts closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, Design Workbench v1, Import / Recovery, Lab Profile / Course Pack Data Seam, Student/Instructor Quickstarts, and Design No-Bridge Required hotfix closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -33,6 +33,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 | Item | Status |
 |---|---|
+| Design No-Bridge Required hotfix | Closed 2026-06-14: generic `Failed to fetch` errors no longer render bridge fatal guidance, explicit off hardware clients ignore persisted hardware mode, `ide:gate:design-no-bridge-required` is wired into focused, classroom, and broad classroom gates, and proof screenshots/manifest are under `.redbyte/product-immersion/design-no-bridge-required/`. |
 | Student/Instructor Quickstarts | Closed 2026-06-14: `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md` now cover the current Project -> Design -> Verify -> Map Pins / Hardware -> Export path, E0/E1/E2/E3 proof tiers, Import as a utility, and TA triage; `docs/course/windows-quickstart.md` remains the setup-script reference. |
 | Lab Profile / Course Pack Data Seam | Closed 2026-06-14: `packages/rb-apps/src/apps/ide/labProfiles/` now holds the first typed data-only seam; `lab:profile-contract` covers Logic Gates, Half Adder, 2-Bit Counter, and Lab 8 profile references, validation, E0-only proof claims, and no-solution policy. |
 | Import / Recovery | Closed 2026-06-14: `ide:gate:import-recovery-contract` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/import-recovery-contract/`. |
@@ -58,7 +59,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 ## Queue Rules
 
-- The next slice after Student/Instructor Quickstarts is Vivado/Basys3 Proof Restoration, and it is board-gated.
+- The next slice after the Design No-Bridge Required hotfix is Vivado/Basys3 Proof Restoration, and it is board-gated.
 - Deeper course-pack authoring is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, quickstarts, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

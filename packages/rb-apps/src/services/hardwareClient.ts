@@ -34,13 +34,7 @@ function isBridgeDryrunEnabled(): boolean {
 }
 
 function getDefaultSingletonMode(): ConnectionMode {
-  try {
-    const env = (process as any)?.env;
-    const isVitest = env?.VITEST === 'true' || env?.VITEST === '1' || env?.NODE_ENV === 'test';
-    return isVitest ? 'off' : 'auto';
-  } catch {
-    return 'auto';
-  }
+  return 'off';
 }
 
 /**
@@ -145,6 +139,7 @@ export class HardwareClient {
   private latestRunState: RunState = { runId: null, status: 'idle' };
 
   constructor(config?: Partial<HardwareClientConfig>) {
+    const explicitMode = config?.mode != null;
     this.config = {
       httpUrl: config?.httpUrl ?? 'http://127.0.0.1:4242',
       wsUrl: config?.wsUrl ?? 'ws://127.0.0.1:4242/ws',
@@ -157,7 +152,7 @@ export class HardwareClient {
       message: this.DRYRUN_ENABLED ? 'Hardware bridge dry-run enabled' : 'Hardware integration disabled (demo mode)',
     };
 
-    if (typeof window !== 'undefined') {
+    if (!explicitMode && typeof window !== 'undefined') {
       const savedMode = localStorage.getItem('rb-hardware-mode');
       if (savedMode === 'on' || savedMode === 'off' || savedMode === 'auto') {
         this.config.mode = savedMode;

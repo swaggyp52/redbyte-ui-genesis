@@ -1,8 +1,17 @@
 export function getFriendlyErrorMessage(error: any, context: string): string {
     const msg = error?.message || String(error);
+    const normalized = msg.toLowerCase();
 
-    // Network / Bridge errors
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+    // Bridge errors. Generic network failures are not bridge failures unless the
+    // caller supplied bridge-specific context.
+    if (
+        normalized.includes('bridge unreachable') ||
+        normalized.includes('bridge offline') ||
+        normalized.includes('could not connect to bridge') ||
+        normalized.includes('bridge_unreachable') ||
+        normalized.includes('hardware bridge not connected') ||
+        normalized.includes('not connected to bridge')
+    ) {
         return `Bridge Unreachable. Is the RedByte Bridge Agent running?`;
     }
 

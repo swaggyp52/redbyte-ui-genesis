@@ -35,7 +35,7 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 | Surface | File | Responsibility |
 |---------|------|----------------|
 | Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | **Dashboard / home surface** for the product spine **Project -> Design -> Verify -> Map Pins / Hardware -> Export**. Project owns identity, next-action truth, readiness, and read-only mapping/export summaries; the low-level bridge now lives behind collapsed **Project bridge & determinism** disclosure (`ide-project-bridge-disclosure`) so the home surface does not lead with internals. Multi-file finals start in **Import**. |
-| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation |
+| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Circuit canvas editing + live simulation. Design must load and remain editable without a local bridge agent; bridge access belongs to Hardware/proof contexts and is guarded by `ide:gate:design-no-bridge-required`. |
 | Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Deterministic verification, testbench authoring, waveform viewer; header keeps **observe vs compare** as an explicit **Next run** selector (`ide-vcb-run-mode`), the stimulus workbench owns first-class **Clock / timing** guidance with an explicit clock policy (auto board clock vs manual pulses vs custom pattern) for sequential tests, first-run starter checks keep the stimulus/expected-output editor visible, and post-run Verify demotes teaching chrome so expected/observed mismatch and waveform evidence stay first-order |
 | Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Vivado bundle generation, evidence capsule |
 | Hardware | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Student-facing Basys3 binding surface. **Map Pins is the primary default**: students select a project signal, inspect an authoritative board resource, click a board control, and see the saved board control plus physical package pin. Hardware now behaves like a simplified Basys3 board planner with clock truth, grouped resource catalog, and an XDC binding preview tied to the same saved mapping Export reads. |
@@ -227,6 +227,7 @@ User picks file
 | `ide-design-build-contract.mjs` | Design mode builds without compile errors |
 | `ide-design-io-panel-contract.mjs` | Live inputs panel renders and toggles |
 | `ide-design-live-sim-contract.mjs` | Simulation ticks advance and pause |
+| `ide-design-no-bridge-required.mjs` | Design loads the Logic Gates starter without bridge fatal copy or any local bridge request before Hardware mode |
 | `ide-export-generates-hdl.mjs` | Export produces VHDL with entity/architecture |
 | `ide-export-ready-contract.mjs` | Export shows correct blocked/ready state |
 | `ide-export-trust-integrity.mjs` | Export trust gate proves visible previews, ZIP entries, README/provenance, and E0/E1/E2/E3 wording agree |

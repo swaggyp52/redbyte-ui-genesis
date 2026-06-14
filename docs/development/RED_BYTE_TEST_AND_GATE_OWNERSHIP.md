@@ -27,6 +27,7 @@ Use this guide when adding or changing RedByte proof. Tests passing is useful ev
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
 - `ide:gate:design-canvas-zoom-integrity`
+- `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:design-workbench-v1`
 - `ide:gate:export-handoff-station`
@@ -41,6 +42,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
+- Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
@@ -58,7 +60,7 @@ Why:
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
-| Design gesture, canvas, zoom, selection, visible graph | `ide:gate:design-workbench-v1` plus focused Design browser gates; add Vitest only if source state semantics change |
+| Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity` or `ide:gate:export-handoff-station` proving visible labels, preview, download, station hierarchy, and no overclaim |

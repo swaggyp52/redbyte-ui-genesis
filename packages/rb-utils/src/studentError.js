@@ -32,10 +32,12 @@ function toMessageString(err) {
 }
 function classifyByMessage(message) {
     const m = message.toLowerCase();
-    if (m.includes('failed to fetch') ||
-        m.includes('bridge unreachable') ||
+    if (m.includes('bridge unreachable') ||
         m.includes('bridge offline') ||
-        m.includes('could not connect to bridge')) {
+        m.includes('could not connect to bridge') ||
+        m.includes('bridge_unreachable') ||
+        m.includes('hardware bridge not connected') ||
+        m.includes('not connected to bridge')) {
         return 'BRIDGE_UNREACHABLE';
     }
     if (m.includes('upload failed') || m.includes('firmware upload failed')) {

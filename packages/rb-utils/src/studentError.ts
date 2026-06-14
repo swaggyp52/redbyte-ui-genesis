@@ -64,10 +64,12 @@ function classifyByMessage(message: string): StudentErrorCode | null {
   const m = message.toLowerCase();
 
   if (
-    m.includes('failed to fetch') ||
     m.includes('bridge unreachable') ||
     m.includes('bridge offline') ||
-    m.includes('could not connect to bridge')
+    m.includes('could not connect to bridge') ||
+    m.includes('bridge_unreachable') ||
+    m.includes('hardware bridge not connected') ||
+    m.includes('not connected to bridge')
   ) {
     return 'BRIDGE_UNREACHABLE';
   }
