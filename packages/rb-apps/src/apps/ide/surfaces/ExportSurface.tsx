@@ -972,18 +972,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           return handoffTruth.message;
       }
     }, [downloadDone, handoffTruth.condition, handoffTruth.message, projectSlug]);
+  const primaryExportActionDownloadsProject =
+    handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
+    handoffTruth.primaryCtaIntent === 're-export-current-bundle' ||
+    handoffTruth.primaryCtaIntent === 'program-handoff';
   const primaryHandoffDisabled =
-    (handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
-      handoffTruth.primaryCtaIntent === 're-export-current-bundle')
+    primaryExportActionDownloadsProject
       ? (!downloadReady || isRebuilding)
       : (handoffTruth.primaryCtaIntent === 'map-pins' && !onGoToHardware) ||
         (handoffTruth.primaryCtaIntent === 'design' && !onGoToDesign) ||
-        (handoffTruth.primaryCtaIntent === 'verify' && !onOpenVerify) ||
-        (handoffTruth.primaryCtaIntent === 'program-handoff' && !onGoToHardware);
+        (handoffTruth.primaryCtaIntent === 'verify' && !onOpenVerify);
   const showSecondaryProjectDownload =
     downloadReady &&
-    handoffTruth.primaryCtaIntent !== 'build-current-bundle' &&
-    handoffTruth.primaryCtaIntent !== 're-export-current-bundle';
+    !primaryExportActionDownloadsProject;
   const nextActionTitle = downloadDone
     ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
       : nextActionTitleDistinct;
@@ -1018,6 +1019,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : isStarterScenarioFail
           ? 'Download Project ZIP (starter)'
           : 'Download Project ZIP';
+  const primaryExportCtaLabel =
+    handoffTruth.primaryCtaIntent === 'program-handoff'
+      ? projectDownloadCompactLabel
+      : handoffTruth.primaryCtaLabel;
   const kitDownloadLabel = isRebuilding
     ? 'Building...'
     : downloadDone && lastDownloadKind === 'kit'
@@ -1280,7 +1285,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         onOpenVerify?.();
         break;
       case 'program-handoff':
-        onGoToHardware?.();
+        void handleDownloadExport('project');
         break;
       default:
         break;
@@ -1364,8 +1369,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
   const showPrimaryDownloadSpinner =
     isRebuilding &&
-    (handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
-      handoffTruth.primaryCtaIntent === 're-export-current-bundle');
+    primaryExportActionDownloadsProject;
 
   const downloadDisabled = !downloadReady || isRebuilding;
   const vivadoEvidenceRows = [
@@ -1667,24 +1671,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             />
           </div>
 
-          {downloadDone && (
-            <IdeCallout
-              tone="success"
-              title={lastDownloadKind === 'project' ? 'Vivado project downloaded' : 'VHDL kit downloaded'}
-              testId="ide-export-download-success"
-            >
-              {lastDownloadKind === 'project' ? (
-                <>
-                  Unzip the file, then open <code>{projectSlug}.xpr</code> in Vivado.{' '}
-                  Run <strong>Flow &rarr; Generate Bitstream</strong>, then program your Basys3.{' '}
-                  The full workflow is in the Vivado steps below.
-                </>
-              ) : (
-                'Your VHDL files are ready. See the README in the ZIP for Vivado instructions.'
-              )}
-            </IdeCallout>
-          )}
-
           <ExportReadinessHero
             sectionRef={surfaceRef}
             layoutMode={layoutMode}
@@ -1700,7 +1686,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             determinismHashShort={determinismHash.slice(0, 8)}
             isRebuilding={isRebuilding}
             primaryHandoffDisabled={primaryHandoffDisabled}
-            primaryCtaLabel={handoffTruth.primaryCtaLabel}
+            primaryCtaLabel={primaryExportCtaLabel}
             showPrimaryDownloadSpinner={showPrimaryDownloadSpinner}
             showSecondaryProjectDownload={showSecondaryProjectDownload}
             projectDownloadLabel={projectDownloadCompactLabel}
@@ -1737,12 +1723,31 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             onDownloadKit={() => void handleDownloadExport('kit')}
           />
 
-          <section
-            className="ide-export-section ide-mt-2"
-            data-testid="ide-export-vivado-evidence-diagnostics"
-            data-hierarchy-surface="export"
-            data-hierarchy-role="context"
-          >
+          {downloadDone && (
+            <IdeCallout
+              tone="success"
+              title={lastDownloadKind === 'project' ? 'Vivado project downloaded' : 'VHDL kit downloaded'}
+              testId="ide-export-download-success"
+            >
+              {lastDownloadKind === 'project' ? (
+                <>
+                  Unzip the file, then open <code>{projectSlug}.xpr</code> in Vivado.{' '}
+                  Run <strong>Flow &rarr; Generate Bitstream</strong>, then program your Basys3.{' '}
+                  The full workflow is in the Vivado steps below.
+                </>
+              ) : (
+                'Your VHDL files are ready. See the README in the ZIP for Vivado instructions.'
+              )}
+            </IdeCallout>
+          )}
+
+          <section className="ide-export-evidence-boundary" data-testid="ide-export-evidence-boundary">
+            <section
+              className="ide-export-section ide-mt-2"
+              data-testid="ide-export-vivado-evidence-diagnostics"
+              data-hierarchy-surface="export"
+              data-hierarchy-role="context"
+            >
             <header className="ide-export-section-header">
               <div>
                 <h3>Vivado evidence diagnostics</h3>
@@ -1778,6 +1783,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               No local bench classification is attached to this browser session. Use `pnpm rb:bench:evidence:classify`
               on a machine with bench run artifacts, then keep E1/E2/E3 claims separated.
             </IdeCallout>
+            </section>
           </section>
 
           <div className="ide-export-layout">

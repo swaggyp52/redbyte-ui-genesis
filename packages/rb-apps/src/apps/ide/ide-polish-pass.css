@@ -3580,3 +3580,179 @@
   flex-direction: row !important;
   align-items: flex-start !important;
 }
+
+/* Export Handoff Station v1: visible E0 handoff, not a hidden details drawer. */
+.ide-root [data-ide-mode-marker='export'] [data-testid='ide-export-panel'] .ide-panel-body {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 10px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-surface-command-stack:has(.ide-export-command-strip) {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-summary-hero {
+  display: grid !important;
+  height: fit-content !important;
+  min-height: fit-content !important;
+  overflow: visible !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin-bottom: 10px !important;
+  opacity: 1 !important;
+  animation: none !important;
+  z-index: auto !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  border: 1px solid rgba(56, 189, 248, 0.18) !important;
+  border-radius: 14px !important;
+  background:
+    linear-gradient(180deg, rgba(7, 18, 32, 0.95), rgba(4, 11, 20, 0.94)),
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.12), transparent 34%) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-summary-hero-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(272px, 336px) !important;
+  gap: 12px !important;
+  align-items: stretch !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-summary-copy {
+  padding: 4px 6px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-sidecard {
+  opacity: 1 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-action-card {
+  align-self: stretch !important;
+  padding: 12px !important;
+  border-radius: 12px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-action-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-action-buttons .ide-button {
+  min-height: 36px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-pipeline-details {
+  position: static !important;
+  max-width: none !important;
+  justify-self: end !important;
+  opacity: 0.72 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station > .ide-export-summary-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station > .ide-export-summary-support {
+  display: block !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-advanced {
+  display: block !important;
+  margin: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-advanced > summary {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-handoff {
+  display: grid !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  border-color: rgba(56, 189, 248, 0.18) !important;
+  background: rgba(3, 10, 18, 0.72) !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-handoff-header {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-status {
+  margin-bottom: 0 !important;
+  align-items: center !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-headline,
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-subline {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-trust-banner {
+  padding-top: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-trust-row {
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-trust-row--trusted {
+  border-left: 3px solid rgba(45, 212, 191, 0.72) !important;
+  background: rgba(20, 184, 166, 0.08) !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-trust-draft-note {
+  font-size: 11px !important;
+  color: rgba(251, 191, 36, 0.9) !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts dt {
+  font-size: 9px !important;
+  letter-spacing: 0.05em !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts dd {
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-agreement-details {
+  margin-top: 2px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-evidence-boundary {
+  display: block !important;
+  margin-bottom: 10px !important;
+}
+
+@media (max-width: 1279px) {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-handoff-station .ide-export-summary-hero-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-station > .ide-export-summary-grid,
+  .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

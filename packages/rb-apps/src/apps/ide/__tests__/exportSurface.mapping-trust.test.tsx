@@ -270,7 +270,8 @@ describe('ExportSurface mapping trust', () => {
 
     expect(view.getByTestId('ide-export-panel').textContent).toContain('Export Ready to Build');
     expect(view.getByTestId('ide-export-command-strip').textContent).toContain('READY TO BUILD');
-    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('Build the current bundle');
+    expect(view.getByTestId('ide-export-command-strip').textContent).toContain('Build the current Vivado project ZIP');
+    expect(view.getByTestId('ide-export-rebuild-btn').textContent).toContain('Build Current Bundle');
     expect(view.getByTestId('ide-export-panel').textContent).not.toContain('Export Blocked');
   });
 });

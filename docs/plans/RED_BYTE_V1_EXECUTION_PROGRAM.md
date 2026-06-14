@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -207,9 +207,11 @@ Rollback:
 
 ## Phase 5 - Export Handoff Station
 
+Status: Closed 2026-06-14 by `ide:gate:export-handoff-station`.
+
 Goal: Make Export the single source for draft/E0-ready package trust and Vivado handoff.
 
-Why: Export is the most consequential handoff. Trust integrity is now gate-backed, but the surface still needs later visual/workbench hierarchy work so package readiness, mapping/provenance, and Vivado next steps read as one handoff station.
+Why: Export is the most consequential handoff. Trust integrity is gate-backed, and the surface now presents package readiness, mapping/provenance, artifact workspace, evidence boundary, and Vivado next steps as one handoff station.
 
 Implementation slices:
 
@@ -221,6 +223,7 @@ Implementation slices:
 Proof:
 
 - Export draft and ready screenshots.
+- `ide:gate:export-handoff-station`.
 - Export download/artifact explorer/ready/trust gates.
 - Package generation tests if generation code changes.
 
@@ -228,6 +231,8 @@ Acceptance:
 
 - No regression of the fixed mapped board I/O summary.
 - E0 ready never implies E1/E2/E3.
+- Ready/Trusted station primary action remains build/download, not a hardware proof claim.
+- The 2026-06-14 closeout changed Export presentation and station action routing only; no VHDL/XDC/testbench/Tcl/ZIP/golden bytes were changed.
 
 Rollback:
 

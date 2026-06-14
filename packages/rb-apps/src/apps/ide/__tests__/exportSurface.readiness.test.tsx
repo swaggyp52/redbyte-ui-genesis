@@ -158,14 +158,14 @@ describe('ExportSurface readiness structure', () => {
       />
     );
     const card = getByTestId('ide-export-summary-card');
-    expect(card.textContent).toContain('Handoff summary');
+    expect(card.textContent).toContain('Export handoff station');
     // Eyebrow has only the span, no pill
     const eyebrow = card.querySelector('.ide-export-summary-eyebrow');
     expect(eyebrow).toBeTruthy();
     expect(eyebrow!.children).toHaveLength(1);
   });
 
-  it('ide-export-package-handoff is in the DOM (collapsed in details)', () => {
+  it('ide-export-package-handoff is in the DOM', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildMappedProject()}

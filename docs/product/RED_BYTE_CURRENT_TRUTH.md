@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -92,15 +92,15 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; Import utility access remains ambiguous after a project is loaded.
-- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
-- Project, Hardware, Export, and the global shell are materially stronger than earlier audits, but surface-level V1 hierarchy is still not done.
+- Project, Export, and the global shell are materially stronger than earlier audits, but surface-level V1 hierarchy is still not done.
 - Design still fails the V1 target at `1366x768`: the loaded circuit graph is not the first-viewport focal object.
 - Verify Evidence Workbench is now closed by `ide:gate:verify-evidence-workbench-integrity`: first-run stimulus authoring stays visible, Compare PASS/FAIL/repair is browser-proved, first mismatch expected/observed values are visible, and the gate checks for meaningful evidence-region overlap.
 - Shell and Workbench Layout Reset is now closed by `ide:gate:shell-workbench-hierarchy`: the proof ribbon is the compact workflow/status authority, the footer is support-only chrome, rail step labels no longer repeat completion status, and the workbench frame starts at the compact shell boundary across Project, Design, Verify, Hardware, Export, and Import.
-- Export distinguishes draft versus E0-ready states, generated previews are visible by default, and `ide:gate:export-trust-integrity` proves visible preview/ZIP/README/provenance agreement. Later Export Handoff Station work should focus on visual hierarchy, not reopening the fixed mapping-summary contradiction without new evidence.
+- Export Handoff Station is now closed by `ide:gate:export-handoff-station`: Draft/Needs Review, Ready-to-build, and Trusted post-download states share one visible station; package handoff and artifact workspace are visible; README E0 and E1/E2/E3 boundaries are browser-proved; mapping summaries agree; Vivado next steps stay downstream; and the primary station action remains repair/build/download rather than hardware proof.
 - Hardware / Map Pins shows board/table mapping well, but hardware-ready wording must stay E0-scoped and not imply E1/E2/E3.
 
 ### Vivado/Basys3 proof posture
@@ -141,6 +141,7 @@ Supporting truths:
 - Design graph/camera integrity is covered by `ide:gate:design-canvas-zoom-integrity` and strengthened by `ide:gate:design-workbench-integrity`.
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
 - Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
+- Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -162,10 +163,10 @@ Approved V1 order:
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Project Command Center is:
+The next audit-driven product slice after Export Handoff Station is:
 
 ```text
-fix: rebuild RedByte export handoff station
+fix: rebuild RedByte hardware / Basys3 workbench
 ```
 
-It should make Export a clearer first-viewport handoff station for draft and E0-ready package trust while preserving generated VHDL/XDC/testbench/Tcl/ZIP/golden bytes unless generator tests explicitly prove a requested behavior change. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should make Hardware / Map Pins a clearer Basys3 binding workbench while preserving pin mapping semantics and generated VHDL/XDC/testbench/Tcl/ZIP/golden bytes unless generator tests explicitly prove a requested behavior change. It must not imply E1/E2/E3 proof from browser readiness. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

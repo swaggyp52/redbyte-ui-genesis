@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-02
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -13,19 +13,20 @@ Mode ID: `export`
 
 ## Purpose
 
-Act as compiler-like export authority for Basys3 Vivado artifacts while distinguishing draft artifacts from trusted verified handoff.
+Act as the compiler-like Export handoff station for Basys3 Vivado artifacts while distinguishing draft artifacts from trusted verified E0 handoff.
 
 ## Primary Actions (max 3)
 
 1. Validate export readiness and trust tier.
-2. Preview generated artifacts.
-3. Export deterministic artifacts.
+2. Preview generated artifacts and package handoff facts.
+3. Build or download deterministic artifacts.
 
 ## Layout
 
-1. Top readiness strip
-- `READY`, `WARNING`, or `BLOCKED` state.
-- Blocking issue count.
+1. Top handoff station
+- Exactly one visible Export handoff station owns Draft / Needs Review, Ready to Build, and Trusted package state.
+- The station shows the consequence sentence, one primary repair/build/download action, compact mapping/provenance facts, and visible package handoff content.
+- Trusted post-download state stays download-oriented; it must not make hardware programming the primary Export action.
 
 2. Main center
 - Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
@@ -62,6 +63,8 @@ Each error must include a direct fix path.
 4. Download actions enabled.
 
 Structurally valid packages may still be downloaded as draft Vivado packages, but the UI must not call them trusted until Verify passes and the package is current.
+
+`Ready to Build` means RedByte has current browser-side prerequisites for an E0 package but has not yet produced the current bundle in the session. `Trusted` means the current Compare PASS, mapping, and current package agreement are present. In both states the primary station action remains build/download.
 
 Export must also keep downstream Vivado/bench evidence separated:
 

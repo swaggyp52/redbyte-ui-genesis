@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-14
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte V1 UI/system delete demote rebuild inventory
@@ -17,7 +17,7 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
-Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Future Project work should start from `ide:gate:project-command-center` rather than reopening starter-first launch assumptions.
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Future Project work should start from `ide:gate:project-command-center`, and future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`.
 
 ## Decision Terms
 
@@ -57,9 +57,9 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 | Hardware table | Valuable and visible. | Map signals. | Trace assignment IO. | Keep/Rebuild locally | `HardwareSurface.tsx` | Signal rows visible with board at `1366x768`. |
 | Basys3 board visual | Valuable and differentiating. | See physical target. | Confirms board-specific workflow. | Keep/Rebuild locally | `Basys3BoardView.tsx`, `HardwareSurface.tsx` | Highlight and mapped state remain synchronized. |
 | Hardware ready language | "Ready to build hardware" can read beyond E0. | Next action. | Proof safety. | Rebuild | `HardwareSurface.tsx`, workflow authority | Copy says E0 handoff / Vivado next, not hardware proof. |
-| Export handoff summary | Trust integrity is now gate-backed, but later visual station work should make readiness, mapping/provenance, and Vivado next steps read as one handoff. | Trust package. | Grade/support evidence. | Keep/Rebuild locally | `ExportSurface.tsx`, export primitives, workflow authority | No regression of mapped summary; Export trust gate and screenshots pass. |
-| Export evidence ladder | Essential, but dense and low in viewport. | Know what package proves. | Safe classroom language. | Rebuild | `ExportSurface.tsx` | E0/E1/E2/E3 ladder readable and first-order enough. |
-| Export primary action | Visible now, but surface still repeats trust state. | Download/build package. | Handoff to Vivado. | Keep/Rebuild locally | `ExportSurface.tsx` | One trust state, one primary action. |
+| Export handoff summary | Closed 2026-06-14: readiness, mapping/provenance, package handoff, and Vivado next steps now read as one visible station. | Trust package. | Grade/support evidence. | Keep/Rebuild locally | `ExportSurface.tsx`, export primitives, workflow authority | `ide:gate:export-handoff-station`; no regression of mapped summary; Export trust gate and screenshots pass. |
+| Export evidence ladder | Closed 2026-06-14 for Export: README preview and evidence boundary keep E0/E1/E2/E3 visible and external/manual beyond E0. | Know what package proves. | Safe classroom language. | Keep | `ExportSurface.tsx` | `ide:gate:export-handoff-station`; no E1/E2/E3 browser overclaim. |
+| Export primary action | Closed 2026-06-14: Draft routes to repair/review, Ready builds, Trusted remains download-oriented instead of jumping to hardware proof. | Download/build package. | Handoff to Vivado. | Keep | `ExportSurface.tsx` | One trust state, one primary repair/build/download action. |
 | Import wizard | Correct as utility, but too prominent if treated as main spine. | Recover/import work. | Instructor migration path. | Demote | `ImportSurface.tsx` | Utility path clear; not primary workflow. |
 | Debug/dev details | Some internal proof/data details appear in student path. | Low. | Support only. | Demote | Multiple surfaces | Advanced/details disclosures hold support content. |
 | Chips/status pills | Useful language, but too many styles and authorities. | Quick scan. | Review readiness. | Rebuild | shared primitives/CSS | Shared state grammar across surfaces. |
@@ -79,12 +79,12 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 Use this structured ticket before the next code slice:
 
-- Title: Reset shell and workbench hierarchy.
-- Surface: Global shell / workbench frame.
-- Journey segment: Project -> Design -> Verify -> Hardware -> Export at common classroom viewports.
-- Observed behavior: `ide:gate:shell-layout-integrity` proves visibility and no root overflow, but stage/status state still repeats across top ribbon, left rail, evidence box, surface headers, right rail, and bottom status.
-- Expected behavior: one compact shell/status authority, one obvious work object per surface, and one primary next action without changing mode routing or product semantics.
-- Acceptance proof: `ide:gate:shell-layout-integrity`; before/after screenshots for Project, Design, Verify PASS, Verify FAIL, Hardware, Export draft, Export ready, and Import at `1366x768`; relevant existing Verify/Hardware/Export gates; no simulation, export, pin mapping, Vivado, or hardware changes.
+- Title: Rebuild Hardware / Basys3 as an E0 board-mapping workbench.
+- Surface: Hardware / Map Pins.
+- Journey segment: signal -> board resource -> package pin -> XDC handoff at common classroom viewports.
+- Observed behavior: board/table direction is strong, but ready language can still read beyond E0 and toward hardware readiness.
+- Expected behavior: one visible Basys3 binding workbench with no wording that implies Vivado build, board programming, or physical observation proof.
+- Acceptance proof: Hardware screenshots at `1366x768` and `1440x900`; Hardware visual credibility / Map Pins recovery gates; Export trust and handoff station gates; classroom gate; no simulation, Verify, pin mapping, VHDL/XDC/testbench/Tcl/ZIP/golden changes unless a dedicated generator test proves the need.
 
 ## Attribution
 

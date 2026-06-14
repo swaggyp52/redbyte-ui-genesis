@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: rebuild RedByte export handoff station)
+
+**Subsystem:** RedByte IDE Export handoff station, visible E0 package workflow, browser gate wiring, focused Export tests, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `06bbb6a8aaefc376633871e6c58fe68b09b3922f`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `ide:gate:export-handoff-station` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: Draft Export did not expose exactly one visible handoff station with visible package handoff, artifact preview, evidence boundary, Vivado steps, and no overlap/overflow contract.
+- Rebuilt Export's first handoff region as a single `Export handoff station` around the readiness hero, design summary, and package handoff so Draft/Needs Review, Ready to Build, and Trusted states share one visible authority.
+- Kept Draft Export useful but visibly untrusted: the primary path remains repair/review oriented and the station does not render as package ready.
+- Kept Ready/Trusted Export action ownership on build/download: the trusted post-download primary action now remains download-oriented (`Re-download`) instead of switching to `Open Program Handoff`.
+- Made the package handoff content visible by default, kept artifact previews discoverable, and wrapped the Vivado diagnostics in an explicit Export evidence-boundary section.
+- Demoted the older Export command strip visually so the station is the first visible handoff authority while keeping DOM hooks for existing tests.
+- Captured before/after screenshots and JSON summaries under `.redbyte/product-immersion/export-handoff-station/before/` and `.redbyte/product-immersion/export-handoff-station/after/` for draft, ready-to-build, artifact workspace, README preview, evidence boundary, Vivado next steps, trusted post-download, and 1440x900 draft states.
+- Updated focused Export tests and cockpit/current-truth/work-queue/invariant/gate ownership/Export spec/execution/issue-index/inventory docs so Export Handoff Station is closed and Hardware / Basys3 Workbench is the next product slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm -s ide:gate:export-handoff-station`; `corepack pnpm -s ide:gate:export-trust-integrity`; `corepack pnpm -s ide:gate:export-download-contract`; `corepack pnpm -s ide:gate:export-artifact-explorer-contract`; `corepack pnpm -s ide:gate:export-ready-contract`; `corepack pnpm -s ide:gate:project-command-center`; `corepack pnpm -s ide:gate:shell-workbench-hierarchy`; `corepack pnpm -s ide:gate:from-scratch-general-workflow`; focused Export/Vivado Vitest batch (`10` files, `84` tests); `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate` (`29` passed, `0` failed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. The aggregate `classroom:gate` included the new handoff station gate.
+
+**Validation note:** An exploratory over-broad generator batch also included `packages/rb-apps/src/export/__tests__/hardwareMappingV2.export.test.ts`, which currently fails its existing structured bus/slice mismatch expectation while this slice changes no mapping, export-generation, or Basys3 export-service code. That failure was not used as the Export Handoff Station layout closeout gate and should be handled only in a dedicated mapping/export semantics slice.
+
+**Safety:** This slice changes Export presentation, primary-action routing for the trusted handoff station, browser gate coverage, focused tests, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Hardware / Basys3 Workbench wording, Design canvas-first hierarchy, Import utility fidelity/recovery, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, packaging, and the unrelated hardwareMappingV2 generator-test expectation remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: rebuild RedByte hardware / Basys3 workbench`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (fix: rebuild RedByte project command center)
 
 **Subsystem:** RedByte IDE Project command center, start paths, loaded project entry paths, browser gates, and cockpit docs.

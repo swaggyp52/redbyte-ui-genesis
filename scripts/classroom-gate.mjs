@@ -65,6 +65,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:export-download-contract'],
   },
   {
+    name: 'ide:gate:export-handoff-station',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:export-handoff-station'],
+  },
+  {
     name: 'ide:gate:export-e2e-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-e2e-contract'],

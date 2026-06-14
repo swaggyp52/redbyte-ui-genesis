@@ -203,12 +203,13 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
     data-hierarchy-role="primary"
     data-hierarchy-focal="e0-handoff"
   >
-    <div className="ide-export-summary-hero-main">
+    <div className="ide-export-handoff-station" data-testid="ide-export-handoff-station">
+      <div className="ide-export-summary-hero-main">
 
       {/* Summary card — dominant title and optional first blocker */}
       <div className="ide-export-summary-copy" data-testid="ide-export-summary-card">
         <div className="ide-export-summary-eyebrow">
-          <span>Handoff summary</span>
+          <span>Export handoff station</span>
         </div>
         <h3>{dominantActionTitle}</h3>
         <p>{dominantActionDetail}</p>
@@ -426,7 +427,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           </div>
         </details>
       </section>
-    </div>
+      </div>
 
     {/* Design summary — 4-stat grid */}
     <div className="ide-export-summary-grid" data-testid="ide-export-design-summary">
@@ -438,7 +439,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
 
     {/* Package handoff (collapsed) */}
     <div className="ide-export-summary-support">
-      <details className="ide-export-handoff-advanced">
+      <details className="ide-export-handoff-advanced" open>
         <summary className="ide-summary-toggle">Handoff details</summary>
         <section
           className="ide-export-package-handoff"
@@ -598,6 +599,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           </details>
         </section>
       </details>
+    </div>
     </div>
   </section>
 );
