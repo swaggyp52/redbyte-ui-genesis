@@ -17,6 +17,8 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Future Project work should start from `ide:gate:project-command-center` rather than reopening starter-first launch assumptions.
+
 ## Decision Terms
 
 | Decision | Meaning |

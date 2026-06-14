@@ -29,6 +29,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:export-trust-integrity`
+- `ide:gate:project-command-center`
 - `ide:gate:shell-layout-integrity`
 - `ide:gate:shell-workbench-hierarchy`
 - `ide:gate:verify-evidence-workbench-integrity`
@@ -38,6 +39,7 @@ Why:
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
+- Project command center proves neutral Project launch copy, peer blank/starter/saved/import paths, loaded-project entry paths, and a guarded loaded Build Fresh action.
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
 - Shell workbench hierarchy proves the global shell has one compact proof/status authority, a support-only footer, rail navigation without visible completion-status copy, and a visible workbench object across Project, Design, Verify, Hardware, Export, and Import.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
@@ -47,6 +49,7 @@ Why:
 | Change type | Minimum local proof |
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
+| Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
 | Design gesture, canvas, zoom, selection, visible graph | focused Design browser gate; add Vitest only if source state semantics change |
 | Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
@@ -88,8 +91,7 @@ For hardening slices, closeout is not done at local green:
 
 | Gap | Recommended next gate |
 |---|---|
-| Import utility access is ambiguous after a project is loaded. | `ide:gate:import-utility-access` after product contract decision |
-| Project command-center hierarchy is still not gate-owned. | Add or strengthen a Project command-center gate after the Project slice |
+| Representative Import utility fidelity and recovery remain broader than the Project entry point. | `ide:gate:import-utility-access` or a narrower Import fidelity gate after product contract decision |
 
 ## Attribution
 

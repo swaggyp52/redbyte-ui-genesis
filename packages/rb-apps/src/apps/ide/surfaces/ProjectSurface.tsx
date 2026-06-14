@@ -237,13 +237,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   ioSignalRolesByLabel = {},
 }) => {
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
-  /** Default open so Map Pins reads as a first-class step, not a hidden utility. */
-  const [mappingExpanded, setMappingExpanded] = useState(true);
+  const [mappingExpanded, setMappingExpanded] = useState(false);
   const [mappingEditFeedback, setMappingEditFeedback] = useState<string | null>(null);
   const mappingFeedbackTimer = useRef<number | null>(null);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mappingSectionRef = useRef<HTMLElement | null>(null);
-  const examplesSectionRef = useRef<HTMLDetailsElement | null>(null);
+  const examplesSectionRef = useRef<HTMLElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const { activeBoardSignal, hoverBoardSignal } = useBoardSignal();
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
@@ -495,21 +494,15 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const heroAssistAction = useMemo(() => {
     if (!readiness.hasCircuit) {
       return {
-        label: 'Import HDL',
+        label: 'Import / Recover',
         onClick: onOpenImport,
-      };
-    }
-    if (showStarterGallery) {
-      return {
-        label: 'Explore examples',
-        onClick: () => examplesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
       };
     }
     return {
       label: 'Open Design',
       onClick: onOpenDesign,
     };
-  }, [onOpenDesign, onOpenImport, readiness.hasCircuit, showStarterGallery]);
+  }, [onOpenDesign, onOpenImport, readiness.hasCircuit]);
   const nextStepReason = useMemo(() => {
     if (!readiness.hasCircuit) {
       return 'Pick a starter, import HDL, or open Design to begin the circuit workflow.';
@@ -888,6 +881,33 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       ...examples.filter((example) => example.id !== featuredSecurityStarter.id),
     ].slice(0, 4);
   }, [examples, featuredSecurityStarter]);
+  const handleStartBlankProject = useCallback(() => {
+    const start = onStartBlankProject ?? onOpenDesign;
+    if (readiness.hasCircuit && typeof window !== 'undefined') {
+      const confirmed = window.confirm(
+        'Start a fresh blank project? Current local saves stay available, but unsaved work in this project will be replaced.'
+      );
+      if (!confirmed) return;
+    }
+    start();
+  }, [onOpenDesign, onStartBlankProject, readiness.hasCircuit]);
+  const handleOpenStarterPath = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const starterBrowser = document.querySelector<HTMLElement>('[data-testid="ide-project-examples-disclosure"]');
+      if (starterBrowser) {
+        if (starterBrowser.getAttribute('data-expanded') === 'false') {
+          starterBrowser.querySelector<HTMLButtonElement>('[data-testid="ide-projectx-examples-toggle"]')?.click();
+        }
+        starterBrowser.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+
+    const firstStarterId = landingPrimaryExamples[0]?.id;
+    if (firstStarterId) {
+      onOpenExample(firstStarterId);
+    }
+  }, [landingPrimaryExamples, onOpenExample]);
   return (
     <IdeSurfaceLayout
       mode="project"
@@ -953,25 +973,29 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         {!readiness.hasCircuit ? (
           /* STATE A: No circuit - clean 3-option landing */
           <div className="ide-project-landing" data-testid="ide-project-landing">
+            <div
+              className="ide-project-command-center ide-project-command-center--launch"
+              data-testid="ide-project-command-center"
+            >
             <section className="ide-project-start-hub" data-testid="ide-project-start-hub">
               <div className="ide-project-landing-header">
-                <p className="ide-surface-block-label">Project launch</p>
+                <p className="ide-surface-block-label">Project command center</p>
                 <h2 className="ide-project-landing-title">
-                  {projectKind === 'home' ? 'Start your lab from Project Home' : 'Start your lab from Project Home'}
+                  Project command center
                 </h2>
                 <p className="ide-project-landing-sub">
-                  Choose a certified starter first, then continue through {STUDENT_WORKFLOW_SUMMARY}.
-                  Other starts are secondary.
+                  Pick the current job for this Basys3 project: build fresh, load a course starter,
+                  reopen local work, or import and recover an existing design.
                 </p>
                 {/* Primary launch actions */}
                 <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
                   <button
                     type="button"
                     className="ide-project-primary-action ide-project-primary-action--build"
-                    onClick={onStartBlankProject ?? onOpenDesign}
+                    onClick={handleStartBlankProject}
                     data-testid="ide-project-build-fresh-primary"
                   >
-                    <span className="ide-project-primary-action-icon" aria-hidden="true">â—»</span>
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">+</span>
                     <span className="ide-project-primary-action-label">Build fresh</span>
                     <span className="ide-project-primary-action-sub">Start from an empty canvas</span>
                   </button>
@@ -982,9 +1006,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       onClick={onOpenImport}
                       data-testid="ide-project-import-primary"
                     >
-                      <span className="ide-project-primary-action-icon" aria-hidden="true">â†“</span>
-                      <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
-                      <span className="ide-project-primary-action-sub">Bring in existing RTL or Vivado project</span>
+                      <span className="ide-project-primary-action-icon" aria-hidden="true">IN</span>
+                      <span className="ide-project-primary-action-label">Import / Recover</span>
+                      <span className="ide-project-primary-action-sub">Bring in HDL, ZIP, or recovery data</span>
                     </button>
                   )}
                   {hasRecentEntryPoints && onOpenSavedProjects && (
@@ -994,8 +1018,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       onClick={onOpenSavedProjects}
                       data-testid="ide-project-open-existing-primary"
                     >
-                      <span className="ide-project-primary-action-icon" aria-hidden="true">â†©</span>
-                      <span className="ide-project-primary-action-label">Open saved project</span>
+                      <span className="ide-project-primary-action-icon" aria-hidden="true">OPEN</span>
+                      <span className="ide-project-primary-action-label">Open Saved Project</span>
                       <span className="ide-project-primary-action-sub">Resume previous work</span>
                     </button>
                   )}
@@ -1008,19 +1032,19 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-hierarchy-role="context"
               >
                 <span className="ide-project-start-summary-chip">No circuit loaded</span>
-                <span className="ide-project-start-summary-chip">Recommended: Logic Gates</span>
+                <span className="ide-project-start-summary-chip">Course starters available</span>
                 <span className="ide-project-start-summary-chip">Next up: Design</span>
-                <span className="ide-project-start-summary-chip">Workflow: {STUDENT_WORKFLOW_SUMMARY}</span>
+                <span className="ide-project-start-summary-chip">Workflow: Design -&gt; Verify -&gt; Map Pins -&gt; Export</span>
               </div>
               {/* Primary launch actions */}
               <div className="ide-project-primary-actions ide-project-primary-actions--legacy" hidden>
                 <button
                   type="button"
                   className="ide-project-primary-action ide-project-primary-action--build"
-                  onClick={onStartBlankProject ?? onOpenDesign}
+                  onClick={handleStartBlankProject}
                   data-legacy-testid="ide-project-build-fresh-primary"
                 >
-                  <span className="ide-project-primary-action-icon" aria-hidden="true">◻</span>
+                  <span className="ide-project-primary-action-icon" aria-hidden="true">+</span>
                   <span className="ide-project-primary-action-label">Build fresh</span>
                   <span className="ide-project-primary-action-sub">Start from an empty canvas</span>
                 </button>
@@ -1031,9 +1055,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     onClick={onOpenImport}
                     data-legacy-testid="ide-project-import-primary"
                   >
-                    <span className="ide-project-primary-action-icon" aria-hidden="true">↓</span>
-                    <span className="ide-project-primary-action-label">Import HDL / ZIP</span>
-                    <span className="ide-project-primary-action-sub">Bring in existing RTL or Vivado project</span>
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">IN</span>
+                    <span className="ide-project-primary-action-label">Import / Recover</span>
+                    <span className="ide-project-primary-action-sub">Bring in HDL, ZIP, or recovery data</span>
                   </button>
                 )}
                 {hasRecentEntryPoints && onOpenSavedProjects && (
@@ -1043,8 +1067,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     onClick={onOpenSavedProjects}
                     data-legacy-testid="ide-project-open-existing-primary"
                   >
-                    <span className="ide-project-primary-action-icon" aria-hidden="true">↩</span>
-                    <span className="ide-project-primary-action-label">Open saved project</span>
+                    <span className="ide-project-primary-action-icon" aria-hidden="true">OPEN</span>
+                    <span className="ide-project-primary-action-label">Open Saved Project</span>
                     <span className="ide-project-primary-action-sub">Resume previous work</span>
                   </button>
                 )}
@@ -1101,12 +1125,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   data-testid="ide-project-start-column"
                   data-hierarchy-surface="project"
                   data-hierarchy-role="primary"
-                  data-hierarchy-focal="certified-course-path"
+                  data-hierarchy-focal="command-center-paths"
                 >
                   <div className="ide-project-start-column-head">
-                    <p className="ide-project-recent-title">Certified course path</p>
+                    <p className="ide-project-recent-title">Course starters</p>
                     <p className="ide-project-recent-sub">
-                      Start here for the ECE141 sequence. Load a starter, then modify it to your lab spec.
+                      Load a guided design when the assignment begins from a starter.
                     </p>
                   </div>
                   <div className="ide-project-landing-options">
@@ -1136,6 +1160,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 </div>
               </div>
             </section>
+            </div>
 
             {/* Lab Starters Gallery */}
             <details
@@ -1177,6 +1202,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             SurfaceCommandStrip is replaced by ProjectNextActionCard below
             (which carries the legacy command-strip testids for compat).
             ───────────────────────────────────────────────────────────── */}
+        <div
+          className="ide-project-command-center ide-project-command-center--loaded"
+          data-testid="ide-project-command-center"
+        >
         <div className="ide-projectx-shell" data-testid="ide-projectx-shell">
           <ProjectIdentityHeader
             projectName={projectName}
@@ -1269,6 +1298,70 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               },
             ]}
           />
+          <section
+            className="ide-project-entry-paths"
+            data-testid="ide-project-entry-paths"
+            aria-label="Project entry paths"
+          >
+            <header className="ide-project-entry-paths-header">
+              <div>
+                <p className="ide-surface-block-label">Project paths</p>
+                <h3 className="ide-project-entry-paths-title">Continue, switch starts, or recover work</h3>
+              </div>
+              <p className="ide-project-entry-paths-copy">
+                The current project remains the focus; alternate starts stay one click away.
+              </p>
+            </header>
+            <div className="ide-project-entry-path-grid">
+              <button
+                type="button"
+                className="ide-project-entry-path is-primary"
+                onClick={onPrimaryCta}
+                data-testid="ide-project-path-continue"
+              >
+                <span className="ide-project-entry-path-label">Continue</span>
+                <span className="ide-project-entry-path-sub">Next: {activePrimaryCtaLabel}</span>
+              </button>
+              <button
+                type="button"
+                className="ide-project-entry-path"
+                onClick={handleStartBlankProject}
+                data-testid="ide-project-path-build-fresh"
+              >
+                <span className="ide-project-entry-path-label">Build fresh</span>
+                <span className="ide-project-entry-path-sub">Start a blank Basys3 design</span>
+              </button>
+              <button
+                type="button"
+                className="ide-project-entry-path"
+                onClick={handleOpenStarterPath}
+                data-testid="ide-project-path-course-starter"
+              >
+                <span className="ide-project-entry-path-label">Course Starter</span>
+                <span className="ide-project-entry-path-sub">Open guided examples</span>
+              </button>
+              <button
+                type="button"
+                className="ide-project-entry-path"
+                onClick={onOpenImport}
+                data-testid="ide-project-path-import-recover"
+              >
+                <span className="ide-project-entry-path-label">Import / Recover</span>
+                <span className="ide-project-entry-path-sub">Bring in HDL, ZIP, or recovery data</span>
+              </button>
+              <button
+                type="button"
+                className="ide-project-entry-path"
+                onClick={onOpenSavedProjects}
+                disabled={!onOpenSavedProjects}
+                data-testid="ide-project-path-open-existing"
+              >
+                <span className="ide-project-entry-path-label">Open Recent</span>
+                <span className="ide-project-entry-path-sub">Resume local saved work</span>
+              </button>
+            </div>
+          </section>
+        </div>
         </div>
         {/*
           Audit pass (2026-05-02): the ProjectBridgePanel is project-internals
@@ -1529,8 +1622,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         </div>
 
         {showStarterGallery && (
-          <ExamplesBrowser
-            examples={examples.map((ex): BrowsableExample => ({
+          <div ref={examplesSectionRef}>
+            <ExamplesBrowser
+              examples={examples.map((ex): BrowsableExample => ({
               id: ex.id,
               name: ex.name,
               concept: ex.concept,
@@ -1543,11 +1637,12 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               flagship: ex.learningPath?.flagship,
               openProof: ex.learningPath?.openProof,
             }))}
-            activeExampleId={activeExampleId}
-            onLoad={onOpenExample}
-            defaultExpanded
-            testId="ide-project-examples-disclosure"
-          />
+              activeExampleId={activeExampleId}
+              onLoad={onOpenExample}
+              defaultExpanded={projectKind === 'home' && !readiness.hasCircuit}
+              testId="ide-project-examples-disclosure"
+            />
+          </div>
         )}
           </>
         )}

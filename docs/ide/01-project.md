@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-04
+last_validated: 2026-06-13
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -13,13 +13,13 @@ Mode ID: `project`
 
 ## Purpose
 
-Provide the Project dashboard/home surface: project truth, readiness, next-action routing, and starter/load paths before Design, Verify, Map Pins / Hardware, and Export.
+Provide the Project command center: one current project state, one primary next action, and visible paths for blank work, course starters, saved/recent work, and Import/recovery before Design, Verify, Map Pins / Hardware, and Export.
 
 ## Primary Actions (max 3)
 
 1. Edit project metadata (name, description).
 2. Review the dashboard truth (identity/header, next action, metrics, mapping/export status).
-3. Start fresh, open saved work, or open a starter example with explicit overwrite confirmation.
+3. Continue current work, start fresh, open saved work, open a starter example, or enter Import/recovery with explicit replacement confirmation where existing work would be replaced.
 
 ## Layout
 
@@ -27,12 +27,13 @@ Provide the Project dashboard/home surface: project truth, readiness, next-actio
 - Project identity/header.
 - Next-action command strip whose status frame, headline, and primary CTA all point at the same required next step.
 - Metrics / readiness snapshot.
+- Peer entry paths for Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent once a project is loaded.
 - Read-only mapping summary and export alignment truth.
 - Collapsed **Project bridge & determinism** disclosure for low-level internals.
 
 2. Secondary content
 - Open-existing / recent-work recovery.
-- Starter examples and build-fresh lanes on Project Home.
+- Starter examples and build-fresh lanes on Project Home, with starter browsing collapsed by default once a project is loaded.
 - Mapping summaries are read-only and label-first: board/resource labels appear before package pins, with Map Pins as the editing authority.
 
 3. Supporting detail
@@ -40,9 +41,10 @@ Provide the Project dashboard/home surface: project truth, readiness, next-actio
 
 ## Empty State
 
-Headline: `Start your first Basys3 project`
-Primary CTA: `Build fresh`
-Secondary action: `Import HDL / Vivado ZIP`
+Headline: `Project command center`
+Primary path: `Build Fresh`
+Peer paths: `Course starters`, `Open Saved Project`, `Import / Recover`
+Neutral state: no circuit loaded; no mapping/export failure copy before a circuit exists.
 
 ## Error State
 
@@ -54,6 +56,7 @@ Show blocking issues as callouts with direct destination action:
 Destructive action guard:
 
 1. Opening a starter example while unsaved work exists must require explicit confirmation.
+2. Starting a fresh blank project from a loaded project must require explicit confirmation.
 
 ## Success State
 

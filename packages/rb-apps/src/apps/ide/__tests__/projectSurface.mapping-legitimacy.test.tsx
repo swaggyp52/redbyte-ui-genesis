@@ -127,6 +127,8 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
       </BoardSignalProvider>
     );
 
+    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
+
     expect(getByTestId('ide-project-map-req-clk_in').textContent).toContain('Required');
     expect(getByTestId('ide-project-map-req-dbg').textContent).toContain('Optional');
     expect(getByTestId('ide-project-role-clk_in').textContent).toContain('Clock');
@@ -160,6 +162,8 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
         />
       </BoardSignalProvider>
     );
+
+    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
 
     expect(getByTestId('ide-project-pin-field-sw0').textContent).toContain('Assign in Map Pins');
     expect(queryByTestId('ide-project-map-input-sw0')).toBeNull();

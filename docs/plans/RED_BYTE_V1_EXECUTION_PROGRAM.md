@@ -177,7 +177,7 @@ Rollback:
 
 ## Phase 4 - Project Command Center
 
-Status: Next after the 2026-06-13 Shell and Workbench Layout Reset closeout.
+Status: Closed locally 2026-06-13 by the Project Command Center slice.
 
 Goal: Make Project the command center for blank, starter, saved, import/recovery, and future instructor lab paths.
 
@@ -192,9 +192,9 @@ Implementation slices:
 
 Proof:
 
-- Clean first-launch screenshot at `1366x768`.
-- Project readiness/workflow authority tests.
-- Product immersion project path.
+- Clean first-launch and loaded-project screenshots at `1366x768` and `1440x900`.
+- `ide:gate:project-command-center`, Project readiness/overview gates, shell hierarchy gate, and classroom gate.
+- Product immersion project path under `.redbyte/product-immersion/project-command-center/after/`.
 
 Acceptance:
 

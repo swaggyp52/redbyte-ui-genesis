@@ -162,10 +162,10 @@ Approved V1 order:
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Shell and Workbench Layout Reset is:
+The next audit-driven product slice after Project Command Center is:
 
 ```text
-fix: rebuild RedByte project command center
+fix: rebuild RedByte export handoff station
 ```
 
-It should make Project a neutral command center for blank, starter, saved, import/recovery, and future instructor lab paths while preserving current route, Verify, mapping, export, Vivado, and hardware semantics. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should make Export a clearer first-viewport handoff station for draft and E0-ready package trust while preserving generated VHDL/XDC/testbench/Tcl/ZIP/golden bytes unless generator tests explicitly prove a requested behavior change. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

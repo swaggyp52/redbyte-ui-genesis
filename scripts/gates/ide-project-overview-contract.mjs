@@ -32,7 +32,7 @@ await runIdeGate('IDE project overview contract satisfied', async ({ page, baseU
   if (landingVisible) {
     const landingTitle = await text(page.locator('.ide-project-landing-title'));
     assert(
-      /project home|start your lab/i.test(landingTitle),
+      /project command center|project home|start your lab/i.test(landingTitle),
       `project landing title should explain the start state, got "${landingTitle}"`
     );
 

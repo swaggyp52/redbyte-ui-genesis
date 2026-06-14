@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-13 (fix: rebuild RedByte project command center)
+
+**Subsystem:** RedByte IDE Project command center, start paths, loaded project entry paths, browser gates, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `3b55d92114a2eeaa08baa5648337f10d589f9b7f`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `ide:gate:project-command-center` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: the no-circuit Project surface did not render a single command center with neutral Build fresh, course starter, import/recover, and saved/recent project paths.
+- Rebuilt the no-circuit Project landing as a neutral `Project command center` with Build fresh, Course starters, Open Saved Project, and Import / Recover entry paths while preserving Project -> Design -> Verify -> Map Pins -> Export workflow vocabulary.
+- Removed starter-first/default-course-first copy from the no-circuit path and kept mapping/export/false-failure language out of the no-circuit first viewport.
+- Added loaded Project entry paths for Continue, Build fresh, Course Starter, Import / Recover, and Open Recent, with a guard before replacing the current loaded project with a fresh blank project.
+- Collapsed the loaded examples browser and mapping table by default so the loaded Project command center stays focused on the current next action while still keeping starter and mapping details reachable.
+- Updated the examples/project browser gates and focused Project tests for the new collapsed command-center behavior.
+- Captured after screenshots and geometry/state summary under `.redbyte/product-immersion/project-command-center/after/` for clean launch, loaded starter, verified starter, blank project, open-existing modal, and Import / Recover at `1366x768` and `1440x900`.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/Project spec/execution/issue-index/inventory docs so Project Command Center is closed and Export Handoff Station is the next product slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `pnpm --filter @redbyte/playground build`; focused Project Vitest batch (`6` files, `73` tests); `pnpm -s ide:gate:project-command-center`; `pnpm -s ide:gate:project-overview-contract`; `pnpm -s ide:gate:project-readiness-contract`; `pnpm -s ide:gate:project-continue-cta-contract`; `pnpm -s ide:gate:shell-workbench-hierarchy`; `pnpm -s ide:gate:shell-layout-integrity`; `pnpm -s ide:gate:from-scratch-general-workflow`; `pnpm -s ide:gate:verify-fail-edit-repair`; `pnpm -s ide:gate:export-trust-integrity`; `pnpm -s ide:gate:ece141-product-immersion`; `pnpm -s ide:gate:examples-contract`; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm rb:doc:validate` (`29` passed, `0` failed); `pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. The first `ide:gate:project-command-center` run failed before the implementation on the missing command center contract; after the fix, the new gate passed and the aggregate `classroom:gate` included it.
+
+**Safety:** This slice changes Project presentation, start-path controls, browser gates, focused tests, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. Export Handoff Station, Hardware wording, Design canvas-first hierarchy, Import utility fidelity/recovery, Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, and packaging remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: rebuild RedByte export handoff station`. Do not start lab-profile extraction, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-13 (fix: reset RedByte workbench shell layout)
 
 **Subsystem:** RedByte IDE global shell, workbench frame hierarchy, proof ribbon, left rail, support footer, and Verify waveform first-viewport fit.

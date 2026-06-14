@@ -25,6 +25,19 @@ async function openBridgeDisclosure(page) {
   await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
 }
 
+async function openExamplesBrowserIfCollapsed(page) {
+  const browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  await browser.waitFor({ state: 'visible', timeout: 10000 });
+
+  const expanded = await browser.getAttribute('data-expanded');
+  if (expanded === 'false') {
+    const toggle = page.locator('[data-testid="ide-projectx-examples-toggle"]').first();
+    await toggle.click();
+  }
+
+  await page.waitForSelector('[data-testid^="ide-project-load-start-"]', { timeout: 10000 });
+}
+
 await runIdeGate('IDE examples catalog and guarded open contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -66,6 +79,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   });
   assert(bridgeStartsCollapsed, 'project bridge internals must start tucked behind a closed disclosure');
   await openBridgeDisclosure(page);
+  await openExamplesBrowserIfCollapsed(page);
 
   const loadButtons = page.locator('[data-testid^="ide-project-load-start-"]');
   const loadButtonCount = await loadButtons.count();
@@ -117,6 +131,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
 
   // After loading an example the surface is STATE B (bridge visible, not start dock).
   await openBridgeDisclosure(page);
+  await openExamplesBrowserIfCollapsed(page);
 
   const loadedButtonClass = await targetCard.getAttribute('class');
   assert(

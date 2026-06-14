@@ -15,6 +15,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:examples-contract'],
   },
   {
+    name: 'ide:gate:project-command-center',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:project-command-center'],
+  },
+  {
     name: 'ide:gate:student-loop-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:student-loop-contract'],

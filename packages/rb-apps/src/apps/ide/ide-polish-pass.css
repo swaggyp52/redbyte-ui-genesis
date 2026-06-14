@@ -2585,6 +2585,244 @@
   background: rgba(8, 18, 31, 0.48);
 }
 
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center {
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-hub {
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-radius: 10px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-header {
+  gap: 4px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-title {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-sub {
+  max-width: 92ch;
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-actions {
+  order: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action {
+  min-height: 62px;
+  padding: 9px 11px;
+  gap: 3px;
+  border-radius: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action-icon {
+  display: none;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action-label {
+  font-size: 14px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action-sub {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-summary {
+  order: 2;
+  gap: 6px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-summary-chip {
+  min-height: 22px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-grid {
+  order: 3;
+  grid-template-columns: minmax(0, 1.15fr) minmax(230px, 0.85fr);
+  gap: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-column[data-hierarchy-role='primary'] {
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-column-head,
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-head {
+  gap: 3px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-title {
+  font-size: 13px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-sub,
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-empty {
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option {
+  min-height: 94px;
+  padding: 8px 9px;
+  gap: 3px;
+  border-radius: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-title {
+  font-size: 13px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-sub,
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-learn {
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-learn {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-panel {
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-recent-list {
+  gap: 6px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded {
+  margin-bottom: 14px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(120, 156, 196, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 18, 31, 0.58);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths-title {
+  margin: 2px 0 0;
+  font-size: 15px;
+  line-height: 1.2;
+  color: rgba(241, 247, 255, 0.96);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths-copy {
+  max-width: 36ch;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(188, 210, 231, 0.76);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 1px solid rgba(120, 156, 196, 0.22);
+  border-radius: 8px;
+  background: rgba(10, 22, 36, 0.72);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path:hover,
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path:focus-visible {
+  border-color: rgba(46, 196, 182, 0.42);
+  background: rgba(18, 38, 56, 0.76);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path:focus-visible {
+  outline: 2px solid rgba(46, 196, 182, 0.52);
+  outline-offset: 2px;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path.is-primary {
+  border-color: rgba(46, 196, 182, 0.36);
+  background: rgba(46, 196, 182, 0.08);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(238, 246, 255, 0.96);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-entry-path-sub {
+  font-size: 11px;
+  line-height: 1.25;
+  color: rgba(188, 210, 231, 0.74);
+}
+
+@media (max-width: 980px) {
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-actions,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-grid,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-options,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-entry-path-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths-header {
+    display: grid;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths-copy {
+    max-width: none;
+  }
+}
+
 .ide-root [data-ide-mode-marker='design'] [data-hierarchy-focal='circuit-canvas'] {
   min-height: clamp(420px, 62vh, 780px);
   border-color: rgba(125, 211, 252, 0.25);
