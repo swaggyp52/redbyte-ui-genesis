@@ -105,6 +105,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:zip-import-contract'],
   },
   {
+    name: 'ide:gate:import-recovery-contract',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:import-recovery-contract'],
+  },
+  {
     name: 'determinism-and-parity-suite',
     cmd: 'pnpm',
     args: [

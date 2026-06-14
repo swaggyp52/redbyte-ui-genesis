@@ -382,7 +382,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [zipBusy, setZipBusy] = useState(false);
   const [pendingApplyImportResult, setPendingApplyImportResult] = useState<ImportedProjectCompilerResult | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [statusMessage, setStatusMessage] = useState<string>('Start with a Vivado ZIP, then review the import before replacing your project.');
+  const [statusMessage, setStatusMessage] = useState<string>(
+    'Start with a RedByte project ZIP when available; Vivado ZIPs and raw HDL use recovery review before replacing your project.'
+  );
   const [zipImportError, setZipImportError] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState<'idle' | 'copied' | 'failed'>('idle');
   const zipInputRef = useRef<HTMLInputElement | null>(null);
@@ -1359,10 +1361,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (!hasParsedHdl && !hdlText.trim() && !hasZipInspection) {
       return {
         id: 'zip',
-        title: 'Start with a Vivado ZIP',
+        title: 'Restore a RedByte project first',
         body:
-          'Recommended: load a Vivado ZIP first. If you already have structural HDL, open Other ways to start and paste it manually. Nothing replaces your current project until you review the import.',
-        primaryLabel: 'Select Vivado ZIP',
+          'Highest-fidelity path: choose a RedByte export ZIP with project.rbproj.json so the embedded manifest can restore circuit, vectors, layout, and mappings. Vivado ZIP or VHDL without that manifest is a reconstruction path with fidelity limits. Nothing replaces your current project until you review the import.',
+        primaryLabel: 'Select Project/Vivado ZIP',
         primaryAction: () => {
           setTab('upload');
           handleOpenZipPicker();
@@ -2828,8 +2830,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Import Design"
-        description="Start with a Vivado ZIP. Other ways to start stay available, and nothing replaces your current project until you review the import."
+        title="Import / Recover"
+        description="Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths, and nothing replaces your current project until you review the import."
         right={
           showImportHeaderAction
             ? canImport ? (
@@ -2960,19 +2962,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               >
                 <div className="ide-import-start-guidance-grid">
                   <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-zip">
-                    <span className="ide-import-start-guidance-eyebrow">Fastest path</span>
-                    <strong>Load a Vivado ZIP</strong>
-                    <p>RedByte can detect HDL, XDC, and top-module clues automatically before you replace anything.</p>
+                    <span className="ide-import-start-guidance-eyebrow">Highest fidelity</span>
+                    <strong>RedByte project restore</strong>
+                    <p>A RedByte export ZIP with <code>project.rbproj.json</code> restores the embedded manifest as the source of truth.</p>
                   </article>
                   <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-review">
-                    <span className="ide-import-start-guidance-eyebrow">Safe review</span>
-                    <strong>Nothing is overwritten yet</strong>
-                    <p>Your current project stays intact until you reach Review Import and explicitly confirm the replacement.</p>
+                    <span className="ide-import-start-guidance-eyebrow">Reconstruction path</span>
+                    <strong>Vivado ZIP or VHDL</strong>
+                    <p>Without a RedByte manifest, RedByte reconstructs supported structure only. Behavioral HDL may recover ports only or stay blocked.</p>
                   </article>
                   <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-hdl">
-                    <span className="ide-import-start-guidance-eyebrow">Manual path</span>
-                    <strong>Paste structural HDL if needed</strong>
-                    <p>Use Other ways to start for manual HDL paste, or run the quick demos below to compare supported structural imports against blocked behavioral examples.</p>
+                    <span className="ide-import-start-guidance-eyebrow">Safe recovery</span>
+                    <strong>Nothing is overwritten yet</strong>
+                    <p>Your current project stays intact until Review Import and Confirm Replace Project. Failed imports do not change files.</p>
                   </article>
                 </div>
                 <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
@@ -3611,8 +3613,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     void handleZipDrop(event);
                   }}
                 />
-                <IdeCallout tone="info" title="Vivado ZIP Import">
-                  Drop a Vivado project ZIP, or browse to inspect detected top/module and constraints.
+                <IdeCallout tone="info" title="Project / Vivado ZIP Import">
+                  Drop a RedByte export ZIP for full restore, or a Vivado project ZIP to inspect detected HDL, constraints, and reconstruction limits.
                 </IdeCallout>
                 <div className="ide-inline-actions">
                   <IdeButton
@@ -3633,7 +3635,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                           ? "Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list."
                           : /port|xdc/i.test(zipImportError)
                             ? 'No port definitions found. Check that your XDC file has valid LOC constraints and your HDL declares all ports.'
-                            : 'The ZIP could not be read. Try re-exporting from Vivado, or use Paste HDL to bring in your source directly.'}
+                            : 'No files were changed. Try a RedByte export ZIP with project.rbproj.json, re-export from Vivado, or use Paste HDL for source-only recovery.'}
                     </p>
                     <details>
                       <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>

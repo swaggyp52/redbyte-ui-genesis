@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, and Design Workbench v1 closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
+This is the ordered near-term queue after the V1 product contract reset, Under-the-Hood Mastery Sprint, Export Trust Integrity, Verify Evidence Workbench, Shell and Workbench Layout Reset, Project Command Center, Export Handoff Station, Hardware / Basys3 Workbench, Design Workbench v1, and Import / Recovery closeouts. The next implementation slice should be selected from the current issue index, not from gut feel.
 
 ## Queue
 
@@ -23,7 +23,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 | 7 | Export Handoff Station | After trust integrity is proven, finish the visual/workbench handoff station around the same authority. | V1 contract Export section, visual audit, `RB-EXPORT-HANDOFF-001` | `fix:` | Closed 2026-06-14: `ide:gate:export-handoff-station` proves Draft/E0-ready/Trusted station states, one repair/build/download action, visible package/artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and no E1/E2/E3 overclaim. |
 | 8 | Hardware / Basys3 Workbench | Keep the board/table direction but make E0 handoff language impossible to confuse with hardware proof. | V1 contract Hardware section, visual audit, `RB-HARDWARE-WB-001` | `fix:` | Closed 2026-06-14: `ide:gate:hardware-basys3-workbench` proves selected signal -> board resource -> package pin -> XDC hierarchy at `1366x768` and `1440x900`, ready-state E0-only wording, and no E1/E2/E3 overclaim. |
 | 9 | Design Workbench | The circuit graph must become the first object after a starter or project loads. | V1 contract Design section, visual audit, `RB-DESIGN-WB-001` | `fix:` | Closed 2026-06-14: `ide:gate:design-workbench-v1` proves blank, loaded starter, selection, wiring, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the graph/canvas as the focal object. |
-| 10 | Import / Recovery | Import stays a utility but needs access contract alignment and representative fidelity/recovery proof. | V1 contract Import section, normal-use audit, `RB-IMPORT-001`, `RB-IMPORT-ACCESS-001` | `fix:` or `test:` | Documented Import utility path is visible, failed import does not replace current project, and representative import/recovery paths prove fidelity messages. |
+| 10 | Import / Recovery | Import stays a utility but needs access contract alignment and representative fidelity/recovery proof. | V1 contract Import section, normal-use audit, `RB-IMPORT-001`, `RB-IMPORT-ACCESS-001` | `fix:` | Closed 2026-06-14: `ide:gate:import-recovery-contract` proves Project Import / Recover discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/Basys3 overclaim. |
 | 11 | Lab Profile / Course Pack Data Seam | Course-pack data is important, but it should follow the workbench/proof contract so the data seam plugs into a stable product shell. | `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`, general lab audit, `RB-LAB-001` | `refactor:` or `feat:` | One small profile-backed lab path; Basys3 logic stays core; no-solution policy remains enforced. |
 | 12 | Student/Instructor Quickstarts | Classroom readiness requires public-facing docs after UI/proof posture stabilizes. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`, release docs, V1 contract | `docs:` | Student first-lab and instructor setup/support quickstarts exist and match current app truth. |
 | 13 | Vivado/Basys3 Proof Restoration | Student-safe hardware claims require fresh proof on a machine with Vivado 2024.2 and hardware access. | `docs/STUDENT_RELEASE_READINESS.md`, certification matrix, proof docs | `docs:` or `chore:` | E1/E2/E3 evidence updated only from Vivado/board runs; no screenshots-only hardware claim. |
@@ -33,6 +33,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 | Item | Status |
 |---|---|
+| Import / Recovery | Closed 2026-06-14: `ide:gate:import-recovery-contract` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/import-recovery-contract/`. |
 | Design Workbench v1 | Closed 2026-06-14: `ide:gate:design-workbench-v1` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/design-workbench-v1/`. |
 | Hardware / Basys3 Workbench | Closed 2026-06-14: `ide:gate:hardware-basys3-workbench` is wired into focused, classroom, and broad classroom gates; before/after screenshots are under `.redbyte/product-immersion/hardware-basys3-workbench/`. |
 | Export Handoff Station | Closed 2026-06-14: `ide:gate:export-handoff-station` is wired into focused, classroom, and broad classroom gates; after screenshots and summary are under `.redbyte/product-immersion/export-handoff-station/after/`. |
@@ -55,7 +56,7 @@ This is the ordered near-term queue after the V1 product contract reset, Under-t
 
 ## Queue Rules
 
-- The next code slice after Design Workbench v1 is `fix: harden RedByte import and recovery utility`.
+- The next code slice after Import / Recovery is `fix: introduce RedByte lab profile data seam`.
 - Lab profile / course-pack work is intentionally deferred, not cancelled.
 - Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, Vivado proof, or commercialization slices unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, project data format, or goldens in layout-only slices.

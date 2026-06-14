@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: rebuild RedByte import recovery contract)
+
+**Subsystem:** RedByte IDE Import / Recovery utility, Project Import / Recover entry copy, browser gate wiring, import/export recovery helper, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `7bb1a004acc586a8cd19c08261419350aa68ded3`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Added `ide:gate:import-recovery-contract` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Proved the pre-fix gate caught the intended problem: the first Import screen led with a generic Vivado ZIP path and did not identify RedByte manifest restore as the highest-fidelity recovery path.
+- Updated Import first-look copy so RedByte export ZIPs with `project.rbproj.json` are the highest-fidelity path, while Vivado ZIP / VHDL without a manifest is explicitly reconstruction with fidelity limits.
+- Updated visible ZIP failure guidance so corrupt/unsupported imports say no files changed and offer RedByte-export, Vivado re-export, or Paste HDL recovery paths.
+- Updated Project Import / Recover entry copy so it reads as a safe utility path for restoring RedByte ZIPs or inspecting HDL, not a main workflow step.
+- Hardened the existing ECE141 import/export recovery E2E helper to open the current Project examples disclosure before switching starters from a loaded Project state, matching the current Project Command Center behavior.
+- Captured before screenshots under `.redbyte/product-immersion/import-recovery-contract/before/` and after screenshots under `.redbyte/product-immersion/import-recovery-contract/after/`. After evidence covers Project Import / Recover, empty Import, corrupt failure, RedByte manifest inspection/review, imported Design, imported Project fidelity, imported Verify state, and imported Export state at `1366x768` and `1440x900`.
+- Updated cockpit/current-truth/work-queue/invariant/gate ownership/execution/issue-index/inventory/Import/manual docs so Import / Recovery is closed locally and Lab Profile / Course Pack Data Seam is the next product slice.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm -s ide:gate:import-recovery-contract`; `corepack pnpm -s ide:gate:ece141-import-export-recovery`; `corepack pnpm -s ide:gate:project-command-center`; `corepack pnpm -s ide:gate:from-scratch-general-workflow`; `corepack pnpm -s ide:gate:export-handoff-station`; `corepack pnpm -s ide:gate:shell-workbench-hierarchy`; focused Import/project-format Vitest batch (`7` files, `23` tests); in-app browser proof against rebuilt `dist` showing RedByte-first import copy and no stale Vivado-first hero; `corepack pnpm -s classroom:gate` with `ide:gate:import-recovery-contract` included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This slice changes Import/Project utility copy, browser gate coverage, one ECE141 helper, and cockpit docs only. It does not change VHDL/XDC/testbench/Tcl/ZIP generation bytes, parser breadth, simulation semantics, Verify result semantics, pin mapping semantics, project data format, goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access. The new Import gate proves representative manifest restore and corrupt failure safety, not arbitrary third-party HDL migration. Lab Profile / Course Pack Data Seam, quickstarts, Vivado/Basys3 proof, packaging, and future hardware evidence remain separate slices.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Implement `fix: introduce RedByte lab profile data seam`. Do not start quickstarts, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+
 ## Change Log 2026-06-14 (fix: rebuild RedByte design workbench)
 
 **Subsystem:** RedByte IDE Design workbench, canvas-first authoring hierarchy, Design browser gate wiring, focused Design tests, and cockpit docs.

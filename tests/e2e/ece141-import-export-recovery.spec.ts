@@ -52,18 +52,33 @@ async function openMode(
 async function loadExample(page: Page, exampleId: string): Promise<void> {
   await openProject(page);
   const landingExample = page.getByTestId(`ide-project-landing-example-${exampleId}`);
-  if ((await landingExample.count()) > 0) {
+  if (await landingExample.isVisible().catch(() => false)) {
     await landingExample.click();
   } else {
+    await openExamplesDisclosure(page);
+    const pathStep = page.getByTestId(`ide-projectx-path-step-${exampleId}`);
+    if (await pathStep.isVisible().catch(() => false)) {
+      await pathStep.click();
+      await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
+      return;
+    }
     const browserExample = page.getByTestId(`ide-project-load-start-${exampleId}`);
-    if ((await browserExample.count()) === 0) {
+    if (!(await browserExample.isVisible().catch(() => false))) {
       await page.getByTestId('ide-project-landing-example-logic-gates').click();
       await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
       await openMode(page, 'project');
+      await openExamplesDisclosure(page);
     }
     await browserExample.click();
   }
   await expect(page.getByTestId('ide-mode-design')).toBeVisible({ timeout: 30_000 });
+}
+
+async function openExamplesDisclosure(page: Page): Promise<void> {
+  const disclosure = page.getByTestId('ide-project-examples-disclosure');
+  if ((await disclosure.count()) === 0) return;
+  if ((await disclosure.getAttribute('data-expanded').catch(() => 'true')) === 'true') return;
+  await page.getByTestId('ide-projectx-examples-toggle').click();
 }
 
 async function runSavedCompare(page: Page, expectedEvidence: RegExp): Promise<void> {

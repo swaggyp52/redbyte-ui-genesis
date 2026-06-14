@@ -17,7 +17,7 @@ Evidence inputs:
 - `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md`
 - `.redbyte/product-immersion/v1-contract-reset/screenshots/`
 
-Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, and future Hardware work should start from `ide:gate:hardware-basys3-workbench`.
+Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows were addressed locally on 2026-06-13 by the Project Command Center slice. Export handoff summary/evidence ladder/primary action rows were addressed locally on 2026-06-14 by the Export Handoff Station slice. Hardware ready language and Basys3 binding-chain rows were addressed locally on 2026-06-14 by the Hardware / Basys3 Workbench slice. Import utility/recovery rows were addressed locally on 2026-06-14 by the Import / Recovery slice. Future Project work should start from `ide:gate:project-command-center`, future Export work should start from `ide:gate:export-handoff-station` plus `ide:gate:export-trust-integrity`, future Hardware work should start from `ide:gate:hardware-basys3-workbench`, and future Import work should start from `ide:gate:import-recovery-contract`.
 
 ## Decision Terms
 
@@ -60,7 +60,7 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 | Export handoff summary | Closed 2026-06-14: readiness, mapping/provenance, package handoff, and Vivado next steps now read as one visible station. | Trust package. | Grade/support evidence. | Keep/Rebuild locally | `ExportSurface.tsx`, export primitives, workflow authority | `ide:gate:export-handoff-station`; no regression of mapped summary; Export trust gate and screenshots pass. |
 | Export evidence ladder | Closed 2026-06-14 for Export: README preview and evidence boundary keep E0/E1/E2/E3 visible and external/manual beyond E0. | Know what package proves. | Safe classroom language. | Keep | `ExportSurface.tsx` | `ide:gate:export-handoff-station`; no E1/E2/E3 browser overclaim. |
 | Export primary action | Closed 2026-06-14: Draft routes to repair/review, Ready builds, Trusted remains download-oriented instead of jumping to hardware proof. | Download/build package. | Handoff to Vivado. | Keep | `ExportSurface.tsx` | One trust state, one primary repair/build/download action. |
-| Import wizard | Correct as utility, but too prominent if treated as main spine. | Recover/import work. | Instructor migration path. | Demote | `ImportSurface.tsx` | Utility path clear; not primary workflow. |
+| Import wizard | Closed 2026-06-14: Import is a Project utility path. First look leads with RedByte manifest restore as highest fidelity, labels Vivado/VHDL as reconstruction-limited, and keeps failure/replacement safe. | Recover/import work. | Instructor migration path. | Keep/Demote locally | `ImportSurface.tsx`, `ProjectSurface.tsx` | `ide:gate:import-recovery-contract`; no parser/export/Verify/pin semantics changed. |
 | Debug/dev details | Some internal proof/data details appear in student path. | Low. | Support only. | Demote | Multiple surfaces | Advanced/details disclosures hold support content. |
 | Chips/status pills | Useful language, but too many styles and authorities. | Quick scan. | Review readiness. | Rebuild | shared primitives/CSS | Shared state grammar across surfaces. |
 | Accounts/SaaS/classroom groups | Not present and not currently needed for V1 trust. | Later convenience. | Later management layer. | Defer | Future hosted layer | Concrete hosted-data requirement before work starts. |
@@ -79,12 +79,12 @@ Closeout note: Project launch/cards/no-circuit copy/starter-label demotion rows 
 
 Use this structured ticket before the next code slice:
 
-- Title: Harden Import / Recovery as a utility path.
-- Surface: Import and Project utility access.
-- Journey segment: loaded-project Import / Recover entry point, representative good/corrupt package import, review-before-apply, and recovery messaging.
-- Observed behavior: Project now exposes Import / Recover, but representative import fidelity, failure recovery, and review-before-apply safety remain broader than the Project entry gate.
-- Expected behavior: the utility is easy to find, successful imports can be reviewed before replacing active work, and failure states are recoverable and specific.
-- Acceptance proof: dedicated Import utility/fidelity gate; representative import/recovery tests; Project/Import screenshots if UI changes; classroom gate; no simulation, Verify, mapping, Export, or golden changes unless a dedicated source test proves the need.
+- Title: Introduce the first RedByte lab profile data seam.
+- Surface: Project starter/course data and selected profile-backed lab path.
+- Journey segment: one professor-authored lab/profile path through the existing Project -> Design -> Verify -> Map Pins -> Export spine.
+- Observed behavior: Import / Recovery is now utility-gated and closed locally; course/starter data still sits too close to core product behavior.
+- Expected behavior: one supported lab shape can be profile-backed without changing Basys3 board semantics, Verify semantics, Export generation, or no-solution policy.
+- Acceptance proof: profile-backed lab data test; existing starter checks; no-solution gate; classroom gate; docs update; no Vivado/Basys3 E1-E3 claims.
 
 ## Attribution
 

@@ -91,12 +91,13 @@ Supporting truths:
 - The authoritative source/state docs are `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, and `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`.
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
-- The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; Import utility access remains ambiguous after a project is loaded.
-- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; the Import utility access/fidelity finding is closed locally by `ide:gate:import-recovery-contract`.
+- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
-- Project, Design, Export, Hardware, and the global shell are materially stronger than earlier audits, but Import utility fidelity/recovery is still not done.
+- Project, Design, Export, Hardware, Import, and the global shell are materially stronger than earlier audits; the next gap is the Lab Profile / Course Pack Data Seam.
+- Import / Recovery is now closed locally by `ide:gate:import-recovery-contract`: Project exposes Import / Recover, the Import first look identifies RedByte manifest restore as highest fidelity, Vivado ZIP/VHDL is reconstruction-limited, corrupt import leaves the current project intact, imported Verify PASS is not trusted automatically, and no Vivado/Basys3 proof is claimed.
 - Design Workbench v1 is now closed by `ide:gate:design-workbench-v1`: blank, loaded starter, selected node, selected wire, wire start/cancel, moved node, delete/undo, split/code, and zoom/fit/center states are browser-proved at `1366x768` and `1440x900`, with the graph/canvas as the first-viewport focal object.
 - Verify Evidence Workbench is now closed by `ide:gate:verify-evidence-workbench-integrity`: first-run stimulus authoring stays visible, Compare PASS/FAIL/repair is browser-proved, first mismatch expected/observed values are visible, and the gate checks for meaningful evidence-region overlap.
 - Shell and Workbench Layout Reset is now closed by `ide:gate:shell-workbench-hierarchy`: the proof ribbon is the compact workflow/status authority, the footer is support-only chrome, rail step labels no longer repeat completion status, and the workbench frame starts at the compact shell boundary across Project, Design, Verify, Hardware, Export, and Import.
@@ -143,6 +144,7 @@ Supporting truths:
 - Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
 - Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
 - Hardware / Basys3 Workbench is covered by `ide:gate:hardware-basys3-workbench`, including first-viewport Basys3 workbench proof at `1366x768` and `1440x900`, selected signal -> board resource -> package pin -> XDC hierarchy, and E0-only ready wording.
+- Import / Recovery is covered by `ide:gate:import-recovery-contract`, including Project utility discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no browser Vivado/Basys3 overclaim.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
 
 ## 6. Default Next Move
@@ -158,16 +160,16 @@ Approved V1 order:
 7. Export Handoff Station.
 8. Hardware / Basys3 Workbench.
 9. Design Workbench.
-10. Import / Recovery.
+10. Import / Recovery. Closed locally 2026-06-14.
 11. Lab Profile / Course Pack Data Seam.
 12. Student/Instructor Quickstarts.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next audit-driven product slice after Design Workbench v1 is:
+The next audit-driven product slice after Import / Recovery is:
 
 ```text
-fix: harden RedByte import and recovery utility
+fix: introduce RedByte lab profile data seam
 ```
 
-It should keep Import utility-scoped, prove representative import/recovery fidelity and review-before-apply behavior, and preserve simulation, Verify, mapping, and export-generation semantics unless a dedicated source test proves a requested behavior change. Do not skip to lab-profile extraction, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.
+It should introduce one small profile-backed lab data boundary while preserving Basys3 board semantics, Verify behavior, pin mapping, export generation, no-solution policy, and E0/E1/E2/E3 proof boundaries. Do not skip to quickstarts, website, pilot, broad polish, accounts/SaaS, Vivado proof, or commercial packaging unless the user explicitly reprioritizes.

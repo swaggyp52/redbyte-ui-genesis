@@ -1008,7 +1008,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     >
                       <span className="ide-project-primary-action-icon" aria-hidden="true">IN</span>
                       <span className="ide-project-primary-action-label">Import / Recover</span>
-                      <span className="ide-project-primary-action-sub">Bring in HDL, ZIP, or recovery data</span>
+                      <span className="ide-project-primary-action-sub">Restore a RedByte ZIP or inspect HDL safely</span>
                     </button>
                   )}
                   {hasRecentEntryPoints && onOpenSavedProjects && (
@@ -1057,7 +1057,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">IN</span>
                     <span className="ide-project-primary-action-label">Import / Recover</span>
-                    <span className="ide-project-primary-action-sub">Bring in HDL, ZIP, or recovery data</span>
+                    <span className="ide-project-primary-action-sub">Restore a RedByte ZIP or inspect HDL safely</span>
                   </button>
                 )}
                 {hasRecentEntryPoints && onOpenSavedProjects && (
@@ -1347,7 +1347,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-testid="ide-project-path-import-recover"
               >
                 <span className="ide-project-entry-path-label">Import / Recover</span>
-                <span className="ide-project-entry-path-sub">Bring in HDL, ZIP, or recovery data</span>
+                <span className="ide-project-entry-path-sub">Restore a RedByte ZIP or inspect HDL safely</span>
               </button>
               <button
                 type="button"

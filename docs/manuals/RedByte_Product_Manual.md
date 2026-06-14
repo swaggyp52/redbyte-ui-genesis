@@ -339,7 +339,7 @@ The RedByte IDE shell is present on every surface and consists of four persisten
 
 **Top Bar.** Displays the RedByte product mark on the left, the current project name and save state in the center, and contextual action buttons on the right (Run, Export, Help).
 
-**Left Rail.** Contains five mode entries corresponding to the primary surfaces: Project, Design, Verify, Hardware, and Export, plus the Import surface. An active marker indicates the current surface. A simple progress indicator shows which workflow stages have been completed.
+**Left Rail.** Contains the primary workflow surfaces: Project, Design, Verify, Hardware, and Export. Import / Recover is a Project utility path, not a primary workflow rail step. An active marker indicates the current surface. A simple progress indicator shows which workflow stages have been completed.
 
 **Main Content Area.** Occupies the center of the screen and displays the active surface's primary content. This area changes entirely when switching surfaces.
 
@@ -598,7 +598,7 @@ Each blocking issue includes a direct navigation link to the surface where the i
 
 **Mode ID:** `import`
 
-**Purpose.** The Import surface allows users to bring external HDL source files, constraint files, or previously exported RedByte projects into the current workspace.
+**Purpose.** The Import surface allows users to restore RedByte export ZIPs, inspect Vivado ZIPs, or bring external HDL/XDC source into the current workspace without replacing active work before review and explicit confirmation.
 
 **When to Use.** When starting from existing VHDL code, when importing constraint files from another project, when restoring a previously exported RedByte project, or when re-importing a Vivado-exported ZIP.
 
@@ -616,6 +616,10 @@ Each blocking issue includes a direct navigation link to the surface where the i
 - **Apply import:** Commit the imported content to the current project.
 
 **Import Sources and Fidelity.**
+
+- **Highest fidelity:** RedByte export ZIP with `project.rbproj.json`. RedByte restores the embedded manifest as the source of truth.
+- **Reconstruction:** Vivado ZIP or structural HDL without a RedByte manifest. RedByte reconstructs supported gate-level structure and reports fidelity limits.
+- **Partial / blocked:** Behavioral or unsupported HDL may recover ports only or stay blocked. The current project is not replaced on failure.
 
 | Source | Expected Fidelity | Notes |
 |--------|-------------------|-------|
@@ -881,10 +885,10 @@ RedByte's Vivado and Basys 3 language should stay aligned with official sources:
 
 To restore a previously exported project with full fidelity:
 
-1. Navigate to the Import surface.
+1. From Project, choose **Import / Recover**.
 2. Select the "Upload ZIP" tab.
-3. Upload the `.rbproj.zip` or submission archive.
-4. The system detects the `rb-project.json` manifest and restores all circuit state, layout, vectors, probes, and mappings.
+3. Upload the RedByte export ZIP or submission archive.
+4. The system detects the `project.rbproj.json` manifest and restores circuit state, layout, vectors, probes, and mappings from that manifest.
 5. Click "Apply" to load the project.
 
 Result: Full fidelity import. All circuit elements, positions, test vectors, and pin mappings are restored exactly as exported.
@@ -893,7 +897,7 @@ Result: Full fidelity import. All circuit elements, positions, test vectors, and
 
 To reconstruct a circuit from VHDL that uses component instantiation:
 
-1. Navigate to the Import surface.
+1. From Project, choose **Import / Recover**.
 2. Select the "Paste HDL" tab.
 3. Paste or type the VHDL source.
 4. The parser detects component instantiation patterns (e.g., `U1: AND2 port map (...)`) and maps them through a component library that recognizes 37 HDL name variants (e.g., `and2`, `AND`, `and_gate`) resolving to 9 distinct RedByte node types.
@@ -906,7 +910,7 @@ Result: Reconstructed fidelity. Circuit topology is correct, but node positions 
 
 To import pin assignments from an XDC file:
 
-1. Navigate to the Import surface.
+1. From Project, choose **Import / Recover**.
 2. Select the "Paste XDC" tab.
 3. Paste the constraint file content.
 4. The parser extracts pin assignments and maps them to the current circuit's ports.
@@ -1295,7 +1299,6 @@ submission.rbproj.zip
 | Switch to Verify | 2 |
 | Switch to Export | 3 |
 | Switch to Map Pins | 4 |
-| Switch to Import | 5 |
 | Save project | Ctrl+S |
 | Undo | Ctrl+Z |
 | Redo | Ctrl+Shift+Z |

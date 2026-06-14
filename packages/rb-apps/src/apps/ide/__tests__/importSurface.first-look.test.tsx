@@ -13,11 +13,13 @@ describe('ImportSurface first look', () => {
 
     expect(getByTestId('ide-import-command-strip').textContent).toContain('Import HDL');
     expect(getByTestId('ide-import-start-shell')).toBeTruthy();
-    expect(getByTestId('ide-import-start-hero').textContent).toContain('Start with a Vivado ZIP');
-    expect(getByTestId('ide-import-start-primary').textContent).toContain('Select Vivado ZIP');
+    expect(getByTestId('ide-import-start-hero').textContent).toContain('Restore a RedByte project first');
+    expect(getByTestId('ide-import-start-primary').textContent).toContain('Select Project/Vivado ZIP');
     expect(getByTestId('ide-import-start-other-options').textContent).toContain('Other ways to start');
     expect(getByTestId('ide-import-start-secondary').textContent).toContain('Paste HDL');
-    expect(getByTestId('ide-import-start-guidance-review').textContent).toContain('Nothing is overwritten yet');
+    expect(getByTestId('ide-import-start-guidance-zip').textContent).toContain('RedByte project restore');
+    expect(getByTestId('ide-import-start-guidance-review').textContent).toContain('Vivado ZIP or VHDL');
+    expect(getByTestId('ide-import-start-guidance-hdl').textContent).toContain('Nothing is overwritten yet');
     expect(queryByTestId('ide-import-workbench')).toBeNull();
     expect(queryByTestId('ide-import-secondary-tools')).toBeNull();
     expect(queryByTestId('ide-import-replace-project')).toBeNull();
@@ -49,11 +51,12 @@ describe('ImportSurface first look', () => {
     });
   });
 
-  it('describes manual path guidance without hiding first-look quick demos', () => {
+  it('keeps first-look quick demos available below recovery guidance', () => {
     const { getByTestId } = render(
       <ImportSurface onImportProject={vi.fn()} />
     );
 
-    expect(getByTestId('ide-import-start-guidance-hdl').textContent).toContain('quick demos');
+    expect(getByTestId('ide-import-load-sample-and-gate').textContent).toContain('Try structural sample');
+    expect(getByTestId('ide-import-toggle-behavioral-samples').textContent).toContain('Show unsupported examples');
   });
 });
