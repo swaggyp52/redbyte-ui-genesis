@@ -274,15 +274,15 @@ describe('DesignSurface workstation redesign', () => {
     );
   });
 
-  it('keeps canvas mode support rails visible by default so core library and inspector context are already on-screen', async () => {
+  it('keeps canvas mode support rails collapsed by default while preserving restorable library and inspector context', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+      expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
     });
-    expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
 
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
@@ -296,7 +296,8 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
   });
 
   it('keeps the selection inspector pinned open instead of collapsing it behind a restore rail', async () => {

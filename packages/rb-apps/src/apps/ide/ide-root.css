@@ -29276,6 +29276,8 @@ button:disabled,
   line-height: 1.2;
   text-align: center;
   text-transform: uppercase;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
@@ -29283,6 +29285,8 @@ button:disabled,
   letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0.62;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
 }
 
 .ide-workbench-shell .ide-workbench-dock-collapse-btn {
@@ -33685,4 +33689,26 @@ button:disabled,
   margin: 8px 0 0 !important;
   align-items: flex-start !important;
   text-align: left !important;
+}
+
+/* 2026-06-14 Workbench space utilization: compact layout must honor the
+   resolved rail slot instead of reserving a full hidden/collapsed rail column. */
+.ide-workbench-shell .ide-workbench-main.hide-right-dock {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-layout-mode='compact'] .ide-workbench-main.hide-right-dock {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed .ide-workbench-dock-toggle-rail-left,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed .ide-workbench-dock-toggle-rail-right {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  z-index: auto !important;
 }

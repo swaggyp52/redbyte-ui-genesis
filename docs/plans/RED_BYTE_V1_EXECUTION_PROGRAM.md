@@ -406,6 +406,39 @@ Rollback:
 
 - Revert docs.
 
+## Phase 10.5 - Workbench Space Utilization / Rail Collapse v1
+
+Status: Closed 2026-06-14 by `ide:gate:workbench-space-utilization`.
+
+Goal: Reclaim first-viewport space so the primary work object owns the screen.
+
+Why: After the surface-specific V1 slices, the app still looked unfinished because persistent support rails, right inspectors, and hidden dock columns boxed in Design and Verify while leaving other surfaces feeling scaffold-heavy. The highest-impact contained fix was to collapse/demote support rails by default and prove cross-surface geometry rather than redesign every page.
+
+Implementation slices:
+
+- Design Canvas mode now starts with Library and Inspector collapsed but restorable.
+- Verify starts with the Signals support rail collapsed so waveform/evidence has more useful width.
+- Hidden/collapsed right docks no longer reserve a phantom grid column.
+- Collapsed rail labels are compact vertical restore affordances instead of horizontal text squeezed into a narrow slot.
+
+Proof:
+
+- `ide:gate:workbench-space-utilization`.
+- Before/after screenshots and metrics under `.redbyte/product-immersion/workbench-space-utilization/`.
+- Affected Design, Verify, shell, Project, Hardware, Export, and Import gates.
+- Classroom gate.
+
+Acceptance:
+
+- Design canvas, Verify waveform/evidence, and Hardware board/table meet useful minimum geometry at `1366x768`, `1440x900`, and `1920x1080`.
+- Project, Export, and Import primary actions remain visible and not buried behind chrome.
+- Collapsed rails can still be opened when needed.
+- No simulation, Verify result, pin mapping, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the rail/layout slice; behavior and generator tests protect non-layout semantics.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

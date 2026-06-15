@@ -99,7 +99,32 @@ async function loadExampleIntoDesign(page, exampleId) {
     await page.locator('[data-testid="mode-button-design"]').click();
   }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+  await revealDesignInspector(page);
   await page.waitForSelector('[data-testid="ide-design-inspector-io-state"]', { timeout: 10000 });
+}
+
+async function revealDesignInspector(page) {
+  if (await page.locator('[data-testid="ide-design-inspector-io-state"]').first().isVisible().catch(() => false)) {
+    return;
+  }
+  const inspectorToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
+  if (await inspectorToggle.isVisible().catch(() => false)) {
+    await clickElement(inspectorToggle);
+    await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
+  }
+}
+
+async function revealDesignLibrary(page) {
+  if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) {
+    return;
+  }
+  const libraryToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  assert(
+    await libraryToggle.isVisible().catch(() => false),
+    'design surface must expose a restorable library rail before input editing',
+  );
+  await clickElement(libraryToggle);
+  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
 }
 
 async function openExamplesBrowserIfPresent(page) {
@@ -201,6 +226,8 @@ async function setInputBit(page, nodeId, value) {
 }
 
 async function ensureLiveInputsExpanded(page) {
+  await revealDesignLibrary(page);
+
   const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
   if (await firstToggle.isVisible().catch(() => false)) {
     return;

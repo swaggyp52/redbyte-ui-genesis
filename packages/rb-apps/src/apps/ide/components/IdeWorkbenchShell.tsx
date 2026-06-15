@@ -413,12 +413,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
         : showLeftCollapsedRail
           ? collapsedLeftRailWidth
           : 0;
-      const overlayCollapsedRightRail = mode === 'design' && showRightCollapsedRail;
       const rightSlotWidth = showRightDock
         ? effectiveRightWidth
-        : overlayCollapsedRightRail
-          ? 0
-          : showRightCollapsedRail
+        : showRightCollapsedRail
           ? COLLAPSED_DOCK_RAIL_WIDTH
           : 0;
       const effectiveConsoleHeight = showConsole

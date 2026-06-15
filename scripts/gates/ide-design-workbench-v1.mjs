@@ -162,8 +162,14 @@ async function loadStarterDesign(page, baseUrl, exampleId, gateLabel) {
 async function waitForDesignWorkbench(page) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-toolbar"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 15000 });
+  await Promise.race([
+    page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 }),
+    page.waitForSelector('[data-testid="ide-workbench-dock-toggle-left"]', { timeout: 15000 }),
+  ]);
+  await Promise.race([
+    page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 15000 }),
+    page.waitForSelector('[data-testid="ide-workbench-dock-toggle-right"]', { timeout: 15000 }),
+  ]);
 }
 
 async function assertBlankCanvasStart(page, viewport, label) {
@@ -176,17 +182,40 @@ async function assertBlankCanvasStart(page, viewport, label) {
   assert(metrics.emptyState.inCanvas, `${label}: blank canvas start path must live inside the canvas`);
   assert(metrics.emptyAddIo.visible, `${label}: blank canvas must expose Add boundary I/O`);
   assert(metrics.emptyAddAnd.visible, `${label}: blank canvas must expose a starter gate path`);
-  assert(metrics.paletteInput.visible, `${label}: palette must expose input boundary authoring`);
-  assert(metrics.paletteOutput.visible, `${label}: palette must expose output boundary authoring`);
+  assert(metrics.leftToggle.visible, `${label}: collapsed Library rail must be available`);
+  assert(metrics.rightToggle.visible, `${label}: collapsed Inspector rail must be available`);
   assertWorkbenchHierarchy(metrics, viewport, label, { expectGraph: false });
 }
 
 async function assertDesignBoundaryActions(page, label) {
   await page.evaluate(() => window.scrollTo(0, 0));
+  await revealDesignRail(page, 'left');
   const metrics = await readWorkbenchMetrics(page);
   assert(metrics.statusAddIo.visible, `${label}: status bar must expose Add boundary I/O`);
   assert(metrics.paletteInput.visible, `${label}: palette input primitive must stay visible`);
   assert(metrics.paletteOutput.visible, `${label}: palette output primitive must stay visible`);
+  await collapseDesignRail(page, 'left');
+}
+
+async function revealDesignRail(page, side) {
+  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
+  if (await page.locator(dockSelector).first().isVisible().catch(() => false)) return;
+  const toggleSelector =
+    side === 'left' ? '[data-testid="ide-workbench-dock-toggle-left"]' : '[data-testid="ide-workbench-dock-toggle-right"]';
+  const toggle = page.locator(toggleSelector).first();
+  assert(await toggle.isVisible().catch(() => false), `Design ${side} rail restore toggle must be visible`);
+  await toggle.click();
+  await page.waitForSelector(dockSelector, { timeout: 5000 });
+}
+
+async function collapseDesignRail(page, side) {
+  const collapseSelector =
+    side === 'left' ? '[data-testid="ide-workbench-dock-collapse-left"]' : '[data-testid="ide-workbench-dock-collapse-right"]';
+  const collapse = page.locator(collapseSelector).first();
+  if (!(await collapse.isVisible().catch(() => false))) return;
+  await collapse.click();
+  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
+  await page.locator(dockSelector).first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => null);
 }
 
 async function assertGraphWorkbench(page, viewport, label, options = {}) {
@@ -268,8 +297,14 @@ function assertWorkbenchHierarchy(metrics, viewport, label, options) {
   );
   assert(metrics.toolbar.visible, `${label}: toolbar must remain visible`);
   if (options.requireRails !== false) {
-    assert(metrics.palette.visible, `${label}: palette must remain useful and visible`);
-    assert(metrics.inspector.visible, `${label}: inspector must remain useful and visible`);
+    assert(
+      metrics.palette.visible || metrics.leftToggle.visible,
+      `${label}: Library rail must remain visible or restorable`
+    );
+    assert(
+      metrics.inspector.visible || metrics.rightToggle.visible,
+      `${label}: Inspector rail must remain visible or restorable`
+    );
   }
   if (options.expectGraph) {
     assert(
@@ -554,6 +589,8 @@ async function readWorkbenchMetrics(page) {
     const canvasControls = getRect('[data-testid="ide-design-canvas-view-tools"]');
     const palette = getRect('[data-testid="ide-design-dock-palette"]');
     const inspector = getRect('[data-testid="ide-inspector"]');
+    const leftToggle = getRect('[data-testid="ide-workbench-dock-toggle-left"]');
+    const rightToggle = getRect('[data-testid="ide-workbench-dock-toggle-right"]');
     const hdlPane = getRect('[data-testid="ide-design-hdl-pane"]');
     const emptyState = getRect('[data-testid="ide-design-empty-state"]');
     const emptyAddIo = getRect('[data-testid="ide-design-empty-add-io"]');
@@ -606,6 +643,8 @@ async function readWorkbenchMetrics(page) {
       canvasControls: rectJson(canvasControls),
       palette: rectJson(palette),
       inspector: rectJson(inspector),
+      leftToggle: rectJson(leftToggle),
+      rightToggle: rectJson(rightToggle),
       hdlPane: rectJson(hdlPane),
       emptyState: { ...rectJson(emptyState), inCanvas: inRect(emptyState, liveCanvas) },
       emptyAddIo: rectJson(emptyAddIo),

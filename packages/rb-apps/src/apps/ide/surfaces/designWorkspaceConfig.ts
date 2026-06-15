@@ -58,13 +58,12 @@ export function resolveDesignWorkspacePreset(input: {
   const isCanvas = input.mode === 'canvas';
   const isCode = input.mode === 'hdl';
   const isSplit = input.mode === 'split';
-  const collapseSupportRails = isCode || isSplit;
 
   return {
     mode: input.mode,
     effectiveMode: input.effectiveMode,
-    leftDockMode: collapseSupportRails ? 'collapsed' : 'visible',
-    rightDockMode: collapseSupportRails ? 'collapsed' : 'visible',
+    leftDockMode: 'collapsed',
+    rightDockMode: 'collapsed',
     consoleMode: 'collapsed',
     shellDensity: 'immersive',
     surfaceFrame: 'edge-to-edge',

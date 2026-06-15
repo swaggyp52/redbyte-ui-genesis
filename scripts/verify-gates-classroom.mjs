@@ -102,6 +102,7 @@ function main() {
     runGate('ide:viewport-overflow-contract', 'pnpm -s ide:gate:viewport-overflow-contract', true),
     runGate('ide:shell-layout-integrity', 'pnpm -s ide:gate:shell-layout-integrity', true),
     runGate('ide:shell-workbench-hierarchy', 'pnpm -s ide:gate:shell-workbench-hierarchy', true),
+    runGate('ide:workbench-space-utilization', 'pnpm -s ide:gate:workbench-space-utilization', true),
     runGate('ide:primary-cta-contract', 'pnpm -s ide:gate:primary-cta-contract', true),
     runGate('ide:diagnostics-jump-contract', 'pnpm -s ide:gate:diagnostics-jump-contract', true),
     runGate('ide:visual-contract', 'pnpm -s ide:gate:visual-contract', true),

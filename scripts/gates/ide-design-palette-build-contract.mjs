@@ -15,6 +15,7 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
   await page.locator('[data-testid="ide-project-build-fresh-primary"]').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
+  await revealDesignLibrary(page);
 
   const baselineNodeIds = await page.evaluate(() => {
     const store = window.__RB_CIRCUIT_STORE__;
@@ -113,12 +114,14 @@ await runIdeGate('IDE design palette build contract satisfied', async ({ page, b
 });
 
 async function placeFromPalette(page, buttonSelector, expectedLabel, placementRatio) {
+  await revealDesignLibrary(page);
+
   const beforeCount = await page.evaluate(() => {
     const store = window.__RB_CIRCUIT_STORE__;
     return store?.getState?.().circuit?.nodes?.length ?? -1;
   });
 
-  await page.locator(buttonSelector).first().click();
+  await clickElement(page.locator(buttonSelector).first());
 
   await page.waitForFunction(() => {
     const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
@@ -229,6 +232,8 @@ async function setInputBit(page, nodeId, value) {
 }
 
 async function ensureLiveInputsExpanded(page) {
+  await revealDesignLibrary(page);
+
   const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
   if (await firstToggle.isVisible().catch(() => false)) {
     return;
@@ -239,6 +244,19 @@ async function ensureLiveInputsExpanded(page) {
   assert(isVisible, 'design live inputs toggle must be visible before input editing');
   await disclosureToggle.click();
   await firstToggle.waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function revealDesignLibrary(page) {
+  if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) {
+    return;
+  }
+  const libraryToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  assert(
+    await libraryToggle.isVisible().catch(() => false),
+    'design surface must expose a restorable library rail before palette interaction',
+  );
+  await libraryToggle.click();
+  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
 }
 
 async function assertOutputBit(page, nodeId, expected) {
@@ -276,7 +294,7 @@ async function assertUniqueBoardAlias(page, alias, selector, placementRatio) {
   const button = page.locator(selector).first();
   const disabledBefore = await button.isDisabled().catch(() => false);
   if (!disabledBefore) {
-    await button.click();
+    await clickElement(button);
     await page.waitForFunction(() => {
       const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
       return canvas?.getAttribute('data-placement-active') === '1';
@@ -332,7 +350,7 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
   const enabledAfterDelete = !(await button.isDisabled().catch(() => true));
   assert(enabledAfterDelete, `${alias} palette entry should re-enable after deleting its node`);
 
-  await button.click();
+  await clickElement(button);
   await page.waitForFunction(() => {
     const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
     return canvas?.getAttribute('data-placement-active') === '1';
@@ -379,4 +397,13 @@ async function readBoardAliasNodeId(page, alias) {
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
+}
+
+async function clickElement(locator) {
+  await locator.evaluate((element) => {
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('expected clickable HTMLElement');
+    }
+    element.click();
+  });
 }

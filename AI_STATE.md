@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-14 (fix: reclaim RedByte workbench space)
+
+**Subsystem:** RedByte IDE workbench shell, Design rail defaults, Verify rail pressure, cross-surface layout proof, browser gate wiring, stale gate contracts, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `bd5c156b49a5a769c7922ab73a0f3e6a2906a786`; the user-visible app build was checked against `bd5c156`.
+- Selected the highest-impact contained defect as persistent support rails and phantom dock columns stealing space from the primary work object, especially Design canvas and Verify waveform/evidence at `1366x768`.
+- Added `ide:gate:workbench-space-utilization` and wired it into `classroom:gate` and `verify:gates:classroom`. The gate captures Project, Design, Verify before-run, Verify PASS/observation, Hardware, Export, and Import at `1366x768`, `1440x900`, and `1920x1080`; asserts no root overflow; enforces useful Design canvas / Verify waveform / Hardware board-table geometry; proves Project/Export/Import actions are not buried; and verifies collapsed rails can reopen.
+- Captured before evidence under `.redbyte/product-immersion/workbench-space-utilization/before/`; the failing pre-fix gate caught Design canvas squeezed to about `829px` and Verify waveform/evidence squeezed to about `491px` at `1366x768`.
+- Changed Design Canvas mode so Library and Inspector start collapsed/restorable by default, while preserving open-on-demand palette, inspector, selection, IO-state, and live-input workflows.
+- Removed the hidden/collapsed right-dock phantom column from the shared workbench grid and kept collapsed rail labels legible as narrow vertical restore affordances.
+- Kept Verify Signals as a collapsed/restorable rail by default so waveform/evidence gets more useful width.
+- Updated stale Design gates/tests that assumed persistent open rails (`ide:gate:student-loop-contract`, `ide:gate:design-correctness-contract`, `ide:gate:design-palette-build-contract`, `ide:gate:design-workbench-v1`, and focused Design unit tests) so they explicitly restore rails before asserting rail-owned content rather than weakening semantic checks.
+- Stopped stale RedByte Vite dev/preview processes before the final aggregate run; prior aggregate-only no-output failures were caused by stale local browser-server state, while the affected gates passed directly.
+- Updated cockpit/current-truth/work-queue/invariant/gate-ownership/execution/issue-index/inventory docs so Workbench Space Utilization / Rail Collapse v1 is closed locally and guarded as a cross-surface invariant.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `RB_WORKBENCH_SPACE_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-space-utilization/after corepack pnpm -s ide:gate:workbench-space-utilization`; `corepack pnpm -s ide:gate:design-workbench-v1`; `corepack pnpm -s ide:gate:design-workbench-integrity`; `corepack pnpm -s ide:gate:verify-evidence-workbench-integrity`; `corepack pnpm -s ide:gate:shell-layout-integrity`; `corepack pnpm -s ide:gate:shell-workbench-hierarchy`; `corepack pnpm -s ide:gate:hardware-basys3-workbench`; `corepack pnpm -s ide:gate:export-handoff-station`; `corepack pnpm -s ide:gate:import-recovery-contract`; `corepack pnpm -s ide:gate:project-command-center`; `corepack pnpm -s ide:gate:design-no-bridge-required`; focused shell/Design Vitest batch (`4` files, `59` tests); `corepack pnpm -s ide:gate:student-loop-contract`; `corepack pnpm -s ide:gate:design-correctness-contract`; `corepack pnpm -s ide:gate:design-palette-build-contract`; `corepack pnpm -s classroom:gate` with the new workbench space gate included; and `corepack pnpm -s build:unified`. After metrics show the Design canvas at about `1185px` and Verify waveform/evidence at about `663px` at `1366x768`, with no root horizontal overflow.
+
+**Safety:** This slice changes workbench layout, rail defaults, focused browser gates/tests, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, export goldens, Import parser behavior, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. `ide:gate:design-palette-build-contract` passes but remains slow in this local environment and should be optimized separately if classroom gate runtime becomes a CI problem. The layout is materially less boxed-in, but Project/Import empty-state composition, Export visual density, and final visual polish still need product review beyond geometry thresholds. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** If continuing product polish, implement `Workbench Visual Finish / Empty-State Composition v1`: reduce remaining floating-card/empty-space feel in Project and Import without broad redesign or proof-tier changes. If switching back to hardware proof, resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
+
 ## Change Log 2026-06-14 (fix: remove bridge fatal path from Design workspace)
 
 **Subsystem:** RedByte IDE Design workspace error boundary, student-facing error mapping, hardware bridge client default, browser gate wiring, and cockpit docs.

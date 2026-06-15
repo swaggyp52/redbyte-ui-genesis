@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Design No-Bridge Required hotfix
+**Latest product/control slice:** Workbench Space Utilization / Rail Collapse v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -39,8 +39,9 @@ Import is a utility. Vivado build, board programming, and board observation are 
 10. **Lab Profile / Course Pack Data Seam is closed locally.** `lab:profile-contract` now proves deterministic built-in profile metadata for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold; validates starter references, IO coverage, export artifact expectations, E0-only proof claims, and solution-forbidden Lab 8 evidence.
 11. **Student/Instructor Quickstarts are closed locally.** Current student, instructor, TA troubleshooting, and Windows course quickstart docs now live under `docs/course/` and match the Project -> Design -> Verify -> Map Pins / Hardware -> Export posture.
 12. **Design No-Bridge Required is closed locally.** `ide:gate:design-no-bridge-required` now proves Design opens the Logic Gates starter at `1366x768` and `1440x900` with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
-13. **Next board-gated slice: Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
-14. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
+13. **Workbench Space Utilization / Rail Collapse v1 is closed locally.** `ide:gate:workbench-space-utilization` now proves the primary work object owns meaningful space at `1366x768`, `1440x900`, and `1920x1080`: Design starts with Library/Inspector collapsed and restorable, Verify keeps the signal rail collapsed so waveform/evidence can breathe, and Project/Hardware/Export/Import keep first-order work/actions visible without root overflow.
+14. **Next board-gated slice: Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
+15. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or deeper course-pack authoring unless the user explicitly reprioritizes.
 
@@ -61,6 +62,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Lab profile/course-pack seam | Closed locally 2026-06-14 as a data-only seam under `packages/rb-apps/src/apps/ide/labProfiles/`; built-ins reference existing public starter/example IDs and keep Lab 8 scaffold solution-forbidden at E0 only. | Preserve `lab:profile-contract`; future course-pack work should build on the seam without moving simulation, Basys3, Verify, mapping, or export semantics into course data. |
 | Student/instructor quickstarts | Closed locally 2026-06-14 under `docs/course/`: student first-lab path, instructor setup/support/proof-tier path, TA troubleshooting triage, and Windows course launcher reference. | Keep these docs as the current public-facing course path; legacy root quickstarts remain stale unless separately rewritten. |
 | Design no-bridge boundary | Closed locally 2026-06-14: generic fetch/chunk failures no longer map to bridge fatal copy; explicit off hardware clients ignore persisted hardware mode; `ide:gate:design-no-bridge-required` proves Design does not require or contact the bridge before Hardware. | Preserve the new gate in `classroom:gate` and `verify:gates:classroom`; future Hardware changes must keep bridge access opt-in to Hardware/proof contexts. |
+| Workbench space utilization | Closed locally 2026-06-14: persistent support rails were the highest-impact waste source; Design Library/Inspector and Verify Signals now start collapsed/restorable, hidden right docks no longer reserve phantom columns, and `ide:gate:workbench-space-utilization` captures before/after geometry across Project, Design, Verify, Hardware, Export, and Import. | Preserve the gate in `classroom:gate` and `verify:gates:classroom`; future layout slices should keep the primary work object dominant before adding persistent rails, cards, or status chrome. |
 | Fresh Vivado/Basys3 proof | Vivado 2024.2 and board proof were not run in this reset. | Use a Vivado 2024.2 + Basys3 machine before making new E1/E2/E3 claims. |
 | Node pinned runtime | `.nvmrc` is `20.19.0`; current local proof uses Node `v24.15.0` and pnpm `10.24.0`. | Label Node 24 evidence honestly; rerun pinned-runtime proof when available. |
 
@@ -87,6 +89,7 @@ docs: restore RedByte Vivado Basys3 proof
 
 | Evidence | Result |
 |---|---|
+| Workbench Space Utilization / Rail Collapse v1 | Closed locally 2026-06-14: added `ide:gate:workbench-space-utilization` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. Before proof caught the highest-impact defect: Design canvas was squeezed to `829px` at `1366x768` and Verify waveform/evidence to `491px`. After proof shows Design canvas at about `1185px`, Verify waveform/evidence at about `663px`, support rails collapsed/restorable, no root horizontal overflow, and Project/Hardware/Export/Import first-order work/actions visible. Screenshots and metrics are local-only under `.redbyte/product-immersion/workbench-space-utilization/`. |
 | Design No-Bridge Required | Closed locally 2026-06-14: `studentError.test.ts` proves generic fetch/chunk failures are no longer labeled bridge-unreachable; `hardware-client-boundary.test.ts` proves explicit off bridge clients ignore persisted hardware mode; `ide:gate:design-no-bridge-required` proves Design loads the Logic Gates starter at classroom/desktop viewports with no bridge fatal copy, no ErrorBoundary/boot crash, and zero bridge-origin requests. Screenshots and manifest are local-only under `.redbyte/product-immersion/design-no-bridge-required/`. |
 | Student/Instructor Quickstarts | Closed locally 2026-06-14: added current `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; routed README/DOC_INDEX/current-truth docs toward the `docs/course/` path; kept Import utility-scoped, E0/E1/E2/E3 separated, and Vivado/Basys3 proof external. |
 | Lab Profile / Course Pack Data Seam | Closed locally 2026-06-14: added `packages/rb-apps/src/apps/ide/labProfiles/` with typed built-in profile metadata, `validateLabProfile`, `validateLabProfiles`, `assertNoSolutionLeak`, `listBuiltInLabProfiles`, and `getLabProfileById`; added `lab:profile-contract` to prove deterministic profile IDs, existing starter/example references, course metadata separation from runtime circuit state, IO/export/proof validation, duplicate/missing-reference diagnostics, and Lab 8 scaffold no-solution rejection. |
@@ -145,6 +148,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Import / Recovery. | `RB-IMPORT-001`; `RB-IMPORT-ACCESS-001`; `ide:gate:import-recovery-contract`; screenshots under `.redbyte/product-immersion/import-recovery-contract/after/`. |
 | Closed | Lab Profile / Course Pack Data Seam. | `packages/rb-apps/src/apps/ide/labProfiles/`; `lab:profile-contract`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
 | Closed | Student/Instructor Quickstarts. | `docs/course/STUDENT_QUICKSTART.md`; `docs/course/INSTRUCTOR_QUICKSTART.md`; `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; queue item 12. |
+| Closed | Workbench Space Utilization / Rail Collapse v1. | `ide:gate:workbench-space-utilization`; screenshots and metrics under `.redbyte/product-immersion/workbench-space-utilization/`. |
 | Next / board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links

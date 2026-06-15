@@ -40,11 +40,22 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const designInspector = page.locator('[data-testid="ide-design-inspector-empty"]').first();
   const designSelectionInspector = page.locator('[data-testid="ide-design-selection-inspector"]').first();
-  const designInspectorVisible = await designInspector.isVisible().catch(() => false);
-  const designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
+  let designInspectorVisible = await designInspector.isVisible().catch(() => false);
+  let designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
+  if (!designInspectorVisible && !designSelectionVisible) {
+    const inspectorToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
+    assert(
+      await visible(inspectorToggle).catch(() => false),
+      'design surface must expose a restorable inspector rail after starter load',
+    );
+    await inspectorToggle.click();
+    await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
+    designInspectorVisible = await designInspector.isVisible().catch(() => false);
+    designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
+  }
   assert(
     designInspectorVisible || designSelectionVisible,
-    'design surface must render its inspector panel after starter load',
+    'design surface must render inspector content after opening the restorable rail',
   );
 
   // 2. Verify: generate basics -> run -> PASS/FAIL banner

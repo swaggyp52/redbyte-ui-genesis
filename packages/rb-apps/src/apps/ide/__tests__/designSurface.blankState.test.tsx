@@ -120,14 +120,21 @@ describe('DesignSurface blank-state guidance', () => {
 
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Start on canvas');
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Pick a part, place it, then wire it.');
-    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-inspector')).toBeTruthy();
+    });
+
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-empty')).toBeTruthy();
     expect(view.queryByTestId('ide-design-inspector-next-step')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 
