@@ -93,11 +93,12 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; the Import utility access/fidelity finding is closed locally by `ide:gate:import-recovery-contract`.
-- Invariant gates `ide:gate:active-mode-reload-recovery`, `ide:gate:verify-saved-checks-default`, `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- Invariant gates `ide:gate:active-mode-reload-recovery`, `ide:gate:verify-saved-checks-default`, `ide:gate:hardware-first-viewport`, `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
-- Project, Design, Verify run intent, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repairs are materially stronger than earlier audits; the next browser-first product issue from live inspection is Hardware first-viewport hierarchy, while the next non-visual proof gap remains fresh Vivado/Basys3 proof restoration.
+- Project, Design, Verify run intent, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repairs are materially stronger than earlier audits; the next browser-first product issue must be chosen from live inspection, while the next non-visual proof gap remains fresh Vivado/Basys3 proof restoration.
+- Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1 is closed locally by `ide:gate:hardware-first-viewport`: the Logic Gates starter Map Pins path keeps the Basys3 board/table and selected SW0 -> board resource -> package pin -> XDC chain first-order at `1366x768` and `1440x900` without changing pin mapping or making E1/E2/E3 claims.
 - Active Mode Reload Recovery v1 is closed locally by `ide:gate:active-mode-reload-recovery`: Project starter load now synchronizes the URL to `mode=design`, browser reload restores Design, left-rail Verify navigation synchronizes to `mode=verify`, and browser reload restores Verify.
 - Verify Saved Checks Default / Compare Intent v1 is closed locally by `ide:gate:verify-saved-checks-default`: the Logic Gates starter now arms saved expected-output checks before the first run, the primary action names Compare, first Run reaches Compare PASS, Compare remains armed after PASS, and students can still intentionally switch Observe/Compare.
 - Project Starter Density / Command Center Lab Shelf v1 is closed locally by `ide:gate:project-command-center`: Project first launch now opens the all-lab starter shelf by default, shows eight lab choices without another click, preserves Build Fresh / Import / saved / starter paths, and is browser-proved at `1366x768`, `1440x900`, and `1920x1080`.
@@ -157,6 +158,7 @@ Supporting truths:
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
 - Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
 - Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
+- Hardware first-viewport hierarchy is covered by `ide:gate:hardware-first-viewport`, including build-hash verification, selected SW0 row proof, board/table first-viewport geometry, XDC consequence text, and no browser E1/E2/E3 overclaim at `1366x768` and `1440x900`.
 - Hardware / Basys3 Workbench is covered by `ide:gate:hardware-basys3-workbench`, including first-viewport Basys3 workbench proof at `1366x768` and `1440x900`, selected signal -> board resource -> package pin -> XDC hierarchy, and E0-only ready wording.
 - Import / Recovery is covered by `ide:gate:import-recovery-contract`, including Project utility discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no browser Vivado/Basys3 overclaim.
 - Active mode reload recovery is covered by `ide:gate:active-mode-reload-recovery`, including Project starter load route sync, Design reload recovery, left-rail Verify route sync, and Verify reload recovery.
@@ -186,14 +188,14 @@ Approved V1 order:
 12d. Project Starter Density / Command Center Lab Shelf v1. Closed locally 2026-06-15.
 12e. Active Mode Reload Recovery v1. Closed locally 2026-06-15.
 12f. Verify Saved Checks Default / Compare Intent v1. Closed locally 2026-06-15.
-12g. Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1. Next browser-first product-polish candidate.
+12g. Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next browser-first product-polish slice after the Verify Saved Checks Default / Compare Intent v1 closeout is:
+The next browser-first product-polish slice should be selected only after live app inspection. Do not choose the target from this queue alone.
 
 ```text
-fix: tighten Hardware Basys3 first viewport
+browser-first product ownership: inspect, rank, choose one gateable defect
 ```
 
-That slice should keep the Hardware board/table and selected binding chain higher in the classroom viewport without changing pin mapping, generated XDC, Vivado proof, or board-observation claims. The next board-gated proof slice remains `docs: restore RedByte Vivado Basys3 proof`, and it should update E1/E2/E3 release evidence only from real Vivado 2024.2 and Basys3 runs. Do not skip to website, pilot, broad polish, accounts/SaaS, or commercial packaging unless the user explicitly reprioritizes.
+The next board-gated proof slice remains `docs: restore RedByte Vivado Basys3 proof`, and it should update E1/E2/E3 release evidence only from real Vivado 2024.2 and Basys3 runs. Do not skip to website, pilot, broad polish, accounts/SaaS, or commercial packaging unless the user explicitly reprioritizes.

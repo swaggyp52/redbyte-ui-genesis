@@ -105,6 +105,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:hardware-basys3-workbench'],
   },
   {
+    name: 'ide:gate:hardware-first-viewport',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:hardware-first-viewport'],
+  },
+  {
     name: 'ide:gate:shell-layout-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:shell-layout-integrity'],

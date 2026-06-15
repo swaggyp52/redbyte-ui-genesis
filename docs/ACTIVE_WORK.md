@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Verify Saved Checks Default / Compare Intent v1
+**Latest product/control slice:** Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -43,9 +43,10 @@ Import is a utility. Vivado build, board programming, and board observation are 
 14. **Design No-Bridge Required is closed locally.** `ide:gate:design-no-bridge-required` now proves Design opens the Logic Gates starter at `1366x768` and `1440x900` with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
 15. **Workbench Space Utilization / Rail Collapse v1 is closed locally.** `ide:gate:workbench-space-utilization` now proves the primary work object owns meaningful space at `1366x768`, `1440x900`, and `1920x1080`: Design starts with Library/Inspector collapsed and restorable, Verify keeps the signal rail collapsed so waveform/evidence can breathe, and Project/Hardware/Export/Import keep first-order work/actions visible without root overflow.
 16. **Workbench Visual Finish / Import Empty-State Composition v1 is closed locally.** `ide:gate:workbench-visual-finish` now proves Import first-look recovery uses one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, first-viewport guidance fit, no root overflow, and neighboring Project/Design/Export captures at `1366x768`, `1440x900`, and `1920x1080`.
-17. **Next browser-first product-polish slice: Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1.** Live inspection showed the Hardware board/table starts too low at `1366x768`; fix only the visible hierarchy if this browser-first mode continues.
-18. **Next board-gated slice remains Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
-19. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
+17. **Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1 is closed locally.** `ide:gate:hardware-first-viewport` now proves the Logic Gates starter Map Pins path keeps the Basys3 board/table and selected SW0 -> board resource -> package pin -> XDC chain first-order at `1366x768` and `1440x900`, without changing mapping semantics or claiming E1/E2/E3 proof.
+18. **Next browser-first product-polish slice must be selected from live inspection.** Do not choose a target from stale docs; inspect the live app first, rank the visible normal-use issues, then pick one contained gateable defect.
+19. **Next board-gated slice remains Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
+20. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or deeper course-pack authoring unless the user explicitly reprioritizes.
 
@@ -66,6 +67,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Export Handoff Station | Closed 2026-06-14: Draft, Ready-to-build, and Trusted post-download states now sit in one visible station with package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, and browser-only evidence boundaries proved by `ide:gate:export-handoff-station`. | Keep the gate in `classroom:gate` and `verify:gates:classroom`; future Export changes should preserve build/download as the primary station action unless product contract changes. |
 | Import utility access | Closed locally 2026-06-14: Project exposes Import / Recover, Import leads with RedByte manifest restore as highest fidelity, Vivado/VHDL is reconstruction-limited, corrupt import leaves current project intact, and imported Verify PASS is not trusted automatically. | Keep `ide:gate:import-recovery-contract` in `classroom:gate` and `verify:gates:classroom`; future arbitrary HDL migration work needs separate parser/source tests. |
 | Hardware proof language | Closed 2026-06-14: Hardware ready state now says E0 only, the selected binding chain exposes signal, board resource, package pin, and XDC, and `ide:gate:hardware-basys3-workbench` is wired into classroom gates. | Preserve the gate and do not claim Vivado build, bitstream programming, or board observation without external E1/E2/E3 evidence. |
+| Hardware first viewport | Closed locally 2026-06-15: `ide:gate:hardware-first-viewport` proves the selected Logic Gates Map Pins board/table and SW0 binding chain start high enough in the classroom and desktop first viewport while preserving E0-only Hardware wording. | Preserve the gate in `classroom:gate` and `verify:gates:classroom`; future Hardware layout work should not change pin mapping, generated XDC, or Vivado/Basys3 proof claims. |
 | Lab profile/course-pack seam | Closed locally 2026-06-14 as a data-only seam under `packages/rb-apps/src/apps/ide/labProfiles/`; built-ins reference existing public starter/example IDs and keep Lab 8 scaffold solution-forbidden at E0 only. | Preserve `lab:profile-contract`; future course-pack work should build on the seam without moving simulation, Basys3, Verify, mapping, or export semantics into course data. |
 | Student/instructor quickstarts | Closed locally 2026-06-14 under `docs/course/`: student first-lab path, instructor setup/support/proof-tier path, TA troubleshooting triage, and Windows course launcher reference. | Keep these docs as the current public-facing course path; legacy root quickstarts remain stale unless separately rewritten. |
 | Design no-bridge boundary | Closed locally 2026-06-14: generic fetch/chunk failures no longer map to bridge fatal copy; explicit off hardware clients ignore persisted hardware mode; `ide:gate:design-no-bridge-required` proves Design does not require or contact the bridge before Hardware. | Preserve the new gate in `classroom:gate` and `verify:gates:classroom`; future Hardware changes must keep bridge access opt-in to Hardware/proof contexts. |
@@ -76,29 +78,24 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1.
+**Target:** Browser-first product ownership: choose the next single visible normal-use defect from the live app.
 
-Structured hardening ticket fields to start from:
+Structured hardening ticket fields to start from after inspection:
 
-- Title: Tighten Hardware Basys3 first-viewport hierarchy.
-- Surface: Hardware / Map Pins workbench.
-- Journey segment: student reaches Map Pins after Verify PASS and expects the board/table binding work to be immediately inspectable.
-- Observed behavior: Browser-first inspection at `1366x768` showed the Hardware board/table starts too low, with the main mapping object competing with upper explanatory chrome.
-- Expected behavior: the Basys3 board/table and selected signal -> board resource -> package pin -> XDC consequence chain are clearly first-order in the classroom viewport without implying Vivado, programming, or board-observation proof.
-- Minimum acceptance proof: before/after screenshots at `1366x768` and `1440x900`, a focused Hardware browser gate update or new gate, `ide:gate:hardware-basys3-workbench`, classroom gate, build/doc/encoding/diff checks, and no E1/E2/E3 claim.
+- Title: name the observed defect precisely.
+- Surface: the one surface or navigation path where the defect is visible.
+- Journey segment: the normal student or professor workflow affected.
+- Observed behavior: record screenshot-backed evidence at `1366x768` and `1440x900`.
+- Expected behavior: define the smallest product repair without changing unrelated semantics.
+- Minimum acceptance proof: intentional red if feasible, one focused browser gate or gate update, affected surface gates, `classroom:gate`, build/doc/encoding/diff checks, before/after screenshots, and no E1/E2/E3 claim unless real Vivado/Basys3 evidence is produced.
 
-Board-gated proof remains a separate next path: `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
-
-Suggested commit:
-
-```text
-fix: tighten Hardware Basys3 first viewport
-```
+Board-gated proof remains a separate path: `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1 | Closed locally 2026-06-15: added `ide:gate:hardware-first-viewport` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught the loaded Logic Gates Map Pins board/table starting below the tightened first-viewport threshold; after proof shows the board/table starting about `9px` higher while keeping the selected SW0 -> board resource -> `PACKAGE_PIN V17` -> XDC chain visible, no root overflow, and no Vivado/build/programming/observation overclaim. Before/after screenshots and metrics are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/`. |
 | Verify Saved Checks Default / Compare Intent v1 | Closed locally 2026-06-15: added `ide:gate:verify-saved-checks-default` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught the Logic Gates starter exposing saved checks while Observe-only remained armed and the primary action read `Run`; after proof shows saved checks armed, `Run Compare`, first Run reaching Compare PASS, `Update Compare` after PASS, and explicit Observe/Compare switching. Before/after screenshots are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Active Mode Reload Recovery v1 | Closed locally 2026-06-15: added `ide:gate:active-mode-reload-recovery` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught Project starter load leaving the URL at `mode=project` while Design was visible; after proof shows starter load writes `mode=design`, reload restores Design, left-rail Verify writes `mode=verify`, and reload restores Verify. Before/after screenshots are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Project Starter Density / Command Center Lab Shelf v1 | Closed locally 2026-06-15: strengthened `ide:gate:project-command-center` so Project first launch is checked at `1366x768`, `1440x900`, and `1920x1080`; the intentional red run caught the hidden all-lab starter grid; after proof shows the all-lab shelf open by default with eight lab choices, a tighter launch command center, no console/page findings in after screenshots, and browser E0-only evidence under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
@@ -163,6 +160,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Lab Profile / Course Pack Data Seam. | `packages/rb-apps/src/apps/ide/labProfiles/`; `lab:profile-contract`; `docs/product/RED_BYTE_LAB_PROFILE_MODEL.md`; queue item 11. |
 | Closed | Student/Instructor Quickstarts. | `docs/course/STUDENT_QUICKSTART.md`; `docs/course/INSTRUCTOR_QUICKSTART.md`; `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; queue item 12. |
 | Closed | Workbench Space Utilization / Rail Collapse v1. | `ide:gate:workbench-space-utilization`; screenshots and metrics under `.redbyte/product-immersion/workbench-space-utilization/`. |
+| Closed | Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1. | `RB-HARDWARE-VIEWPORT-001`; `ide:gate:hardware-first-viewport`; screenshots and metrics under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/`. |
 | Closed | Active Mode Reload Recovery v1. | `ide:gate:active-mode-reload-recovery`; before/after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Next / board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 

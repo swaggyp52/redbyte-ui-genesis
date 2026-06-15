@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-15 (fix: tighten Hardware Basys3 first viewport)
+
+**Subsystem:** RedByte IDE Hardware / Map Pins first-viewport hierarchy, focused browser gate, classroom gate wiring, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `193ad11815cb324fb602e50bb60b9119d7382480`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview with visible build `193ad118` matching local HEAD before trusting browser screenshots.
+- Ran browser-first inspection before coding. The selected defect was Hardware first-viewport hierarchy: the board/table and selected mapping chain were present but still started too low at classroom height, so the main Map Pins object felt secondary to explanatory chrome.
+- Added `ide:gate:hardware-first-viewport` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed on the observed loaded-starter contract because the board/table top positions were below the tightened first-viewport threshold.
+- Tightened Hardware-only CSS so the panel header consumes less vertical space and the Basys3 board/table canvas starts higher. The existing selected binding chain visibility was preserved instead of compressing it below the previous `hardware-basys3-workbench` contract.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm --filter @redbyte/playground build`; intentional red `RB_HARDWARE_FIRST_VIEWPORT_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/before corepack pnpm -s ide:gate:hardware-first-viewport`; final `RB_HARDWARE_FIRST_VIEWPORT_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/after corepack pnpm -s ide:gate:hardware-first-viewport`; `corepack pnpm -s ide:gate:hardware-first-viewport`; `corepack pnpm -s ide:gate:hardware-basys3-workbench`; `corepack pnpm -s ide:gate:ece141-map-pins-recovery`; `corepack pnpm -s ide:gate:export-handoff-station`; `corepack pnpm -s ide:gate:workbench-space-utilization`; focused Hardware/mapping Vitest batch (`7` files, `58` tests passed); `corepack pnpm -s classroom:gate` with the new Hardware first-viewport gate included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before/after screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/`; loaded-starter proof moved the table/board start from about `196px`/`198px` to about `187px`/`188px` while keeping the selected SW0 -> Basys3 resource -> `PACKAGE_PIN V17` -> XDC consequence chain visible.
+
+**Safety:** This slice changes Hardware presentation CSS, one focused browser gate, gate aggregators, and current-truth docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers the Logic Gates starter Map Pins path with the selected SW0 chain at `1366x768` and `1440x900`, not every no-circuit or custom-mapping state. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** If continuing browser-first product ownership, inspect the live app again and choose the next single visible normal-use defect only after inspection. If switching back to downstream proof, resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
+
 ## Change Log 2026-06-15 (fix: arm Verify saved checks by default)
 
 **Subsystem:** RedByte IDE Verify saved-check run intent, focused browser gate, classroom gate wiring, and cockpit docs.

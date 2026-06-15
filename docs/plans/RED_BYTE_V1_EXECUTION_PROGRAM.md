@@ -541,6 +541,36 @@ Rollback:
 
 - Revert the Verify next-run intent and focused gate wiring; existing Verify contract and evidence-workbench gates continue to protect result semantics separately.
 
+## Phase 10.9 - Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1
+
+Status: Closed 2026-06-15 by `ide:gate:hardware-first-viewport`.
+
+Goal: Keep the Hardware Map Pins board/table and selected binding chain first-order in the classroom viewport.
+
+Why: Browser-first review found that the Logic Gates starter Hardware workbench was semantically correct but still felt visually unfinished because the main board/table mapping object started too low at `1366x768`. This was a product hierarchy defect, not a pin-mapping, generated-artifact, or hardware-proof defect.
+
+Implementation slices:
+
+- Added one focused browser gate for the Logic Gates starter Hardware first-viewport path at `1366x768` and `1440x900`.
+- Tightened Hardware-only workbench header/canvas spacing so the Basys3 board/table starts higher.
+- Preserved the selected SW0 -> board resource -> package pin -> XDC consequence chain and the E0-only Hardware wording.
+
+Proof:
+
+- Intentional red `ide:gate:hardware-first-viewport` caught the loaded starter board/table below the tightened first-viewport threshold.
+- Passing `ide:gate:hardware-first-viewport` after the fix with before/after screenshots and observations under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/hardware-first-viewport/`.
+- `ide:gate:hardware-basys3-workbench`, Map Pins recovery, Export handoff, Workbench Space Utilization, focused Hardware/mapping tests, and classroom gate.
+
+Acceptance:
+
+- The board workspace, mapping table, Basys3 board, and selected binding chain are visible high enough at `1366x768` and `1440x900`.
+- SW0 and `PACKAGE_PIN V17` remain visible in the Hardware proof path.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Hardware layout slice and focused gate wiring; Hardware workbench and mapping tests protect non-layout semantics separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.
