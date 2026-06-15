@@ -18,6 +18,19 @@ async function waitForCondition(page, label, predicate, arg, timeout = 10000) {
   }
 }
 
+async function revealDesignLibrary(page) {
+  const dock = page.locator('[data-testid="ide-left-dock"]').first();
+  if (await dock.isVisible().catch(() => false)) return;
+
+  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  assert(
+    await toggle.isVisible().catch(() => false),
+    'Design library restore toggle must be visible before persistence mutation'
+  );
+  await toggle.click();
+  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
+}
+
 await runIdeGate('IDE persistence contract satisfied', async ({ page, baseUrl }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   // Suppress first-visit onboarding.
@@ -33,6 +46,7 @@ await runIdeGate('IDE persistence contract satisfied', async ({ page, baseUrl })
     const store = window.__RB_CIRCUIT_STORE__;
     return store?.getState?.().circuit?.nodes?.length ?? 0;
   });
+  await revealDesignLibrary(page);
   await page.locator('[data-testid="ide-design-palette-input"]').first().click();
   await waitForCondition(
     page,

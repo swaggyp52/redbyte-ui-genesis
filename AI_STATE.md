@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-15 (fix: preserve active IDE mode on reload)
+
+**Subsystem:** RedByte IDE active mode routing, Project-to-Design continuity, focused browser gate, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `77b5d52d7b09775ee62f4c22876510c94e192f75`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Ran a browser-first ownership pass before selecting the implementation target. The highest-impact contained defect was active workspace reload recovery: loading a Project starter moved the visible app to Design while the URL stayed `?mode=project`, so browser refresh reopened Project instead of Design.
+- Translated the product complaint into one contained hardening slice: Active Mode Reload Recovery v1.
+- Added `ide:gate:active-mode-reload-recovery` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed on the exact observed contract: `Project starter load should sync route mode=design before reload; got project`.
+- Changed IDE shell routing only: when the normalized active mode changes, the app now replaces the `mode` query value in the current URL while preserving proof/query parameters such as `e2e`, `gate`, and `ownership`. The default no-query Project launch remains untouched.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: in-app browser before screenshots captured Design visible at `?mode=project` and the post-refresh Project regression under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/before/`; intentional red `corepack pnpm -s ide:gate:active-mode-reload-recovery` failed before the fix; `corepack pnpm --filter @redbyte/playground build`; final focused `corepack pnpm -s ide:gate:active-mode-reload-recovery`; `node --check scripts/gates/ide-active-mode-reload-recovery.mjs`; `corepack pnpm -s ide:gate:persistence-contract`; `corepack pnpm -s ide:gate:project-command-center`; `corepack pnpm rb:doc:validate` (`29` passed); `corepack pnpm -s build:unified`; `corepack pnpm rb:encoding:check`; `git diff --check` with LF-to-CRLF working-copy warnings only; and `corepack pnpm -s classroom:gate` with the new active-mode reload gate included (`PASS all steps`). In-app browser after screenshots on fresh origin `http://127.0.0.1:5182/os/` show `mode=design` before/after reload and `mode=verify` before/after reload; after proof used build `77b5d52d`, timestamp `2026-06-15T12:06:10.441Z`, from the current dirty working tree before commit.
+
+**Safety:** This slice changes active-mode URL synchronization, one focused browser gate, gate aggregators, and current-truth docs only. It does not change Project layout, starter data, simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The gate covers Project starter load and left-rail Verify navigation reload recovery, not every possible browser history/back-button sequence. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware, unless the user explicitly chooses another contained browser-first product-polish slice.
+
 ## Change Log 2026-06-15 (fix: expose Project lab starter shelf)
 
 **Subsystem:** RedByte IDE Project first-launch command center, lab starter shelf density, focused browser gate, and cockpit docs.

@@ -93,11 +93,12 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; the Import utility access/fidelity finding is closed locally by `ide:gate:import-recovery-contract`.
-- Invariant gates `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- Invariant gates `ide:gate:active-mode-reload-recovery`, `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
 - Project, Design, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repairs are materially stronger than earlier audits; the next non-visual proof gap is fresh Vivado/Basys3 proof restoration.
+- Active Mode Reload Recovery v1 is closed locally by `ide:gate:active-mode-reload-recovery`: Project starter load now synchronizes the URL to `mode=design`, browser reload restores Design, left-rail Verify navigation synchronizes to `mode=verify`, and browser reload restores Verify.
 - Project Starter Density / Command Center Lab Shelf v1 is closed locally by `ide:gate:project-command-center`: Project first launch now opens the all-lab starter shelf by default, shows eight lab choices without another click, preserves Build Fresh / Import / saved / starter paths, and is browser-proved at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench Visual Finish / Import Empty-State Composition v1 is closed locally by `ide:gate:workbench-visual-finish`: Import first-look now has one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, compact recovery guidance above the fold, no root overflow, and Project/Design/Export neighbor captures at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench Space Utilization / Rail Collapse v1 is now closed locally by `ide:gate:workbench-space-utilization`: persistent support rails were the highest-impact layout defect, so Design Library/Inspector and Verify Signals start collapsed/restorable; the gate proves Project, Design, Verify, Hardware, Export, and Import at `1366x768`, `1440x900`, and `1920x1080` with meaningful focal-object space and no root overflow.
@@ -156,6 +157,7 @@ Supporting truths:
 - Export Handoff Station is covered by `ide:gate:export-handoff-station`, including Draft versus Trusted first-viewport state, package handoff visibility, artifact workspace files, README E0 boundary, mapping summary agreement, Vivado next steps, and no browser E1/E2/E3 overclaim.
 - Hardware / Basys3 Workbench is covered by `ide:gate:hardware-basys3-workbench`, including first-viewport Basys3 workbench proof at `1366x768` and `1440x900`, selected signal -> board resource -> package pin -> XDC hierarchy, and E0-only ready wording.
 - Import / Recovery is covered by `ide:gate:import-recovery-contract`, including Project utility discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no browser Vivado/Basys3 overclaim.
+- Active mode reload recovery is covered by `ide:gate:active-mode-reload-recovery`, including Project starter load route sync, Design reload recovery, left-rail Verify route sync, and Verify reload recovery.
 - Lab Profile / Course Pack Data Seam is covered by `lab:profile-contract`, including deterministic profile IDs, existing starter/example references, required IO coverage, export artifact expectations, E0-only profile proof claims, and no-solution rejection for Lab 8 solved evidence.
 - Current student/instructor/TA quickstarts are covered by `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md`; legacy root quickstarts are stale unless separately rewritten.
 - Old `build:unified` route/lock drift is resolved unless a fresh run reproduces failure.
@@ -180,10 +182,11 @@ Approved V1 order:
 12b. Workbench Space Utilization / Rail Collapse v1. Closed locally 2026-06-14.
 12c. Workbench Visual Finish / Import Empty-State Composition v1. Closed locally 2026-06-15.
 12d. Project Starter Density / Command Center Lab Shelf v1. Closed locally 2026-06-15.
+12e. Active Mode Reload Recovery v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next board-gated slice after the Project Starter Density / Command Center Lab Shelf v1 closeout is:
+The next board-gated slice after the Active Mode Reload Recovery v1 closeout is:
 
 ```text
 docs: restore RedByte Vivado Basys3 proof

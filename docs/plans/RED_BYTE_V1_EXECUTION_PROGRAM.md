@@ -472,6 +472,40 @@ Rollback:
 
 - Revert the Import first-look layout slice and remove the visual-finish gate wiring; Import recovery contract protects parser/apply safety separately.
 
+## Phase 10.7 - Active Mode Reload Recovery v1
+
+Status: Closed 2026-06-15 by `ide:gate:active-mode-reload-recovery`.
+
+Goal: Preserve the visible active workspace across browser refresh after in-app navigation.
+
+Why: Browser-first review found that loading a Project starter moved the visible app to Design while the URL still said `mode=project`. A normal refresh therefore reopened Project instead of the active Design workbench. This is a continuity and trust defect, not a layout redesign.
+
+Implementation slices:
+
+- Synchronize the `mode` query when the normalized active IDE mode changes.
+- Preserve existing proof/query parameters such as `e2e`, `gate`, and `ownership`.
+- Keep default no-query Project launch unchanged.
+- Add one focused browser gate for Project starter load and left-rail Verify reload recovery.
+
+Proof:
+
+- Intentional red `ide:gate:active-mode-reload-recovery` caught starter-loaded Design at stale `mode=project`.
+- Passing `ide:gate:active-mode-reload-recovery` after the fix.
+- Before/after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`.
+- Classroom gate.
+
+Acceptance:
+
+- Project starter load writes `mode=design` before refresh.
+- Reload restores Design after starter load.
+- Left-rail Verify navigation writes `mode=verify` before refresh.
+- Reload restores Verify after left-rail navigation.
+- No Project layout, starter data, simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the route-sync hook and active-mode reload gate wiring; route/layout gates protect boot and visible shell behavior separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

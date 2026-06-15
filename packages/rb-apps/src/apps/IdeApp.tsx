@@ -169,6 +169,10 @@ export const IdeApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    syncActiveModeIntoUrl(activeMode);
+  }, [activeMode]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== '?') return;
       const tag = (event.target as HTMLElement)?.tagName?.toLowerCase();
@@ -2083,6 +2087,20 @@ export const IdeApp: React.FC = () => {
 function resolveInitialIdeMode(): IdeMode {
   if (typeof window === 'undefined') return 'project';
   return resolveInitialIdeModeFromSearch(window.location.search);
+}
+
+function syncActiveModeIntoUrl(activeMode: IdeMode): void {
+  if (typeof window === 'undefined') return;
+
+  const params = new URLSearchParams(window.location.search);
+  const currentMode = params.get('mode');
+  if (currentMode === activeMode) return;
+  if (!currentMode && activeMode === 'project') return;
+
+  params.set('mode', activeMode);
+  const nextSearch = params.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+  window.history.replaceState(window.history.state, '', nextUrl);
 }
 
 function normalizeSignalKey(value: string): string {

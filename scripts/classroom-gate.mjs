@@ -20,6 +20,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-command-center'],
   },
   {
+    name: 'ide:gate:active-mode-reload-recovery',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:active-mode-reload-recovery'],
+  },
+  {
     name: 'ide:gate:student-loop-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:student-loop-contract'],

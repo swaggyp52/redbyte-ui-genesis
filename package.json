@@ -221,6 +221,7 @@
         "ide:gate:project-health-live-contract": "node ./scripts/gates/ide-project-health-live-contract.mjs",
         "ide:gate:project-continue-cta-contract": "node ./scripts/gates/ide-project-continue-cta-contract.mjs",
         "ide:gate:project-command-center": "node ./scripts/gates/ide-project-command-center.mjs",
+        "ide:gate:active-mode-reload-recovery": "node ./scripts/gates/ide-active-mode-reload-recovery.mjs",
         "ide:gate:persistence-contract": "node ./scripts/gates/ide-persistence-contract.mjs",
         "ide:gate:examples-contract": "node ./scripts/gates/ide-examples-contract.mjs",
         "ide:gate:design-system-contract": "node ./scripts/gates/ide-design-system-contract.mjs",
