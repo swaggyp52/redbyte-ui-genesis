@@ -10,6 +10,22 @@ import {
 } from './_gateHarness.mjs';
 import { waitForVerifyResult } from './_verifyStatus.mjs';
 
+async function hasVisibleExactText(page, value) {
+  return page.getByText(value, { exact: true }).evaluateAll((elements) =>
+    elements.some((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return (
+        rect.width > 1 &&
+        rect.height > 1 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        Number(style.opacity || '1') !== 0
+      );
+    })
+  );
+}
+
 await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
   await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
@@ -64,7 +80,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   }
   assert(editableExpectedCellVisible, 'verify must expose an editable expected-output cell after checks are saved');
   assert(
-    await page.getByText('Expected outputs').first().isVisible().catch(() => false),
+    await hasVisibleExactText(page, 'Expected outputs'),
     'verify student flow must label expected-output checks as Expected outputs'
   );
   const verifyPanelText = ((await page.locator('[data-testid="ide-verify-panel"]').textContent()) ?? '').toLowerCase();

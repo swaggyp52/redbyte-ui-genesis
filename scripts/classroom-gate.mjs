@@ -70,6 +70,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-reality-contract'],
   },
   {
+    name: 'ide:gate:verify-saved-checks-default',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-saved-checks-default'],
+  },
+  {
     name: 'ide:gate:verify-evidence-workbench-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],

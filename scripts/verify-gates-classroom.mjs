@@ -77,6 +77,7 @@ function main() {
           },
         ]),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
+    runGate('ide:verify-saved-checks-default', 'pnpm -s ide:gate:verify-saved-checks-default', true),
     runGate('ide:synth-subset-contract', 'pnpm -s ide:gate:synth-subset-contract', true),
     runGate('ide:vivado-pack-contract', 'pnpm -s ide:gate:vivado-pack-contract', true),
     runGate(

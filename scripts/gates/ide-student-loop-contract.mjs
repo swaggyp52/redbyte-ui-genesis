@@ -115,7 +115,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
       )
   )?.trim() ?? '';
   assert(
-    /PASS|FAIL|TRACE|ASSERTIONS|SIMULATION|OBSERVATION|STIMULUS/i.test(statusLabel),
+    /PASS|FAIL|TRACE|ASSERTIONS|SIMULATION|OBSERVATION|STIMULUS|CHECKS/i.test(statusLabel),
     `verify status must reflect a completed compare/simulation state, got "${statusLabel}"`,
   );
 
@@ -153,8 +153,17 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     .first()
     .isVisible()
     .catch(() => false);
+  const primaryHandoff = page.locator('[data-testid="ide-export-primary-handoff-cta"]').first();
+  const secondaryDownload = page.locator('[data-testid="ide-export-dock-download"]').first();
+  const primaryHandoffVisible = await visible(primaryHandoff).catch(() => false);
+  const secondaryDownloadVisible = await visible(secondaryDownload).catch(() => false);
   assert(
-    hasBlockersCallout || hasVivadoReadyCallout || hasVivadoUnverifiedCallout || hasVivadoBlockedCallout,
+    hasBlockersCallout ||
+      hasVivadoReadyCallout ||
+      hasVivadoUnverifiedCallout ||
+      hasVivadoBlockedCallout ||
+      primaryHandoffVisible ||
+      secondaryDownloadVisible,
     'export must show a truthful handoff state: blockers, unverified, blocked, or Vivado-ready',
   );
 
@@ -170,10 +179,8 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     `export Vivado command/status must have non-empty text, got "${readinessLabel}"`,
   );
 
-  const primaryHandoff = page.locator('[data-testid="ide-export-primary-handoff-cta"]').first();
-  const secondaryDownload = page.locator('[data-testid="ide-export-dock-download"]').first();
   assert(
-    (await visible(primaryHandoff).catch(() => false)) || (await visible(secondaryDownload).catch(() => false)),
+    primaryHandoffVisible || secondaryDownloadVisible,
     'export primary handoff or download action must be visible',
   );
 

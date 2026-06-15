@@ -41,6 +41,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:workbench-space-utilization`
 - `ide:gate:workbench-visual-finish`
 - `ide:gate:verify-evidence-workbench-integrity`
+- `ide:gate:verify-saved-checks-default`
 
 Why:
 
@@ -59,6 +60,7 @@ Why:
 - Workbench space utilization proves persistent support rails do not squeeze the focal object below useful size, Design and Verify support rails start collapsed/restorable, Project/Export/Import actions remain visible, and cross-surface geometry has no root overflow at classroom/desktop/wide sizes.
 - Workbench visual finish proves Import first-look composition has one restore hierarchy, visible recovery alternatives, first-viewport guidance fit, neighboring surface captures, and no root overflow at classroom/desktop/wide sizes.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
+- Verify saved-checks default proves starters with saved expected outputs arm Compare before the first run, label the primary action as Compare-oriented, reach Compare PASS without a manual mode switch, and preserve explicit Observe/Compare switching.
 
 ## Choosing The Right Test
 
@@ -68,7 +70,7 @@ Why:
 | Mode route, in-app navigation, or reload recovery | `ide:gate:active-mode-reload-recovery` plus the affected route/surface gate; add focused unit coverage only if startup-mode parsing semantics change |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify behavior or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, or a narrower new Verify browser gate |
+| Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity` or `ide:gate:export-handoff-station` proving visible labels, preview, download, station hierarchy, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, hardware browser screenshots, and mapping tests only if map state changes |

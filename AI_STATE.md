@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-15 (fix: arm Verify saved checks by default)
+
+**Subsystem:** RedByte IDE Verify saved-check run intent, focused browser gate, classroom gate wiring, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `7de8c24dc1309f32ccd36a03291e8c19d436ae07`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Ran a browser-first ownership pass before selecting the implementation target. The highest-impact contained defect was Verify run intent: the Logic Gates starter had saved expected checks available, but the first-run control still defaulted to Observe-only language and did not visibly arm Compare checks.
+- Translated the product complaint into one contained hardening slice: Verify Saved Checks Default / Compare Intent v1.
+- Added `ide:gate:verify-saved-checks-default` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed on the observed contract: saved starter checks were available but the command bar had Observe armed and the primary action read `Run`.
+- Changed Verify authoring state only: a project with saved expected outputs and no previous run now arms Compare by default; explicit student Observe/Compare choices still work; vector collection changes reset untouched intent; and the compact action/copy now names Run/Update Compare when saved checks are armed.
+- Updated adjacent classroom gates for current copy without weakening their behavior: Verify workbench gates now require a visible exact `Expected outputs` label instead of the first text match, and the student-loop gate accepts current `Checks aligned` PASS copy plus the current Export handoff station action.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: focused Verify Vitest batch (`4` files, `22` tests passed with filtered skips); `corepack pnpm --filter @redbyte/playground build`; `RB_VERIFY_SAVED_CHECKS_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-15/after/verify-saved-checks-default corepack pnpm -s ide:gate:verify-saved-checks-default`; `corepack pnpm -s ide:gate:verify-saved-checks-default`; `corepack pnpm -s ide:gate:verify-contract`; `corepack pnpm -s ide:gate:verify-reality-contract`; `corepack pnpm -s ide:gate:verify-fail-edit-repair`; `corepack pnpm -s ide:gate:verify-evidence-workbench-integrity`; `corepack pnpm -s ide:gate:verify-workbench-contract`; `corepack pnpm -s ide:gate:student-loop-contract`; `node --check` for the modified gate and aggregator scripts; `corepack pnpm -s classroom:gate` with the new Verify saved-checks gate included (`PASS all steps`); `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate` (`29` passed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before inspection covered Project first launch/loaded project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping, Export handoff, Import recovery, navigation, and reload recovery at `1366x768` and `1440x900`; screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/before/`. After proof screenshots show saved checks armed, `Run Compare`, Compare PASS, and `Update Compare` under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/after/verify-saved-checks-default/`.
+
+**Safety:** This slice changes Verify next-run authoring intent, visible command copy, one focused browser gate, gate aggregators, and current-truth docs only. It does not change simulation semantics, Verify result semantics, saved expected-output data, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers the Logic Gates starter saved-check path and explicit Observe/Compare toggling, not every possible custom-vector editing sequence. Browser-first inspection still found the Hardware board/table starts too low at classroom height, Project first-launch shelf is still partly clipped, and Export remains dense. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** If continuing browser-first product ownership, fix `Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1` from live inspection. If switching back to downstream proof, resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
+
 ## Change Log 2026-06-15 (fix: preserve active IDE mode on reload)
 
 **Subsystem:** RedByte IDE active mode routing, Project-to-Design continuity, focused browser gate, and cockpit docs.

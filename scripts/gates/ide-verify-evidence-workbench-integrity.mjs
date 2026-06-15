@@ -30,6 +30,22 @@ async function isVisible(page, selector) {
   return page.locator(selector).first().isVisible().catch(() => false);
 }
 
+async function hasVisibleExactText(page, value) {
+  return page.getByText(value, { exact: true }).evaluateAll((elements) =>
+    elements.some((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return (
+        rect.width > 1 &&
+        rect.height > 1 &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden' &&
+        Number(style.opacity || '1') !== 0
+      );
+    })
+  );
+}
+
 async function requireVisible(page, selector, label) {
   assert(await isVisible(page, selector), `${label} must be visible (${selector})`);
 }
@@ -238,7 +254,7 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
     `mode explainer must describe Observe versus Compare, got "${modeCopy}"`
   );
   assert(
-    await page.getByText('Expected outputs').first().isVisible().catch(() => false),
+    await hasVisibleExactText(page, 'Expected outputs'),
     'visible workbench must label saved checks as Expected outputs'
   );
   assert(

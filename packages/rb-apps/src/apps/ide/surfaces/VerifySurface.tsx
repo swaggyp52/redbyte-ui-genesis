@@ -494,8 +494,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Next-run compare intent. This is authoring state only; it does not describe
   // the meaning of the persisted run currently shown in Verify.
   const [nextRunUsesAssertions, setNextRunUsesAssertions] = useState(
-    () => getRuntimeVerifyRunKind(lastRun) === 'verify'
+    () => getRuntimeVerifyRunKind(lastRun) === 'verify' || (!lastRun && totalExpectedCaseCount > 0)
   );
+  const runModeTouchedByStudentRef = useRef(false);
+  const vectorCollectionSignatureRef = useRef(vectorCollectionSignature);
   const [oracleApplied, setOracleApplied] = useState(false);
   const [selectedFailureKey, setSelectedFailureKey] = useState<string | null>(null);
   // selectedVectorId: pinpoints the specific authored row when a failure has vectorId.
@@ -655,6 +657,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   useEffect(() => {
     setDraftTick(nextVectorTick(vectors));
   }, [vectors]);
+
+  useEffect(() => {
+    if (vectorCollectionSignatureRef.current === vectorCollectionSignature) return;
+    vectorCollectionSignatureRef.current = vectorCollectionSignature;
+    runModeTouchedByStudentRef.current = false;
+  }, [vectorCollectionSignature]);
+
+  useEffect(() => {
+    if (lastRun || runModeTouchedByStudentRef.current) return;
+    setNextRunUsesAssertions(totalExpectedCaseCount > 0);
+  }, [lastRun, totalExpectedCaseCount]);
 
   const runRows = lastRun?.report.rows ?? [];
   useEffect(() => {
@@ -2821,6 +2834,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     handleRunWithPreflight(nextRunUsesAssertions);
   }, [nextRunUsesAssertions, handleRunWithPreflight]);
 
+  const handleSetObserveMode = useCallback(() => {
+    runModeTouchedByStudentRef.current = true;
+    setNextRunUsesAssertions(false);
+  }, []);
+
+  const handleSetCompareMode = useCallback(() => {
+    runModeTouchedByStudentRef.current = true;
+    setNextRunUsesAssertions(true);
+  }, []);
+
   const handleKeepOlderReference = useCallback(() => {
     setNextRunUsesAssertions(true);
     handleRunWithPreflight(true);
@@ -3527,16 +3550,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       : !nextRunIsCompare
         ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), next run stays in observation mode`
         : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Using project + custom checks (${totalVectorCount} total)`
+          ? `Saved checks armed (${totalVectorCount} project + custom)`
           : customVectorCount > 0
-            ? `Using custom checks (${customVectorCount})`
-            : `Using project checks (${authoredVectors.length})`;
+            ? `Saved checks armed (${customVectorCount} custom)`
+            : `Saved checks armed (${authoredVectors.length} project)`;
   const sessionModeBadge: string = nextRunIsCompare ? 'Checks armed' : 'Observe';
   const compactCommandRunLabel =
     totalExpectedCaseCount > 0
       ? lastRun
-        ? 'Update run'
-        : 'Run'
+        ? nextRunIsCompare
+          ? 'Update Compare'
+          : 'Update Observe'
+        : nextRunIsCompare
+          ? 'Run Compare'
+          : 'Run Observe'
       : verifySession.runLabel;
   const sessionTitle: string = !lastRun
     ? 'Ready to run'
@@ -4370,8 +4397,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ) : undefined
           }
           isCompareMode={nextRunIsCompare}
-          onSetObserve={() => setNextRunUsesAssertions(false)}
-          onSetCompare={() => setNextRunUsesAssertions(true)}
+          onSetObserve={handleSetObserveMode}
+          onSetCompare={handleSetCompareMode}
           compareAvailable={totalExpectedCaseCount > 0}
           onRun={() => handleRunWithPreflight()}
           runLabel={compactCommandRunLabel}

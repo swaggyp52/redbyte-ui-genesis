@@ -234,6 +234,7 @@
         "ide:gate:fast": "node ./scripts/gates/ide-gate-fast.mjs",
         "ide:gate:verify-contract": "node ./scripts/gates/ide-verify-contract.mjs",
         "ide:gate:verify-fail-edit-repair": "node ./scripts/gates/ide-verify-fail-edit-repair.mjs",
+        "ide:gate:verify-saved-checks-default": "node ./scripts/gates/ide-verify-saved-checks-default.mjs",
         "ide:gate:synth-subset-contract": "node ./scripts/gates/ide-synth-subset-contract.mjs",
         "ide:gate:vivado-pack-contract": "node ./scripts/gates/ide-vivado-pack-contract.mjs",
         "ide:gate:export-includes-rbproj-contract": "node ./scripts/gates/ide-export-includes-rbproj-contract.mjs",

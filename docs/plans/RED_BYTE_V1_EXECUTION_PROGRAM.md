@@ -506,6 +506,41 @@ Rollback:
 
 - Revert the route-sync hook and active-mode reload gate wiring; route/layout gates protect boot and visible shell behavior separately.
 
+## Phase 10.8 - Verify Saved Checks Default / Compare Intent v1
+
+Status: Closed 2026-06-15 by `ide:gate:verify-saved-checks-default`.
+
+Goal: Make starter saved-check proof intent visible and correct before the first Verify run.
+
+Why: Browser-first review found that the Logic Gates starter had saved expected outputs available, but the first-run control still looked Observe-first and the primary action did not name Compare. That undercut student and professor confidence because the starter appeared to need a manual mode switch before producing trusted comparison evidence.
+
+Implementation slices:
+
+- Default Verify next-run intent to Compare when there is no previous run and saved expected outputs exist.
+- Preserve explicit student Observe-only and Compare-checks switching.
+- Reset untouched run intent when the vector collection changes.
+- Update compact command copy so saved-check runs say `Run Compare` / `Update Compare` when Compare is armed.
+- Add one focused browser gate for the Logic Gates starter saved-check first-run path at `1366x768` and `1440x900`.
+
+Proof:
+
+- Intentional red `ide:gate:verify-saved-checks-default` caught saved checks available while Observe-only was armed and the action read `Run`.
+- Passing `ide:gate:verify-saved-checks-default` after the fix with screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/after/verify-saved-checks-default/`.
+- Focused Verify Vitest coverage.
+- Affected Verify gates and classroom gate.
+
+Acceptance:
+
+- Starter saved checks are available and armed before the first run.
+- The primary action and explainer name Compare when saved checks are armed.
+- Clicking Run without manually switching mode reaches Compare PASS.
+- Compare remains armed after PASS, and explicit Observe-only / Compare switching still works.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Verify next-run intent and focused gate wiring; existing Verify contract and evidence-workbench gates continue to protect result semantics separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

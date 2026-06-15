@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Active Mode Reload Recovery v1
+**Latest product/control slice:** Verify Saved Checks Default / Compare Intent v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -35,15 +35,17 @@ Import is a utility. Vivado build, board programming, and board observation are 
 6. **Shell and Workbench Layout Reset is closed.** `ide:gate:shell-workbench-hierarchy` now proves one compact shell/status authority, demoted support footer, rail navigation without `OK` status copy, and first-viewport workbench frame geometry across Project, Design, Verify, Hardware, Export, and Import.
 7. **Project Command Center / Starter Density is closed locally.** `ide:gate:project-command-center` now proves Project as a neutral command center with blank, starter, saved/recent, Import/recovery, loaded-project peer paths, no false no-circuit mapping/export failure copy, a guarded loaded-project Build Fresh action, and visible all-lab starter choices on first launch at `1366x768`, `1440x900`, and `1920x1080`.
 8. **Active Mode Reload Recovery v1 is closed locally.** `ide:gate:active-mode-reload-recovery` now proves Project starter load syncs the URL to `mode=design`, reload restores Design, left-rail Verify navigation syncs to `mode=verify`, and reload restores Verify.
-9. **Design Workbench v1 is closed locally.** `ide:gate:design-workbench-v1` now proves blank, loaded starter, selected node, selected wire, wire start/cancel, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the canvas/graph as the focal object.
-10. **Import / Recovery is closed locally.** `ide:gate:import-recovery-contract` now proves Project Import / Recover discoverability, RedByte manifest restore as the highest-fidelity path, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/hardware overclaim.
-11. **Lab Profile / Course Pack Data Seam is closed locally.** `lab:profile-contract` now proves deterministic built-in profile metadata for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold; validates starter references, IO coverage, export artifact expectations, E0-only proof claims, and solution-forbidden Lab 8 evidence.
-12. **Student/Instructor Quickstarts are closed locally.** Current student, instructor, TA troubleshooting, and Windows course quickstart docs now live under `docs/course/` and match the Project -> Design -> Verify -> Map Pins / Hardware -> Export posture.
-13. **Design No-Bridge Required is closed locally.** `ide:gate:design-no-bridge-required` now proves Design opens the Logic Gates starter at `1366x768` and `1440x900` with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
-14. **Workbench Space Utilization / Rail Collapse v1 is closed locally.** `ide:gate:workbench-space-utilization` now proves the primary work object owns meaningful space at `1366x768`, `1440x900`, and `1920x1080`: Design starts with Library/Inspector collapsed and restorable, Verify keeps the signal rail collapsed so waveform/evidence can breathe, and Project/Hardware/Export/Import keep first-order work/actions visible without root overflow.
-15. **Workbench Visual Finish / Import Empty-State Composition v1 is closed locally.** `ide:gate:workbench-visual-finish` now proves Import first-look recovery uses one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, first-viewport guidance fit, no root overflow, and neighboring Project/Design/Export captures at `1366x768`, `1440x900`, and `1920x1080`.
-16. **Next board-gated slice: Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
-17. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
+9. **Verify Saved Checks Default / Compare Intent v1 is closed locally.** `ide:gate:verify-saved-checks-default` now proves the Logic Gates starter arms saved checks before the first run, the primary action names Compare, first Run reaches Compare PASS, Compare remains armed after PASS, and students can still intentionally switch Observe/Compare.
+10. **Design Workbench v1 is closed locally.** `ide:gate:design-workbench-v1` now proves blank, loaded starter, selected node, selected wire, wire start/cancel, move, delete/undo, split/code, and zoom/fit/center states at `1366x768` and `1440x900` with the canvas/graph as the focal object.
+11. **Import / Recovery is closed locally.** `ide:gate:import-recovery-contract` now proves Project Import / Recover discoverability, RedByte manifest restore as the highest-fidelity path, Vivado/VHDL reconstruction limits, corrupt import safety, imported Verify proof invalidation, and no Vivado/hardware overclaim.
+12. **Lab Profile / Course Pack Data Seam is closed locally.** `lab:profile-contract` now proves deterministic built-in profile metadata for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold; validates starter references, IO coverage, export artifact expectations, E0-only proof claims, and solution-forbidden Lab 8 evidence.
+13. **Student/Instructor Quickstarts are closed locally.** Current student, instructor, TA troubleshooting, and Windows course quickstart docs now live under `docs/course/` and match the Project -> Design -> Verify -> Map Pins / Hardware -> Export posture.
+14. **Design No-Bridge Required is closed locally.** `ide:gate:design-no-bridge-required` now proves Design opens the Logic Gates starter at `1366x768` and `1440x900` with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
+15. **Workbench Space Utilization / Rail Collapse v1 is closed locally.** `ide:gate:workbench-space-utilization` now proves the primary work object owns meaningful space at `1366x768`, `1440x900`, and `1920x1080`: Design starts with Library/Inspector collapsed and restorable, Verify keeps the signal rail collapsed so waveform/evidence can breathe, and Project/Hardware/Export/Import keep first-order work/actions visible without root overflow.
+16. **Workbench Visual Finish / Import Empty-State Composition v1 is closed locally.** `ide:gate:workbench-visual-finish` now proves Import first-look recovery uses one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, first-viewport guidance fit, no root overflow, and neighboring Project/Design/Export captures at `1366x768`, `1440x900`, and `1920x1080`.
+17. **Next browser-first product-polish slice: Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1.** Live inspection showed the Hardware board/table starts too low at `1366x768`; fix only the visible hierarchy if this browser-first mode continues.
+18. **Next board-gated slice remains Vivado/Basys3 Proof Restoration.** Run only on a machine with Vivado 2024.2 and Basys3 hardware; do not make E1/E2/E3 claims from browser/docs evidence.
+19. **Keep commercialization gated.** No paid classroom, SaaS/account, hosted-data, or broad commercial-readiness claim comes from this sprint.
 
 Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad UI cleanup, Vivado proof, or deeper course-pack authoring unless the user explicitly reprioritizes.
 
@@ -57,6 +59,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 | Shell/status hierarchy | Closed 2026-06-13: proof ribbon is the compact workflow/status authority, left rail is navigation without visible `OK` status copy, and the bottom footer is support chrome. `ide:gate:shell-workbench-hierarchy` guards the geometry and copy split. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future surface slices should build on this shell rather than reopening global chrome by assumption. |
 | Project command center starter density | Closed locally 2026-06-15: Project first launch now opens the all-lab starter shelf by default, tightens the starter cards, and uses `ide:gate:project-command-center` to prove visible lab starter choices across `1366x768`, `1440x900`, and `1920x1080`. | Preserve the strengthened gate; future Project polish should keep Build Fresh, Import / Recover, saved/recent work, and starter paths visible without creating course-first or hardware-proof claims. |
 | Active mode reload recovery | Closed locally 2026-06-15: Project starter load and left-rail navigation now synchronize the `mode` query with the visible workspace, and `ide:gate:active-mode-reload-recovery` proves Design and Verify restore correctly after browser reload. | Preserve the gate in `classroom:gate` and `verify:gates:classroom`; future routing work should not assume visible React state is enough if the URL remains stale. |
+| Verify saved-check run intent | Closed locally 2026-06-15: starters with saved expected outputs now arm Compare before the first run; `ide:gate:verify-saved-checks-default` proves Run Compare -> Compare PASS and explicit Observe/Compare switching without changing Verify result semantics. | Preserve the gate in `classroom:gate` and `verify:gates:classroom`; future Verify work should keep Observe-only distinct from saved-check Compare proof. |
 | Design first viewport | Closed locally 2026-06-14: Design Canvas mode now keeps the canvas/graph primary, narrows palette/inspector pressure, keeps blank/I/O guidance visible, and `ide:gate:design-workbench-v1` covers blank, starter, selection, wire, move, delete/undo, split/code, and zoom/fit/center states at classroom and desktop viewports. | Preserve the new gate in `classroom:gate` and `verify:gates:classroom`; future Design changes should keep the graph first unless a stronger product contract replaces it. |
 | Verify evidence workbench | Closed 2026-06-13: first-run stimulus editing stays visible, post-run stimulus chrome is denser, first mismatch expected/observed evidence is first-order, and `ide:gate:verify-evidence-workbench-integrity` guards PASS -> intentional FAIL -> repair PASS with overlap checks and screenshots. | Keep the new gate in `classroom:gate` and `verify:gates:classroom`; future Verify work should start from fresh evidence rather than reopening density by assumption. |
 | Export trust integrity | Closed 2026-06-13: generated previews are visible by default, the focused gate compares visible previews with downloaded ZIP entries, and the mapping summary no longer contradicts mapped board I/O rows. | Keep `ide:gate:export-trust-integrity` in `classroom:gate` and `verify:gates:classroom`; do not reopen byte/trust proof without new evidence. |
@@ -73,27 +76,30 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Vivado/Basys3 Proof Restoration.
+**Target:** Hardware Basys3 Vertical Hierarchy / Board Starts Too Low v1.
 
 Structured hardening ticket fields to start from:
 
-- Title: Restore fresh RedByte Vivado/Basys3 proof.
-- Surface: Release proof, certification matrix, and hardware evidence docs.
-- Journey segment: exported RedByte package is built in Vivado, programmed onto Basys3, and observed against an explicit procedure.
-- Observed behavior: Current browser/package proof is strong, but fresh Vivado 2024.2 and Basys3 proof was not run in this reset.
-- Expected behavior: named project rows gain E1/E2/E3 evidence only from real Vivado and board runs, with warnings and observation limits recorded.
-- Minimum acceptance proof: Vivado 2024.2 environment check, E1 build logs, E2 programming logs if a board is connected, E3 observation notes only when observed behavior is actually recorded, docs validation, encoding check, and no screenshots-only hardware claims.
+- Title: Tighten Hardware Basys3 first-viewport hierarchy.
+- Surface: Hardware / Map Pins workbench.
+- Journey segment: student reaches Map Pins after Verify PASS and expects the board/table binding work to be immediately inspectable.
+- Observed behavior: Browser-first inspection at `1366x768` showed the Hardware board/table starts too low, with the main mapping object competing with upper explanatory chrome.
+- Expected behavior: the Basys3 board/table and selected signal -> board resource -> package pin -> XDC consequence chain are clearly first-order in the classroom viewport without implying Vivado, programming, or board-observation proof.
+- Minimum acceptance proof: before/after screenshots at `1366x768` and `1440x900`, a focused Hardware browser gate update or new gate, `ide:gate:hardware-basys3-workbench`, classroom gate, build/doc/encoding/diff checks, and no E1/E2/E3 claim.
+
+Board-gated proof remains a separate next path: `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware.
 
 Suggested commit:
 
 ```text
-docs: restore RedByte Vivado Basys3 proof
+fix: tighten Hardware Basys3 first viewport
 ```
 
 ## Latest Verified Evidence
 
 | Evidence | Result |
 |---|---|
+| Verify Saved Checks Default / Compare Intent v1 | Closed locally 2026-06-15: added `ide:gate:verify-saved-checks-default` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught the Logic Gates starter exposing saved checks while Observe-only remained armed and the primary action read `Run`; after proof shows saved checks armed, `Run Compare`, first Run reaching Compare PASS, `Update Compare` after PASS, and explicit Observe/Compare switching. Before/after screenshots are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Active Mode Reload Recovery v1 | Closed locally 2026-06-15: added `ide:gate:active-mode-reload-recovery` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught Project starter load leaving the URL at `mode=project` while Design was visible; after proof shows starter load writes `mode=design`, reload restores Design, left-rail Verify writes `mode=verify`, and reload restores Verify. Before/after screenshots are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Project Starter Density / Command Center Lab Shelf v1 | Closed locally 2026-06-15: strengthened `ide:gate:project-command-center` so Project first launch is checked at `1366x768`, `1440x900`, and `1920x1080`; the intentional red run caught the hidden all-lab starter grid; after proof shows the all-lab shelf open by default with eight lab choices, a tighter launch command center, no console/page findings in after screenshots, and browser E0-only evidence under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`. |
 | Workbench Visual Finish / Import Empty-State Composition v1 | Closed locally 2026-06-15: added `ide:gate:workbench-visual-finish` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught the duplicate Import command strip at `1366x768`, `1440x900`, and `1920x1080`; after proof shows one restore headline, visible RedByte ZIP / Paste HDL / structural sample / blocked example paths, compact recovery guidance above the fold, no root overflow, and Project/Design/Export neighbor captures. Screenshots and metrics are local-only under `.redbyte/product-immersion/workbench-visual-finish/`. |
