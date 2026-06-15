@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-15
 owner: Connor Angiel
 used_by_claude: true
 role: compact product issue routing index for RedByte V1 hardening
@@ -44,6 +44,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 11. Lab Profile / Course Pack Data Seam. Closed locally 2026-06-14.
 12. Student/Instructor Quickstarts. Closed locally 2026-06-14.
 12b. Workbench Space Utilization / Rail Collapse v1. Closed locally 2026-06-14.
+12c. Workbench Visual Finish / Import Empty-State Composition v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
@@ -65,6 +66,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 | RB-IMPORT-ACCESS-001 | P2 | Project / Import | Loaded Project did not expose an obvious Import utility entry point while the manual still says the left rail includes Import. | Students or professors may not know how to recover/import once a project is already loaded. | Resolve Import as a Project utility route; update manual/product contract and add access/fidelity gate. | `IdeApp.tsx`; `ProjectSurface.tsx`; `ImportSurface.tsx`; manual docs | `ide:gate:project-command-center`; `ide:gate:import-recovery-contract`. | Fixed 2026-06-14 |
 | RB-DOC-001 | P2 | Student/instructor docs | Student and instructor quickstarts were missing as current public-facing package docs. | Instructors could not assign RedByte cleanly without Connor/agent context. | Write concise student first-lab, instructor setup/support, and TA troubleshooting quickstarts after workbench/proof posture stabilizes. | `docs/course/**`; `docs/product/**`; release docs | Docs validation; manual walkthrough using only public-facing docs. | Fixed 2026-06-14 |
 | RB-WORKBENCH-SPACE-001 | P1 | Global workbench / rails | Even after surface slices, persistent support rails and hidden dock columns still made the app feel boxed-in and unfinished; Design and Verify were the clearest evidence. | Students see scaffolding before the work object, and critical canvas/waveform content feels cramped on common laptop viewports. | Collapse/demote support rails by default, remove phantom dock space, and add a cross-surface geometry gate for work-object ownership. | `IdeWorkbenchShell.tsx`; `designWorkspaceConfig.ts`; `ide-root.css`; Design tests; shell/workbench gates | `ide:gate:workbench-space-utilization`; before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; classroom gate. | Fixed 2026-06-14 |
+| RB-WORKBENCH-VISUAL-001 | P1 | Import / empty-state composition | After rail pressure improved, Import first-look still looked unfinished: duplicate restore hierarchy, hidden alternate recovery paths, and guidance pushed too low. | Students may miss that RedByte ZIP restore is primary while Paste HDL and samples are still available, and the screen reads like stacked scaffolding instead of one recovery object. | Remove the redundant first-look command strip, make alternatives visible, tighten guidance composition, and gate the result across classroom/desktop/wide viewports. | `ImportSurface.tsx`; `ide-root.css`; Import first-look test; workbench visual gate | `ide:gate:workbench-visual-finish`; before/after screenshots at `1366x768`, `1440x900`, `1920x1080`; classroom gate. | Fixed 2026-06-15 |
 | RB-HWPROOF-001 | P1 | Vivado / Basys3 proof | Vivado 2024.2 and hardware proof were not run in this reset. | Hardware-readiness claims cannot be renewed from this machine. | Restore Vivado/Basys3 proof only on a machine with Vivado 2024.2 and board access. | `docs/STUDENT_RELEASE_READINESS.md`; certification matrix; proof scripts/docs | E1/E2/E3 proof docs/logs and observation notes. | Open / hardware-gated |
 | RB-COMM-001 | P2 | Commercial readiness | RedByte is not ready for unsupervised paid classroom deployment. | Universities would need stronger support, proof, quickstarts, deployment, and legal posture. | Keep commercial packaging after workbench hardening, quickstarts, proof restoration, and deployment review. | `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`; release docs | Commercial readiness checklist after product/proof work. | Open / queue item 14 |
 | RB-ENV-001 | P2 | Runtime environment | Repo pins Node 20.19.0, but recent local proof ran under Node 24.15.0. | Artifact determinism claims remain slightly weaker until pinned-runtime proof exists. | Re-run relevant artifact/doc/browser gates under Node 20.19.0 when available. | `.nvmrc`; docs cockpit | `node -v` shows 20.19.0, then relevant gates pass. | Open / environment-gated |
@@ -73,6 +75,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 
 | ID | Status |
 |---|---|
+| RB-WORKBENCH-VISUAL-001 | Fixed 2026-06-15: `ide:gate:workbench-visual-finish` is wired into focused/classroom/broad classroom gates; before evidence caught the duplicate Import first-look command strip; after evidence proves one restore headline, visible RedByte ZIP/Paste HDL/sample/blocked paths, compact first-viewport guidance, neighboring Project/Design/Export captures, and no root overflow across `1366x768`, `1440x900`, and `1920x1080`. |
 | RB-WORKBENCH-SPACE-001 | Fixed 2026-06-14: `ide:gate:workbench-space-utilization` is wired into focused/classroom/broad classroom gates; before evidence caught Design canvas and Verify waveform/evidence squeezed by persistent support chrome; after evidence proves collapsed/restorable Design and Verify support rails, readable focal-object geometry, visible Project/Export/Import actions, and no root overflow across `1366x768`, `1440x900`, and `1920x1080`. |
 | RB-DOC-001 | Fixed 2026-06-14: added current `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, and `docs/course/TA_TROUBLESHOOTING_GUIDE.md`, with `docs/course/windows-quickstart.md` as the setup-script reference. |
 | RB-LAB-001 | Fixed 2026-06-14: added the first data-only lab profile seam under `packages/rb-apps/src/apps/ide/labProfiles/`; `lab:profile-contract` proves deterministic built-ins, existing starter references, course/runtime separation, IO/export/proof validation, and Lab 8 no-solution rejection. |
@@ -98,7 +101,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 
 ## Non-Negotiables
 
-- Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, quickstarts, Vivado proof, or commercialization work unless a direct dependency is proven.
+- Do not mix shell reset, Verify workbench, Project command center, Export handoff, Hardware, Design, lab profile, Import, visual finish, quickstarts, Vivado proof, or commercialization work unless a direct dependency is proven.
 - Do not change simulation, Verify result semantics, pin mapping semantics, VHDL, XDC, testbench, Tcl, ZIP, or project data semantics in layout-only slices.
 - Do not update goldens or screenshots as a substitute for explaining behavior.
 - Screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.

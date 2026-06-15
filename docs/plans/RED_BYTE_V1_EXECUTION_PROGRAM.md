@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-15
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -438,6 +438,39 @@ Acceptance:
 Rollback:
 
 - Revert the rail/layout slice; behavior and generator tests protect non-layout semantics.
+
+## Phase 10.6 - Workbench Visual Finish / Import Empty-State Composition v1
+
+Status: Closed 2026-06-15 by `ide:gate:workbench-visual-finish`.
+
+Goal: Remove the clearest remaining unfinished empty-state composition after the rail-pressure fix.
+
+Why: Import first-look repeated the same RedByte restore message in the command strip and hero, hid viable recovery paths behind a disclosure, and pushed recovery guidance too low in the first viewport. This made the product still feel scaffold-heavy without requiring parser, export, Verify, hardware, or data-model changes.
+
+Implementation slices:
+
+- Suppressed the Import command strip only for the first-look restore state.
+- Kept the RedByte Project/Vivado ZIP action as the dominant primary action.
+- Moved Paste HDL, structural sample, and blocked-example recovery paths into visible first-look alternatives.
+- Tightened Import first-look spacing and guidance cards so the recovery object fits above the fold at classroom/desktop/wide widths.
+
+Proof:
+
+- Intentional red `ide:gate:workbench-visual-finish` caught the duplicate first-look command strip at `1366x768`, `1440x900`, and `1920x1080`.
+- Passing `ide:gate:workbench-visual-finish` after the fix with screenshots and metrics under `.redbyte/product-immersion/workbench-visual-finish/`.
+- Focused Import first-look Vitest coverage.
+- Import recovery, Project command center, Export handoff station, Workbench Space Utilization, and classroom gates.
+
+Acceptance:
+
+- Import first-look has exactly one visible restore headline and no redundant command strip.
+- RedByte ZIP, Paste HDL, structural sample, and blocked example paths are visible without opening a disclosure.
+- Recovery guidance fits in the first viewport with no root overflow at `1366x768`, `1440x900`, and `1920x1080`.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Import first-look layout slice and remove the visual-finish gate wiring; Import recovery contract protects parser/apply safety separately.
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 

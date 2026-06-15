@@ -25413,21 +25413,21 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-shell {
-  width: min(100%, 980px) !important;
-  max-width: 980px !important;
+  width: min(100%, 1160px) !important;
+  max-width: 1160px !important;
   display: grid;
-  gap: 18px;
+  gap: 12px;
   margin-inline: auto;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero {
   display: grid !important;
-  grid-template-columns: minmax(0, 1.25fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
   align-items: center !important;
-  gap: 20px 24px !important;
-  min-height: clamp(220px, 30vh, 300px);
-  padding: clamp(24px, 3vw, 34px) clamp(24px, 3.2vw, 36px) !important;
-  border-radius: 16px !important;
+  gap: 16px 20px !important;
+  min-height: 0;
+  padding: 18px 20px !important;
+  border-radius: 12px !important;
   border: 1px solid rgba(46, 196, 182, 0.16) !important;
   background:
     radial-gradient(circle at top right, rgba(46, 196, 182, 0.12), transparent 46%),
@@ -25436,8 +25436,8 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__copy {
   display: grid;
-  gap: 12px;
-  max-width: 58ch;
+  gap: 8px;
+  max-width: 66ch;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__eyebrow {
@@ -25449,62 +25449,86 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__title {
-  font-size: clamp(22px, 3vw, 30px) !important;
-  line-height: 1.08;
+  font-size: clamp(20px, 2.4vw, 28px) !important;
+  line-height: 1.1;
   margin-bottom: 0 !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero .ide-copy {
   font-size: 14px !important;
   color: rgba(182, 208, 231, 0.8) !important;
-  line-height: 1.6 !important;
-  max-width: 56ch;
+  line-height: 1.5 !important;
+  max-width: 62ch;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__actions {
   display: grid !important;
-  justify-items: start;
+  justify-items: stretch;
   align-content: center;
-  gap: 10px !important;
-  min-width: min(100%, 280px);
+  gap: 8px !important;
+  min-width: 0;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-hero__actions .ide-button-primary {
-  min-height: 48px !important;
-  min-width: 240px;
-  padding: 10px 24px !important;
-  font-size: 15px !important;
+  border-color: rgba(58, 214, 204, 0.58) !important;
+  background:
+    linear-gradient(180deg, rgba(28, 166, 158, 0.86), rgba(18, 113, 112, 0.88)) !important;
+  color: rgba(240, 255, 252, 0.98) !important;
+  min-height: 42px !important;
+  min-width: 0;
+  width: 100%;
+  padding: 9px 18px !important;
+  font-size: 14px !important;
   justify-content: center;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-other-options {
+  display: grid;
+  gap: 7px;
   min-width: 0;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-other-options .ide-inline-actions {
-  margin-top: 10px;
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-other-options-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(136, 170, 205, 0.72);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-alternatives {
+  display: grid;
+  gap: 7px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-alternatives .ide-button {
+  width: 100%;
+  min-height: 34px;
+  justify-content: center;
+  white-space: normal;
+  text-align: center;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance {
-  padding: 20px 22px !important;
+  padding: 12px !important;
   min-height: 0 !important;
   text-align: left !important;
   border: 1px solid rgba(56, 189, 248, 0.14) !important;
-  border-radius: 14px !important;
+  border-radius: 12px !important;
   background: rgba(6, 13, 23, 0.72) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-card {
   display: grid;
-  gap: 6px;
-  padding: 14px 14px 15px;
-  border-radius: 12px;
+  gap: 5px;
+  padding: 10px 11px 11px;
+  border-radius: 10px;
   border: 1px solid rgba(63, 96, 128, 0.24);
   background: rgba(7, 16, 28, 0.82);
 }
@@ -25524,8 +25548,8 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-card p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
+  font-size: 11px;
+  line-height: 1.45;
   color: rgba(170, 196, 220, 0.74);
 }
 

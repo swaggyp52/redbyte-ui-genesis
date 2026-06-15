@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-15
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -38,6 +38,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:shell-layout-integrity`
 - `ide:gate:shell-workbench-hierarchy`
 - `ide:gate:workbench-space-utilization`
+- `ide:gate:workbench-visual-finish`
 - `ide:gate:verify-evidence-workbench-integrity`
 
 Why:
@@ -54,6 +55,7 @@ Why:
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
 - Shell workbench hierarchy proves the global shell has one compact proof/status authority, a support-only footer, rail navigation without visible completion-status copy, and a visible workbench object across Project, Design, Verify, Hardware, Export, and Import.
 - Workbench space utilization proves persistent support rails do not squeeze the focal object below useful size, Design and Verify support rails start collapsed/restorable, Project/Export/Import actions remain visible, and cross-surface geometry has no root overflow at classroom/desktop/wide sizes.
+- Workbench visual finish proves Import first-look composition has one restore hierarchy, visible recovery alternatives, first-viewport guidance fit, neighboring surface captures, and no root overflow at classroom/desktop/wide sizes.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
 
 ## Choosing The Right Test
@@ -69,7 +71,7 @@ Why:
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, rail pressure, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
+| Shell, rail pressure, empty-state composition, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules

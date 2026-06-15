@@ -110,6 +110,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:workbench-space-utilization'],
   },
   {
+    name: 'ide:gate:workbench-visual-finish',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:workbench-visual-finish'],
+  },
+  {
     name: 'ide:gate:zip-import-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:zip-import-contract'],

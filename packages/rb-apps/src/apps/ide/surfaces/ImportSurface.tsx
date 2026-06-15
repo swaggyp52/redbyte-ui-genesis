@@ -2831,7 +2831,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     >
       <IdePanel
         title="Import / Recover"
-        description="Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths, and nothing replaces your current project until you review the import."
+        description={
+          showImportHeaderAction
+            ? 'Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths, and nothing replaces your current project until you review the import.'
+            : undefined
+        }
         right={
           showImportHeaderAction
             ? canImport ? (
@@ -2843,36 +2847,36 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         }
         testId="ide-import-panel"
       >
-        <div className="ide-surface-command-stack">
-          <SurfaceCommandStrip
-            className="ide-import-command-strip"
-            testId="ide-import-command-strip"
-            label="Import HDL"
-            title={importEntryAction?.title ?? 'Review the import before replacing anything'}
-            description={
-              importEntryAction?.body ??
-              'Use the review flow to confirm structure, pins, and blockers before you replace the current project.'
-            }
-            meta={(
-              <>
-                <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
-                  {canImport ? 'READY TO REVIEW' : hasParsedHdl ? 'NEEDS MAPPING' : 'INTAKE'}
-                </IdeStatusPill>
-                <span className={`ide-surface-command-chip${hasParsedHdl ? ' is-ok' : ''}`}>
-                  HDL {hasParsedHdl ? 'parsed' : 'pending'}
-                </span>
-                <span className={`ide-surface-command-chip${hasParsedXdc ? ' is-ok' : ''}`}>
-                  XDC {hasParsedXdc ? 'parsed' : 'optional'}
-                </span>
-                {hasParsedHdl ? (
-                  <span className={`ide-surface-command-chip${unmappedPorts.length === 0 ? ' is-ok' : ''}`}>
-                    {ports.length - unmappedPorts.length}/{ports.length} constrained
+        {showImportHeaderAction ? (
+          <div className="ide-surface-command-stack">
+            <SurfaceCommandStrip
+              className="ide-import-command-strip"
+              testId="ide-import-command-strip"
+              label="Import HDL"
+              title={importEntryAction?.title ?? 'Review the import before replacing anything'}
+              description={
+                importEntryAction?.body ??
+                'Use the review flow to confirm structure, pins, and blockers before you replace the current project.'
+              }
+              meta={(
+                <>
+                  <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
+                    {canImport ? 'READY TO REVIEW' : hasParsedHdl ? 'NEEDS MAPPING' : 'INTAKE'}
+                  </IdeStatusPill>
+                  <span className={`ide-surface-command-chip${hasParsedHdl ? ' is-ok' : ''}`}>
+                    HDL {hasParsedHdl ? 'parsed' : 'pending'}
                   </span>
-                ) : null}
-              </>
-            )}
-            actions={
-              showImportHeaderAction ? (
+                  <span className={`ide-surface-command-chip${hasParsedXdc ? ' is-ok' : ''}`}>
+                    XDC {hasParsedXdc ? 'parsed' : 'optional'}
+                  </span>
+                  {hasParsedHdl ? (
+                    <span className={`ide-surface-command-chip${unmappedPorts.length === 0 ? ' is-ok' : ''}`}>
+                      {ports.length - unmappedPorts.length}/{ports.length} constrained
+                    </span>
+                  ) : null}
+                </>
+              )}
+              actions={(
                 <>
                   <span data-testid="ide-primary-cta">
                     <IdeButton
@@ -2892,17 +2896,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     Back to HDL
                   </IdeButton>
                 </>
-              ) : undefined
-            }
-          />
-          {showImportHeaderAction && !canImport && hasParsedHdl ? (
-            <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
-              {unmappedPorts.length > 0
-                ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
-                : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
-            </span>
-          ) : null}
-        </div>
+              )}
+            />
+            {!canImport && hasParsedHdl ? (
+              <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
+                {unmappedPorts.length > 0
+                  ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
+                  : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {importEntryAction && (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
@@ -2933,19 +2937,42 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   {importEntryAction.primaryLabel}
                 </IdeButton>
                 {isImportFirstLook ? (
-                  <details
+                  <div
                     className="ide-import-start-other-options"
                     data-testid="ide-import-start-other-options"
                     data-hierarchy-surface="import"
                     data-hierarchy-role="advanced"
                   >
-                    <summary data-testid="ide-import-start-other-options-toggle">Other ways to start</summary>
-                    <div className="ide-inline-actions">
+                    <span className="ide-import-start-other-options-label">Other ways to start</span>
+                    <div className="ide-import-start-alternatives" data-testid="ide-import-start-alternatives">
                       <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
                         {importEntryAction.secondaryLabel}
                       </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => loadImportSample('and-gate')}
+                        testId="ide-import-load-sample-and-gate"
+                      >
+                        Try structural sample
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => setShowBehavioralSamples((prev) => !prev)}
+                        testId="ide-import-toggle-behavioral-samples"
+                      >
+                        {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
+                      </IdeButton>
+                      {showBehavioralSamples ? (
+                        <IdeButton
+                          tone="ghost"
+                          onClick={() => loadImportSample('edge-detect')}
+                          testId="ide-import-load-sample-edge-detect"
+                        >
+                          Try blocked behavioral sample
+                        </IdeButton>
+                      ) : null}
                     </div>
-                  </details>
+                  </div>
                 ) : (
                   <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
                     {importEntryAction.secondaryLabel}
@@ -2976,31 +3003,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     <strong>Nothing is overwritten yet</strong>
                     <p>Your current project stays intact until Review Import and Confirm Replace Project. Failed imports do not change files.</p>
                   </article>
-                </div>
-                <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
-                  <IdeButton
-                    tone="ghost"
-                    onClick={() => loadImportSample('and-gate')}
-                    testId="ide-import-load-sample-and-gate"
-                  >
-                    Try structural sample
-                  </IdeButton>
-                  <IdeButton
-                    tone="ghost"
-                    onClick={() => setShowBehavioralSamples((prev) => !prev)}
-                    testId="ide-import-toggle-behavioral-samples"
-                  >
-                    {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
-                  </IdeButton>
-                  {showBehavioralSamples ? (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => loadImportSample('edge-detect')}
-                      testId="ide-import-load-sample-edge-detect"
-                    >
-                      Try blocked behavioral sample
-                    </IdeButton>
-                  ) : null}
                 </div>
               </SurfacePanel>
             ) : null}

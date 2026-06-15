@@ -11,17 +11,19 @@ describe('ImportSurface first look', () => {
       <ImportSurface onImportProject={vi.fn()} />
     );
 
-    expect(getByTestId('ide-import-command-strip').textContent).toContain('Import HDL');
     expect(getByTestId('ide-import-start-shell')).toBeTruthy();
     expect(getByTestId('ide-import-start-hero').textContent).toContain('Restore a RedByte project first');
     expect(getByTestId('ide-import-start-primary').textContent).toContain('Select Project/Vivado ZIP');
     expect(getByTestId('ide-import-start-other-options').textContent).toContain('Other ways to start');
+    expect(getByTestId('ide-import-start-alternatives').textContent).toContain('Try structural sample');
+    expect(getByTestId('ide-import-start-alternatives').textContent).toContain('Show unsupported examples');
     expect(getByTestId('ide-import-start-secondary').textContent).toContain('Paste HDL');
     expect(getByTestId('ide-import-start-guidance-zip').textContent).toContain('RedByte project restore');
     expect(getByTestId('ide-import-start-guidance-review').textContent).toContain('Vivado ZIP or VHDL');
     expect(getByTestId('ide-import-start-guidance-hdl').textContent).toContain('Nothing is overwritten yet');
     expect(queryByTestId('ide-import-workbench')).toBeNull();
     expect(queryByTestId('ide-import-secondary-tools')).toBeNull();
+    expect(queryByTestId('ide-import-command-strip')).toBeNull();
     expect(queryByTestId('ide-import-replace-project')).toBeNull();
   });
 
@@ -51,12 +53,13 @@ describe('ImportSurface first look', () => {
     });
   });
 
-  it('keeps first-look quick demos available below recovery guidance', () => {
+  it('keeps first-look quick demos visible with the recovery alternatives', () => {
     const { getByTestId } = render(
       <ImportSurface onImportProject={vi.fn()} />
     );
 
-    expect(getByTestId('ide-import-load-sample-and-gate').textContent).toContain('Try structural sample');
-    expect(getByTestId('ide-import-toggle-behavioral-samples').textContent).toContain('Show unsupported examples');
+    const alternatives = getByTestId('ide-import-start-alternatives');
+    expect(alternatives.textContent).toContain('Try structural sample');
+    expect(alternatives.textContent).toContain('Show unsupported examples');
   });
 });

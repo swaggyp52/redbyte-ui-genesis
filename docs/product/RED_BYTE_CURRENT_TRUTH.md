@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-15
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -97,7 +97,8 @@ Supporting truths:
 
 ### Product immersion posture
 
-- Project, Design, Export, Hardware, Import, the global shell, the first lab-profile data seam, and public course quickstarts are materially stronger than earlier audits; the next gap is fresh Vivado/Basys3 proof restoration.
+- Project, Design, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repair are materially stronger than earlier audits; the next non-visual proof gap is fresh Vivado/Basys3 proof restoration.
+- Workbench Visual Finish / Import Empty-State Composition v1 is closed locally by `ide:gate:workbench-visual-finish`: Import first-look now has one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, compact recovery guidance above the fold, no root overflow, and Project/Design/Export neighbor captures at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench Space Utilization / Rail Collapse v1 is now closed locally by `ide:gate:workbench-space-utilization`: persistent support rails were the highest-impact layout defect, so Design Library/Inspector and Verify Signals start collapsed/restorable; the gate proves Project, Design, Verify, Hardware, Export, and Import at `1366x768`, `1440x900`, and `1920x1080` with meaningful focal-object space and no root overflow.
 - The Design no-bridge boundary is closed locally by `ide:gate:design-no-bridge-required`: Design opens the Logic Gates starter at classroom and desktop viewports with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
 - Import / Recovery is now closed locally by `ide:gate:import-recovery-contract`: Project exposes Import / Recover, the Import first look identifies RedByte manifest restore as highest fidelity, Vivado ZIP/VHDL is reconstruction-limited, corrupt import leaves the current project intact, imported Verify PASS is not trusted automatically, and no Vivado/Basys3 proof is claimed.
@@ -146,6 +147,7 @@ Supporting truths:
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
 - Design graph/camera/workbench hierarchy is covered by `ide:gate:design-canvas-zoom-integrity`, strengthened by `ide:gate:design-workbench-integrity`, and closed for the V1 canvas-first slice by `ide:gate:design-workbench-v1`.
 - Design no longer treats the hardware bridge as a prerequisite: `ide:gate:design-no-bridge-required` and focused unit tests cover generic fetch error classification, explicit-off hardware client behavior, and no bridge-origin requests from Design.
+- Workbench visual finish for Import first-look is covered by `ide:gate:workbench-visual-finish`, including one visible restore headline, no redundant command strip, visible recovery alternatives without disclosure toggles, first-viewport guidance fit, neighboring Project/Design/Export captures, and no root horizontal overflow at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench space utilization is covered by `ide:gate:workbench-space-utilization`, including primary work-object geometry across Project, Design, Verify, Hardware, Export, and Import; collapsed/restorable Design Library/Inspector and Verify Signals rails; readable Design canvas, Verify waveform/evidence, and Hardware board/table minimum areas; visible Project/Export/Import actions; and no root horizontal overflow.
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
 - Export trust integrity is covered by `ide:gate:export-trust-integrity`, including visible preview, downloaded ZIP entries, README/provenance wording, Draft/Trusted boundary, E0/E1/E2/E3 wording, and mapped board I/O summary agreement.
@@ -174,10 +176,11 @@ Approved V1 order:
 12. Student/Instructor Quickstarts. Closed locally 2026-06-14.
 12a. Design No-Bridge Required hotfix. Closed locally 2026-06-14.
 12b. Workbench Space Utilization / Rail Collapse v1. Closed locally 2026-06-14.
+12c. Workbench Visual Finish / Import Empty-State Composition v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next board-gated slice after the Workbench Space Utilization / Rail Collapse v1 closeout is:
+The next board-gated slice after the Workbench Visual Finish / Import Empty-State Composition v1 closeout is:
 
 ```text
 docs: restore RedByte Vivado Basys3 proof

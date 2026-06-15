@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-15 (fix: improve RedByte workbench visual finish)
+
+**Subsystem:** RedByte IDE Import first-look empty-state composition, visual-finish browser proof, gate aggregators, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `2ea67fdc2f6fb7b034c7b7527015c02ca878f22f`; the user-visible app build was checked against `2ea67fd`.
+- Translated the product complaint into a contained hardening ticket: Workbench Visual Finish / Import Empty-State Composition v1. The selected defect was Import first-look duplicating the same restore hierarchy in the command strip and hero, hiding viable recovery paths behind a disclosure, and pushing guidance too low at common viewports.
+- Added `ide:gate:workbench-visual-finish` and wired it into `classroom:gate` and `verify:gates:classroom`. The gate covers `1366x768`, `1440x900`, and `1920x1080`; intentionally failed before the fix on the duplicate Import command strip; and now asserts one restore headline, no redundant first-look command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked-example choices, first-viewport guidance fit, neighboring Project/Design/Export captures, and no root overflow.
+- Changed Import first-look only: the command strip is suppressed until there is actual import review work, the RedByte Project/Vivado ZIP action remains dominant, Paste HDL / sample / blocked example paths are visible without a disclosure, and the recovery guidance cards are tighter above the fold.
+- Updated the focused Import first-look unit test to require no first-look command strip and visible recovery alternatives.
+- Updated cockpit/current-truth/work-queue/invariant/gate-ownership/execution/issue-index/inventory docs so Workbench Visual Finish / Import Empty-State Composition v1 is closed locally and the next non-visual proof gap remains Vivado/Basys3 Proof Restoration.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `RB_WORKBENCH_VISUAL_FINISH_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-visual-finish/before/red-gate corepack pnpm -s ide:gate:workbench-visual-finish` failed on the duplicate Import first-look command strip at all three viewport widths; focused `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/importSurface.first-look.test.tsx` passed (`4` tests); `corepack pnpm --filter @redbyte/playground build`; final `RB_WORKBENCH_VISUAL_FINISH_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-visual-finish/after/import-empty-state-composition corepack pnpm -s ide:gate:workbench-visual-finish`; `corepack pnpm -s ide:gate:import-recovery-contract`; `corepack pnpm -s ide:gate:project-command-center`; `corepack pnpm -s ide:gate:export-handoff-station`; `RB_WORKBENCH_SPACE_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-visual-finish/after/space-utilization-regression corepack pnpm -s ide:gate:workbench-space-utilization`; `corepack pnpm -s classroom:gate` with the new visual-finish gate included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only.
+
+**Safety:** This slice changes Import first-look composition, visual CSS, focused tests/gates, and cockpit docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The visual-finish gate covers the clearest remaining Import empty-state defect and neighboring screenshots, not a complete visual redesign of every surface. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware, unless the user explicitly chooses another contained product-polish slice.
+
 ## Change Log 2026-06-14 (fix: reclaim RedByte workbench space)
 
 **Subsystem:** RedByte IDE workbench shell, Design rail defaults, Verify rail pressure, cross-surface layout proof, browser gate wiring, stale gate contracts, and cockpit docs.
