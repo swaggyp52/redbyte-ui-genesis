@@ -45,6 +45,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 12. Student/Instructor Quickstarts. Closed locally 2026-06-14.
 12b. Workbench Space Utilization / Rail Collapse v1. Closed locally 2026-06-14.
 12c. Workbench Visual Finish / Import Empty-State Composition v1. Closed locally 2026-06-15.
+12d. Project Starter Density / Command Center Lab Shelf v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 

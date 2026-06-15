@@ -1168,6 +1168,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               data-testid="ide-project-lab-gallery-disclosure"
               data-hierarchy-surface="project"
               data-hierarchy-role="advanced"
+              open
             >
               <summary className="ide-project-lab-gallery-summary">All lab starters (8 labs)</summary>
               <div className="ide-project-lab-gallery" data-testid="ide-project-lab-gallery">

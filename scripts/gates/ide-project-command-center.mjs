@@ -14,6 +14,13 @@ async function dismissOnboardingIfPresent(page) {
   await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
 }
 
+async function dismissWorkflowOrientationIfPresent(page) {
+  const dismissButton = page.getByRole('button', { name: /^dismiss$/i }).first();
+  if (!(await dismissButton.isVisible().catch(() => false))) return;
+  await dismissButton.click();
+  await dismissButton.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
+}
+
 async function assertNoPrematureDownstreamWarnings(locator, label) {
   const content = (await text(locator)).toLowerCase();
   const forbidden = [
@@ -39,41 +46,77 @@ async function assertFitsViewport(page, locator, label) {
   assert(box.y + box.height <= viewport.height + 12, `${label} must fit in the first viewport`);
 }
 
+async function assertLaunchStarterDensity(page, label) {
+  const viewport = page.viewportSize();
+  assert(viewport, `${label} gate requires a viewport`);
+
+  const gallery = page.locator('[data-testid="ide-project-lab-gallery"]').first();
+  assert(await visible(gallery), `${label} must expose the all-labs starter grid without another click`);
+
+  const visibleCards = page.locator('[data-testid^="ide-project-lab-card-"]:visible');
+  const visibleCardCount = await visibleCards.count();
+  assert(
+    visibleCardCount >= 4,
+    `${label} must show several all-lab starter choices, saw ${visibleCardCount}`
+  );
+
+  const box = await gallery.boundingBox();
+  assert(box, `${label} starter grid must have a measurable layout box`);
+  assert(
+    box.y < viewport.height - 80,
+    `${label} starter grid must leave at least 80px of starter cards visible in the first viewport: y=${box.y.toFixed(1)} viewport=${viewport.height}`
+  );
+}
+
 await runIdeGate('IDE project command center contract satisfied', async ({ page, baseUrl }) => {
-  await page.setViewportSize({ width: 1366, height: 768 });
   await page.addInitScript(() => {
     localStorage.clear();
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
-  await page.goto(`${baseUrl}/?mode=project&e2e=1`, { waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await dismissOnboardingIfPresent(page);
 
-  const launchCenter = page.locator('[data-testid="ide-project-command-center"]').first();
-  assert(await visible(launchCenter), 'Project first launch must render one command center');
-  await assertFitsViewport(page, launchCenter, 'Project first-launch command center');
-  await assertNoPrematureDownstreamWarnings(launchCenter, 'Project first-launch command center');
+  const launchViewports = [
+    { label: '1366x768', width: 1366, height: 768 },
+    { label: '1440x900', width: 1440, height: 900 },
+    { label: '1920x1080', width: 1920, height: 1080 },
+  ];
 
-  const launchText = await text(launchCenter);
-  assert(/project command center/i.test(launchText), `Project launch title must be command-center framed, got "${launchText}"`);
-  assert(/build fresh/i.test(launchText), 'Project command center must expose Build Fresh');
-  assert(/course starter|starter/i.test(launchText), 'Project command center must expose a starter path');
-  assert(/import|recover/i.test(launchText), 'Project command center must expose import/recovery');
-  assert(/open saved|recent|continue/i.test(launchText), 'Project command center must expose saved/recent work');
+  for (const viewport of launchViewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=project-command-center-${viewport.label}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+    await dismissOnboardingIfPresent(page);
+    await dismissWorkflowOrientationIfPresent(page);
 
-  assert(
-    await visible(page.locator('[data-testid="ide-project-build-fresh-primary"]').first()),
-    'Project command center must keep Build Fresh as a first-class action'
-  );
-  assert(
-    await visible(page.locator('[data-testid="ide-project-import-primary"]').first()),
-    'Project command center must keep Import / recovery as a first-class action'
-  );
-  assert(
-    await visible(page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first()),
-    'Project command center must keep the Logic Gates starter reachable'
-  );
+    const launchCenter = page.locator('[data-testid="ide-project-command-center"]').first();
+    const launchLabel = `Project first-launch command center ${viewport.label}`;
+    assert(await visible(launchCenter), 'Project first launch must render one command center');
+    await assertFitsViewport(page, launchCenter, launchLabel);
+    await assertNoPrematureDownstreamWarnings(launchCenter, launchLabel);
+
+    const launchText = await text(launchCenter);
+    assert(/project command center/i.test(launchText), `Project launch title must be command-center framed, got "${launchText}"`);
+    assert(/build fresh/i.test(launchText), 'Project command center must expose Build Fresh');
+    assert(/course starter|starter/i.test(launchText), 'Project command center must expose a starter path');
+    assert(/import|recover/i.test(launchText), 'Project command center must expose import/recovery');
+    assert(/open saved|recent|continue/i.test(launchText), 'Project command center must expose saved/recent work');
+
+    assert(
+      await visible(page.locator('[data-testid="ide-project-build-fresh-primary"]').first()),
+      'Project command center must keep Build Fresh as a first-class action'
+    );
+    assert(
+      await visible(page.locator('[data-testid="ide-project-import-primary"]').first()),
+      'Project command center must keep Import / recovery as a first-class action'
+    );
+    assert(
+      await visible(page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first()),
+      'Project command center must keep the Logic Gates starter reachable'
+    );
+    await assertLaunchStarterDensity(page, launchLabel);
+  }
 
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await page.locator('[data-testid="mode-button-project"]').click();

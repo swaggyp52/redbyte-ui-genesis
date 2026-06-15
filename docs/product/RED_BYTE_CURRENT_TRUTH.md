@@ -93,11 +93,12 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; the Import utility access/fidelity finding is closed locally by `ide:gate:import-recovery-contract`.
-- Invariant gates `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
+- Invariant gates `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`.
 
 ### Product immersion posture
 
-- Project, Design, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repair are materially stronger than earlier audits; the next non-visual proof gap is fresh Vivado/Basys3 proof restoration.
+- Project, Design, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repairs are materially stronger than earlier audits; the next non-visual proof gap is fresh Vivado/Basys3 proof restoration.
+- Project Starter Density / Command Center Lab Shelf v1 is closed locally by `ide:gate:project-command-center`: Project first launch now opens the all-lab starter shelf by default, shows eight lab choices without another click, preserves Build Fresh / Import / saved / starter paths, and is browser-proved at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench Visual Finish / Import Empty-State Composition v1 is closed locally by `ide:gate:workbench-visual-finish`: Import first-look now has one restore headline, no redundant command strip, visible RedByte ZIP / Paste HDL / structural sample / blocked example choices, compact recovery guidance above the fold, no root overflow, and Project/Design/Export neighbor captures at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench Space Utilization / Rail Collapse v1 is now closed locally by `ide:gate:workbench-space-utilization`: persistent support rails were the highest-impact layout defect, so Design Library/Inspector and Verify Signals start collapsed/restorable; the gate proves Project, Design, Verify, Hardware, Export, and Import at `1366x768`, `1440x900`, and `1920x1080` with meaningful focal-object space and no root overflow.
 - The Design no-bridge boundary is closed locally by `ide:gate:design-no-bridge-required`: Design opens the Logic Gates starter at classroom and desktop viewports with persisted hardware mode on, no bridge fatal copy, no ErrorBoundary/boot crash, and zero local bridge requests before Hardware mode.
@@ -147,6 +148,7 @@ Supporting truths:
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
 - Design graph/camera/workbench hierarchy is covered by `ide:gate:design-canvas-zoom-integrity`, strengthened by `ide:gate:design-workbench-integrity`, and closed for the V1 canvas-first slice by `ide:gate:design-workbench-v1`.
 - Design no longer treats the hardware bridge as a prerequisite: `ide:gate:design-no-bridge-required` and focused unit tests cover generic fetch error classification, explicit-off hardware client behavior, and no bridge-origin requests from Design.
+- Project first-launch starter density is covered by `ide:gate:project-command-center`, including visible all-lab starter choices across `1366x768`, `1440x900`, and `1920x1080`, plus the existing command-center, loaded-project, and guarded Build Fresh contracts.
 - Workbench visual finish for Import first-look is covered by `ide:gate:workbench-visual-finish`, including one visible restore headline, no redundant command strip, visible recovery alternatives without disclosure toggles, first-viewport guidance fit, neighboring Project/Design/Export captures, and no root horizontal overflow at `1366x768`, `1440x900`, and `1920x1080`.
 - Workbench space utilization is covered by `ide:gate:workbench-space-utilization`, including primary work-object geometry across Project, Design, Verify, Hardware, Export, and Import; collapsed/restorable Design Library/Inspector and Verify Signals rails; readable Design canvas, Verify waveform/evidence, and Hardware board/table minimum areas; visible Project/Export/Import actions; and no root horizontal overflow.
 - Core Project/Design/Verify/Hardware/Export layout visibility is strengthened by `ide:gate:shell-layout-integrity`.
@@ -177,10 +179,11 @@ Approved V1 order:
 12a. Design No-Bridge Required hotfix. Closed locally 2026-06-14.
 12b. Workbench Space Utilization / Rail Collapse v1. Closed locally 2026-06-14.
 12c. Workbench Visual Finish / Import Empty-State Composition v1. Closed locally 2026-06-15.
+12d. Project Starter Density / Command Center Lab Shelf v1. Closed locally 2026-06-15.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
-The next board-gated slice after the Workbench Visual Finish / Import Empty-State Composition v1 closeout is:
+The next board-gated slice after the Project Starter Density / Command Center Lab Shelf v1 closeout is:
 
 ```text
 docs: restore RedByte Vivado Basys3 proof

@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-15 (fix: expose Project lab starter shelf)
+
+**Subsystem:** RedByte IDE Project first-launch command center, lab starter shelf density, focused browser gate, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `78424e9e898c69ee46c95ca8ec2f2b547aa295d8`; GitHub `Classroom Truth Gates` and deploy checks were green before work.
+- Ran a browser-first ownership pass before selecting the implementation target. The observed defect was Project first launch showing a closed `All lab starters (8 labs)` disclosure below the command center, leaving the lower viewport feeling unfinished instead of exposing the available lab path.
+- Translated the product complaint into one contained hardening slice: Project Starter Density / Command Center Lab Shelf v1.
+- Strengthened `ide:gate:project-command-center` so first-launch Project is checked at `1366x768`, `1440x900`, and `1920x1080`, dismisses first-run orientation when present, and requires the all-lab starter grid plus several lab starter cards to be visibly available without an extra click.
+- Changed Project first-launch only: the all-lab starter disclosure now opens by default, lab cards are denser, starter descriptions are clamped, and launch-only command-center spacing is tighter so the starter shelf is visible in the first viewport while Build Fresh, Import / Recover, Open Saved Project, and Logic Gates Load & Design remain intact.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `corepack pnpm node scripts/gates/ide-project-command-center.mjs` failed on the hidden all-labs starter grid; `corepack pnpm --filter @redbyte/playground build`; `corepack pnpm ide:gate:project-command-center`; `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` (`14` tests); `corepack pnpm ide:gate:workbench-visual-finish`; `corepack pnpm rb:doc:validate` (`29` passed); `corepack pnpm rb:encoding:check`; `git diff --check` with LF-to-CRLF working-copy warnings only; `corepack pnpm -s build:unified`; and `corepack pnpm -s classroom:gate` (`PASS all steps`). Before/after browser screenshots and metrics are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-15/`; fresh after proof used `http://127.0.0.1:5180/os/` with `build.json` timestamp `2026-06-15T02:28:35.498Z`.
+
+**Safety:** This slice changes Project first-launch composition, visual CSS, and the focused Project command-center browser gate only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profile data, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The first-run orientation dialog still appears by design and can cover the command center until dismissed. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Resume `docs: restore RedByte Vivado Basys3 proof` only on a machine with Vivado 2024.2 and Basys3 hardware, unless the user explicitly chooses another contained browser-first product-polish slice.
+
 ## Change Log 2026-06-15 (fix: improve RedByte workbench visual finish)
 
 **Subsystem:** RedByte IDE Import first-look empty-state composition, visual-finish browser proof, gate aggregators, and cockpit docs.
