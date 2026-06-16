@@ -33,6 +33,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-workbench-v1`
 - `ide:gate:interaction-affordance`
 - `ide:gate:project-identity-editing`
+- `ide:gate:side-dock-affordance`
 - `ide:gate:export-first-viewport-artifacts`
 - `ide:gate:export-handoff-station`
 - `ide:gate:export-trust-integrity`
@@ -56,6 +57,7 @@ Why:
 - Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
 - Interaction affordance proves Project title rename and Workflow Orientation recovery remain visible and functional from normal first-launch use, including cancel/save and reload persistence.
 - Project identity editing proves the top-bar, upper Project identity strip, loaded Project title, and adjacent Rename affordances all open meaningful inline rename, with cancel/save, title agreement, starter/source labeling, navigation persistence, and reload persistence at classroom and desktop viewports.
+- Side Dock Affordance proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails are compact horizontal restore buttons, not sideways labels; it also proves open/close recovery, focal workbench visibility, no root overflow, and no console/page errors at classroom and desktop viewports.
 - Export first-viewport artifact visibility proves the ready-to-build handoff station exposes the concrete generated files students and professors need to inspect before scrolling.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
@@ -85,7 +87,7 @@ Why:
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, rail pressure, empty-state composition, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` |
+| Shell, rail pressure, side-dock affordance, empty-state composition, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: improve RedByte side dock affordance)
+
+**Subsystem:** RedByte IDE global workbench side-dock collapsed restore rails, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `0b6a2b77d2b9db7e47153c11dbe873f26a0c2bde`; GitHub `Classroom Truth Gates`, deploy, Cloudflare Pages, and Nightly Heavy Suites were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5197/os/` with visible build `Build0b6a2b7` matching local HEAD before trusting browser screenshots.
+- Ran browser-first side-dock inspection at `1366x768` and `1440x900` across Project, Design, Verify, Hardware, Export, and Import. Ranked issues found: awkward vertical collapsed labels on Design/Verify/Hardware/Export; Verify's collapsed Signals rail consuming `56px`; open Hardware/Export Inspector panels still feeling dense; Import retaining a fixed utility support dock; and the broader card-heavy/static composition concern.
+- Chose the collapsed restore-rail defect because it was global, frequent in normal use, visibly cheap, contained in the shell, and gateable without changing any surface semantics.
+- Added `ide:gate:side-dock-affordance` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed on vertical `Library`/`Signals`/`Inspector` labels and the oversized Verify collapsed rail.
+- Replaced the collapsed rail presentation with compact horizontal restore controls (`+`, `Show`, `Lib`/`Sig`/`Info`) in a single `48px` rail slot, preserving full accessible labels (`Show library`, `Show signals`, `Show inspector`).
+- Added a late Design-specific grid override so the older `26px` collapsed-right Design rule now honors the resolved shell slot variables.
+- Updated the ignored local `.redbyte-brain/` notes so the Obsidian working vault reflects that side-dock labels are closed while open-panel density and card-heavy interaction remain product debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: focused Vitest `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`; `corepack pnpm --filter @redbyte/playground build`; intentional red `RB_SIDE_DOCK_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-16/side-dock-affordance/before/gate-red corepack pnpm -s ide:gate:side-dock-affordance`; final `RB_SIDE_DOCK_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-16/side-dock-affordance/after/gate corepack pnpm -s ide:gate:side-dock-affordance`; affected gates `ide:gate:workbench-space-utilization`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:design-workbench-v1`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:hardware-first-viewport`, `ide:gate:export-first-viewport-artifacts`, and `ide:gate:import-recovery-contract`; `corepack pnpm -s classroom:gate` with the new side-dock gate included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate` (`29` passed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/side-dock-affordance/before/`; after screenshots are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/side-dock-affordance/after/gate/`. In-app browser proof against `http://127.0.0.1:5197/os/?mode=design&e2e=1&gate=side-dock-affordance-after-iab` showed visible `Build0b6a2b7`, `48px` collapsed rails, horizontal label writing modes, and no root horizontal overflow.
+
+**Safety:** This slice changes only side-dock collapsed restore affordance, side-dock geometry CSS, one focused browser gate, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. Open Hardware/Export Inspector density, the fixed Import utility dock, card-heavy surface composition, and broader direct-manipulation affordances remain separate browser-first product issues. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining candidates are open side-panel density/proportion and the broader card-heavy/static interaction model, but the next target must still be chosen from fresh live browser evidence.
+
 ## Change Log 2026-06-16 (fix: make RedByte project title editing real)
 
 **Subsystem:** RedByte IDE Project identity editing, loaded Project rename affordances, focused browser gate, frontend/interaction/brain skills, product-brain routing, and cockpit docs.

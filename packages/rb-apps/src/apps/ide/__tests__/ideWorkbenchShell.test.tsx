@@ -169,9 +169,11 @@ describe('IdeWorkbenchShell', () => {
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('38px');
+    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('48px');
     const restoreRail = getByTestId('ide-workbench-dock-toggle-left');
-    expect(restoreRail.textContent).toContain('Library');
+    expect(restoreRail).toHaveAttribute('aria-label', 'Show library');
+    expect(restoreRail.textContent).toContain('Show');
+    expect(restoreRail.textContent).toContain('Lib');
 
     fireEvent.click(restoreRail);
 

@@ -670,6 +670,42 @@ Rollback:
 
 - Revert the Project identity editing slice and focused gate wiring; existing Project command-center, interaction-affordance, and persistence gates protect broader Project state separately.
 
+## Phase 10.13 - Side Dock Affordance v1
+
+Status: Closed 2026-06-16 by `ide:gate:side-dock-affordance`.
+
+Goal: Make collapsed side docks behave like compact restore controls instead of awkward sideways scaffolding.
+
+Why: Browser-first inspection at `1366x768` and `1440x900` showed the most frequent side-dock defect was not open-panel content yet; it was the collapsed rail presentation. Design, Verify, Hardware, and Export exposed `Library`, `Signals`, or `Inspector` as vertical labels, and Verify reserved an oversized `56px` collapsed rail.
+
+Implementation slices:
+
+- Added one focused browser gate for side-dock affordance across Project, Design, Verify, Hardware, Export, and Import.
+- Standardized collapsed dock rail slots to `48px`.
+- Replaced visible sideways labels with compact horizontal `+ / Show / Lib|Sig|Info` restore controls while preserving full accessible labels.
+- Added a final Design-specific grid override so legacy `26px` collapsed-right columns honor the resolved shell slot variables.
+- Kept open dock content, support dock policy, simulation, Verify semantics, mapping, export generation, project format, and goldens unchanged.
+
+Proof:
+
+- Intentional red `ide:gate:side-dock-affordance` caught vertical collapsed labels and the oversized Verify rail.
+- Passing `ide:gate:side-dock-affordance` after the fix with before/after screenshots and observations under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/side-dock-affordance/`.
+- Workbench space utilization, shell workbench hierarchy, Design Workbench v1, Verify evidence workbench, Hardware first viewport, Export first-viewport artifacts, Import recovery, focused shell Vitest, and classroom gates.
+
+Acceptance:
+
+- Collapsed support docks are focusable restore buttons with clear `Show` copy.
+- Collapsed labels are horizontal and readable, not vertical or sideways.
+- Collapsed rails fit inside a compact `48px` slot.
+- Opening a dock reveals readable support content.
+- Closing a dock restores workbench space.
+- Project, Design, Verify, Hardware, Export, and Import focal work objects remain visible at classroom and desktop viewports.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the side-dock rail markup/CSS and focused gate wiring; existing workbench-space and shell-hierarchy gates protect broader shell geometry separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

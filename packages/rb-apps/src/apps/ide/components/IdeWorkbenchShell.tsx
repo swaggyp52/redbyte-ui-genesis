@@ -36,8 +36,7 @@ const RIGHT_WIDTH_RANGE = { min: 180, max: 280 };
 const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 120;
-const COLLAPSED_DOCK_RAIL_WIDTH = 38;
-const VERIFY_COLLAPSED_DOCK_RAIL_WIDTH = 56;
+const COLLAPSED_DOCK_RAIL_WIDTH = 48;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -221,7 +220,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       ? 'collapsed'
       : 'hidden';
   const showConsole = policy.consoleMode !== 'hidden';
-  const leftRailLabel = mode === 'verify' ? 'Signals' : 'Library';
+  const leftRailShortLabel = mode === 'verify' ? 'Sig' : 'Lib';
   const leftRailAriaLabel = mode === 'verify' ? 'Show signals' : 'Show library';
   const leftCollapseAriaLabel = mode === 'verify' ? 'Collapse signals' : 'Collapse library';
 
@@ -407,11 +406,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
                   : { left: { min: 144, max: 164 }, right: { min: 196, max: 228 } };
       const effectiveLeftWidth = clampValue(layout.leftWidth, widthCaps.left);
       const effectiveRightWidth = clampValue(layout.rightWidth, widthCaps.right);
-      const collapsedLeftRailWidth = mode === 'verify' ? VERIFY_COLLAPSED_DOCK_RAIL_WIDTH : COLLAPSED_DOCK_RAIL_WIDTH;
       const leftSlotWidth = showLeftDock
         ? effectiveLeftWidth
         : showLeftCollapsedRail
-          ? collapsedLeftRailWidth
+          ? COLLAPSED_DOCK_RAIL_WIDTH
           : 0;
       const rightSlotWidth = showRightDock
         ? effectiveRightWidth
@@ -519,12 +517,13 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             type="button"
             className="ide-workbench-dock-toggle-rail ide-workbench-dock-toggle-rail-left"
             data-testid="ide-workbench-dock-toggle-left"
-          onClick={() => setIsLeftDockExpanded(true)}
-          aria-label={leftRailAriaLabel}
-          title={leftRailAriaLabel}
-        >
-            <span className="ide-workbench-dock-toggle-rail-label">{leftRailLabel}</span>
+            onClick={() => setIsLeftDockExpanded(true)}
+            aria-label={leftRailAriaLabel}
+            title={leftRailAriaLabel}
+          >
+            <span className="ide-workbench-dock-toggle-rail-glyph" aria-hidden="true">+</span>
             <span className="ide-workbench-dock-toggle-rail-hint">Show</span>
+            <span className="ide-workbench-dock-toggle-rail-label">{leftRailShortLabel}</span>
           </button>
         ) : (
           <div
@@ -591,8 +590,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             aria-label="Show inspector"
             title="Show inspector"
           >
-            <span className="ide-workbench-dock-toggle-rail-label">Inspector</span>
+            <span className="ide-workbench-dock-toggle-rail-glyph" aria-hidden="true">+</span>
             <span className="ide-workbench-dock-toggle-rail-hint">Show</span>
+            <span className="ide-workbench-dock-toggle-rail-label">Info</span>
           </button>
         ) : (
           <div

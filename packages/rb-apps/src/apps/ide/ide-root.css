@@ -33949,3 +33949,89 @@ button:disabled,
   width: 100% !important;
   z-index: auto !important;
 }
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-left-dock-collapsed,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main.is-right-dock-collapsed {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-slot-width) !important;
+}
+
+/* 2026-06-16 Side dock affordance: collapsed rails are compact restore buttons,
+   not sideways labels. */
+.ide-workbench-shell .ide-workbench-dock-toggle-rail,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail {
+  display: grid !important;
+  grid-template-rows: auto auto auto !important;
+  align-content: center !important;
+  justify-items: center !important;
+  gap: 3px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 100% !important;
+  padding: 10px 5px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-left,
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-right,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-left,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-right {
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-glyph {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(126, 247, 227, 0.42) !important;
+  background: rgba(17, 199, 185, 0.14) !important;
+  color: rgba(126, 247, 227, 0.92) !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-label,
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-label,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-hint {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-align: center !important;
+  text-overflow: clip !important;
+  white-space: nowrap !important;
+  letter-spacing: 0 !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-label,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-label {
+  color: rgba(226, 237, 249, 0.96) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}
+
+.ide-workbench-shell .ide-workbench-dock-toggle-rail-hint,
+[data-ide-mode-marker='design'] .ide-workbench-dock-toggle-rail-hint {
+  color: rgba(166, 190, 216, 0.82) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  text-transform: uppercase !important;
+}

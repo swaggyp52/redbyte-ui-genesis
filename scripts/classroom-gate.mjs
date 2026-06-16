@@ -30,6 +30,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-identity-editing'],
   },
   {
+    name: 'ide:gate:side-dock-affordance',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:side-dock-affordance'],
+  },
+  {
     name: 'ide:gate:active-mode-reload-recovery',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:active-mode-reload-recovery'],
