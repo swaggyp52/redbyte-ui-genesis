@@ -224,6 +224,7 @@
         "ide:gate:interaction-affordance": "node ./scripts/gates/ide-interaction-affordance.mjs",
         "ide:gate:project-identity-editing": "node ./scripts/gates/ide-project-identity-editing.mjs",
         "ide:gate:side-dock-affordance": "node ./scripts/gates/ide-side-dock-affordance.mjs",
+        "ide:gate:open-side-panel-density": "node ./scripts/gates/ide-open-side-panel-density.mjs",
         "ide:gate:active-mode-reload-recovery": "node ./scripts/gates/ide-active-mode-reload-recovery.mjs",
         "ide:gate:persistence-contract": "node ./scripts/gates/ide-persistence-contract.mjs",
         "ide:gate:examples-contract": "node ./scripts/gates/ide-examples-contract.mjs",

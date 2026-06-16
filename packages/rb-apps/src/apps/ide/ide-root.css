@@ -34035,3 +34035,41 @@ button:disabled,
   line-height: 1 !important;
   text-transform: uppercase !important;
 }
+
+/* 2026-06-16 Open side panel density: compact inspectors remain side tools.
+   Hardware/Export support panels should not turn into full-width bottom cards. */
+.ide-workbench-shell[data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed) {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-slot-width) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-dock-left {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+}
+
+.ide-workbench-shell[data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-workspace {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+.ide-workbench-shell[data-layout-mode='compact']
+  .ide-workbench-main:not(.hide-right-dock):not(.is-right-dock-collapsed)
+  .ide-workbench-dock-right {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+  max-height: none !important;
+  border-top: 0 !important;
+  border-left: 1px solid rgba(52, 86, 118, 0.22) !important;
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.03),
+    0 18px 34px rgba(1, 6, 12, 0.22) !important;
+}

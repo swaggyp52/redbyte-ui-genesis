@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: improve RedByte open side panel density)
+
+**Subsystem:** RedByte IDE global workbench open right-dock geometry, Hardware/Export side-panel density, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `b3e291c3a7d099ac57dc45fed948738e84e7eb74`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5199/os/`; the in-app browser verified `http://127.0.0.1:5199/os/?mode=hardware&e2e=1&gate=open-side-panel-density-iab-after` at `1366x768` with visible `BUILD b3e291c`, `hardware` marker, compact layout, and no root horizontal overflow.
+- Ran browser-first open side-panel inspection at `1366x768` and `1440x900` across Project first launch, loaded Project, Design, Verify, Hardware, Export, Import, and a dirty/reload Hardware sample. Ranked issues found: open Hardware/Export inspectors became disproportionate bottom cards at `1366x768`; broader card-heavy/static composition remains; some support panels still read dense; Import remains utility-like; and Project/Design direct manipulation polish still has follow-up opportunities.
+- Chose the compact open-right-dock defect because it was visible, frequent in Hardware/Export normal use, directly tied to the user's panel-density complaint, contained in shell CSS, and gateable without touching semantics.
+- Added `ide:gate:open-side-panel-density` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed at `1366x768` because Hardware opened its inspector as a `1017px` bottom band and Export opened as a `1089px` bottom band.
+- Added a late compact-layout CSS override so open right docks remain side tools using the resolved shell right slot. After proof shows Hardware at `236px / 805px / 212px` and Export at `0px / 1041px / 212px` at `1366x768`, with full-height inspectors and no root overflow.
+- Updated the ignored local `.redbyte-brain/` notes so the Obsidian working vault records that open side-panel proportion is closed while broader direct-manipulation/card-heavy product work remains separate debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm --filter @redbyte/playground build`; intentional red `corepack pnpm -s ide:gate:open-side-panel-density`; final `RB_OPEN_SIDE_PANEL_DENSITY_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-16/open-side-panel-density/after/gate corepack pnpm -s ide:gate:open-side-panel-density`; affected gates `ide:gate:side-dock-affordance`, `ide:gate:hardware-first-viewport`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:shell-workbench-hierarchy`, and `ide:gate:workbench-space-utilization`; focused shell Vitest `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx`; `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/open-side-panel-density/before/`; after screenshots and observations are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/open-side-panel-density/after/`.
+
+**Safety:** This slice changes only open side-panel compact shell geometry, one focused browser gate, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers Hardware and Export open right-panel proportion at `1366x768` and `1440x900`, not a full redesign of support-panel content density or the broader card-heavy/static interaction model. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining candidate is the broader card-heavy/static interaction model and lack of direct manipulation on normal-use surfaces, but the next target must still be chosen from fresh live browser evidence.
+
 ## Change Log 2026-06-16 (fix: improve RedByte side dock affordance)
 
 **Subsystem:** RedByte IDE global workbench side-dock collapsed restore rails, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

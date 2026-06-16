@@ -706,6 +706,38 @@ Rollback:
 
 - Revert the side-dock rail markup/CSS and focused gate wiring; existing workbench-space and shell-hierarchy gates protect broader shell geometry separately.
 
+## Phase 10.14 - Open Side Panel Density v1
+
+Status: Closed 2026-06-16 by `ide:gate:open-side-panel-density`.
+
+Goal: Keep compact open side panels proportional so support tools stay beside the workbench instead of becoming large bottom cards.
+
+Why: Browser-first inspection after Side Dock Affordance v1 showed the next contained side-panel defect at `1366x768`: Hardware opened its right inspector as a `1017px` bottom band and Export opened as a `1089px` bottom band. That made the product feel like stacked information cards rather than a work surface with useful tools.
+
+Implementation slices:
+
+- Added one focused browser gate for Hardware and Export open right inspectors at `1366x768` and `1440x900`.
+- Added a final compact-layout CSS override so open right docks use the resolved right slot as a side column.
+- Preserved collapsed rail behavior, open/close state, Hardware/Export content, simulation, Verify semantics, mapping, export generation, project format, and goldens.
+
+Proof:
+
+- Intentional red `ide:gate:open-side-panel-density` caught the compact Hardware/Export bottom-card failure.
+- Passing `ide:gate:open-side-panel-density` after the fix with before/after screenshots and observations under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/open-side-panel-density/`.
+- Affected side-dock, Hardware first-viewport, Export first-viewport artifacts, shell hierarchy, workbench space, focused shell Vitest, and classroom gates.
+
+Acceptance:
+
+- Compact Hardware and Export right inspectors open as proportional full-height side tools.
+- Workspace height remains intact and the focal work object remains visible.
+- Closing the inspector restores the right rail.
+- No root overflow or console/page errors at classroom and desktop viewports.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the compact open-right-dock CSS override and focused gate wiring; existing side-dock and workbench-space gates protect collapsed rails and focal-object geometry separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

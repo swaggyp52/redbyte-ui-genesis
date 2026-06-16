@@ -35,6 +35,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:side-dock-affordance'],
   },
   {
+    name: 'ide:gate:open-side-panel-density',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:open-side-panel-density'],
+  },
+  {
     name: 'ide:gate:active-mode-reload-recovery',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:active-mode-reload-recovery'],
