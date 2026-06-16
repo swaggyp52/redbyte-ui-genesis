@@ -35,6 +35,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:project-identity-editing`
 - `ide:gate:side-dock-affordance`
 - `ide:gate:open-side-panel-density`
+- `ide:gate:workbench-obstruction-usability`
 - `ide:gate:export-first-viewport-artifacts`
 - `ide:gate:export-artifact-direct-preview`
 - `ide:gate:export-handoff-station`
@@ -61,6 +62,7 @@ Why:
 - Project identity editing proves the top-bar, upper Project identity strip, loaded Project title, and adjacent Rename affordances all open meaningful inline rename, with cancel/save, title agreement, starter/source labeling, navigation persistence, and reload persistence at classroom and desktop viewports.
 - Side Dock Affordance proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails are compact horizontal restore buttons, not sideways labels; it also proves open/close recovery, focal workbench visibility, no root overflow, and no console/page errors at classroom and desktop viewports.
 - Open Side Panel Density proves compact Hardware and Export right inspectors remain proportional full-height side tools rather than full-width bottom cards; it also proves workspace height, focal-object visibility, close-to-restore behavior, no root overflow, and no console/page errors at classroom and desktop viewports.
+- Workbench Obstruction Usability proves Hardware Map Pins starts with support chrome collapsed away from the board/table, keeps the compact Map restore rail visible, opens left/right support docks proportionally, restores workbench space on close, and rejects root overflow or console/page errors at classroom and desktop viewports.
 - Export first-viewport artifact visibility proves the ready-to-build handoff station exposes the concrete generated files students and professors need to inspect before scrolling.
 - Export artifact direct preview proves those first-viewport generated-file cues are functional preview controls: button/keyboard reachable, selected-state exposed, and wired to reveal the existing artifact workspace for `top.vhd` and `top.xdc`.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
@@ -88,10 +90,10 @@ Why:
 | Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
-| Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, hardware browser screenshots, and mapping tests only if map state changes |
+| Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
+| Shell, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules

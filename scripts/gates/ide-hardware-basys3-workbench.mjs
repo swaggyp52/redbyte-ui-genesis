@@ -93,7 +93,12 @@ async function assertMapWorkbench(page, viewportName) {
   const board = page.locator('[data-testid="ide-hw-map-board"]').first();
   const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
 
-  assert(await visible(page.locator('[data-testid="ide-hw-map-dock"]').first()), `${viewportName} Map Pins dock must be visible`);
+  const mapRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  assert(await visible(mapRail), `${viewportName} Map Pins restore rail must be visible on entry`);
+  const railText = await normalizedText(mapRail);
+  assert(/show/i.test(railText) && /map/i.test(railText), `${viewportName} Map Pins rail must clearly restore map support, got "${railText}"`);
+  await mapRail.click();
+  assert(await visible(page.locator('[data-testid="ide-hw-map-dock"]').first()), `${viewportName} Map Pins dock must open from the restore rail`);
   assert(await visible(workspace), `${viewportName} board workspace must be visible`);
   assert(await visible(summary), `${viewportName} Basys3 resource summary must be visible`);
   assert(await visible(table), `${viewportName} mapping table must be visible`);

@@ -18,6 +18,19 @@ afterEach(() => {
   cleanup();
 });
 
+function openLeftSupportDock(getByTestId: (testId: string) => HTMLElement): void {
+  fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
+}
+
+function openMapDock(getByTestId: (testId: string) => HTMLElement): HTMLElement {
+  openLeftSupportDock(getByTestId);
+  return getByTestId('ide-hw-map-dock');
+}
+
+function openInspector(getByTestId: (testId: string) => HTMLElement): void {
+  fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
+}
+
 function makeVerifyRunWithRoles(
   signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
 ) {
@@ -240,6 +253,7 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
+    openLeftSupportDock(getByTestId);
 
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'no longer matches the current circuit'
@@ -305,10 +319,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-dock')).toBeTruthy();
+    const mapDock = openMapDock(getByTestId);
+    expect(mapDock).toBeTruthy();
     expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
     expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Add boundary I/O in Design first');
-    expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
+    expect(mapDock.textContent).not.toContain('0 left');
     expect(getAllByTestId('ide-hw-map-empty').at(-1)?.textContent).toContain(
       'Add inputs and outputs in Design'
     );
@@ -338,10 +353,11 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    const mapDock = openMapDock(getByTestId);
 
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Combinational');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Complete');
+    expect(mapDock.textContent).toContain('Combinational');
+    expect(mapDock.textContent).toContain('Mapped');
+    expect(mapDock.textContent).toContain('Complete');
   });
 
   it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
@@ -369,8 +385,9 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Needs clock pin');
+    const mapDock = openMapDock(getByTestId);
+    expect(mapDock.textContent).toContain('Clock');
+    expect(mapDock.textContent).toContain('Needs clock pin');
   });
 
   it('claims clock is mapped when all required clock rows have pins', () => {
@@ -398,8 +415,9 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
+    const mapDock = openMapDock(getByTestId);
+    expect(mapDock.textContent).toContain('Clock');
+    expect(mapDock.textContent).toContain('Mapped');
   });
 
   it('labels supported latch control explicitly instead of generic clock wording', () => {
@@ -444,6 +462,7 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-live').at(-1)!);
+    openLeftSupportDock(getByTestId);
     expect(getByTestId('ide-hw-live-dock').textContent).toContain('Latch control');
   });
 
@@ -477,8 +496,9 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
+    const mapDock = openMapDock(getByTestId);
+    expect(mapDock.textContent).toContain('Clock');
+    expect(mapDock.textContent).toContain('Mapped');
   });
 
   it('groups semantic clock rows into the Clock section in map mode even before a pin is assigned', () => {
@@ -542,8 +562,9 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
+    const mapDock = openMapDock(getByTestId);
 
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('1 left');
+    expect(mapDock.textContent).toContain('1 left');
     expect(getByTestId('ide-hardware-map-export-gap').textContent).toContain('required port');
   });
 
@@ -577,8 +598,9 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    expect(getByTestId('ide-hw-map-dock').textContent).toContain('Complete');
-    expect(getByTestId('ide-hw-map-dock').textContent).not.toContain('0 left');
+    const mapDock = openMapDock(getByTestId);
+    expect(mapDock.textContent).toContain('Complete');
+    expect(mapDock.textContent).not.toContain('0 left');
   });
 
   it('makes the default Map Pins row read as signal to board control to physical pin', () => {
@@ -878,6 +900,7 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
+    openLeftSupportDock(getByTestId);
 
     // When export is current the program handoff CTA must be present and must not imply a .bit ships from RedByte.
     const cta = getByTestId('ide-hardware-program-handoff-cta');

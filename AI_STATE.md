@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: prevent RedByte workbench obstruction)
+
+**Subsystem:** RedByte IDE Hardware / Map Pins workbench obstruction, shared side-dock sizing, focused browser gate, classroom gate wiring, Hardware gate compatibility, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `cab0e5cca0a385f50c6650ef8747ea3dbf86fbb3`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5205/os/`; the in-app browser verified visible `Buildcab0e5c`, matching local HEAD before after screenshots.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank and starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff, Import recovery, navigation, reload recovery, and side-dock behavior at `1366x768` and `1440x900`.
+- Ranked issues found: Hardware Map Pins remained the clearest workbench-obstruction failure because the Map support dock opened by default and pushed the board/table low; Verify still has evidence-density follow-up; Project and Import still have hierarchy polish opportunities; Design/Export were lower-risk for this slice.
+- Chose the Hardware/workbench obstruction issue because it directly matched the user complaint about panels taking strange space, affected a high-frequency student/professor path, and could be fixed as one contained browser-gated layout slice without touching pin mapping or generated files.
+- Added `ide:gate:workbench-obstruction-usability` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed because Hardware opened with the Map support dock visible on entry at both required viewports.
+- Changed Hardware Map Pins to start with the Map support dock collapsed, gave the collapsed left rail a compact `Map` restore label, reduced open Hardware left-dock width caps, and tightened Hardware command-strip spacing so the board/table work starts higher in the first viewport.
+- Updated Hardware readiness tests and existing Hardware/student-loop gates to open support docks explicitly before asserting dock-only content, preserving their behavior checks without weakening the new default-collapsed workbench contract.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Workbench Obstruction Usability v1 as closed and keeps broader card-heavy/direct-manipulation polish as separate future debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `RB_WORKBENCH_OBSTRUCTION_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-16/workbench-obstruction/before/gate-red corepack pnpm -s ide:gate:workbench-obstruction-usability`; final `corepack pnpm -s ide:gate:workbench-obstruction-usability`; focused Vitest `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/ideWorkbenchShell.test.tsx packages/rb-apps/src/apps/ide/__tests__/hardwareSurface.readiness.test.tsx` (`48` tests); affected gates `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-space-utilization`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:design-workbench-v1`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:hardware-first-viewport`, `ide:gate:student-loop-contract`, and `ide:gate:hardware-basys3-workbench`; `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/workbench-obstruction/before/`; after gate and in-app-browser screenshots and observations are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/workbench-obstruction/after/`.
+
+**Safety:** This slice changes only Hardware/workbench presentation, shared side-dock sizing, focused browser proof, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers Hardware Map Pins obstruction and shared rail/open-dock recovery at `1366x768` and `1440x900`; it does not solve the broader static/card-heavy interaction model, Verify evidence clarity, or all surface-level spacing polish. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining product direction is direct-manipulation/function-depth work so the app feels less like cards of information, but the target must still be chosen from fresh live browser evidence.
+
 ## Change Log 2026-06-16 (fix: integrate Workflow Orientation with loaded Project)
 
 **Subsystem:** RedByte IDE Project Workflow Orientation placement, top-bar Flow help, focused Project interaction browser gate, product cockpit docs, and local Obsidian brain notes.

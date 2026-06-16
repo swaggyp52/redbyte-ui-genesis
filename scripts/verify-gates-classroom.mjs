@@ -59,6 +59,7 @@ function main() {
     runGate('ide:project-identity-editing', 'pnpm -s ide:gate:project-identity-editing', true),
     runGate('ide:side-dock-affordance', 'pnpm -s ide:gate:side-dock-affordance', true),
     runGate('ide:open-side-panel-density', 'pnpm -s ide:gate:open-side-panel-density', true),
+    runGate('ide:workbench-obstruction-usability', 'pnpm -s ide:gate:workbench-obstruction-usability', true),
     runGate('ide:active-mode-reload-recovery', 'pnpm -s ide:gate:active-mode-reload-recovery', true),
     runGate('ide:project-health-live-contract', 'pnpm -s ide:gate:project-health-live-contract', true),
     runGate('ide:project-continue-cta-contract', 'pnpm -s ide:gate:project-continue-cta-contract', true),

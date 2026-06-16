@@ -204,6 +204,12 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   //   ide-hardware-command-strip        — always present, encodes current status + next action
   // All three encode the Build → Verify → Export → Program trust chain.
   await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
+  const leftSupportRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+  assert(
+    await visible(leftSupportRail).catch(() => false),
+    'hardware proof mode must expose a restorable left support rail before proof details are opened',
+  );
+  await leftSupportRail.click();
   await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { timeout: 5000 });
 
   const hasProgramCta = await page

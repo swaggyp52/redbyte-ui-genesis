@@ -804,6 +804,41 @@ Rollback:
 
 - Revert the OnboardingOverlay placement/copy changes and the strengthened loaded Project gate assertion; existing Project identity and command-center gates protect the surrounding Project behavior separately.
 
+## Phase 10.17 - Workbench Obstruction Usability v1
+
+Status: Closed 2026-06-16 by `ide:gate:workbench-obstruction-usability`.
+
+Goal: Keep Hardware Map Pins support chrome from obstructing the board/table mapping workbench on entry.
+
+Why: Browser-first inspection showed Hardware Map Pins still opened with the Map support dock visible by default. At normal classroom and desktop viewports, that made the board/table mapping object lower and less dominant than the support guide, matching the user's complaint that interactive side panels take strange, disproportionate space.
+
+Implementation slices:
+
+- Added one focused browser gate for Hardware Map Pins obstruction and support-dock recovery at `1366x768` and `1440x900`.
+- Changed Hardware Map Pins to start with the Map support dock collapsed, with a compact `Map` restore rail.
+- Reduced Hardware open-left dock width caps and tightened Hardware command-strip spacing so the board/table mapping work starts higher.
+- Updated existing Hardware/student-loop gates to open support docks explicitly before asserting dock-only content.
+- Preserved pin mapping semantics, Hardware proof-tier wording, Verify semantics, export generation, project format, goldens, and E1/E2/E3 proof boundaries.
+
+Proof:
+
+- Intentional red `ide:gate:workbench-obstruction-usability` caught Hardware opening with the Map support dock visible on entry.
+- Passing `ide:gate:workbench-obstruction-usability` after the fix with before screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/workbench-obstruction/before/` and after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/workbench-obstruction/after/`.
+- Side-dock affordance, open side-panel density, workbench space utilization, shell hierarchy, Design Workbench v1, Verify evidence workbench, Hardware first-viewport, student-loop, Hardware Basys3 workbench, focused shell/Hardware Vitest, classroom gate, and unified build.
+
+Acceptance:
+
+- Hardware Map Pins entry starts with Map support collapsed.
+- The compact `Map` rail can reopen the guide.
+- Board/table mapping remains first-order at `1366x768` and `1440x900`.
+- Left and right support docks open proportionally and close back to restored workbench space.
+- No root overflow or console/page errors appear.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Hardware left-dock default/width and command-strip layout changes plus focused gate wiring; existing Hardware first-viewport, Basys3 workbench, side-dock, and open-panel gates protect adjacent behavior separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

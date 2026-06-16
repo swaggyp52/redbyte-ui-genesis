@@ -40,6 +40,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:open-side-panel-density'],
   },
   {
+    name: 'ide:gate:workbench-obstruction-usability',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:workbench-obstruction-usability'],
+  },
+  {
     name: 'ide:gate:active-mode-reload-recovery',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:active-mode-reload-recovery'],

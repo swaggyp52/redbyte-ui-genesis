@@ -220,9 +220,17 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       ? 'collapsed'
       : 'hidden';
   const showConsole = policy.consoleMode !== 'hidden';
-  const leftRailShortLabel = mode === 'verify' ? 'Sig' : 'Lib';
-  const leftRailAriaLabel = mode === 'verify' ? 'Show signals' : 'Show library';
-  const leftCollapseAriaLabel = mode === 'verify' ? 'Collapse signals' : 'Collapse library';
+  const leftRailLabels =
+    mode === 'verify'
+      ? { short: 'Sig', show: 'Show signals', collapse: 'Collapse signals' }
+      : mode === 'hardware'
+        ? { short: 'Map', show: 'Show map pins guide', collapse: 'Collapse map pins guide' }
+        : mode === 'import'
+          ? { short: 'Flow', show: 'Show workflow', collapse: 'Collapse workflow' }
+          : { short: 'Lib', show: 'Show library', collapse: 'Collapse library' };
+  const leftRailShortLabel = leftRailLabels.short;
+  const leftRailAriaLabel = leftRailLabels.show;
+  const leftCollapseAriaLabel = leftRailLabels.collapse;
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -389,10 +397,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
                 : { left: { min: 116, max: 136 }, right: { min: 216, max: 272 } }
             : mode === 'hardware'
               ? layoutMode === 'wide'
-                ? { left: { min: 268, max: 296 }, right: { min: 220, max: 248 } }
+                ? { left: { min: 196, max: 220 }, right: { min: 220, max: 248 } }
                 : layoutMode === 'standard'
-                  ? { left: { min: 256, max: 284 }, right: { min: 208, max: 236 } }
-                  : { left: { min: 236, max: 260 }, right: { min: 196, max: 224 } }
+                  ? { left: { min: 188, max: 212 }, right: { min: 208, max: 236 } }
+                  : { left: { min: 176, max: 200 }, right: { min: 196, max: 224 } }
             : usesCalmerNonDesignShell
               ? layoutMode === 'wide'
                 ? { left: { min: 168, max: 188 }, right: { min: 220, max: 248 } }

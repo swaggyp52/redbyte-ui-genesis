@@ -2317,6 +2317,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="hardware"
       layoutIntent="workbench"
+      leftDockMode="collapsed"
       rightDockMode="collapsed"
       rightDockCanCollapse
       consoleMode="hidden"
