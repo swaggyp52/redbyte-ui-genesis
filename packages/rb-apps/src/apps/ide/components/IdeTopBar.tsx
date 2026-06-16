@@ -16,6 +16,8 @@ export interface IdeTopBarProps {
   onRunVerify?: () => void;
   onExport?: () => void;
   onHelp?: () => void;
+  onWorkflowHelp?: () => void;
+  onRenameProject?: (nextName: string) => void;
 }
 
 // Geometric logomark — circuit-trace hex
@@ -48,7 +50,12 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   currentMode,
   buildIdentity,
   onHelp,
+  onWorkflowHelp,
+  onRenameProject,
 }) => {
+  const [editingName, setEditingName] = React.useState(false);
+  const [nameDraft, setNameDraft] = React.useState(projectName);
+  const nameInputRef = React.useRef<HTMLInputElement | null>(null);
   const saveDotClass =
     saveState === 'saved'
       ? 'ide-save-dot--ok'
@@ -57,6 +64,32 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         : 'ide-save-dot--unsaved';
 
   const modeLabel = currentMode ? getIdeModeLabel(currentMode) : null;
+  const canRenameProject = Boolean(onRenameProject);
+
+  React.useEffect(() => {
+    if (!editingName) setNameDraft(projectName);
+  }, [editingName, projectName]);
+
+  React.useEffect(() => {
+    if (!editingName) return;
+    nameInputRef.current?.focus();
+    nameInputRef.current?.select();
+  }, [editingName]);
+
+  const commitName = React.useCallback(() => {
+    const trimmed = nameDraft.trim();
+    setEditingName(false);
+    if (trimmed.length > 0 && trimmed !== projectName) {
+      onRenameProject?.(trimmed);
+      return;
+    }
+    setNameDraft(projectName);
+  }, [nameDraft, onRenameProject, projectName]);
+
+  const cancelNameEdit = React.useCallback(() => {
+    setNameDraft(projectName);
+    setEditingName(false);
+  }, [projectName]);
 
   return (
     <header className="ide-top-bar" data-testid="ide-top-bar" data-save-state={saveState}>
@@ -70,7 +103,43 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-breadcrumb-sep" aria-hidden="true">/</span>
 
         <div className="ide-project-meta">
-          <h1 className="ide-project-name" title={projectName}>{projectName}</h1>
+          <h1 className="ide-project-name" title={projectName}>
+            {editingName ? (
+              <input
+                ref={nameInputRef}
+                className="ide-project-name-input"
+                value={nameDraft}
+                aria-label="Project title"
+                data-testid="ide-topbar-project-name-input"
+                onChange={(event) => setNameDraft(event.target.value)}
+                onBlur={commitName}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    commitName();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    cancelNameEdit();
+                  }
+                }}
+              />
+            ) : canRenameProject ? (
+              <button
+                type="button"
+                className="ide-project-name-button"
+                onClick={() => setEditingName(true)}
+                title={`Rename project "${projectName}"`}
+                aria-label={`Rename project title ${projectName}`}
+                data-testid="ide-topbar-project-rename"
+              >
+                <span className="ide-project-name-text">{projectName}</span>
+                <span className="ide-project-name-edit-cue" aria-hidden="true">Rename</span>
+              </button>
+            ) : (
+              projectName
+            )}
+          </h1>
           {projectId ? <p className="ide-project-subline">{projectId}</p> : null}
         </div>
 
@@ -107,6 +176,17 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-save-label" aria-live="polite">
           {saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved'}
         </span>
+        {onWorkflowHelp && (
+          <button
+            className="ide-topbar-workflow-help-btn"
+            onClick={onWorkflowHelp}
+            title="Workflow orientation"
+            aria-label="Workflow orientation"
+            data-testid="ide-topbar-workflow-help-btn"
+          >
+            Flow
+          </button>
+        )}
         {onHelp && (
           <button
             className="ide-topbar-help-btn"

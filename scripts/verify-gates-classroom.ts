@@ -33,6 +33,7 @@ function main() {
     runGate('golden-basys3-export', 'pnpm -s rc:e1:golden-basys3-export-gate', true),
     runGate('golden-basys3-alu-export', 'pnpm -s rc:e1:golden-basys3-alu-export-gate', true),
     runGate('dev-guards', 'pnpm -s ui:dev-guards-contract-gate', true),
+    runGate('ide:interaction-affordance', 'pnpm -s ide:gate:interaction-affordance', true),
     ...(screenshotStrict
       ? [runGate('ide:screenshot-baselines', 'pnpm -s ide:gate:screenshots', true)]
       : [

@@ -20,6 +20,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-command-center'],
   },
   {
+    name: 'ide:gate:interaction-affordance',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:interaction-affordance'],
+  },
+  {
     name: 'ide:gate:active-mode-reload-recovery',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:active-mode-reload-recovery'],

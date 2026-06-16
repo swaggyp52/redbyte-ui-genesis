@@ -14,7 +14,8 @@ const STORAGE_KEY = 'rb-onboarding-v1-seen';
 export const OnboardingOverlay: React.FC<{
   mode?: IdeMode;
   onOpenDesign?: () => void;
-}> = ({ mode = 'project', onOpenDesign }) => {
+  openRequestId?: number;
+}> = ({ mode = 'project', onOpenDesign, openRequestId = 0 }) => {
   const [visible, setVisible] = useState(false);
   const orientationCopy = useMemo(
     () => ({
@@ -39,6 +40,11 @@ export const OnboardingOverlay: React.FC<{
       setVisible(!localStorage.getItem(STORAGE_KEY));
     } catch { /* storage unavailable */ }
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'project' || openRequestId <= 0) return;
+    setVisible(true);
+  }, [mode, openRequestId]);
 
   const dismiss = () => {
     try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* ignore */ }

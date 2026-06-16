@@ -55,6 +55,7 @@ function main() {
     runGate('ide:design-inspector-contract', 'pnpm -s ide:gate:design-inspector-contract', true),
     runGate('ide:project-overview-contract', 'pnpm -s ide:gate:project-overview-contract', true),
     runGate('ide:project-command-center', 'pnpm -s ide:gate:project-command-center', true),
+    runGate('ide:interaction-affordance', 'pnpm -s ide:gate:interaction-affordance', true),
     runGate('ide:active-mode-reload-recovery', 'pnpm -s ide:gate:active-mode-reload-recovery', true),
     runGate('ide:project-health-live-contract', 'pnpm -s ide:gate:project-health-live-contract', true),
     runGate('ide:project-continue-cta-contract', 'pnpm -s ide:gate:project-continue-cta-contract', true),

@@ -111,7 +111,8 @@
 .ide-root .ide-save-dot--ok      { background: #52d273; box-shadow: 0 0 6px rgba(82, 210, 115, 0.55); }
 .ide-root .ide-save-dot--saving  { background: #f4b942; box-shadow: 0 0 6px rgba(244, 185, 66, 0.55); }
 .ide-root .ide-save-dot--unsaved { background: #ff9090; box-shadow: 0 0 6px rgba(255, 107, 107, 0.55); }
-.ide-root .ide-topbar-help-btn {
+.ide-root .ide-topbar-help-btn,
+.ide-root .ide-topbar-workflow-help-btn {
   width: 28px; height: 28px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -121,7 +122,15 @@
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-.ide-root .ide-topbar-help-btn:hover {
+.ide-root .ide-topbar-workflow-help-btn {
+  width: auto;
+  min-width: 44px;
+  padding: 0 10px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.ide-root .ide-topbar-help-btn:hover,
+.ide-root .ide-topbar-workflow-help-btn:hover {
   background: rgba(46, 196, 182, 0.10);
   border-color: rgba(46, 196, 182, 0.30);
   color: var(--rb-accent);

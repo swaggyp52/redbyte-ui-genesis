@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: improve Project interaction affordance)
+
+**Subsystem:** RedByte IDE Project first-launch interaction affordance, top-bar project rename, Workflow Orientation recovery, focused browser gate, classroom gate wiring, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `b7dc73aa71f7476647c503974a26a5b3fc632754`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5194/os/` with visible build `b7dc73a` matching local HEAD before trusting browser screenshots.
+- Ran browser-first inspection before coding across Project first launch and loaded Project, Build Fresh, Design blank and starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping, Export handoff, Import recovery, navigation, and reload paths at `1366x768` and `1440x900`.
+- Ranked the visible issues and selected Project first-launch interaction affordance: the top-bar project title looked like primary identity but was inert, and the first-launch Workflow Orientation overlay could be dismissed without a visible way to reopen it.
+- Added `ide:gate:interaction-affordance` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed because the dismissed Workflow Orientation had no visible reopen affordance.
+- Made the top-bar project title an inline rename control. Escape cancels, Enter/blur commits, and committed renames save through the existing project snapshot/session restore path so reload preserves the name in both the top bar and Project identity strip.
+- Added a compact `Flow` top-bar affordance that reopens the Project Workflow Orientation without resetting first-run dismissal state or changing route/project semantics.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm --filter @redbyte/playground build`; intentional red `corepack pnpm -s ide:gate:interaction-affordance`; final `corepack pnpm -s ide:gate:interaction-affordance`; affected browser gates `ide:gate:project-command-center`, `ide:gate:active-mode-reload-recovery`, and `ide:gate:persistence-contract`; focused `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/projectSurface.continuity.test.tsx` (`14` tests); `corepack pnpm -s classroom:gate` with the new interaction-affordance gate included; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/interaction-affordance/before/`; after screenshots and observations are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/interaction-affordance/after/`.
+
+**Safety:** This slice changes Project/top-bar interaction affordance, one focused browser gate, gate aggregators, and current-truth docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers Project title rename, orientation dismiss/reopen, and reload persistence at the classroom viewport; it does not solve the broader side-dock proportions, sideways labels, or card-heavy interaction model. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining visual candidate from this run is the disproportionate side-dock/sideways-label interaction model, but it should still be reselected from fresh live evidence before coding.
+
 ## Change Log 2026-06-16 (fix: surface Export artifact files in first viewport)
 
 **Subsystem:** RedByte IDE Export handoff first-viewport artifact visibility, focused browser gate, classroom gate wiring, and cockpit docs.

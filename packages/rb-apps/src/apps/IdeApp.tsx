@@ -141,6 +141,7 @@ export const IdeApp: React.FC = () => {
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const isRestoringRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [workflowOrientationRequest, setWorkflowOrientationRequest] = useState(0);
   // C-1: Debug bridge — frozen circuit state from a verification tick
   const [debugState, setDebugState] = useState<{
     tick: number;
@@ -936,6 +937,69 @@ export const IdeApp: React.FC = () => {
     refreshSavedProjects();
   }, [exportProject, projectHash, projectId, projectName, refreshSavedProjects, setLastSavedAt]);
 
+  const handleRenameProject = useCallback(
+    (nextName: string) => {
+      const trimmed = nextName.trim();
+      if (trimmed.length === 0 || trimmed === projectName) return;
+
+      const renamedProject: RBProject = {
+        ...exportProject,
+        name: trimmed,
+      };
+      const renamedHash = digestValue(renamedProject);
+      setProjectIdentity({ projectName: trimmed });
+
+      const snapshot = saveIdeProjectSnapshot({
+        projectId,
+        projectName: trimmed,
+        projectHash: renamedHash,
+        project: renamedProject,
+      });
+
+      if (snapshot) {
+        setSavedProjectHash(snapshot.projectHash);
+        const nextSessionMeta: LabSessionMeta = {
+          ...(sessionMetaRef.current ?? {
+            version: 1,
+            savedAt: Date.now(),
+            activeExampleId: null,
+            probedKeys: [],
+          }),
+          version: 1,
+          savedAt: Date.now(),
+          projectId,
+          currentMode: activeMode,
+          activeExampleId: activeExampleId ?? null,
+          projectKind,
+          sourceExampleId,
+          scenarioAuthority,
+          probedKeys: runtimeSim.probes.map((probe) => probe.key),
+        };
+        sessionMetaRef.current = nextSessionMeta;
+        saveLabSessionMeta(nextSessionMeta);
+        setLastSavedAt(`Renamed and saved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
+        refreshSavedProjects();
+        return;
+      }
+
+      setLastSavedAt('Unsaved changes - project renamed');
+    },
+    [
+      activeExampleId,
+      activeMode,
+      exportProject,
+      projectId,
+      projectKind,
+      projectName,
+      refreshSavedProjects,
+      runtimeSim.probes,
+      scenarioAuthority,
+      setLastSavedAt,
+      setProjectIdentity,
+      sourceExampleId,
+    ]
+  );
+
   const handleSaveAsProject = useCallback(() => {
     const nextProjectId = createSaveAsProjectId(projectName, projectId, savedProjects);
     const nextProject: RBProject = {
@@ -1603,6 +1667,8 @@ export const IdeApp: React.FC = () => {
         onResetToExample={handleResetToExample}
         onRunVerify={() => setCurrentMode('verify')}
         onExport={() => setCurrentMode('export')}
+        onRenameProject={handleRenameProject}
+        onWorkflowHelp={activeMode === 'project' ? () => setWorkflowOrientationRequest((previous) => previous + 1) : undefined}
         onHelp={() => setShowShortcuts(true)}
       />
 
@@ -1612,7 +1678,11 @@ export const IdeApp: React.FC = () => {
         onModeChange={setCurrentMode}
       />
 
-      <OnboardingOverlay mode={activeMode} onOpenDesign={() => setCurrentMode('design')} />
+      <OnboardingOverlay
+        mode={activeMode}
+        onOpenDesign={() => setCurrentMode('design')}
+        openRequestId={workflowOrientationRequest}
+      />
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       <div className="ide-layout-shell">
@@ -1727,12 +1797,7 @@ export const IdeApp: React.FC = () => {
                 isRestoringRef.current = false;
               }}
               saveState={saveState}
-              onRenameProject={(nextName) => {
-                const trimmed = nextName.trim();
-                if (trimmed.length === 0 || trimmed === projectName) return;
-                setProjectIdentity({ projectName: trimmed });
-                setLastSavedAt('Unsaved changes — project renamed');
-              }}
+              onRenameProject={handleRenameProject}
               onResetProject={() => {
                 if (!window.confirm('Reset to the default example? All unsaved work will be lost.')) return;
                 const backup = createRecoveryBackup();

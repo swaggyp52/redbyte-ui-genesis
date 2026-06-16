@@ -601,6 +601,39 @@ Rollback:
 
 - Revert the Export presentation slice and focused gate wiring; existing Export trust and artifact gates protect generated-package semantics separately.
 
+## Phase 10.11 - Project Interaction Affordance v1
+
+Status: Closed 2026-06-16 by `ide:gate:interaction-affordance`.
+
+Goal: Make Project identity and first-run workflow help directly actionable instead of passive chrome.
+
+Why: Browser-first review and user feedback found that the top-bar project title looked like important identity but could not be clicked to rename, and the first-launch Workflow Orientation overlay was in the way but had no visible way to reopen after dismissal. This was a normal-use interaction defect, not a Project data-format or workflow-semantics change.
+
+Implementation slices:
+
+- Added one focused browser gate for Project first-launch interaction affordance at `1366x768`.
+- Made the top-bar project title an inline rename control with Escape cancel and Enter/blur save.
+- Saved committed title changes through the existing project snapshot/session restore path.
+- Added a compact `Flow` top-bar affordance to reopen Workflow Orientation after dismissal.
+
+Proof:
+
+- Intentional red `ide:gate:interaction-affordance` caught the missing Workflow Orientation reopen affordance.
+- Passing `ide:gate:interaction-affordance` after the fix with before/after screenshots and observations under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/interaction-affordance/`.
+- Project command center, active-mode reload recovery, persistence, focused Project Vitest, and classroom gates.
+
+Acceptance:
+
+- Workflow Orientation can be dismissed and reopened from visible UI.
+- Clicking the top-bar title opens inline rename.
+- Escape cancels a rename.
+- Enter saves a rename, updates both top-bar and Project identity copy, and persists after reload.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the top-bar interaction slice and focused gate wiring; existing Project command-center and persistence gates protect broader Project state separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.
