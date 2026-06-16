@@ -1682,6 +1682,7 @@ export const IdeApp: React.FC = () => {
         mode={activeMode}
         onOpenDesign={() => setCurrentMode('design')}
         openRequestId={workflowOrientationRequest}
+        placement={hasCircuit ? 'integrated' : 'launch'}
       />
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: integrate Workflow Orientation with loaded Project)
+
+**Subsystem:** RedByte IDE Project Workflow Orientation placement, top-bar Flow help, focused Project interaction browser gate, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `c09d6258f8c96f524409de4353d0b70f107e8c98`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5202/os/` for browser-first inspection; the in-app browser verified visible `BUILD c09d625`, matching local HEAD before screenshots.
+- Inspected Project first launch and loaded Project, Build Fresh, Design starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff/artifact preview, Import recovery, open/collapsed panels, navigation, and reload recovery at `1366x768` and `1440x900`.
+- Ranked issues found: Workflow Orientation still covered loaded Project entry paths after normal Project use and `Flow` reopen; Export pre-build trust copy remained a secondary confidence issue; Hardware/support panels still have content-density follow-up; Verify remains dense but gate-backed; Design and Import were lower-risk for this slice.
+- Chose the Workflow Orientation overlap because it directly matched user feedback, was frequent in normal Project use, blocked visible work paths, was contained to Project help presentation, and could be proven by strengthening an existing focused browser gate.
+- Strengthened `ide:gate:interaction-affordance` with a red-first loaded Project path: load Logic Gates, return to Project, reopen `Flow`, and assert the orientation panel does not overlap `ide-project-entry-paths` at `1440x900`. The intentional red run failed with the old bottom overlay at `x=480 y=600 w=480 h=272` over paths at `x=152 y=680 w=1208 h=140`.
+- Added loaded-project placement for `OnboardingOverlay`: first launch keeps the fuller teaching card, while loaded Project uses a compact top-right contextual callout with shorter copy. The callout stays recoverable from `Flow`, remains dismissible/actionable, and no longer covers the Project entry paths or Verify Next band in after screenshots.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Workflow Orientation Integrated v1 as closed and keeps broader card-heavy/direct-manipulation polish as separate future debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `corepack pnpm ide:gate:interaction-affordance`; final `corepack pnpm ide:gate:interaction-affordance`; focused `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx`; affected gates `ide:gate:project-command-center`, `ide:gate:project-identity-editing`, `ide:gate:shell-workbench-hierarchy`, and `ide:gate:workbench-space-utilization`; `corepack pnpm classroom:gate`; and `corepack pnpm build:unified`. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/browser-first-c09d6258-live/before/`; after screenshots are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/browser-first-c09d6258-live/after/workflow-orientation-integrated/`.
+
+**Safety:** This slice changes only Project onboarding/help placement and copy, one focused browser gate, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The strengthened gate covers loaded Project `Flow` reopen and first-launch interaction behavior, not a broad redesign of the card-heavy product model. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining product direction is broader direct-manipulation/function-depth work so surfaces feel less like static information cards, but the next target must still be chosen from fresh live browser evidence.
+
 ## Change Log 2026-06-16 (fix: improve Export artifact direct preview)
 
 **Subsystem:** RedByte IDE Export handoff generated-file affordances, artifact preview workflow, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

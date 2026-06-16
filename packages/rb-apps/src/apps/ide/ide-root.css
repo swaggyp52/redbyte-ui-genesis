@@ -21550,6 +21550,37 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   border-radius: 12px !important;
   padding: 22px 26px !important;
 }
+.rb-onboarding-overlay.rb-onboarding-overlay--integrated {
+  top: 104px !important;
+  right: 20px !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  width: min(340px, calc(100vw - 112px)) !important;
+  max-height: calc(100vh - 128px) !important;
+  overflow: auto !important;
+}
+.rb-onboarding-overlay--integrated .rb-onboarding-card {
+  width: 100% !important;
+  max-width: 340px !important;
+  padding: 18px 20px !important;
+}
+.rb-onboarding-overlay--integrated .rb-onboarding-title {
+  font-size: 0.88rem !important;
+  margin-bottom: 5px !important;
+}
+.rb-onboarding-overlay--integrated .rb-onboarding-body {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  margin-bottom: 12px !important;
+}
+.rb-onboarding-overlay--integrated .rb-onboarding-actions {
+  gap: 10px !important;
+}
+.rb-onboarding-overlay--integrated .rb-onboarding-next {
+  min-height: 34px !important;
+  padding: 7px 16px !important;
+}
 .rb-onboarding-title {
   font-size: 0.97rem !important;
   font-weight: 700 !important;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
@@ -9,6 +9,26 @@ async function text(locator) {
 async function assertNoRuntimeErrors(page, errors) {
   const consoleErrors = errors.filter((message) => !/favicon/i.test(message));
   assert(consoleErrors.length === 0, `page must not emit console/page errors: ${consoleErrors.join(' | ')}`);
+}
+
+function boxesOverlap(first, second) {
+  return (
+    first.x < second.x + second.width &&
+    first.x + first.width > second.x &&
+    first.y < second.y + second.height &&
+    first.y + first.height > second.y
+  );
+}
+
+function describeBox(box) {
+  return `x=${Math.round(box.x)} y=${Math.round(box.y)} w=${Math.round(box.width)} h=${Math.round(box.height)}`;
+}
+
+function assertNoOverlap(first, second, message) {
+  assert(
+    !boxesOverlap(first, second),
+    `${message}: first=${describeBox(first)}, second=${describeBox(second)}`
+  );
 }
 
 await runIdeGate('IDE interaction affordance contract satisfied', async ({ page, baseUrl }) => {
@@ -97,6 +117,24 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
     'dismissed workflow orientation must stay out of the way after reload'
   );
   assert(await visible(orientationReopen), 'workflow orientation reopen affordance must survive reload');
+
+  await loadStarterProject(page, { exactExampleId: 'logic-gates' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('[data-testid="mode-button-project"]').first().click();
+  await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
+  await orientationReopen.click();
+  const loadedProjectOrientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
+  await loadedProjectOrientation.waitFor({ state: 'visible', timeout: 10000 });
+  const loadedProjectOrientationBox = await loadedProjectOrientation.boundingBox();
+  const entryPathsBox = await page.locator('[data-testid="ide-project-entry-paths"]').first().boundingBox();
+  assert(loadedProjectOrientationBox && entryPathsBox, 'loaded Project orientation and entry paths must be measurable');
+  assertNoOverlap(
+    loadedProjectOrientationBox,
+    entryPathsBox,
+    'reopened workflow orientation must not cover loaded Project entry paths'
+  );
+  await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
+  await loadedProjectOrientation.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
 
   await assertNoRuntimeErrors(page, errors);
 });

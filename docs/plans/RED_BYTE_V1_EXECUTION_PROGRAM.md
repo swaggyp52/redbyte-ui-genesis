@@ -771,6 +771,39 @@ Rollback:
 
 - Revert the Export handoff cue interaction/CSS and focused gate wiring; existing Export trust, handoff, first-viewport artifact, and artifact explorer gates protect broader Export semantics separately.
 
+## Phase 10.16 - Workflow Orientation Integrated v1
+
+Status: Closed 2026-06-16 by strengthened `ide:gate:interaction-affordance`.
+
+Goal: Keep Workflow Orientation recoverable without letting it cover the loaded Project work path.
+
+Why: Browser-first inspection showed the reopened top-bar `Flow` help still used the older bottom overlay after a project loaded. At `1440x900`, that overlay covered `ide-project-entry-paths`, matching user feedback that Workflow Orientation was in the way and felt like static chrome.
+
+Implementation slices:
+
+- Strengthened the existing Project interaction gate with a loaded Project path: load Logic Gates, return to Project, reopen `Flow`, and assert the orientation panel does not overlap Project entry paths.
+- Kept first launch using the fuller teaching card.
+- Added loaded-project placement for `OnboardingOverlay` so reopened `Flow` uses a compact top-right callout with shorter contextual copy.
+- Preserved project format, persistence semantics, Verify semantics, pin mapping, export generation, goldens, and E1/E2/E3 proof boundaries.
+
+Proof:
+
+- Intentional red `ide:gate:interaction-affordance` caught the old bottom overlay covering Project entry paths.
+- Passing `ide:gate:interaction-affordance` after the fix with before screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/browser-first-c09d6258-live/before/` and after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/browser-first-c09d6258-live/after/workflow-orientation-integrated/`.
+- Project command center, Project identity editing, shell workbench hierarchy, workbench space utilization, focused OnboardingOverlay Vitest, classroom gate, and unified build.
+
+Acceptance:
+
+- First-launch Workflow Orientation remains dismissible and can open Design.
+- Dismissed orientation remains recoverable from `Flow`.
+- Loaded Project `Flow` uses compact contextual copy and does not overlap Project entry paths.
+- No root overflow or browser E1/E2/E3 proof claim appears.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the OnboardingOverlay placement/copy changes and the strengthened loaded Project gate assertion; existing Project identity and command-center gates protect the surrounding Project behavior separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

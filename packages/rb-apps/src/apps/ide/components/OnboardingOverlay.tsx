@@ -15,20 +15,33 @@ export const OnboardingOverlay: React.FC<{
   mode?: IdeMode;
   onOpenDesign?: () => void;
   openRequestId?: number;
-}> = ({ mode = 'project', onOpenDesign, openRequestId = 0 }) => {
+  placement?: 'launch' | 'integrated';
+}> = ({ mode = 'project', onOpenDesign, openRequestId = 0, placement = 'launch' }) => {
   const [visible, setVisible] = useState(false);
   const orientationCopy = useMemo(
-    () => ({
-      title: 'Workflow Orientation',
-      body:
-        `RedByte uses a professional flow: Project -> ${STUDENT_WORKFLOW_SUMMARY}. ` +
-        `${DESIGN_STAGE_LABEL} builds the circuit, ${VERIFY_STAGE_LABEL} proves behavior, ` +
-        `${MAP_PINS_STAGE_LABEL} binds board resources, and ${EXPORT_STAGE_LABEL} creates the Vivado handoff.`,
-      trust:
-        `Trust boundary: ${MAP_PINS_STAGE_LABEL} is required binding work, not behavior proof. ` +
-        `Draft export is artifact-ready; trusted handoff requires current Compare PASS plus current mapping before ${PROGRAM_STAGE_LABEL}.`,
-    }),
-    []
+    () => {
+      if (placement === 'integrated') {
+        return {
+          title: 'Workflow Orientation',
+          body: `Path: Project -> ${STUDENT_WORKFLOW_SUMMARY}.`,
+          trust:
+            `${MAP_PINS_STAGE_LABEL} binds board resources; ${PROGRAM_STAGE_LABEL} still requires ` +
+            `current Compare PASS plus current mapping.`,
+        };
+      }
+
+      return {
+        title: 'Workflow Orientation',
+        body:
+          `RedByte uses a professional flow: Project -> ${STUDENT_WORKFLOW_SUMMARY}. ` +
+          `${DESIGN_STAGE_LABEL} builds the circuit, ${VERIFY_STAGE_LABEL} proves behavior, ` +
+          `${MAP_PINS_STAGE_LABEL} binds board resources, and ${EXPORT_STAGE_LABEL} creates the Vivado handoff.`,
+        trust:
+          `Trust boundary: ${MAP_PINS_STAGE_LABEL} is required binding work, not behavior proof. ` +
+          `Draft export is artifact-ready; trusted handoff requires current Compare PASS plus current mapping before ${PROGRAM_STAGE_LABEL}.`,
+      };
+    },
+    [placement]
   );
 
   useEffect(() => {
@@ -60,10 +73,11 @@ export const OnboardingOverlay: React.FC<{
 
   return (
     <div
-      className="rb-onboarding-overlay"
+      className={`rb-onboarding-overlay${placement === 'integrated' ? ' rb-onboarding-overlay--integrated' : ''}`}
       role="region"
       aria-label="RedByte workflow orientation"
       data-testid="ide-onboarding-overlay"
+      data-onboarding-placement={placement}
     >
       <div className="rb-onboarding-card">
         <h2 className="rb-onboarding-title">{orientationCopy.title}</h2>
