@@ -80,6 +80,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-workbench-v1'],
   },
   {
+    name: 'ide:gate:design-canvas-direct-workbench',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-canvas-direct-workbench'],
+  },
+  {
     name: 'ide:gate:design-correctness-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-correctness-contract'],

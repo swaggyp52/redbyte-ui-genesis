@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: demote Design canvas view tools)
+
+**Subsystem:** RedByte IDE Design canvas direct-workbench authoring, focused browser gate, classroom gate wiring, Design zoom gate compatibility, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `5afe8b3d181a0ff5ec904a55f91d90a438f55096`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5206/os/`; the visible UI showed `BUILD 5afe8b3`, matching local HEAD before screenshots.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank/starter authoring, Verify, Hardware, Export, Import, navigation, and reload paths at `1366x768` and `1440x900`.
+- Ranked issues found: Design starter authoring had a persistent zoom/control HUD and minimap over the graph; broader card-heavy/static feel remains; Verify density remains a follow-up; Project/Import hierarchy polish remains lower-priority; Hardware obstruction was already closed by the prior slice.
+- Chose the Design canvas HUD defect because it directly blocked the primary work object in normal starter authoring, was visible at both required viewports, and was gateable without touching simulation, Verify, mapping, generation, project format, or goldens.
+- Added `ide:gate:design-canvas-direct-workbench` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed because the compact view-tools toggle did not exist and the expanded HUD was visible by default.
+- Changed Design so default canvas view tools collapse behind a compact `View <zoom>` button; Fit/Center/presets expand only when requested. The default Design minimap is hidden so it no longer covers the starter graph.
+- Updated `ide:gate:design-canvas-zoom-integrity` and `ide:gate:design-workbench-v1` to use the new View-tools affordance before clicking zoom controls, preserving the existing zoom/fit/center proof.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Design Canvas Direct Workbench v1 as closed and keeps broader direct-manipulation/card-heavy polish as separate future debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `RB_DESIGN_CANVAS_DIRECT_WORKBENCH_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/before/gate-red corepack pnpm -s ide:gate:design-canvas-direct-workbench`; final `RB_DESIGN_CANVAS_DIRECT_WORKBENCH_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/after/gate-design-canvas-direct corepack pnpm -s ide:gate:design-canvas-direct-workbench`; focused Vitest `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.canvasChrome.test.tsx` (`3` tests); affected gates `ide:gate:design-canvas-zoom-integrity`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:workbench-obstruction-usability`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-space-utilization`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:hardware-first-viewport`, `ide:gate:hardware-basys3-workbench`, and `ide:gate:export-first-viewport-artifacts`; `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots/observations are under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/before/`; after gate screenshots are under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/after/gate-design-canvas-direct/`; in-app after smoke screenshots are under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/after/iab/` with no console/page errors recorded.
+
+**Safety:** This slice changes only Design canvas chrome presentation/interaction, one focused browser gate, Design zoom/workbench gate compatibility, gate aggregators, unit coverage, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers the loaded Logic Gates Design canvas default HUD/minimap obstruction at `1366x768` and `1440x900`; it does not solve the broader static/card-heavy product model, support-panel content density, Verify hierarchy, or all spacing polish. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with a fresh live-app pass. The strongest remaining direction is still direct-manipulation/function-depth work so surfaces feel less like static cards, but the exact next target must be chosen from live inspection.
+
 ## Change Log 2026-06-16 (fix: prevent RedByte workbench obstruction)
 
 **Subsystem:** RedByte IDE Hardware / Map Pins workbench obstruction, shared side-dock sizing, focused browser gate, classroom gate wiring, Hardware gate compatibility, product cockpit docs, and local Obsidian brain notes.

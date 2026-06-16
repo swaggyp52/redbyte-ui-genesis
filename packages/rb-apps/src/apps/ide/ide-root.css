@@ -31877,8 +31877,21 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-canvas-view-tools {
+  left: auto !important;
   right: 14px !important;
   bottom: 14px !important;
+  justify-items: end !important;
+  gap: 0 !important;
+  width: auto !important;
+  max-width: min(360px, calc(100% - 28px)) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-open {
   justify-items: stretch !important;
   gap: 8px !important;
   width: min(360px, calc(100% - 28px)) !important;
@@ -31891,6 +31904,51 @@ button:disabled,
     0 18px 34px rgba(1, 6, 12, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
   backdrop-filter: blur(10px) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact {
+  width: max-content !important;
+  inline-size: max-content !important;
+  max-width: calc(100% - 28px) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-view-tools-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid rgba(103, 137, 170, 0.36);
+  border-radius: 999px;
+  background: rgba(7, 15, 25, 0.86);
+  color: rgba(230, 240, 250, 0.92);
+  box-shadow: 0 10px 24px rgba(1, 6, 12, 0.22);
+  cursor: pointer;
+}
+
+[data-ide-mode-marker='design'] .ide-design-view-tools-toggle:hover,
+[data-ide-mode-marker='design'] .ide-design-view-tools-toggle:focus-visible {
+  border-color: rgba(120, 183, 245, 0.58);
+  color: #f5fbff;
+  outline: none;
+}
+
+[data-ide-mode-marker='design'] .ide-design-view-tools-toggle strong {
+  font-family: var(--rb-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(181, 220, 255, 0.96);
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact .ide-design-canvas-view-meta,
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact .ide-design-canvas-controls,
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact .ide-design-zoom-presets {
+  display: none !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-live .rb-minimap {
+  display: none !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-canvas-view-meta {
@@ -31942,7 +32000,7 @@ button:disabled,
     width: calc(100% - 24px) !important;
   }
 
-  [data-ide-mode-marker='design'] .ide-design-canvas-view-tools {
+  [data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-open {
     width: calc(100% - 28px) !important;
   }
 }

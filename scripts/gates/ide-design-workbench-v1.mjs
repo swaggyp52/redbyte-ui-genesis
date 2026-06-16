@@ -408,6 +408,14 @@ async function proveZoomFitCenter(page, viewport) {
   await page.locator('[data-testid="ide-design-view-canvas"]').first().click();
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await selectFirstVisibleNode(page);
+  const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
+  if (await toggle.isVisible().catch(() => false)) {
+    const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+    if (!expanded) {
+      await toggle.click();
+    }
+  }
+  await page.waitForSelector('[data-testid="ide-design-zoom-preset-50"]', { timeout: 5000 });
   await page.locator('[data-testid="ide-design-zoom-preset-50"]').first().click();
   await assertGraphWorkbench(page, viewport, '50% zoom');
   await page.locator('[data-testid="ide-design-zoom-preset-125"]').first().click();
@@ -419,6 +427,13 @@ async function proveZoomFitCenter(page, viewport) {
     await center.click();
   }
   await page.waitForTimeout(250);
+  if (await toggle.isVisible().catch(() => false)) {
+    const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+    if (expanded) {
+      await toggle.click();
+      await page.waitForTimeout(150);
+    }
+  }
 }
 
 async function deleteSelectionAndUndo(page) {

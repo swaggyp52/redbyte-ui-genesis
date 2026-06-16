@@ -206,6 +206,7 @@
         "ide:gate:design-canvas-zoom-integrity": "node ./scripts/gates/ide-design-canvas-zoom-integrity.mjs",
         "ide:gate:design-workbench-integrity": "node ./scripts/gates/ide-design-workbench-integrity.mjs",
         "ide:gate:design-workbench-v1": "node ./scripts/gates/ide-design-workbench-v1.mjs",
+        "ide:gate:design-canvas-direct-workbench": "node ./scripts/gates/ide-design-canvas-direct-workbench.mjs",
         "ide:gate:design-correctness-contract": "node ./scripts/gates/ide-design-correctness-contract.mjs",
         "ide:gate:design-palette-build-contract": "node ./scripts/gates/ide-design-palette-build-contract.mjs",
         "ide:gate:design-live-sim-contract": "node ./scripts/gates/ide-design-live-sim-contract.mjs",

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -170,10 +170,19 @@ describe('DesignSurface canvas chrome simplification', () => {
     const view = renderSurface();
 
     const tray = view.getByTestId('ide-design-canvas-view-tools');
+    const toggle = view.getByTestId('ide-design-view-tools-toggle');
+    expect(tray.getAttribute('data-open')).toBe('false');
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('View');
     expect(tray.contains(view.getByTestId('ide-design-canvas-controls'))).toBe(true);
     expect(tray.contains(view.getByTestId('ide-design-zoom-presets'))).toBe(true);
     expect(tray.textContent).toContain('zoom');
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
+
+    fireEvent.click(toggle);
+
+    expect(tray.getAttribute('data-open')).toBe('true');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('surfaces verify focus inside the simulation strip instead of the toolbar band', () => {

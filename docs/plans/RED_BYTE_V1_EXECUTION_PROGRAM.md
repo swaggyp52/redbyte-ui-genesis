@@ -839,6 +839,41 @@ Rollback:
 
 - Revert the Hardware left-dock default/width and command-strip layout changes plus focused gate wiring; existing Hardware first-viewport, Basys3 workbench, side-dock, and open-panel gates protect adjacent behavior separately.
 
+## Phase 10.18 - Design Canvas Direct Workbench v1
+
+Status: Closed 2026-06-16 by `ide:gate:design-canvas-direct-workbench`.
+
+Goal: Keep loaded Design starter authoring unobstructed by default while preserving on-demand View tools.
+
+Why: Browser-first inspection showed the loaded Design canvas still felt like cards and scaffolding over the workspace: the zoom/view-tools HUD and minimap sat over the graph by default at normal classroom and desktop viewports. This was a frequent, contained direct-workbench defect that was more gateable than broad visual taste work.
+
+Implementation slices:
+
+- Added one focused browser gate for Design canvas direct-workbench obstruction at `1366x768` and `1440x900`.
+- Changed loaded Design View tools to start as a compact `View` control with expanded controls/presets available on demand.
+- Hid the minimap by default in the Design workbench.
+- Updated existing Design zoom/workbench gates to open View tools before asserting Fit/Center/preset behavior.
+- Preserved simulation, Verify semantics, pin mapping semantics, export generation, project format, goldens, Vivado proof, and Basys3 proof boundaries.
+
+Proof:
+
+- Intentional red `ide:gate:design-canvas-direct-workbench` caught the missing compact View toggle and default HUD/minimap obstruction.
+- Passing `ide:gate:design-canvas-direct-workbench` after the fix with before screenshots under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/before/` and after screenshots under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/after/`.
+- Design Workbench v1, Design canvas zoom integrity, Design workbench integrity, affected shell/Hardware/Export gates, focused Design Vitest, classroom gate, unified build, doc validation, encoding check, and diff check.
+
+Acceptance:
+
+- Loaded Design starts with compact View tools instead of expanded zoom HUD.
+- The minimap is not visible by default.
+- Students can open View tools and use zoom presets/Fit/Center when needed.
+- Loaded graph remains visible and unobstructed at `1366x768` and `1440x900`.
+- No root overflow or console/page errors appear.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Design View-tools compact default, minimap default, and focused gate wiring; existing Design Workbench v1 and zoom integrity gates protect adjacent Design behavior separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

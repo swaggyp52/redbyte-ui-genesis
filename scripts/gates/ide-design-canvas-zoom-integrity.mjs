@@ -17,6 +17,12 @@ const ZOOM_SEQUENCE = [
   'ide-design-zoom-preset-fit',
 ];
 
+const CANVAS_VIEW_TOOL_IDS = new Set([
+  ...ZOOM_SEQUENCE,
+  'ide-design-presentation-zoom-toggle-canvas',
+  'ide-design-center-selection-canvas',
+]);
+
 const screenshotDir = process.env.RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_DESIGN_CANVAS_ZOOM_INTEGRITY_SCREENSHOTS_DIR)
   : null;
@@ -111,11 +117,27 @@ async function loadLogicGatesDesign(page, baseUrl) {
 }
 
 async function clickUniqueTestId(page, testId) {
+  if (CANVAS_VIEW_TOOL_IDS.has(testId)) {
+    await openCanvasViewTools(page);
+  }
   const locator = page.locator(`[data-testid="${testId}"]`);
   const count = await locator.count();
   assert(count === 1, `expected one [data-testid="${testId}"], found ${count}`);
   await locator.click({ force: true });
   await page.waitForTimeout(180);
+}
+
+async function openCanvasViewTools(page) {
+  const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
+  if (!(await toggle.isVisible().catch(() => false))) return;
+  const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+  if (!expanded) {
+    await toggle.click();
+  }
+  await page.waitForFunction(() => {
+    const tools = document.querySelector('[data-testid="ide-design-canvas-view-tools"]');
+    return tools?.getAttribute('data-open') === 'true';
+  }, undefined, { timeout: 5000 });
 }
 
 async function selectFirstVisibleNode(page) {

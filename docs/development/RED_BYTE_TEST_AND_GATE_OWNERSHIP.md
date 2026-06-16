@@ -27,6 +27,7 @@ Use this guide when adding or changing RedByte proof. Tests passing is useful ev
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
 - `ide:gate:design-canvas-zoom-integrity`
+- `ide:gate:design-canvas-direct-workbench`
 - `ide:gate:active-mode-reload-recovery`
 - `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
@@ -54,6 +55,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
+- Design canvas direct workbench protects loaded starter authoring from default zoom HUD/minimap obstruction while preserving on-demand Fit/Center/preset controls.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
@@ -86,7 +88,7 @@ Why:
 | Mode route, in-app navigation, or reload recovery | `ide:gate:active-mode-reload-recovery` plus the affected route/surface gate; add focused unit coverage only if startup-mode parsing semantics change |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
-| Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
+| Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
@@ -105,6 +107,10 @@ Why:
 - Capture console/page errors and reject `NaN`, `Infinity`, and `-Infinity` in console or SVG geometry when geometry matters.
 - Keep gates narrow enough to diagnose a failure. Add one broader classroom aggregator only after the focused gate is reliable.
 - Do not hide a product issue by weakening a gate. If the issue is real but outside the slice, record it as an audit/issue finding.
+
+## Current Design Direct-Workbench Gate
+
+`ide:gate:design-canvas-direct-workbench` loads Logic Gates at `1366x768` and `1440x900`, requires compact View by default, rejects expanded controls or minimap before the student asks for them, proves expand/reclose and zoom preset interaction, rejects root overflow, and fails on console/page errors.
 
 ## State Authority Rules
 

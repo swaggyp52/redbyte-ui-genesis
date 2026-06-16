@@ -1088,6 +1088,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [paneRowSize, setPaneRowSize] = useState({ width: 0, height: 0 });
   const [presentationZoom, setPresentationZoom] = useState<'dense' | 'classroom'>('dense');
+  const [canvasViewToolsOpen, setCanvasViewToolsOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [wireFeedback, setWireFeedback] = useState<string | null>(null);
@@ -6805,11 +6806,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     ) : null}
                     <div
-                      className={`ide-design-canvas-view-tools${showSplitCompareToolbar ? ' is-split' : ''}`}
+                      className={`ide-design-canvas-view-tools${
+                        showSplitCompareToolbar || canvasViewToolsOpen ? ' is-open' : ' is-compact'
+                      }${showSplitCompareToolbar ? ' is-split' : ''}`}
                       data-testid="ide-design-canvas-view-tools"
+                      data-open={showSplitCompareToolbar || canvasViewToolsOpen ? 'true' : 'false'}
                       data-blocks-canvas-placement="1"
                       data-blocks-macro-placement="1"
                     >
+                      <button
+                        type="button"
+                        className="ide-design-view-tools-toggle"
+                        data-testid="ide-design-view-tools-toggle"
+                        aria-expanded={showSplitCompareToolbar || canvasViewToolsOpen}
+                        aria-label={
+                          showSplitCompareToolbar || canvasViewToolsOpen
+                            ? 'Hide canvas view tools'
+                            : 'Show canvas view tools'
+                        }
+                        onClick={() => setCanvasViewToolsOpen((previous) => !previous)}
+                      >
+                        <span>View</span>
+                        <strong>{zoomPercent}%</strong>
+                      </button>
                       <div className="ide-design-canvas-view-meta">
                         <span
                           className="ide-design-canvas-zoom-indicator"
