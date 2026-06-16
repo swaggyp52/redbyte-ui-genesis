@@ -124,6 +124,7 @@ export interface ExportReadinessHeroProps {
   readonly verifyPlain: string;
   readonly artifactsPlain: string;
   readonly artifactPreviewItems: readonly ExportHandoffArtifactCue[];
+  readonly selectedArtifactPath: string;
 
   // ── Trust banner (4-state readiness) ──────────────────────────────────────────
   readonly trustCondition: ExportTrustCondition;
@@ -145,6 +146,7 @@ export interface ExportReadinessHeroProps {
   readonly onGoToProject?: () => void;
   readonly onGoToDesign?: () => void;
   readonly onOpenVerify?: () => void;
+  readonly onPreviewArtifact: (artifactPath: string) => void;
   readonly onPrimaryHandoff: () => void;
   readonly onDownloadProject: () => void;
   readonly onDownloadKit: () => void;
@@ -185,6 +187,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
   verifyPlain,
   artifactsPlain,
   artifactPreviewItems,
+  selectedArtifactPath,
   trustCondition,
   trustReason,
   trustConsequence,
@@ -198,6 +201,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
   onGoToProject,
   onGoToDesign,
   onOpenVerify,
+  onPreviewArtifact,
   onPrimaryHandoff,
   onDownloadProject,
   onDownloadKit,
@@ -292,20 +296,30 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
               <span>{artifactPreviewItems.length} visible</span>
             </div>
             <div className="ide-export-handoff-artifact-list">
-              {artifactPreviewItems.map((artifact) => (
-                <span
-                  key={artifact.path}
-                  className={`ide-export-handoff-artifact-chip ide-export-handoff-artifact-chip--${artifact.status}`}
-                  data-testid={`ide-export-handoff-artifact-${artifact.path
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]+/g, '-')
-                    .replace(/^-+|-+$/g, '')}`}
-                  title={artifact.note}
-                >
-                  <span className="ide-export-handoff-artifact-name">{artifact.path}</span>
-                  <span className="ide-export-handoff-artifact-state">{artifact.status}</span>
-                </span>
-              ))}
+              {artifactPreviewItems.map((artifact) => {
+                const isSelected = selectedArtifactPath === artifact.path;
+                return (
+                  <button
+                    key={artifact.path}
+                    type="button"
+                    className={`ide-export-handoff-artifact-chip ide-export-handoff-artifact-chip--${artifact.status} ${
+                      isSelected ? 'is-active' : ''
+                    }`}
+                    data-testid={`ide-export-handoff-artifact-${artifact.path
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/^-+|-+$/g, '')}`}
+                    title={artifact.note}
+                    aria-label={`Preview ${artifact.path}`}
+                    aria-pressed={isSelected}
+                    onClick={() => onPreviewArtifact(artifact.path)}
+                  >
+                    <span className="ide-export-handoff-artifact-name">{artifact.path}</span>
+                    <span className="ide-export-handoff-artifact-state">{artifact.status}</span>
+                    <span className="ide-export-handoff-artifact-action">Preview</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
         )}

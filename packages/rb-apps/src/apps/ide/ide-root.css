@@ -13293,20 +13293,52 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-export-handoff-artifact-chip {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  justify-items: start;
   min-width: 0;
-  gap: 2px;
+  gap: 2px 7px;
   padding: 7px 8px;
   border: 1px solid rgba(72, 118, 152, 0.28);
-  border-radius: 10px;
+  border-radius: 8px;
   background: rgba(11, 24, 38, 0.78);
   color: #dbeafe;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  appearance: none;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.ide-export-handoff-artifact-chip:hover {
+  border-color: rgba(125, 211, 252, 0.58);
+  background: rgba(15, 44, 65, 0.88);
+  transform: translateY(-1px);
+}
+
+.ide-export-handoff-artifact-chip:focus-visible {
+  outline: 2px solid rgba(125, 211, 252, 0.78);
+  outline-offset: 2px;
+}
+
+.ide-export-handoff-artifact-chip.is-active {
+  border-color: rgba(56, 189, 248, 0.78);
+  background: rgba(8, 47, 73, 0.9);
+  box-shadow: inset 3px 0 0 rgba(56, 189, 248, 0.82);
 }
 
 .ide-export-handoff-artifact-chip--ready {
   border-color: rgba(52, 211, 153, 0.26);
   background: rgba(7, 32, 29, 0.68);
+}
+
+.ide-export-handoff-artifact-chip--ready:hover,
+.ide-export-handoff-artifact-chip--ready.is-active {
+  border-color: rgba(45, 212, 191, 0.7);
+  background: rgba(8, 47, 50, 0.88);
 }
 
 .ide-export-handoff-artifact-chip--blocked {
@@ -13322,6 +13354,7 @@ details[open].ide-export-evidence-details > summary::before {
   font-family: var(--rb-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
   font-size: 11px;
   font-weight: 650;
+  grid-column: 1 / -1;
 }
 
 .ide-export-handoff-artifact-state {
@@ -13330,6 +13363,13 @@ details[open].ide-export-evidence-details > summary::before {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.ide-export-handoff-artifact-action {
+  justify-self: end;
+  color: rgba(125, 211, 252, 0.86);
+  font-size: 9px;
+  font-weight: 800;
 }
 
 .ide-export-agreement-heading {

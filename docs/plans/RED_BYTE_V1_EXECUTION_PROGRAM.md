@@ -738,6 +738,39 @@ Rollback:
 
 - Revert the compact open-right-dock CSS override and focused gate wiring; existing side-dock and workbench-space gates protect collapsed rails and focal-object geometry separately.
 
+## Phase 10.15 - Export Artifact Direct Preview v1
+
+Status: Closed 2026-06-16 by `ide:gate:export-artifact-direct-preview`.
+
+Goal: Turn Export generated-file cues from passive labels into direct preview controls.
+
+Why: Browser-first inspection showed the ready-to-build Export handoff now exposes generated file names in the first viewport, but those file cues still looked selectable while doing nothing. The actual artifact preview stayed below the first viewport, so the handoff still felt like static information cards instead of a usable file workspace.
+
+Implementation slices:
+
+- Added one focused browser gate for the ready-to-build Logic Gates Export path at `1366x768` and `1440x900`.
+- Converted the first-viewport generated-file cues to button controls with preview labels, keyboard reachability, focus/hover/selected styling, and `aria-pressed` selected state.
+- Reused the existing artifact workspace and selected artifact state so clicking `top.vhd` or keyboard-activating `top.xdc` selects and reveals the same preview already used by the downstream artifact explorer.
+- Preserved generated artifact bytes, export trust semantics, download behavior, Verify semantics, pin mapping, project format, goldens, and E1/E2/E3 proof boundaries.
+
+Proof:
+
+- Intentional red `ide:gate:export-artifact-direct-preview` caught `top.vhd` rendering as a passive `span` at both required viewports.
+- Passing `ide:gate:export-artifact-direct-preview` after the fix with before screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/direct-manipulation/before/` and after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/direct-manipulation/after/`.
+- Export first-viewport artifacts, artifact explorer, handoff station, trust integrity, open side-panel density, focused Export Vitest, classroom gate, and unified build.
+
+Acceptance:
+
+- `top.vhd` and `top.xdc` generated-file cues are real controls in the handoff station.
+- Click and keyboard activation update `ide-export-preview-path` and reveal the artifact workspace.
+- Selected generated-file cues expose selected state.
+- No root overflow or browser E1/E2/E3 proof claim appears at classroom or desktop viewports.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Export handoff cue interaction/CSS and focused gate wiring; existing Export trust, handoff, first-viewport artifact, and artifact explorer gates protect broader Export semantics separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

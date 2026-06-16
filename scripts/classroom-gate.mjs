@@ -115,6 +115,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:export-first-viewport-artifacts'],
   },
   {
+    name: 'ide:gate:export-artifact-direct-preview',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:export-artifact-direct-preview'],
+  },
+  {
     name: 'ide:gate:export-e2e-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-e2e-contract'],

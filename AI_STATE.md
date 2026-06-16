@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: improve Export artifact direct preview)
+
+**Subsystem:** RedByte IDE Export handoff generated-file affordances, artifact preview workflow, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `855bd1530838d846d4cc681095d6972df528e1a9`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh current preview at `http://127.0.0.1:5201/os/`; the in-app browser verified `http://127.0.0.1:5201/os/?mode=export&e2e=1&gate=export-direct-preview-iab-after` at `1366x768` with visible `BUILD 855bd15`, `top.vhd` as a selected button, preview path `top.vhd`, and no root horizontal overflow.
+- Ran browser-first product inspection at `1366x768` and `1440x900` across Project first launch and loaded Project, Design starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping, Export handoff, Import recovery, and dirty reload continuity.
+- Ranked issues found: Export generated-file chips looked selectable but were passive while the preview sat below the first viewport; Import utility navigation still needed a direct URL from the loaded Export path; broader static/card-heavy composition remains; Verify evidence remains dense but already interactive; Hardware mapping already had row/board direct manipulation.
+- Chose Export generated-file direct preview because it was visible in normal handoff use, high-confidence for students/professors, contained to Export presentation, and gateable without changing generated artifacts.
+- Added `ide:gate:export-artifact-direct-preview` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed because `top.vhd` was a `span` at both `1366x768` and `1440x900`.
+- Made the first-viewport generated-file cues real buttons with `aria-label`, `aria-pressed`, keyboard activation, pointer/focus/active styling, and a direct bridge to the existing artifact workspace preview.
+- Updated the ignored local `.redbyte-brain/` notes so the Obsidian working vault records that Export generated-file direct preview is closed while broader direct-manipulation/product-function depth remains separate debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm --filter @redbyte/playground build`; intentional red `node .\scripts\gates\ide-export-artifact-direct-preview.mjs`; final `RB_EXPORT_ARTIFACT_DIRECT_PREVIEW_SCREENSHOTS_DIR=.redbyte/product-immersion/browser-first-ownership/2026-06-16/direct-manipulation/after node .\scripts\gates\ide-export-artifact-direct-preview.mjs`; package script `corepack pnpm -s ide:gate:export-artifact-direct-preview`; affected gates `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-explorer-contract`, `ide:gate:export-handoff-station`, `ide:gate:export-trust-integrity`, and `ide:gate:open-side-panel-density`; focused Export Vitest batch (`6` files, `56` tests passed); `corepack pnpm -s classroom:gate`; and standalone rerun `corepack pnpm -s build:unified` after an earlier concurrent dist-merge collision. Before screenshots and observations are local-only under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/direct-manipulation/before/`; after screenshots, in-app screenshot, and observations are under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/direct-manipulation/after/`.
+
+**Safety:** This slice changes only Export presentation/interaction, one focused browser gate, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers the ready-to-build Logic Gates Export path at `1366x768` and `1440x900`, not every custom Export state. Broader static/card-heavy product composition and direct-manipulation depth remain separate product work. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable defect after inspection. The strongest remaining product direction is another direct-manipulation/function-depth slice, but the next target must still be chosen from fresh live browser evidence.
+
 ## Change Log 2026-06-16 (fix: improve RedByte open side panel density)
 
 **Subsystem:** RedByte IDE global workbench open right-dock geometry, Hardware/Export side-panel density, focused browser gate, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

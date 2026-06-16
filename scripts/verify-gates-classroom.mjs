@@ -103,6 +103,11 @@ function main() {
       'pnpm -s ide:gate:export-first-viewport-artifacts',
       true
     ),
+    runGate(
+      'ide:export-artifact-direct-preview',
+      'pnpm -s ide:gate:export-artifact-direct-preview',
+      true
+    ),
     runGate('ide:export-blockers-contract', 'pnpm -s ide:gate:export-blockers-contract', true),
     runGate('ide:export-ready-contract', 'pnpm -s ide:gate:export-ready-contract', true),
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),

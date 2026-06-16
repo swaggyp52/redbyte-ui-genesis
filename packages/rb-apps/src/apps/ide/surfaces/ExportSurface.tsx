@@ -274,6 +274,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [invalidPins, setInvalidPins] = useState<Set<string>>(new Set());
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
   const mapSectionRef = useRef<HTMLElement>(null);
+  const artifactPreviewSectionRef = useRef<HTMLElement>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const copyResetTimer = useRef<number | null>(null);
   const editablePortKeys = useMemo(() => collectMappedProjectPortKeys(project), [project]);
@@ -1337,6 +1338,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
+  const handlePreviewArtifactFromHandoff = useCallback((artifactPath: string) => {
+    setSelectedArtifactPath(artifactPath);
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      artifactPreviewSectionRef.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
+      artifactPreviewSectionRef.current?.focus({ preventScroll: true });
+    });
+  }, []);
+
   const copyToClipboard = async (payload: string, targetId: string) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       setCopiedTarget(null);
@@ -1738,6 +1748,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             verifyPlain={packageHandoffSummary.verifyPlain}
             artifactsPlain={packageHandoffSummary.artifactsPlain}
             artifactPreviewItems={firstViewportArtifactItems}
+            selectedArtifactPath={selectedArtifact?.path ?? ''}
             trustCondition={trustCondition}
             trustReason={trustReason}
             trustConsequence={handoffTruth.message}
@@ -1751,6 +1762,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             onGoToProject={onGoToProject}
             onGoToDesign={onGoToDesign}
             onOpenVerify={onOpenVerify}
+            onPreviewArtifact={handlePreviewArtifactFromHandoff}
             onPrimaryHandoff={handlePrimaryHandoff}
             onDownloadProject={() => void handleDownloadExport('project')}
             onDownloadKit={() => void handleDownloadExport('kit')}
@@ -1821,7 +1833,12 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
-              <section className="ide-export-section" data-testid="ide-export-artifact-preview">
+              <section
+                ref={artifactPreviewSectionRef}
+                className="ide-export-section"
+                data-testid="ide-export-artifact-preview"
+                tabIndex={-1}
+              >
                 <header className="ide-export-section-header">
                   <div>
                     <h3>Artifact workspace</h3>
