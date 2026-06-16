@@ -90,6 +90,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:export-handoff-station'],
   },
   {
+    name: 'ide:gate:export-first-viewport-artifacts',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:export-first-viewport-artifacts'],
+  },
+  {
     name: 'ide:gate:export-e2e-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-e2e-contract'],

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-15
+last_validated: 2026-06-16
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -31,6 +31,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:design-workbench-v1`
+- `ide:gate:export-first-viewport-artifacts`
 - `ide:gate:export-handoff-station`
 - `ide:gate:export-trust-integrity`
 - `ide:gate:hardware-basys3-workbench`
@@ -51,6 +52,7 @@ Why:
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
+- Export first-viewport artifact visibility proves the ready-to-build handoff station exposes the concrete generated files students and professors need to inspect before scrolling.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Hardware Basys3 workbench proves selected signal -> board resource -> package pin -> XDC hierarchy at classroom/desktop viewports and keeps ready-state copy E0-only.
@@ -74,7 +76,7 @@ Why:
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
-| Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity` or `ide:gate:export-handoff-station` proving visible labels, preview, download, station hierarchy, and no overclaim |
+| Export trust or visible handoff | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, or `ide:gate:export-first-viewport-artifacts` proving visible labels, preview, download, station hierarchy, concrete artifact files, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-15
+last_validated: 2026-06-16
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -570,6 +570,36 @@ Acceptance:
 Rollback:
 
 - Revert the Hardware layout slice and focused gate wiring; Hardware workbench and mapping tests protect non-layout semantics separately.
+
+## Phase 10.10 - Export First-Viewport Artifact Visibility v1
+
+Status: Closed 2026-06-16 by `ide:gate:export-first-viewport-artifacts`.
+
+Goal: Keep concrete generated artifact files visible inside the ready-to-build Export handoff station at classroom and desktop viewport sizes.
+
+Why: Browser-first review found that Export asked students and professors to inspect files below, but the actual generated artifact names were below the first viewport in the normal ready-to-build path. This weakened the handoff at the exact moment professors need confidence that RedByte produced a real Vivado package.
+
+Implementation slices:
+
+- Added one focused browser gate for the Logic Gates ready-to-build Export path at `1366x768` and `1440x900`.
+- Added a compact artifact strip to the existing Export handoff station using the existing generated artifact list.
+- Kept the downstream artifact explorer present and unchanged.
+
+Proof:
+
+- Intentional red `ide:gate:export-first-viewport-artifacts` caught the missing first-viewport artifact filenames at both required viewports.
+- Passing `ide:gate:export-first-viewport-artifacts` after the fix with before screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/before/` and after screenshots under `.redbyte/product-immersion/browser-first-ownership/2026-06-16/after/export-first-viewport-artifacts/`.
+- Export handoff, artifact explorer, download, e2e, trust-integrity, focused Export Vitest, and classroom gates.
+
+Acceptance:
+
+- `README.txt`, `top.vhd`, `top.xdc`, `testbench.vhd`, and `vivado_import.tcl` are visible in the handoff station at `1366x768` and `1440x900`.
+- The artifact explorer still renders below the station.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Export presentation slice and focused gate wiring; existing Export trust and artifact gates protect generated-package semantics separately.
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 

@@ -34,6 +34,12 @@ export interface ExportAgreementRow {
   readonly detail: string;
 }
 
+export interface ExportHandoffArtifactCue {
+  readonly path: string;
+  readonly note: string;
+  readonly status: string;
+}
+
 export interface ExportDeterministicCheck {
   readonly id: string;
   readonly label: string;
@@ -117,6 +123,7 @@ export interface ExportReadinessHeroProps {
   readonly mappingPlain: string;
   readonly verifyPlain: string;
   readonly artifactsPlain: string;
+  readonly artifactPreviewItems: readonly ExportHandoffArtifactCue[];
 
   // ── Trust banner (4-state readiness) ──────────────────────────────────────────
   readonly trustCondition: ExportTrustCondition;
@@ -177,6 +184,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
   mappingPlain,
   verifyPlain,
   artifactsPlain,
+  artifactPreviewItems,
   trustCondition,
   trustReason,
   trustConsequence,
@@ -273,6 +281,34 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             </span>
           </div>
         </div>
+        {artifactPreviewItems.length > 0 && (
+          <section
+            className="ide-export-handoff-artifact-strip"
+            data-testid="ide-export-handoff-artifact-strip"
+            aria-label="Generated files in this Export handoff"
+          >
+            <div className="ide-export-handoff-artifact-strip-head">
+              <span>Generated files</span>
+              <span>{artifactPreviewItems.length} visible</span>
+            </div>
+            <div className="ide-export-handoff-artifact-list">
+              {artifactPreviewItems.map((artifact) => (
+                <span
+                  key={artifact.path}
+                  className={`ide-export-handoff-artifact-chip ide-export-handoff-artifact-chip--${artifact.status}`}
+                  data-testid={`ide-export-handoff-artifact-${artifact.path
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '')}`}
+                  title={artifact.note}
+                >
+                  <span className="ide-export-handoff-artifact-name">{artifact.path}</span>
+                  <span className="ide-export-handoff-artifact-state">{artifact.status}</span>
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       {/* Checks dock — status pill, provenance rows, action buttons */}

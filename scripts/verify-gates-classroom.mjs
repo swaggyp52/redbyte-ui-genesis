@@ -94,6 +94,11 @@ function main() {
     runGate('ide:evidence-capsule-contract', 'pnpm -s ide:gate:evidence-capsule-contract', true),
     runGate('ide:export-artifact-explorer-contract', 'pnpm -s ide:gate:export-artifact-explorer-contract', true),
     runGate('ide:export-handoff-station', 'pnpm -s ide:gate:export-handoff-station', true),
+    runGate(
+      'ide:export-first-viewport-artifacts',
+      'pnpm -s ide:gate:export-first-viewport-artifacts',
+      true
+    ),
     runGate('ide:export-blockers-contract', 'pnpm -s ide:gate:export-blockers-contract', true),
     runGate('ide:export-ready-contract', 'pnpm -s ide:gate:export-ready-contract', true),
     runGate('ide:export-download-contract', 'pnpm -s ide:gate:export-download-contract', true),

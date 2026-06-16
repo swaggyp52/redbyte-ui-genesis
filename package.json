@@ -248,6 +248,7 @@
         "ide:gate:evidence-capsule-contract": "node ./scripts/gates/ide-evidence-capsule-contract.mjs",
         "ide:gate:export-artifact-explorer-contract": "node ./scripts/gates/ide-export-artifact-explorer-contract.mjs",
         "ide:gate:export-handoff-station": "node ./scripts/gates/ide-export-handoff-station.mjs",
+        "ide:gate:export-first-viewport-artifacts": "node ./scripts/gates/ide-export-first-viewport-artifacts.mjs",
         "ide:gate:export-blockers-contract": "node ./scripts/gates/ide-export-blockers-contract.mjs",
         "ide:gate:export-ready-contract": "node ./scripts/gates/ide-export-ready-contract.mjs",
         "ide:gate:export-download-contract": "node ./scripts/gates/ide-export-download-contract.mjs",

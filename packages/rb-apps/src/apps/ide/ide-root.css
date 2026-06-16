@@ -13165,6 +13165,75 @@ details[open].ide-export-evidence-details > summary::before {
   line-height: 1.45;
 }
 
+.ide-export-handoff-artifact-strip {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 12px;
+  background: rgba(6, 20, 29, 0.66);
+}
+
+.ide-export-handoff-artifact-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: rgba(191, 219, 254, 0.76);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ide-export-handoff-artifact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+  gap: 6px;
+}
+
+.ide-export-handoff-artifact-chip {
+  display: grid;
+  align-items: start;
+  justify-items: start;
+  min-width: 0;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid rgba(72, 118, 152, 0.28);
+  border-radius: 10px;
+  background: rgba(11, 24, 38, 0.78);
+  color: #dbeafe;
+}
+
+.ide-export-handoff-artifact-chip--ready {
+  border-color: rgba(52, 211, 153, 0.26);
+  background: rgba(7, 32, 29, 0.68);
+}
+
+.ide-export-handoff-artifact-chip--blocked {
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+.ide-export-handoff-artifact-name {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--rb-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.ide-export-handoff-artifact-state {
+  color: rgba(191, 219, 254, 0.72);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .ide-export-agreement-heading {
   margin: var(--ide-space-2) 0 var(--ide-space-1);
   font-size: 14px;

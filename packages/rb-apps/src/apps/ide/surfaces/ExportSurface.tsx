@@ -132,6 +132,14 @@ const STEP_ORDER: Array<{ id: RebuildStepId; label: string }> = [
   { id: 'zip',      label: 'Package Vivado Project' },
 ];
 
+const FIRST_VIEWPORT_ARTIFACT_PATHS = [
+  'README.txt',
+  'top.vhd',
+  'top.xdc',
+  'testbench.vhd',
+  'vivado_import.tcl',
+] as const;
+
 function makeSteps(): RebuildStep[] {
   return STEP_ORDER.map((s) => ({ id: s.id, label: s.label, state: 'idle' as const }));
 }
@@ -724,6 +732,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => buildArtifactGroups(viewModel.artifacts),
     [viewModel.artifacts]
   );
+  const firstViewportArtifactItems = useMemo(() => {
+    const seen = new Set<string>();
+    const selected = FIRST_VIEWPORT_ARTIFACT_PATHS
+      .map((artifactPath) => artifactMap.get(artifactPath.toLowerCase()))
+      .filter((artifact): artifact is ExportArtifactView => Boolean(artifact));
+
+    for (const artifact of selected) {
+      seen.add(artifact.path.toLowerCase());
+    }
+
+    for (const artifact of viewModel.artifacts) {
+      if (selected.length >= FIRST_VIEWPORT_ARTIFACT_PATHS.length) break;
+      const key = artifact.path.toLowerCase();
+      if (seen.has(key)) continue;
+      selected.push(artifact);
+      seen.add(key);
+    }
+
+    return selected.map((artifact) => ({
+      path: artifact.path,
+      note: artifact.note,
+      status: artifact.status,
+    }));
+  }, [artifactMap, viewModel.artifacts]);
   const keyArtifacts = useMemo(
     () => ({
       topVhd: artifactMap.get('top.vhd'),
@@ -1705,6 +1737,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             mappingPlain={packageHandoffSummary.mappingPlain}
             verifyPlain={packageHandoffSummary.verifyPlain}
             artifactsPlain={packageHandoffSummary.artifactsPlain}
+            artifactPreviewItems={firstViewportArtifactItems}
             trustCondition={trustCondition}
             trustReason={trustReason}
             trustConsequence={handoffTruth.message}
