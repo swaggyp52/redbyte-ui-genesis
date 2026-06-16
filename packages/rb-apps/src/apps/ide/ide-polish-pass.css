@@ -369,11 +369,16 @@
   gap: 12px;
   min-width: 0;
 }
+.ide-root .ide-projectx-identity-name-heading {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
 .ide-root .ide-projectx-identity-name {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   color: #f3f8ff;
   line-height: 1.2;
   flex: 1;
@@ -382,10 +387,29 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ide-root .ide-projectx-identity-name-button {
+  appearance: none;
+  display: block;
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ide-root .ide-projectx-identity-name-button:hover,
+.ide-root .ide-projectx-identity-name-button:focus-visible {
+  outline: none;
+  border-color: rgba(46, 196, 182, 0.36);
+  background: rgba(46, 196, 182, 0.08);
+  box-shadow: var(--rbp-focus-ring);
+}
 .ide-root .ide-projectx-identity-name-input {
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: 0;
   color: #f3f8ff;
   line-height: 1.2;
   flex: 1;
@@ -427,6 +451,11 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  max-width: min(100%, 460px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   padding: 4px 10px;
   border-radius: 999px;
   background: rgba(168, 189, 212, 0.06);

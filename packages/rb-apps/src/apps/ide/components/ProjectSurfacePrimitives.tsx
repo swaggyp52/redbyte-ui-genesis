@@ -16,6 +16,7 @@ export interface ProjectIdentityHeaderProps {
   projectName: string;
   onRenameProject?: (nextName: string) => void;
   projectKindLabel: string;
+  sourceLabel?: string;
   board: string;
   saveState: 'saved' | 'unsaved' | 'autosaving';
   lastSavedAt?: string;
@@ -26,6 +27,7 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
   projectName,
   onRenameProject,
   projectKindLabel,
+  sourceLabel,
   board,
   saveState,
   lastSavedAt,
@@ -34,6 +36,7 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(projectName);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const cancelNextBlurCommitRef = useRef(false);
 
   useEffect(() => {
     if (!editing) setDraft(projectName);
@@ -46,14 +49,28 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
     }
   }, [editing]);
 
+  const startEditing = () => {
+    if (!onRenameProject) return;
+    cancelNextBlurCommitRef.current = false;
+    setEditing(true);
+  };
+
   const commit = () => {
+    if (cancelNextBlurCommitRef.current) {
+      cancelNextBlurCommitRef.current = false;
+      return;
+    }
     const trimmed = draft.trim();
     if (trimmed.length > 0 && trimmed !== projectName) {
       onRenameProject?.(trimmed);
     }
+    if (trimmed.length === 0) {
+      setDraft(projectName);
+    }
     setEditing(false);
   };
   const cancel = () => {
+    cancelNextBlurCommitRef.current = true;
     setDraft(projectName);
     setEditing(false);
   };
@@ -77,16 +94,32 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commit();
-              if (e.key === 'Escape') cancel();
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+              }
             }}
           />
+        ) : onRenameProject ? (
+          <h1 className="ide-projectx-identity-name-heading">
+            <button
+              type="button"
+              className="ide-projectx-identity-name ide-projectx-identity-name-button"
+              data-testid="ide-projectx-name"
+              title={`Rename project "${projectName}"`}
+              aria-label={`Project title ${projectName}. Click or double-click to rename.`}
+              onClick={startEditing}
+              onDoubleClick={startEditing}
+            >
+              {projectName}
+            </button>
+          </h1>
         ) : (
-          <h1
-            className="ide-projectx-identity-name"
-            data-testid="ide-projectx-name"
-            title={projectName}
-          >
+          <h1 className="ide-projectx-identity-name" data-testid="ide-projectx-name" title={projectName}>
             {projectName}
           </h1>
         )}
@@ -94,9 +127,9 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
           <button
             type="button"
             className="ide-projectx-identity-rename"
-            onClick={() => setEditing(true)}
+            onClick={startEditing}
             data-testid="ide-projectx-name-edit"
-            aria-label="Rename project"
+            aria-label={`Rename project title ${projectName}`}
           >
             Rename
           </button>
@@ -106,6 +139,11 @@ export const ProjectIdentityHeader: React.FC<ProjectIdentityHeaderProps> = ({
         <span className="ide-projectx-meta-chip" data-testid="ide-projectx-kind">
           {projectKindLabel}
         </span>
+        {sourceLabel ? (
+          <span className="ide-projectx-meta-chip" data-testid="ide-project-source-label">
+            Source: {sourceLabel}
+          </span>
+        ) : null}
         <span className="ide-projectx-meta-chip" data-testid="ide-projectx-board">
           {board}
         </span>

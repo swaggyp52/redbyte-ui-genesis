@@ -30,6 +30,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 # .redbyte local run outputs - never commit these
+.redbyte-brain/
 .redbyte/work/
 .redbyte/agent/
 .redbyte/bench/runs/

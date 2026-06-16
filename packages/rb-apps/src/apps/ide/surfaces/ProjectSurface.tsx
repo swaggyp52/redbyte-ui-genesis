@@ -239,7 +239,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const [highlightedMappingKey, setHighlightedMappingKey] = useState<string | null>(null);
   const [mappingExpanded, setMappingExpanded] = useState(false);
   const [mappingEditFeedback, setMappingEditFeedback] = useState<string | null>(null);
+  const [identityStripEditing, setIdentityStripEditing] = useState(false);
+  const [identityStripDraft, setIdentityStripDraft] = useState(projectName);
   const mappingFeedbackTimer = useRef<number | null>(null);
+  const identityStripInputRef = useRef<HTMLInputElement | null>(null);
+  const identityStripCancelBlurRef = useRef(false);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const examplesSectionRef = useRef<HTMLElement | null>(null);
@@ -257,6 +261,42 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!identityStripEditing) setIdentityStripDraft(projectName);
+  }, [identityStripEditing, projectName]);
+
+  useEffect(() => {
+    if (!identityStripEditing) return;
+    identityStripInputRef.current?.focus();
+    identityStripInputRef.current?.select();
+  }, [identityStripEditing]);
+
+  const startIdentityStripEdit = useCallback(() => {
+    if (!onRenameProject) return;
+    identityStripCancelBlurRef.current = false;
+    setIdentityStripEditing(true);
+  }, [onRenameProject]);
+
+  const commitIdentityStripEdit = useCallback(() => {
+    if (identityStripCancelBlurRef.current) {
+      identityStripCancelBlurRef.current = false;
+      return;
+    }
+    const trimmed = identityStripDraft.trim();
+    setIdentityStripEditing(false);
+    if (trimmed.length > 0 && trimmed !== projectName) {
+      onRenameProject?.(trimmed);
+      return;
+    }
+    setIdentityStripDraft(projectName);
+  }, [identityStripDraft, onRenameProject, projectName]);
+
+  const cancelIdentityStripEdit = useCallback(() => {
+    identityStripCancelBlurRef.current = true;
+    setIdentityStripDraft(projectName);
+    setIdentityStripEditing(false);
+  }, [projectName]);
 
   const commitMappingPin = useCallback(
     (rowId: string, pin: string) => {
@@ -964,7 +1004,44 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         testId="ide-project-panel"
       >
         <div className="ide-project-identity-strip" data-testid="ide-project-identity-strip">
-          <span className="ide-project-identity-name">{projectName}</span>
+          {identityStripEditing ? (
+            <input
+              ref={identityStripInputRef}
+              type="text"
+              className="ide-project-identity-name-input"
+              value={identityStripDraft}
+              aria-label="Project title"
+              data-testid="ide-project-identity-strip-input"
+              onChange={(event) => setIdentityStripDraft(event.target.value)}
+              onBlur={commitIdentityStripEdit}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  commitIdentityStripEdit();
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelIdentityStripEdit();
+                }
+              }}
+            />
+          ) : onRenameProject ? (
+            <button
+              type="button"
+              className="ide-project-identity-name ide-project-identity-name-button"
+              title={`Rename project "${projectName}"`}
+              aria-label={`Project title ${projectName}. Click or double-click to rename.`}
+              data-testid="ide-project-identity-strip-title"
+              onClick={startIdentityStripEdit}
+              onDoubleClick={startIdentityStripEdit}
+            >
+              {projectName}
+            </button>
+          ) : (
+            <span className="ide-project-identity-name" data-testid="ide-project-identity-strip-title">
+              {projectName}
+            </span>
+          )}
           {studentName && (
             <span className="ide-project-identity-student">{studentName}</span>
           )}
@@ -1212,6 +1289,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             projectName={projectName}
             onRenameProject={onRenameProject}
             projectKindLabel={projectContextLabel}
+            sourceLabel={starterExample?.name}
             board={fpgaConfig?.board ?? 'Basys3'}
             saveState={saveState}
             lastSavedAt={savedAgoLabel ?? undefined}

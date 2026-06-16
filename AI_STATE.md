@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: make RedByte project title editing real)
+
+**Subsystem:** RedByte IDE Project identity editing, loaded Project rename affordances, focused browser gate, frontend/interaction/brain skills, product-brain routing, and cockpit docs.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `2db6b6ab756f4bab6afb7f568e98ba357c573fef`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5196/os/` with visible build `Build2db6b6a` matching local HEAD before trusting browser screenshots.
+- Ran browser-first Project inspection before coding at `1366x768` and `1440x900`. The observed defect was narrower than broad spacing/card complaints: the top-bar title had become editable, but the loaded Project title `ide-projectx-name` still looked like primary identity and did not open a rename editor on double-click.
+- Added `ide:gate:project-identity-editing` and wired it into `classroom:gate` and `verify:gates:classroom`. The intentional red run failed on the loaded Project title double-click contract.
+- Made Project identity editing real across the normal identity surfaces: top-bar title double-click, upper Project identity strip click/double-click, loaded Project title click/double-click, adjacent Rename button, Escape cancel, Enter save, blur save, route navigation, and reload persistence now share the existing project rename/persistence path.
+- Added a distinct loaded-starter source label so a renamed project title no longer has to double as the starter/lab identity.
+- Added repo-local skills for future frontend/product slices: `redbyte-frontend-surface-builder`, `redbyte-interaction-affordance-review`, and `redbyte-obsidian-brain`; registered them in `AGENTS.md` and `CLAUDE.md`.
+- Added ignored local `.redbyte-brain/` scratchpad files and updated the product-brain architecture policy to allow that ignored scratchpad while keeping tracked docs as canonical.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: `corepack pnpm --filter @redbyte/playground build`; intentional red `corepack pnpm -s ide:gate:project-identity-editing`; final `corepack pnpm -s ide:gate:project-identity-editing`; affected gates `ide:gate:interaction-affordance`, `ide:gate:project-command-center`, and `ide:gate:persistence-contract`; focused Project/runtime Vitest batch (`4` files, `67` tests passed); `corepack pnpm -s classroom:gate` after one non-reproducing transient aggregate failure at `ide:gate:project-command-center`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate` (`29` passed); `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots and observations are local-only under `.redbyte/product-immersion/project-identity-editing/before/`; after screenshots and observations are under `.redbyte/product-immersion/project-identity-editing/after/`.
+
+**Safety:** This slice changes Project identity presentation and rename affordance, one focused browser gate, gate aggregators, repo-local agent skills, product-brain routing, and current-truth docs only. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, lab profiles, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers identity edit behavior for Project title surfaces, not the broader side-dock proportions, awkward collapsed labels, card-heavy composition, or overall lack of direct manipulation. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership by inspecting the live app again and selecting one contained gateable interaction/composition defect after inspection. The strongest remaining user-reported candidate is the disproportionate side-dock / sideways-label / card-heavy interaction model, but it should still be reselected from fresh live evidence before coding.
+
 ## Change Log 2026-06-16 (fix: improve Project interaction affordance)
 
 **Subsystem:** RedByte IDE Project first-launch interaction affordance, top-bar project rename, Workflow Orientation recovery, focused browser gate, classroom gate wiring, and cockpit docs.

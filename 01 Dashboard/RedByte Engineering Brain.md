@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-05-02
+updated: 2026-06-16
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -23,6 +23,13 @@ related:
 ---
 
 ## What is broken right now
+
+Current as of 2026-06-16:
+
+- Current browser-first source of truth is the repo cockpit, especially `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/plans/2026-06-12-redbyte-product-issue-index.md`.
+- Project Identity Editing v1 is closed by `ide:gate:project-identity-editing`: top bar, upper Project identity strip, loaded Project title, and adjacent Rename affordances now edit the user-owned project title, while the starter/source label stays distinct.
+- Still open for browser-first ownership: side-dock proportions, awkward collapsed side labels, and the broader card-heavy/static interaction model. Reinspect live app before selecting one contained gateable defect.
+- Hardware proof is still board-gated; do not claim fresh Vivado/Basys3 E1-E3 evidence from browser screenshots.
 
 BUG-003 is now project shorthand for the pre-existing render-family baseline, not just the older literal `React.act` crash note. Current workspace version is `@testing-library/react@16.3.2`; use `AI_STATE.md` for the live full-suite counts and failure shape, and do not treat those failures as regressions from new work unless the baseline moves.
 

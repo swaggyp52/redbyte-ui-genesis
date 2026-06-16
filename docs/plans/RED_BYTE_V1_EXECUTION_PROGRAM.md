@@ -634,6 +634,42 @@ Rollback:
 
 - Revert the top-bar interaction slice and focused gate wiring; existing Project command-center and persistence gates protect broader Project state separately.
 
+## Phase 10.12 - Project Identity Editing v1
+
+Status: Closed 2026-06-16 by `ide:gate:project-identity-editing`.
+
+Goal: Make the visible Project/lab title behave like real editable project identity after a project or starter is loaded.
+
+Why: User feedback and live browser inspection showed the previous Project Interaction Affordance slice was still incomplete: the loaded Project title looked like the obvious identity label, but double-clicking it did not open rename. The product still felt too static because the primary identity surface was informational instead of functional.
+
+Implementation slices:
+
+- Added one focused browser gate for Project identity editing at `1366x768` and `1440x900`.
+- Kept the top-bar title double-click editable and added explicit loaded Project title and upper Project identity strip edit paths.
+- Reused existing project rename/persistence state so Enter, blur, route navigation, and reload keep the saved title.
+- Added a distinct loaded starter source label so the starter/lab name remains visible without competing with the user-owned project title.
+- Added repo-local frontend surface, interaction-affordance, and Obsidian brain skills, plus an ignored `.redbyte-brain/` scratchpad policy.
+
+Proof:
+
+- Intentional red `ide:gate:project-identity-editing` caught the loaded Project title not opening inline rename on double-click.
+- Passing `ide:gate:project-identity-editing` after the fix with before/after screenshots and observations under `.redbyte/product-immersion/project-identity-editing/`.
+- Interaction affordance, Project command center, persistence, focused Project/runtime Vitest, and classroom gates.
+
+Acceptance:
+
+- Top-bar, upper Project identity strip, loaded Project title, and adjacent Rename affordances open rename.
+- Escape cancels without saving.
+- Enter and blur save through existing project persistence.
+- Project/top-bar/strip titles agree after rename.
+- Starter/source label stays distinct from the renamed project title.
+- Navigation and browser reload preserve the saved title.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Project identity editing slice and focused gate wiring; existing Project command-center, interaction-affordance, and persistence gates protect broader Project state separately.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

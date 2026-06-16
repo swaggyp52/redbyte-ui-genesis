@@ -32,6 +32,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:design-workbench-v1`
 - `ide:gate:interaction-affordance`
+- `ide:gate:project-identity-editing`
 - `ide:gate:export-first-viewport-artifacts`
 - `ide:gate:export-handoff-station`
 - `ide:gate:export-trust-integrity`
@@ -54,6 +55,7 @@ Why:
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
 - Interaction affordance proves Project title rename and Workflow Orientation recovery remain visible and functional from normal first-launch use, including cancel/save and reload persistence.
+- Project identity editing proves the top-bar, upper Project identity strip, loaded Project title, and adjacent Rename affordances all open meaningful inline rename, with cancel/save, title agreement, starter/source labeling, navigation persistence, and reload persistence at classroom and desktop viewports.
 - Export first-viewport artifact visibility proves the ready-to-build handoff station exposes the concrete generated files students and professors need to inspect before scrolling.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
 - Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
@@ -75,7 +77,7 @@ Why:
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Mode route, in-app navigation, or reload recovery | `ide:gate:active-mode-reload-recovery` plus the affected route/surface gate; add focused unit coverage only if startup-mode parsing semantics change |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
-| Project identity rename, first-run help, or top-bar interaction affordance | `ide:gate:interaction-affordance`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
+| Project identity rename, first-run help, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |

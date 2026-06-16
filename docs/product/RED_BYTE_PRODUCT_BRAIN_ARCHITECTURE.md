@@ -8,7 +8,7 @@ role: product-brain architecture and doc-routing map for RedByte agents
 
 # RedByte Product Brain Architecture
 
-This document defines how RedByte's product truth should be routed. It is not a new product surface, not a `.redbyte-brain/` directory, and not a replacement for code, tests, or current cockpit docs.
+This document defines how RedByte's product truth should be routed. It is not a new product surface and not a replacement for code, tests, or current cockpit docs.
 
 ## Core Principle
 
@@ -96,7 +96,9 @@ Use the smallest durable home:
 - A sequenced repair plan is needed: add or update a plan under `docs/plans/**`.
 - Commercial/business posture changed: update `docs/product/RED_BYTE_COMMERCIALIZATION_READINESS.md`.
 
-Do not add a new top-level brain directory unless the user explicitly asks for one and explains why the existing docs backbone cannot hold the knowledge.
+Do not add a new top-level committed brain directory unless the user explicitly asks for one and explains why the existing docs backbone cannot hold the knowledge. An ignored local `.redbyte-brain/` scratchpad is allowed for browser-first product ownership sessions when it links back to canonical docs and stays out of commits.
+
+Use `.redbyte-brain/` only for local working memory such as the active sprint dashboard, current product issue ledger, frontend affordance notes, and next-task prompt. If the scratchpad records durable truth, move that truth into `AI_STATE.md`, cockpit docs, product docs, surface specs, release proof docs, or tracked Obsidian notes before closeout.
 
 ## Agent Product-Work Checklist
 
@@ -138,5 +140,5 @@ The durable RedByte brain is:
 
 Code and tests for runtime truth, cockpit docs for current state, product docs for behavior and queue, surface docs for ownership, release docs for evidence claims, audits for dated findings, and plans for ordered repair.
 
-Keep that system tight. Do not split product truth into a parallel brain unless the existing hierarchy fails a concrete need.
+Keep that system tight. Do not split product truth into a parallel committed brain unless the existing hierarchy fails a concrete need.
 

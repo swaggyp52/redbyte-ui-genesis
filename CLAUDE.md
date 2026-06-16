@@ -35,6 +35,9 @@ Before starting any task:
 3. Read `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
 4. For product/surface work, read the relevant product manual, contract, surface specs, readiness docs, and proof docs named by `docs/DOC_INDEX.md`.
 5. For recurring RedByte agent workflows, read the applicable repo-local playbook under `.agents/skills/*/SKILL.md`.
+   - `redbyte-frontend-surface-builder`: frontend surface implementation, hierarchy, direct controls, and browser proof.
+   - `redbyte-interaction-affordance-review`: live interaction audits for inert labels, rename/edit paths, weak affordances, and panel usability.
+   - `redbyte-obsidian-brain`: Obsidian vault and ignored `.redbyte-brain/` working memory, with canonical docs still authoritative.
 6. Run only the validation appropriate to the user-approved slice. For source or gate changes, use the relevant focused tests and `pnpm verify:gates`; for docs-only changes, prefer doc validation and encoding checks.
 
 For strategic direction or multi-surface work, use the redbyte-prime agent in `.claude/agents/redbyte-prime.md` when that workflow is available.

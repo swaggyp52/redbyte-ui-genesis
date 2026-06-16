@@ -56,6 +56,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   const [editingName, setEditingName] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState(projectName);
   const nameInputRef = React.useRef<HTMLInputElement | null>(null);
+  const cancelNextBlurCommitRef = React.useRef(false);
   const saveDotClass =
     saveState === 'saved'
       ? 'ide-save-dot--ok'
@@ -76,7 +77,17 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
     nameInputRef.current?.select();
   }, [editingName]);
 
+  const startNameEdit = React.useCallback(() => {
+    if (!canRenameProject) return;
+    cancelNextBlurCommitRef.current = false;
+    setEditingName(true);
+  }, [canRenameProject]);
+
   const commitName = React.useCallback(() => {
+    if (cancelNextBlurCommitRef.current) {
+      cancelNextBlurCommitRef.current = false;
+      return;
+    }
     const trimmed = nameDraft.trim();
     setEditingName(false);
     if (trimmed.length > 0 && trimmed !== projectName) {
@@ -87,6 +98,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   }, [nameDraft, onRenameProject, projectName]);
 
   const cancelNameEdit = React.useCallback(() => {
+    cancelNextBlurCommitRef.current = true;
     setNameDraft(projectName);
     setEditingName(false);
   }, [projectName]);
@@ -128,9 +140,10 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
               <button
                 type="button"
                 className="ide-project-name-button"
-                onClick={() => setEditingName(true)}
+                onClick={startNameEdit}
+                onDoubleClick={startNameEdit}
                 title={`Rename project "${projectName}"`}
-                aria-label={`Rename project title ${projectName}`}
+                aria-label={`Project title ${projectName}. Click or double-click to rename.`}
                 data-testid="ide-topbar-project-rename"
               >
                 <span className="ide-project-name-text">{projectName}</span>

@@ -21,6 +21,9 @@ Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKI
 - `redbyte-test-strategy` for selecting focused gates and golden/build validation.
 - `redbyte-design-direction` for visual hardening and Course Lab Workbench direction.
 - `redbyte-github-ops` for GitHub Actions, required checks, branch protection/rulesets, safe push, and remote-green verification.
+- `redbyte-frontend-surface-builder` for building RedByte frontend surfaces with current contracts, workbench hierarchy, direct controls, and browser proof.
+- `redbyte-interaction-affordance-review` for browser-first review of inert labels, weak edit/click affordances, awkward panels, and normal-use interaction gaps.
+- `redbyte-obsidian-brain` for consulting/updating the Obsidian engineering brain and ignored `.redbyte-brain/` scratchpad without overriding canonical docs.
 
 For any product, UX, workflow, or surface task, read these in order before proposing or implementing changes:
 1. `docs/contracts/RedByte_Product_Contract.md`
