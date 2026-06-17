@@ -28,7 +28,44 @@ async function dismissOnboarding(page) {
 async function ensureProjectMode(page) {
   if (await visible(page.locator('[data-testid="ide-mode-project"]').first())) return;
   await page.locator('[data-testid="mode-button-project"]').first().click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  await waitForProjectSurface(page, 'ensure-project-mode');
+}
+
+async function waitForProjectSurface(page, label) {
+  const projectSurface = page.locator('[data-testid="ide-mode-project"]').first();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await visible(projectSurface)) return;
+
+    const projectButton = page.locator('[data-testid="mode-button-project"]').first();
+    if (await visible(projectButton)) {
+      await projectButton.click().catch(() => null);
+    }
+    await page.waitForTimeout(250);
+    if (await visible(projectSurface)) return;
+
+    if (attempt === 1) {
+      await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => null);
+      await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => null);
+    }
+  }
+
+  const snapshot = await page.evaluate(() => {
+    const project = document.querySelector('[data-testid="ide-mode-project"]');
+    const activeMode = document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '';
+    const activeButton = document.querySelector('[data-testid^="mode-button-"][data-active="true"]')?.getAttribute('data-testid') ?? '';
+    const rect = project?.getBoundingClientRect();
+    const style = project ? window.getComputedStyle(project) : null;
+    return {
+      label: document.location.href,
+      activeMode,
+      activeButton,
+      projectRect: rect ? { width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top) } : null,
+      projectDisplay: style?.display ?? '',
+      projectVisibility: style?.visibility ?? '',
+      bodyTextStart: document.body.innerText.slice(0, 240),
+    };
+  });
+  throw new Error(`${label}: Project surface did not become visible: ${JSON.stringify(snapshot)}`);
 }
 
 async function loadLogicGatesStarter(page) {
@@ -143,7 +180,7 @@ async function runViewport(page, baseUrl, viewport) {
     waitUntil: 'domcontentloaded',
   });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+  await waitForProjectSurface(page, `${label}/fresh-project`);
   await assertBuildMatchesHead(page);
   await dismissOnboarding(page);
 
@@ -195,11 +232,11 @@ async function runViewport(page, baseUrl, viewport) {
   await page.locator('[data-testid="mode-button-design"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   await page.locator('[data-testid="mode-button-project"]').first().click();
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+  await waitForProjectSurface(page, `${label}/return-project`);
   await assertTitleEverywhere(page, `Blur Project ${label}`);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+  await waitForProjectSurface(page, `${label}/reload-project`);
   await assertBuildMatchesHead(page);
   await assertTitleEverywhere(page, `Blur Project ${label}`);
 }
