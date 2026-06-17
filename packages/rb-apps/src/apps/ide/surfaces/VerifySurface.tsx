@@ -3511,6 +3511,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const sessionShowsTraceEvidence =
     sessionStatus === 'stimulus-only' || sessionStatus === 'assertions-incomplete';
   const isDraftSession = sessionStatus === 'draft';
+  const verifyWorkflowPhase = lastRun ? 'post-run' : 'pre-run';
+  const stimulusPanelCollapsed = Boolean(lastRun) && !scenarioWorkbenchExpanded;
+  const verifyWorkspaceMode =
+    verifyWorkflowPhase === 'pre-run'
+      ? 'stimulus-focus'
+      : layoutMode === 'compact'
+        ? 'stimulus-focus'
+        : stimulusPanelCollapsed
+          ? 'waveform-focus'
+          : 'split';
   const draftPresentationStatus = totalVectorCount > 0 ? 'READY' : 'NOT STARTED';
   const readyDraftCanRun = isDraftSession && draftPresentationStatus === 'READY';
   const sessionStatusBadgeLabel = isDraftSession
@@ -4660,16 +4670,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <div
           className="ide-verify-lab-grid"
           data-testid="ide-verify-lab-grid"
-          data-stimulus-layout={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}
-          data-workspace-mode={
-            layoutMode === 'compact'
-              ? 'stimulus-focus'
-              : Boolean(lastRun) && !scenarioWorkbenchExpanded
-                ? 'waveform-focus'
-                : 'split'
-          }
+          data-stimulus-layout={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}
+          data-verify-workflow-phase={verifyWorkflowPhase}
+          data-workspace-mode={verifyWorkspaceMode}
         >
-        <VerifyStimulusRegion data-panel-state={Boolean(lastRun) && !scenarioWorkbenchExpanded ? 'collapsed' : 'expanded'}>
+        <VerifyStimulusRegion data-panel-state={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}>
 
         {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
         {verifyMode === 'blocked' && (

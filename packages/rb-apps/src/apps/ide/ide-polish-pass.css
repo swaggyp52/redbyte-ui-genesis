@@ -3848,3 +3848,158 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+/* Verify Workbench Rebuild v1: before Run, the testbench is the work surface.
+   Waveform evidence remains available, but it no longer steals the editor lane
+   before the first run. Simulation, Compare, and expected-output semantics are
+   unchanged. */
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) minmax(92px, 132px) !important;
+  gap: 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-region--stimulus {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-region--waveform {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-scenario-builder-details--first-run {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  padding: 7px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-header-title {
+  margin: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-header-copy,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-compact-stats,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-how {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-stimulus-mode-summary {
+  min-width: 0 !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-testbench-zone-header {
+  display: grid !important;
+  grid-template-columns: auto auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 32px !important;
+  padding: 5px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-empty-hint {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-run-summary-slot {
+  padding: 5px 10px 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-testbench-summary {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 5px 8px !important;
+  padding: 5px 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-testbench-summary-title {
+  font-size: 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-testbench-summary-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px 8px !important;
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-vector-form--canvas-only,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-stimulus-canvas {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-stimulus-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  overflow: visible !important;
+  padding: 5px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-stimulus-toolbar-group {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-stimulus-grid-scroll {
+  flex: 1 1 auto !important;
+  min-height: 156px !important;
+  overflow-x: auto !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp {
+  min-height: 0 !important;
+  padding: 8px 12px !important;
+  gap: 6px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-summary {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  padding-bottom: 0 !important;
+  border-bottom: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-empty-hero {
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-empty-hero-steps,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp-lanes {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
+  grid-template-columns: minmax(520px, 0.9fr) minmax(0, 1.16fr) !important;
+}

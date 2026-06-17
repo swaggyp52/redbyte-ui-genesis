@@ -233,6 +233,30 @@ async function assertDesignRailsCanOpen(page, viewport) {
 async function assertVerifySpace(page, viewport, phase) {
   await assertNoHorizontalOverflow(page, viewport, `Verify ${phase}`);
   const metrics = await readSurfaceMetrics(page);
+  if (phase === 'before run') {
+    const stimulus = metrics.rects.verifyStimulus;
+    const grid = metrics.rects.verifyGrid;
+    assert(stimulus.visible, `${viewport.label}: Verify ${phase} testbench area must be visible`);
+    assert(
+      stimulus.width >= viewport.width * 0.58,
+      `${viewport.label}: Verify ${phase} testbench width ${stimulus.width.toFixed(1)}px is below useful size`
+    );
+    assert(
+      stimulus.visibleHeight >= viewport.height * 0.30,
+      `${viewport.label}: Verify ${phase} testbench height ${stimulus.visibleHeight.toFixed(1)}px is below useful size`
+    );
+    assert(grid.visible, `${viewport.label}: Verify ${phase} stimulus grid must be visible`);
+    assert(
+      metrics.verify.gridExtraX <= 8,
+      `${viewport.label}: Verify ${phase} stimulus grid needs horizontal mini-scroll (${metrics.verify.gridExtraX}px)`
+    );
+    assert(
+      metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === true,
+      `${viewport.label}: Verify signal rail should not squeeze testbench by default`
+    );
+    return;
+  }
+
   const waveform = metrics.rects.verifyWaveform;
   assert(waveform.visible, `${viewport.label}: Verify ${phase} waveform/evidence area must be visible`);
   assert(
@@ -421,6 +445,8 @@ async function readSurfaceMetrics(page) {
         leftToggle: rect('[data-testid="ide-workbench-dock-toggle-left"]'),
         rightToggle: rect('[data-testid="ide-workbench-dock-toggle-right"]'),
         designCanvas: rect('[data-testid="ide-design-live-canvas"]'),
+        verifyStimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
+        verifyGrid: rect('.ide-stimulus-grid-scroll'),
         verifyWaveform: rect(
           '[data-testid="ide-verify-region-waveform"], [data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-svg"]'
         ),
@@ -438,6 +464,12 @@ async function readSurfaceMetrics(page) {
           const bounds = element.getBoundingClientRect();
           return bounds.width > 1 && bounds.height > 1 && intersects(bounds, designCanvasRect) && intersects(bounds, viewportRect);
         }).length,
+      },
+      verify: {
+        gridExtraX: (() => {
+          const element = document.querySelector('.ide-stimulus-grid-scroll');
+          return element ? Math.max(0, element.scrollWidth - element.clientWidth) : 9999;
+        })(),
       },
     };
   });

@@ -78,11 +78,11 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
       await assertWorkObject(
         page,
         viewport,
-        'Verify waveform/evidence',
-        ['[data-testid="ide-verify-region-waveform"]', '[data-testid="ide-verify-workbench"]'],
+        'Verify testbench/workbench',
+        ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-workbench"]'],
         {
           minVisibleWidth: Math.min(610, viewport.width * 0.43),
-          minVisibleHeight: 260,
+          minVisibleHeight: 240,
           maxTop: viewport.height * 0.52,
         }
       );
@@ -97,8 +97,8 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
         await assertWorkObject(
           page,
           viewport,
-          'Verify waveform/evidence with Signals open',
-          ['[data-testid="ide-verify-region-waveform"]', '[data-testid="ide-verify-workbench"]'],
+          'Verify testbench/workbench with Signals open',
+          ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-workbench"]'],
           {
             minVisibleWidth: Math.min(550, viewport.width * 0.38),
             minVisibleHeight: 240,

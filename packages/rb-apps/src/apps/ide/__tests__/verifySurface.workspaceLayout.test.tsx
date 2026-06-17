@@ -88,6 +88,8 @@ describe('VerifySurface workspace layout', () => {
   it('places the stimulus and waveform regions inside the same lab grid', () => {
     const { getByTestId } = render(<VerifySurface {...BASE_PROPS} />);
     const labGrid = getByTestId('ide-verify-lab-grid');
+    expect(labGrid).toHaveAttribute('data-verify-workflow-phase', 'pre-run');
+    expect(labGrid).toHaveAttribute('data-workspace-mode', 'stimulus-focus');
     expect(labGrid.contains(getByTestId('ide-verify-region-stimulus'))).toBe(true);
     expect(labGrid.contains(getByTestId('ide-verify-region-waveform'))).toBe(true);
     expect(getByTestId('ide-verify-waveform-placeholder')).toBeTruthy();
@@ -109,6 +111,8 @@ describe('VerifySurface workspace layout', () => {
     );
 
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'expanded');
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-verify-workflow-phase', 'post-run');
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-workspace-mode', 'split');
     expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'expanded');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();

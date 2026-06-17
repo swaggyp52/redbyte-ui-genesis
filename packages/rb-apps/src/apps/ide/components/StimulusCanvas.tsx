@@ -7,6 +7,12 @@ const ROW_H = 44;
 const CLOCK_ROW_H = 80;
 const GROUP_H = 26;
 const ADD_COL_W = 40;
+const COMPACT_LABEL_W = 220;
+const COMPACT_TICK_W = 58;
+const COMPACT_ROW_H = 38;
+const COMPACT_CLOCK_ROW_H = 72;
+const COMPACT_GROUP_H = 24;
+const COMPACT_ADD_COL_W = 32;
 
 type LaneKind = 'input' | 'expected';
 type PaintSession = { kind: LaneKind; value: 0 | 1 | null };
@@ -34,6 +40,7 @@ export interface StimulusCanvasProps {
   initialScrollTarget?: 'top' | 'expected';
   selectedTick?: number;
   onSelectedTickChange?: (tick: number) => void;
+  density?: 'normal' | 'compact';
 }
 
 function makeId(): string {
@@ -286,6 +293,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   initialScrollTarget = 'top',
   selectedTick: controlledSelectedTick,
   onSelectedTickChange,
+  density = 'normal',
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const canvasRootRef = useRef<HTMLDivElement | null>(null);
@@ -310,7 +318,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }, []);
 
   const ticks = useMemo(() => uniqueSortedTicks(authoredVectors), [authoredVectors]);
-  const totalW = LABEL_W + ticks.length * TICK_W + ADD_COL_W;
+  const isCompactDensity = density === 'compact';
+  const labelW = isCompactDensity ? COMPACT_LABEL_W : LABEL_W;
+  const tickW = isCompactDensity ? COMPACT_TICK_W : TICK_W;
+  const rowH = isCompactDensity ? COMPACT_ROW_H : ROW_H;
+  const clockRowH = isCompactDensity ? COMPACT_CLOCK_ROW_H : CLOCK_ROW_H;
+  const groupH = isCompactDensity ? COMPACT_GROUP_H : GROUP_H;
+  const addColW = isCompactDensity ? COMPACT_ADD_COL_W : ADD_COL_W;
+  const totalW = labelW + ticks.length * tickW + addColW;
   const laneOptions = useMemo<LaneOption[]>(
     () => [
       ...inputFields.map((field) => ({ key: `input:${field.id}`, kind: 'input' as const, fieldId: field.id, label: field.label })),
@@ -656,10 +671,10 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
       ) : null}
       <div className="ide-stimulus-grid-scroll" ref={gridScrollRef}>
         <div style={{ minWidth: totalW, position: 'relative' }}>
-        <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: GROUP_H + 12, alignItems: 'stretch' }}>
-          <div style={{ width: LABEL_W, flexShrink: 0 }} />
+        <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: groupH + 12, alignItems: 'stretch' }}>
+          <div style={{ width: labelW, flexShrink: 0 }} />
           {ticks.map((tick) => (
-            <div key={tick} className={`ide-stimulus-tick-header${activeSelectedTick === tick ? ' is-selected' : ''}`} style={{ width: TICK_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => selectTick(tick)}>
+            <div key={tick} className={`ide-stimulus-tick-header${activeSelectedTick === tick ? ' is-selected' : ''}`} style={{ width: tickW, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => selectTick(tick)}>
                 <span className="ide-stimulus-tick-title">{describeCaseTitle(tick)}</span>
               {activeSelectedTick === tick || hoveredTick === tick ? (
                 <div className={`ide-stimulus-tick-actions${activeSelectedTick === tick ? ' is-pinned' : ''}`}>
@@ -685,23 +700,23 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
               ) : null}
             </div>
           ))}
-          <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+          <div style={{ width: addColW, flexShrink: 0 }} />
         </div>
-        <div className="ide-stimulus-group-header" style={{ display: 'flex', height: GROUP_H, alignItems: 'center' }}>
-          <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Stimulus</div>
-          {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
-          <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+        <div className="ide-stimulus-group-header" style={{ display: 'flex', height: groupH, alignItems: 'center' }}>
+          <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Stimulus</div>
+          {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
+          <div style={{ width: addColW, flexShrink: 0 }} />
         </div>
         {inputFields.map((field, index) => (
           <div
             key={field.id}
             className={`ide-stimulus-row${index % 2 === 1 ? ' ide-stimulus-row--stripe' : ''}${clockLane?.fieldId === field.id ? ' ide-stimulus-row--clock' : ''}`}
-            style={{ display: 'flex', height: clockLane?.fieldId === field.id ? CLOCK_ROW_H : ROW_H, alignItems: 'center' }}
+            style={{ display: 'flex', height: clockLane?.fieldId === field.id ? clockRowH : rowH, alignItems: 'center' }}
             data-testid={clockLane?.fieldId === field.id ? 'ide-stimulus-clock-row' : undefined}
           >
             <div
               className={`ide-stimulus-label-wrap${clockLane?.fieldId === field.id ? ' is-clock' : ''}`}
-              style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, paddingRight: 4 }}
+              style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4 }}
             >
               <button
                 type="button"
@@ -747,31 +762,31 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             ) : ticks.map((tick) => {
               const value = getInputValue(authoredVectors, tick, field.id);
               const inputCellTestId = `ide-stimulus-cell-${field.id}-t${tick}`;
-              const rowHeight = clockLane?.fieldId === field.id ? CLOCK_ROW_H : ROW_H;
+              const rowHeight = clockLane?.fieldId === field.id ? clockRowH : rowH;
               return (
                 <button key={tick} type="button" className={`ide-stimulus-value-cell-button ide-stimulus-value-cell-button--input${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} onPointerDown={() => { markDirectCellActivation(inputCellTestId); handleInputPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(inputCellTestId)) return; handleInputPointerDown(tick, field.id); }} onPointerEnter={(event) => {
                   if (!paintSession || paintSession.kind !== 'input' || (event.buttons & 1) === 0) return;
                   selectTick(tick);
                   setSelectedLaneKey(`input:${field.id}`);
                   commitVectors((vectors) => setInputValue(vectors, inputFields, tick, field.id, paintSession.value as 0 | 1));
-                }} data-testid={inputCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: rowHeight, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
-                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: TICK_W - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
+                }} data-testid={inputCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowHeight, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
+                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: tickW - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
                 </button>
               );
             })}
-            <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+            <div style={{ width: addColW, flexShrink: 0 }} />
           </div>
         ))}
         {outputFields.length > 0 ? (
           <>
-            <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: GROUP_H, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
-              {ticks.map((tick) => <div key={tick} style={{ width: TICK_W, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
-              <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+            <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
+              <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
+              {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
+              <div style={{ width: addColW, flexShrink: 0 }} />
             </div>
             {outputFields.map((field) => (
-              <div key={field.id} className="ide-stimulus-row ide-stimulus-row--output" style={{ display: 'flex', height: ROW_H, alignItems: 'center' }}>
-                <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: LABEL_W, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{field.label}</button>
+              <div key={field.id} className="ide-stimulus-row ide-stimulus-row--output" style={{ display: 'flex', height: rowH, alignItems: 'center' }}>
+                <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{field.label}</button>
                 {ticks.map((tick) => {
                   const value = getExpectedValue(authoredVectors, tick, field.id);
                   const expectedCellTestId = `ide-stimulus-expected-${field.id}-t${tick}`;
@@ -781,12 +796,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                       selectTick(tick);
                       setSelectedLaneKey(`expected:${field.id}`);
                       commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, field.id, paintSession.value));
-                    }} data-testid={expectedCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: TICK_W, flexShrink: 0, height: ROW_H, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
-                      {value != null ? <div style={{ width: TICK_W - 8, height: ROW_H - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
+                    }} data-testid={expectedCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowH, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
+                      {value != null ? <div style={{ width: tickW - 8, height: rowH - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
                     </button>
                   );
                 })}
-                <div style={{ width: ADD_COL_W, flexShrink: 0 }} />
+                <div style={{ width: addColW, flexShrink: 0 }} />
               </div>
             ))}
           </>

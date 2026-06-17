@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-16
+last_validated: 2026-06-17
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -93,13 +93,14 @@ Supporting truths:
 - The normal-use breakage audit ran on a fresh local server at `http://127.0.0.1:5175/` and confirmed visible build `Buildd235823`.
 - The audit found no console/page errors and no Design blank-canvas regression in the exercised normal-use spine.
 - The Export generated-artifact preview finding is now closed by `ide:gate:export-trust-integrity`; the Import utility access/fidelity finding is closed locally by `ide:gate:import-recovery-contract`.
-- Invariant gates `ide:gate:project-identity-editing`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, `ide:gate:interaction-affordance`, `ide:gate:active-mode-reload-recovery`, `ide:gate:verify-saved-checks-default`, `ide:gate:hardware-first-viewport`, `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`; `ide:gate:interaction-affordance` now also guards loaded Project `Flow` help placement so it cannot cover Project entry paths.
+- Invariant gates `ide:gate:project-identity-editing`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, `ide:gate:interaction-affordance`, `ide:gate:active-mode-reload-recovery`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:hardware-first-viewport`, `ide:gate:project-command-center`, `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:design-no-bridge-required`, `ide:gate:workbench-space-utilization`, `ide:gate:import-recovery-contract`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, and `ide:gate:verify-evidence-workbench-integrity` are part of `classroom:gate` and `verify:gates:classroom`; `ide:gate:interaction-affordance` also guards loaded Project `Flow` help placement so it cannot cover Project entry paths.
 
 ### Product immersion posture
 
 - Project, Design, Verify run intent, Export, Hardware, Import, the global shell, the first lab-profile data seam, public course quickstarts, and the first visual-finish empty-state repairs are materially stronger than earlier audits; the next browser-first product issue must be chosen from live inspection, while the next non-visual proof gap remains fresh Vivado/Basys3 proof restoration.
 - Design Canvas Direct Workbench v1 is closed locally by `ide:gate:design-canvas-direct-workbench`: the loaded Logic Gates Design canvas now starts with only a compact `View <zoom>` affordance, no expanded Fit/Center/preset HUD, no minimap over the graph, open/reclose View-tools behavior, no default graph overlap, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - Workbench Stability Overhaul v1 is closed locally by `ide:gate:design-workspace-crash-proof` and `ide:gate:workbench-stability-overhaul`: failed/stale Design lazy-surface imports are classified as recoverable surface-load failures with non-destructive `Reload App` recovery, and normal Project -> Design -> Verify -> reload -> Map Pins -> Design continuity remains free of error boundaries, stuck loading states, root overflow, and console/page errors.
+- Verify Workbench Rebuild v1 is closed locally by `ide:gate:verify-testbench-usable-layout` and `ide:gate:verify-workbench-layout-reset`: first-run Logic Gates Verify now gives the stimulus/testbench editor the primary pre-run workbench, keeps waveform readiness secondary until a run exists, shows all starter expected-output cells and case headers without horizontal testbench overflow, and preserves usable post-run layout through Compare PASS, intentional FAIL, repair, and final PASS.
 - Side Dock Affordance v1 is closed locally by `ide:gate:side-dock-affordance`: collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails now use compact horizontal `+ / Show / Lib|Sig|Info` restore controls in a `48px` slot; opening reveals readable support content; closing restores workbench space; and Project, Design, Verify, Hardware, Export, and Import focal objects remain visible at `1366x768` and `1440x900`.
 - Open Side Panel Density v1 is closed locally by `ide:gate:open-side-panel-density`: compact-width Hardware and Export right inspectors now open as proportional full-height side tools instead of full-width bottom cards; the gate proves the red `1017px`/`1089px` bottom-band failure is gone, workspace height is preserved, focal work objects remain visible, and collapse returns the restore rail at `1366x768` and `1440x900`.
 - Workbench Obstruction Usability v1 is closed locally by `ide:gate:workbench-obstruction-usability`: Hardware Map Pins now starts with the Map support dock collapsed so board/table mapping is first-order, the compact `Map` rail can reopen the guide, right and left docks stay proportional when opened, and close-to-restore behavior, no root overflow, and no console/page errors are proved at `1366x768` and `1440x900`.
@@ -157,6 +158,7 @@ Supporting truths:
 - Project first-load black-screen issue is resolved.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`.
 - Verify saved-check first-run intent is covered by `ide:gate:verify-saved-checks-default`, including saved checks armed by default, Compare-oriented action copy, first-run Compare PASS, and explicit Observe/Compare switching.
+- Verify first-run testbench usability is covered by `ide:gate:verify-testbench-usable-layout` and `ide:gate:verify-workbench-layout-reset`, including stimulus-first pre-run layout, all starter expected-output cells/case headers visible without horizontal testbench overflow, and pass/fail/repair layout reset without changing Compare semantics.
 - Verify evidence workbench integrity is covered by `ide:gate:verify-evidence-workbench-integrity`, including visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair back to PASS, and layout overlap checks.
 - Shell/workbench hierarchy is covered by `ide:gate:shell-workbench-hierarchy`, including compact proof ribbon/evidence geometry, support-only footer copy, rail labels without visible `OK` status text, visible focal objects, and no root overflow across Project, Design, Verify, Hardware, Export, and Import.
 - General blank-project workflow proof is covered by `ide:gate:from-scratch-general-workflow`.
@@ -213,6 +215,9 @@ Approved V1 order:
 12m. Export Artifact Direct Preview v1. Closed locally 2026-06-16.
 12n. Workflow Orientation Integrated v1. Closed locally 2026-06-16.
 12o. Workbench Obstruction Usability v1. Closed locally 2026-06-16.
+12p. Design Canvas Direct Workbench v1. Closed locally 2026-06-16.
+12q. Workbench Stability Overhaul v1. Closed locally 2026-06-16.
+12r. Verify Workbench Rebuild v1. Closed locally 2026-06-17.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 

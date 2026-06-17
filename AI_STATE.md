@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-06-17 (fix: rebuild Verify testbench layout)
+
+**Subsystem:** RedByte Verify first-run workbench layout, stimulus table density, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `2adbc1f1848459d112b3e52c8cb37d78b71ed2c4`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local dev server at `http://127.0.0.1:5211/os/`; the visible UI showed `Build2adbc1f`, matching local HEAD before screenshots.
+- Reproduced the live Verify layout defect from browser-first inspection: before the first run, the Logic Gates testbench shared a split workbench with the empty waveform placeholder. At `1366x768`, the stimulus editor was about `460px` wide, the first-run add-vector form was about `458px` wide, and the stimulus grid needed about `134px` of horizontal scrolling to see the rest of the input/expected-output bench.
+- Ranked issues found: Verify first-run testbench usable space was the highest-impact learning/workflow defect; broader side-rail space cost, card-heavy interaction depth, Project/Import hierarchy, and hardware proof gaps remain separate follow-up issues.
+- Chose Verify first-run testbench layout because it directly matched the user complaint, is frequent in normal student use, affects professor confidence in the evidence workflow, was contained to Verify presentation/density, and was gateable without changing simulation, Compare semantics, pin mapping, generated artifacts, project format, or goldens.
+- Added `ide:gate:verify-testbench-usable-layout` to prove the pre-run Verify workbench enters `stimulus-focus`, keeps the stimulus editor as the dominant work object, exposes all saved expected-output cells, shows all starter case headers, rejects horizontal grid overflow, rejects root overflow, and verifies the visible build hash at `1366x768` and `1440x900`.
+- Added `ide:gate:verify-workbench-layout-reset` to prove pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS keep usable stimulus/waveform geometry without reintroducing horizontal testbench scroll.
+- Reworked Verify's lab-grid phase model so pre-run Verify uses a stimulus-first vertical workbench: testbench above, compact waveform readiness below. Post-run Verify keeps split evidence/workbench behavior and collapses only when the existing scenario-workbench state says so.
+- Added compact `StimulusCanvas` density for post-run Verify so the table remains usable beside waveform evidence after PASS/FAIL/repair.
+- Wired both new gates into `classroom:gate` and `verify:gates:classroom`.
+- Updated affected cross-surface gates so pre-run Verify is measured by the stimulus/testbench work object while post-run Verify evidence still keeps waveform geometry coverage.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Verify Workbench Rebuild v1 as the current closed product repair and keeps broader side-rail/card-heavy issues separate.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `corepack pnpm -s ide:gate:verify-testbench-usable-layout` failed on old `split` pre-run mode; intentional red `corepack pnpm -s ide:gate:verify-workbench-layout-reset` failed on old pre-run split geometry; final `corepack pnpm -s ide:gate:verify-testbench-usable-layout`; final `corepack pnpm -s ide:gate:verify-workbench-layout-reset`; focused Vitest `corepack pnpm exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` (`58` tests); affected gates `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-workbench-contract`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-fail-edit-repair`, `ide:gate:workbench-stability-overhaul`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-obstruction-usability`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-space-utilization`, and `ide:gate:shell-workbench-hierarchy`; `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; `git diff --check`; and `corepack pnpm --filter @redbyte/playground build`. In-app after proof under `.redbyte/product-immersion/verify-workbench-rebuild/2026-06-17/after/` shows `1366x768` pre-run stimulus region `906px` wide, grid `873px` client width / `873px` scroll width / `0px` horizontal overflow, `12` expected-output cells, and all four case headers visible; at `1440x900`, stimulus region is `1184px` wide with `0px` grid overflow.
+
+**Safety:** This slice changes only Verify layout state, stimulus canvas density, browser proof gates, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates cover the Logic Gates Verify first-run and pass/fail/repair layout at classroom and desktop viewports; they do not solve broader side-rail space cost, support-panel content density, Project/Import card-heavy composition, or direct-manipulation depth across every surface. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with a fresh live-app pass. The strongest remaining product direction is reducing remaining static/card-heavy composition and side-rail space cost, but the exact next target must be chosen from live inspection.
+
 ## Change Log 2026-06-16 (fix: recover stale Design workspace loads)
 
 **Subsystem:** RedByte shared ErrorBoundary, Design lazy-surface recovery, Project/Design/Verify/Hardware workbench navigation stability, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

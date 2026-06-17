@@ -115,6 +115,16 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-saved-checks-default'],
   },
   {
+    name: 'ide:gate:verify-testbench-usable-layout',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-testbench-usable-layout'],
+  },
+  {
+    name: 'ide:gate:verify-workbench-layout-reset',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-workbench-layout-reset'],
+  },
+  {
     name: 'ide:gate:verify-evidence-workbench-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],

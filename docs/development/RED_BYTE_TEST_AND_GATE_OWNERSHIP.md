@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-16
+last_validated: 2026-06-17
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -53,6 +53,8 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:workbench-visual-finish`
 - `ide:gate:verify-evidence-workbench-integrity`
 - `ide:gate:verify-saved-checks-default`
+- `ide:gate:verify-testbench-usable-layout`
+- `ide:gate:verify-workbench-layout-reset`
 
 Why:
 
@@ -83,6 +85,8 @@ Why:
 - Workbench visual finish proves Import first-look composition has one restore hierarchy, visible recovery alternatives, first-viewport guidance fit, neighboring surface captures, and no root overflow at classroom/desktop/wide sizes.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
 - Verify saved-checks default proves starters with saved expected outputs arm Compare before the first run, label the primary action as Compare-oriented, reach Compare PASS without a manual mode switch, and preserve explicit Observe/Compare switching.
+- Verify testbench usable layout proves pre-run Verify gives the stimulus/testbench editor the dominant work surface, keeps empty waveform readiness secondary, exposes all starter expected-output cells/case headers, and rejects horizontal testbench overflow at classroom and desktop viewports.
+- Verify workbench layout reset proves Compare PASS, intentional FAIL, repair, and final PASS do not collapse the testbench into a horizontally scrolling slot or hide the evidence workflow.
 
 ## Choosing The Right Test
 
@@ -93,7 +97,7 @@ Why:
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify behavior, run intent, or repair loop | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, or a narrower new Verify browser gate |
+| Verify behavior, run intent, repair loop, or testbench layout | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
@@ -119,6 +123,12 @@ Why:
 ## Current Workbench Stability Gates
 
 `ide:gate:design-workspace-crash-proof` simulates a failed production `DesignSurface-*.js` lazy import, requires `surface-load` boundary classification, proves `Reload App` recovery without clearing saved project state, and rejects unexpected console/page errors. `ide:gate:workbench-stability-overhaul` covers the normal Project -> Design -> Verify -> reload -> Map Pins -> Design path with route/mode, loading, boundary, overflow, and console checks.
+
+## Current Verify Layout Gates
+
+`ide:gate:verify-testbench-usable-layout` proves the Logic Gates first-run testbench owns the pre-run Verify workbench at `1366x768` and `1440x900`: `stimulus-focus`, all expected-output cells and case headers visible, no meaningful horizontal grid overflow, no root overflow, and waveform readiness kept secondary until a run exists.
+
+`ide:gate:verify-workbench-layout-reset` proves the same layout contract survives the normal evidence loop at `1366x768`: pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS.
 
 ## State Authority Rules
 

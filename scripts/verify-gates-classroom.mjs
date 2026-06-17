@@ -86,6 +86,8 @@ function main() {
         ]),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
     runGate('ide:verify-saved-checks-default', 'pnpm -s ide:gate:verify-saved-checks-default', true),
+    runGate('ide:verify-testbench-usable-layout', 'pnpm -s ide:gate:verify-testbench-usable-layout', true),
+    runGate('ide:verify-workbench-layout-reset', 'pnpm -s ide:gate:verify-workbench-layout-reset', true),
     runGate('ide:synth-subset-contract', 'pnpm -s ide:gate:synth-subset-contract', true),
     runGate('ide:vivado-pack-contract', 'pnpm -s ide:gate:vivado-pack-contract', true),
     runGate(

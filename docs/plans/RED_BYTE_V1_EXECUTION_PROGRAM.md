@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-16
+last_validated: 2026-06-17
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -903,6 +903,38 @@ Acceptance:
 Rollback:
 
 - Revert the ErrorBoundary classification/UI change and the two focused gate additions; existing active-mode reload and Design workbench gates remain adjacent coverage.
+
+
+## Phase 10.20 - Verify Workbench Rebuild v1
+
+Status: Closed 2026-06-17 by `ide:gate:verify-testbench-usable-layout` and `ide:gate:verify-workbench-layout-reset`.
+
+Goal: Make the Verify first-run testbench the primary work surface before waveform evidence exists.
+
+Why: Browser-first review and user feedback showed the first-run Logic Gates testbench was squeezed into a narrow split-pane lane beside an empty waveform placeholder. At `1366x768`, the stimulus editor was about `460px` wide and needed horizontal scrolling to inspect the rest of the input and expected-output bench.
+
+Implementation slices:
+
+- Added an explicit Verify workflow phase so pre-run Verify can use `stimulus-focus` while post-run Verify keeps the existing evidence/workbench split behavior.
+- Rebuilt the pre-run Verify lab grid into a stimulus-first vertical layout: testbench above, compact waveform readiness below.
+- Added compact stimulus canvas density for post-run Verify so the table remains usable beside waveform evidence after PASS/FAIL/repair.
+- Added one pre-run usable-layout gate and one pass/fail/repair layout-reset gate.
+
+Proof:
+
+- Intentional red `ide:gate:verify-testbench-usable-layout` caught old pre-run `split` mode.
+- Intentional red `ide:gate:verify-workbench-layout-reset` caught old pre-run split geometry and horizontal grid overflow.
+- Passing `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, focused Verify workspace/layout/workstation Vitest, and after screenshots under `.redbyte/product-immersion/verify-workbench-rebuild/2026-06-17/after/`.
+
+Acceptance:
+
+- First-run Logic Gates Verify shows all starter expected-output cells and all four case headers without horizontal testbench overflow at `1366x768` and `1440x900`.
+- Compare PASS, intentional FAIL, repair, and final PASS keep usable stimulus/waveform geometry.
+- No simulation, Verify result, Compare rule, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Verify pre-run layout phase/style changes, compact stimulus-canvas density, and the two focused gate additions; existing Verify evidence and fail-edit-repair gates remain adjacent coverage.
 
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration

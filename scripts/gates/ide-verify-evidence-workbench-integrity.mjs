@@ -191,7 +191,11 @@ async function assertWorkbenchGeometry(page, phase) {
   assert(editor.width >= 320, `${phase} stimulus editor must remain readable (width=${editor.width})`);
   assert(stimulus.width >= 340, `${phase} stimulus evidence pane must keep real width (width=${stimulus.width})`);
   assert(waveform.width >= 420, `${phase} waveform evidence pane must keep real width (width=${waveform.width})`);
-  assert(waveformPreview.height >= 190, `${phase} waveform preview must keep usable height (height=${waveformPreview.height})`);
+  const minWaveformPreviewHeight = phase === 'pre-run' ? 120 : 190;
+  assert(
+    waveformPreview.height >= minWaveformPreviewHeight,
+    `${phase} waveform preview must keep usable height (height=${waveformPreview.height}, required=${minWaveformPreviewHeight})`
+  );
   assert(
     stimulus.x < waveform.x || stimulus.y < waveform.y,
     `${phase} stimulus and waveform panes must not occupy the same visual slot`
