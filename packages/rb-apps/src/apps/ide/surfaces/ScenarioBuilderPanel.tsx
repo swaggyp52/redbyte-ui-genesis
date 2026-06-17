@@ -348,7 +348,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           hasSavedExpectedOutputs={showsAssertedExpectedCells}
           clockLane={clockLane}
           secondaryTools={secondaryTools}
-          density={isFirstRun ? 'normal' : 'compact'}
+          density="compact"
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>

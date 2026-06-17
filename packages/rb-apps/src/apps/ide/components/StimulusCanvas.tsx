@@ -7,12 +7,12 @@ const ROW_H = 44;
 const CLOCK_ROW_H = 80;
 const GROUP_H = 26;
 const ADD_COL_W = 40;
-const COMPACT_LABEL_W = 220;
-const COMPACT_TICK_W = 58;
+const COMPACT_LABEL_W = 190;
+const COMPACT_TICK_W = 52;
 const COMPACT_ROW_H = 38;
 const COMPACT_CLOCK_ROW_H = 72;
 const COMPACT_GROUP_H = 24;
-const COMPACT_ADD_COL_W = 32;
+const COMPACT_ADD_COL_W = 28;
 
 type LaneKind = 'input' | 'expected';
 type PaintSession = { kind: LaneKind; value: 0 | 1 | null };

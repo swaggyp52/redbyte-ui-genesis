@@ -1,5 +1,34 @@
 # AI State
 
+## Change Log 2026-06-17 (fix: de-scaffold shell navigation)
+
+**Subsystem:** RedByte global shell/navigation density, support dock exclusivity, Verify stimulus canvas density, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `c93b2867442b5dd5c4524ccfdf5c03be0167d3e6`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh current local app and verified the visible UI build hash `c93b286` matched local HEAD before browser screenshots and geometry measurements.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff, Import recovery, navigation, and reload recovery at `1366x768` and `1440x900`.
+- Ranked issues found: global shell/support chrome and rail tax was the broadest normal-use defect; Verify testbench/evidence remained the clearest downstream cramped area; Design/Hardware support docks still squeezed primary work when both sides were open; Project/Export/Import still have card-heavy/function-depth follow-up work.
+- Chose Shell and Navigation De-Scaffold v1 because it affects every normal surface, directly addresses wasted space and card-scaffold feel, is gateable with live geometry and user-flow assertions, and can be fixed without changing simulation, Verify result semantics, pin mapping, generated files, project format, import behavior, goldens, SaaS/accounts, or hardware proof.
+- Added `ide:gate:shell-navigation-overhaul` to prove the de-scaffolded global shell at `1366x768` and `1440x900`: compact proof ribbon and left rail, workflow rail reachability, Import utility route/reload access, no root overflow, and no console/page errors.
+- Added `ide:gate:primary-work-object-dominance` to prove the primary work object owns the viewport across Design, Verify pre-run, Verify compare PASS, Hardware, Export, and Import, including exclusive support dock behavior where opening one workbench support dock closes the opposite support dock.
+- Added `ide:gate:nested-scroll-regression` to reject the observed mini-scroll traps in the Verify stimulus grid, Verify waveform lane, and Hardware workbench panel while preserving normal page-level scroll where the full workbench needs it.
+- Reduced persistent shell tax by tightening the left rail/proof ribbon/status sizing and collapsed support restore rails, and made focused workbench support docks exclusive outside wide layout so both side panels cannot simultaneously narrow the main work surface.
+- Kept Verify's embedded stimulus canvas compact inside the Verify workbench and tightened compact column widths so the testbench does not require a mini horizontal scroll in the normal Logic Gates workflow.
+- Updated `ide:gate:shell-chrome-contract` for the new `56px` rail contract and updated `ide:gate:design-correctness-contract` to reopen the Design inspector explicitly under the new exclusive-dock shell behavior.
+- Wired the three new gates into `classroom:gate` and `verify:gates:classroom`.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Shell and Navigation De-Scaffold v1 as the current closed product repair and keeps broader static/card-heavy function-depth issues separate.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red runs caught stale build mismatch, proof-ribbon height drift, support docks that were not exclusive, Verify pre-run vertical squeeze, Verify post-run horizontal mini-scroll, and the old Import/navigation assumption; final `corepack pnpm -s ide:gate:shell-navigation-overhaul`; `corepack pnpm -s ide:gate:primary-work-object-dominance`; `corepack pnpm -s ide:gate:nested-scroll-regression`; affected gates `ide:gate:shell-chrome-contract`, `ide:gate:workbench-space-utilization`, `ide:gate:workbench-obstruction-usability`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:workbench-stability-overhaul`, `ide:gate:design-workspace-crash-proof`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:hardware-basys3-workbench`, `ide:gate:export-artifact-direct-preview`, `ide:gate:import-recovery-contract`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:design-correctness-contract`, and `ide:gate:verify-evidence-workbench-integrity`; focused Vitest for affected shell/Verify/stage areas (`86` tests); `corepack pnpm -s classroom:gate`; and `corepack pnpm --filter @redbyte/playground build`. Before screenshots and observations are under `.redbyte/product-immersion/shell-navigation-overhaul/2026-06-17/before/`; after screenshots and observations are under `.redbyte/product-immersion/shell-navigation-overhaul/2026-06-17/after/`.
+
+**Safety:** This slice changes only shell/workbench presentation, support-dock interaction policy, Verify table density, focused browser proof gates, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates cover the Logic Gates classroom/desktop workbench shell, primary-work-object dominance, support-dock exclusivity, and nested-scroll regressions; they do not solve every card-heavy/static content problem or add deeper direct-manipulation behavior to every surface. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with a fresh live-app pass. The strongest remaining product direction is reducing static/card-heavy function gaps in Project/Export/Import or remaining Verify evidence density, but the exact next target must be chosen from live inspection.
+
 ## Change Log 2026-06-17 (fix: rebuild Verify testbench layout)
 
 **Subsystem:** RedByte Verify first-run workbench layout, stimulus table density, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

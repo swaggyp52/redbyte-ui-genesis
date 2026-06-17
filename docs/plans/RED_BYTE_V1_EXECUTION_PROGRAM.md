@@ -937,6 +937,41 @@ Rollback:
 - Revert the Verify pre-run layout phase/style changes, compact stimulus-canvas density, and the two focused gate additions; existing Verify evidence and fail-edit-repair gates remain adjacent coverage.
 
 
+## Phase 10.21 - Shell and Navigation De-Scaffold v1
+
+Status: Closed 2026-06-17 by `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, and `ide:gate:nested-scroll-regression`.
+
+Goal: Reduce global shell/navigation scaffold pressure so the primary workbench object owns normal classroom and desktop viewports.
+
+Why: Browser-first review after the Verify rebuild showed the remaining unfinished feel was cross-surface, not one panel only: persistent shell chrome, simultaneous support docks, and small nested scroll regions still made RedByte feel like cards arranged around work instead of a compact engineering workbench.
+
+Implementation slices:
+
+- Tightened the persistent shell tax around the compact left rail, proof ribbon, status footer, and collapsed support restore controls.
+- Made focused workbench support docks exclusive outside wide layout so both side panels cannot simultaneously squeeze the primary work object.
+- Kept Verify's embedded stimulus canvas compact in the Verify workbench and tightened compact stimulus column widths.
+- Added one shell/navigation gate, one primary-work-object dominance gate, and one nested-scroll regression gate.
+
+Proof:
+
+- Intentional red/debug runs caught stale build proof, proof-ribbon height drift, non-exclusive support docks, Verify pre-run squeeze, Verify post-run mini horizontal scroll, and an outdated Import navigation assumption.
+- Passing `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, affected shell/Verify/Hardware/Export/Import gates, focused shell/Verify Vitest, classroom gate, unified build, doc validation, encoding check, and diff check.
+- Before/after browser screenshots and observations live under `.redbyte/product-immersion/shell-navigation-overhaul/2026-06-17/`.
+
+Acceptance:
+
+- Compact shell/navigation geometry is proven at `1366x768` and `1440x900`.
+- Import remains a utility route and reload-recoverable path, not a permanent workflow rail item.
+- Design, Verify, Hardware, Export, and Import keep a dominant primary work object.
+- Focused support docks are exclusive outside wide layout.
+- No meaningful Verify/Hardware mini-scroll traps, root overflow, or console/page errors appear.
+- No simulation, Verify result, Compare rule, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the shell CSS compaction, support-dock exclusivity callbacks, compact Verify stimulus density adjustments, and the three focused gate additions; existing shell hierarchy, side-dock, open-panel, Verify layout, and Hardware workbench gates remain adjacent coverage.
+
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

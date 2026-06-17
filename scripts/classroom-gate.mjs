@@ -180,6 +180,21 @@ const STEPS = [
     args: ['-s', 'ide:gate:shell-workbench-hierarchy'],
   },
   {
+    name: 'ide:gate:shell-navigation-overhaul',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:shell-navigation-overhaul'],
+  },
+  {
+    name: 'ide:gate:primary-work-object-dominance',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:primary-work-object-dominance'],
+  },
+  {
+    name: 'ide:gate:nested-scroll-regression',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:nested-scroll-regression'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],

@@ -213,6 +213,7 @@ async function setInputBit(page, nodeId, value) {
 
   await ensureLiveInputsExpanded(page);
   await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).click();
+  await revealDesignInspector(page);
 
   await page.waitForFunction(
     ({ selector, expected }) => {

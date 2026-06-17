@@ -30,6 +30,9 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-canvas-direct-workbench`
 - `ide:gate:design-workspace-crash-proof`
 - `ide:gate:workbench-stability-overhaul`
+- `ide:gate:shell-navigation-overhaul`
+- `ide:gate:primary-work-object-dominance`
+- `ide:gate:nested-scroll-regression`
 - `ide:gate:active-mode-reload-recovery`
 - `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
@@ -62,6 +65,9 @@ Why:
 - Design canvas direct workbench protects loaded starter authoring from default zoom HUD/minimap obstruction while preserving on-demand Fit/Center/preset controls.
 - Design workspace crash proof protects stale or failed lazy Design surface imports from stranding the user in an error boundary; it requires non-destructive `Reload App` recovery and preserves `Reset Workspace`.
 - Workbench stability overhaul protects normal Project -> Design -> Verify -> reload -> Map Pins -> Design continuity after the boundary recovery repair.
+- Shell navigation overhaul protects the compact global shell contract, workflow rail reachability, Import utility route/reload access, no root overflow, and console/page cleanliness at classroom and desktop viewports.
+- Primary work object dominance protects Design, Verify, Hardware, Export, and Import from being squeezed by simultaneous support docks or shell chrome; focused workbench support docks must be exclusive outside wide layout.
+- Nested scroll regression protects Verify and Hardware from small internal scroll traps in the normal Logic Gates path while allowing normal page-level workbench scroll where appropriate.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
@@ -103,7 +109,7 @@ Why:
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, or first-viewport layout | `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
+| Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, nested-scroll traps, or first-viewport layout | `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules
@@ -123,6 +129,14 @@ Why:
 ## Current Workbench Stability Gates
 
 `ide:gate:design-workspace-crash-proof` simulates a failed production `DesignSurface-*.js` lazy import, requires `surface-load` boundary classification, proves `Reload App` recovery without clearing saved project state, and rejects unexpected console/page errors. `ide:gate:workbench-stability-overhaul` covers the normal Project -> Design -> Verify -> reload -> Map Pins -> Design path with route/mode, loading, boundary, overflow, and console checks.
+
+## Current Shell And Navigation Gates
+
+`ide:gate:shell-navigation-overhaul` proves the compact shell/navigation contract at `1366x768` and `1440x900`: visible build hash, workflow rail reachability, Import utility route and reload access, compact proof-ribbon/left-rail geometry, no root overflow, and no console/page errors.
+
+`ide:gate:primary-work-object-dominance` proves Design, Verify pre-run, Verify Compare PASS, Hardware, Export, and Import keep the primary work object dominant at classroom and desktop viewports, and that focused workbench support docks are exclusive outside wide layout.
+
+`ide:gate:nested-scroll-regression` rejects the Verify stimulus/waveform and Hardware workbench mini-scroll traps observed in browser-first review while preserving normal page-level workbench scroll.
 
 ## Current Verify Layout Gates
 

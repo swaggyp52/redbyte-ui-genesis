@@ -36,7 +36,7 @@ const RIGHT_WIDTH_RANGE = { min: 180, max: 280 };
 const CONSOLE_HEIGHT_RANGE = { min: 0, max: 320 };
 const COLLAPSED_CONSOLE_HEIGHT = 0;
 const DEFAULT_EXPANDED_CONSOLE_HEIGHT = 120;
-const COLLAPSED_DOCK_RAIL_WIDTH = 48;
+const COLLAPSED_DOCK_RAIL_WIDTH = 36;
 
 interface WorkbenchLayoutState {
   leftWidth: number;
@@ -463,6 +463,19 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     !consoleHasBlocking &&
     policy.consoleMode !== 'expanded' &&
     (policy.consoleMode === 'collapsed' || consoleHasEntries);
+  const useExclusiveSupportDocks = policy.layoutIntent === 'workbench' && layoutMode !== 'wide';
+  const expandLeftDock = useCallback(() => {
+    setIsLeftDockExpanded(true);
+    if (useExclusiveSupportDocks) {
+      setIsRightDockExpanded(false);
+    }
+  }, [useExclusiveSupportDocks]);
+  const expandRightDock = useCallback(() => {
+    setIsRightDockExpanded(true);
+    if (useExclusiveSupportDocks) {
+      setIsLeftDockExpanded(false);
+    }
+  }, [useExclusiveSupportDocks]);
 
   return (
     <section
@@ -525,7 +538,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             type="button"
             className="ide-workbench-dock-toggle-rail ide-workbench-dock-toggle-rail-left"
             data-testid="ide-workbench-dock-toggle-left"
-            onClick={() => setIsLeftDockExpanded(true)}
+            onClick={expandLeftDock}
             aria-label={leftRailAriaLabel}
             title={leftRailAriaLabel}
           >
@@ -594,7 +607,7 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
             type="button"
             className="ide-workbench-dock-toggle-rail ide-workbench-dock-toggle-rail-right"
             data-testid="ide-workbench-dock-toggle-right"
-            onClick={() => setIsRightDockExpanded(true)}
+            onClick={expandRightDock}
             aria-label="Show inspector"
             title="Show inspector"
           >

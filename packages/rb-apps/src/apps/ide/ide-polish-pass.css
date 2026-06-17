@@ -3855,7 +3855,7 @@
    unchanged. */
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
   grid-template-columns: minmax(0, 1fr) !important;
-  grid-template-rows: minmax(0, 1fr) minmax(92px, 132px) !important;
+  grid-template-rows: minmax(0, 1fr) minmax(124px, 132px) !important;
   gap: 10px !important;
 }
 
@@ -3869,7 +3869,7 @@
   grid-column: 1 !important;
   grid-row: 2 !important;
   min-width: 0 !important;
-  min-height: 0 !important;
+  min-height: 124px !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-scenario-builder-details--first-run {
@@ -3972,8 +3972,8 @@
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-stimulus-grid-scroll {
   flex: 1 1 auto !important;
-  min-height: 156px !important;
-  overflow-x: auto !important;
+  min-height: 210px !important;
+  overflow-x: hidden !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-vwp {
@@ -4001,5 +4001,149 @@
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
-  grid-template-columns: minmax(520px, 0.9fr) minmax(0, 1.16fr) !important;
+  grid-template-columns: minmax(360px, 0.42fr) minmax(0, 1.58fr) !important;
+  gap: 2px !important;
+}
+
+/* 2026-06-17 Shell/navigation de-scaffold final authority. This file loads
+   after ide-root.css, so shell chrome fixes that must win belong here. */
+:root[data-redbyte-mode='ide'] {
+  --ide-rail-width: 56px;
+  --ide-proof-ribbon-height: 40px;
+  --ide-status-height: 20px;
+}
+
+.ide-root .ide-proof-ribbon {
+  height: var(--ide-proof-ribbon-height) !important;
+  min-height: var(--ide-proof-ribbon-height) !important;
+  padding: 4px clamp(10px, 1.1vw, 16px) !important;
+}
+
+.ide-root .ide-proof-ribbon__flow {
+  gap: 8px !important;
+}
+
+.ide-root .ide-proof-ribbon__eyebrow {
+  font-size: 9px !important;
+}
+
+.ide-root .ide-proof-step {
+  min-width: 112px !important;
+  max-width: 144px !important;
+  min-height: 28px !important;
+  padding: 3px 7px !important;
+}
+
+.ide-root .ide-proof-step__index {
+  width: 17px !important;
+  height: 17px !important;
+}
+
+.ide-root .ide-proof-step__label {
+  font-size: 9px !important;
+}
+
+.ide-root .ide-proof-step__value {
+  font-size: 10.5px !important;
+}
+
+.ide-root .ide-proof-ribbon__evidence {
+  min-width: 190px !important;
+  min-height: 28px !important;
+}
+
+.ide-root .ide-proof-evidence {
+  min-height: 27px !important;
+  padding: 3px 8px !important;
+}
+
+.ide-root .ide-left-rail {
+  width: var(--ide-rail-width) !important;
+  min-width: var(--ide-rail-width) !important;
+  padding: 8px 4px !important;
+  gap: 5px !important;
+  opacity: 0.84;
+}
+
+.ide-root .ide-left-rail:hover,
+.ide-root .ide-left-rail:focus-within {
+  opacity: 1;
+}
+
+.ide-root .ide-left-rail-nav {
+  gap: 5px !important;
+}
+
+.ide-root .ide-mode-button {
+  min-height: 56px !important;
+  padding: 8px 4px !important;
+  gap: 4px !important;
+  border-radius: 10px !important;
+}
+
+.ide-root .ide-mode-button--utility {
+  min-height: 52px !important;
+}
+
+.ide-root .ide-mode-button .ide-mode-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.ide-root .ide-mode-button .ide-mode-label {
+  max-width: 48px !important;
+  font-size: 10px !important;
+  line-height: 1.05 !important;
+}
+
+.ide-root .ide-surface-column {
+  padding: 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-workspace {
+  padding: 8px 8px 10px !important;
+  gap: 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) minmax(124px, 0.24fr) !important;
+  gap: 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] .ide-verify-region--waveform {
+  min-height: 124px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] {
+  grid-template-columns: minmax(360px, 0.42fr) minmax(0, 1.58fr) !important;
+  gap: 2px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {
+  overflow-x: hidden !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] [data-testid='ide-verify-waveform-svg'] {
+  max-width: 100% !important;
+}
+
+.ide-root .ide-workbench-shell .ide-workbench-dock-toggle-rail {
+  padding: 6px 3px !important;
+  gap: 2px !important;
+}
+
+.ide-root .ide-workbench-shell .ide-workbench-dock-toggle-rail-glyph {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 5px !important;
+  font-size: 12px !important;
+}
+
+.ide-root .ide-workbench-shell .ide-workbench-dock-toggle-rail-label {
+  font-size: 9px !important;
+}
+
+.ide-root .ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
+  font-size: 8px !important;
 }

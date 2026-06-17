@@ -25,8 +25,8 @@ await runIdeGate('IDE shell chrome contract satisfied', async ({ page, baseUrl }
   assert(Boolean(leftRailBox), 'left rail bounding box unavailable');
   assert(topBarBox.height <= 52, `top bar must stay compact (<=52px), got ${topBarBox.height}`);
   assert(
-    leftRailBox.width >= 68 && leftRailBox.width <= 80,
-    `left rail width must stay within range 68..80px (canonical: 72px), got ${leftRailBox.width}`
+    leftRailBox.width >= 52 && leftRailBox.width <= 64,
+    `left rail width must stay within compact range 52..64px (canonical: 56px), got ${leftRailBox.width}`
   );
   if (consoleCount > 0) {
     const consolePanel = page.locator('[data-testid="ide-workbench-console"]').first();
