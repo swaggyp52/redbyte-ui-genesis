@@ -1,5 +1,32 @@
 # AI State
 
+## Change Log 2026-06-16 (fix: recover stale Design workspace loads)
+
+**Subsystem:** RedByte shared ErrorBoundary, Design lazy-surface recovery, Project/Design/Verify/Hardware workbench navigation stability, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `9938eac60b07b48e353ffbb89a32e3f7047a8a0f`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local dev server at `http://127.0.0.1:5210/os/`; the visible UI showed `Build9938eac`, matching local HEAD before screenshots.
+- Reproduced the live stability defect from the in-app browser evidence: a stale prior Design tab logged `Failed to fetch dynamically imported module: http://127.0.0.1:5207/os/assets/DesignSurface-DsvB5ceu.js`, hit `RB_FATAL`, and surfaced `Design workspace encountered an error`.
+- Ranked issues found: stale Design lazy-surface recovery was the highest-impact stability blocker; broader card-heavy/direct-manipulation depth remains open; Project/Verify/Import spacing and hierarchy remain follow-up polish; Vivado/Basys3 proof remains hardware-gated.
+- Chose stale Design surface-load recovery because it can block Project -> Design -> Verify -> Map Pins normal use after a refresh/deploy-like chunk failure, was directly observed in the live browser, was contained to shared boundary/runtime recovery, and was gateable without touching simulation, Verify semantics, pin mapping, generated artifacts, project format, or goldens.
+- Added `ide:gate:design-workspace-crash-proof` to abort the first production `DesignSurface-*.js` chunk at `1366x768` and `1440x900`, require `surface-load` classification, require non-destructive `Reload App`, preserve `Reset Workspace`, and prove reload recovery back to Design.
+- Added `ide:gate:workbench-stability-overhaul` to prove Project -> Design -> Verify -> reload -> Map Pins -> Design continuity with no error boundary, stuck loading, route/mode mismatch, root overflow, or console/page errors at `1366x768` and `1440x900`.
+- Updated the shared `ErrorBoundary` so dynamic import/chunk-load failures are classified as `surface-load`; those recover with `Reload App` without clearing saved project state, while ordinary runtime failures keep `Try Again` and `Reset Workspace` remains available.
+- Added focused ErrorBoundary unit coverage for ordinary retry recovery and failed lazy-surface reload recovery.
+- Wired both new gates into `classroom:gate` and `verify:gates:classroom`.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Workbench Stability Overhaul v1 as closed and keeps broader product-interaction depth as separate future debt.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: intentional red `corepack pnpm -s ide:gate:design-workspace-crash-proof` failed on missing surface-load classification; final `corepack pnpm -s ide:gate:design-workspace-crash-proof`; final `corepack pnpm -s ide:gate:workbench-stability-overhaul`; screenshot reruns with `RB_DESIGN_WORKSPACE_CRASH_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/after/design-crash-proof` and `RB_WORKBENCH_STABILITY_SCREENSHOTS_DIR=.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/after/workbench-stability`; focused `corepack pnpm exec vitest run packages/rb-apps/src/__tests__/error-boundary-gate.test.tsx` (`2` tests); affected gates `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-canvas-zoom-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:workbench-obstruction-usability`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:hardware-first-viewport`, and `ide:gate:hardware-basys3-workbench`; `corepack pnpm -s classroom:gate`; `corepack pnpm -s build:unified`; `corepack pnpm rb:doc:validate`; `corepack pnpm rb:encoding:check`; and `git diff --check` with LF-to-CRLF working-copy warnings only. Before screenshots/observations are under `.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/before/`; after gate screenshots are under `.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/after/design-crash-proof/` and `.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/after/workbench-stability/`; in-app after screenshots and observations are under `.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/after/iab/`.
+
+**Safety:** This slice changes only shared error-boundary recovery behavior, browser proof gates, gate aggregators, one focused unit test, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates cover failed Design lazy-surface recovery and the core Project/Design/Verify/Map Pins continuity path; they do not solve the broader static/card-heavy product model, all back/forward browser paths, support-panel content density, or all spacing polish. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with a fresh live-app pass. The strongest remaining direction is still direct-manipulation/function-depth work so surfaces feel less like static cards, but the exact next target must be chosen from live inspection.
+
 ## Change Log 2026-06-16 (fix: demote Design canvas view tools)
 
 **Subsystem:** RedByte IDE Design canvas direct-workbench authoring, focused browser gate, classroom gate wiring, Design zoom gate compatibility, product cockpit docs, and local Obsidian brain notes.

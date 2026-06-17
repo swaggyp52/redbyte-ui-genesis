@@ -874,6 +874,37 @@ Rollback:
 
 - Revert the Design View-tools compact default, minimap default, and focused gate wiring; existing Design Workbench v1 and zoom integrity gates protect adjacent Design behavior separately.
 
+## Phase 10.19 - Workbench Stability Overhaul v1
+
+Status: Closed 2026-06-16 by `ide:gate:design-workspace-crash-proof` and `ide:gate:workbench-stability-overhaul`.
+
+Goal: Keep the core RedByte workbench recoverable when a visible workspace hits a stale or failed lazy-surface load.
+
+Why: Live browser evidence showed a prior Design tab could retain a stale `DesignSurface-*.js` request and render `Design workspace encountered an error`. The existing shared boundary offered generic retry/destructive reset controls, but a rejected React lazy import needs a non-destructive page reload path.
+
+Implementation slices:
+
+- Classified dynamic import / chunk load failures as `surface-load` boundary errors.
+- Added a non-destructive `Reload App` action for recoverable surface-load errors while keeping `Reset Workspace` available as the destructive escape hatch.
+- Added one crash-proof browser gate that aborts the first production Design surface chunk and one normal workbench-stability browser gate for Project/Design/Verify/Map Pins navigation and reload continuity.
+
+Proof:
+
+- Intentional red `ide:gate:design-workspace-crash-proof` caught missing surface-load classification.
+- Passing `ide:gate:design-workspace-crash-proof` and `ide:gate:workbench-stability-overhaul` after the fix with before/after evidence under `.redbyte/product-immersion/workbench-stability-overhaul/2026-06-16/`.
+- Focused ErrorBoundary Vitest covers ordinary Try Again recovery and surface-load reload affordance.
+
+Acceptance:
+
+- Failed Design lazy-surface load no longer requires clearing the workspace to recover.
+- Normal Project -> Design -> Verify -> reload -> Map Pins -> Design path has no error boundary, stuck loading state, route/mode mismatch, root overflow, or console/page errors.
+- No simulation, Verify result, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the ErrorBoundary classification/UI change and the two focused gate additions; existing active-mode reload and Design workbench gates remain adjacent coverage.
+
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

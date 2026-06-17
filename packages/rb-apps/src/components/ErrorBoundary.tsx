@@ -26,6 +26,16 @@ interface ErrorBoundaryState {
   resetNonce?: number;
 }
 
+type ErrorBoundaryKind = 'runtime' | 'surface-load';
+
+function getErrorBoundaryKind(error: Error | undefined): ErrorBoundaryKind {
+  if (!error) return 'runtime';
+  const searchable = [error.name, error.message, error.stack].filter(Boolean).join('\n');
+  return /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|ChunkLoadError|Loading chunk \d+ failed/i.test(searchable)
+    ? 'surface-load'
+    : 'runtime';
+}
+
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
@@ -127,24 +137,55 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       const isDev = import.meta.env.DEV;
       const title = this.props.fallbackTitle || 'Application Error';
       const studentError = toStudentFacingError(this.state.error);
+      const errorKind = getErrorBoundaryKind(this.state.error);
+      const isSurfaceLoadError = errorKind === 'surface-load';
+      const message = isSurfaceLoadError
+        ? 'This workspace surface did not finish loading, usually because the browser has an old app file after a refresh or deploy. Reload the app to fetch the current files without clearing your saved project.'
+        : studentError.message;
 
       return (
-        <div className={styles.errorBoundary} data-testid="error-boundary-fallback">
+        <div
+          className={styles.errorBoundary}
+          data-testid="error-boundary-fallback"
+          data-error-kind={errorKind}
+        >
           <div className={styles.errorCard}>
             <div className={styles.errorIcon}>WARN</div>
             <h2 className={styles.errorTitle}>{title}</h2>
             <p className={styles.errorMessage}>
-              {studentError.message}
+              {message}
             </p>
             
             <div className={styles.errorActions}>
-              <button onClick={this.handleResetWorkspace} className={styles.primaryButton}>
+              {isSurfaceLoadError ? (
+                <button
+                  onClick={this.handleReload}
+                  className={styles.primaryButton}
+                  data-testid="error-boundary-reload-app"
+                >
+                  Reload App
+                </button>
+              ) : (
+                <button
+                  onClick={this.handleReset}
+                  className={styles.primaryButton}
+                  data-testid="error-boundary-try-again"
+                >
+                  Try Again
+                </button>
+              )}
+              <button
+                onClick={this.handleResetWorkspace}
+                className={styles.secondaryButton}
+                data-testid="error-boundary-reset-workspace"
+              >
                 Reset Workspace
               </button>
-              <button onClick={this.handleReset} className={styles.secondaryButton}>
-                Try Again
-              </button>
-              <button onClick={this.handleCopyDetails} className={styles.secondaryButton}>
+              <button
+                onClick={this.handleCopyDetails}
+                className={styles.secondaryButton}
+                data-testid="error-boundary-copy-details"
+              >
                 Copy Error Details
               </button>
             </div>

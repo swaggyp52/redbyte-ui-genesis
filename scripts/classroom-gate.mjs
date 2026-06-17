@@ -85,6 +85,16 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-canvas-direct-workbench'],
   },
   {
+    name: 'ide:gate:design-workspace-crash-proof',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-workspace-crash-proof'],
+  },
+  {
+    name: 'ide:gate:workbench-stability-overhaul',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:workbench-stability-overhaul'],
+  },
+  {
     name: 'ide:gate:design-correctness-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-correctness-contract'],
