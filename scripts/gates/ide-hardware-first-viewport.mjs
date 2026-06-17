@@ -48,6 +48,21 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
       assert(await visible(row), `${viewport.label}: SW0 row must be visible before selection`);
       await row.click();
+      await page
+        .waitForFunction(
+          () => {
+            const workspace = document.querySelector('[data-testid="ide-hw-board-workspace"]');
+            const board = document.querySelector('[data-testid="ide-hw-map-board"]');
+            const table = document.querySelector('[data-testid="ide-hw-map-table"]');
+            if (!workspace || !board || !table) return false;
+            const workspaceRect = workspace.getBoundingClientRect();
+            const boardRect = board.getBoundingClientRect();
+            const tableRect = table.getBoundingClientRect();
+            return workspaceRect.top <= 180 && boardRect.top <= 205 && tableRect.top <= 205;
+          },
+          { timeout: 5000 }
+        )
+        .catch(() => null);
 
       const observation = await readHardwareFirstViewportState(page);
       observations.push({ viewport: viewport.label, ...observation });
