@@ -48,21 +48,15 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
       assert(await visible(row), `${viewport.label}: SW0 row must be visible before selection`);
       await row.click();
-      await page
-        .waitForFunction(
-          () => {
-            const workspace = document.querySelector('[data-testid="ide-hw-board-workspace"]');
-            const board = document.querySelector('[data-testid="ide-hw-map-board"]');
-            const table = document.querySelector('[data-testid="ide-hw-map-table"]');
-            if (!workspace || !board || !table) return false;
-            const workspaceRect = workspace.getBoundingClientRect();
-            const boardRect = board.getBoundingClientRect();
-            const tableRect = table.getBoundingClientRect();
-            return workspaceRect.top <= 180 && boardRect.top <= 205 && tableRect.top <= 205;
-          },
-          { timeout: 5000 }
-        )
-        .catch(() => null);
+      await waitForHardwareFirstViewportLayout(page, viewport.label).catch(async (error) => {
+        observations.push({
+          viewport: viewport.label,
+          settleFailure: true,
+          ...(await readHardwareFirstViewportState(page)),
+        });
+        await capture(page, `${viewport.label}-settle-failure`);
+        throw error;
+      });
 
       const observation = await readHardwareFirstViewportState(page);
       observations.push({ viewport: viewport.label, ...observation });
@@ -120,7 +114,54 @@ async function openStarterHardware(page, baseUrl, viewportLabel) {
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await page.locator('[data-testid="mode-button-hardware"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const mapTab = page.locator('[data-testid="ide-hw-mode-btn-map"]').first();
+  await mapTab.waitFor({ state: 'attached', timeout: 15000 });
+  if ((await mapTab.getAttribute('aria-selected').catch(() => 'false')) !== 'true') {
+    await mapTab.evaluate((element) => {
+      if (!(element instanceof HTMLElement)) {
+        throw new Error('expected Hardware Map Pins tab to be an HTMLElement');
+      }
+      element.click();
+    });
+  }
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="ide-hw-mode-btn-map"]')?.getAttribute('aria-selected') === 'true' &&
+      document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-board-workspace--map'),
+    { timeout: 15000 }
+  );
   await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+}
+
+async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
+  await page.waitForFunction(
+    () => {
+      const workspace = document.querySelector('[data-testid="ide-hw-board-workspace"]');
+      const board = document.querySelector('[data-testid="ide-hw-map-board"]');
+      const table = document.querySelector('[data-testid="ide-hw-map-table"]');
+      const mode = document.querySelector('[data-ide-mode-marker]');
+      const proofRibbonHeight = getComputedStyle(document.documentElement)
+        .getPropertyValue('--ide-proof-ribbon-height')
+        .trim();
+      if (!workspace || !board || !table || !mode) return false;
+      if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
+      if (!workspace.classList.contains('ide-hw-board-workspace--map')) return false;
+      if (proofRibbonHeight !== '40px') return false;
+
+      const workspaceRect = workspace.getBoundingClientRect();
+      const boardRect = board.getBoundingClientRect();
+      const tableRect = table.getBoundingClientRect();
+      return workspaceRect.top <= 145 && boardRect.top <= 190 && tableRect.top <= 190;
+    },
+    { timeout: 15000 },
+  ).catch(async () => {
+    const state = await readHardwareFirstViewportState(page);
+    throw new Error(
+      `${viewportLabel}: Hardware Map Pins layout did not settle into first-viewport contract ` +
+        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, board ${state.board.top.toFixed(1)}px, table ${state.table.top.toFixed(1)}px)`
+    );
+  });
 }
 
 async function readHardwareFirstViewportState(page) {
