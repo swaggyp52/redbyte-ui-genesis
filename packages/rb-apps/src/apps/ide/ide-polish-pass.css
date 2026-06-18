@@ -4001,8 +4001,8 @@
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
-  grid-template-columns: minmax(360px, 0.42fr) minmax(0, 1.58fr) !important;
-  gap: 2px !important;
+  grid-template-columns: minmax(558px, 0.86fr) minmax(651px, 1fr) !important;
+  gap: 1px !important;
 }
 
 /* 2026-06-17 Shell/navigation de-scaffold final authority. This file loads
@@ -4101,8 +4101,12 @@
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-workspace {
-  padding: 8px 8px 10px !important;
-  gap: 8px !important;
+  padding: 1px 1px 10px !important;
+  gap: 1px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-panel > .ide-panel-body {
+  scrollbar-gutter: auto !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
@@ -4116,8 +4120,8 @@
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] {
-  grid-template-columns: minmax(360px, 0.42fr) minmax(0, 1.58fr) !important;
-  gap: 2px !important;
+  grid-template-columns: minmax(558px, 0.86fr) minmax(651px, 1fr) !important;
+  gap: 1px !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {

@@ -125,6 +125,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-workbench-layout-reset'],
   },
   {
+    name: 'ide:gate:verify-postrun-workbench-usability',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-postrun-workbench-usability'],
+  },
+  {
     name: 'ide:gate:verify-evidence-workbench-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],

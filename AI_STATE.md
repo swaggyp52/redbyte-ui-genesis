@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-17 (fix: widen Verify post-run workbench)
+
+**Subsystem:** RedByte Verify post-run workbench geometry, browser proof gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `90d2230193ec37d78f6d66d945b6469708a02476`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local app at `http://127.0.0.1:5231/os/` and verified visible `Build 90d2230` matched local HEAD before screenshots and measurements.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff, Import recovery utility, navigation, reload, and dirty/back-forward paths at `1366x768` and `1440x900`.
+- Ranked issues found: Verify post-run editable checks/testbench lane was the highest-impact confirmed normal-use defect; a fresh workspace error was not reproduced; direct Verify no-circuit is still apparatus-heavy; Project/Export/Import remain card-heavy follow-ups; Import reload/back needs a separate timed continuity audit if it reappears.
+- Chose Verify post-run workbench usability because the live PASS/FAIL/repair path squeezed editable stimulus/checks to `460px` at both required viewports, directly matching the user complaint and remaining contained to layout/gate ownership.
+- Added `ide:gate:verify-postrun-workbench-usability` to prove Logic Gates Compare PASS, induced expected-output FAIL, repair PASS, post-run editable grid width/share, waveform width, no mini-scroll trap, failure action visibility, build-hash identity, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
+- Rebalanced Verify post-run split geometry, removed an unnecessary Verify panel scrollbar gutter, and tightened inner Verify workspace padding so the editable checks lane and waveform both remain usable at classroom/desktop/wide viewports.
+- Updated `ide:gate:primary-work-object-dominance` so post-run Verify enforces the new balanced repair/evidence contract instead of the stale waveform-1.4x dominance rule that recreated the mini-workbench problem.
+- Wired the new gate into `classroom:gate` and `verify:gates:classroom`.
+- Updated `.redbyte-brain/` working notes so the Obsidian brain records Verify Post-Run Workbench Usability v1 as closed and keeps broader static/card-heavy/direct-manipulation debt separate.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed: red-first `corepack pnpm -s ide:gate:verify-postrun-workbench-usability` caught stale dist, then failed on the old `460px` post-run lane; final `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`; affected gates `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-fail-edit-repair`, `ide:gate:nested-scroll-regression`, `ide:gate:primary-work-object-dominance`, and `ide:gate:workbench-space-utilization`; focused Vitest `corepack pnpm -s exec vitest run packages/rb-apps/src/apps/ide/__tests__/verifySurface.workspaceLayout.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.layout-workflow.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.workstation.test.tsx` (`58` tests); `corepack pnpm -s classroom:gate`; and `corepack pnpm -s build:unified`. Before evidence is under `.redbyte/product-immersion/core-product-acceleration/2026-06-17/before/`; after evidence is under `.redbyte/product-immersion/core-product-acceleration/2026-06-17/after/`.
+
+**Safety:** This slice changes only Verify layout CSS, browser proof gates, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gate covers the Logic Gates post-run PASS/FAIL/repair workbench at classroom and desktop viewports; it does not solve direct Verify no-circuit composition, Project/Export/Import card-heavy function depth, or all back/forward timing paths. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with fresh live inspection. The strongest remaining product direction is a contained Project/Import/Export function-depth repair so those surfaces feel less like static cards, but the exact target must be chosen from current browser evidence.
+
 ## Change Log 2026-06-17 (fix: de-scaffold shell navigation)
 
 **Subsystem:** RedByte global shell/navigation density, support dock exclusivity, Verify stimulus canvas density, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

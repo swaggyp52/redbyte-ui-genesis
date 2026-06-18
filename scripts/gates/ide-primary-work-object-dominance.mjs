@@ -58,7 +58,7 @@ await runIdeGate('IDE primary work object dominance satisfied', async ({ page, b
       await clickVerifyRun(page);
       await waitForVerifyResult(page, { timeout: 15000 });
       await page.waitForSelector('[data-testid="ide-verify-waveform-svg"]', { timeout: 10000 });
-      await assertVerifyPostRunEvidenceDominance(page, viewport);
+      await assertVerifyPostRunEvidenceRepairBalance(page, viewport);
 
       await openMode(page, baseUrl, viewport, 'hardware');
       await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
@@ -134,7 +134,7 @@ async function openSupportSequence(page, viewport, mode) {
   );
 }
 
-async function assertVerifyPostRunEvidenceDominance(page, viewport) {
+async function assertVerifyPostRunEvidenceRepairBalance(page, viewport) {
   const state = await page.evaluate(() => {
     const rect = (selector) => {
       const element = document.querySelector(selector);
@@ -154,6 +154,7 @@ async function assertVerifyPostRunEvidenceDominance(page, viewport) {
     return {
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
+      labGrid: rect('[data-testid="ide-verify-lab-grid"]'),
       stimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
       waveform: rect('[data-testid="ide-verify-region-waveform"]'),
       waveformScrollExtraX: (() => {
@@ -169,12 +170,20 @@ async function assertVerifyPostRunEvidenceDominance(page, viewport) {
     `${viewport.label}: Verify evidence lane is too narrow (${state.waveform.visibleWidth}px); expected at least ${Math.round(viewport.width * 0.47)}px`
   );
   assert(
-    state.waveform.visibleWidth >= state.stimulus.visibleWidth * 1.4,
-    `${viewport.label}: Verify waveform evidence should visibly dominate repair lane (${JSON.stringify(state)})`
+    state.waveform.visibleWidth >= state.stimulus.visibleWidth * 1.15,
+    `${viewport.label}: Verify waveform evidence should remain the larger post-run lane (${JSON.stringify(state)})`
   );
   assert(
-    state.stimulus.visibleWidth <= viewport.width * 0.38,
-    `${viewport.label}: Verify post-run stimulus lane still dominates evidence (${state.stimulus.visibleWidth}px)`
+    state.stimulus.visibleWidth >= viewport.width * 0.4,
+    `${viewport.label}: Verify post-run repair lane is too narrow for expected-output editing (${state.stimulus.visibleWidth}px)`
+  );
+  assert(
+    state.stimulus.visibleWidth / state.labGrid.visibleWidth >= 0.46,
+    `${viewport.label}: Verify repair lane must keep a usable share of the workbench (${JSON.stringify(state)})`
+  );
+  assert(
+    state.stimulus.visibleWidth <= viewport.width * 0.44,
+    `${viewport.label}: Verify post-run repair lane should not overtake evidence (${state.stimulus.visibleWidth}px)`
   );
   assert(
     state.waveformScrollExtraX <= 8,

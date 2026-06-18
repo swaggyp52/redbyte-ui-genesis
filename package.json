@@ -245,6 +245,7 @@
         "ide:gate:verify-saved-checks-default": "node ./scripts/gates/ide-verify-saved-checks-default.mjs",
         "ide:gate:verify-testbench-usable-layout": "node ./scripts/gates/ide-verify-testbench-usable-layout.mjs",
         "ide:gate:verify-workbench-layout-reset": "node ./scripts/gates/ide-verify-workbench-layout-reset.mjs",
+        "ide:gate:verify-postrun-workbench-usability": "node ./scripts/gates/ide-verify-postrun-workbench-usability.mjs",
         "ide:gate:synth-subset-contract": "node ./scripts/gates/ide-synth-subset-contract.mjs",
         "ide:gate:vivado-pack-contract": "node ./scripts/gates/ide-vivado-pack-contract.mjs",
         "ide:gate:export-includes-rbproj-contract": "node ./scripts/gates/ide-export-includes-rbproj-contract.mjs",

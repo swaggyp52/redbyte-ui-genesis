@@ -34368,8 +34368,8 @@ button:disabled,
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] {
-  grid-template-columns: minmax(360px, 0.5fr) minmax(0, 1.5fr) !important;
-  gap: 2px !important;
+  grid-template-columns: minmax(558px, 0.86fr) minmax(651px, 1fr) !important;
+  gap: 1px !important;
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-waveform-scroll {

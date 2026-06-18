@@ -33,6 +33,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:shell-navigation-overhaul`
 - `ide:gate:primary-work-object-dominance`
 - `ide:gate:nested-scroll-regression`
+- `ide:gate:verify-postrun-workbench-usability`
 - `ide:gate:active-mode-reload-recovery`
 - `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
@@ -68,6 +69,7 @@ Why:
 - Shell navigation overhaul protects the compact global shell contract, workflow rail reachability, Import utility route/reload access, no root overflow, and console/page cleanliness at classroom and desktop viewports.
 - Primary work object dominance protects Design, Verify, Hardware, Export, and Import from being squeezed by simultaneous support docks or shell chrome; focused workbench support docks must be exclusive outside wide layout.
 - Nested scroll regression protects Verify and Hardware from small internal scroll traps in the normal Logic Gates path while allowing normal page-level workbench scroll where appropriate.
+- Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
@@ -103,7 +105,7 @@ Why:
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify behavior, run intent, repair loop, or testbench layout | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, or a narrower new Verify browser gate |
+| Verify behavior, run intent, repair loop, or testbench layout | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
@@ -143,6 +145,8 @@ Why:
 `ide:gate:verify-testbench-usable-layout` proves the Logic Gates first-run testbench owns the pre-run Verify workbench at `1366x768` and `1440x900`: `stimulus-focus`, all expected-output cells and case headers visible, no meaningful horizontal grid overflow, no root overflow, and waveform readiness kept secondary until a run exists.
 
 `ide:gate:verify-workbench-layout-reset` proves the same layout contract survives the normal evidence loop at `1366x768`: pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS.
+
+`ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, waveform evidence minimum width, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
 
 ## State Authority Rules
 

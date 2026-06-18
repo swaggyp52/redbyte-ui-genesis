@@ -971,6 +971,38 @@ Rollback:
 
 - Revert the shell CSS compaction, support-dock exclusivity callbacks, compact Verify stimulus density adjustments, and the three focused gate additions; existing shell hierarchy, side-dock, open-panel, Verify layout, and Hardware workbench gates remain adjacent coverage.
 
+## Phase 10.22 - Verify Post-Run Workbench Usability v1
+
+Status: Closed 2026-06-17 by `ide:gate:verify-postrun-workbench-usability`.
+
+Goal: Keep Verify's post-run PASS/FAIL/repair workbench usable after waveform evidence appears.
+
+Why: Browser-first inspection after the shell/navigation de-scaffold pass showed the loaded Logic Gates Verify repair loop still had only a `460px` editable checks lane at both `1366x768` and `1440x900`. Students could pass, intentionally fail, and repair the workflow, but the core testbench/checks object still felt like a cramped slot beside waveform evidence.
+
+Implementation slices:
+
+- Added a focused post-run Verify browser gate that runs Compare PASS, induces an expected-output FAIL, repairs to PASS, and asserts usable checks-lane width/share, waveform width, visible failure action, no mini-scroll trap, build-hash identity, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
+- Rebalanced post-run Verify split geometry and compact padding so the editable checks lane is no longer trapped at `460px` while waveform evidence remains first-order.
+- Updated adjacent dominance, nested-scroll, and workbench-space gates to encode the balanced evidence/repair contract.
+- Preserved simulation, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, and Basys3 proof.
+
+Proof:
+
+- Intentional red `ide:gate:verify-postrun-workbench-usability` caught the old `460px` post-run checks lane after Compare PASS and at `1440x900`.
+- Passing `ide:gate:verify-postrun-workbench-usability`, affected Verify/shell/workbench gates, focused Verify Vitest, classroom gate, unified build, doc validation, encoding check, and diff check.
+- Before/after browser screenshots and observations live under `.redbyte/product-immersion/core-product-acceleration/2026-06-17/`.
+
+Acceptance:
+
+- Compare PASS, induced expected-output FAIL, and repair PASS keep the editable checks lane usable beside waveform evidence at `1366x768` and `1440x900`.
+- The waveform lane remains wide enough to explain evidence without owning Verify trust.
+- No meaningful stimulus-grid mini-scroll, root overflow, or console/page errors appear.
+- No simulation, Verify result, Compare rule, expected-output, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the post-run Verify split/padding changes and focused gate wiring; existing Verify evidence, fail-edit-repair, workbench-layout-reset, nested-scroll, and dominance gates remain adjacent coverage.
+
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
