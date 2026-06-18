@@ -18,6 +18,31 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 - Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Preserve E0/E1/E2/E3 truth at every phase.
 
+## Phase 12x - Release Readiness Tool Windows
+
+Status: Closed 2026-06-18 by the Release Readiness Tool Windows v1 slice.
+
+Goal: Remove the most visible release-readiness clipping/obstruction defects from the Design and Hardware workbench surfaces.
+
+Why: Live browser evidence showed the Design Library was only `176px`/`184px` wide at the supported viewports and clipped visible board-resource controls, while Hardware resource summary cards were absolutely positioned over the Basys3 board. These were normal-use visual defects that made RedByte read as unfinished even though the underlying semantics were correct.
+
+Proof:
+
+- `ide:gate:design-library-not-cropped`
+- `ide:gate:design-tool-window-coexistence`
+- `ide:gate:hardware-board-unblocked`
+- `ide:gate:hardware-resource-catalog-not-obstructing`
+- `ide:gate:release-readiness-visual-contract`
+- `ide:gate:no-cropped-controls-regression`
+- Before/after screenshots under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/`.
+
+Acceptance:
+
+- Design Library is at least `260px` and visible controls do not clip horizontally.
+- Design canvas remains usable beside open tool windows.
+- Hardware resource summary/catalog content does not overlay the Basys3 board visual.
+- No simulation, Verify, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

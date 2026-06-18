@@ -225,6 +225,16 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-dual-tool-windows'],
   },
   {
+    name: 'ide:gate:design-library-not-cropped',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-library-not-cropped'],
+  },
+  {
+    name: 'ide:gate:design-tool-window-coexistence',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-tool-window-coexistence'],
+  },
+  {
     name: 'ide:gate:verify-task-plane-usability',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-task-plane-usability'],
@@ -233,6 +243,26 @@ const STEPS = [
     name: 'ide:gate:hardware-board-dominance',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:hardware-board-dominance'],
+  },
+  {
+    name: 'ide:gate:hardware-board-unblocked',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:hardware-board-unblocked'],
+  },
+  {
+    name: 'ide:gate:hardware-resource-catalog-not-obstructing',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:hardware-resource-catalog-not-obstructing'],
+  },
+  {
+    name: 'ide:gate:release-readiness-visual-contract',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:release-readiness-visual-contract'],
+  },
+  {
+    name: 'ide:gate:no-cropped-controls-regression',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:no-cropped-controls-regression'],
   },
   {
     name: 'ide:gate:action-first-entry-surfaces',

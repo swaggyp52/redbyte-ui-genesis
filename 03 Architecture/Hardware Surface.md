@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: hardware
-updated: 2026-04-16
+updated: 2026-06-18
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Project Surface]]"
@@ -39,6 +39,7 @@ The student-facing Hardware surface should therefore present:
 - one dominant readiness state and primary CTA aligned with shared workflow authority
 - a mapping-first workspace where board resources, assigned pins, and unresolved rows are easy to inspect
 - enough board context to explain why a mapping is safe, missing, conflicting, or review-worthy
+- resource summaries and catalogs that orient board resource groups without overlaying or blocking the Basys3 board visual
 - downstream artifact / handoff context only as summary evidence, not as the main work area
 - unresolved required top-level ports reported by Export must count as unresolved mapping in Hardware status, even when local mapping rows look complete
 - blank/custom projects with no boundary I/O must still open on Map Pins with a Design-first empty state, not on proof/program framing
@@ -62,6 +63,7 @@ The student-facing Hardware surface should therefore present:
 - Strict bridge-backed hardware readiness requires both FTDI / USB visibility and a working Digilent JTAG CLI path (`djtgcfg` or an override path via env). Driver-only Digilent Runtime detection is not enough to call an attached board ready for Basys3 programming.
 - Mapping changes are project truth and may make Verify or Export stale; the surface must explain that without pretending to own those workflows.
 - Board-readiness summary should stay concise and actionable. Do not bury unresolved mappings behind artifact-heavy chrome.
+- Resource summaries and catalogs must not sit on top of board controls; board/table mapping remains the primary work object.
 
 ## Consumption Sites
 

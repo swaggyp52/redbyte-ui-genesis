@@ -37,6 +37,8 @@ Side tools support a primary task plane. They do not own the workbench.
 
 - Collapsed side tools use compact horizontal restore controls, not vertical/sideways labels.
 - Open side tools remain proportional, readable, and closable.
+- Design Library must be wide enough to hold search, category controls, and board-resource chips without horizontal clipping at `1366x768` and `1440x900`.
+- A proportional Design Library is a tool window, not a collapsed rail; the canvas must remain usable beside it.
 - Docked tool windows that are part of normal authoring, such as Design Quick Inputs, must remain visible while their longer support lists scroll internally.
 - Focused workbench modes should not show both support docks if that squeezes the task plane.
 - Design, Verify, Hardware, Export, and Import must keep the main work object visible and usable when a support dock is opened and then closed.
@@ -70,6 +72,8 @@ In the normal Logic Gates Map Pins path, the board/table binding task must appea
 
 - The Basys3 board workspace, mapping table, selected row, board resource, package pin, and XDC consequence are first-order.
 - A non-action command strip should not sit above the board/table in the normal mapped workbench.
+- Resource summaries and catalogs may orient the student, but they must not overlay or block the Basys3 board visual.
+- Board-resource summary controls stay in normal document flow and remain interactive.
 - Blocked states and no-boundary states may keep command/context copy because the student still needs recovery guidance.
 - No browser gate or screenshot can claim Vivado build, bitstream programming, or physical board observation proof.
 
@@ -77,6 +81,12 @@ In the normal Logic Gates Map Pins path, the board/table binding task must appea
 
 The Workbench Reconstruction v1 gate family protects this model:
 
+- `ide:gate:design-library-not-cropped` checks the Design Library is wide enough for visible controls and board-resource chips without horizontal clipping at `1366x768` and `1440x900`.
+- `ide:gate:design-tool-window-coexistence` checks Design Library and Inspector remain proportional tool windows while leaving a usable canvas.
+- `ide:gate:hardware-board-unblocked` checks Hardware Map Pins keeps the Basys3 board and mapping table separated from resource summary overlays.
+- `ide:gate:hardware-resource-catalog-not-obstructing` checks resource summaries/catalogs do not sit on top of board controls.
+- `ide:gate:release-readiness-visual-contract` combines the current Design and Hardware release-readiness geometry contract.
+- `ide:gate:no-cropped-controls-regression` prevents visible Design/Hardware controls from returning to horizontally cropped states.
 - `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.
 - `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.

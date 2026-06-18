@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-18 (fix: reconstruct release-readiness tool windows)
+
+**Subsystem:** RedByte Design tool-window geometry, Hardware Basys3 board obstruction removal, release-readiness browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `7ae6b727e824d058fc6540851a7536996ad55621`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used fresh local browser proof and verified visible build hash `7ae6b72` matched local HEAD before screenshots and gate assertions.
+- Inspected Project first launch/loaded, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff station, Import recovery utility, navigation, reload, fresh context, and dirty context at `1366x768` and `1440x900`.
+- Ranked the release-readiness defects from live evidence: Design Library controls were physically clipped because the left tool window was only `176px`/`184px`; Hardware Map Pins resource summary cards overlaid the Basys3 board; Project/Export/Import still retain card-heavy polish debt; Verify was lower priority after the recent workbench rebuild.
+- Added release-readiness visual gates: `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:hardware-board-unblocked`, `ide:gate:hardware-resource-catalog-not-obstructing`, `ide:gate:release-readiness-visual-contract`, and `ide:gate:no-cropped-controls-regression`.
+- Widened Design's open Library tool window to proportional release-readiness widths while preserving a usable canvas, and made the Design board-resource chip grid fit its dock instead of spilling horizontally.
+- Moved the Hardware resource summary out of absolute board overlay placement and into a normal interactive strip above the Basys3 board/table task plane.
+- Updated the release-readiness target doc, workbench model, invariant/gate ownership docs, work queue, issue index, and local Obsidian brain notes.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for the new focused gates and affected workbench gates before aggregate closeout. The intentional red runs first caught the real defects: Design Library width `176px`/`184px` below the `260px` release target, and Hardware resource summary overlap with the Basys3 board SVG. After evidence is under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/after/`; before evidence is under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/before/`. After screenshots show Design Library at `264px`/`280px`, Design canvas still at `994px`/`1052px`, Hardware summary no longer overlapping the board, no root overflow, no console/page errors, and build hash `7ae6b72`.
+
+**Safety:** This slice changes only workbench presentation geometry, focused browser proof gates, gate aggregators, current product docs, and brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates protect Design tool-window clipping and Hardware board obstruction; they do not solve every card-heavy Project/Export/Import composition issue or direct-manipulation depth gap. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained function-depth slice selected from fresh live evidence. The strongest remaining candidates are Project loaded command depth or Export package-inspector direct manipulation.
+
 ## Change Log 2026-06-18 (fix: reconstruct Import guided recovery workbench)
 
 **Subsystem:** RedByte Import recovery workflow presentation, active Import taskbar, focused browser gate, classroom gate wiring, product target docs, cockpit docs, and local Obsidian brain notes.

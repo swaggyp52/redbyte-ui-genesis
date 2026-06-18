@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: design
-updated: 2026-04-16
+updated: 2026-06-18
 related:
   - "[[RedByte Engineering Brain]]"
   - "[[Verify Engine]]"
@@ -40,6 +40,7 @@ The Design surface is a three-zone layout:
 
 For the left dock, the contract is:
 
+- the open Library must behave like a proportional tool window, not a narrow rail; current release-readiness proof requires at least `260px` and no visible horizontal clipped controls at `1366x768` / `1440x900`
 - search remains visible at all times
 - Logic Gates, Sequential & Timing, and Inputs & Outputs remain directly visible
 - Board Resources and Live Inputs are secondary dock sections (toggle to collapse); in the current shell they **start expanded** by default so live toggles stay reachable on first open
@@ -134,7 +135,7 @@ The `SurfaceCommandStrip` in Design is now a compact authority bar, not a card. 
 - Do not reserve bottom-edge chrome for an empty console in quiet Design states.
 - Do not repeat shell metadata in the Design footer when the same truth is already visible in the top shell.
 - Node/wire counters are secondary telemetry and should not dominate the top authoring row.
-- Board Resources and Live Inputs should remain available but default-collapsed unless the student explicitly opens them or search needs the board inventory visible.
+- Board Resources and Live Inputs should remain available without horizontal clipping; their long lists may scroll internally, but visible chips/buttons must stay inside the Library tool window.
 - Simulation controls belong in the top toolbar, not in a dedicated idle-inspector disclosure.
 - The right inspector must not reintroduce separate `Live Simulation`, `Board I/O`, or `Signal History` sections.
 - Split mode may compress simulation chrome, but it must still preserve essential tick/mode context when the dedicated simulation strip is absent.
