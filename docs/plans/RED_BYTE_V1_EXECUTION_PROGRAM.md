@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-17
+last_validated: 2026-06-18
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -1036,6 +1036,39 @@ Acceptance:
 Rollback:
 
 - Revert the Verify no-circuit presentation, loaded Project ordering/tightening, and focused gate wiring; existing Project command-center and Verify layout/evidence gates remain adjacent coverage.
+
+
+## Phase 10.24 - Workbench Reconstruction v1
+
+Status: Closed 2026-06-18 by `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, and `ide:gate:root-overflow-regression`.
+
+Goal: Establish a durable workbench shell and task-plane model so RedByte feels like an engineering workbench rather than cards arranged around work.
+
+Why: Browser-first inspection after Core Product Acceleration Sprint 2 showed the remaining unfinished feel was structural. The shared shell still taxed every surface, Hardware Map Pins still delayed the board/table binding task behind non-action chrome, and future surface work needed a written model for shell chrome, side tools, and task-plane ownership.
+
+Implementation slices:
+
+- Added `docs/architecture/RED_BYTE_WORKBENCH_MODEL.md` as the current shell, side-tool, task-plane, Hardware board-first, and proof-boundary model.
+- Updated the workbench shell so an empty auto console no longer reserves bottom layout space; existing console entries, blocking console state, or pinned console state still render it.
+- Updated Hardware Map Pins so the normal mapped board/table workbench does not render the non-action summary command strip above the task plane.
+- Tightened compact shell/proof/status geometry and Hardware task-plane CSS so work starts higher in the first viewport.
+- Added six focused browser gates and wired them into classroom and broad classroom gates.
+
+Proof:
+
+- Browser before/after screenshots and observations under `.redbyte/product-immersion/workbench-reconstruction/2026-06-18/`.
+- Passing `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, `ide:gate:root-overflow-regression`, affected surface gates, focused shell Vitest, classroom gate, unified build, doc validation, encoding check, and diff check are required for closeout.
+
+Acceptance:
+
+- Empty auto console does not consume workbench height.
+- Hardware Map Pins normal mapped path starts with the board/table task plane first-order at `1366x768` and `1440x900`.
+- Project, Design, Verify, Hardware, Export, and Import preserve visible task-plane/action ownership without root horizontal overflow or console/page errors.
+- No simulation, Verify result, Compare rule, expected-output, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the shell console visibility change, Hardware command-strip visibility change, compact CSS authority block, workbench model doc, and the six focused gate additions; existing shell/navigation, workbench space, Hardware first-viewport, Verify, Export, Import, and Project gates remain adjacent coverage.
 
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration

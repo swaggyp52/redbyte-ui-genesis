@@ -285,7 +285,11 @@ async function clickCanvasBlank(page, xRatio, yRatio) {
 }
 
 async function readTick(page) {
-  const value = Number.parseInt(await text(page.locator('[data-testid="ide-design-sim-tick"]')), 10);
+  const tickText = await page.evaluate(() => {
+    const element = document.querySelector('[data-testid="ide-design-sim-tick"]');
+    return element?.textContent?.trim() ?? '';
+  });
+  const value = Number.parseInt(tickText, 10);
   return Number.isFinite(value) ? value : null;
 }
 

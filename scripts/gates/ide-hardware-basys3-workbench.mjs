@@ -150,19 +150,18 @@ async function assertReadyStateBoundary(page, baseUrl) {
   await captureScreenshot(page, 'ready-1366x768');
 
   const hardware = page.locator('[data-testid="ide-mode-hardware"]').first();
-  const commandStrip = page.locator('[data-testid="ide-hardware-command-strip"]').first();
   const terminalStep = page.locator('.ide-hardware-dep-step--terminal').first();
   const callout = page.locator('[data-testid="ide-hardware-readiness-callout"]').first();
 
   const hardwareText = await normalizedText(hardware);
-  const commandText = await normalizedText(commandStrip);
   const terminalText = await normalizedText(terminalStep);
   const calloutText = await normalizedText(callout);
+  const boundaryText = `${calloutText} ${hardwareText}`;
 
   assert(/MAPPING COMPLETE/i.test(hardwareText), 'Hardware should show mapping complete after current Verify and Export');
-  assert(/E0/i.test(commandText), `ready command strip must identify E0/browser evidence, got "${commandText}"`);
-  assert(/E1\/E2\/E3|E1.*E2.*E3/i.test(commandText), `ready command strip must keep E1/E2/E3 external, got "${commandText}"`);
-  assert(/not prove|not proven/i.test(commandText), `ready command strip must avoid hardware-proof overclaim, got "${commandText}"`);
+  assert(/E0/i.test(boundaryText), `ready Hardware boundary must identify E0/browser evidence, got "${boundaryText}"`);
+  assert(/E1\/E2\/E3|E1.*E2.*E3/i.test(boundaryText), `ready Hardware boundary must keep E1/E2/E3 external, got "${boundaryText}"`);
+  assert(/not prove|not proven/i.test(boundaryText), `ready Hardware boundary must avoid hardware-proof overclaim, got "${boundaryText}"`);
   assert(/external|pending|Vivado/i.test(terminalText), `program terminal step must remain external/pending, got "${terminalText}"`);
   assert(!/In Vivado|ready for the Basys3|Continue to Program Handoff/i.test(hardwareText), 'Hardware ready state must not claim Vivado or program handoff success');
   assert(!/Vivado build passed|bitstream programmed|board observed/i.test(calloutText), `Hardware callout must not claim E1/E2/E3 proof, got "${calloutText}"`);

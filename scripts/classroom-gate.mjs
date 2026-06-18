@@ -210,6 +210,36 @@ const STEPS = [
     args: ['-s', 'ide:gate:nested-scroll-regression'],
   },
   {
+    name: 'ide:gate:root-overflow-regression',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:root-overflow-regression'],
+  },
+  {
+    name: 'ide:gate:workbench-reconstruction-v1',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:workbench-reconstruction-v1'],
+  },
+  {
+    name: 'ide:gate:design-dual-tool-windows',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:design-dual-tool-windows'],
+  },
+  {
+    name: 'ide:gate:verify-task-plane-usability',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-task-plane-usability'],
+  },
+  {
+    name: 'ide:gate:hardware-board-dominance',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:hardware-board-dominance'],
+  },
+  {
+    name: 'ide:gate:action-first-entry-surfaces',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:action-first-entry-surfaces'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],
@@ -248,9 +278,13 @@ const STEPS = [
 
 function runStep(step) {
   const started = performance.now();
-  const result = spawnSync(step.cmd, step.args, {
+  const command = process.platform === 'win32' ? 'cmd.exe' : step.cmd;
+  const args =
+    process.platform === 'win32'
+      ? ['/d', '/s', '/c', [step.cmd, ...step.args].join(' ')]
+      : step.args;
+  const result = spawnSync(command, args, {
     stdio: 'inherit',
-    shell: process.platform === 'win32',
     env: {
       ...process.env,
       CI_FAST: process.env.CI_FAST ?? '1',

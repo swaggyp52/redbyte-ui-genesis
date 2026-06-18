@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-06-18 (feat: reconstruct RedByte workbench shell and task planes)
+
+**Subsystem:** RedByte global workbench model, compact shell chrome, Hardware Map Pins task-plane hierarchy, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `2fa05c75a4a5c3385b64bc9d459bb285a62d096c`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local app at `http://127.0.0.1:5251/os/` and verified the visible UI build hash `2fa05c7` matched local HEAD before screenshots and measurements.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff, Import recovery utility, navigation, reload recovery, fresh context, and dirty context at `1366x768` and `1440x900`.
+- Ranked issues found: the shared shell/chrome still consumed first-viewport space across every surface; Hardware Map Pins still delayed the board/table workbench behind a command strip and local panel header; Verify and Export remained dense but already had stronger recent gates; Import and Project still need deeper interaction/function polish.
+- Chose one contained workbench reconstruction slice: make the global shell less wasteful and make the Hardware Map Pins board/table task plane first-order by default. This beat alternatives because it affected every normal surface, visibly improved Hardware's most important work object, was gateable, and did not require changing simulation, Verify semantics, pin mapping semantics, generated artifacts, project format, or goldens.
+- Added the shared workbench model doc `docs/architecture/RED_BYTE_WORKBENCH_MODEL.md` to capture shell chrome, dual tool-window, task-plane, Hardware board-first, action-first entry, and proof-tier boundaries.
+- Added `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, and `ide:gate:root-overflow-regression`.
+- Updated `IdeWorkbenchShell` so an empty auto console no longer reserves the bottom slot; existing console entries or pinned/blocking console state still render the console.
+- Updated Hardware Map Pins so the normal mapped workbench no longer renders the non-action summary command strip above the board/table; blocked/no-boundary and non-map states keep their command context.
+- Tightened the persistent shell/proof/status heights and Hardware task-plane CSS so Hardware board/table starts higher and uses more of the first viewport.
+- Tightened the Design dock height chain so Quick Inputs remain visible as the bottom tool window while the palette sections scroll inside the left dock instead of pushing controls below the viewport.
+- Removed the Verify workbench workspace width cap in Verify mode so wide desktop proof no longer centers a narrow `1295px` workspace inside a much wider shell.
+- Bounded the optional Design simulation tick read in `ide:gate:design-palette-build-contract` so the gate no longer waits on an absent optional tick locator while still proving the real input toggle workflow.
+- Removed the app-shell Google Fonts request from `apps/playground/index.html` after aggregate classroom proof exposed intermittent `fonts.googleapis.com` timeout/name-resolution console errors; RedByte now relies on local/system fallbacks already present in CSS for browser classroom proof.
+- Wired the new gates into `classroom:gate` and `verify:gates:classroom`, and updated adjacent Hardware first-viewport proof for the new compact proof-ribbon contract.
+- Updated `.redbyte-brain/` working notes so the local Obsidian brain records Workbench Reconstruction v1 as closed and keeps remaining function-depth/card-stack debt separate.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for the focused unit/gate work and the full `classroom:gate` aggregate before final closeout. The intentional red Vitest run caught the empty auto-console regression and a stale rail-width expectation; final `ideWorkbenchShell.test.tsx` passed after the fix. Aggregate validation also exposed and then closed three real proof regressions: Design Quick Inputs below the left-dock viewport, an optional tick read waiting on a missing locator, and a `1920x1080` Verify workspace cap that kept the PASS observation waveform too narrow. Browser before evidence is under `.redbyte/product-immersion/workbench-reconstruction/2026-06-18/before/`; after evidence is under `.redbyte/product-immersion/workbench-reconstruction/2026-06-18/after/`. Before metrics at `1366x768` showed shell top `98`, Design canvas top `238`, Verify pre-run stimulus top `220`, Hardware board workspace top `278`, and Export/Import workspace top `98`; after metrics showed shell top `86`, Design canvas top `226`, Verify pre-run stimulus top `208`, Hardware board workspace top `160`, and Export/Import workspace top `86`. Hardware selected-row after proof kept the board workspace/table/board visible at both `1366x768` and `1440x900` with no root horizontal overflow.
+
+**Safety:** This slice changes only workbench presentation, shell/console space ownership, Hardware command-strip visibility for the mapped workbench, focused browser proof gates, gate aggregators, current-truth docs, and brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates protect the reconstructed shell/task-plane model and Hardware board-first geometry; they do not solve every static/card-heavy surface, Import utility hierarchy, Export density, Project function depth, or future direct-manipulation need. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership, but the next single target should be deeper interaction/function depth on one still-card-heavy surface, selected from fresh live inspection rather than this doc alone.
+
 ## Change Log 2026-06-17 (fix: make Verify and Project entry paths task-first)
 
 **Subsystem:** RedByte Verify direct-entry no-circuit state, loaded Project action-path hierarchy, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

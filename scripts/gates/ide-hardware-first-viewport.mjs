@@ -141,13 +141,15 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
       const board = document.querySelector('[data-testid="ide-hw-map-board"]');
       const table = document.querySelector('[data-testid="ide-hw-map-table"]');
       const mode = document.querySelector('[data-ide-mode-marker]');
-      const proofRibbonHeight = getComputedStyle(document.documentElement)
-        .getPropertyValue('--ide-proof-ribbon-height')
-        .trim();
+      const proofRibbonHeight = parseFloat(
+        getComputedStyle(document.documentElement)
+          .getPropertyValue('--ide-proof-ribbon-height')
+          .trim()
+      );
       if (!workspace || !board || !table || !mode) return false;
       if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
       if (!workspace.classList.contains('ide-hw-board-workspace--map')) return false;
-      if (proofRibbonHeight !== '40px') return false;
+      if (!Number.isFinite(proofRibbonHeight) || proofRibbonHeight > 40) return false;
 
       const workspaceRect = workspace.getBoundingClientRect();
       const boardRect = board.getBoundingClientRect();

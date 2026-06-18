@@ -4325,3 +4325,229 @@
 .ide-root .ide-workbench-shell .ide-workbench-dock-toggle-rail-hint {
   font-size: 8px !important;
 }
+
+/* 2026-06-18 Workbench Reconstruction v1 final authority.
+   Shared chrome and Hardware Map Pins now yield the first viewport to the
+   active work object instead of stacking informational cards before work. */
+:root[data-redbyte-mode='ide'] {
+  --rb-topbar-height: 44px;
+  --ide-topbar-height: 44px;
+  --ide-proof-ribbon-height: 36px;
+  --ide-status-height: 18px;
+}
+
+.ide-root .ide-top-bar {
+  height: var(--ide-topbar-height) !important;
+  min-height: var(--ide-topbar-height) !important;
+  padding-block: 5px !important;
+}
+
+.ide-root .ide-build-badge,
+.ide-root .ide-board-chip,
+.ide-root .ide-topbar-help-btn,
+.ide-root .ide-topbar-workflow-help-btn {
+  min-height: 26px !important;
+}
+
+.ide-root .ide-proof-ribbon {
+  height: var(--ide-proof-ribbon-height) !important;
+  min-height: var(--ide-proof-ribbon-height) !important;
+  padding: 3px clamp(8px, 0.9vw, 12px) !important;
+}
+
+.ide-root .ide-proof-step {
+  min-width: 104px !important;
+  max-width: 136px !important;
+  min-height: 24px !important;
+  padding: 2px 6px !important;
+  gap: 5px !important;
+}
+
+.ide-root .ide-proof-step__index {
+  width: 15px !important;
+  height: 15px !important;
+  font-size: 9px !important;
+}
+
+.ide-root .ide-proof-step__label {
+  font-size: 8.5px !important;
+}
+
+.ide-root .ide-proof-step__value {
+  font-size: 9.5px !important;
+}
+
+.ide-root .ide-proof-ribbon__evidence,
+.ide-root .ide-proof-evidence {
+  min-height: 24px !important;
+}
+
+.ide-root .ide-status-bar {
+  min-height: var(--ide-status-height) !important;
+  height: var(--ide-status-height) !important;
+  padding-block: 1px !important;
+}
+
+.ide-root .ide-surface-column {
+  padding: 6px 6px 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-workspace {
+  padding: 0 0 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-workbench-workspace {
+  width: 100% !important;
+  inline-size: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'] {
+  grid-template-columns: minmax(558px, 0.854fr) minmax(651px, 1fr) !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
+  grid-template-columns: minmax(558px, 0.854fr) minmax(651px, 1fr) !important;
+  gap: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  overflow: hidden !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left > .ide-design-palette {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-workbench-dock-left > .ide-design-input-panel {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-palette {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-palette-sections {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding-right: 3px !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-input-panel {
+  padding: 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-input-panel-header {
+  margin-bottom: 5px !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-input-toggle-list {
+  display: grid !important;
+  gap: 6px !important;
+  max-height: min(150px, 20vh) !important;
+  overflow-y: auto !important;
+  padding-right: 2px !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-input-toggle {
+  min-height: 32px !important;
+  padding: 4px 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-console-frame,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-waveform-outer,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
+  border-left-width: 0 !important;
+  border-right-width: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform {
+  box-shadow:
+    inset 1px 0 0 rgba(48, 77, 107, 0.22),
+    inset -1px 0 0 rgba(48, 77, 107, 0.16) !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-console-frame,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-waveform-outer,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform .ide-verify-waveform-frame {
+  box-shadow: inset 0 0 0 1px rgba(48, 77, 107, 0.14) !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-workbench-workspace > .ide-panel {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-workbench-workspace > .ide-panel > .ide-panel-header {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-panel-title {
+  font-size: 18px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-panel-description {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-panel-body {
+  padding-top: 6px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-surface-command-stack {
+  gap: 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace {
+  margin-top: 0 !important;
+  min-height: clamp(430px, calc(100vh - 210px), 740px) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map {
+  padding-top: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-mapping-header {
+  min-height: 28px !important;
+  padding: 4px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-task-copy {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-mode {
+  gap: 12px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map .ide-hw-map-table {
+  flex-basis: min(350px, 31vw) !important;
+  max-height: calc(100vh - 292px) !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-board {
+  min-height: clamp(350px, calc(100vh - 300px), 640px) !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-resource-catalog {
+  margin-top: 8px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted {
+  margin: 8px 0 0 !important;
+  padding: 7px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-workflow-ribbon {
+  display: none !important;
+}

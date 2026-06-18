@@ -1,0 +1,84 @@
+---
+doc_status: current
+last_validated: 2026-06-18
+owner: Connor Angiel
+used_by_claude: true
+role: RedByte workbench shell and task-plane model
+---
+
+# RedByte Workbench Model
+
+Use this doc when changing RedByte shell, surface layout, side tools, task planes, or browser geometry gates. It is a current architecture control layer, not a historical design essay.
+
+## Product Frame
+
+RedByte V1 is a browser-based Basys3 digital-logic lab workbench. The main spine remains:
+
+```text
+Project -> Design -> Verify -> Map Pins / Hardware -> Export
+```
+
+Import remains a recovery utility. Vivado build, bitstream programming, and board observation remain downstream proof tiers outside browser evidence.
+
+## Shell Contract
+
+The shell must create room for work, not become the work.
+
+- Top bar is compact project identity, route, and build-hash chrome.
+- Proof ribbon is compact E0/browser workflow context.
+- Left rail is navigation only; it must not duplicate completion status as bulky visible copy.
+- Bottom console/status is conditional support chrome. An empty auto console must not reserve layout space.
+- Root horizontal overflow is a product defect at supported classroom and desktop viewports.
+- Existing local servers are proof only when the visible build hash matches current local HEAD.
+
+## Dual Tool-Window Contract
+
+Side tools support a primary task plane. They do not own the workbench.
+
+- Collapsed side tools use compact horizontal restore controls, not vertical/sideways labels.
+- Open side tools remain proportional, readable, and closable.
+- Docked tool windows that are part of normal authoring, such as Design Quick Inputs, must remain visible while their longer support lists scroll internally.
+- Focused workbench modes should not show both support docks if that squeezes the task plane.
+- Design, Verify, Hardware, Export, and Import must keep the main work object visible and usable when a support dock is opened and then closed.
+
+## Task-Plane Contract
+
+Each surface needs one dominant job object and one clear next action in the useful first viewport.
+
+- Project owns start/recover/continue/build choices.
+- Design owns circuit graph authoring and direct manipulation.
+- Verify owns stimulus, expected checks, observed evidence, mismatch, and repair.
+- Hardware owns board/table binding from project signal to Basys3 resource, package pin, and XDC consequence.
+- Export owns package handoff, current trust state, generated artifact inspection, and downstream Vivado instructions.
+- Import owns recovery/review/apply utility behavior and fidelity limits.
+
+Cards are allowed for repeated items, focused panels, and modals. Page-level workbench surfaces should not become a stack of decorative cards.
+
+## Hardware Board-First Rule
+
+In the normal Logic Gates Map Pins path, the board/table binding task must appear before explanatory chrome.
+
+- The Basys3 board workspace, mapping table, selected row, board resource, package pin, and XDC consequence are first-order.
+- A non-action command strip should not sit above the board/table in the normal mapped workbench.
+- Blocked states and no-boundary states may keep command/context copy because the student still needs recovery guidance.
+- No browser gate or screenshot can claim Vivado build, bitstream programming, or physical board observation proof.
+
+## Current Gates
+
+The Workbench Reconstruction v1 gate family protects this model:
+
+- `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
+- `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.
+- `ide:gate:verify-task-plane-usability` aggregates pre-run, post-run, fail, repair, and reset Verify layout contracts.
+- `ide:gate:hardware-board-dominance` checks Hardware Map Pins board/table dominance, selected-row geometry, and E0-only wording.
+- `ide:gate:action-first-entry-surfaces` checks Project, Export, and Import entry surfaces keep actions and recovery paths first-order.
+- `ide:gate:root-overflow-regression` sweeps the main modes and rejects root horizontal overflow.
+
+Adjacent gates remain active: `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:workbench-space-utilization`, `ide:gate:hardware-first-viewport`, and the surface-specific Verify/Export/Import/Project gates. `ide:gate:workbench-space-utilization` is also the wide `1920x1080` guard for the Verify task plane; the workspace must not collapse back into a narrow centered cap on large screens.
+
+## Non-Negotiables
+
+- Do not change simulation, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, or export goldens in layout-only slices.
+- Do not add SaaS/accounts or hosted classroom assumptions to this model.
+- Do not weaken browser gates to hide a real layout problem.
+- Do not claim E1/E2/E3 proof from browser screenshots, Playwright runs, or generated package inspection.

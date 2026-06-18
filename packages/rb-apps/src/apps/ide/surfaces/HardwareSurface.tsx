@@ -2195,6 +2195,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hardwareCommandSecondaryLabel =
     showBlockedHero ? heroSecondaryLabel : nextActionHero.secondaryLabel;
   const showHardwareCommandActions = hwMode !== 'map';
+  const showHardwareCommandStrip = hwMode !== 'map' || hasNoBoundaryRows;
   const hardwareCommandMeta = hwMode === 'map'
     ? (
       <>
@@ -2348,38 +2349,40 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         testId="ide-hardware-panel"
       >
         <div className="ide-surface-command-stack">
-          <SurfaceCommandStrip
-            className="ide-hardware-command-strip"
-            testId="ide-hardware-command-strip"
-            label="Hardware"
-            title={hardwareCommandTitle}
-            description={hardwareCommandDescription}
-            meta={hardwareCommandMeta}
-            actions={
-              showHardwareCommandActions ? (
-                <>
-                  <span data-testid="ide-primary-cta">
-                    <IdeButton
-                      tone="primary"
-                      onClick={showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction}
-                      testId={showBlockedHero ? 'ide-hardware-blocked-primary' : nextActionHero.primaryTestId}
-                    >
-                      {showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel}
-                    </IdeButton>
-                  </span>
-                  {hardwareCommandSecondaryAction && hardwareCommandSecondaryLabel ? (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={hardwareCommandSecondaryAction}
-                      testId={showBlockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
-                    >
-                      {hardwareCommandSecondaryLabel}
-                    </IdeButton>
-                  ) : null}
-                </>
-              ) : undefined
-            }
-          />
+          {showHardwareCommandStrip ? (
+            <SurfaceCommandStrip
+              className="ide-hardware-command-strip"
+              testId="ide-hardware-command-strip"
+              label="Hardware"
+              title={hardwareCommandTitle}
+              description={hardwareCommandDescription}
+              meta={hardwareCommandMeta}
+              actions={
+                showHardwareCommandActions ? (
+                  <>
+                    <span data-testid="ide-primary-cta">
+                      <IdeButton
+                        tone="primary"
+                        onClick={showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction}
+                        testId={showBlockedHero ? 'ide-hardware-blocked-primary' : nextActionHero.primaryTestId}
+                      >
+                        {showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel}
+                      </IdeButton>
+                    </span>
+                    {hardwareCommandSecondaryAction && hardwareCommandSecondaryLabel ? (
+                      <IdeButton
+                        tone="secondary"
+                        onClick={hardwareCommandSecondaryAction}
+                        testId={showBlockedHero ? 'ide-hardware-blocked-secondary' : 'ide-hardware-next-secondary'}
+                      >
+                        {hardwareCommandSecondaryLabel}
+                      </IdeButton>
+                    ) : null}
+                  </>
+                ) : undefined
+              }
+            />
+          ) : null}
         </div>
         {/* Slice N4 — chrome rebuild: always-visible exit affordance from any
             sub-mode back to Map Pins. Previous design relied on the mode-tabs

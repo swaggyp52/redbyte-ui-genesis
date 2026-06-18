@@ -169,7 +169,7 @@ describe('IdeWorkbenchShell', () => {
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('48px');
+    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('36px');
     const restoreRail = getByTestId('ide-workbench-dock-toggle-left');
     expect(restoreRail).toHaveAttribute('aria-label', 'Show library');
     expect(restoreRail.textContent).toContain('Show');
@@ -326,6 +326,27 @@ describe('IdeWorkbenchShell', () => {
   it('starts expanded when consoleMode is expanded', () => {
     const { getByTestId } = renderShell({
       consoleMode: 'expanded',
+    });
+
+    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
+  });
+
+  it('does not reserve bottom console space for empty auto mode', () => {
+    const { getByTestId, queryByTestId } = renderShell({
+      consoleMode: 'auto',
+      consoleHasEntries: false,
+      consoleHasBlocking: false,
+    });
+
+    expect(queryByTestId('ide-workbench-console')).toBeNull();
+    expect(queryByTestId('ide-workbench-resize-bottom')).toBeNull();
+    expect(getByTestId('ide-mode-project')).toHaveClass('is-console-hidden');
+  });
+
+  it('renders auto console when diagnostics exist', () => {
+    const { getByTestId } = renderShell({
+      consoleMode: 'auto',
+      consoleHasEntries: true,
     });
 
     expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');

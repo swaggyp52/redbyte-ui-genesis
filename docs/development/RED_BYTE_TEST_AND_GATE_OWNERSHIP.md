@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-17
+last_validated: 2026-06-18
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -27,6 +27,12 @@ Use this guide when adding or changing RedByte proof. Tests passing is useful ev
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
 - `ide:gate:design-canvas-zoom-integrity`
+- `ide:gate:workbench-reconstruction-v1`
+- `ide:gate:design-dual-tool-windows`
+- `ide:gate:verify-task-plane-usability`
+- `ide:gate:hardware-board-dominance`
+- `ide:gate:action-first-entry-surfaces`
+- `ide:gate:root-overflow-regression`
 - `ide:gate:design-canvas-direct-workbench`
 - `ide:gate:design-workspace-crash-proof`
 - `ide:gate:workbench-stability-overhaul`
@@ -65,6 +71,12 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
+- Workbench reconstruction protects the compact shell/task-plane model across Project, Design, Verify, Hardware, Export, and Import.
+- Design dual tool windows protects Design support tools from covering or squeezing the canvas task plane.
+- Verify task-plane usability keeps the existing Verify pre-run, post-run, fail, repair, and reset layout gates together as one current task-plane contract.
+- Hardware board dominance protects Map Pins from pushing the board/table binding task below non-action chrome.
+- Action-first entry surfaces protects Project, Export, and Import from regressing into static card stacks before useful actions.
+- Root overflow regression protects the reconstructed shell from returning document-level horizontal overflow in normal modes.
 - Design canvas direct workbench protects loaded starter authoring from default zoom HUD/minimap obstruction while preserving on-demand Fit/Center/preset controls.
 - Design workspace crash proof protects stale or failed lazy Design surface imports from stranding the user in an error boundary; it requires non-destructive `Reload App` recovery and preserves `Reset Workspace`.
 - Workbench stability overhaul protects normal Project -> Design -> Verify -> reload -> Map Pins -> Design continuity after the boundary recovery repair.
@@ -112,10 +124,10 @@ Why:
 | Verify behavior, run intent, repair loop, testbench layout, or no-circuit entry | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
-| Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
+| Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:hardware-board-dominance`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, nested-scroll traps, or first-viewport layout | `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
+| Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, nested-scroll traps, task-plane hierarchy, or first-viewport layout | `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, `ide:gate:root-overflow-regression`, `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules
@@ -127,6 +139,22 @@ Why:
 - Capture console/page errors and reject `NaN`, `Infinity`, and `-Infinity` in console or SVG geometry when geometry matters.
 - Keep gates narrow enough to diagnose a failure. Add one broader classroom aggregator only after the focused gate is reliable.
 - Do not hide a product issue by weakening a gate. If the issue is real but outside the slice, record it as an audit/issue finding.
+
+## Current Workbench Reconstruction Gates
+
+`ide:gate:workbench-reconstruction-v1` proves the compact shell/task-plane model across Project, Design, Verify, Hardware, Export, and Import at `1366x768` and `1440x900`: visible build hash, conditional empty-console space ownership, task-plane visibility, no root overflow, and no console/page errors.
+
+`ide:gate:design-dual-tool-windows` proves Design support tools open and close without covering the canvas task plane, and that Quick Inputs remain visible as a docked tool window while palette sections scroll inside the left dock.
+
+`ide:gate:verify-task-plane-usability` runs the current Verify pre-run, post-run, fail/repair, and reset layout gates as one task-plane contract.
+
+`ide:gate:hardware-board-dominance` proves Hardware Map Pins opens the normal mapped workbench with the board/table task plane first-order, selected SW0 geometry visible, no browser E1/E2/E3 overclaim, no root overflow, and no console/page errors.
+
+`ide:gate:action-first-entry-surfaces` proves Project, Export, and Import keep first-viewport actions/recovery paths useful instead of reverting to passive card stacks.
+
+`ide:gate:root-overflow-regression` sweeps the main modes for document-level horizontal overflow after shell/task-plane compaction.
+
+`ide:gate:workbench-space-utilization` remains the wide-viewport guard for this model too; it now protects the Verify workspace from returning to a capped/narrow layout at `1920x1080` after shell compaction.
 
 ## Current Design Direct-Workbench Gate
 

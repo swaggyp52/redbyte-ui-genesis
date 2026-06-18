@@ -219,7 +219,9 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     : showRightCollapsedRail
       ? 'collapsed'
       : 'hidden';
-  const showConsole = policy.consoleMode !== 'hidden';
+  const showConsole =
+    policy.consoleMode !== 'hidden' &&
+    (policy.consoleMode !== 'auto' || consoleHasBlocking || consoleHasEntries || consolePinnedOpen);
   const leftRailLabels =
     mode === 'verify'
       ? { short: 'Sig', show: 'Show signals', collapse: 'Collapse signals' }
