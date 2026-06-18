@@ -4505,6 +4505,7 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace {
+  order: 1 !important;
   margin-top: 0 !important;
   min-height: clamp(430px, calc(100vh - 210px), 740px) !important;
   border-radius: 10px !important;
@@ -4516,8 +4517,14 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-mapping-header {
+  order: 10 !important;
+  margin-top: 8px !important;
   min-height: 28px !important;
   padding: 4px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] [data-testid='ide-hw-map-loop-card'] {
+  order: 12 !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-task-copy {
@@ -4544,6 +4551,7 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-stage-rail--demoted {
+  order: 14 !important;
   margin: 8px 0 0 !important;
   padding: 7px 10px !important;
 }
