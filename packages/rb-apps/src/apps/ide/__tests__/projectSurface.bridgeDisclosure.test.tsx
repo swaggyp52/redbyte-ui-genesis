@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
+
+afterEach(() => {
+  cleanup();
+});
 
 function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurfaceProps {
   return {

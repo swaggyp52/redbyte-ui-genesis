@@ -366,3 +366,254 @@
   width: 100%;
   pointer-events: auto;
 }
+
+/* Project / Import / Export reconstruction: outer workflow surfaces are tools, not card stacks. */
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+  grid-template-areas:
+    "identity next"
+    "modes modes"
+    "evidence evidence"
+    "starts starts";
+  gap: 10px 12px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(64, 125, 164, 0.24);
+  background: linear-gradient(180deg, rgba(5, 14, 25, 0.94), rgba(4, 10, 18, 0.98));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-identity {
+  grid-area: identity;
+  align-self: start;
+  padding: 10px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 [data-testid='ide-project-command-strip'] {
+  grid-area: next;
+  padding: 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-title {
+  font-size: 18px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-actions {
+  grid-area: modes;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-action,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 115, 150, 0.35);
+  background: rgba(7, 16, 27, 0.72);
+  color: rgba(232, 244, 255, 0.94);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths {
+  grid-area: starts;
+  padding: 10px !important;
+  border-radius: 10px !important;
+  background: rgba(5, 12, 20, 0.62) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-evidence-strip-v1 {
+  grid-area: evidence;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-evidence-strip-v1 .ide-projectx-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-guided-wizard-v1,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1 {
+  display: grid;
+  gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-wizard-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-wizard-track li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 115, 150, 0.28);
+  background: rgba(6, 15, 25, 0.68);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-wizard-track li.is-active {
+  border-color: rgba(46, 196, 182, 0.5);
+  background: rgba(8, 38, 45, 0.74);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-guidance-item {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 115, 150, 0.24);
+  background: rgba(5, 12, 20, 0.58);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-guided-wizard-v1 .ide-import-start-hero {
+  grid-template-columns: minmax(320px, 0.42fr) minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-guided-wizard-v1 .ide-import-start-hero__actions {
+  grid-template-columns: minmax(240px, 0.34fr) minmax(0, 1fr);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-safety-boundary-v1 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(70, 115, 150, 0.22);
+  font-size: 12px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1 {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(64, 125, 164, 0.26);
+  background: linear-gradient(180deg, rgba(5, 14, 25, 0.94), rgba(4, 10, 18, 0.98));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions .ide-button {
+  min-height: 36px;
+  padding: 7px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
+  gap: 10px;
+  min-height: clamp(300px, 44vh, 560px);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1 {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  overflow: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1 {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(70, 115, 150, 0.28);
+  background: rgba(3, 10, 18, 0.72);
+  overflow: hidden;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__body {
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Verify: keep the open Signals rail readable without changing other modes. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] {
+  --ide-workbench-left-width: clamp(224px, 16vw, 248px) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed).hide-right-dock {
+  grid-template-columns: clamp(224px, 16vw, 248px) minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed):not(.hide-right-dock) {
+  grid-template-columns:
+    clamp(224px, 16vw, 248px)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-slot-width) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-left,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock {
+  width: 100% !important;
+  min-width: 224px !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-left-dock {
+  overflow-x: hidden !important;
+  padding: 10px 10px 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-toprow {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: start !important;
+  gap: 8px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-title {
+  min-width: 0 !important;
+  flex-wrap: wrap !important;
+  row-gap: 4px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-count {
+  max-width: 100% !important;
+  white-space: nowrap !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-actions {
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  max-width: 88px !important;
+  gap: 4px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-action-btn {
+  min-height: 24px !important;
+  padding: 3px 6px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-rail-focus {
+  overflow-wrap: anywhere !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-entry {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}

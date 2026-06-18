@@ -1713,6 +1713,120 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             />
           </div>
 
+          <section
+            className="ide-export-package-inspector-v1"
+            data-testid="ide-export-package-inspector-v1"
+            aria-label="Export package inspector"
+          >
+            <header className="ide-export-package-inspector-v1__header">
+              <div>
+                <p className="ide-surface-block-label">Package inspector</p>
+                <h3>{selectedArtifact ? selectedArtifact.path : 'Generated package files'}</h3>
+                <p>
+                  Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.
+                </p>
+              </div>
+              <div className="ide-export-package-inspector-v1__actions">
+                <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
+                <IdeButton
+                  tone="primary"
+                  onClick={handlePrimaryHandoff}
+                  disabled={primaryHandoffDisabled}
+                  testId="ide-export-package-build-v1"
+                >
+                  {primaryExportCtaLabel}
+                </IdeButton>
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => void handleDownloadExport('project')}
+                  disabled={downloadDisabled}
+                  testId="ide-export-package-download-v1"
+                >
+                  Download package
+                </IdeButton>
+                <IdeButton
+                  tone="ghost"
+                  onClick={() =>
+                    selectedArtifact &&
+                    void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)
+                  }
+                  disabled={!selectedArtifact || selectedArtifact.content.trim().length === 0}
+                  testId="ide-export-package-copy-v1"
+                >
+                  {selectedArtifact && copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy current file'}
+                </IdeButton>
+              </div>
+            </header>
+            <div className="ide-export-package-inspector-v1__body">
+              <nav className="ide-export-file-browser-v1" data-testid="ide-export-file-browser-v1" aria-label="Generated files">
+                {viewModel.artifacts.length > 0 ? (
+                  viewModel.artifacts.map((artifact) => (
+                    <button
+                      key={artifact.path}
+                      type="button"
+                      className={`ide-export-file-browser-v1__file${selectedArtifact?.path === artifact.path ? ' is-active' : ''}`}
+                      onClick={() => setSelectedArtifactPath(artifact.path)}
+                      data-testid={`ide-export-file-${artifact.path
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '-')
+                        .replace(/^-+|-+$/g, '')}`}
+                      aria-label={`Preview ${artifact.path}`}
+                      aria-pressed={selectedArtifact?.path === artifact.path}
+                    >
+                      <span>{artifact.path}</span>
+                      <small>{artifact.note}</small>
+                      <IdeStatusPill
+                        tone={
+                          artifact.status === 'ready'
+                            ? 'ok'
+                            : artifact.status === 'blocked'
+                              ? 'error'
+                              : 'warn'
+                        }
+                      >
+                        {artifact.status === 'ready' ? 'Ready' : artifact.status === 'blocked' ? 'Blocked' : 'Pending'}
+                      </IdeStatusPill>
+                    </button>
+                  ))
+                ) : (
+                  <p className="ide-copy ide-copy--flush">Generated files appear after the circuit and pin mapping are ready.</p>
+                )}
+              </nav>
+              <section className="ide-export-selected-preview-v1" data-testid="ide-export-selected-preview-v1">
+                <header className="ide-export-selected-preview-v1__header">
+                  <div>
+                    <span data-testid="ide-export-preview-path">{selectedArtifact?.path ?? ''}</span>
+                    <p>{selectedArtifact?.note ?? 'Select a generated file to inspect its contents.'}</p>
+                  </div>
+                  {selectedArtifact ? (
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)}
+                      disabled={selectedArtifact.content.trim().length === 0}
+                    >
+                      {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
+                    </IdeButton>
+                  ) : null}
+                </header>
+                <div className="ide-export-selected-preview-v1__body">
+                  {selectedArtifact?.preview.trim() ? (
+                    <pre
+                      className="ide-export-artifact-code"
+                      data-testid="ide-export-preview-code"
+                      dangerouslySetInnerHTML={{
+                        __html: syntaxHighlight(selectedArtifact.preview ?? '', selectedArtifact.kind ?? ''),
+                      }}
+                    />
+                  ) : (
+                    <p className="ide-export-artifact-empty">
+                      File content will appear once the circuit and pin mapping are complete.
+                    </p>
+                  )}
+                </div>
+              </section>
+            </div>
+          </section>
+
           <ExportReadinessHero
             sectionRef={surfaceRef}
             layoutMode={layoutMode}

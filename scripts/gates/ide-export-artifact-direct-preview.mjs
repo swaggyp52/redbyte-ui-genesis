@@ -4,7 +4,7 @@
  * Export artifact direct-preview gate.
  *
  * Contract:
- * 1) Generated-file cues in the first-viewport handoff station are real buttons, not static chips.
+ * 1) Generated-file cues in the first-viewport package inspector are real buttons, not static chips.
  * 2) Clicking a file cue selects that generated artifact and reveals the preview workspace.
  * 3) Keyboard activation follows the same path, and the browser view does not claim Vivado/Basys3 proof.
  */
@@ -61,11 +61,11 @@ await runIdeGate('IDE export artifact direct preview satisfied', async ({ page, 
         `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
       );
 
-      const topVhd = page.locator('[data-testid="ide-export-handoff-artifact-top-vhd"]').first();
-      const topXdc = page.locator('[data-testid="ide-export-handoff-artifact-top-xdc"]').first();
-      assert(await visible(topVhd), `${viewport.label}: top.vhd handoff cue must be visible`);
-      assert(await visible(topXdc), `${viewport.label}: top.xdc handoff cue must be visible`);
-      await assertWithinFirstViewport(page, topVhd, `${viewport.label}: top.vhd handoff cue`);
+      const topVhd = page.locator('[data-testid="ide-export-file-top-vhd"]').first();
+      const topXdc = page.locator('[data-testid="ide-export-file-top-xdc"]').first();
+      assert(await visible(topVhd), `${viewport.label}: top.vhd package file cue must be visible`);
+      assert(await visible(topXdc), `${viewport.label}: top.xdc package file cue must be visible`);
+      await assertWithinFirstViewport(page, topVhd, `${viewport.label}: top.vhd package file cue`);
 
       const chipSemantics = await topVhd.evaluate((element) => ({
         tag: element.tagName.toLowerCase(),
@@ -115,7 +115,7 @@ await runIdeGate('IDE export artifact direct preview satisfied', async ({ page, 
         initialPreviewPath,
         finalPreviewPath: await previewPath(page),
         topVhd: chipSemantics,
-        preview: await readRect(page, '[data-testid="ide-export-artifact-preview"]'),
+        preview: await readRect(page, '[data-testid="ide-export-selected-preview-v1"]'),
         code: await readRect(page, '[data-testid="ide-export-preview-code"]'),
       });
     } catch (error) {
@@ -147,7 +147,7 @@ async function openReadyToBuildExport(page, baseUrl, viewportLabel) {
 
   await page.locator('[data-testid="mode-button-export"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-handoff-station"]', { state: 'visible', timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-package-inspector-v1"]', { state: 'visible', timeout: 10000 });
 }
 
 async function waitForPreviewPath(page, artifactPath) {
@@ -180,7 +180,7 @@ async function assertWithinFirstViewport(page, locator, label) {
 }
 
 async function assertPreviewVisible(page, label) {
-  const selector = '[data-testid="ide-export-artifact-preview"]';
+  const selector = '[data-testid="ide-export-selected-preview-v1"]';
   await page.waitForFunction(
     (targetSelector) => {
       const element = document.querySelector(targetSelector);

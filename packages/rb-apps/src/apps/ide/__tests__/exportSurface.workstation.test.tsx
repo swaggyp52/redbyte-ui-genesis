@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
@@ -166,10 +166,10 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     expect(getByTestId('ide-export-command-strip').textContent).toContain('Export');
-    expect(getByTestId('ide-mode-export')).toHaveAttribute('data-right-dock-state', 'collapsed');
+    expect(getByTestId('ide-mode-export').getAttribute('data-right-dock-state')).toBe('collapsed');
     expect(queryByTestId('ide-inspector')).toBeNull();
     expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
+    expect(getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
   });
 
   it('shows the summary hero, grouped artifacts, key copy actions, and compact Vivado guidance', () => {

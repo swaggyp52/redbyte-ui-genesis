@@ -1285,6 +1285,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           data-testid="ide-project-command-center"
         >
         <div className="ide-projectx-shell" data-testid="ide-projectx-shell">
+          <section
+            className="ide-project-command-board-v1"
+            data-testid="ide-project-command-board-v1"
+            aria-label="Loaded project command center"
+          >
           <ProjectIdentityHeader
             projectName={projectName}
             onRenameProject={onRenameProject}
@@ -1304,7 +1309,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   : 'ready'
             }
             statusLabel={heroStatusLabel.toUpperCase()}
-            title={`Current focus: Continue to ${activePrimaryCtaLabel}`}
+            title={`Current action: Continue to ${activePrimaryCtaLabel}`}
             subline={heroStatusMessage}
             sublineTestId="ide-project-hero-status"
             reason={nextStepReason}
@@ -1317,6 +1322,49 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             rootTestId="ide-project-command-strip"
             reasonTestId="ide-project-command-strip-next-step-copy"
           />
+          <section
+            className="ide-project-command-mode-actions"
+            data-testid="ide-project-command-mode-actions"
+            aria-label="Current project commands"
+          >
+            <button
+              type="button"
+              className="ide-project-command-mode-action"
+              onClick={onOpenDesign}
+              data-testid="ide-project-command-action-design"
+            >
+              <span>Design</span>
+              <strong>Edit circuit</strong>
+            </button>
+            <button
+              type="button"
+              className={`ide-project-command-mode-action${activePrimaryCta.mode === 'verify' ? ' is-next' : ''}`}
+              onClick={onOpenVerify}
+              data-testid="ide-project-command-action-verify"
+            >
+              <span>Verify</span>
+              <strong>{activePrimaryCta.mode === 'verify' ? 'Next action' : 'Run checks'}</strong>
+            </button>
+            <button
+              type="button"
+              className={`ide-project-command-mode-action${activePrimaryCta.mode === 'project' ? ' is-next' : ''}`}
+              onClick={onOpenHardware}
+              data-testid="ide-project-command-action-map-pins"
+            >
+              <span>Map Pins</span>
+              <strong>{unmappedRequiredCount > 0 ? `${unmappedRequiredCount} left` : 'Mapped'}</strong>
+            </button>
+            <button
+              type="button"
+              className={`ide-project-command-mode-action${activePrimaryCta.mode === 'export' || activePrimaryCta.mode === 'hardware' ? ' is-next' : ''}`}
+              onClick={onOpenExport}
+              data-testid="ide-project-command-action-export"
+            >
+              <span>Export</span>
+              <strong>{exportPackageCurrent ? 'Current package' : exportAvailable ? 'Draft ready' : 'Build files'}</strong>
+            </button>
+          </section>
+          <div className="ide-project-evidence-strip-v1" data-testid="ide-project-evidence-strip-v1">
           <ProjectMetricsRow
             metrics={[
               {
@@ -1377,6 +1425,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               },
             ]}
           />
+          </div>
           <section
             className="ide-project-entry-paths"
             data-testid="ide-project-entry-paths"
@@ -1384,11 +1433,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           >
             <header className="ide-project-entry-paths-header">
               <div>
-                <p className="ide-surface-block-label">Project paths</p>
+                <p className="ide-surface-block-label">Alternate starts</p>
                 <h3 className="ide-project-entry-paths-title">Continue, switch starts, or recover work</h3>
               </div>
               <p className="ide-project-entry-paths-copy">
-                The current project remains the focus; alternate starts stay one click away.
+                Current project stays active; starts and recovery remain one click away.
               </p>
             </header>
             <div className="ide-project-entry-path-grid">
@@ -1408,7 +1457,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-testid="ide-project-path-build-fresh"
               >
                 <span className="ide-project-entry-path-label">Build fresh</span>
-                <span className="ide-project-entry-path-sub">Start a blank Basys3 design</span>
+                <span className="ide-project-entry-path-sub">Blank Basys3 design</span>
               </button>
               <button
                 type="button"
@@ -1417,7 +1466,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-testid="ide-project-path-course-starter"
               >
                 <span className="ide-project-entry-path-label">Course Starter</span>
-                <span className="ide-project-entry-path-sub">Open guided examples</span>
+                <span className="ide-project-entry-path-sub">Guided examples</span>
               </button>
               <button
                 type="button"
@@ -1426,7 +1475,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-testid="ide-project-path-import-recover"
               >
                 <span className="ide-project-entry-path-label">Import / Recover</span>
-                <span className="ide-project-entry-path-sub">Restore a RedByte ZIP or inspect HDL safely</span>
+                <span className="ide-project-entry-path-sub">ZIP or HDL recovery</span>
               </button>
               <button
                 type="button"
@@ -1436,9 +1485,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 data-testid="ide-project-path-open-existing"
               >
                 <span className="ide-project-entry-path-label">Open Recent</span>
-                <span className="ide-project-entry-path-sub">Resume local saved work</span>
+                <span className="ide-project-entry-path-sub">Local saved work</span>
               </button>
             </div>
+          </section>
           </section>
         </div>
         </div>

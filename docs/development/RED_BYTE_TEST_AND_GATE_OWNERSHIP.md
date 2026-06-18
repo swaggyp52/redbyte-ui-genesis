@@ -27,6 +27,12 @@ Use this guide when adding or changing RedByte proof. Tests passing is useful ev
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
 - `ide:gate:design-canvas-zoom-integrity`
+- `ide:gate:project-loaded-command-surface`
+- `ide:gate:import-guided-recovery-wizard`
+- `ide:gate:export-package-inspector`
+- `ide:gate:outer-workflow-action-density`
+- `ide:gate:card-chrome-regression`
+- `ide:gate:verify-signals-dock-not-clipped`
 - `ide:gate:design-library-not-cropped`
 - `ide:gate:design-tool-window-coexistence`
 - `ide:gate:hardware-board-unblocked`
@@ -78,6 +84,12 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 Why:
 
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
+- Project loaded command surface protects loaded Project from reverting to a metric-first report page before direct Design / Verify / Map Pins / Export actions.
+- Import guided recovery wizard protects Import first-look from reverting to passive recovery prose instead of a staged recovery tool with a no-overwrite boundary.
+- Export package inspector protects Export ready state from hiding generated-file inspection behind extra interaction.
+- Outer workflow action density protects Project, Import, and Export from losing direct first-viewport commands.
+- Card chrome regression protects the current reduction in non-interactive card-like chrome on outer workflow surfaces.
+- Verify Signals dock not clipped protects the open Verify Signals rail from returning to the cropped `136px`/`144px` state while adjacent gates keep collapsed Signals compact.
 - Design library not cropped protects the release-readiness requirement that visible tool controls fit inside the open Library dock at classroom and desktop viewports.
 - Design tool-window coexistence protects the Design Library and Inspector from becoming disproportionate panels that starve the canvas.
 - Hardware board unblocked protects Map Pins from resource summaries covering the Basys3 board visual.
@@ -135,14 +147,14 @@ Why:
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify behavior, run intent, repair loop, testbench layout, or no-circuit entry | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, or a narrower new Verify browser gate |
+| Verify behavior, run intent, repair loop, testbench layout, no-circuit entry, or Signals rail geometry | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
-| Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
+| Export trust, visible handoff, package inspector, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, or `ide:gate:export-package-inspector` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, and no overclaim |
 | Hardware/Map Pins layout, board obstruction, resource catalog placement, or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:hardware-board-dominance`, `ide:gate:hardware-board-unblocked`, `ide:gate:hardware-resource-catalog-not-obstructing`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
-| Import active recovery presentation or editor/review hierarchy | `ide:gate:import-guided-recovery-workflow`, `ide:gate:import-recovery-contract`, Import before/after screenshots, and focused Import Vitest only when selector/action contracts change |
+| Import first-look wizard, active recovery presentation, or editor/review hierarchy | `ide:gate:import-guided-recovery-wizard`, `ide:gate:import-guided-recovery-workflow`, `ide:gate:import-recovery-contract`, Import before/after screenshots, and focused Import Vitest only when selector/action contracts change |
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
-| Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, workbench obstruction, nested-scroll traps, task-plane hierarchy, or first-viewport layout | `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, `ide:gate:root-overflow-regression`, `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
+| Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, outer workflow card/action density, workbench obstruction, nested-scroll traps, task-plane hierarchy, or first-viewport layout | `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, `ide:gate:root-overflow-regression`, `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, `ide:gate:outer-workflow-action-density`, `ide:gate:card-chrome-regression`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
 
 ## Browser Gate Rules
@@ -156,6 +168,16 @@ Why:
 - Do not hide a product issue by weakening a gate. If the issue is real but outside the slice, record it as an audit/issue finding.
 
 ## Current Release Readiness Visual Gates
+
+`ide:gate:project-loaded-command-surface` proves loaded Project has a command board with direct mode actions and secondary start/recovery paths at classroom and desktop viewports.
+
+`ide:gate:import-guided-recovery-wizard` proves Import first-look uses a staged recovery wizard and explicit no-overwrite boundary.
+
+`ide:gate:export-package-inspector` proves Export ready state opens with generated-file browser, selected preview, and direct package actions.
+
+`ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` protect Project, Import, and Export from regressing into passive card/report surfaces.
+
+`ide:gate:verify-signals-dock-not-clipped` proves the open Verify Signals dock is readable at `1366x768` and `1440x900`; `ide:gate:side-dock-affordance` remains the collapsed-rail guard.
 
 `ide:gate:design-library-not-cropped` proves the Design Library is at least `260px` wide at classroom/desktop viewports, leaves a usable canvas, and keeps visible search/board-resource controls inside the dock.
 

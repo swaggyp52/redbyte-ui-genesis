@@ -55,7 +55,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
 
       await openMode(page, baseUrl, 'export', `workbench-reconstruction-v1-${viewport.label}`);
       await assertShellChrome(page, viewport, 'export');
-      await assertVisibleRect(page, ['[data-testid="ide-export-handoff-station"]'], `${viewport.label}/export handoff`, {
+      await assertVisibleRect(page, ['[data-testid="ide-export-package-inspector-v1"]'], `${viewport.label}/export package inspector`, {
         maxTop: 176,
         minWidth: Math.round(viewport.width * 0.70),
         minHeight: 220,

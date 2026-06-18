@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('ImportSurface first look', () => {
   it('leads with one clear starting action and keeps replacement as a review step', () => {

@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
+
+afterEach(() => {
+  cleanup();
+});
 
 function enterImportWorkbench(view: ReturnType<typeof render>) {
   fireEvent.click(view.getByTestId('ide-import-start-secondary'));

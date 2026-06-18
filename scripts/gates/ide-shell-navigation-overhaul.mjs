@@ -150,7 +150,7 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
         '[data-testid="ide-verify-workbench"]',
       ],
       hardware: ['[data-testid="ide-hw-board-workspace"]', '[data-testid="ide-hw-map-table"]'],
-      export: ['[data-testid="ide-export-handoff-station"]', '[data-testid="ide-export-artifact-preview"]'],
+      export: ['[data-testid="ide-export-package-inspector-v1"]', '[data-testid="ide-export-handoff-station"]', '[data-testid="ide-export-artifact-preview"]'],
       import: ['[data-testid="ide-import-start-shell"]', '[data-testid="ide-import-workspace"]'],
     };
     let primary = { visible: false, width: 0, height: 0, top: 0, left: 0, visibleWidth: 0, visibleHeight: 0 };

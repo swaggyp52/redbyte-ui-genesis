@@ -48,6 +48,42 @@ This target is protected by:
 
 These gates are wired into `classroom:gate` and `verify:gates:classroom`.
 
+## Project / Import / Export Reconstruction Target
+
+The 2026-06-18 outer workflow package extends the same standard to the outer workflow surfaces and closes locally:
+
+1. **Project must behave like a command center.**
+   - A loaded project should immediately show the current required action, contextual commands for Design / Verify / Map Pins / Export, secondary starts, and compact evidence.
+   - Metrics should support decisions; they should not become the main page structure.
+
+2. **Import must behave like a guided recovery wizard.**
+   - Source selection, detected content, repair/mapping, replacement review, and apply confirmation should be staged as one workflow.
+   - The no-overwrite boundary remains explicit, but long recovery prose should not dominate the useful viewport.
+
+3. **Export must behave like a package inspector.**
+   - The generated file list and selected artifact preview should be the default work object when files exist.
+   - Build, download, copy, and preview actions should stay direct; Vivado guidance should be concise and state-tied.
+
+New reconstruction gates should reject static/card-heavy first-viewport layouts in addition to preserving existing reachability, reload, and no-overflow guarantees.
+
+Closed gates:
+
+- `ide:gate:project-loaded-command-surface`
+- `ide:gate:import-guided-recovery-wizard`
+- `ide:gate:export-package-inspector`
+- `ide:gate:outer-workflow-action-density`
+- `ide:gate:card-chrome-regression`
+
+## Verify Signals Dock Readability Target
+
+The same visual-readiness standard applies to Verify support tools. The open Signals dock must be readable when a student asks for it, while the collapsed rail must remain compact when the workspace needs the room.
+
+Closed by `ide:gate:verify-signals-dock-not-clipped`:
+
+- Before: open Verify Signals dock measured `136px` at `1366x768` and `144px` at `1440x900`, visibly cropping the title/count/action region.
+- After: open Verify Signals dock has a readable `224px` minimum slot, no horizontal clipping, no root overflow, and the main Verify workspace remains usable.
+- Regression coverage: `ide:gate:side-dock-affordance` still proves collapsed Verify Signals does not widen back into a bulky rail.
+
 ## Non-Claims
 
 This target does not prove Vivado build, bitstream programming, or physical Basys3 behavior. It also does not change simulation semantics, Verify semantics, pin mapping semantics, generated artifacts, project format, or goldens.

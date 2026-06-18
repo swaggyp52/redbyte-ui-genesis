@@ -4,9 +4,9 @@
  * Export first-viewport artifact visibility gate.
  *
  * Contract:
- * 1) Ready-to-build Export keeps concrete generated file names visible in the handoff station at 1366x768 and 1440x900.
+ * 1) Ready-to-build Export keeps concrete generated file names visible in the package inspector at 1366x768 and 1440x900.
  * 2) The visible file cue is in the first viewport and names the core E0 artifacts students/professors inspect.
- * 3) The downstream artifact explorer remains present; this gate does not change generated files or hardware proof claims.
+ * 3) The downstream handoff station and artifact explorer remain present; this gate does not change generated files or hardware proof claims.
  */
 
 import { execSync } from 'node:child_process';
@@ -59,17 +59,21 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
         `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
       );
 
+      const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+      const fileBrowser = page.locator('[data-testid="ide-export-file-browser-v1"]').first();
       const station = page.locator('[data-testid="ide-export-handoff-station"]').first();
       const artifactStrip = page.locator('[data-testid="ide-export-handoff-artifact-strip"]').first();
+      assert(await visible(inspector), `${viewport.label}: Export package inspector must be visible`);
+      assert(await visible(fileBrowser), `${viewport.label}: Export package inspector must expose visible artifact files`);
       assert(await visible(station), `${viewport.label}: Export handoff station must be visible`);
-      assert(await visible(artifactStrip), `${viewport.label}: Export handoff station must expose visible artifact files`);
-      await assertWithinFirstViewport(page, artifactStrip, `${viewport.label}: first-viewport artifact strip`);
+      assert(await visible(artifactStrip), `${viewport.label}: downstream handoff station must still expose visible artifact files`);
+      await assertWithinFirstViewport(page, fileBrowser, `${viewport.label}: first-viewport package file browser`);
 
-      const stripText = await normalizedText(artifactStrip);
+      const stripText = await normalizedText(fileBrowser);
       for (const artifactName of REQUIRED_ARTIFACTS) {
         assert(
           stripText.toLowerCase().includes(artifactName.toLowerCase()),
-          `${viewport.label}: artifact strip must include ${artifactName}; got "${stripText}"`
+          `${viewport.label}: package file browser must include ${artifactName}; got "${stripText}"`
         );
       }
 
@@ -83,6 +87,8 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
 
       observations.push({
         viewport: viewport.label,
+        inspector: await readRect(page, '[data-testid="ide-export-package-inspector-v1"]'),
+        fileBrowser: await readRect(page, '[data-testid="ide-export-file-browser-v1"]'),
         strip: await readRect(page, '[data-testid="ide-export-handoff-artifact-strip"]'),
         explorer: await readRect(page, '[data-testid="ide-export-artifact-preview"]'),
         text: stripText,

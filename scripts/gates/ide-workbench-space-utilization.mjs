@@ -99,7 +99,7 @@ await runIdeGate('IDE workbench space utilization satisfied', async ({ page, bas
 
     await checkSurface(failures, page, viewport, 'export', async () => {
       await openMode(page, 'export');
-      await page.waitForSelector('[data-testid="ide-export-handoff-station"]', { timeout: 15000 });
+      await page.waitForSelector('[data-testid="ide-export-package-inspector-v1"]', { timeout: 15000 });
       await capture(page, viewport, 'export');
       await assertExportSpace(page, viewport);
     });
@@ -293,10 +293,12 @@ async function assertHardwareSpace(page, viewport) {
 async function assertExportSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Export');
   await assertVisiblePrimary(page, viewport, 'Export handoff station', [
+    '[data-testid="ide-export-package-inspector-v1"]',
     '[data-testid="ide-export-handoff-station"]',
     '[data-testid="ide-export-readiness-hero"]',
   ]);
   await assertActionInViewport(page, viewport, 'Export primary handoff action', [
+    '[data-testid="ide-export-package-build-v1"]',
     '[data-testid="ide-export-rebuild-btn"]',
     '[data-testid="ide-export-primary-handoff-cta"] button',
   ]);

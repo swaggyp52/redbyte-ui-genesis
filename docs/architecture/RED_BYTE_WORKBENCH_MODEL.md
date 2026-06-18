@@ -37,6 +37,7 @@ Side tools support a primary task plane. They do not own the workbench.
 
 - Collapsed side tools use compact horizontal restore controls, not vertical/sideways labels.
 - Open side tools remain proportional, readable, and closable.
+- Verify's Signals support tool has two different obligations: collapsed must stay compact, and open must be wide enough to read the title, count, actions, and signal list without horizontal clipping.
 - Design Library must be wide enough to hold search, category controls, and board-resource chips without horizontal clipping at `1366x768` and `1440x900`.
 - A proportional Design Library is a tool window, not a collapsed rail; the canvas must remain usable beside it.
 - Docked tool windows that are part of normal authoring, such as Design Quick Inputs, must remain visible while their longer support lists scroll internally.
@@ -87,6 +88,9 @@ The Workbench Reconstruction v1 gate family protects this model:
 - `ide:gate:hardware-resource-catalog-not-obstructing` checks resource summaries/catalogs do not sit on top of board controls.
 - `ide:gate:release-readiness-visual-contract` combines the current Design and Hardware release-readiness geometry contract.
 - `ide:gate:no-cropped-controls-regression` prevents visible Design/Hardware controls from returning to horizontally cropped states.
+- `ide:gate:verify-signals-dock-not-clipped` checks the open Verify Signals dock is readable at `1366x768` and `1440x900` while adjacent side-dock and space-utilization gates keep collapsed Verify compact and the main workbench usable.
+- `ide:gate:project-loaded-command-surface`, `ide:gate:import-guided-recovery-wizard`, and `ide:gate:export-package-inspector` check the outer workflow surfaces behave like command, recovery, and package-inspection tools rather than static card stacks.
+- `ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` guard the outer workflow against losing direct actions or regressing into passive card chrome.
 - `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.
 - `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.

@@ -72,6 +72,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
       await capture(page, viewport, 'export-draft-no-project');
       await assertNoHorizontalOverflow(page, viewport, 'Export no-project draft');
       await assertVisiblePrimary(page, viewport, 'Export no-project draft', [
+        '[data-testid="ide-export-package-inspector-v1"]',
         '[data-testid="ide-export-handoff-station"]',
         '[data-testid="ide-export-panel"]',
       ]);
@@ -95,6 +96,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
       await capture(page, viewport, 'export-loaded-starter-draft');
       await assertNoHorizontalOverflow(page, viewport, 'Export loaded starter');
       await assertVisiblePrimary(page, viewport, 'Export loaded starter', [
+        '[data-testid="ide-export-package-inspector-v1"]',
         '[data-testid="ide-export-handoff-station"]',
         '[data-testid="ide-export-panel"]',
       ]);

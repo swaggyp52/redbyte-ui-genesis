@@ -43,6 +43,33 @@ Acceptance:
 - Hardware resource summary/catalog content does not overlay the Basys3 board visual.
 - No simulation, Verify, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
 
+## Phase 12y - Outer Workflow Command Surfaces + Verify Signals Dock
+
+Status: Closed 2026-06-18 by the Outer Workflow Command Surfaces + Verify Signals Dock v1 slice.
+
+Goal: Make the outer workflow surfaces feel like tools instead of static card/report pages, and repair the visibly cropped Verify Signals dock reported from live browser screenshots.
+
+Why: Browser-first reconstruction showed loaded Project still needed a direct command surface, Import first-look still needed a clearer recovery wizard, and Export ready state still needed package-inspector behavior. The user also provided Verify screenshots showing the open Signals rail cropped to `136px`/`144px`, which made a core evidence support tool look unfinished.
+
+Proof:
+
+- `ide:gate:project-loaded-command-surface`
+- `ide:gate:import-guided-recovery-wizard`
+- `ide:gate:export-package-inspector`
+- `ide:gate:outer-workflow-action-density`
+- `ide:gate:card-chrome-regression`
+- `ide:gate:verify-signals-dock-not-clipped`
+- `ide:gate:side-dock-affordance`
+- Before/after screenshots under `.redbyte/product-immersion/project-import-export-reconstruction/2026-06-18/`.
+
+Acceptance:
+
+- Loaded Project exposes direct Design / Verify / Map Pins / Export actions with secondary start/recovery paths and compact evidence.
+- Import first-look presents recovery as staged wizard work with an explicit no-overwrite boundary.
+- Export ready state opens as a package inspector with generated-file browser, selected artifact preview, and direct package actions.
+- Verify Signals opens to a readable `224px` minimum rail with no horizontal clipping, while collapsed Signals remains compact.
+- No simulation, Verify, mapping, import parser/apply, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

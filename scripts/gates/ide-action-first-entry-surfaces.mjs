@@ -25,18 +25,18 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertBuildHash(page, viewport.label);
 
       await openMode(page, baseUrl, 'project', `action-first-entry-surfaces-${viewport.label}`);
-      await assertVisibleRect(page, ['[data-testid="ide-project-path-continue"]'], `${viewport.label}/Project Continue`, {
+      await assertVisibleRect(page, ['[data-testid="ide-project-command-action-verify"]', '[data-testid="ide-project-path-continue"]'], `${viewport.label}/Project current action`, {
         maxTop: viewport.height === 768 ? 520 : 570,
         minWidth: 180,
         minHeight: 48,
       });
       await assertVisibleRect(page, ['[data-testid="ide-project-path-build-fresh"]', '[data-testid="ide-project-build-fresh-primary"]'], `${viewport.label}/Project Build Fresh`, {
-        maxTop: viewport.height === 768 ? 520 : 570,
+        maxTop: viewport.height === 768 ? 640 : 690,
         minWidth: 180,
         minHeight: 48,
       });
       await assertVisibleRect(page, ['[data-testid="ide-project-path-import-recover"]'], `${viewport.label}/Project Import Recover`, {
-        maxTop: viewport.height === 768 ? 520 : 570,
+        maxTop: viewport.height === 768 ? 640 : 690,
         minWidth: 180,
         minHeight: 48,
       });
@@ -44,12 +44,12 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await openMode(page, baseUrl, 'verify', `action-first-entry-surfaces-${viewport.label}`);
       await runComparePass(page);
       await openMode(page, baseUrl, 'export', `action-first-entry-surfaces-${viewport.label}`);
-      await assertVisibleRect(page, ['[data-testid="ide-export-rebuild-btn"]', '[data-testid="ide-export-primary-handoff-cta"] button'], `${viewport.label}/Export Build Bundle`, {
+      await assertVisibleRect(page, ['[data-testid="ide-export-package-build-v1"]', '[data-testid="ide-export-rebuild-btn"]', '[data-testid="ide-export-primary-handoff-cta"] button'], `${viewport.label}/Export Build Bundle`, {
         maxTop: viewport.height === 768 ? 330 : 370,
-        minWidth: 220,
+        minWidth: 140,
         minHeight: 36,
       });
-      await assertVisibleRect(page, ['[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export artifact preview`, {
+      await assertVisibleRect(page, ['[data-testid="ide-export-file-top-vhd"]', '[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export artifact preview`, {
         maxTop: viewport.height === 768 ? 430 : 470,
         minWidth: 120,
         minHeight: 42,

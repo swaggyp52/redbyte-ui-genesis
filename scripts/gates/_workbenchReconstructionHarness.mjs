@@ -17,9 +17,17 @@ export const CLASSROOM_VIEWPORTS = [
 
 export async function installCleanStudentContext(page) {
   await page.addInitScript(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
+    try {
+      localStorage.clear();
+      localStorage.setItem('rb-onboarding-v1-seen', '1');
+    } catch {
+      // Storage can be unavailable on intermediate browser documents.
+    }
+    try {
+      sessionStorage.clear();
+    } catch {
+      // Storage can be unavailable on intermediate browser documents.
+    }
   });
 }
 

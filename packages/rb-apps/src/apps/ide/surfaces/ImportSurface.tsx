@@ -2960,6 +2960,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
         {isImportFirstLook && importEntryAction ? (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
+            <div className="ide-import-guided-wizard-v1" data-testid="ide-import-guided-wizard-v1">
+              <ol className="ide-import-wizard-track" data-testid="ide-import-wizard-track" aria-label="Import recovery steps">
+                <li className="is-active"><span>1</span><strong>Choose source</strong></li>
+                <li><span>2</span><strong>Inspect</strong></li>
+                <li><span>3</span><strong>Map or repair</strong></li>
+                <li><span>4</span><strong>Review</strong></li>
+                <li><span>5</span><strong>Apply import</strong></li>
+              </ol>
             <SurfacePanel
               className="ide-import-start-hero"
               testId="ide-import-start-hero"
@@ -2976,7 +2984,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   {importEntryAction.body}
                 </p>
               </div>
-              <div className="ide-import-start-hero__actions">
+              <div className="ide-import-start-hero__actions" data-testid="ide-import-source-step">
                 <IdeButton
                   tone="primary"
                   onClick={runImportPrimaryAction}
@@ -3038,24 +3046,29 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 hierarchyRole="context"
               >
                 <div className="ide-import-start-guidance-grid">
-                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-zip">
+                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-zip">
                     <span className="ide-import-start-guidance-eyebrow">Highest fidelity</span>
                     <strong>RedByte project restore</strong>
                     <p>A RedByte export ZIP with <code>project.rbproj.json</code> restores the embedded manifest as the source of truth.</p>
                   </article>
-                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-review">
+                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-review">
                     <span className="ide-import-start-guidance-eyebrow">Reconstruction path</span>
                     <strong>Vivado ZIP or VHDL</strong>
                     <p>Without a RedByte manifest, RedByte reconstructs supported structure only. Behavioral HDL may recover ports only or stay blocked.</p>
                   </article>
-                  <article className="ide-import-start-guidance-card" data-testid="ide-import-start-guidance-hdl">
+                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-hdl">
                     <span className="ide-import-start-guidance-eyebrow">Safe recovery</span>
                     <strong>Nothing is overwritten yet</strong>
                     <p>Your current project stays intact until Review Import and Confirm Replace Project. Failed imports do not change files.</p>
                   </article>
                 </div>
+                <div className="ide-import-safety-boundary-v1" data-testid="ide-import-safety-boundary-v1">
+                  <strong>No overwrite before review.</strong>
+                  <span>Choose a source, inspect what RedByte found, then confirm replacement only after the review step.</span>
+                </div>
               </SurfacePanel>
             ) : null}
+            </div>
           </div>
         ) : null}
         {showVerifyResetNotice ? (

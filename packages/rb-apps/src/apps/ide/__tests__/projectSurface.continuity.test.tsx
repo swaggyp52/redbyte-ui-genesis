@@ -10,10 +10,14 @@
  */
 
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
+
+afterEach(() => {
+  cleanup();
+});
 import { deriveProjectHealth } from '../projectHealth';
 
 function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurfaceProps {
@@ -99,7 +103,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current focus: Continue to Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current action: Continue to Verify');
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
     expect(queryByTestId('ide-project-context')).toBeNull();

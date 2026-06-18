@@ -25,6 +25,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-loaded-paths-first-viewport'],
   },
   {
+    name: 'ide:gate:project-loaded-command-surface',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:project-loaded-command-surface'],
+  },
+  {
     name: 'ide:gate:interaction-affordance',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:interaction-affordance'],
@@ -125,6 +130,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],
   },
   {
+    name: 'ide:gate:verify-signals-dock-not-clipped',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-signals-dock-not-clipped'],
+  },
+  {
     name: 'ide:gate:verify-no-circuit-task-first',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-no-circuit-task-first'],
@@ -158,6 +168,11 @@ const STEPS = [
     name: 'ide:gate:export-first-viewport-artifacts',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-first-viewport-artifacts'],
+  },
+  {
+    name: 'ide:gate:export-package-inspector',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:export-package-inspector'],
   },
   {
     name: 'ide:gate:export-artifact-direct-preview',
@@ -270,6 +285,16 @@ const STEPS = [
     args: ['-s', 'ide:gate:action-first-entry-surfaces'],
   },
   {
+    name: 'ide:gate:outer-workflow-action-density',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:outer-workflow-action-density'],
+  },
+  {
+    name: 'ide:gate:card-chrome-regression',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:card-chrome-regression'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],
@@ -293,6 +318,11 @@ const STEPS = [
     name: 'ide:gate:import-guided-recovery-workflow',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:import-guided-recovery-workflow'],
+  },
+  {
+    name: 'ide:gate:import-guided-recovery-wizard',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:import-guided-recovery-wizard'],
   },
   {
     name: 'determinism-and-parity-suite',

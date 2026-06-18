@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-18 (fix: reconstruct outer workflow command surfaces)
+
+**Subsystem:** RedByte Project loaded command surface, Import first-look guided recovery wizard, Export package inspector, Verify Signals dock readability, focused browser gates, classroom gate wiring, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `5fcd2ec0f1f425f7c94ccba6341ddfe31a8e9814`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local app at `http://127.0.0.1:5270/os/` and verified visible build hash `5fcd2ec` matched local HEAD before using browser screenshots and observations.
+- Inspected Project first launch/loaded, Import first-look and Paste HDL active recovery, Export blocked/ready/artifact preview, and Verify with the Signals dock opened at `1366x768`, `1440x900`, and supporting wide evidence.
+- Ranked the remaining release-readiness defects: loaded Project still read as a status/card stack, Import first-look still read like passive recovery prose, Export ready state still hid the package preview behind extra interaction, and the Verify Signals rail still cropped open-rail content in the user-provided screenshots.
+- Added `ide:gate:project-loaded-command-surface`, `ide:gate:import-guided-recovery-wizard`, `ide:gate:export-package-inspector`, `ide:gate:outer-workflow-action-density`, `ide:gate:card-chrome-regression`, and `ide:gate:verify-signals-dock-not-clipped`, and wired them into `classroom:gate` and `verify:gates:classroom`.
+- Reworked loaded Project into a command board with direct Design / Verify / Map Pins / Export actions, secondary start/recovery paths, and compact evidence instead of metric-first card structure.
+- Reworked Import first-look into a guided recovery wizard with source choice, track/state steps, and an explicit no-overwrite boundary while preserving active recovery review/apply behavior.
+- Reworked Export ready state into a package inspector with a generated-file browser, selected artifact preview, and direct build/download/copy actions while preserving generated artifact bytes.
+- Repaired the open Verify Signals dock so it gets a readable open slot at classroom and desktop widths without widening the collapsed rail; the new gate intentionally failed first at `136px`/`144px` open width and now passes at `224px` minimum with no horizontal clipping.
+- Corrected `ide:gate:card-chrome-regression` so it counts real non-interactive chrome containers rather than plain text nodes inside the Import hero.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for focused Project/Import/Export/Verify gates, affected surface gates, and the full `classroom:gate` aggregate. Before and after screenshots are under `.redbyte/product-immersion/project-import-export-reconstruction/2026-06-18/`; final Verify rail evidence is `.redbyte/product-immersion/project-import-export-reconstruction/2026-06-18/after/1366x768-verify-signals-dock-open.png` plus `verify-signals-dock-after-observations.json`. The final Verify rail metrics show dock width `224px`, workspace width `1074px`, root overflow `0`, visible build hash `5fcd2ec`, and no browser problems.
+
+**Safety:** This slice changes only presentation hierarchy, CSS geometry, focused browser gates, gate aggregators, current product docs, and brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates protect the outer workflow command/inspector direction and Verify open-rail readability, not every remaining visual polish/function-depth issue. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained function-depth slice selected from fresh live evidence. The strongest remaining candidate is direct manipulation and functional depth inside one still-static surface, likely Project command behavior or Export package operations, but the target must come from current browser inspection.
+
 ## Change Log 2026-06-18 (fix: reconstruct release-readiness tool windows)
 
 **Subsystem:** RedByte Design tool-window geometry, Hardware Basys3 board obstruction removal, release-readiness browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
