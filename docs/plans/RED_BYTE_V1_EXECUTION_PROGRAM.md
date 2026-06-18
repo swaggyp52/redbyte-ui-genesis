@@ -70,6 +70,35 @@ Acceptance:
 - Verify Signals opens to a readable `224px` minimum rail with no horizontal clipping, while collapsed Signals remains compact.
 - No simulation, Verify, mapping, import parser/apply, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
 
+## Phase 12z - Release Solidification v1
+
+Status: Closed 2026-06-18 by the Verify / Export / Import release-solidification package.
+
+Goal: Make the most release-critical active workbenches feel like usable tools after the broader reconstruction passes.
+
+Why: Full browser inspection at `805b47a` showed the remaining shippability risk was no longer one missing control. Verify could still create an internal horizontal overflow trap when Signals opened, Export needed a compact package-readiness checklist that separated E0 browser/package proof from external Vivado/Basys3 proof, and Import selected-source recovery still underused the available workbench width.
+
+Proof:
+
+- `ide:gate:release-solidification-v1`
+- `ide:gate:verify-signals-dock-not-clipped`
+- `ide:gate:verify-postrun-workbench-usability`
+- `ide:gate:verify-testbench-usable-layout`
+- `ide:gate:export-package-inspector`
+- `ide:gate:export-artifact-direct-preview`
+- `ide:gate:import-guided-recovery-wizard`
+- `ide:gate:import-guided-recovery-workflow`
+- Shared workbench gates, `classroom:gate`, and `build:unified`
+- Before/after screenshots under `.redbyte/product-immersion/release-solidification/2026-06-18/`.
+
+Acceptance:
+
+- Verify with Signals open has no internal horizontal overflow and keeps both stimulus and waveform lanes usable at `1366x768` and `1440x900`.
+- Collapsed-Signals Verify still preserves waveform dominance in the normal post-run workbench.
+- Export package inspector exposes a compact Package / Verify / Pin Mapping / E0 Boundary checklist without claiming E1/E2/E3 proof.
+- Import selected-source recovery uses editor plus source-review lanes and survives reload continuity.
+- No simulation, Verify, mapping, import parser/apply, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-18 (fix: solidify Verify, Export, and Import workbenches)
+
+**Subsystem:** RedByte Verify split workbench with Signals open, Export package inspector handoff checklist, Import selected-source recovery workbench, release-solidification browser gate, classroom gate wiring, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `805b47a76d9415104fd34e9447aec72efb312f09`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local preview at `http://127.0.0.1:5280/os/` before work and `http://127.0.0.1:5281/os/` after work, with visible build hash `805b47a` matching local HEAD before screenshots and browser assertions.
+- Inspected Project first launch/loaded, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass with Signals, Hardware mapping, Export handoff, Import recovery, navigation, reload, fresh context, and dirty context at `1366x768`, `1440x900`, and supporting wide proof.
+- Ranked the release blockers from live evidence: Verify still had the strongest active-workbench risk because opening Signals could reintroduce internal horizontal overflow and cramped evidence/repair balance; Export still needed a compact handoff checklist that separated E0 package readiness from external Vivado/Basys3 proof; Import selected-source recovery still underused the workbench width; Project/Design/Hardware remained follow-ups but were less contained for this package.
+- Added `ide:gate:release-solidification-v1` and wired it into `classroom:gate` and `verify:gates:classroom`; the gate intentionally failed before the fix on Verify internal overflow (`extraX: 175` at `1366x768`, `extraX: 107` at `1440x900`) and now proves Verify, Export, and Import release-solidification geometry and copy.
+- Tightened Verify split layout so the collapsed-Signals state preserves waveform dominance while the open-Signals state uses a balanced split with no internal horizontal overflow and both stimulus and waveform lanes still usable.
+- Added a compact Export handoff checklist inside the package inspector for package state, Verify/Compare state, pin mapping, and E0 boundary without changing generated artifacts or claiming E1/E2/E3 proof.
+- Rebuilt active Import selected-source recovery around a full-width workbench with source editor plus source-review lane, and persisted only the selected Import UI tab/source through URL/local UI state so reload continuity keeps the recovery workspace visible.
+
+**Evidence:** Before screenshots and diagnosis are under `.redbyte/product-immersion/release-solidification/2026-06-18/before/`; after screenshots and observations are under `.redbyte/product-immersion/release-solidification/2026-06-18/after/`. Final refreshed proof includes `37-verify-pass-signals-open-final-1366x768.png`, `40-export-ready-checklist-compact-top-final-1366x768.png`, `39-export-ready-checklist-compact-final-1440x900.png`, and `final-refresh-observations.json`; browser problems were `0`. Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for focused Verify/Export/Import Vitest, affected browser gates, shared workbench/release gates, `classroom:gate`, `build:unified`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`.
+
+**Safety:** This slice changes only presentation hierarchy, CSS geometry, focused browser gates, classroom gate wiring, current product docs, and brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply semantics, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0 and no local Node-version manager was found on PATH. The package materially improves three active workbench surfaces, but Project/Design still have remaining direct-manipulation and composition polish debt that should be selected from fresh live evidence. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained direct-manipulation/function-depth slice selected from fresh live evidence. The strongest remaining candidate is Project/Design authoring depth and reduced card-like composition, but the target must be chosen from current browser inspection.
+
 ## Change Log 2026-06-18 (fix: reconstruct outer workflow command surfaces)
 
 **Subsystem:** RedByte Project loaded command surface, Import first-look guided recovery wizard, Export package inspector, Verify Signals dock readability, focused browser gates, classroom gate wiring, cockpit docs, and local Obsidian brain notes.

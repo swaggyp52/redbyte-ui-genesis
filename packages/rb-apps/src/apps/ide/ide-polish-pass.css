@@ -4559,3 +4559,184 @@
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-workflow-ribbon {
   display: none !important;
 }
+
+/* 2026-06-18 Release Solidification v1.
+   Verify, Export, and Import keep their semantics; this block only tightens
+   active workbench geometry and handoff/source-review presentation. */
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-workspace,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-frame,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-region--waveform {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-workspace-mode='split'],
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
+  grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.1fr) !important;
+  gap: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-lab-grid[data-workspace-mode='split'],
+.ide-root [data-ide-mode-marker='verify'][data-left-dock-state='visible'] .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split'] {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr) !important;
+  gap: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  background: rgba(4, 19, 28, 0.72);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1 {
+  gap: 6px !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header p {
+  display: none;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 115, 150, 0.24);
+  background: rgba(6, 15, 25, 0.68);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item--boundary {
+  border-color: rgba(245, 158, 11, 0.28);
+  background: rgba(29, 20, 6, 0.46);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(134, 189, 217, 0.8);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(238, 248, 255, 0.96);
+  font-size: 11px;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item p {
+  display: none;
+  margin: 0;
+  color: rgba(178, 203, 225, 0.74);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-workbench-workspace,
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-active-taskbar,
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-workbench-v2 {
+  width: 100% !important;
+  inline-size: 100% !important;
+  max-width: none !important;
+  margin-inline: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-workbench-v2 {
+  display: grid;
+  gap: 10px;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-and-review {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.3fr);
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-stage,
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1 {
+  min-width: 0;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1 {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(46, 196, 182, 0.2);
+  background:
+    linear-gradient(180deg, rgba(5, 17, 29, 0.92), rgba(4, 11, 20, 0.96)),
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.1), transparent 44%);
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__header,
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1 > strong {
+  font-size: 16px;
+  color: rgba(241, 249, 255, 0.96);
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1 p {
+  margin: 0;
+  color: rgba(177, 202, 224, 0.76);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__checks {
+  display: grid;
+  gap: 7px;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__checks div {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 115, 150, 0.24);
+  background: rgba(6, 15, 25, 0.62);
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__checks span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(134, 189, 217, 0.78);
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__checks b {
+  color: rgba(238, 248, 255, 0.94);
+  font-size: 12px;
+}
+
+.ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-review-v1__boundary {
+  padding-top: 8px;
+  border-top: 1px solid rgba(246, 213, 124, 0.2);
+  color: rgba(246, 213, 124, 0.9) !important;
+}
+
+@media (max-width: 1180px) {
+  .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1,
+  .ide-root [data-ide-mode-marker='import'][data-layout-intent='workbench'] .ide-import-source-and-review {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

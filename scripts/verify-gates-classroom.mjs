@@ -150,6 +150,7 @@ function main() {
     runGate('ide:action-first-entry-surfaces', 'pnpm -s ide:gate:action-first-entry-surfaces', true),
     runGate('ide:outer-workflow-action-density', 'pnpm -s ide:gate:outer-workflow-action-density', true),
     runGate('ide:card-chrome-regression', 'pnpm -s ide:gate:card-chrome-regression', true),
+    runGate('ide:release-solidification-v1', 'pnpm -s ide:gate:release-solidification-v1', true),
     runGate('ide:workbench-space-utilization', 'pnpm -s ide:gate:workbench-space-utilization', true),
     runGate('ide:workbench-visual-finish', 'pnpm -s ide:gate:workbench-visual-finish', true),
     runGate('ide:primary-cta-contract', 'pnpm -s ide:gate:primary-cta-contract', true),

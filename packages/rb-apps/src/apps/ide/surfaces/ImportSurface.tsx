@@ -361,6 +361,29 @@ function importTick(ms = 40): Promise<void> {
   return new Promise((r) => window.setTimeout(r, ms));
 }
 
+function isImportTab(value: unknown): value is ImportTab {
+  return value === 'hdl' || value === 'xdc' || value === 'upload';
+}
+
+function readImportUiState(): { tab?: ImportTab; firstLookDismissed?: boolean } {
+  if (typeof window === 'undefined') return {};
+  try {
+    const url = new URL(window.location.href);
+    const sourceFromUrl = url.searchParams.get('importSource');
+    const urlTab = isImportTab(sourceFromUrl) ? sourceFromUrl : undefined;
+    const urlActive = url.searchParams.get('importActive') === '1';
+    if (urlTab || urlActive) {
+      return {
+        tab: urlTab,
+        firstLookDismissed: urlActive || Boolean(urlTab),
+      };
+    }
+    return {};
+  } catch {
+    return {};
+  }
+}
+
 export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onImportProject,
   onImportCommitted,
@@ -372,7 +395,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onGoToVerify,
   onGoToExport,
 }) => {
-  const [tab, setTab] = useState<ImportTab>('hdl');
+  const [tab, setTab] = useState<ImportTab>(() => readImportUiState().tab ?? 'hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
   const [hdlText, setHdlText] = useState('');
   const [xdcText, setXdcText] = useState('');
@@ -411,7 +434,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [showVerifyResetNotice, setShowVerifyResetNotice] = useState(false);
   const [submissionDetectedMessage, setSubmissionDetectedMessage] = useState<string>('');
   const [submissionIntegrityMessage, setSubmissionIntegrityMessage] = useState<string>('');
-  const [importFirstLookDismissed, setImportFirstLookDismissed] = useState(false);
+  const [importFirstLookDismissed, setImportFirstLookDismissed] = useState(
+    () => readImportUiState().firstLookDismissed ?? false
+  );
   const mappingSectionRef = useRef<HTMLElement | null>(null);
   const reviewSectionRef = useRef<HTMLDivElement | null>(null);
   const applySectionRef = useRef<HTMLDivElement | null>(null);
@@ -615,6 +640,25 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const t = window.setTimeout(() => setActiveWarningLine(null), 1200);
     return () => window.clearTimeout(t);
   }, [activeWarningLine]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      if (importFirstLookDismissed) {
+        url.searchParams.set('importActive', '1');
+        url.searchParams.set('importSource', tab);
+      } else {
+        url.searchParams.delete('importActive');
+        url.searchParams.delete('importSource');
+      }
+      if (url.href !== window.location.href) {
+        window.history.replaceState(window.history.state, '', url);
+      }
+    } catch {
+      // UI continuity is best-effort and must not block import behavior.
+    }
+  }, [importFirstLookDismissed, tab]);
 
   useEffect(() => {
     if (!activeXdcWarningLine) return;
@@ -2053,6 +2097,53 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     </>
   );
 
+  const sourceReviewLane = (
+    <aside className="ide-import-source-review-v1" data-testid="ide-import-source-review-v1" aria-label="Import source review">
+      <header className="ide-import-source-review-v1__header">
+        <span className="ide-surface-block-label">Source selected</span>
+        <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
+          {tab === 'upload' ? 'ZIP' : tab === 'xdc' ? 'XDC' : 'HDL'}
+        </IdeStatusPill>
+      </header>
+      <strong>{activeImportTaskLabel}</strong>
+      <p>{activeImportTaskBody}</p>
+      <div className="ide-import-source-review-v1__checks">
+        <div>
+          <span>Inspect / parse</span>
+          <b>{hasParsedHdl ? `${parsedEntityName} parsed` : 'Parse HDL next'}</b>
+        </div>
+        <div>
+          <span>Map pins</span>
+          <b>{hasParsedHdl ? `${mappedPortCount}/${ports.length} mapped` : 'After parse'}</b>
+        </div>
+        <div>
+          <span>Review / replace</span>
+          <b>{canImport ? 'Ready for review' : 'No replace yet'}</b>
+        </div>
+      </div>
+      <div className="ide-import-source-review-v1__actions">
+        <IdeButton
+          tone="primary"
+          onClick={canImport ? requestApplyProject : parseHdl}
+          disabled={!canImport && !hdlText.trim()}
+          testId="ide-import-source-review-primary"
+        >
+          {canImport ? 'Review Import...' : 'Parse HDL'}
+        </IdeButton>
+        <IdeButton
+          tone="secondary"
+          onClick={() => setTab('xdc')}
+          testId="ide-import-source-review-xdc"
+        >
+          Paste XDC
+        </IdeButton>
+      </div>
+      <p className="ide-import-source-review-v1__boundary">
+        Current project is unchanged until Review Import and confirmed replace.
+      </p>
+    </aside>
+  );
+
   const sourceStageContent = (
     <section className="ide-import-source-stage" data-testid="ide-import-source-stage">
       <div className="ide-import-pipeline-tabs ide-import-source-tabs" data-testid="ide-import-source-tabs">
@@ -2555,7 +2646,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   return (
     <IdeSurfaceLayout
       mode="import"
-      layoutIntent="readable"
+      layoutIntent="workbench"
       consoleHasBlocking={blockingErrors.length > 0}
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
       rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
@@ -3243,7 +3334,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </div>
             </SurfacePanel>
             <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
-              {sourceStageContent}
+              <div className="ide-import-source-and-review">
+                {sourceStageContent}
+                {sourceReviewLane}
+              </div>
               {reviewWorkspace}
             </div>
           </>

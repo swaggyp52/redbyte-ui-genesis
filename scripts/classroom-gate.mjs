@@ -295,6 +295,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:card-chrome-regression'],
   },
   {
+    name: 'ide:gate:release-solidification-v1',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:release-solidification-v1'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],

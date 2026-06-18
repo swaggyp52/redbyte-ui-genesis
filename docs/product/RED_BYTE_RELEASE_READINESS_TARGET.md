@@ -84,6 +84,31 @@ Closed by `ide:gate:verify-signals-dock-not-clipped`:
 - After: open Verify Signals dock has a readable `224px` minimum slot, no horizontal clipping, no root overflow, and the main Verify workspace remains usable.
 - Regression coverage: `ide:gate:side-dock-affordance` still proves collapsed Verify Signals does not widen back into a bulky rail.
 
+## Release Solidification Sprint Target
+
+The 2026-06-18 full-browser audit at `805b47a` showed the remaining release blockers are no longer simple missing buttons. The next target is to make the most important active workbenches feel like tools rather than static panels.
+
+Status: Closed locally by `ide:gate:release-solidification-v1` and the 2026-06-18 browser proof under `.redbyte/product-immersion/release-solidification/2026-06-18/`.
+
+Selected package:
+
+- **Verify final usability/depth:** when Signals is open, Verify must not create an internal horizontal scroll trap, and PASS/FAIL evidence must keep a clear repair/evidence flow without changing pass/fail truth.
+- **Export package inspector depth:** the package inspector must expose a compact handoff checklist that separates E0 package readiness from external Vivado/Basys3 proof.
+- **Import guided wizard depth:** selected-source recovery must use the available workspace for editor plus review/checklist affordances instead of a narrow utility editor.
+
+New gates should reject:
+
+- internal workbench overflow in normal `1366x768` and `1440x900` use
+- missing or hidden handoff checklist state in Export
+- source-selected Import states without a visible review/workflow checklist
+- browser errors, workspace error boundaries, root overflow, or stale build hashes
+
+Closed proof:
+
+- Verify before evidence showed internal horizontal overflow with the Signals dock open; after evidence keeps open Signals readable while preserving usable stimulus and waveform lanes.
+- Export before evidence had package preview depth but no compact readiness checklist; after evidence shows Package, Verify / Compare, Pin Mapping, and E0 Boundary in the package inspector first viewport.
+- Import before evidence underused the active workbench width; after evidence shows source editor plus source-review lane and reload continuity.
+
 ## Non-Claims
 
 This target does not prove Vivado build, bitstream programming, or physical Basys3 behavior. It also does not change simulation semantics, Verify semantics, pin mapping semantics, generated artifacts, project format, or goldens.

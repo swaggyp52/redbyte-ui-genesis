@@ -91,6 +91,7 @@ The Workbench Reconstruction v1 gate family protects this model:
 - `ide:gate:verify-signals-dock-not-clipped` checks the open Verify Signals dock is readable at `1366x768` and `1440x900` while adjacent side-dock and space-utilization gates keep collapsed Verify compact and the main workbench usable.
 - `ide:gate:project-loaded-command-surface`, `ide:gate:import-guided-recovery-wizard`, and `ide:gate:export-package-inspector` check the outer workflow surfaces behave like command, recovery, and package-inspection tools rather than static card stacks.
 - `ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` guard the outer workflow against losing direct actions or regressing into passive card chrome.
+- `ide:gate:release-solidification-v1` checks the current release package across Verify open-Signals no-overflow geometry, Export Package / Verify / Pin Mapping / E0 Boundary checklist clarity, and Import selected-source editor plus source-review layout with reload continuity.
 - `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.
 - `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.
