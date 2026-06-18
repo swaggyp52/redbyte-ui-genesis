@@ -6,7 +6,6 @@ import { fireEvent, render, waitFor, within } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
 
 function enterImportWorkbench(view: ReturnType<typeof render>) {
-  fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
   fireEvent.click(view.getByTestId('ide-import-start-secondary'));
 }
 

@@ -260,6 +260,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:import-recovery-contract'],
   },
   {
+    name: 'ide:gate:import-guided-recovery-workflow',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:import-guided-recovery-workflow'],
+  },
+  {
     name: 'determinism-and-parity-suite',
     cmd: 'pnpm',
     args: [

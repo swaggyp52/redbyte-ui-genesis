@@ -898,9 +898,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     if (pendingApplyProject) return 'apply';
     if (canImport) return 'review';
     if (hasParsedHdl) return 'map';
+    if (importFirstLookDismissed && tab === 'hdl') return 'parse';
     if (hasZipInspection || hdlText.trim().length > 0) return 'parse';
     return 'upload';
-  }, [canImport, hasParsedHdl, hasZipInspection, hdlText, pendingApplyProject, showVerifyResetNotice]);
+  }, [
+    canImport,
+    hasParsedHdl,
+    hasZipInspection,
+    hdlText,
+    importFirstLookDismissed,
+    pendingApplyProject,
+    showVerifyResetNotice,
+    tab,
+  ]);
   const workflowSteps = useMemo<ImportWorkflowStep[]>(
     () => [
       {
@@ -1359,6 +1369,21 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const importEntryAction = useMemo(() => {
     if (pendingApplyProject) return null;
     if (!hasParsedHdl && !hdlText.trim() && !hasZipInspection) {
+      if (importFirstLookDismissed && tab === 'hdl') {
+        return {
+          id: 'paste-hdl',
+          title: 'Paste HDL',
+          body:
+            'Paste structural VHDL or Verilog into the editor, then parse it to build a recovery preview.',
+          primaryLabel: 'Focus editor',
+          primaryAction: () => hdlTextareaRef.current?.focus(),
+          secondaryLabel: 'Select ZIP',
+          secondaryAction: () => {
+            setTab('upload');
+            handleOpenZipPicker();
+          },
+        } as const;
+      }
       return {
         id: 'zip',
         title: 'Restore a RedByte project first',
@@ -1432,15 +1457,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     hasParsedHdl,
     hasParsedXdc,
     hasZipInspection,
+    importFirstLookDismissed,
     parseHdl,
     parseXdc,
     pendingApplyProject,
     requestApplyProject,
+    tab,
     xdcText,
   ]);
 
   const isImportFirstLook = !importFirstLookDismissed && importEntryAction?.id === 'zip';
-  const showImportHeaderAction = !isImportFirstLook;
+  const showImportHeaderAction = false;
 
   useEffect(() => {
     if (importFirstLookDismissed) return;
@@ -1460,6 +1487,27 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setImportFirstLookDismissed(true);
     importEntryAction.secondaryAction();
   };
+
+  const activeImportTaskLabel =
+    detectedBehavioralConstructs.length > 0
+      ? 'Unsupported HDL'
+      : canImport
+        ? 'Review Import'
+        : tab === 'xdc'
+          ? 'Paste XDC'
+          : tab === 'upload'
+            ? 'Upload ZIP'
+            : 'Paste HDL';
+  const activeImportTaskBody =
+    detectedBehavioralConstructs.length > 0
+      ? 'Behavioral constructs are blocked. Keep the source visible, explain the limit, then rebuild structurally or start fresh in Design.'
+      : canImport
+        ? 'Ports and blockers are resolved. Review the reconstructed project before replacing the current lab.'
+        : hasParsedHdl
+          ? 'Finish mapping, apply eligible pin suggestions, or paste constraints before reviewing the import.'
+          : tab === 'upload'
+            ? 'Choose a ZIP, or switch to Paste HDL when the project archive is not available.'
+            : 'Paste structural VHDL or Verilog here, then Parse HDL to build the recovery preview.';
 
   const loadImportSample = useCallback((sampleId: string) => {
     const sample = IMPORT_SAMPLES.find((entry) => entry.id === sampleId);
@@ -1702,7 +1750,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const leftDockContent = (
     <section
-      className={`ide-import-dock-v2${isImportFirstLook ? ' ide-import-dock-v2--first-look' : ''}`}
+      className={`ide-import-dock-v2${
+        isImportFirstLook ? ' ide-import-dock-v2--first-look' : ' ide-import-dock-v2--active'
+      }`}
       data-testid="ide-import-dock"
     >
       <header className="ide-workbench-placeholder-header">
@@ -2908,7 +2958,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           </div>
         ) : null}
 
-        {importEntryAction && (
+        {isImportFirstLook && importEntryAction ? (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
             <SurfacePanel
               className="ide-import-start-hero"
@@ -3007,7 +3057,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </SurfacePanel>
             ) : null}
           </div>
-        )}
+        ) : null}
         {showVerifyResetNotice ? (
           <IdeCallout tone="info" title="Run Verify Again" testId="ide-import-verify-reset-notice">
             <p className="ide-copy" style={{ margin: 0 }}>
@@ -3130,10 +3180,60 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           data-testid="ide-import-zip-input"
         />
         {!isImportFirstLook ? (
-          <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
-            {sourceStageContent}
-            {reviewWorkspace}
-          </div>
+          <>
+            <SurfacePanel
+              className="ide-import-active-taskbar"
+              testId="ide-import-active-taskbar"
+              hierarchySurface="import"
+              hierarchyRole="active-task"
+              hierarchyFocal="recovery-workbench"
+            >
+              <div className="ide-import-active-taskbar__copy">
+                <span className="ide-import-active-taskbar__eyebrow">Recovery workbench</span>
+                <strong>{activeImportTaskLabel}</strong>
+                <p className="ide-copy">{activeImportTaskBody}</p>
+              </div>
+              <div className="ide-import-active-taskbar__meta">
+                <IdeStatusPill tone={canImport ? 'ok' : detectedBehavioralConstructs.length > 0 ? 'warn' : hasParsedHdl ? 'warn' : 'idle'}>
+                  {canImport ? 'Ready to review' : detectedBehavioralConstructs.length > 0 ? 'Blocked' : hasParsedHdl ? 'Needs mapping' : 'Intake'}
+                </IdeStatusPill>
+                {hasParsedHdl ? (
+                  <span className="ide-surface-command-chip">
+                    {ports.length - unmappedPorts.length}/{ports.length} mapped
+                  </span>
+                ) : (
+                  <span className="ide-surface-command-chip">HDL pending</span>
+                )}
+              </div>
+              <div className="ide-import-active-taskbar__actions">
+                <IdeButton
+                  tone="primary"
+                  onClick={canImport ? requestApplyProject : parseHdl}
+                  disabled={!canImport && !hdlText.trim()}
+                  testId={canImport ? 'ide-import-replace-project' : 'ide-import-active-primary'}
+                >
+                  {canImport ? 'Review Import...' : 'Parse HDL'}
+                </IdeButton>
+                <IdeButton
+                  tone="secondary"
+                  onClick={canApplySuggestions ? applySuggestions : () => setTab('xdc')}
+                  disabled={!canApplySuggestions && tab === 'xdc'}
+                  testId="ide-import-active-secondary"
+                >
+                  {canApplySuggestions ? 'Apply Pins Only' : 'Paste XDC'}
+                </IdeButton>
+                {detectedBehavioralConstructs.length > 0 && onGoToDesign ? (
+                  <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-import-active-start-fresh">
+                    Start fresh in Design
+                  </IdeButton>
+                ) : null}
+              </div>
+            </SurfacePanel>
+            <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
+              {sourceStageContent}
+              {reviewWorkspace}
+            </div>
+          </>
         ) : null}
         {false && (
         <>

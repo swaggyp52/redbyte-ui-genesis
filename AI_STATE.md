@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-06-18 (fix: reconstruct Import guided recovery workbench)
+
+**Subsystem:** RedByte Import recovery workflow presentation, active Import taskbar, focused browser gate, classroom gate wiring, product target docs, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `d3cbe8489306212fe4b2cac36ae8272962e3d75e`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local app at `http://127.0.0.1:5261/os/` and verified visible build hash `d3cbe84` matched local HEAD before using screenshots and browser observations.
+- Inspected Project first launch/loaded, Design blank/loaded Logic Gates/loaded Half Adder, Verify no-circuit/pre-run/PASS/FAIL-repair, Hardware mapped/no-signal, Export blocked/ready/artifact preview, and Import first-look/Paste HDL/unsupported example states at `1366x768`, `1440x900`, and `1920x1080`.
+- Ranked issues found: active Import recovery states were the worst live defect because Paste HDL and unsupported-example paths kept the first-look guidance above the actual editor/review object; Project loaded, Export ready, and remaining card-heavy composition were still visible follow-ups; Hardware/Verify/Design were stronger after recent workbench passes.
+- Added tracked product target doc `docs/product/RED_BYTE_DREAM_APP_TARGET.md` and local brain diagnosis/codebase-map notes to turn the user's "meh" product evidence into a stricter work-object-first target.
+- Added `ide:gate:import-guided-recovery-workflow` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Rebuilt active Import recovery so first-look still has a guided restore entry, but once a user chooses Paste HDL or an unsupported sample the screen switches to a compact recovery taskbar and the editor/review object starts in the first viewport.
+- Kept the active taskbar compatible with the existing `ide-import-replace-project` review/apply contract while preserving the new compact active layout.
+- Updated stale Import gates/tests that still expected a removed disclosure toggle or old Import navigation selector, aligning them with current visible user behavior.
+- Updated `.redbyte-brain/` working notes so the Obsidian brain records the product reconstruction diagnosis, Import guided recovery closeout, and the next likely reconstruction target.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for focused Import Vitest and browser gates before aggregate closeout. The intentional red gate first caught stale dist build hash, then caught the real old active-Import defect: no compact active taskbar after `Paste HDL`. Final before evidence is under `.redbyte/product-immersion/product-reconstruction/2026-06-18/before/`; after evidence is under `.redbyte/product-immersion/product-reconstruction/2026-06-18/after/`. After screenshots show Paste HDL and unsupported-example active states with no first-look start shell above the work object, visible editor/review content in the first viewport, no root overflow, no console/page errors, and build hash `d3cbe84`.
+
+**Safety:** This slice changes only Import presentation hierarchy, active recovery actions, focused browser proof gates, gate aggregators, current product docs, and brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply semantics, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0 and no local Node-version manager was found in the initial runtime check. The new gate covers guided Paste HDL and unsupported-example recovery layout, not broad parser fidelity, arbitrary user HDL, or every remaining card-heavy Project/Export composition issue. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue product reconstruction with a fresh browser-first selection. The strongest remaining candidate is a Project loaded-state or Export package-inspector direct-manipulation package, but the exact next slice must be chosen from current live evidence.
+
 ## Change Log 2026-06-18 (feat: reconstruct RedByte workbench shell and task planes)
 
 **Subsystem:** RedByte global workbench model, compact shell chrome, Hardware Map Pins task-plane hierarchy, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

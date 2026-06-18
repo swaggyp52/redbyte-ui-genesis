@@ -1071,6 +1071,41 @@ Rollback:
 - Revert the shell console visibility change, Hardware command-strip visibility change, compact CSS authority block, workbench model doc, and the six focused gate additions; existing shell/navigation, workbench space, Hardware first-viewport, Verify, Export, Import, and Project gates remain adjacent coverage.
 
 
+## Phase 10.25 - Import Guided Recovery Workflow v1
+
+Status: Closed 2026-06-18 by `ide:gate:import-guided-recovery-workflow`.
+
+Goal: Make active Import recovery states behave like a workstation instead of a first-look card stack.
+
+Why: Product reconstruction inspection found Import active recovery states were the worst current live defect. After a user chose Paste HDL or an unsupported sample, the old layout still kept intro guidance above the editor/review area and pushed the actual recovery work object down the viewport.
+
+Implementation slices:
+
+- Added `docs/product/RED_BYTE_DREAM_APP_TARGET.md` to define the stricter Basys3-first workbench target and the "work object owns the screen" law.
+- Added a focused browser gate that fails if active Import lacks a compact taskbar, keeps first-look guidance visible above the active work object, buries the editor/review area, creates root overflow, logs console/page errors, or overclaims Vivado/Basys3 proof.
+- Rebuilt Import active states so Paste HDL, XDC, Apply Pins Only, Review Import, and Start fresh in Design actions live in a compact recovery taskbar.
+- Kept first-look Import guided and kept existing review/apply behavior intact.
+- Updated stale Import gate/test assumptions that referenced removed disclosure toggles or old navigation selectors.
+
+Proof:
+
+- Intentional red `ide:gate:import-guided-recovery-workflow` caught stale dist hash first, then caught the old missing active taskbar for Paste HDL.
+- Passing `ide:gate:import-guided-recovery-workflow`, affected Import gates, workbench gates, focused Import Vitest, classroom gate, unified build, doc validation, encoding check, and diff check are required for closeout.
+- Before/after browser screenshots and observations live under `.redbyte/product-immersion/product-reconstruction/2026-06-18/`.
+
+Acceptance:
+
+- Import first-look remains guided.
+- Active Paste HDL shows the HDL editor in the useful first viewport at `1366x768` and `1440x900`.
+- Unsupported examples show blocker honesty and review evidence in the useful first viewport with direct next actions.
+- No root overflow or console/page errors appear.
+- No simulation, Verify result, Compare rule, expected-output, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Import active taskbar presentation changes, Import active CSS, stale gate/test selector updates, target doc, and focused gate wiring; existing Import recovery, workbench visual finish, action-first entry, and workbench reconstruction gates remain adjacent coverage.
+
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

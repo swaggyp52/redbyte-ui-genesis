@@ -253,6 +253,7 @@
         "ide:gate:export-includes-rbproj-contract": "node ./scripts/gates/ide-export-includes-rbproj-contract.mjs",
         "ide:gate:zip-import-contract": "node ./scripts/gates/ide-zip-import-contract.mjs",
         "ide:gate:import-recovery-contract": "node ./scripts/gates/ide-import-recovery-contract.mjs",
+        "ide:gate:import-guided-recovery-workflow": "node ./scripts/gates/ide-import-guided-recovery-workflow.mjs",
         "ide:gate:bringup-contract": "node ./scripts/gates/ide-bringup-contract.mjs",
         "ide:gate:autolayout-contract": "node ./scripts/gates/ide-autolayout-contract.mjs",
         "ide:gate:verify-evidence-workbench-integrity": "node ./scripts/gates/ide-verify-evidence-workbench-integrity.mjs",

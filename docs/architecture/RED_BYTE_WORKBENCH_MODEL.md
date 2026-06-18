@@ -54,6 +54,16 @@ Each surface needs one dominant job object and one clear next action in the usef
 
 Cards are allowed for repeated items, focused panels, and modals. Page-level workbench surfaces should not become a stack of decorative cards.
 
+## Import Active-Recovery Rule
+
+Import may teach on first look, but active recovery states must show tools first.
+
+- First-look Import may keep one guided restore path and compact recovery choices.
+- After a user chooses Paste HDL, uploads/selects a ZIP path, or opens an unsupported example, the intro shell must collapse into a compact taskbar.
+- The editor, warning, review table, or blocked-state evidence must start in the first viewport at classroom and desktop sizes.
+- Active Import actions may route Parse HDL, Paste XDC, Apply Pins Only, Review Import, or Start fresh in Design, but they must not replace the active project until the existing review/apply contract is reached.
+- No Import layout gate can claim parser breadth, Vivado build proof, board programming proof, or physical observation proof.
+
 ## Hardware Board-First Rule
 
 In the normal Logic Gates Map Pins path, the board/table binding task must appear before explanatory chrome.
@@ -67,6 +77,7 @@ In the normal Logic Gates Map Pins path, the board/table binding task must appea
 
 The Workbench Reconstruction v1 gate family protects this model:
 
+- `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.
 - `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.
 - `ide:gate:verify-task-plane-usability` aggregates pre-run, post-run, fail, repair, and reset Verify layout contracts.

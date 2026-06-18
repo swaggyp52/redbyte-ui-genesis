@@ -100,6 +100,7 @@ function main() {
     ),
     runGate('ide:zip-import-contract', 'pnpm -s ide:gate:zip-import-contract', true),
     runGate('ide:import-recovery-contract', 'pnpm -s ide:gate:import-recovery-contract', true),
+    runGate('ide:import-guided-recovery-workflow', 'pnpm -s ide:gate:import-guided-recovery-workflow', true),
     runGate('ide:bringup-contract', 'pnpm -s ide:gate:bringup-contract', true),
     runGate('ide:verify-evidence-workbench-integrity', 'pnpm -s ide:gate:verify-evidence-workbench-integrity', true),
     runGate('ide:verify-workbench-contract', 'pnpm -s ide:gate:verify-workbench-contract', true),

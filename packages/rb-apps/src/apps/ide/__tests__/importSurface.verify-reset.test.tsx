@@ -13,7 +13,6 @@ const MATCHING_PROJECT_IO_ROWS = [
 ] as const;
 
 function enterImportWorkbench(view: ReturnType<typeof render>) {
-  fireEvent.click(view.getByTestId('ide-import-start-other-options-toggle'));
   fireEvent.click(view.getByTestId('ide-import-start-secondary'));
 }
 

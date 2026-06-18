@@ -34379,3 +34379,139 @@ button:disabled,
 [data-ide-mode-marker='verify'] [data-testid='ide-verify-waveform-svg'] {
   max-width: 100% !important;
 }
+
+/* Import active recovery should behave like a workbench, not a second intake page. */
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active {
+  gap: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-workbench-placeholder-header {
+  margin-bottom: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-workflow-step-btn {
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 9px !important;
+  border-radius: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-workflow-step-copy span,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-workflow-step-btn .ide-status-pill {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-workflow-step-copy strong {
+  font-size: 11px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-dock-actions,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-dock-guidance,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-secondary-tools {
+  gap: 7px;
+  padding: 8px 9px !important;
+  border-radius: 10px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-samples-grid,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active .ide-import-dock-guidance,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-dock-v2--active [data-testid='ide-import-dock-mode-hint'] {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-workbench-v2 {
+  width: min(100%, 1120px) !important;
+  max-width: min(100%, 1120px) !important;
+  margin-inline: auto !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(46, 196, 182, 0.18) !important;
+  background:
+    linear-gradient(180deg, rgba(6, 16, 28, 0.92), rgba(5, 12, 22, 0.96)),
+    radial-gradient(circle at top right, rgba(46, 196, 182, 0.08), transparent 44%) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(122, 209, 202, 0.76);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy strong {
+  font-size: 16px;
+  color: rgba(239, 247, 255, 0.96);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar .ide-copy {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+  color: rgba(176, 201, 225, 0.78) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__meta,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__actions .ide-button {
+  min-height: 32px;
+  padding: 6px 10px !important;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-workbench-v2 {
+  gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-source-stage,
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-review-overview {
+  padding: 9px 10px !important;
+  border-radius: 12px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-editor {
+  gap: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-hdl-scope-box {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-code-editor {
+  min-height: clamp(210px, 35vh, 430px);
+}
+
+@media (max-width: 1180px) {
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__meta,
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__actions {
+    justify-content: flex-start;
+  }
+}

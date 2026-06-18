@@ -13,19 +13,22 @@ await runIdeGate('IDE import renders schematic contract satisfied', async ({ pag
   await page.addInitScript(() => {
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
-  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=import-renders-schematic`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
-
-  await page.locator('[data-testid="mode-button-import"]').click();
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
 
   const startOtherOptions = page.locator('[data-testid="ide-import-start-other-options"]').first();
   if (await visible(startOtherOptions)) {
-    await page.locator('[data-testid="ide-import-start-other-options-toggle"]').first().click();
-    await page.locator('[data-testid="ide-import-start-secondary"]').first().click();
+    const startSecondary = page.locator('[data-testid="ide-import-start-secondary"]').first();
+    assert(await visible(startSecondary), 'Import first-look alternatives must expose Paste HDL directly');
+    await startSecondary.click();
   } else {
-    await page.locator('[data-testid="ide-import-dock-secondary"]').first().click();
+    const startSecondary = page.locator('[data-testid="ide-import-start-secondary"]').first();
+    if (await visible(startSecondary)) {
+      await startSecondary.click();
+    } else {
+      await page.locator('[data-testid="ide-import-dock-secondary"]').first().click();
+    }
   }
 
   await page.waitForSelector('[data-testid="ide-import-hdl-textarea"]', { timeout: 10000 });
@@ -33,7 +36,12 @@ await runIdeGate('IDE import renders schematic contract satisfied', async ({ pag
   const textarea = page.locator('[data-testid="ide-import-hdl-textarea"]').first();
   assert(await visible(textarea), 'HDL textarea must be visible');
   await textarea.fill(SIMPLE_VERILOG);
-  await page.locator('[data-testid="ide-import-parse"]').click();
+  const activeParse = page.locator('[data-testid="ide-import-active-primary"]').first();
+  if (await visible(activeParse)) {
+    await activeParse.click();
+  } else {
+    await page.locator('[data-testid="ide-import-parse"]').click();
+  }
   await page.waitForTimeout(600);
 
   const schematic = page.locator('[data-testid="ide-import-schematic-preview"]').first();

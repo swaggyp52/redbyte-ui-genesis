@@ -40,8 +40,9 @@ await runIdeGate('IDE import actionable targets contract satisfied', async ({ pa
 
   const otherOptions = page.locator('[data-testid="ide-import-start-other-options"]').first();
   if (await visible(otherOptions)) {
-    await page.locator('[data-testid="ide-import-start-other-options-toggle"]').first().click();
-    await page.locator('[data-testid="ide-import-start-secondary"]').first().click();
+    const startSecondary = page.locator('[data-testid="ide-import-start-secondary"]').first();
+    assert(await visible(startSecondary), 'visible Import alternatives must expose Paste HDL directly');
+    await startSecondary.click();
   } else {
     const startSecondary = page.locator('[data-testid="ide-import-start-secondary"]').first();
     if (await visible(startSecondary)) {
