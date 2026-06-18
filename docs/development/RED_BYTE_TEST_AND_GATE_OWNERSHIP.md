@@ -33,6 +33,8 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:shell-navigation-overhaul`
 - `ide:gate:primary-work-object-dominance`
 - `ide:gate:nested-scroll-regression`
+- `ide:gate:verify-no-circuit-task-first`
+- `ide:gate:project-loaded-paths-first-viewport`
 - `ide:gate:verify-postrun-workbench-usability`
 - `ide:gate:active-mode-reload-recovery`
 - `ide:gate:design-no-bridge-required`
@@ -69,6 +71,8 @@ Why:
 - Shell navigation overhaul protects the compact global shell contract, workflow rail reachability, Import utility route/reload access, no root overflow, and console/page cleanliness at classroom and desktop viewports.
 - Primary work object dominance protects Design, Verify, Hardware, Export, and Import from being squeezed by simultaneous support docks or shell chrome; focused workbench support docks must be exclusive outside wide layout.
 - Nested scroll regression protects Verify and Hardware from small internal scroll traps in the normal Logic Gates path while allowing normal page-level workbench scroll where appropriate.
+- Verify no-circuit task-first protects fresh direct Verify entry from showing waveform/testbench or mapping apparatus before a circuit exists; it requires actionable Open Design, Load starter, and Import / Recover paths.
+- Project loaded paths first viewport protects loaded Project from pushing Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent below metrics/support content.
 - Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
@@ -102,10 +106,10 @@ Why:
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Mode route, in-app navigation, reload recovery, or stale lazy-surface recovery | `ide:gate:active-mode-reload-recovery`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, plus the affected route/surface gate; add focused unit coverage when boundary classification or startup-mode parsing changes |
-| Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, Project screenshots, and existing Project readiness/overview gates |
+| Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify behavior, run intent, repair loop, or testbench layout | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, or a narrower new Verify browser gate |
+| Verify behavior, run intent, repair loop, testbench layout, or no-circuit entry | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, or `ide:gate:export-artifact-direct-preview` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, and no overclaim |
 | Hardware/Map Pins layout or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
@@ -139,6 +143,12 @@ Why:
 `ide:gate:primary-work-object-dominance` proves Design, Verify pre-run, Verify Compare PASS, Hardware, Export, and Import keep the primary work object dominant at classroom and desktop viewports, and that focused workbench support docks are exclusive outside wide layout.
 
 `ide:gate:nested-scroll-regression` rejects the Verify stimulus/waveform and Hardware workbench mini-scroll traps observed in browser-first review while preserving normal page-level workbench scroll.
+
+## Current Core Entry Gates
+
+`ide:gate:verify-no-circuit-task-first` proves fresh direct Verify opens as an actionable no-circuit recovery state at `1366x768` and `1440x900`: task panel visible, Open Design / Load starter / Import Recover actions working, waveform/testbench apparatus hidden, no misleading Hardware/Map Pins/No IO mapping copy, no root overflow, and no console/page errors.
+
+`ide:gate:project-loaded-paths-first-viewport` proves a loaded Project keeps all five action paths in the useful first viewport at `1366x768` and `1440x900`: Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent remain visible; Continue and Import navigate correctly; loaded Build Fresh stays guarded; no root overflow or console/page errors appear.
 
 ## Current Verify Layout Gates
 

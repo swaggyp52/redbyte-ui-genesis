@@ -20,6 +20,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-command-center'],
   },
   {
+    name: 'ide:gate:project-loaded-paths-first-viewport',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:project-loaded-paths-first-viewport'],
+  },
+  {
     name: 'ide:gate:interaction-affordance',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:interaction-affordance'],
@@ -118,6 +123,11 @@ const STEPS = [
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],
+  },
+  {
+    name: 'ide:gate:verify-no-circuit-task-first',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-no-circuit-task-first'],
   },
   {
     name: 'ide:gate:verify-workbench-layout-reset',

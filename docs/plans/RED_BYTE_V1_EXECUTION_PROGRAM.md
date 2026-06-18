@@ -1003,6 +1003,40 @@ Rollback:
 
 - Revert the post-run Verify split/padding changes and focused gate wiring; existing Verify evidence, fail-edit-repair, workbench-layout-reset, nested-scroll, and dominance gates remain adjacent coverage.
 
+## Phase 10.23 - Core Product Acceleration Sprint 2
+
+Status: Closed 2026-06-17 by `ide:gate:verify-no-circuit-task-first` and `ide:gate:project-loaded-paths-first-viewport`.
+
+Goal: Make normal entry states feel like actionable workbench paths instead of apparatus or static card stacks.
+
+Why: Browser-first inspection after Verify post-run usability found two high-frequency entry defects. Fresh direct Verify showed no-circuit/no-signal users mapping/testbench apparatus before any circuit existed. Loaded Project placed its real action paths too low in the first viewport, below identity/metrics content, reinforcing the page-of-cards feel.
+
+Implementation slices:
+
+- Added a focused direct Verify gate for the fresh no-circuit state at `1366x768` and `1440x900`.
+- Added a focused loaded Project gate for first-viewport action-path placement and route behavior at `1366x768` and `1440x900`.
+- Rebuilt direct Verify no-circuit presentation around Open Design, Load starter, and Import / Recover actions, and hid waveform/testbench apparatus until a circuit exists.
+- Reordered/tightened loaded Project hierarchy so Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent sit above lower metrics/support content.
+- Preserved simulation, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, and Basys3 proof.
+
+Proof:
+
+- Intentional red `ide:gate:verify-no-circuit-task-first` caught the old missing task-first direct Verify state.
+- Intentional red `ide:gate:project-loaded-paths-first-viewport` caught loaded Project paths starting too low at `1366x768`.
+- Passing focused gates, affected Verify/Project gates, classroom gate, unified build, doc validation, encoding check, and diff check are required for closeout.
+- Before/after browser screenshots and observations live under `.redbyte/product-immersion/core-product-acceleration-2/2026-06-17/`.
+
+Acceptance:
+
+- Fresh direct Verify no-circuit entry has an obvious next action without Hardware/Map Pins/no-IO confusion.
+- Loaded Project exposes all five action paths in the useful first viewport and preserves Continue, Import, and guarded Build Fresh behavior.
+- No root overflow or console/page errors appear in the covered viewports.
+- No simulation, Verify result, Compare rule, expected-output, pin mapping, import parser/apply behavior, export generation, project data format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the Verify no-circuit presentation, loaded Project ordering/tightening, and focused gate wiring; existing Project command-center and Verify layout/evidence gates remain adjacent coverage.
+
 
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 

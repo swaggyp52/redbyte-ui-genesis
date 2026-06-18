@@ -144,7 +144,11 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
     const primarySelectors = {
       project: ['[data-testid="ide-project-command-center"]', '[data-testid="ide-project-landing"]'],
       design: ['[data-testid="ide-design-live-canvas"]'],
-      verify: ['[data-testid="ide-verify-lab-grid"]', '[data-testid="ide-verify-workbench"]'],
+      verify: [
+        '[data-testid="ide-verify-no-circuit-task"]',
+        '[data-testid="ide-verify-lab-grid"]',
+        '[data-testid="ide-verify-workbench"]',
+      ],
       hardware: ['[data-testid="ide-hw-board-workspace"]', '[data-testid="ide-hw-map-table"]'],
       export: ['[data-testid="ide-export-handoff-station"]', '[data-testid="ide-export-artifact-preview"]'],
       import: ['[data-testid="ide-import-start-shell"]', '[data-testid="ide-import-workspace"]'],

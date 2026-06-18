@@ -24,7 +24,9 @@ const MODES = [
   },
   {
     id: 'verify',
+    requiresStarter: true,
     focalSelectors: [
+      '[data-testid="ide-verify-no-circuit-task"]',
       '[data-testid="ide-verify-region-waveform"]',
       '[data-testid="ide-verify-workbench"]',
       '[data-testid="ide-verify-workstation-run-bar"]',
@@ -86,6 +88,9 @@ await runIdeGate('IDE side dock affordance satisfied', async ({ page, baseUrl })
     await openFreshStarterProject(page, baseUrl, viewport);
 
     for (const mode of MODES) {
+      if (mode.requiresStarter === true) {
+        await openFreshStarterProject(page, baseUrl, viewport);
+      }
       await openMode(page, baseUrl, mode.id, mode.routeOnly === true);
       await capture(page, viewport, mode.id, 'initial');
 

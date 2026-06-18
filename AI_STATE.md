@@ -1,5 +1,33 @@
 # AI State
 
+## Change Log 2026-06-17 (fix: make Verify and Project entry paths task-first)
+
+**Subsystem:** RedByte Verify direct-entry no-circuit state, loaded Project action-path hierarchy, focused browser gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `3d5443674e663eb7f26304e6983d7ed3dcec2bd3`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh local app at `http://127.0.0.1:5237/os/` before work and verified visible `Build3d54436` matched the local HEAD prefix before screenshots and measurements.
+- Inspected Project first launch and loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass plus direct no-circuit entry, Hardware mapping workbench, Export handoff, Import recovery utility, navigation, reload, and dirty browser paths at `1366x768` and `1440x900`.
+- Ranked issues found: direct Verify no-circuit/no-signal entry was the clearest trust and task-orientation defect; loaded Project action paths sat too low in the first viewport and reinforced the card-stack feel; Import first-look still feels utility-like; Hardware/Export remain dense but lower impact for this contained sprint.
+- Chose two contained workstreams under one sprint: rebuild direct Verify no-circuit entry as a task-first recovery state, and move loaded Project action paths into the first-viewport work zone. Both beat alternatives because they affect frequent normal use, match the user's function-depth complaint, are gateable, and do not require changing simulation, Verify semantics, mapping, export generation, project format, or goldens.
+- Added `ide:gate:verify-no-circuit-task-first` to prove direct fresh Verify at `1366x768` and `1440x900` shows a no-circuit task panel, hides waveform/testbench apparatus, avoids misleading Hardware/Map Pins/No IO mapping language, verifies Open Design / Load starter / Import Recover actions, checks visible build hash, and rejects root overflow or console/page errors.
+- Added `ide:gate:project-loaded-paths-first-viewport` to prove a loaded Project keeps Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent paths visible in the useful first viewport at `1366x768` and `1440x900`, with navigation and Build Fresh guard behavior intact.
+- Updated Verify direct no-circuit presentation so students see `Nothing to verify yet` with real next actions before any waveform/testbench grid appears, and wired Import recovery navigation into Verify.
+- Tightened loaded Project composition so identity, next step, and action paths appear before lower metrics/support content.
+- Wired both new gates into `classroom:gate` and `verify:gates:classroom`.
+- Updated adjacent side-dock and shell-navigation gates so the new Verify no-circuit task counts as the direct-entry work object, while `ide:gate:side-dock-affordance` still reloads the Logic Gates starter before proving the loaded Verify Signals rail.
+- Updated `.redbyte-brain/` working notes so the Obsidian brain records Core Product Acceleration Sprint 2 as selected and keeps the remaining static/card-heavy/function-depth issues separate.
+
+**Evidence:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for the focused gates before doc closeout: intentional red `ide:gate:verify-no-circuit-task-first` failed on the old missing task panel and misleading direct-entry state; intentional red `ide:gate:project-loaded-paths-first-viewport` failed on loaded Project paths starting too low at `1366x768`; final focused gate runs passed after the fix. Before screenshots and observations are under `.redbyte/product-immersion/core-product-acceleration-2/2026-06-17/before/`; after gate and in-app-browser screenshots are under `.redbyte/product-immersion/core-product-acceleration-2/2026-06-17/after/`.
+
+**Safety:** This slice changes only Verify no-circuit presentation/routing, loaded Project layout hierarchy, focused browser proof gates, gate aggregators, and current-truth docs/brain notes. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Known remaining risks:** Node 20.19.0 proof remains pending in this shell because the available runtime is Node 24.15.0. The new gates cover fresh direct Verify no-circuit entry and loaded Project action-path first-viewport placement; they do not solve every static/card-heavy surface, Import utility hierarchy, Export density, Hardware lower-viewport polish, or all direct-manipulation depth issues. Fresh Vivado/Basys3 E1/E2/E3 proof still requires Vivado 2024.2 and hardware access.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with fresh live inspection. The strongest remaining product direction is reducing static/card-heavy function gaps in Import/Export or deeper Project workbench behavior, but the exact target must be chosen from current browser evidence.
+
 ## Change Log 2026-06-17 (fix: widen Verify post-run workbench)
 
 **Subsystem:** RedByte Verify post-run workbench geometry, browser proof gates, classroom gate wiring, product cockpit docs, and local Obsidian brain notes.

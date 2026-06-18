@@ -204,6 +204,7 @@ export interface VerifySurfaceProps {
   /** Navigate to Design and inject these input values into the runtime sim for propagation inspection. */
   onGoToDesignWithInputs?: (inputs: Record<string, 0 | 1>) => void;
   onGoToHardware?: () => void;
+  onGoToImport?: () => void;
   verifyMode?: VerifyMode;
   unmappedOutputLabels?: string[];
   onPreviewVector?: (inputs: Record<string, number>) => void;
@@ -333,6 +334,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onGoToDesign,
   onGoToDesignWithInputs,
   onGoToHardware,
+  onGoToImport,
   verifyMode = 'combinational' as VerifyMode,
   unmappedOutputLabels = [],
   onPreviewVector,
@@ -461,6 +463,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       customVectors.filter((vector) => Object.keys(vector.expected ?? {}).length > 0).length,
     [authoredVectors, customVectors]
   );
+  const hasVerifyCircuitStructure = useMemo(() => {
+    const graphNodeCount = circuitGraph?.nodes.length ?? 0;
+    const graphConnectionCount = circuitGraph?.connections.length ?? 0;
+    return (
+      graphNodeCount > 0 ||
+      graphConnectionCount > 0 ||
+      inputFields.length > 0 ||
+      outputFields.length > 0 ||
+      (mappedSignals?.length ?? 0) > 0 ||
+      (mappedInputs?.length ?? 0) > 0
+    );
+  }, [circuitGraph, inputFields.length, mappedInputs?.length, mappedSignals?.length, outputFields.length]);
+  const isNoCircuitTaskFirst =
+    verifyMode !== 'blocked' &&
+    !lastRun &&
+    totalVectorCount === 0 &&
+    totalExpectedCaseCount === 0 &&
+    !hasVerifyCircuitStructure;
   const vectorCollectionSignature = useMemo(
     () => buildVectorCollectionSignature(authoredVectors, customVectors),
     [authoredVectors, customVectors]
@@ -3746,12 +3766,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep shell rails secondary so the stimulus/waveform pair owns the page. */
-      leftDockMode: ('collapsed' as const),
+      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('collapsed' as const),
       /** Saved cases and mismatch detail now live in the lower details tray. */
       rightDockMode: ('hidden' as const),
-      consoleMode: sessionSignalsAssertionFailure ? ('auto' as const) : ('hidden' as const),
+      consoleMode: isNoCircuitTaskFirst
+        ? ('hidden' as const)
+        : sessionSignalsAssertionFailure
+          ? ('auto' as const)
+          : ('hidden' as const),
     }),
-    [sessionSignalsAssertionFailure]
+    [isNoCircuitTaskFirst, sessionSignalsAssertionFailure]
   );
 
   useEffect(() => {
@@ -3761,6 +3785,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [failingRows.length, sessionShowsAssertionMatch, verifyTab]);
 
   const primaryStatus = useMemo<VerifyPrimaryStatusAreaProps | null>(() => {
+    if (isNoCircuitTaskFirst) {
+      return null;
+    }
+
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
@@ -3862,6 +3890,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     handleResetToStimulusOnly,
     handleStaleRecapture,
     hasStaleAuthoredReference,
+    isNoCircuitTaskFirst,
     isRunStale,
     isScenarioStale,
     isWrongScenario,
@@ -4338,6 +4367,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'Running'
                 : verifyMode === 'blocked'
                   ? 'Blocked'
+                  : isNoCircuitTaskFirst
+                    ? 'No circuit'
                   : isRunStale
                     ? 'Stale'
                     : sessionShowsAssertionMatch
@@ -4355,6 +4386,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'running'
                 : isRunStale
                   ? 'stale'
+                  : isNoCircuitTaskFirst
+                    ? 'attention'
                   : sessionShowsAssertionMatch
                     ? 'pass'
                     : sessionSignalsAssertionFailure
@@ -4371,6 +4404,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'Verifying the current circuit…'
                 : verifyMode === 'blocked'
                   ? 'Blocked — fix Design or Map Pins first.'
+                  : isNoCircuitTaskFirst
+                    ? 'Open Design, load a course starter, or recover/import HDL before running Verify.'
                   : sessionSignalsAssertionFailure
                     ? 'Open the first failing check, then update Design or expected outputs.'
                     : sessionShowsAssertionMatch
@@ -4390,7 +4425,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : null}
         <div className="ide-surface-command-stack ide-verify-chrome-stack">
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
-        {verifyMode !== 'blocked' && (
+        {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
           leadingPanel={
             primaryStatus && !compactPrimaryStatusAction ? (
@@ -4666,7 +4701,58 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-hierarchy-surface="verify"
           data-hierarchy-role="context"
         >
-        <div className="ide-verify-lab-frame" data-testid="ide-verify-lab-frame">
+        {isNoCircuitTaskFirst && (
+          <section
+            className="ide-verify-no-circuit-task"
+            data-testid="ide-verify-no-circuit-task"
+            aria-label="Verify needs a circuit before it can run"
+          >
+            <div className="ide-verify-no-circuit-copy">
+              <span className="ide-surface-block-label">Verify starts after Design has a circuit</span>
+              <h2 className="ide-verify-no-circuit-title">Nothing to verify yet</h2>
+              <p className="ide-verify-no-circuit-summary">
+                Build a circuit in Design, load a course starter from Project, or recover/import HDL before running observed or saved checks.
+              </p>
+            </div>
+            <div className="ide-verify-no-circuit-actions">
+              {onGoToDesign && (
+                <IdeButton
+                  tone="primary"
+                  onClick={onGoToDesign}
+                  testId="ide-verify-no-circuit-open-design"
+                >
+                  Open Design
+                </IdeButton>
+              )}
+              <IdeButton
+                tone="secondary"
+                onClick={onOpenProjectVectors}
+                testId="ide-verify-no-circuit-load-starter"
+              >
+                Load starter
+              </IdeButton>
+              {onGoToImport && (
+                <IdeButton
+                  tone="secondary"
+                  onClick={onGoToImport}
+                  testId="ide-verify-no-circuit-import-recover"
+                >
+                  Import / Recover
+                </IdeButton>
+              )}
+            </div>
+            <ol className="ide-verify-no-circuit-steps">
+              <li>Add inputs, outputs, and logic in Design.</li>
+              <li>Return to Verify to observe outputs or compare saved checks.</li>
+              <li>Continue through the RedByte workflow after the circuit behavior is known.</li>
+            </ol>
+          </section>
+        )}
+        <div
+          className="ide-verify-lab-frame"
+          data-testid="ide-verify-lab-frame"
+          data-no-circuit-hidden={isNoCircuitTaskFirst ? 'true' : undefined}
+        >
         <div
           className="ide-verify-lab-grid"
           data-testid="ide-verify-lab-grid"
