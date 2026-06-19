@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-18
+last_validated: 2026-06-19
 owner: Connor Angiel
 used_by_claude: true
 role: release-readiness visual/workbench target for RedByte V1
@@ -21,6 +21,7 @@ At `1366x768` and `1440x900`:
 - visible controls are not horizontally cropped
 - board visuals are not covered by resource catalogs or explanatory overlays
 - active tasks show the tool/editor/evidence object before teaching copy
+- selected Design objects expose readable direct-edit controls before low-priority support copy
 - screenshots and Playwright gates remain browser/E0 proof only
 
 ## Closed In This Slice
@@ -108,6 +109,30 @@ Closed proof:
 - Verify before evidence showed internal horizontal overflow with the Signals dock open; after evidence keeps open Signals readable while preserving usable stimulus and waveform lanes.
 - Export before evidence had package preview depth but no compact readiness checklist; after evidence shows Package, Verify / Compare, Pin Mapping, and E0 Boundary in the package inspector first viewport.
 - Import before evidence underused the active workbench width; after evidence shows source editor plus source-review lane and reload continuity.
+
+## Student Task Completion / Design Direct Edits Target
+
+The 2026-06-19 browser-first student task audit showed the highest contained defect was not another missing status chip: selected Design objects still lacked a professional direct-edit surface.
+
+Status: Closed locally by `ide:gate:student-task-completion-flow` and the 2026-06-19 browser proof under `.redbyte/product-immersion/student-task-completion/2026-06-19/`.
+
+Selected package:
+
+- **Design direct manipulation:** selecting a normal circuit node must expose readable direct actions and type-swap controls without cramped overlap at `1366x768` and `1440x900`.
+- **End-to-end student task proof:** the same gate must continue through Verify PASS/FAIL/repair/PASS, Hardware mapping, and Export E0 handoff so the Design fix is proven in the real classroom spine.
+
+Regression coverage:
+
+- `ide:gate:student-task-completion-flow`
+- `ide:gate:design-inspector-contract`
+- `ide:gate:design-workbench-v1`
+- `ide:gate:design-tool-window-coexistence`
+- `ide:gate:design-dual-tool-windows`
+
+Closed evidence:
+
+- Before evidence showed the selected AND inspector too narrow, Copy/Duplicate cramped, and Swap type below the useful viewport.
+- After evidence shows a proportional selected-node Inspector, visible Copy/Duplicate/Swap controls, usable canvas beside the Inspector, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 
 ## Non-Claims
 

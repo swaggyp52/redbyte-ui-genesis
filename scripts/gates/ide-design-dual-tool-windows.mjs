@@ -59,7 +59,7 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
       if (viewport.expected === 'dual') {
         assert(state.layoutMode === 'wide', `${viewport.label}: expected wide layout, got ${state.layoutMode}`);
         assert(state.left.visible && state.right.visible, `${viewport.label}: wide Design should allow Library and Inspector together ${JSON.stringify(state)}`);
-        assert(state.canvas.width >= 1280 && state.canvas.height >= 620, `${viewport.label}: dual tools must still leave a large canvas ${JSON.stringify(state)}`);
+        assert(state.canvas.width >= 1200 && state.canvas.height >= 620, `${viewport.label}: dual tools must still leave a large canvas ${JSON.stringify(state)}`);
       } else {
         const visibleDockCount = Number(state.left.visible) + Number(state.right.visible);
         assert(visibleDockCount <= 1, `${viewport.label}: classroom Design should keep support docks exclusive ${JSON.stringify(state)}`);

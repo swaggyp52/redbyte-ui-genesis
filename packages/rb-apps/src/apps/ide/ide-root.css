@@ -30395,8 +30395,75 @@ button:disabled,
   gap: 8px !important;
 }
 
+[data-ide-mode-marker='design'] .ide-design-inspector-subgroup {
+  display: grid !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(79, 114, 145, 0.18) !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-inspector-subgroup .ide-design-inspector-group-label {
+  margin-bottom: 0 !important;
+}
+
 [data-ide-mode-marker='design'] .ide-design-inspector-group-label {
   margin-bottom: 10px !important;
+}
+
+/* 2026-06-19 Student task completion: selected-node inspector is a tool,
+   so direct edit controls must fit before the fold on classroom viewports. */
+[data-ide-mode-marker='design'] .ide-design-selection-inspector {
+  gap: 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-identity-card {
+  margin-bottom: 6px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-selection-identity {
+  margin-bottom: 5px !important;
+  padding-bottom: 5px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-next-step,
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-subtitle {
+  line-height: 1.35 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-next-step {
+  margin: 6px 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-guidance {
+  gap: 6px !important;
+  margin-top: 2px !important;
+  padding-top: 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-selection-issues {
+  gap: 4px !important;
+  padding: 8px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section {
+  margin-bottom: 10px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-inspector-section-header {
+  padding: 10px 12px 0 !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-inspector-content {
+  gap: 10px !important;
+  padding: 10px 12px 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-design-inspector-action-group {
+  gap: 8px !important;
+  padding: 10px !important;
 }
 
 [data-ide-mode-marker='project'] .ide-project-flightdeck {

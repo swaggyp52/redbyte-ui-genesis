@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-18
+last_validated: 2026-06-19
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Release Solidification v1: Verify / Export / Import workbenches
+**Latest product/control slice:** Student Task Completion / Design Direct Edits v1
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -41,6 +41,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 12. **Import Guided Recovery Workflow v1 is closed locally.** `ide:gate:import-guided-recovery-workflow` now proves Import first-look remains guided, but active Paste HDL and unsupported-example recovery states replace the intro shell with a compact taskbar and keep the editor/review work object in the first viewport at `1366x768` and `1440x900`. The slice also keeps the existing review/apply selector contract, rejects root overflow and console/page errors, verifies the visible build hash, and preserves import parser/apply behavior, project format, Verify semantics, mapping, generated artifacts, goldens, and E1/E2/E3 proof boundaries.
 13. **Outer Workflow Command Surfaces + Verify Signals Dock v1 is closed locally.** `ide:gate:project-loaded-command-surface`, `ide:gate:import-guided-recovery-wizard`, `ide:gate:export-package-inspector`, `ide:gate:outer-workflow-action-density`, `ide:gate:card-chrome-regression`, and `ide:gate:verify-signals-dock-not-clipped` now prove loaded Project direct commands, Import first-look wizard hierarchy, Export package file browser/preview, outer workflow action density, card-chrome regression coverage, and a readable open Verify Signals rail at `1366x768` and `1440x900`. The Verify rail gate failed before the repair at `136px`/`144px` open width and now passes with a `224px` open rail, no horizontal clipping, no root overflow, and no collapsed-rail widening. The slice preserves simulation, Verify semantics, mapping semantics, import parser/apply behavior, generated artifacts, project format, goldens, and E1/E2/E3 proof boundaries.
 14. **Release Solidification v1 is closed locally.** `ide:gate:release-solidification-v1` now proves the live-browser release package selected from current evidence: Verify keeps a usable stimulus/waveform split with Signals open and no internal horizontal overflow, Export package inspector exposes a compact package / Verify / pin mapping / E0-boundary checklist, and Import selected-source recovery uses the workbench width for editor plus source-review lane with reload continuity at `1366x768` and `1440x900`. The gate is wired into `classroom:gate` and `verify:gates:classroom`, and the slice preserves simulation, Verify semantics, mapping semantics, import parser/apply behavior, generated artifacts, project format, goldens, and E1/E2/E3 proof boundaries.
+15. **Student Task Completion / Design Direct Edits v1 is closed locally.** `ide:gate:student-task-completion-flow` now proves the complete student path from Project starter to Design node selection, readable selected-node direct edits, Verify PASS/FAIL/repair/PASS, Hardware mapping visibility, and Export E0 handoff at `1366x768` and `1440x900`. The selected Design Inspector is now a proportional tool window with visible Copy, Duplicate, and Swap type controls instead of a cramped side rail; adjacent Design gates preserve the canvas-dominant contract and root-overflow checks.
 9. **Design Canvas Direct Workbench v1 is closed locally.** `ide:gate:design-canvas-direct-workbench` now proves the loaded Logic Gates Design canvas starts with only a compact `View <zoom>` control, no expanded Fit/Center/preset HUD, no minimap over the graph, open/reclose View-tools behavior, no graph overlap in the default state, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 7. **Workbench Obstruction Usability v1 is closed locally.** `ide:gate:workbench-obstruction-usability` now proves Hardware Map Pins opens with the Map support dock collapsed, compact `Map` restore control visible, board/table workspace first-order, right/left support docks proportional when opened, close-to-restore behavior intact, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 8. **Workflow Orientation Integrated v1 is closed locally.** `ide:gate:interaction-affordance` now also proves a loaded Project `Flow` reopen uses an integrated callout that does not cover Project entry paths at `1440x900`; after IAB proof at `1366x768` and `1440x900` shows the compact callout above the Project paths with no root overflow.
@@ -216,6 +217,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Workbench Reconstruction v1. | `RB-WORKBENCH-RECON-001`; `docs/architecture/RED_BYTE_WORKBENCH_MODEL.md`; `ide:gate:workbench-reconstruction-v1`; `ide:gate:design-dual-tool-windows`; `ide:gate:verify-task-plane-usability`; `ide:gate:hardware-board-dominance`; `ide:gate:action-first-entry-surfaces`; `ide:gate:root-overflow-regression`; before/after evidence under `.redbyte/product-immersion/workbench-reconstruction/2026-06-18/`. |
 | Closed | Import Guided Recovery Workflow v1. | `RB-IMPORT-GUIDED-002`; `ide:gate:import-guided-recovery-workflow`; before/after evidence under `.redbyte/product-immersion/product-reconstruction/2026-06-18/`. |
 | Closed | Release Readiness Tool Windows v1. | `RB-RELEASE-VISUAL-001`; `docs/product/RED_BYTE_RELEASE_READINESS_TARGET.md`; `ide:gate:design-library-not-cropped`; `ide:gate:design-tool-window-coexistence`; `ide:gate:hardware-board-unblocked`; `ide:gate:hardware-resource-catalog-not-obstructing`; `ide:gate:release-readiness-visual-contract`; `ide:gate:no-cropped-controls-regression`; before/after evidence under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/`. |
+| Closed | Student Task Completion / Design Direct Edits v1. | `RB-STUDENT-TASK-001`; `ide:gate:student-task-completion-flow`; selected-node inspector/direct edit proof; before/after evidence under `.redbyte/product-immersion/student-task-completion/2026-06-19/`. |
 | Next / board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links

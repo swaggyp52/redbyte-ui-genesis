@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: make Design direct edits fit the student task flow)
+
+**Subsystem:** Design selected-node inspector/direct edit controls, complete student Project -> Design -> Verify -> Map Pins -> Export flow, classroom browser gate wiring, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `53bddd4b07094a1b83c9941cda1638ee52261ce8`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used a fresh current local app for browser inspection and after proof, with visible build hash `53bddd4` matching local HEAD before screenshots and assertions.
+- Inspected the complete student task flow at `1366x768` and `1440x900`: Project first launch/loaded project, Design blank/starter authoring and selected node, Verify observe/compare/fail/repair/pass, Hardware mapping workbench, Export handoff station, Import recovery, navigation, reload, fresh context, and dirty context.
+- Ranked live issues from browser evidence and selected Design direct manipulation because the selected AND-node inspector was too narrow for normal editing: direct actions overlapped, and Swap type controls were below the useful viewport.
+- Added `ide:gate:student-task-completion-flow` and wired it into `classroom:gate` and `verify:gates:classroom`; the gate starts from Project, selects a Design node, proves readable inspector direct actions, continues through Verify PASS/FAIL/repair/PASS, checks Hardware map visibility, and checks Export E0 handoff without E1/E2/E3 overclaim.
+- Widened the Design right Inspector proportional tool window for normal and wide layouts, compacted selected-node inspector spacing, and moved gate-swap controls into the direct edit group so Copy, Duplicate, and Swap type are reachable without cramped overlap.
+- Updated adjacent Design geometry gates for the new proportional inspector contract, including the wide dual-tool canvas floor, while keeping the Design canvas dominant and root-overflow checks intact.
+
+**Evidence:** Before screenshots and diagnosis are under `.redbyte/product-immersion/student-task-completion/2026-06-19/before/`; after screenshots and observations are under `.redbyte/product-immersion/student-task-completion/2026-06-19/after/`. After proof shows the selected-node Inspector dock at `276px` on `1366x768` and `280px` on `1440x900`, selected inspector content at least `234px`, visible Copy/Duplicate/Swap controls, Design canvas still about `982px` wide at `1366x768`, root overflow `0`, browser problems `0`, and build hash `53bddd4`.
+
+**Validation:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for the new student-task gate, affected Design/Verify/Hardware/Export gates, focused Design shell/inspector Vitest, `classroom:gate`, and `build:unified`. Node `20.19.0` remains the repo-pinned runtime but is not the available runtime in this shell.
+
+**Safety:** Presentation/gate-only repair. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained function-depth slice selected from fresh live evidence. The strongest remaining candidate is still broader Project/Design repeated-use authoring depth and card-like composition, but the target must come from current browser inspection.
+
 ## Change Log 2026-06-18 (fix: stabilize Hardware first viewport gate after release solidification)
 
 **Subsystem:** Hardware Map Pins first-viewport geometry, `ide:gate:hardware-first-viewport`, CI repair for the release-solidification push.

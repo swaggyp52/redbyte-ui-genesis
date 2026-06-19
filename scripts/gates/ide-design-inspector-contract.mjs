@@ -4,7 +4,10 @@ import { assert, runIdeGate } from './_gateHarness.mjs';
 
 await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseUrl }) => {
   // Suppress the first-visit onboarding overlay so it does not intercept pointer events.
-  await page.addInitScript(() => { localStorage.setItem('rb-onboarding-v1-seen', '1'); });
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('rb-onboarding-v1-seen', '1');
+  });
   await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
@@ -21,6 +24,14 @@ await runIdeGate('IDE design inspector contract satisfied', async ({ page, baseU
 
   const hudCount = await page.locator('[data-testid="ide-design-tool-hud"]').count();
   assert(hudCount >= 1, 'design tool HUD marker must exist');
+
+  if (!(await page.locator('[data-testid="ide-design-palette-and"]').first().isVisible().catch(() => false))) {
+    const paletteRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
+    if (await paletteRail.isVisible().catch(() => false)) {
+      await paletteRail.click();
+    }
+  }
+  await page.waitForSelector('[data-testid="ide-design-palette-and"]', { timeout: 10000 });
 
   const paletteCount = await page.locator('[data-testid^="ide-design-palette-"]').count();
   assert(paletteCount >= 8, `expected >=8 design primitives in palette, found ${paletteCount}`);

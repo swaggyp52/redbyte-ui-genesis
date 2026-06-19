@@ -277,6 +277,7 @@
         "ide:gate:hardware-first-viewport": "node ./scripts/gates/ide-hardware-first-viewport.mjs",
         "ide:gate:hardware-checklist-contract": "node ./scripts/gates/ide-hardware-checklist-contract.mjs",
         "ide:gate:student-loop-contract": "node ./scripts/gates/ide-student-loop-contract.mjs",
+        "ide:gate:student-task-completion-flow": "node ./scripts/gates/ide-student-task-completion-flow.mjs",
         "ide:gate:blank-canvas-product-proof": "node ./scripts/gates/ide-blank-canvas-product-proof.mjs",
         "ide:gate:from-scratch-general-workflow": "node ./scripts/gates/ide-from-scratch-general-workflow.mjs",
         "ide:gate:viewport-overflow-contract": "node ./scripts/gates/ide-viewport-overflow-contract.mjs",

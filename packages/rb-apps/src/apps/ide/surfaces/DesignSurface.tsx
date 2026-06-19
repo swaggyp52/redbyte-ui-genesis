@@ -4694,6 +4694,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 Duplicate
               </IdeButton>
             </div>
+            {(() => {
+              const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
+              return swapTargets && swapTargets.length > 0 ? (
+                <div className="ide-design-inspector-subgroup" data-testid="ide-design-swap-group">
+                  <span className="ide-design-inspector-group-label">Swap type</span>
+                  <div className="ide-design-swap-chips">
+                    {swapTargets.map((targetType) => (
+                      <button
+                        key={targetType}
+                        type="button"
+                        className="ide-design-swap-chip"
+                        data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
+                        onClick={() => handleGateSwap(targetType)}
+                      >
+                        {targetType}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
             {renderSelectionProperties()}
           </div>
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
@@ -4718,27 +4739,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
-          {(() => {
-            const swapTargets = GATE_SWAP_FAMILIES[selectedNode.type];
-            return swapTargets && swapTargets.length > 0 ? (
-              <div className="ide-design-inspector-action-group" data-testid="ide-design-swap-group">
-                <span className="ide-design-inspector-group-label">Swap type</span>
-                <div className="ide-design-swap-chips">
-                  {swapTargets.map((targetType) => (
-                    <button
-                      key={targetType}
-                      type="button"
-                      className="ide-design-swap-chip"
-                      data-testid={`ide-design-swap-${targetType.toLowerCase()}`}
-                      onClick={() => handleGateSwap(targetType)}
-                    >
-                      {targetType}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null;
-          })()}
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (

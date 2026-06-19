@@ -130,6 +130,7 @@ function main() {
     runGate('ide:hardware-first-viewport', 'pnpm -s ide:gate:hardware-first-viewport', true),
     runGate('ide:hardware-checklist-contract', 'pnpm -s ide:gate:hardware-checklist-contract', true),
     runGate('ide:student-loop-contract', 'pnpm -s ide:gate:student-loop-contract', true),
+    runGate('ide:student-task-completion-flow', 'pnpm -s ide:gate:student-task-completion-flow', true),
     runGate('ide:viewport-overflow-contract', 'pnpm -s ide:gate:viewport-overflow-contract', true),
     runGate('ide:shell-layout-integrity', 'pnpm -s ide:gate:shell-layout-integrity', true),
     runGate('ide:shell-workbench-hierarchy', 'pnpm -s ide:gate:shell-workbench-hierarchy', true),

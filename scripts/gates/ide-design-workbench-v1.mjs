@@ -280,7 +280,7 @@ function assertWorkbenchHierarchy(metrics, viewport, label, options) {
     `${label}: palette rail is too wide (${metrics.leftDock.width.toFixed(1)}px)`
   );
   assert(
-    metrics.rightDock.width <= 260,
+    metrics.rightDock.width <= 300,
     `${label}: inspector rail is too wide (${metrics.rightDock.width.toFixed(1)}px)`
   );
   assert(

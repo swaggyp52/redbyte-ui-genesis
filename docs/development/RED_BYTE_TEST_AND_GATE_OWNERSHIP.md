@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-18
+last_validated: 2026-06-19
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -57,6 +57,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:project-loaded-paths-first-viewport`
 - `ide:gate:verify-postrun-workbench-usability`
 - `ide:gate:active-mode-reload-recovery`
+- `ide:gate:student-task-completion-flow`
 - `ide:gate:design-no-bridge-required`
 - `ide:gate:design-workbench-integrity`
 - `ide:gate:design-workbench-v1`
@@ -115,6 +116,7 @@ Why:
 - Project loaded paths first viewport protects loaded Project from pushing Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent below metrics/support content.
 - Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
+- Student task completion flow protects the real classroom loop from returning to a non-functional Design inspector: Project starter, selected-node direct edits, Verify PASS/FAIL/repair/PASS, Hardware mapping, and Export E0 handoff must all remain usable at classroom and desktop viewports.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
 - Design workbench integrity proves the graph stays visible and mutable through normal student actions.
 - Design Workbench v1 proves blank guidance, loaded graph priority, selection, wiring, movement, delete/undo, split/code, and zoom/fit/center at classroom and desktop viewports.
@@ -148,7 +150,7 @@ Why:
 | Mode route, in-app navigation, reload recovery, or stale lazy-surface recovery | `ide:gate:active-mode-reload-recovery`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, plus the affected route/surface gate; add focused unit coverage when boundary classification or startup-mode parsing changes |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
-| Design gesture, canvas, zoom, selection, visible graph, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
+| Design gesture, canvas, zoom, selection, visible graph, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior, run intent, repair loop, testbench layout, no-circuit entry, or Signals rail geometry | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, `ide:gate:release-solidification-v1` when release workbench geometry is involved, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |
@@ -182,6 +184,8 @@ Why:
 `ide:gate:verify-signals-dock-not-clipped` proves the open Verify Signals dock is readable at `1366x768` and `1440x900`; `ide:gate:side-dock-affordance` remains the collapsed-rail guard.
 
 `ide:gate:release-solidification-v1` proves the current Verify / Export / Import release package: open-Signals Verify no internal horizontal overflow, usable stimulus and waveform lanes, Export package/Compare/mapping/E0 checklist, Import selected-source editor plus source-review lane, reload continuity, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
+
+`ide:gate:student-task-completion-flow` proves the current student task path: Project starter, selected Design node direct edits, Verify PASS/FAIL/repair/PASS, Hardware mapping visibility, and Export E0 handoff. It is the regression guard for selected-node Inspector geometry after widening the Design right tool window.
 
 `ide:gate:design-library-not-cropped` proves the Design Library is at least `260px` wide at classroom/desktop viewports, leaves a usable canvas, and keeps visible search/board-resource controls inside the dock.
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-18
+last_validated: 2026-06-19
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -98,6 +98,31 @@ Acceptance:
 - Export package inspector exposes a compact Package / Verify / Pin Mapping / E0 Boundary checklist without claiming E1/E2/E3 proof.
 - Import selected-source recovery uses editor plus source-review lanes and survives reload continuity.
 - No simulation, Verify, mapping, import parser/apply, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
+
+## Phase 12aa - Student Task Completion / Design Direct Edits v1
+
+Status: Closed 2026-06-19 by `ide:gate:student-task-completion-flow`.
+
+Goal: Make the complete student task loop feel usable at the point where students directly manipulate a selected circuit object.
+
+Why: Browser-first inspection at `53bddd4` showed the highest contained defect was Design direct manipulation. Selecting an AND node opened a too-narrow right Inspector, Copy and Duplicate were cramped, and Swap type controls sat below the useful viewport. That made the circuit editor feel unfinished even though the Project, Verify, Hardware, and Export spine could complete.
+
+Proof:
+
+- `ide:gate:student-task-completion-flow`
+- `ide:gate:design-inspector-contract`
+- `ide:gate:design-workbench-v1`
+- `ide:gate:design-tool-window-coexistence`
+- `ide:gate:design-dual-tool-windows`
+- Affected Verify, Hardware, Export, `classroom:gate`, and `build:unified`
+- Before/after screenshots under `.redbyte/product-immersion/student-task-completion/2026-06-19/`.
+
+Acceptance:
+
+- Selecting a normal Design node exposes readable direct edit controls and type-swap options at `1366x768` and `1440x900`.
+- The Design canvas remains the dominant work object beside the proportional Inspector.
+- The same browser proof continues through Verify PASS/FAIL/repair/PASS, Hardware map visibility, and Export E0 handoff.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
 ## Phase 1 - V1 Contract Reset
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-18
+last_validated: 2026-06-19
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte workbench shell and task-plane model
@@ -39,6 +39,7 @@ Side tools support a primary task plane. They do not own the workbench.
 - Open side tools remain proportional, readable, and closable.
 - Verify's Signals support tool has two different obligations: collapsed must stay compact, and open must be wide enough to read the title, count, actions, and signal list without horizontal clipping.
 - Design Library must be wide enough to hold search, category controls, and board-resource chips without horizontal clipping at `1366x768` and `1440x900`.
+- Design Inspector must be wide enough for selected-node direct actions and type-swap controls without cramped overlap at `1366x768` and `1440x900`.
 - A proportional Design Library is a tool window, not a collapsed rail; the canvas must remain usable beside it.
 - Docked tool windows that are part of normal authoring, such as Design Quick Inputs, must remain visible while their longer support lists scroll internally.
 - Focused workbench modes should not show both support docks if that squeezes the task plane.
@@ -50,6 +51,7 @@ Each surface needs one dominant job object and one clear next action in the usef
 
 - Project owns start/recover/continue/build choices.
 - Design owns circuit graph authoring and direct manipulation.
+- A selected Design object must expose the current object's identity plus direct edit controls before lower-priority support details.
 - Verify owns stimulus, expected checks, observed evidence, mismatch, and repair.
 - Hardware owns board/table binding from project signal to Basys3 resource, package pin, and XDC consequence.
 - Export owns package handoff, current trust state, generated artifact inspection, and downstream Vivado instructions.
@@ -92,6 +94,8 @@ The Workbench Reconstruction v1 gate family protects this model:
 - `ide:gate:project-loaded-command-surface`, `ide:gate:import-guided-recovery-wizard`, and `ide:gate:export-package-inspector` check the outer workflow surfaces behave like command, recovery, and package-inspection tools rather than static card stacks.
 - `ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` guard the outer workflow against losing direct actions or regressing into passive card chrome.
 - `ide:gate:release-solidification-v1` checks the current release package across Verify open-Signals no-overflow geometry, Export Package / Verify / Pin Mapping / E0 Boundary checklist clarity, and Import selected-source editor plus source-review layout with reload continuity.
+- `ide:gate:student-task-completion-flow` checks the complete student flow from Project starter through selected-node Design edits, Verify PASS/FAIL/repair/PASS, Hardware mapping visibility, and Export E0 handoff at `1366x768` and `1440x900`.
+- `ide:gate:design-inspector-contract`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, and `ide:gate:design-workbench-v1` keep the wider Design Inspector proportional while preserving a usable canvas.
 - `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.
 - `ide:gate:workbench-reconstruction-v1` checks compact shell geometry, cross-surface task-plane visibility, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 - `ide:gate:design-dual-tool-windows` checks Design support tools open, close, and restore without covering the canvas task plane.

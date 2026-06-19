@@ -26,7 +26,7 @@ await runIdeGate('IDE Design tool-window coexistence is proportional', async ({ 
       await openDesignInspector(page, baseUrl, `design-tool-window-inspector-${viewport.label}`);
       const inspector = await getRequiredRect(page, '[data-testid="ide-inspector"]', `${viewport.label}/Design Inspector`);
       const inspectorCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas with Inspector`);
-      assert(inspector.visibleWidth >= 200 && inspector.visibleWidth <= 260, `${viewport.label}: Inspector width is not proportional ${JSON.stringify(inspector)}`);
+      assert(inspector.visibleWidth >= 260 && inspector.visibleWidth <= 300, `${viewport.label}: Inspector width is not proportional ${JSON.stringify(inspector)}`);
       assert(inspectorCanvas.visibleWidth >= 980, `${viewport.label}: Inspector should leave a usable canvas ${JSON.stringify(inspectorCanvas)}`);
       await assertReleaseReadinessClean(page, `${viewport.label}/Design tool windows`);
     } catch (error) {

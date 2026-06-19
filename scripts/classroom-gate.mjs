@@ -65,6 +65,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:student-loop-contract'],
   },
   {
+    name: 'ide:gate:student-task-completion-flow',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:student-task-completion-flow'],
+  },
+  {
     name: 'ide:gate:design-wire-interaction-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-wire-interaction-contract'],
