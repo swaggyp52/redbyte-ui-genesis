@@ -1681,6 +1681,7 @@ export const IdeApp: React.FC = () => {
       <OnboardingOverlay
         mode={activeMode}
         onOpenDesign={() => setCurrentMode('design')}
+        autoShow={!hasCircuit}
         openRequestId={workflowOrientationRequest}
         placement="integrated"
       />

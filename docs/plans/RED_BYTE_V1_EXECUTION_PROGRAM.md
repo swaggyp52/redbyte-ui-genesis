@@ -183,6 +183,29 @@ Acceptance:
 - Final closeout proof requires a clean tracked worktree by default and verifies visible build badge plus `/os/build.json` against current Git HEAD.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ad - Release Candidate Shakedown / Loaded Project Flow Auto-Collapse
+
+Status: Closed locally 2026-06-19 by the strengthened `ide:gate:interaction-affordance`.
+
+Goal: Make loaded Project feel like a command surface after real work exists instead of reopening with the full teaching-orientation card by default.
+
+Why: Release-candidate browser shakedown at `5d4f048` covered Project first launch/loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping, Export handoff, Import recovery, navigation, reload, fresh context, and dirty context. The highest contained defect was loaded Project inheriting the full Workflow Orientation card after a starter was loaded, which kept the home surface in a card-heavy teaching state even though the `Flow` reopen affordance already existed.
+
+Proof:
+
+- `ide:gate:interaction-affordance`
+- Focused OnboardingOverlay Vitest
+- Affected Project/release gates, `classroom:gate`, and `build:unified`
+- Before/after screenshots under `.redbyte/product-immersion/release-candidate-shakedown/2026-06-19/`.
+
+Acceptance:
+
+- First-launch/no-circuit Project still auto-shows integrated Workflow Orientation.
+- Loaded Project does not auto-show the full Workflow Orientation card after real work exists.
+- `Flow` remains visible as the explicit reopen control.
+- Reopened help stays integrated and does not overlap loaded Project entry paths at `1366x768` and `1440x900`.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

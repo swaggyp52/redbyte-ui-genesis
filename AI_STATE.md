@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: collapse loaded Project workflow help)
+
+**Subsystem:** Release-candidate browser shakedown, loaded Project Workflow Orientation behavior, `ide:gate:interaction-affordance`, Project onboarding tests, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `5d4f048918ae5088c23342ee2b46f4da9a6246b3`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used live browser inspection at `1366x768` and `1440x900` before choosing the target; visible build hash `5d4f048` matched local HEAD before screenshots and gate assertions.
+- Ran a release-candidate shakedown across Project first launch/loaded Project, Build Fresh, Design blank/starter authoring, Verify observe/compare/fail/repair/pass, Hardware mapping, Export handoff, Import recovery, navigation, reload, fresh context, and dirty context. Before proof captured 30 screenshots under `.redbyte/product-immersion/release-candidate-shakedown/2026-06-19/before/`.
+- Ranked the current issues and selected the loaded Project Workflow Orientation defect: after loading real work, returning to Project still inherited the full help card by default, keeping the home surface in a card-heavy teaching state instead of a command surface.
+- Added an `autoShow` control to `OnboardingOverlay` so Project first launch/no-circuit states still get automatic integrated help, while loaded Project states suppress the full card until the user explicitly reopens `Flow`.
+- Strengthened `ide:gate:interaction-affordance` to prove loaded Project does not auto-show the full orientation card, keeps the `Flow` affordance visible, and reopens the integrated helper without overlapping loaded Project entry paths.
+- Added focused OnboardingOverlay coverage proving automatic Project help can be suppressed without breaking explicit reopen.
+
+**Evidence:** Before evidence is under `.redbyte/product-immersion/release-candidate-shakedown/2026-06-19/before/`; after evidence is under `.redbyte/product-immersion/release-candidate-shakedown/2026-06-19/after/`. Key after proof shows Project first launch still auto-shows integrated orientation, loaded Project hides the full card by default, `Flow` remains visible, explicit reopen works, entry paths are not overlapped, root overflow is `0`, and browser problems are `0` at `1366x768` and `1440x900`.
+
+**Validation:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for focused OnboardingOverlay Vitest, `ide:gate:interaction-affordance`, affected Project/release gates, and `build:unified` before cockpit doc closeout. Node `20.19.0` remains the repo-pinned runtime but was not available in this shell via installed version managers, so pinned-runtime proof remains environment-gated.
+
+**Safety:** Presentation/help-behavior and gate-only repair. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained release-candidate shakedown slice selected from fresh live evidence. Strong remaining candidates are Project loaded composition/action density and Verify evidence clarity, but the target must come from live browser inspection.
+
 ## Change Log 2026-06-19 (fix: deepen Design blank authoring and add release safety harness)
 
 **Subsystem:** Design blank/partial authoring continuation, release-safety browser gate wiring, final current-build smoke harness, classroom gate aggregators, cockpit docs, and local Obsidian brain notes.

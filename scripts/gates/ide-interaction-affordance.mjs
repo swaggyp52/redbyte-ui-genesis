@@ -136,6 +136,14 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('[data-testid="mode-button-project"]').first().click();
   await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
+  assert(
+    !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
+    'loaded Project must not inherit the full workflow orientation card by default'
+  );
+  assert(
+    await visible(orientationReopen),
+    'loaded Project must keep the Flow affordance for on-demand workflow help'
+  );
   await orientationReopen.click();
   const loadedProjectOrientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
   await loadedProjectOrientation.waitFor({ state: 'visible', timeout: 10000 });

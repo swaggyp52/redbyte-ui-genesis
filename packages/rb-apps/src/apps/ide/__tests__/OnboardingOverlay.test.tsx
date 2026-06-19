@@ -43,6 +43,18 @@ describe('OnboardingOverlay', () => {
     expect(queryByTestId('ide-onboarding-overlay')).toBeNull();
   });
 
+  it('can suppress automatic Project help while preserving explicit reopen', () => {
+    const { queryByTestId, rerender } = render(
+      <OnboardingOverlay mode="project" autoShow={false} openRequestId={0} />
+    );
+
+    expect(queryByTestId('ide-onboarding-overlay')).toBeNull();
+
+    rerender(<OnboardingOverlay mode="project" autoShow={false} openRequestId={1} />);
+
+    expect(queryByTestId('ide-onboarding-overlay')).not.toBeNull();
+  });
+
   it('opens Design when requested and persists dismissal', () => {
     const onOpenDesign = vi.fn();
     const { getByTestId, queryByTestId } = render(
