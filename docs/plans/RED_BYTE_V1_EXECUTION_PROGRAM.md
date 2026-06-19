@@ -151,7 +151,7 @@ Acceptance:
 
 ## Phase 12ac - Authoring Depth + Release Safety Harness
 
-Status: Closed 2026-06-19 by `ide:gate:authoring-depth-release-safety`.
+Status: Closed 2026-06-19 by `ide:gate:authoring-depth-release-safety`; implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d` was pushed, GitHub-green, and deployed with matching SHA proof.
 
 Goal: Make the repeated-use blank authoring path continue like a workbench after Build Fresh, and harden final closeout proof so stale builds or dirty worktrees cannot masquerade as current evidence.
 
@@ -171,6 +171,8 @@ Proof:
 - Focused Design placement/selection/authoring/runtime-history Vitest
 - `classroom:gate` and `build:unified`
 - Before/after screenshots under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/`.
+- Final current-build smoke under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/final/`; deployed `/os/version.json` reported the implementation SHA.
+- The local `verify:gates:classroom` attempt timed out at the outer runner and is classified as broad-suite timeout handling, not a focused gate failure; syntax and new/affected gates were checked separately.
 
 Acceptance:
 

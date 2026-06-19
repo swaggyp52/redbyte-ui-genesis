@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-06-18
+updated: 2026-06-19
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -24,12 +24,12 @@ related:
 
 ## What is broken right now
 
-Current as of 2026-06-18:
+Current as of 2026-06-19:
 
 - Current browser-first source of truth is the repo cockpit, especially `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/plans/2026-06-12-redbyte-product-issue-index.md`.
-- Release Readiness Tool Windows v1 is closed by six new gates: Design Library no longer clips visible board-resource controls, and Hardware resource summaries no longer overlay the Basys3 board.
-- Current local proof used visible build `7ae6b72` and after evidence under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/after/`.
-- Still open for browser-first ownership: Project loaded command depth, Export package-inspector workflow, and broader function depth/card-heavy issues. Reinspect live app before selecting one contained gateable defect.
+- Authoring Depth + Release Safety Harness is closed for implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d`: partial blank Design authoring now keeps direct Add AND / Wire / Open Verify continuation after Add boundary I/O, and final-current-build smoke/deployed SHA proof guard against stale-build closeouts.
+- Current local proof used visible build `70813ee` before/after evidence under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/`; final smoke evidence lives under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/final/`.
+- Still open for browser-first ownership: Project loaded-state composition, Verify evidence clarity, and broader function depth/card-heavy issues. Reinspect live app before selecting one contained gateable defect.
 - Hardware proof is still board-gated; do not claim fresh Vivado/Basys3 E1-E3 evidence from browser screenshots.
 
 BUG-003 is now project shorthand for the pre-existing render-family baseline, not just the older literal `React.act` crash note. Current workspace version is `@testing-library/react@16.3.2`; use `AI_STATE.md` for the live full-suite counts and failure shape, and do not treat those failures as regressions from new work unless the baseline moves.
@@ -97,7 +97,7 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 
 ## Active Work Board
 
-Current 2026-06-18 closeout: Release Readiness Tool Windows v1 is the latest browser-first product slice. Next product work should be selected from fresh live inspection, with Project loaded command depth and Export package-inspector workflow as likely candidates. Vivado/Basys3 proof remains blocked until connected hardware/Vivado evidence exists.
+Current 2026-06-19 closeout: Authoring Depth + Release Safety Harness is the latest browser-first product slice, with final SHA/deploy proof for implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d`. Next product work should be selected from fresh live inspection, with Project loaded-state composition and Verify evidence clarity as likely candidates. Vivado/Basys3 proof remains blocked until connected hardware/Vivado evidence exists.
 
 → Recent session history: [[Session Log]]  
 → Release certification detail: [[Support Matrix]] · `docs/ACTIVE_WORK.md`

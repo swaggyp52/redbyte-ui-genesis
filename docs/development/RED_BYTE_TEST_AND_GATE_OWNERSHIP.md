@@ -169,6 +169,7 @@ Why:
 
 - Always verify the visible build hash before using an existing local server as evidence.
 - Final release closeouts that rely on browser proof should run `ide:gate:final-current-build-smoke` after committing and rebuilding so the clean worktree, visible build badge, and `/os/build.json` match current HEAD.
+- Treat `verify:gates:classroom` as broad local/nightly regression breadth, not the final interactive closeout authority. If an outer runner times out, inspect the script and changed gate wiring, run syntax checks, and run the new/affected gates directly; do not record the timeout as either green proof or a product regression without a failing child gate.
 - Start from a realistic path: Project load, starter/blank selection, user actions, navigation, reload.
 - Prefer stable `data-testid` selectors only when they point to current product objects. Do not preserve retired selector assumptions.
 - Assert visible behavior, not only DOM existence. For layout gates, check bounding boxes intersect the viewport.
