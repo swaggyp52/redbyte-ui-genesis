@@ -1,5 +1,19 @@
 # AI State
 
+## Change Log 2026-06-18 (fix: stabilize Hardware first viewport gate after release solidification)
+
+**Subsystem:** Hardware Map Pins first-viewport geometry, `ide:gate:hardware-first-viewport`, CI repair for the release-solidification push.
+
+**Changes:**
+- After pushing `64c1e173b016ef89eee017ebfc7814c3990ec99e`, GitHub `Classroom Truth Gates` failed in `ide:gate:hardware-first-viewport` at `1440x900`; the release-solidification gate, Export deploy, and Cloudflare Pages checks were not the failing points.
+- Reproduced the underlying gate weakness locally: the previous Hardware first-viewport gate could pass when the internal workbench scroller had already moved the board workspace upward, while CI measured the unscrolled panel and saw the board/table start too low.
+- Hardened `ide:gate:hardware-first-viewport` to reset root, workspace, Hardware panel body, and Hardware surface scroll containers before measuring the board/table geometry.
+- Compressed the Hardware Map Pins board-resource summary into a compact one-line strip and moved the board workspace up by a small presentation-only offset so the selected binding chain, Basys3 board, and mapping table are first-viewport content without relying on scroll.
+
+**Evidence:** Rebuilt `build:unified` and reran the hardened `ide:gate:hardware-first-viewport` under Node `v24.15.0`; final observations are under `.redbyte/product-immersion/release-solidification/2026-06-18/ci-repair/hardware-first-viewport-final/`. With forced top scroll, the board/table start at `173.5px` for `1366x768` and `174.5px` for `1440x900`, below the `190px` gate threshold, with root overflow `0` and the selected binding chain still `44px` visible.
+
+**Safety:** Presentation/gate-only repair. It does not change simulation semantics, Verify result semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project data format, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical board observation proof. Browser evidence remains E0 only.
+
 ## Change Log 2026-06-18 (fix: solidify Verify, Export, and Import workbenches)
 
 **Subsystem:** RedByte Verify split workbench with Signals open, Export package inspector handoff checklist, Import selected-source recovery workbench, release-solidification browser gate, classroom gate wiring, cockpit docs, and local Obsidian brain notes.

@@ -48,6 +48,7 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
       assert(await visible(row), `${viewport.label}: SW0 row must be visible before selection`);
       await row.click();
+      await resetHardwareFirstViewportScroll(page);
       await waitForHardwareFirstViewportLayout(page, viewport.label).catch(async (error) => {
         observations.push({
           viewport: viewport.label,
@@ -132,6 +133,24 @@ async function openStarterHardware(page, baseUrl, viewportLabel) {
     { timeout: 15000 }
   );
   await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+  await resetHardwareFirstViewportScroll(page);
+}
+
+async function resetHardwareFirstViewportScroll(page) {
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const scrollContainers = [
+      document.scrollingElement,
+      document.querySelector('.ide-workbench-workspace'),
+      document.querySelector('[data-testid="ide-hardware-panel"] .ide-panel-body'),
+      document.querySelector('[data-testid="ide-mode-hardware"]'),
+    ].filter(Boolean);
+
+    for (const element of scrollContainers) {
+      element.scrollTop = 0;
+      element.scrollLeft = 0;
+    }
+  });
 }
 
 async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
