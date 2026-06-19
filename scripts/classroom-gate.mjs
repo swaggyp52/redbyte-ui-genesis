@@ -305,6 +305,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:release-solidification-v1'],
   },
   {
+    name: 'ide:gate:release-solidification-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:release-solidification-v2'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],

@@ -134,6 +134,30 @@ Closed evidence:
 - Before evidence showed the selected AND inspector too narrow, Copy/Duplicate cramped, and Swap type below the useful viewport.
 - After evidence shows a proportional selected-node Inspector, visible Copy/Duplicate/Swap controls, usable canvas beside the Inspector, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 
+## Release Solidification v2 / Verify Actions + Project Orientation Target
+
+The 2026-06-19 live browser release-solidification follow-up showed two visible normal-use defects after Design direct edits landed: first-launch Project orientation still behaved like a blocking overlay, and Verify PASS/repair rendered the continuation actions in a clipped lower result region.
+
+Status: Closed locally by `ide:gate:release-solidification-v2` and the 2026-06-19 browser proof under `.redbyte/product-immersion/release-solidification-2/2026-06-19/`.
+
+Selected package:
+
+- **Project first-launch orientation:** Workflow Orientation must be integrated with the command center and must not overlap Build Fresh, starter, or primary launch controls.
+- **Verify post-run actions:** Compare PASS and repair PASS must expose the next-action band in the first viewport, while FAIL keeps first-mismatch repair action visible and gives unused lower height back to the evidence workspace.
+
+Regression coverage:
+
+- `ide:gate:release-solidification-v2`
+- `ide:gate:interaction-affordance`
+- `ide:gate:verify-postrun-workbench-usability`
+- `ide:gate:verify-evidence-workbench-integrity`
+- `ide:gate:release-solidification-v1`
+
+Closed evidence:
+
+- Before evidence showed Project first launch using a launch overlay and Verify PASS/repair result actions clipped to a zero-height lower region.
+- After evidence shows integrated first-launch orientation, visible Verify Continue to Hardware / Open Export / Back to Design actions after PASS/repair, visible first failing-check action in FAIL, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
+
 ## Non-Claims
 
 This target does not prove Vivado build, bitstream programming, or physical Basys3 behavior. It also does not change simulation semantics, Verify semantics, pin mapping semantics, generated artifacts, project format, or goldens.

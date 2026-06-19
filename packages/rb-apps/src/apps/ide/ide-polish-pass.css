@@ -4770,3 +4770,71 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* 2026-06-19 Release Solidification v2.
+   Keep Project/Verify semantics unchanged while making the fresh-launch
+   orientation and Verify post-run actions usable in classroom viewports. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-panel > .ide-panel-body {
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, auto) auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has(.ide-verify-region--result .ide-verify-run-proof) .ide-verify-panel > .ide-panel-body {
+  grid-template-rows: auto minmax(0, 1fr) minmax(86px, auto) auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result:has(.ide-verify-run-proof) {
+  grid-area: result !important;
+  display: block !important;
+  min-width: 0 !important;
+  min-height: 86px !important;
+  max-height: 132px !important;
+  overflow: hidden !important;
+  padding: 6px 10px 8px !important;
+  border-top: 1px solid rgba(72, 118, 152, 0.26) !important;
+  border-bottom: 0 !important;
+  background: linear-gradient(180deg, rgba(5, 14, 24, 0.84), rgba(4, 11, 20, 0.94)) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result:not(:has(.ide-verify-run-proof, .ide-verify-fail-diagnosis, .ide-callout, .ide-verify-export-available-note, .ide-verify-preview-banner)) {
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof {
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 8px 10px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-main {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-copy {
+  gap: 3px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-title {
+  font-size: 14px !important;
+  line-height: 1.18 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-summary,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-authority,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-facts {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  max-width: min(520px, 42vw) !important;
+}

@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: surface Verify actions and integrate Project orientation)
+
+**Subsystem:** Project Workflow Orientation, Verify post-run evidence/action layout, release-solidification browser gate wiring, classroom gate aggregators, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `8bc9a28fb30fe4116d19f591fb5f3afaa3294055`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used live browser inspection at `1366x768` and `1440x900` before choosing the target; visible build hash `8bc9a28` matched local HEAD before screenshots and gate assertions.
+- Ranked the current release/product issues: Verify PASS/repair next-action evidence was clipped to a zero-height lower region; Project first-launch Workflow Orientation still opened as a blocking launch overlay; Export package inspector was comparatively clear; loaded Project and remaining card-like composition remain follow-ups.
+- Added `ide:gate:release-solidification-v2` and wired it into `classroom:gate` and `verify:gates:classroom`; the gate covers first-launch Project orientation placement plus Verify Compare PASS, intentional expected-output FAIL, and repair PASS geometry/action visibility at `1366x768` and `1440x900`.
+- Changed Project first launch to use the integrated Workflow Orientation callout so course starters and launch actions remain clickable and visible.
+- Replaced the older zero-height Verify result-row override with a compact visible PASS/repair action band, while giving FAIL state height back to the evidence workspace instead of reserving an empty lower row.
+- Updated `ide:gate:interaction-affordance` so it checks integrated orientation and no overlap with actual Project launch actions rather than the old bottom-overlay placement assumption.
+
+**Evidence:** Before screenshots are under `.redbyte/product-immersion/release-solidification-2/2026-06-19/before/`; after screenshots are under `.redbyte/product-immersion/release-solidification-2/2026-06-19/after/`. Key after frames include `project-first-launch-integrated-1366x768.png`, `verify-compare-pass-actions-1366x768.png`, `verify-compare-fail-first-check-1366x768.png`, and `verify-repair-pass-actions-1440x900.png`. Fresh in-app browser preview is `http://127.0.0.1:5313/os/?mode=verify&e2e=1&ownership=release-solidification-v2-after&viewport=1366x768` with visible build hash `8bc9a28`.
+
+**Validation:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for intentional red `pnpm -s ide:gate:release-solidification-v2`; final `pnpm -s ide:gate:release-solidification-v2`; affected browser gates `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:interaction-affordance`, `ide:gate:project-command-center`, `ide:gate:project-loaded-command-surface`, `ide:gate:export-package-inspector`, `ide:gate:release-solidification-v1`, and `ide:gate:student-task-completion-flow`; focused Vitest `pnpm -w exec vitest run packages/rb-apps/src/apps/ide/__tests__/OnboardingOverlay.test.tsx packages/rb-apps/src/apps/ide/__tests__/workflowStages.authority.test.tsx`; `pnpm -s classroom:gate`; `pnpm -s build:unified`; `pnpm -s rb:doc:validate`; `pnpm -s rb:encoding:check`; and `git diff --check`.
+
+**Safety:** Presentation/gate-only repair. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained function-depth slice selected from fresh live evidence. Strong remaining candidates are Project/Design card-like composition and repeated-use authoring depth, but the next target must come from live browser inspection.
+
 ## Change Log 2026-06-19 (fix: make Design direct edits fit the student task flow)
 
 **Subsystem:** Design selected-node inspector/direct edit controls, complete student Project -> Design -> Verify -> Map Pins -> Export flow, classroom browser gate wiring, cockpit docs, and local Obsidian brain notes.

@@ -297,6 +297,7 @@
         "ide:gate:hardware-resource-catalog-not-obstructing": "node ./scripts/gates/ide-hardware-resource-catalog-not-obstructing.mjs",
         "ide:gate:release-readiness-visual-contract": "node ./scripts/gates/ide-release-readiness-visual-contract.mjs",
         "ide:gate:release-solidification-v1": "node ./scripts/gates/ide-release-solidification-v1.mjs",
+        "ide:gate:release-solidification-v2": "node ./scripts/gates/ide-release-solidification-v2.mjs",
         "ide:gate:no-cropped-controls-regression": "node ./scripts/gates/ide-no-cropped-controls-regression.mjs",
         "ide:gate:action-first-entry-surfaces": "node ./scripts/gates/ide-action-first-entry-surfaces.mjs",
         "ide:gate:outer-workflow-action-density": "node ./scripts/gates/ide-outer-workflow-action-density.mjs",

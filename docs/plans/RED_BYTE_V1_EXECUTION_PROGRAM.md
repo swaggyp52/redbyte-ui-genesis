@@ -124,6 +124,31 @@ Acceptance:
 - The same browser proof continues through Verify PASS/FAIL/repair/PASS, Hardware map visibility, and Export E0 handoff.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ab - Release Solidification v2 / Verify Actions + Project Orientation
+
+Status: Closed 2026-06-19 by `ide:gate:release-solidification-v2`.
+
+Goal: Remove the next live browser release-polish blockers after the student task slice: Project first-launch help blocking launch actions, and Verify PASS/repair continuation actions being clipped out of the useful viewport.
+
+Why: Live browser inspection at `8bc9a28` ranked Verify post-run action visibility as the highest student/professor confidence risk and Project first-launch Workflow Orientation as the second contained normal-use obstruction. Export package clarity was comparatively stronger and remains guarded by v1 gates.
+
+Proof:
+
+- `ide:gate:release-solidification-v2`
+- `ide:gate:interaction-affordance`
+- `ide:gate:verify-postrun-workbench-usability`
+- `ide:gate:verify-evidence-workbench-integrity`
+- `ide:gate:release-solidification-v1`
+- Affected Project/Export/student-task gates, `classroom:gate`, and `build:unified`
+- Before/after screenshots under `.redbyte/product-immersion/release-solidification-2/2026-06-19/`.
+
+Acceptance:
+
+- First-launch Workflow Orientation is integrated, readable, and does not overlap Build Fresh, starter, or primary launch controls.
+- Verify Compare PASS and repair PASS expose Continue to Hardware / Open Export / Back to Design in the first viewport.
+- Intentional expected-output FAIL keeps first failing-check action visible and returns lower height to the evidence workspace instead of reserving blank result space.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

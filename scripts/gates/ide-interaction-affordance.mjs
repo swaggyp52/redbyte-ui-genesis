@@ -52,13 +52,27 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
 
   const orientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
   assert(await visible(orientation), 'first Project launch must show workflow orientation');
-  const orientationBox = await orientation.boundingBox();
-  const commandCenterBox = await page.locator('[data-testid="ide-project-command-center"]').first().boundingBox();
-  assert(orientationBox && commandCenterBox, 'workflow orientation and command center must be measurable');
   assert(
-    orientationBox.y > commandCenterBox.y + 80,
-    `workflow orientation should not cover the Project primary actions: overlay y=${orientationBox.y}, command center y=${commandCenterBox.y}`
+    (await orientation.getAttribute('data-onboarding-placement')) === 'integrated',
+    'first Project launch workflow orientation must be integrated with the command center'
   );
+  const orientationBox = await orientation.boundingBox();
+  const launchTargets = [
+    page.locator('[data-testid="ide-project-primary-actions"]').first(),
+    page.locator('[data-testid="ide-project-start-column"]').first(),
+    page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first(),
+  ];
+  assert(orientationBox, 'workflow orientation must be measurable');
+  for (const target of launchTargets) {
+    if (!(await target.isVisible().catch(() => false))) continue;
+    const targetBox = await target.boundingBox();
+    assert(targetBox, 'Project launch target must be measurable');
+    assertNoOverlap(
+      orientationBox,
+      targetBox,
+      'workflow orientation must not cover Project launch actions'
+    );
+  }
 
   await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
   await orientation.waitFor({ state: 'hidden', timeout: 10000 });
