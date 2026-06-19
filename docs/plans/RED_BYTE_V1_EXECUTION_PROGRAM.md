@@ -149,6 +149,38 @@ Acceptance:
 - Intentional expected-output FAIL keeps first failing-check action visible and returns lower height to the evidence workspace instead of reserving blank result space.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ac - Authoring Depth + Release Safety Harness
+
+Status: Closed 2026-06-19 by `ide:gate:authoring-depth-release-safety`.
+
+Goal: Make the repeated-use blank authoring path continue like a workbench after Build Fresh, and harden final closeout proof so stale builds or dirty worktrees cannot masquerade as current evidence.
+
+Why: Live browser inspection at `70813ee` showed the highest contained product defect in normal authoring depth: after Build Fresh and Add boundary I/O, Design had only input/output nodes and no visible direct Add gate/Wire continuation because the blank starter affordance disappeared and the Library remained collapsed. The same sprint also addressed the process failure where final screenshots/checks could be captured from the starting build instead of the final commit.
+
+Proof:
+
+- `ide:gate:authoring-depth-release-safety`
+- `ide:gate:final-current-build-smoke`
+- `ide:gate:blank-canvas-product-proof`
+- `ide:gate:from-scratch-general-workflow`
+- `ide:gate:design-workbench-v1`
+- `ide:gate:design-workbench-integrity`
+- `ide:gate:student-task-completion-flow`
+- `ide:gate:design-workspace-crash-proof`
+- `ide:gate:workbench-stability-overhaul`
+- Focused Design placement/selection/authoring/runtime-history Vitest
+- `classroom:gate` and `build:unified`
+- Before/after screenshots under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/`.
+
+Acceptance:
+
+- Build Fresh -> Add boundary I/O leaves direct Add AND, Wire, and Open Verify continuation visible in the canvas at `1366x768` and `1440x900`.
+- Direct Add AND increases the partial blank circuit from boundary I/O only to a gate-bearing authoring state without reopening the Library.
+- Starter Design select/duplicate/delete/undo and wire delete/undo remain usable.
+- Project continuity and Verify/Hardware/Export/Import reload smoke remain clean.
+- Final closeout proof requires a clean tracked worktree by default and verifies visible build badge plus `/os/build.json` against current Git HEAD.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

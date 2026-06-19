@@ -1970,6 +1970,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         y: typeof position.y === 'number' && isFinite(position.y) ? position.y : 0,
       };
       if (onRuntimeAddNode) {
+        markReplayStale();
         onRuntimeAddNode(nodeType, safePosition);
       } else {
         addNode(nodeType, safePosition, { skipHistory: true });
@@ -1986,6 +1987,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       canvasSize.width,
       editorCircuit.nodes,
       emitCircuitMutation,
+      markReplayStale,
       onRuntimeAddNode,
     ]
   );
@@ -2097,6 +2099,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     spawnAtCanvasCenter,
   ]);
 
+  const addAndGateOnly = useCallback(() => {
+    spawnAtCanvasCenter('AND');
+    setActionToast('Added AND gate. Switch to Wire, then connect the ports.');
+  }, [spawnAtCanvasCenter]);
+
   const cancelPendingPlacement = useCallback(
     (reason: 'cancel' | 'escape' | 'tool') => {
       if (!pendingPlacement) return;
@@ -2144,6 +2151,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
       if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
         if (onRuntimeAddNode) {
+          markReplayStale();
           onRuntimeAddNode(pendingPlacement.nodeType, position);
         } else {
           addNode(pendingPlacement.nodeType, position, { skipHistory: true });
@@ -2187,6 +2195,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       editorCircuit,
       emitCircuitMutation,
       interactionMode,
+      markReplayStale,
       onRuntimeAddBoardIo,
       onRuntimeAddIo,
       onRuntimeAddNode,
@@ -3488,6 +3497,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => resolveDesignWorkspacePreset({ mode: designView, effectiveMode: effectiveDesignView }),
     [designView, effectiveDesignView]
   );
+  const showPartialBlankAuthoring =
+    workspacePreset.showCanvasTools &&
+    !showBlankStateCard &&
+    !isPlacementMode &&
+    editorCircuit.nodes.length > 0 &&
+    (editorCircuit.connections?.length ?? 0) === 0;
   const hasVisibleDiagnosticsConsole =
     compilerErrorCount > 0 || compilerWarningCount > 0 || diagnosticsDrawerRows.length > 0;
   const designConsoleMode = hasVisibleDiagnosticsConsole ? workspacePreset.consoleMode : 'hidden';
@@ -6616,6 +6631,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       Add boundary I/O
                     </IdeButton>
                   ) : null}
+                  {workspacePreset.showCanvasTools && !showBlankStateCard ? (
+                    <IdeButton
+                      tone={showPartialBlankAuthoring ? 'secondary' : 'ghost'}
+                      onClick={addAndGateOnly}
+                      testId="ide-design-status-add-and"
+                    >
+                      Add AND
+                    </IdeButton>
+                  ) : null}
                   {onGoToProject ? (
                     <IdeButton
                       tone="ghost"
@@ -7135,6 +7159,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       </div>
                     )}
+                    {showPartialBlankAuthoring ? (
+                      <div
+                        className="ide-design-authoring-quickstrip"
+                        data-testid="ide-design-authoring-quickstrip"
+                        data-blocks-canvas-placement="1"
+                      >
+                        <div className="ide-design-authoring-quickstrip-copy">
+                          <span className="ide-design-authoring-quickstrip-label">Next on canvas</span>
+                          <strong>Drop a gate, wire ports, then run Verify.</strong>
+                        </div>
+                        <div className="ide-design-authoring-quickstrip-actions">
+                          <IdeButton tone="secondary" onClick={addAndGateOnly} testId="ide-design-quick-add-and">
+                            Add AND
+                          </IdeButton>
+                          <IdeButton tone="ghost" onClick={setWireMode} testId="ide-design-quick-wire">
+                            Wire
+                          </IdeButton>
+                          {onGoToVerify ? (
+                            <IdeButton tone="ghost" onClick={onGoToVerify} testId="ide-design-quick-open-verify">
+                              Open Verify
+                            </IdeButton>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
                     {actionToast && (
                       <div
                         className="ide-design-toast"

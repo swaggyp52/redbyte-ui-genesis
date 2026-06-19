@@ -238,11 +238,11 @@ describe('DesignSurface placement mode', () => {
 
     await waitFor(() => {
       expect(onRuntimeAddNode).toHaveBeenCalledTimes(1);
-      expect(onCircuitMutated).toHaveBeenCalledTimes(1);
       expect(onClearExternalDebug).toHaveBeenCalledTimes(1);
       expect(view.getByTestId('ide-design-replay-stale-banner')).toBeTruthy();
     });
 
+    expect(onCircuitMutated).not.toHaveBeenCalled();
     expect(view.queryByTestId('ide-design-debug-banner')).toBeNull();
   });
 });

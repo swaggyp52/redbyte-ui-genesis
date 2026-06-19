@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: deepen Design blank authoring and add release safety harness)
+
+**Subsystem:** Design blank/partial authoring continuation, release-safety browser gate wiring, final current-build smoke harness, classroom gate aggregators, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the slice base was the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` on `main`, synced with `origin/main` at `70813eee506c986c4579be8a9e42ecb71e1fa576`; GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Used live browser inspection at `1366x768` and `1440x900` before choosing the target; visible build hash `70813ee` matched local HEAD before screenshots and gate assertions.
+- Ranked the current issues and selected repeated-use authoring depth: after Build Fresh and Add boundary I/O, Design showed inputs/outputs but lost a direct next authoring path because the blank-state starter affordance disappeared, the Library stayed collapsed, and adding a gate required hunting through support chrome.
+- Added `ide:gate:authoring-depth-release-safety` and wired it into `classroom:gate` and `verify:gates:classroom`; the gate covers Project first-launch rename, Build Fresh, Design Add boundary I/O, direct Add AND/Wire continuation, reload, Project continuity, starter Design library/select/duplicate/delete/undo, wire delete/undo, and Verify/Hardware/Export/Import reload smoke with build-hash, boundary, dynamic-import, console/page, and overflow checks.
+- Added `ide:gate:final-current-build-smoke`, a closeout-only gate that refuses to run on a dirty tracked worktree by default and requires the visible build badge plus `/os/build.json` to match current Git HEAD across Project, Design, Verify, Hardware, Export, and Import.
+- Added a compact Design authoring quickstrip and top-row Add AND affordance for partial blank circuits so students can continue from boundary I/O to a gate and wire mode without reopening the Library.
+- Restored stale-replay handling for runtime-backed node placement without reintroducing stale circuit-store writes; `onRuntimeAddNode` remains the projectRuntime mutation authority.
+
+**Evidence:** Before screenshots and observations are under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/before/`; after screenshots and observations are under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/after/`. Key after proof shows boundary I/O -> Add AND increases the blank project from two nodes to three at both viewports, no console/page problems, and build hash `70813ee`.
+
+**Validation:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for intentional red `pnpm -s ide:gate:authoring-depth-release-safety`; final `pnpm -s ide:gate:authoring-depth-release-safety`; affected Design/workbench gates `ide:gate:blank-canvas-product-proof`, `ide:gate:from-scratch-general-workflow`, `ide:gate:design-workbench-v1`, `ide:gate:design-workbench-integrity`, `ide:gate:student-task-completion-flow`, `ide:gate:design-workspace-crash-proof`, and `ide:gate:workbench-stability-overhaul`; focused Vitest for Design placement/selection/authoring/runtime history; and `pnpm -s classroom:gate`. Final build/doc/encoding/diff checks and final current-build smoke must still be rerun after this doc update and closeout commit.
+
+**Safety:** Presentation/gate-only authoring repair plus proof-harness hardening. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub `Classroom Truth Gates` / deploy results must be verified from live GitHub evidence in the session closeout.
+
+**Next recommended task:** Continue browser-first product ownership with one contained repeated-use function-depth slice selected from fresh live evidence. Strong remaining candidates are Project loaded-state composition and Verify evidence clarity, but the target must come from live browser inspection.
+
 ## Change Log 2026-06-19 (fix: surface Verify actions and integrate Project orientation)
 
 **Subsystem:** Project Workflow Orientation, Verify post-run evidence/action layout, release-solidification browser gate wiring, classroom gate aggregators, cockpit docs, and local Obsidian brain notes.
