@@ -30397,9 +30397,9 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-inspector-subgroup {
   display: grid !important;
-  gap: 8px !important;
-  margin-top: 8px !important;
-  padding-top: 8px !important;
+  gap: 6px !important;
+  margin-top: 6px !important;
+  padding-top: 6px !important;
   border-top: 1px solid rgba(79, 114, 145, 0.18) !important;
 }
 
@@ -30418,14 +30418,14 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-identity-card {
-  margin-bottom: 6px !important;
+  margin-bottom: 4px !important;
   padding: 10px 12px !important;
   border-radius: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-selection-identity {
-  margin-bottom: 5px !important;
-  padding-bottom: 5px !important;
+  margin-bottom: 4px !important;
+  padding-bottom: 4px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-next-step,
@@ -30457,13 +30457,13 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-inspector-content {
-  gap: 10px !important;
-  padding: 10px 12px 12px !important;
+  gap: 8px !important;
+  padding: 8px 12px 10px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-selection-inspector + .ide-inspector-section .ide-design-inspector-action-group {
-  gap: 8px !important;
-  padding: 10px !important;
+  gap: 7px !important;
+  padding: 9px !important;
 }
 
 [data-ide-mode-marker='project'] .ide-project-flightdeck {
