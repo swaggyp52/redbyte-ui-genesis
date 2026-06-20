@@ -10,6 +10,8 @@ role: RedByte workbench shell and task-plane model
 
 Use this doc when changing RedByte shell, surface layout, side tools, task planes, or browser geometry gates. It is a current architecture control layer, not a historical design essay.
 
+Product Trust Reset v2 supersession note: for the reset branch, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`, `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, and `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md` supersede this document anywhere this document preserves raw build-hash chrome, E0/E1/E2/E3 student-surface language, generic open/close side rails, or card-first workbench composition.
+
 ## Product Frame
 
 RedByte V1 is a browser-based Basys3 digital-logic lab workbench. The main spine remains:

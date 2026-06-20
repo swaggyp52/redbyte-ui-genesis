@@ -11,6 +11,8 @@ role: Verify surface spec
 Status: board-clock verify truth update
 Mode ID: `verify`
 
+Product Trust Reset v2 note: `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md` supersedes this spec wherever this spec allows ambiguous expected-output editing, generic signal side rails, or mixed Testbench/Results mental models in the normal student UI.
+
 ## Purpose
 
 Run deterministic testbench verification and present clear pass/fail proof for downstream Hardware and Export trust.

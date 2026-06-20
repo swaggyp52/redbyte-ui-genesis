@@ -18,6 +18,9 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Agent startup and latest repo posture | `AGENTS.md`, `AI_STATE.md`, `CLAUDE.md` | Read first. `AI_STATE.md` wins over prior prompt context. |
 | Current priorities | `docs/ACTIVE_WORK.md` | Cockpit for what should happen next. |
 | Ordered work | `docs/product/RED_BYTE_WORK_QUEUE.md` | Near-term V1 queue for agents and maintainers. |
+| Product Trust Reset v2 student UI | `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md` | Current reset-branch contract for student-facing language, chrome, card usage, diagnostics boundary, and normal-surface prohibitions. |
+| Product Trust Reset v2 Verify truth | `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md` | Current reset-branch authority for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair semantics. |
+| Product Trust Reset v2 workspace/visual contracts | `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md` | Current reset-branch layout and visual direction; supersedes generic side-rail and one-note card/chrome assumptions for V2 work. |
 | V1 product contract | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` | Current V1 target contract and work order. |
 | Under-the-hood source map | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md` | Concrete subsystem, state owner, mutation, persistence, proof, and risk map. |
 | State authority matrix | `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md` | Canonical state owners and invalidation rules. |
@@ -51,6 +54,8 @@ Practical read order for a normal session:
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
 8. Relevant contract, manual, release, proof, audit, or issue docs for the requested slice
 9. For stateful product work, `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`
+
+For Product Trust Reset v2 work, read the V2 student UI, Verify truth, workspace layout, and visual system contracts before using older V1 shell, side-rail, or pixel-level specs.
 
 ## 2. Current Product Thesis
 

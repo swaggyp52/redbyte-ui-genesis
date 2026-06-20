@@ -8,7 +8,7 @@ role: pixel-level shell layout spec
 
 # RedByte IDE UI Contract (Pixel Spec v1)
 
-Status: Canonical
+Status: Legacy V1. Superseded for Product Trust Reset v2 student surfaces by `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`, and `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`.
 Scope: `IdeApp` default route (`/`)
 
 ## 1) Layout Grid (Hard Contract)

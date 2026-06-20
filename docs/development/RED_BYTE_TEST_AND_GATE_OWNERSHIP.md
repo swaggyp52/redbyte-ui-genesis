@@ -10,6 +10,25 @@ role: RedByte test and gate ownership guide
 
 Use this guide when adding or changing RedByte proof. Tests passing is useful evidence, but each proof layer answers a different question.
 
+## Product Trust Reset v2 Gate Reset
+
+The Product Trust Reset v2 branch must not preserve old UI structure only because a V1 gate expects it. Treat gates that assert generic side rails, raw build hashes in normal student chrome, E0/E1/E2/E3 labels in normal student surfaces, or old Verify rail/result composition as legacy safety until V2 replacements exist.
+
+New V2 gate family to add before merge:
+
+- `ide:gate:no-internal-proof-language`
+- `ide:gate:no-raw-build-hash-student-ui`
+- `ide:gate:no-generic-side-rails`
+- `ide:gate:student-status-language`
+- `ide:gate:verify-truth-model-v2`
+- `ide:gate:verify-locked-course-checks`
+- `ide:gate:verify-stale-result-invalidation`
+- `ide:gate:verify-failure-repair-v2`
+- `ide:gate:verify-testbench-results-layout-v2`
+- `ide:gate:verify-sequential-consistency-v2`
+
+Legacy gates to rewrite or retire as V2 surfaces land include `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:verify-signals-dock-not-clipped`, old release-solidification layout gates that prove E0 chrome or generic rails, and unit/render tests that click `ide-workbench-dock-toggle-*` as normal student behavior.
+
 ## Proof Layers
 
 | Layer | Owns | Best for | Required when |

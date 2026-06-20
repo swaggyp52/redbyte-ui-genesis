@@ -8,12 +8,12 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
-**Branch:** main
+**Branch:** `product/redbyte-trust-reset-v2`
 **Canonical desktop clone:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
-**Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Project Loaded Command Center + Browser E0 Packaging Readiness
+**Audited base commit for this reset:** `0abe87af980ee673e1ab90720ea64d32469e4c87`
+**Latest product/control slice:** Product Trust Reset v2 Phase 1 contracts
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -25,9 +25,14 @@ Project -> Design -> Verify -> Map Pins / Hardware -> Export
 
 Import is a utility. Vivado build, board programming, and board observation are external proof tiers after Export.
 
+## Product Trust Reset v2 Branch Note
+
+The active branch is a coordinated reconstruction branch, not a one-slice polish branch. Use `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md` before writing V2 product code. The old build-hash top-bar chrome, normal-surface E0/E1/E2/E3 language, generic side-rail model, and card-first workbench composition are legacy V1 assumptions for this reset branch.
+
 ## Top Priorities
 
-1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
+1. **Product Trust Reset v2 is the active branch direction.** Do not preserve raw build hashes, normal-surface E0/E1/E2/E3 proof language, generic side rails, or old card-first layouts just because V1 gates describe them. Replace them with V2 student UI, Verify truth, deterministic workspace, and visual-system contracts.
+2. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
 2. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 3. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
 4. **Side Dock Affordance v1 is closed locally.** `ide:gate:side-dock-affordance` now proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails use compact horizontal `+ / Show / Lib|Sig|Info` restore controls, stay within a `48px` slot, reopen readable content, close back to restored workbench space, keep focal work objects visible at `1366x768` and `1440x900`, and produce no root overflow or console/page errors.
@@ -118,7 +123,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Browser-first release packaging: choose the next single visible Project/Verify density defect from live app inspection, unless a Vivado 2024.2 + Basys3 machine is ready for the separate E1/E2/E3 proof path.
+**Target:** Product Trust Reset v2 Phase 2: build shared V2 primitives and separate student chrome from diagnostics before rebuilding Verify.
 
 Structured hardening ticket fields to start from after inspection:
 

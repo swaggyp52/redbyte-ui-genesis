@@ -26,12 +26,13 @@ For a normal agent session:
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
 8. `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
-9. `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
-10. `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
-11. `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
-12. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
-13. `docs/STUDENT_RELEASE_READINESS.md`
-14. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
+9. For Product Trust Reset v2 work: `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`
+10. `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
+11. `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
+12. `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
+13. `docs/product/RED_BYTE_PRODUCT_BRAIN_ARCHITECTURE.md`
+14. `docs/STUDENT_RELEASE_READINESS.md`
+15. Relevant product manual, contract, surface spec, release proof, audit, or issue-index docs for the requested slice
 
 For docs-only work, prefer `corepack pnpm rb:doc:validate` and `corepack pnpm rb:encoding:check`. For app/source/gate work, follow the proof obligations in the relevant surface and release docs.
 
@@ -65,6 +66,10 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md](./product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md) | Product Trust Reset v2 student-facing UI language, diagnostics boundary, no-internal-proof-language, no-generic-rails, and card-use contract |
+| [contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md](./contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md) | Product Trust Reset v2 Verify truth model for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair |
+| [architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md](./architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md) | Product Trust Reset v2 deterministic workspace layout contract |
+| [architecture/RED_BYTE_VISUAL_SYSTEM_V2.md](./architecture/RED_BYTE_VISUAL_SYSTEM_V2.md) | Product Trust Reset v2 visual token and surface-level direction |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |
 | [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | Canonical state owners, mirrors, invalidation, persistence, and proof |

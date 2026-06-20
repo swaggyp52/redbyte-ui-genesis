@@ -8,7 +8,7 @@ role: frozen design system contract
 
 # RedByte IDE Design System v1.0
 
-Status: Frozen contract for visual authority and implementation consistency.
+Status: Frozen V1 contract. Superseded for Product Trust Reset v2 surfaces by `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`.
 Scope: IDE and public-facing launch surfaces.
 
 ## Core Principle

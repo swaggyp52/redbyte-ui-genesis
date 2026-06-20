@@ -2,7 +2,7 @@
 type: architecture
 status: active
 area: infrastructure
-updated: 2026-06-19
+updated: 2026-06-20
 related:
   - "[[Claude Session Mode]]"
   - "[[Canonical Notes Policy]]"
@@ -24,12 +24,12 @@ related:
 
 ## What is broken right now
 
-Current as of 2026-06-19:
+Current as of 2026-06-20:
 
-- Current browser-first source of truth is the repo cockpit, especially `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/plans/2026-06-12-redbyte-product-issue-index.md`.
-- Authoring Depth + Release Safety Harness is closed for implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d`: partial blank Design authoring now keeps direct Add AND / Wire / Open Verify continuation after Add boundary I/O, and final-current-build smoke/deployed SHA proof guard against stale-build closeouts.
-- Current local proof used visible build `70813ee` before/after evidence under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/`; final smoke evidence lives under `.redbyte/product-immersion/authoring-depth-release-safety/2026-06-19/final/`.
-- Still open for browser-first ownership: Project loaded-state composition, Verify evidence clarity, and broader function depth/card-heavy issues. Reinspect live app before selecting one contained gateable defect.
+- Active branch direction is Product Trust Reset v2 on `product/redbyte-trust-reset-v2`, based on `0abe87af980ee673e1ab90720ea64d32469e4c87`.
+- Current source of truth is the repo cockpit plus the V2 contracts: `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`.
+- Normal student UI must stop exposing raw build hashes, E0/E1/E2/E3 proof labels, generic side rails, and card-first workbench structure.
+- Verify is the highest-risk reset area because expected, observed, locked course checks, My checks, stale PASS/FAIL, and repair actions need one explicit mental model.
 - Hardware proof is still board-gated; do not claim fresh Vivado/Basys3 E1-E3 evidence from browser screenshots.
 
 BUG-003 is now project shorthand for the pre-existing render-family baseline, not just the older literal `React.act` crash note. Current workspace version is `@testing-library/react@16.3.2`; use `AI_STATE.md` for the live full-suite counts and failure shape, and do not treat those failures as regressions from new work unless the baseline moves.
@@ -97,15 +97,15 @@ For cross-surface authoring loop work: [[Verify Design Loop]] + [[Design Surface
 
 ## Active Work Board
 
-Current 2026-06-19 closeout: Authoring Depth + Release Safety Harness is the latest browser-first product slice, with final SHA/deploy proof for implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d`. Next product work should be selected from fresh live inspection, with Project loaded-state composition and Verify evidence clarity as likely candidates. Vivado/Basys3 proof remains blocked until connected hardware/Vivado evidence exists.
+Current 2026-06-20 work: Product Trust Reset v2 Phase 1 defines the student UI, Verify truth, workspace layout, and visual system contracts before product code changes. Next product work is Phase 2 shared V2 primitives plus diagnostics/student chrome separation, then Verify rebuild. Vivado/Basys3 proof remains blocked until connected hardware/Vivado evidence exists.
 
 → Recent session history: [[Session Log]]  
 → Release certification detail: [[Support Matrix]] · `docs/ACTIVE_WORK.md`
 
 | Status | Item |
 |--------|------|
-| **Now** | E2/E3 matrix completion — needs connected Basys3 bench |
-| **Now** | Use `docs/IDE_PRODUCT_DEBT_REGISTER.md` as the canonical owner for open IDE debt and sequence next UI slices from that file |
+| **Now** | Product Trust Reset v2 shared primitives and diagnostics/student UI separation |
+| **Now** | Verify truth model V2 implementation planning: Testbench/Results, locked course checks, My checks, stale invalidation, failure repair |
 | **Next** | Fill certification matrix for `golden-basys3-switch-and` and custom rows (E2+E3) |
 | **Next** | Turn screenshot baselines into a real safety net before `ide-root.css` pruning or broader density cleanup |
 | **Blocked** | E2/E3 proof requires connected bench (Vivado 2024.2 + Digilent cable) |

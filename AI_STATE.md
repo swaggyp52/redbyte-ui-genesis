@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-20 (docs: define Product Trust Reset v2 contracts)
+
+**Subsystem:** Product Trust Reset v2 branch setup, student UI contract, Verify truth model, workspace layout, visual system, codebase/source-map scratch audits, and gate-reset routing.
+
+**Changes:**
+- Continued on dedicated branch `product/redbyte-trust-reset-v2` from base `0abe87af980ee673e1ab90720ea64d32469e4c87`; `main` / `origin/main` matched that SHA before work and GitHub `Classroom Truth Gates` plus deploy checks were green for `main`.
+- Confirmed repo-local portable Node `20.19.0` exists at `.redbyte/tools/node-v20.19.0/node.exe`; ambient PATH still resolves Node `24.15.0`, so validation for this branch must explicitly use the portable runtime when Node 20 proof is required.
+- Created ignored Obsidian/scratch Phase 1 audits under `.redbyte-brain/`: product trust reset codebase map, Verify truth model audit, and CSS override audit.
+- Added tracked V2 decisions: `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`.
+- Routed current-truth, active-work, work-queue, documentation index, gate ownership, invariant, workbench, IDE UI, design-system, Verify spec, and local Obsidian dashboard docs toward the V2 contracts.
+- Marked the old raw-build/proof-language chrome, generic side-rail model, and old Verify editable-results ambiguity as legacy/V1 assumptions for the reset branch, not Product Trust Reset v2 targets.
+
+**Evidence:** Source-map commands found normal student chrome still rendering build/evidence terms through `IdeApp.tsx`, `IdeTopBar`, `IdeProofRibbon`, and `IdeStatusBar`; generic side rails remain owned by `IdeWorkbenchShell`, `IdeSurfaceLayout`, `chromeToggles`, and `chromeContract`; current Verify authoring/result paths concentrate in `VerifySurface.tsx`, `StimulusCanvas.tsx`, `projectRuntime.ts`, and Verify viewmodels; CSS debt remains concentrated in `ide-root.css` and `ide-polish-pass.css`.
+
+**Validation:** Docs-only validation under portable Node `v20.19.0` passed for `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Documentation and scratch-audit slice only. It does not change simulation semantics, Verify runtime behavior, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This branch entry was written before commit, push, draft PR creation, and branch check verification.
+
+**Next recommended task:** Phase 2 should build shared V2 primitives and the diagnostics/student chrome separation, then add the no-internal-proof-language, no-raw-build-hash, no-generic-side-rails, and student-status-language gates before rebuilding Verify.
+
 ## Change Log 2026-06-20 (fix: finalize Project command center packaging readiness)
 
 **Subsystem:** Loaded Project command center composition, Browser E0 packaging checklist, focused browser gates, release proof docs, and local Obsidian brain notes.
