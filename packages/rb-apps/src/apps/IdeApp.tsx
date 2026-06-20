@@ -128,6 +128,8 @@ type IdeImportFidelity = IdeImportMeta['fidelity'];
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const activeMode = useMemo(() => normalizeIdeMode(currentMode), [currentMode]);
+  const activeModeRef = useRef<IdeMode>(activeMode);
+  const restoringModeFromHistoryRef = useRef(false);
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
   const [designFocusRequest, setDesignFocusRequest] = useState<DesignFocusRequest | null>(null);
@@ -170,8 +172,25 @@ export const IdeApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    syncActiveModeIntoUrl(activeMode);
+    activeModeRef.current = activeMode;
   }, [activeMode]);
+
+  useEffect(() => {
+    const replace = restoringModeFromHistoryRef.current;
+    restoringModeFromHistoryRef.current = false;
+    syncActiveModeIntoUrl(activeMode, { replace });
+  }, [activeMode]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const restoredMode = resolveRestoredIdeMode(window.location.search);
+      if (restoredMode === activeModeRef.current) return;
+      restoringModeFromHistoryRef.current = true;
+      setCurrentMode(restoredMode);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -2157,18 +2176,32 @@ function resolveInitialIdeMode(): IdeMode {
   return resolveInitialIdeModeFromSearch(window.location.search);
 }
 
-function syncActiveModeIntoUrl(activeMode: IdeMode): void {
+interface ModeUrlSyncOptions {
+  replace?: boolean;
+}
+
+function syncActiveModeIntoUrl(activeMode: IdeMode, options: ModeUrlSyncOptions = {}): void {
   if (typeof window === 'undefined') return;
 
   const params = new URLSearchParams(window.location.search);
   const currentMode = params.get('mode');
-  if (currentMode === activeMode) return;
+  const requestedMode = resolveRequestedIdeMode(window.location.search);
+  if (requestedMode === activeMode) return;
   if (!currentMode && activeMode === 'project') return;
 
   params.set('mode', activeMode);
   const nextSearch = params.toString();
   const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
-  window.history.replaceState(window.history.state, '', nextUrl);
+  const historyState =
+    window.history.state && typeof window.history.state === 'object'
+      ? { ...window.history.state, rbIdeMode: activeMode }
+      : { rbIdeMode: activeMode };
+  const shouldReplace = Boolean(options.replace || (currentMode && !requestedMode));
+  if (shouldReplace) {
+    window.history.replaceState(historyState, '', nextUrl);
+    return;
+  }
+  window.history.pushState(historyState, '', nextUrl);
 }
 
 function normalizeSignalKey(value: string): string {

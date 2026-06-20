@@ -158,6 +158,33 @@ Closed evidence:
 - Before evidence showed Project first launch using a launch overlay and Verify PASS/repair result actions clipped to a zero-height lower region.
 - After evidence shows integrated first-launch orientation, visible Verify Continue to Hardware / Open Export / Back to Design actions after PASS/repair, visible first failing-check action in FAIL, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 
+## Release Candidate Decision / Mode History Target
+
+The 2026-06-19 release-candidate decision sprint used a full Project/Verify browser audit to decide whether RedByte is approaching a browser E0 release candidate.
+
+Status: Closed locally by the strengthened `ide:gate:active-mode-reload-recovery`, `ide:gate:release-candidate-decision`, and the decision report at `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md`.
+
+Selected package:
+
+- **Browser history stability:** in-app Project / Design / Verify navigation must create restorable browser history and `popstate` must restore the visible RedByte surface.
+- **Project/Verify release posture:** Project loaded state and Verify evidence are close enough for browser E0 proof, but remaining visual density/card-composition work is still tracked before packageable release.
+- **Node 20 proof honesty:** Node `20.19.0` must either be active for proof or the exact local blocker must be recorded.
+
+Regression coverage:
+
+- `ide:gate:active-mode-reload-recovery`
+- `ide:gate:release-candidate-decision`
+- `ide:gate:project-loaded-command-center-final`
+- `ide:gate:verify-evidence-clarity-final`
+- `ide:gate:node20-proof-status`
+- `ide:gate:release-final-sha-discipline`
+
+Closed evidence:
+
+- Before evidence caught browser Back leaving the RedByte app shell after mode navigation.
+- After evidence shows route sync, reload recovery, and browser Back/Forward through Project, Design, and Verify with build-hash proof, no root overflow, and no console/page errors.
+- Node 20 proof remains blocked in this shell because only Node `v24.15.0` is available and no local version switcher is installed or on PATH.
+
 ## Non-Claims
 
 This target does not prove Vivado build, bitstream programming, or physical Basys3 behavior. It also does not change simulation semantics, Verify semantics, pin mapping semantics, generated artifacts, project format, or goldens.

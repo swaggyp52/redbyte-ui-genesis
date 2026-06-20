@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: preserve mode history for release candidate)
+
+**Subsystem:** Release-candidate decision sprint, Project/Verify browser audit, active mode browser back/forward recovery, Node 20 proof status, release-candidate decision report, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` was on `main`, clean, synced with `origin/main` at `f0ba2925ea2d3d3fa3ba7b8b6fcedc3663e354e1`, and GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Ran a fresh release-candidate browser audit at `1366x768` and `1440x900` across Project first launch/loaded Project, Build Fresh, Design blank/starter, Verify no-circuit/pre-run/observe/Compare PASS/intentional FAIL/repair PASS, Signals open/closed, Hardware, Export, Import, reload, and browser history.
+- Found a release-safety blocker: in-app mode navigation used `replaceState`, so browser Back after Project -> Design -> Verify could leave the RedByte shell instead of restoring the previous surface.
+- Updated `IdeApp` mode URL synchronization to push normal in-app mode transitions and restore mode from `popstate`, while preserving replace behavior for history restoration and invalid URL cleanup.
+- Strengthened `ide:gate:active-mode-reload-recovery` so it now proves route sync, reload recovery, and browser Back/Forward through Project, Design, and Verify.
+- Added release-candidate gate names: `ide:gate:release-candidate-decision`, `ide:gate:project-loaded-command-center-final`, `ide:gate:verify-evidence-clarity-final`, `ide:gate:node20-proof-status`, and `ide:gate:release-final-sha-discipline`.
+- Added `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md` to record the E0 browser release-candidate posture, not-shippable items, Node 20 blocker, final-SHA discipline, and hardware proof boundary.
+
+**Evidence:** Before evidence is under `.redbyte/product-immersion/release-candidate-decision/2026-06-19/before/`; after evidence is under `.redbyte/product-immersion/release-candidate-decision/2026-06-19/after/`; Node proof attempt is `.redbyte/product-immersion/release-candidate-decision/2026-06-19/node20-proof.txt`. After audit captured 74 browser states, build badge `f0ba292`, root overflow `0`, and browser problems `0`.
+
+**Validation:** Local validation under Node `v24.15.0` and pnpm `10.24.0` passed for the strengthened `ide:gate:active-mode-reload-recovery` after rebuilding `@redbyte/playground`. Node `20.19.0` remains unavailable in this shell: `nvm`, `fnm`, `volta`, `nvs`, and `nodist` were not found, `nvm use 20.19.0` was not recognized, and the active Node stayed `v24.15.0`.
+
+**Safety:** Route-history, proof-harness, and docs/report slice. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push, final current-build smoke, deployed SHA proof, and GitHub `Classroom Truth Gates` / deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** Run one more browser-first release-package pass focused on the remaining visual maturity debt in Project/Verify density, or run Node `20.19.0` proof once the pinned runtime is available. Do not claim Vivado/Basys3 E1-E3 without real Vivado and hardware evidence.
+
 ## Change Log 2026-06-19 (fix: collapse loaded Project workflow help)
 
 **Subsystem:** Release-candidate browser shakedown, loaded Project Workflow Orientation behavior, `ide:gate:interaction-affordance`, Project onboarding tests, cockpit docs, and local Obsidian brain notes.

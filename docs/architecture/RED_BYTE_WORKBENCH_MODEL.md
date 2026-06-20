@@ -27,6 +27,7 @@ The shell must create room for work, not become the work.
 - Top bar is compact project identity, route, and build-hash chrome.
 - Proof ribbon is compact E0/browser workflow context.
 - Left rail is navigation only; it must not duplicate completion status as bulky visible copy.
+- In-app mode navigation must remain browser-native enough that Back/Forward restores prior RedByte surfaces instead of leaving the shell.
 - Bottom console/status is conditional support chrome. An empty auto console must not reserve layout space.
 - Root horizontal overflow is a product defect at supported classroom and desktop viewports.
 - Existing local servers are proof only when the visible build hash matches current local HEAD.
@@ -95,6 +96,8 @@ The Workbench Reconstruction v1 gate family protects this model:
 - `ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` guard the outer workflow against losing direct actions or regressing into passive card chrome.
 - `ide:gate:release-solidification-v1` checks the current release package across Verify open-Signals no-overflow geometry, Export Package / Verify / Pin Mapping / E0 Boundary checklist clarity, and Import selected-source editor plus source-review layout with reload continuity.
 - `ide:gate:release-solidification-v2` checks the Project/Verify follow-up release layer: first-launch orientation is integrated and non-blocking, PASS/repair Verify action bands stay visible, and FAIL evidence keeps the lower viewport useful.
+- `ide:gate:release-candidate-decision` aggregates the release-candidate closeout checks for active-mode history/reload, Project loaded command-center final pass, Verify evidence clarity final pass, and Node 20 proof status.
+- `ide:gate:active-mode-reload-recovery` now checks browser Back/Forward mode history in addition to active mode URL sync and reload recovery.
 - `ide:gate:student-task-completion-flow` checks the complete student flow from Project starter through selected-node Design edits, Verify PASS/FAIL/repair/PASS, Hardware mapping visibility, and Export E0 handoff at `1366x768` and `1440x900`.
 - `ide:gate:design-inspector-contract`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, and `ide:gate:design-workbench-v1` keep the wider Design Inspector proportional while preserving a usable canvas.
 - `ide:gate:import-guided-recovery-workflow` checks first-look Import guidance plus active Paste HDL and unsupported-example recovery taskbar/editor/review hierarchy at `1366x768` and `1440x900`.

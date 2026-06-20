@@ -206,6 +206,33 @@ Acceptance:
 - Reopened help stays integrated and does not overlap loaded Project entry paths at `1366x768` and `1440x900`.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ae - Release Candidate Decision / Mode History + Node 20 Status
+
+Status: Closed locally 2026-06-19 by the strengthened `ide:gate:active-mode-reload-recovery`, the release-candidate aggregate gate names, and `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md`.
+
+Goal: Decide whether RedByte is approaching a browser E0 release candidate, repair any release-safety blocker found by live Project/Verify audit, and record pinned Node proof status honestly.
+
+Why: The release-candidate audit showed Project and Verify are functionally close enough for browser E0 proof, but browser Back/Forward after mode navigation could leave the RedByte shell because in-app mode changes used URL replacement. The same sprint needed to stop treating Node 20.19.0 proof as implicit when this shell only exposes Node 24.
+
+Proof:
+
+- Strengthened `ide:gate:active-mode-reload-recovery`
+- `ide:gate:release-candidate-decision`
+- `ide:gate:project-loaded-command-center-final`
+- `ide:gate:verify-evidence-clarity-final`
+- `ide:gate:node20-proof-status`
+- `ide:gate:release-final-sha-discipline`
+- Before/after screenshots and observations under `.redbyte/product-immersion/release-candidate-decision/2026-06-19/`.
+- Node proof attempt under `.redbyte/product-immersion/release-candidate-decision/2026-06-19/node20-proof.txt`.
+
+Acceptance:
+
+- Project -> Design -> Verify mode navigation writes route state and browser Back/Forward restores RedByte surfaces instead of leaving the app shell.
+- Reload still restores the active mode after Project starter load and left-rail navigation.
+- Release-candidate report states current E0 browser posture, not-shippable items, final-SHA discipline, Node 20 status, and the no-E1/E2/E3 proof boundary.
+- Node status is honest: either Node `20.19.0` is active, or the exact local blocker is recorded.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

@@ -35,6 +35,8 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:verify-signals-dock-not-clipped`
 - `ide:gate:release-solidification-v1`
 - `ide:gate:release-solidification-v2`
+- `ide:gate:release-candidate-decision`
+- `ide:gate:node20-proof-status`
 - `ide:gate:authoring-depth-release-safety`
 - `ide:gate:design-library-not-cropped`
 - `ide:gate:design-tool-window-coexistence`
@@ -96,6 +98,8 @@ Why:
 - Verify Signals dock not clipped protects the open Verify Signals rail from returning to the cropped `136px`/`144px` state while adjacent gates keep collapsed Signals compact.
 - Release Solidification v1 protects the current Verify / Export / Import release package: open-Signals Verify no-overflow geometry, Export package-readiness checklist, and Import selected-source editor plus review lane with reload continuity.
 - Release Solidification v2 protects first-launch Project orientation from blocking starter/launch actions and protects Verify Compare PASS/repair PASS next-action visibility while keeping FAIL evidence usable.
+- Release Candidate Decision protects the release-closeout bundle: active-mode reload/history, Project loaded command-center final pass, Verify evidence clarity final pass, and honest Node 20 status.
+- Node 20 proof status keeps pinned-runtime proof honest by passing under Node `20.19.0` or requiring the release-candidate report to record the exact local blocker when another Node runtime is active.
 - Authoring depth release safety protects the repeated-use authoring loop after Build Fresh: Add boundary I/O must leave a direct Add gate/Wire continuation, starter authoring actions must stay usable, reload smoke must stay clean across the main surfaces, and stale builds/dynamic imports/error boundaries/console errors must fail the gate.
 - Design library not cropped protects the release-readiness requirement that visible tool controls fit inside the open Library dock at classroom and desktop viewports.
 - Design tool-window coexistence protects the Design Library and Inspector from becoming disproportionate panels that starve the canvas.
@@ -151,7 +155,7 @@ Why:
 | Change type | Minimum local proof |
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
-| Mode route, in-app navigation, reload recovery, or stale lazy-surface recovery | `ide:gate:active-mode-reload-recovery`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, plus the affected route/surface gate; add focused unit coverage when boundary classification or startup-mode parsing changes |
+| Mode route, in-app navigation, browser Back/Forward, reload recovery, or stale lazy-surface recovery | `ide:gate:active-mode-reload-recovery`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, plus the affected route/surface gate; add focused unit coverage when boundary classification or startup-mode parsing changes |
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, loaded Project workflow-help auto-collapse, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, `ide:gate:release-solidification-v2` when first-launch orientation could block launch actions, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, blank/partial authoring continuation, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:authoring-depth-release-safety`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
@@ -164,11 +168,13 @@ Why:
 | Lab profile/course-pack metadata | focused Vitest data contract such as `lab:profile-contract`; add browser proof only when profile data changes rendered workflow |
 | Shell, navigation, rail pressure, side-dock affordance, open-panel proportion, empty-state composition, outer workflow card/action density, workbench obstruction, nested-scroll traps, task-plane hierarchy, or first-viewport layout | `ide:gate:workbench-reconstruction-v1`, `ide:gate:design-dual-tool-windows`, `ide:gate:verify-task-plane-usability`, `ide:gate:hardware-board-dominance`, `ide:gate:action-first-entry-surfaces`, `ide:gate:root-overflow-regression`, `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, `ide:gate:nested-scroll-regression`, `ide:gate:shell-layout-integrity`, `ide:gate:shell-workbench-hierarchy`, `ide:gate:workbench-space-utilization`, `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:workbench-obstruction-usability`, `ide:gate:workbench-visual-finish`, `ide:gate:outer-workflow-action-density`, `ide:gate:card-chrome-regression`, viewport overflow gate, screenshots at `1366x768`, `1440x900`, `1920x1080` as appropriate |
 | Docs/control-only slice | `pnpm rb:doc:validate`, `pnpm rb:encoding:check`, `git diff --check`; no product claim unless source proof exists |
+| Release-candidate closeout or pinned-runtime status | `ide:gate:release-candidate-decision`, `ide:gate:node20-proof-status`, `ide:gate:release-final-sha-discipline` after commit/build, plus final deployed-SHA proof before calling the release current |
 
 ## Browser Gate Rules
 
 - Always verify the visible build hash before using an existing local server as evidence.
 - Final release closeouts that rely on browser proof should run `ide:gate:final-current-build-smoke` after committing and rebuilding so the clean worktree, visible build badge, and `/os/build.json` match current HEAD.
+- Release-candidate closeouts should use `ide:gate:release-candidate-decision` before commit and `ide:gate:release-final-sha-discipline` only after a clean final commit/build. The Node status gate is not Vivado or hardware proof.
 - Treat `verify:gates:classroom` as broad local/nightly regression breadth, not the final interactive closeout authority. If an outer runner times out, inspect the script and changed gate wiring, run syntax checks, and run the new/affected gates directly; do not record the timeout as either green proof or a product regression without a failing child gate.
 - Start from a realistic path: Project load, starter/blank selection, user actions, navigation, reload.
 - Prefer stable `data-testid` selectors only when they point to current product objects. Do not preserve retired selector assumptions.
