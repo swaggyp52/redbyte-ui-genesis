@@ -16,8 +16,22 @@ import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus
 const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 const VIEWPORTS = [
-  { label: '1366x768', width: 1366, height: 768, minStimulusWidth: 540 },
-  { label: '1440x900', width: 1440, height: 900, minStimulusWidth: 560 },
+  {
+    label: '1366x768',
+    width: 1366,
+    height: 768,
+    minStimulusWidth: 540,
+    minWaveformPreviewVisibleHeight: 320,
+    maxWaveformPreviewTopOffset: 270,
+  },
+  {
+    label: '1440x900',
+    width: 1440,
+    height: 900,
+    minStimulusWidth: 560,
+    minWaveformPreviewVisibleHeight: 440,
+    maxWaveformPreviewTopOffset: 270,
+  },
 ];
 
 const SCREENSHOT_ROOT = process.env.RB_VERIFY_POSTRUN_WORKBENCH_SCREENSHOTS_DIR
@@ -109,12 +123,21 @@ async function assertPostRunWorkbench(page, viewport, label) {
         scrollHeight: element.scrollHeight,
       };
     };
+    const visibleHeight = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return 0;
+      const rect = element.getBoundingClientRect();
+      return Math.round(Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)));
+    };
     const root = document.querySelector('[data-testid="ide-root"]');
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
     const gridScroll = document.querySelector('.ide-stimulus-grid-scroll');
+    const waveform = box('[data-testid="ide-verify-region-waveform"]');
+    const waveformPreview = box('[data-testid="ide-verify-waveform-preview"]');
     const statusText = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent?.trim() ?? '';
     return {
       buildHash: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      viewportHeight: window.innerHeight,
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
       documentOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
@@ -122,7 +145,11 @@ async function assertPostRunWorkbench(page, viewport, label) {
       stimulusLayout: labGrid?.getAttribute('data-stimulus-layout') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
-      waveform: box('[data-testid="ide-verify-region-waveform"]'),
+      waveform,
+      waveformPreview,
+      waveformPreviewVisibleHeight: visibleHeight('[data-testid="ide-verify-waveform-preview"]'),
+      waveformPreviewTopOffset:
+        waveform && waveformPreview ? Math.max(0, Math.round(waveformPreview.y - waveform.y)) : null,
       workbenchBody: box('[data-testid="ide-verify-workbench-body"]'),
       gridScroll: gridScroll
         ? {
@@ -158,6 +185,15 @@ async function assertPostRunWorkbench(page, viewport, label) {
   assert(metrics.gridScroll?.extraX <= 8, `${viewport.label}/${label}: post-run testbench should not create a horizontal mini-scroll trap ${JSON.stringify(metrics.gridScroll)}`);
   assert(metrics.expectedCells >= 12, `${viewport.label}/${label}: expected starter checks to remain visible/editable (${metrics.expectedCells})`);
   assert(metrics.runVisible, `${viewport.label}/${label}: Run/Update Compare action must remain visible`);
+  assert(metrics.waveformPreview, `${viewport.label}/${label}: missing waveform evidence preview ${JSON.stringify(metrics)}`);
+  assert(
+    metrics.waveformPreviewTopOffset <= viewport.maxWaveformPreviewTopOffset,
+    `${viewport.label}/${label}: waveform evidence starts too low (${metrics.waveformPreviewTopOffset}px > ${viewport.maxWaveformPreviewTopOffset}px) ${JSON.stringify(metrics.waveformPreview)}`
+  );
+  assert(
+    metrics.waveformPreviewVisibleHeight >= viewport.minWaveformPreviewVisibleHeight,
+    `${viewport.label}/${label}: too little waveform evidence is visible (${metrics.waveformPreviewVisibleHeight}px < ${viewport.minWaveformPreviewVisibleHeight}px) ${JSON.stringify(metrics.waveformPreview)}`
+  );
   if (/need/i.test(metrics.statusText)) {
     assert(metrics.firstFailingVisible, `${viewport.label}/${label}: FAIL state should expose Open first failing check`);
   }

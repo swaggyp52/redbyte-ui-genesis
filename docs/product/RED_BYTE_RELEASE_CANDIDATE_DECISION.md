@@ -1,10 +1,10 @@
 # RedByte Release Candidate Decision
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Decision
 
-RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, and the required release subset now has direct Node 20.19.0 proof. Packaging should still wait for final deployed-SHA proof on the proof-package commit and one more product-owner pass on remaining density/card composition.
+RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, the required release subset has direct Node 20.19.0 proof, and the latest release-proof fork tightened one remaining Verify evidence-density defect. Packaging should still wait for final deployed-SHA proof on the final pushed commit and continued product-owner review of remaining density/card composition.
 
 Current proof tier: E0 browser proof only. This does not claim Vivado build success, bitstream programming, Basys3 behavior, or physical board observation.
 
@@ -19,7 +19,7 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 
 - Node 20.19.0 status: passed via a repo-local portable runtime under ignored `.redbyte/tools/node-v20.19.0/`. The official Windows x64 zip checksum matched `be72284c7bc62de07d5a9fd0ae196879842c085f11f7f2b60bf8864c0c9d6a4f`, and the release subset passed under Node `v20.19.0` / pnpm `10.24.0`.
 - Project still trends dashboard-like: the loaded Project surface is usable, but metrics/status composition remains visually heavier than ideal.
-- Verify evidence is functionally clear enough for E0, but it still has dense instrument/report sections and should keep improving toward a more direct evidence-and-repair tool.
+- Verify evidence is functionally clear enough for E0, and the post-run PASS/FAIL/repair workbench now has a stronger first-viewport waveform evidence-density gate. It still has broader visual-density debt and should keep improving toward a more direct evidence-and-repair tool.
 - Commercial/licensed delivery is out of scope until legal/licensing, distribution packaging, support docs, and production operational ownership are explicitly closed.
 
 ## Main Release Blockers
@@ -45,10 +45,13 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 ## Current Evidence
 
 - Base commit audited: `f0ba2925ea2d3d3fa3ba7b8b6fcedc3663e354e1`.
+- Release proof fork base: `6965bfc382d06915db928685154e408acfebdfca`.
 - Browser proof: `.redbyte/product-immersion/release-candidate-decision/2026-06-19/before/` and `.redbyte/product-immersion/release-candidate-decision/2026-06-19/after/`.
 - Node proof attempt: `.redbyte/product-immersion/release-candidate-decision/2026-06-19/node20-proof.txt`.
 - Pinned-runtime proof package: `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md`.
 - Portable Node proof artifact: `.redbyte/product-immersion/pinned-runtime-release-proof/2026-06-19/node20-portable-setup.txt`.
+- Hardware blocker note: `.redbyte-brain/hardware-proof-blocker.md`; Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and a Basys3/Digilent/Xilinx-like USB device were unavailable in this shell.
+- Browser E0 Verify density proof: `.redbyte/product-immersion/browser-e0-polish/2026-06-20/before/` and `.redbyte/product-immersion/browser-e0-polish/2026-06-20/after/`.
 - Node 20 release subset: `build:unified`, `ide:gate:release-candidate-decision`, `ide:gate:final-current-build-smoke`, `ide:gate:authoring-depth-release-safety`, `ide:gate:student-task-completion-flow`, `classroom:gate`, docs validation, encoding check, and diff check all passed under Node `v20.19.0`.
-- Strengthened gate: `ide:gate:active-mode-reload-recovery`.
+- Strengthened gates: `ide:gate:active-mode-reload-recovery`; `ide:gate:verify-postrun-workbench-usability`.
 - Release aggregate: `ide:gate:release-candidate-decision`.

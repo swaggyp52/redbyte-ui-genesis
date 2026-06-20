@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-19
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -263,6 +263,27 @@ Acceptance:
 - Portable tools remain ignored and uncommitted.
 - Browser E0 proof is documented separately from Vivado/Basys3 E1-E3 proof.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
+## Phase 12ag - Release Proof Fork / Browser E0 Verify Evidence Density
+
+Status: Closed locally 2026-06-20 by the strengthened `ide:gate:verify-postrun-workbench-usability`.
+
+Goal: Follow the release-proof fork honestly: attempt the Vivado/Basys3 path first, and when local prerequisites are absent, close one browser E0 product-proof defect without making hardware claims.
+
+Why: Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and a Basys3/Digilent/Xilinx-like USB device were unavailable in this shell, so E1/E2/E3 proof could not run. Live Project/Verify inspection still found a contained browser E0 release-polish defect: post-run Verify PASS/FAIL/repair left waveform evidence starting too low with too little visible chart area in the first viewport.
+
+Proof:
+
+- Hardware blocker recorded in `.redbyte-brain/hardware-proof-blocker.md`.
+- Before/after browser proof under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/`.
+- `ide:gate:verify-postrun-workbench-usability` now checks waveform evidence top offset and viewport-visible chart height at `1366x768` and `1440x900`.
+- Local proof ran under portable Node `v20.19.0` / pnpm `10.24.0`.
+
+Acceptance:
+
+- No Vivado build, bitstream, Basys3 programming, or physical observation proof is claimed.
+- Verify Compare PASS, induced expected-output FAIL, and repair PASS keep the waveform evidence high and useful in the first viewport.
+- The change is presentation/gate-only: no simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
 ## Phase 1 - V1 Contract Reset
 

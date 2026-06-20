@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-19
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 role: browser E0 release proof package and runtime proof status
@@ -70,6 +70,7 @@ The current browser proof package covers:
 - Project first launch, loaded Project, identity editing, command paths, and loaded workflow-help behavior.
 - Design starter and blank authoring, selected node direct edits, library/tool windows, wire/delete/undo, and reload smoke.
 - Verify no-circuit recovery, pre-run stimulus/checks, Compare PASS, intentional expected-output FAIL, repair PASS, Signals open/closed, evidence clarity, and post-run continuation.
+- Verify post-run PASS/FAIL/repair evidence density now requires the waveform evidence to start high enough and expose useful visible chart area at `1366x768` and `1440x900`; this is guarded by `ide:gate:verify-postrun-workbench-usability`.
 - Hardware / Map Pins browser E0 mapping visibility from project signal to Basys3 resource, package pin, and XDC consequence.
 - Export browser E0 handoff, generated artifact inspection, package checklist, download/trust boundary, and no E1/E2/E3 overclaim.
 - Import utility recovery first look, active Paste HDL / unsupported-example layout, review/apply safety boundary, and no imported-proof overtrust.
@@ -103,6 +104,7 @@ Cloudflare Pages injects the Cloudflare Insights beacon on the deployed site. `p
 ## Current Blockers Before Package Or Commercial Release
 
 - Final pushed proof-package commit must be rebuilt, deployed, and SHA-verified after this docs update.
+- Current browser E0 Verify evidence-density proof is local until the final closeout commit is pushed and deployed-SHA proof is collected.
 - Project and Verify still have visual-density/card-composition maturity debt before a polished package/commercial claim.
 - Commercial/licensed delivery needs legal/licensing, distribution packaging, support docs, operational ownership, and classroom support posture closed explicitly.
 - Vivado/Basys3 E1-E3 claims remain blocked until actual Vivado 2024.2 and physical-board evidence is collected.
@@ -114,5 +116,5 @@ No Vivado build, bitstream programming, Basys3 programming, or physical board ob
 ## Next Required Evidence
 
 1. Commit this proof package, rebuild, run final-current build smoke, push, and verify deployed SHA for the final commit.
-2. Run one browser-first product-owner pass on remaining Project/Verify density if package polish is the next goal.
-3. Run Vivado/Basys3 proof only on a machine with Vivado 2024.2 and board access before making E1/E2/E3 claims.
+2. Run Vivado/Basys3 proof only on a machine with Vivado 2024.2 and board access before making E1/E2/E3 claims.
+3. If hardware remains unavailable, run the next browser-first product-owner pass on remaining Project/Verify density selected from fresh live inspection.

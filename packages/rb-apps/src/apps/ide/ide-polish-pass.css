@@ -4838,3 +4838,324 @@
   gap: 6px !important;
   max-width: min(520px, 42vw) !important;
 }
+
+/* 2026-06-20 Browser E0 polish.
+   Verify post-run keeps the same run truth and editable checks, but gives the
+   first viewport back to waveform evidence instead of stacked toolbar chrome. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary {
+  min-height: 32px !important;
+  padding: 5px 8px !important;
+  gap: 8px !important;
+  align-items: center !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-main {
+  gap: 7px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-headline {
+  font-size: 11.5px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-subline {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-metrics {
+  gap: 5px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-metric {
+  flex-direction: row !important;
+  gap: 3px !important;
+  align-items: baseline !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-metric-label {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-metric-value {
+  font-size: 12px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  [data-testid='ide-verify-workspace-waveform'] {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(0, 1fr) !important;
+  align-content: stretch !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  padding: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-header {
+  min-height: 26px !important;
+  padding: 0 0 4px !important;
+  gap: 6px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-label {
+  font-size: 10px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-header-right {
+  gap: 4px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-case-chip,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-signal-chip,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-seq-badge,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scope-tick {
+  min-height: 20px !important;
+  padding: 0 7px !important;
+  font-size: 10px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-bar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 4px 8px !important;
+  align-items: center !important;
+  padding: 4px 0 6px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-transport {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 4px 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-left,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-center,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px 6px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-left {
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-center,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-right {
+  flex-wrap: wrap !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-meta,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-fail-nav-position {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-fail-nav-summary {
+  max-width: min(100%, 270px) !important;
+  min-height: 24px !important;
+  padding: 2px 7px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-fail-nav-summary__values,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-zoom-label {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-zoom-btn,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-step-controls .ide-button,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-tools-toggle,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  [data-testid='ide-verify-fail-nav-first'] {
+  min-height: 24px !important;
+  padding: 2px 7px !important;
+  font-size: 10px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scrubber-field {
+  min-width: min(170px, 26vw) !important;
+  max-width: min(210px, 32vw) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  [data-testid='ide-verify-waveform-preview'] {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has(.ide-verify-region--result .ide-verify-run-proof)
+  .ide-verify-panel
+  > .ide-panel-body {
+  grid-template-rows: auto minmax(0, 1fr) minmax(86px, auto) auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide'])
+  .ide-verify-region--result:has(.ide-verify-run-proof) {
+  min-height: 86px !important;
+  max-height: 110px !important;
+  padding: 4px 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-region--result
+  .ide-verify-run-proof {
+  padding: 5px 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-region--result
+  .ide-verify-run-proof-title {
+  font-size: 13px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-region--result
+  .ide-verify-run-proof-actions
+  .ide-button {
+  min-height: 30px !important;
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-bar {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  min-height: 34px !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-step-controls {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  gap: 4px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-left,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-transport,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-step-bar {
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-wfbar-left {
+  flex: 0 1 auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-waveform-transport {
+  flex: 1 1 auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-scrubber-field {
+  min-height: 24px !important;
+  padding: 2px 6px !important;
+  border-radius: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  [data-testid='ide-verify-waveform-preview'] {
+  min-height: clamp(322px, calc(100vh - 446px), 560px) !important;
+  height: clamp(322px, calc(100vh - 446px), 560px) !important;
+}

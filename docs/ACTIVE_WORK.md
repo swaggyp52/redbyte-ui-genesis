@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-19
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Pinned Runtime + Browser E0 Release Proof
+**Latest product/control slice:** Release Proof Fork / Browser E0 Verify Evidence Density
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -47,6 +47,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 18. **Release Candidate Shakedown / Loaded Project Flow Auto-Collapse is closed locally.** `ide:gate:interaction-affordance` now also proves loaded Project does not inherit the full Workflow Orientation card by default once real work is loaded, while keeping the `Flow` affordance visible and preserving explicit integrated reopen without overlapping Project entry paths at `1366x768` and `1440x900`. First-launch/no-circuit Project still auto-shows integrated workflow help. Browser proof remains E0 only and Node `20.19.0` proof is still environment-gated in this shell.
 19. **Release Candidate Decision / Mode History + Node 20 Status is closed locally.** The 2026-06-19 release-candidate audit found browser Back/Forward could strand the user outside the RedByte shell because mode navigation used URL replacement instead of history entries. `ide:gate:active-mode-reload-recovery` now proves route sync, reload recovery, and browser Back/Forward through Project, Design, and Verify. `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md` records the current E0 browser release-candidate posture, remaining not-shippable items, and Node 20 proof status. `ide:gate:release-candidate-decision`, `ide:gate:project-loaded-command-center-final`, `ide:gate:verify-evidence-clarity-final`, `ide:gate:node20-proof-status`, and `ide:gate:release-final-sha-discipline` are the release-candidate closeout entry points.
 20. **Pinned Runtime + Browser E0 Release Proof is closed locally.** Node `20.19.0` was provisioned as a repo-local portable runtime under ignored `.redbyte/tools/node-v20.19.0/` after no installed version manager was available. The official Node zip checksum matched, process-scoped PATH/Corepack/pnpm were used, and the meaningful release subset passed under Node `v20.19.0` / pnpm `10.24.0`: frozen install, `build:unified`, `ide:gate:release-candidate-decision`, `ide:gate:release-final-sha-discipline`, `ide:gate:authoring-depth-release-safety`, `ide:gate:student-task-completion-flow`, full `classroom:gate`, docs validation, encoding check, and diff check. `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` records the browser E0 proof package and no-Vivado/Basys3 boundary.
+21. **Release Proof Fork / Browser E0 Verify Evidence Density is closed locally.** Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and a Basys3/Digilent/Xilinx-like USB device were unavailable, so no E1/E2/E3 proof was run or claimed. Path B tightened Verify post-run evidence density: `ide:gate:verify-postrun-workbench-usability` now proves waveform evidence starts high enough and exposes a useful visible chart area through Compare PASS, induced FAIL, and repair PASS at `1366x768` and `1440x900`. Before/after proof is under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/`.
 9. **Design Canvas Direct Workbench v1 is closed locally.** `ide:gate:design-canvas-direct-workbench` now proves the loaded Logic Gates Design canvas starts with only a compact `View <zoom>` control, no expanded Fit/Center/preset HUD, no minimap over the graph, open/reclose View-tools behavior, no graph overlap in the default state, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 7. **Workbench Obstruction Usability v1 is closed locally.** `ide:gate:workbench-obstruction-usability` now proves Hardware Map Pins opens with the Map support dock collapsed, compact `Map` restore control visible, board/table workspace first-order, right/left support docks proportional when opened, close-to-restore behavior intact, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 8. **Workflow Orientation Integrated v1 is closed locally.** `ide:gate:interaction-affordance` now also proves a loaded Project `Flow` reopen uses an integrated callout that does not cover Project entry paths at `1440x900`; after IAB proof at `1366x768` and `1440x900` shows the compact callout above the Project paths with no root overflow.
@@ -223,6 +224,7 @@ If a doc references a generated pack that is missing locally, do not treat the t
 | Closed | Import Guided Recovery Workflow v1. | `RB-IMPORT-GUIDED-002`; `ide:gate:import-guided-recovery-workflow`; before/after evidence under `.redbyte/product-immersion/product-reconstruction/2026-06-18/`. |
 | Closed | Release Readiness Tool Windows v1. | `RB-RELEASE-VISUAL-001`; `docs/product/RED_BYTE_RELEASE_READINESS_TARGET.md`; `ide:gate:design-library-not-cropped`; `ide:gate:design-tool-window-coexistence`; `ide:gate:hardware-board-unblocked`; `ide:gate:hardware-resource-catalog-not-obstructing`; `ide:gate:release-readiness-visual-contract`; `ide:gate:no-cropped-controls-regression`; before/after evidence under `.redbyte/product-immersion/release-readiness-reconstruction/2026-06-18/`. |
 | Closed | Student Task Completion / Design Direct Edits v1. | `RB-STUDENT-TASK-001`; `ide:gate:student-task-completion-flow`; selected-node inspector/direct edit proof; before/after evidence under `.redbyte/product-immersion/student-task-completion/2026-06-19/`. |
+| Closed | Release Proof Fork / Browser E0 Verify Evidence Density. | `RB-VERIFY-EVIDENCE-DENSITY-004`; `ide:gate:verify-postrun-workbench-usability`; before/after evidence under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/`; Vivado/Basys3 path blocked by missing local tools/board, so no E1/E2/E3 proof claimed. |
 | Next / board-gated | Vivado/Basys3 proof restoration. | Requires Vivado 2024.2 and Basys3 hardware. |
 
 ## Cockpit Links

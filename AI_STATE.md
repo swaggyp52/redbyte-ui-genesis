@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-20 (fix: tighten Verify post-run evidence viewport)
+
+**Subsystem:** Release Proof Fork, Browser E0 Verify post-run evidence density, focused browser gate, release proof docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` was on `main`, synced with `origin/main` at `6965bfc382d06915db928685154e408acfebdfca`, and GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Checked the hardware proof fork and found Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and Basys3/Digilent/Xilinx-like USB devices unavailable in this shell, so no fresh E1/E2/E3 proof was possible.
+- Used the browser E0 path and live Project/Verify inspection at `1366x768` and `1440x900`; selected Verify post-run evidence density because PASS/FAIL/repair left too little visible waveform evidence in the first viewport.
+- Strengthened `ide:gate:verify-postrun-workbench-usability` so it now rejects post-run Verify states where the waveform evidence starts too low or exposes too little viewport-visible chart area, in addition to the existing editable-checks width and no-mini-scroll assertions.
+- Tightened the Verify post-run split presentation in `ide-polish-pass.css`: compacted the result summary, scope header, waveform controls, and latest-run band so waveform evidence occupies the useful first viewport without changing Verify truth.
+
+**Evidence:** Before screenshots and observations are under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/before/`. The strengthened gate intentionally failed on the starting build because waveform evidence started `312px` below the waveform region, above the new `270px` ceiling. After screenshots are under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/after/`, including PASS, induced FAIL, repaired PASS, and in-app build smoke. The after gate passed and the in-app browser smoke reported visible build `6965bfc`, `1366x768`, zero root/document horizontal overflow, and zero console/page errors. During aggregate validation, `classroom:gate` caught an adjacent `ide:gate:release-solidification-v2` action-band height regression from an over-tight result row; the CSS was corrected to preserve that existing action-band contract while keeping the new waveform evidence-density checks green.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `@redbyte/playground` build; `ide:gate:verify-postrun-workbench-usability`; affected Verify/release gates `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-task-plane-usability`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:release-candidate-decision`, and `ide:gate:release-solidification-v2`; focused Verify Vitest files (`58` tests); full `classroom:gate`; `build:unified`; `rb:doc:validate`; `rb:encoding:check`; and `git diff --check`. Final current-build smoke, push, GitHub green, and deployed-SHA proof must still be completed for the final commit.
+
+**Safety:** Browser E0 presentation/gate slice only. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push, final current-build smoke, deployed SHA proof, and GitHub `Classroom Truth Gates` / deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** If Vivado 2024.2 and a Basys3 board are available, rerun the release proof fork for real E1/E2/E3 evidence. Otherwise, continue one browser-first Project/Verify polish slice selected from fresh live inspection; Project loaded composition remains the most likely next contained visual maturity target.
+
 ## Change Log 2026-06-19 (fix: allow Cloudflare Pages beacon in CSP)
 
 **Subsystem:** Cloudflare Pages deployment headers, deployed browser SHA smoke, and browser E0 release proof note.
