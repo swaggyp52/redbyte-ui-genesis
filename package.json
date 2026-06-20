@@ -303,6 +303,7 @@
         "ide:gate:release-solidification-v2": "node ./scripts/gates/ide-release-solidification-v2.mjs",
         "ide:gate:release-candidate-decision": "node ./scripts/gates/ide-release-candidate-decision.mjs",
         "ide:gate:node20-proof-status": "node ./scripts/gates/ide-node20-proof-status.mjs",
+        "ide:gate:browser-e0-packaging-readiness": "node ./scripts/gates/ide-browser-e0-packaging-readiness.mjs",
         "ide:gate:release-final-sha-discipline": "pnpm -s ide:gate:final-current-build-smoke",
         "ide:gate:final-current-build-smoke": "node ./scripts/gates/ide-final-current-build-smoke.mjs",
         "ide:gate:no-cropped-controls-regression": "node ./scripts/gates/ide-no-cropped-controls-regression.mjs",

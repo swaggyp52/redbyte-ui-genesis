@@ -12,10 +12,10 @@ This document records the current browser E0 release proof package. It is softwa
 
 ## Current Proof Commit
 
-- Source commit under proof: `52d0b9172dab244ca7f9070e49ed28cef986f8bf`.
+- Source commit under proof: `53e048142bb29a7f6a7c475fba3171be8ae5663e` plus the current packaging-readiness local changes pending final closeout commit.
 - Branch: `main`.
 - Remote: `https://github.com/swaggyp52/redbyte-ui-genesis.git`.
-- Release proof package: pinned runtime and docs proof sprint, 2026-06-19.
+- Release proof package: pinned runtime proof, Browser E0 proof package, and Project Loaded Command Center + Browser E0 Packaging Readiness checklist.
 
 Because a tracked proof document cannot contain the hash of the commit that first adds itself without changing that hash, final pushed-commit and deployed-SHA proof must be verified in the session closeout after this document is committed.
 
@@ -67,7 +67,7 @@ The full `classroom:gate` run passed under Node 20, including unified build, Pro
 
 The current browser proof package covers:
 
-- Project first launch, loaded Project, identity editing, command paths, and loaded workflow-help behavior.
+- Project first launch, loaded Project, identity editing, command paths, loaded workflow-help behavior, and loaded Project command-board composition. `ide:gate:project-loaded-command-surface` now rejects boxed metric-card stacks in the loaded command board.
 - Design starter and blank authoring, selected node direct edits, library/tool windows, wire/delete/undo, and reload smoke.
 - Verify no-circuit recovery, pre-run stimulus/checks, Compare PASS, intentional expected-output FAIL, repair PASS, Signals open/closed, evidence clarity, and post-run continuation.
 - Verify post-run PASS/FAIL/repair evidence density now requires the waveform evidence to start high enough and expose useful visible chart area at `1366x768` and `1440x900`; this is guarded by `ide:gate:verify-postrun-workbench-usability`.
@@ -75,6 +75,8 @@ The current browser proof package covers:
 - Export browser E0 handoff, generated artifact inspection, package checklist, download/trust boundary, and no E1/E2/E3 overclaim.
 - Import utility recovery first look, active Paste HDL / unsupported-example layout, review/apply safety boundary, and no imported-proof overtrust.
 - Navigation, reload, active mode URL sync, and browser Back/Forward mode restoration through Project, Design, and Verify.
+
+The Browser E0 package/demo boundary is also tracked in `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md` and guarded by `ide:gate:browser-e0-packaging-readiness`.
 
 ## Stop-Ship Rules
 
@@ -104,8 +106,8 @@ Cloudflare Pages injects the Cloudflare Insights beacon on the deployed site. `p
 ## Current Blockers Before Package Or Commercial Release
 
 - Final pushed proof-package commit must be rebuilt, deployed, and SHA-verified after this docs update.
-- Current browser E0 Verify evidence-density proof is local until the final closeout commit is pushed and deployed-SHA proof is collected.
-- Project and Verify still have visual-density/card-composition maturity debt before a polished package/commercial claim.
+- Current browser E0 Verify evidence-density and Project packaging-readiness proof are local until the final closeout commit is pushed and deployed-SHA proof is collected.
+- Project's loaded metric-card stack regression is closed locally by gate; broader Project/Verify visual maturity remains product-owner work before a polished package/commercial claim.
 - Commercial/licensed delivery needs legal/licensing, distribution packaging, support docs, operational ownership, and classroom support posture closed explicitly.
 - Vivado/Basys3 E1-E3 claims remain blocked until actual Vivado 2024.2 and physical-board evidence is collected.
 

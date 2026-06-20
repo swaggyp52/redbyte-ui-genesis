@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-19
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte workbench shell and task-plane model
@@ -50,7 +50,7 @@ Side tools support a primary task plane. They do not own the workbench.
 
 Each surface needs one dominant job object and one clear next action in the useful first viewport.
 
-- Project owns start/recover/continue/build choices.
+- Project owns start/recover/continue/build choices. Loaded Project must keep current identity, current next action, direct route actions, and compact evidence in one command board rather than rebuilding a page of metric/status cards.
 - Design owns circuit graph authoring and direct manipulation.
 - A selected Design object must expose the current object's identity plus direct edit controls before lower-priority support details.
 - Verify owns stimulus, expected checks, observed evidence, mismatch, and repair.
@@ -97,6 +97,7 @@ The Workbench Reconstruction v1 gate family protects this model:
 - `ide:gate:release-solidification-v1` checks the current release package across Verify open-Signals no-overflow geometry, Export Package / Verify / Pin Mapping / E0 Boundary checklist clarity, and Import selected-source editor plus source-review layout with reload continuity.
 - `ide:gate:release-solidification-v2` checks the Project/Verify follow-up release layer: first-launch orientation is integrated and non-blocking, PASS/repair Verify action bands stay visible, and FAIL evidence keeps the lower viewport useful.
 - `ide:gate:release-candidate-decision` aggregates the release-candidate closeout checks for active-mode history/reload, Project loaded command-center final pass, Verify evidence clarity final pass, and Node 20 proof status.
+- `ide:gate:browser-e0-packaging-readiness` checks the Browser E0 packaging checklist exists and preserves final-SHA, Cloudflare, commercial, hardware, and no-overclaim boundaries before package/demo review.
 - `ide:gate:active-mode-reload-recovery` now checks browser Back/Forward mode history in addition to active mode URL sync and reload recovery.
 - `ide:gate:student-task-completion-flow` checks the complete student flow from Project starter through selected-node Design edits, Verify PASS/FAIL/repair/PASS, Hardware mapping visibility, and Export E0 handoff at `1366x768` and `1440x900`.
 - `ide:gate:design-inspector-contract`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, and `ide:gate:design-workbench-v1` keep the wider Design Inspector proportional while preserving a usable canvas.

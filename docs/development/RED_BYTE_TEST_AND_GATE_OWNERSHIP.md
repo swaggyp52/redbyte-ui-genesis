@@ -100,6 +100,7 @@ Why:
 - Release Solidification v2 protects first-launch Project orientation from blocking starter/launch actions and protects Verify Compare PASS/repair PASS next-action visibility while keeping FAIL evidence usable.
 - Release Candidate Decision protects the release-closeout bundle: active-mode reload/history, Project loaded command-center final pass, Verify evidence clarity final pass, and honest Node 20 status.
 - Browser E0 Release Proof protects pinned-runtime release confidence: Node `20.19.0` setup/proof status, `build:unified`, release-candidate/final-current gates, authoring/student gates, full `classroom:gate`, docs validation, encoding, diff check, and deployed-SHA proof after push.
+- Browser E0 packaging readiness protects package/demo review from drifting into hardware or commercial overclaims by requiring the tracked checklist, Node 20, final/deployed SHA, Cloudflare targets, hardware blockers, commercial blockers, and exact no-overclaim language.
 - Node 20 proof status keeps pinned-runtime proof honest by passing under Node `20.19.0` or requiring the release-candidate report to record the exact local blocker when another Node runtime is active.
 - Authoring depth release safety protects the repeated-use authoring loop after Build Fresh: Add boundary I/O must leave a direct Add gate/Wire continuation, starter authoring actions must stay usable, reload smoke must stay clean across the main surfaces, and stale builds/dynamic imports/error boundaries/console errors must fail the gate.
 - Design library not cropped protects the release-readiness requirement that visible tool controls fit inside the open Library dock at classroom and desktop viewports.
@@ -186,7 +187,9 @@ Why:
 
 ## Current Release Readiness Visual Gates
 
-`ide:gate:project-loaded-command-surface` proves loaded Project has a command board with direct mode actions and secondary start/recovery paths at classroom and desktop viewports.
+`ide:gate:project-loaded-command-surface` proves loaded Project has a command board with direct mode actions, secondary start/recovery paths, and compact evidence at classroom and desktop viewports; it rejects boxed metric-card stacks inside the loaded command board.
+
+`ide:gate:browser-e0-packaging-readiness` proves `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md` exists and keeps Browser E0 package/demo readiness separate from Vivado/Basys3 E1-E3, final-SHA, deploy, commercial, paid/licensed, and hardware proof claims.
 
 `ide:gate:import-guided-recovery-wizard` proves Import first-look uses a staged recovery wizard and explicit no-overwrite boundary.
 

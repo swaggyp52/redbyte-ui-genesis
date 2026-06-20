@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-20 (fix: finalize Project command center packaging readiness)
+
+**Subsystem:** Loaded Project command center composition, Browser E0 packaging checklist, focused browser gates, release proof docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` was on `main`, synced with `origin/main` at `53e048142bb29a7f6a7c475fba3171be8ae5663e`, with GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages green before work.
+- Used the repo-local portable Node `20.19.0` runtime and a fresh preview at `http://127.0.0.1:5352/os/`; the visible app build hash matched local HEAD short hash `53e0481` before browser proof.
+- Audited Project loaded states, Design edit return, Verify PASS/FAIL/repair, Hardware mapping, Export handoff, Import recovery, reload, Back/Forward, clean storage, and dirty storage at classroom/desktop/wide viewports.
+- Strengthened `ide:gate:project-loaded-command-surface` so loaded Project now rejects a return to boxed metric-card composition in the command board, not only missing direct actions.
+- Added `ide:gate:browser-e0-packaging-readiness` and wired it into the release-candidate aggregate, `classroom:gate`, and the broad classroom verifier. The gate requires a tracked Browser E0 packaging checklist with pinned Node, final/deployed SHA, Cloudflare, commercial, hardware, and no-overclaim boundaries.
+- Tightened loaded Project presentation so identity and secondary evidence no longer read as a stack of cards: metrics render as compact evidence text, secondary start/recovery paths are demoted, and the current action remains the primary command anchor.
+- Added `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md` to define Browser E0 package/demo readiness, release checklist, blockers, and exact no-overclaim language.
+
+**Evidence:** Before screenshots and observations are under `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/before/`. The strengthened Project gate intentionally failed on the starting build because the loaded Project command board exposed `6` boxed metric cards. The new packaging gate intentionally failed before the checklist existed. After screenshots are under `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/after/`; after observations record visible build `53e0481`, zero root/document overflow, zero boxed Project metric cards, no browser problems, Project after Design edit, Verify Compare PASS, induced FAIL, repaired PASS, Hardware mapped, Export handoff, Import first look, reload continuity, and Back/Forward mode restoration. The in-app browser tab was updated to `http://127.0.0.1:5352/os/?mode=project&e2e=1&ownership=project-packaging-readiness-after&viewport=1366x768` and reported build `53e0481`, Project mode, zero overflow, and no error boundary.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `@redbyte/playground`/`build:unified`, `ide:gate:project-loaded-command-surface`, `ide:gate:browser-e0-packaging-readiness`, `ide:gate:release-candidate-decision`, affected Project/release gates, focused ProjectSurface Vitest (`32` tests), full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`. Final current-build smoke, push, GitHub green, and deployed-SHA proof must still be completed for the final commit.
+
+**Safety:** Browser E0 presentation, packaging checklist, and gate slice only. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push, final current-build smoke, deployed SHA proof, and GitHub `Classroom Truth Gates` / deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** If Vivado 2024.2 and a Basys3 board are available, run the separate E1/E2/E3 proof restoration. Otherwise, continue one browser-first product-owner pass selected from fresh live inspection; the remaining browser product debt is broader Project/Verify polish depth, not a permission to claim hardware proof.
+
 ## Change Log 2026-06-20 (fix: tighten Verify post-run evidence viewport)
 
 **Subsystem:** Release Proof Fork, Browser E0 Verify post-run evidence density, focused browser gate, release proof docs, and local Obsidian brain notes.

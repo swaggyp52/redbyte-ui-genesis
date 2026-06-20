@@ -1309,7 +1309,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   : 'ready'
             }
             statusLabel={heroStatusLabel.toUpperCase()}
-            title={`Current action: Continue to ${activePrimaryCtaLabel}`}
+            title={`Current action: ${activePrimaryCtaLabel}`}
             subline={heroStatusMessage}
             sublineTestId="ide-project-hero-status"
             reason={nextStepReason}
@@ -1433,11 +1433,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           >
             <header className="ide-project-entry-paths-header">
               <div>
-                <p className="ide-surface-block-label">Alternate starts</p>
-                <h3 className="ide-project-entry-paths-title">Continue, switch starts, or recover work</h3>
+                <p className="ide-surface-block-label">More paths</p>
+                <h3 className="ide-project-entry-paths-title">Continue, starter, recover, or reopen</h3>
               </div>
               <p className="ide-project-entry-paths-copy">
-                Current project stays active; starts and recovery remain one click away.
+                Current project stays active.
               </p>
             </header>
             <div className="ide-project-entry-path-grid">

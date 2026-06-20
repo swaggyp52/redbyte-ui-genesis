@@ -7,6 +7,7 @@ const STEPS = [
   ['project-loaded-command-center-final', ['-s', 'ide:gate:project-loaded-command-center-final']],
   ['verify-evidence-clarity-final', ['-s', 'ide:gate:verify-evidence-clarity-final']],
   ['node20-proof-status', ['-s', 'ide:gate:node20-proof-status']],
+  ['browser-e0-packaging-readiness', ['-s', 'ide:gate:browser-e0-packaging-readiness']],
 ];
 
 for (const [name, args] of STEPS) {

@@ -103,7 +103,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current action: Continue to Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current action: Verify');
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
     expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
     expect(queryByTestId('ide-project-context')).toBeNull();

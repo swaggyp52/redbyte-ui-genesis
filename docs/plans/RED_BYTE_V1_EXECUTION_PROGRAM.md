@@ -285,6 +285,31 @@ Acceptance:
 - Verify Compare PASS, induced expected-output FAIL, and repair PASS keep the waveform evidence high and useful in the first viewport.
 - The change is presentation/gate-only: no simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ah - Project Loaded Command Center + Browser E0 Packaging Readiness
+
+Status: Closed locally 2026-06-20 by the strengthened `ide:gate:project-loaded-command-surface`, the new `ide:gate:browser-e0-packaging-readiness`, and `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`; final commit, deployed-SHA proof, and GitHub green remain required for closeout.
+
+Goal: Make loaded Project feel like a shippable command center instead of a status/card page, and give Browser E0 package/demo review a tracked checklist with enforceable no-overclaim boundaries.
+
+Why: Live browser inspection at `53e0481` found the core Project/Design/Verify/Hardware/Export/Import spine usable, but loaded Project still exposed six boxed metric cards and read like a dashboard/report surface. The same package-readiness audit found Browser E0 proof spread across release docs without one checklist for final SHA, deploy, hardware, commercial, and exact no-overclaim language.
+
+Proof:
+
+- Before/after browser proof under `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/`.
+- `ide:gate:project-loaded-command-surface`
+- `ide:gate:browser-e0-packaging-readiness`
+- `ide:gate:release-candidate-decision`
+- `classroom:gate`
+- `build:unified`
+- Docs validation, encoding check, and diff check
+
+Acceptance:
+
+- Loaded Project shows current identity, current next action, direct Design / Verify / Map Pins / Export routes, secondary starter/recovery paths, and compact evidence without boxed metric-card stacks.
+- The Browser E0 packaging checklist records what E0 proves, what it does not prove, final/deployed SHA rules, Cloudflare/custom-domain checks, hardware blockers, commercial/licensed blockers, and exact no-overclaim language.
+- The after flow covers Design edit return, Verify PASS/FAIL/repair, Hardware, Export, Import, reload, and Back/Forward continuity with visible build-hash proof, no root overflow, and no console/page errors.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-14
+**Last Updated:** 2026-06-20
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -104,6 +104,7 @@ When docs conflict:
 | [STUDENT_RELEASE_READINESS.md](./STUDENT_RELEASE_READINESS.md) | Canonical TA surface: certified starter matrix, E0/E1/E2/E3 claims, safe class posture |
 | [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) | RC1 honest posture and TA checklist |
 | [product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md](./product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md) | Current browser E0 proof package, pinned Node status, final-SHA rules, and no-hardware boundary |
+| [product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md](./product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md) | Browser E0 package/demo checklist, release/deploy SHA rules, blockers, and no-overclaim language |
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |
 | [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | E0/E1/E2/E3 evidence classification model |

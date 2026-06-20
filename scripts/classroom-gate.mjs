@@ -315,6 +315,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:release-solidification-v2'],
   },
   {
+    name: 'ide:gate:browser-e0-packaging-readiness',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:browser-e0-packaging-readiness'],
+  },
+  {
     name: 'ide:gate:workbench-space-utilization',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:workbench-space-utilization'],

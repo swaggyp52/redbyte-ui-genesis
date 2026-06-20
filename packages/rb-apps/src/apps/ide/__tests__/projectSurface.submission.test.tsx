@@ -240,7 +240,8 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
-    expect(getByTestId('ide-project-import-primary').textContent).toContain('Import HDL');
+    expect(getByTestId('ide-project-import-primary').textContent).toContain('Import / Recover');
+    expect(getByTestId('ide-project-import-primary').textContent).toContain('inspect HDL safely');
     expect(getByTestId('ide-project-landing-example-teacher-template').textContent).toContain('Teacher Template');
     expect(queryByTestId('ide-project-landing-import')).toBeNull();
   });
@@ -305,7 +306,7 @@ describe('ProjectSurface workspace panels', () => {
   });
 
   it('keeps mapping labels student-facing even when raw ports are generic', () => {
-    const { getAllByTestId } = render(
+    const { getAllByTestId, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -331,6 +332,8 @@ describe('ProjectSurface workspace panels', () => {
         />
       </BoardSignalProvider>
     );
+
+    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
 
     const portSw0List = getAllByTestId('ide-project-port-sw0');
     expect(portSw0List[portSw0List.length - 1].textContent).toContain('SW0');

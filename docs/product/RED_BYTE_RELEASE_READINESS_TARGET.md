@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-19
+last_validated: 2026-06-20
 owner: Connor Angiel
 used_by_claude: true
 role: release-readiness visual/workbench target for RedByte V1
@@ -214,6 +214,29 @@ Closed evidence:
 - No installed `nvm`, `fnm`, `volta`, `nvs`, `nodist`, `mise`, or `asdf` was available.
 - Official Node `20.19.0` Windows x64 zip was downloaded under ignored `.redbyte/tools/` and checksum-verified.
 - The meaningful release subset passed under Node `v20.19.0` and pnpm `10.24.0`.
+
+## Project Loaded Command Center + Browser E0 Packaging Readiness Target
+
+The 2026-06-20 Project packaging-readiness sprint closed the remaining loaded Project metric-card composition defect found during live package/demo review.
+
+Status: Closed locally by the strengthened `ide:gate:project-loaded-command-surface`, the new `ide:gate:browser-e0-packaging-readiness`, and the checklist at `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`; final commit, deployed-SHA proof, and GitHub-green closeout remain required before release-package claims.
+
+Selected package:
+
+- **Loaded Project command center:** current project identity, current next action, direct Design / Verify / Map Pins / Export actions, starter/recovery paths, and compact evidence must appear as one command board rather than a stack of card panels.
+- **Browser E0 packaging checklist:** the package/demo boundary must state what Browser E0 proves, what it does not prove, final-SHA rules, Cloudflare/custom-domain checks, hardware blockers, commercial/licensed blockers, and exact no-overclaim language.
+
+Regression coverage:
+
+- `ide:gate:project-loaded-command-surface`
+- `ide:gate:browser-e0-packaging-readiness`
+- `ide:gate:release-candidate-decision`
+- `classroom:gate`
+
+Closed evidence:
+
+- Before evidence caught loaded Project exposing six boxed metric cards and reading like a dashboard/report page.
+- After evidence shows zero boxed Project metrics, compact evidence text, direct route actions, Design edit return, Verify PASS/FAIL/repair, Hardware, Export, Import, reload, and Back/Forward continuity with visible build `53e0481`, no root overflow, and no console/page errors.
 
 ## Non-Claims
 

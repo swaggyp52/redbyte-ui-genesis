@@ -4,7 +4,7 @@ Last updated: 2026-06-20
 
 ## Decision
 
-RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, the required release subset has direct Node 20.19.0 proof, and the latest release-proof fork tightened one remaining Verify evidence-density defect. Packaging should still wait for final deployed-SHA proof on the final pushed commit and continued product-owner review of remaining density/card composition.
+RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, the required release subset has direct Node 20.19.0 proof, the Verify evidence-density defect is guarded, and the loaded Project command board now has a focused card-regression gate. Packaging review now has a tracked Browser E0 checklist, but final packaging still waits for final deployed-SHA proof on the pushed commit and continued product-owner review of broader visual maturity.
 
 Current proof tier: E0 browser proof only. This does not claim Vivado build success, bitstream programming, Basys3 behavior, or physical board observation.
 
@@ -18,20 +18,21 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 ## What Is Still Not Shippable
 
 - Node 20.19.0 status: passed via a repo-local portable runtime under ignored `.redbyte/tools/node-v20.19.0/`. The official Windows x64 zip checksum matched `be72284c7bc62de07d5a9fd0ae196879842c085f11f7f2b60bf8864c0c9d6a4f`, and the release subset passed under Node `v20.19.0` / pnpm `10.24.0`.
-- Project still trends dashboard-like: the loaded Project surface is usable, but metrics/status composition remains visually heavier than ideal.
+- Loaded Project no longer has the specific boxed metric-card stack caught in the packaging-readiness audit; `ide:gate:project-loaded-command-surface` now rejects that regression. Broader Project/Verify polish remains product-owner work, not a release blocker that can be closed from docs alone.
 - Verify evidence is functionally clear enough for E0, and the post-run PASS/FAIL/repair workbench now has a stronger first-viewport waveform evidence-density gate. It still has broader visual-density debt and should keep improving toward a more direct evidence-and-repair tool.
 - Commercial/licensed delivery is out of scope until legal/licensing, distribution packaging, support docs, and production operational ownership are explicitly closed.
 
 ## Main Release Blockers
 
 1. Final deployed-SHA proof: after the proof-package commit, rebuild, run final-current build smoke, push, and verify deployed `/os/build.json` or `/os/version.json` reports the final commit.
-2. Remaining visual maturity: reduce card/status heaviness in Project and Verify without changing simulation, Verify truth, pin mapping, import/export semantics, or generated artifacts.
-3. Commercial/package readiness: close legal/licensing, distribution packaging, support docs, and operational ownership before paid/unsupervised classroom claims.
+2. Remaining visual maturity: continue browser-first review of Project and Verify without changing simulation, Verify truth, pin mapping, import/export semantics, or generated artifacts.
+3. Commercial/package readiness: close the Browser E0 checklist plus legal/licensing, distribution packaging, support docs, and operational ownership before paid/unsupervised classroom claims.
 4. Hardware proof boundary: Vivado/Basys3 E1-E3 claims still require explicit Vivado build, bitstream, and physical-board evidence.
 
 ## Before Packaging
 
 - Run the release-candidate decision gate, focused Project/Verify gates, `classroom:gate`, `build:unified`, docs validation, encoding check, and diff check.
+- Run `ide:gate:browser-e0-packaging-readiness` so the checklist/no-overclaim boundary remains enforceable.
 - Run `ide:gate:release-final-sha-discipline` only after the worktree is clean and the app is rebuilt for the final commit.
 - Record a clean GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages result for the final pushed commit.
 - Confirm deployed SHA from the live site before calling the release candidate current.
@@ -52,6 +53,9 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 - Portable Node proof artifact: `.redbyte/product-immersion/pinned-runtime-release-proof/2026-06-19/node20-portable-setup.txt`.
 - Hardware blocker note: `.redbyte-brain/hardware-proof-blocker.md`; Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and a Basys3/Digilent/Xilinx-like USB device were unavailable in this shell.
 - Browser E0 Verify density proof: `.redbyte/product-immersion/browser-e0-polish/2026-06-20/before/` and `.redbyte/product-immersion/browser-e0-polish/2026-06-20/after/`.
+- Project packaging-readiness proof: `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/before/` and `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/after/`.
+- Packaging checklist: `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`.
 - Node 20 release subset: `build:unified`, `ide:gate:release-candidate-decision`, `ide:gate:final-current-build-smoke`, `ide:gate:authoring-depth-release-safety`, `ide:gate:student-task-completion-flow`, `classroom:gate`, docs validation, encoding check, and diff check all passed under Node `v20.19.0`.
-- Strengthened gates: `ide:gate:active-mode-reload-recovery`; `ide:gate:verify-postrun-workbench-usability`.
+- Strengthened gates: `ide:gate:active-mode-reload-recovery`; `ide:gate:verify-postrun-workbench-usability`; `ide:gate:project-loaded-command-surface`.
+- New packaging gate: `ide:gate:browser-e0-packaging-readiness`.
 - Release aggregate: `ide:gate:release-candidate-decision`.

@@ -40,6 +40,7 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
         minWidth: Math.round(viewport.width * 0.60),
         minHeight: 30,
       });
+      await assertCommandConsoleNotCards(page, viewport);
 
       const commandText = await normalizedText(page.locator('[data-testid="ide-project-command-board-v1"]').first());
       assert(/current action|next action|continue/i.test(commandText), `${viewport.label}: command board must name the current action`);
@@ -81,4 +82,60 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
 
 async function normalizedText(locator) {
   return ((await locator.first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+}
+
+async function assertCommandConsoleNotCards(page, viewport) {
+  const metrics = await page.evaluate((viewportHeight) => {
+    const root = document.querySelector('[data-testid="ide-project-command-board-v1"]');
+    if (!root) return { rootFound: false, passiveBoxedBlocks: 999, boxedMetricCards: 999, labels: ['missing root'] };
+
+    const candidates = Array.from(
+      root.querySelectorAll(
+        [
+          '.ide-projectx-identity',
+          '.ide-projectx-next',
+          '.ide-projectx-metric',
+          '.ide-project-entry-paths',
+        ].join(',')
+      )
+    );
+
+    const boxed = candidates.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const borderWidth =
+        Number.parseFloat(style.borderTopWidth || '0') +
+        Number.parseFloat(style.borderRightWidth || '0') +
+        Number.parseFloat(style.borderBottomWidth || '0') +
+        Number.parseFloat(style.borderLeftWidth || '0');
+      const hasVisibleBorder = borderWidth > 0 && !/rgba\(0,\s*0,\s*0,\s*0\)/.test(style.borderTopColor);
+      const hasFill = style.backgroundImage !== 'none' || !/rgba\(0,\s*0,\s*0,\s*0\)/.test(style.backgroundColor);
+      const isVisible =
+        rect.width > 120 &&
+        rect.height > 34 &&
+        rect.top >= 0 &&
+        rect.top < viewportHeight &&
+        style.display !== 'none' &&
+        style.visibility !== 'hidden';
+      return isVisible && (hasVisibleBorder || hasFill);
+    });
+
+    const boxedMetricCards = boxed.filter((element) => element.classList.contains('ide-projectx-metric')).length;
+    return {
+      rootFound: true,
+      passiveBoxedBlocks: boxed.length,
+      boxedMetricCards,
+      labels: boxed.map((element) => `${element.tagName.toLowerCase()}.${String(element.className).replace(/\s+/g, '.')}`),
+    };
+  }, viewport.height);
+
+  assert(metrics.rootFound, `${viewport.label}: Project command console root missing`);
+  assert(
+    metrics.boxedMetricCards <= 1,
+    `${viewport.label}: Project evidence must be compact chips, not ${metrics.boxedMetricCards} boxed metric cards (${metrics.labels.join(' | ')})`
+  );
+  assert(
+    metrics.passiveBoxedBlocks <= 3,
+    `${viewport.label}: loaded Project still reads as boxed card stack (${metrics.passiveBoxedBlocks} passive boxes: ${metrics.labels.join(' | ')})`
+  );
 }

@@ -2895,8 +2895,11 @@
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-identity {
   order: 1;
   gap: 6px;
-  padding: 12px 16px;
-  border-radius: 8px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-next {
@@ -2905,6 +2908,9 @@
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-project-entry-paths {
   order: 3;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metrics {
@@ -2956,14 +2962,24 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metrics {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  align-items: center;
+  min-height: 32px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metric {
-  gap: 2px;
-  padding: 7px 9px;
-  border-radius: 8px;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metric-label {
@@ -2971,12 +2987,12 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-projectx-metric-value {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-project-entry-paths {
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 4px 0 0;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-project-entry-paths-title {
@@ -2993,8 +3009,8 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-project-entry-path {
-  min-height: 52px;
-  padding: 7px 8px;
+  min-height: 48px;
+  padding: 6px 8px;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-frame[data-no-circuit-hidden='true'] {

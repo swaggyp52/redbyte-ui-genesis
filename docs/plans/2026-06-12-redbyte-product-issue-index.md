@@ -22,6 +22,7 @@ Primary reset docs:
 - `docs/plans/RED_BYTE_V1_EXECUTION_PROGRAM.md`
 - `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md`
 - `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md`
+- `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`
 
 Prior source audits:
 
@@ -136,6 +137,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 
 | ID | Status |
 |---|---|
+| RB-PROJECT-PACKAGING-005 | Fixed locally 2026-06-20: `ide:gate:project-loaded-command-surface` now rejects boxed metric-card stacks inside the loaded Project command board, and `ide:gate:browser-e0-packaging-readiness` requires the tracked Browser E0 packaging checklist with final/deployed SHA, Cloudflare, commercial, hardware, and exact no-overclaim language. Before/after proof is under `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/`; browser proof remains E0 only until final commit/deploy and never claims E1/E2/E3 hardware evidence. |
 | RB-RELEASE-VISUAL-001 | Fixed 2026-06-18: six release-readiness gates are wired into focused/classroom/broad classroom gates; before evidence caught Design Library width below the release target and Hardware resource summaries overlapping the Basys3 board; after evidence proves proportional Design tool windows, no visible horizontal cropped controls, Hardware board/resource separation, visible build hash, no root overflow, and no console/page errors at `1366x768` and `1440x900`, without changing simulation, Verify semantics, mapping, generation, project format, goldens, or hardware proof claims. |
 | RB-OUTER-WORKFLOW-002 / RB-VERIFY-SIGNALS-004 | Fixed 2026-06-18: outer workflow and Verify rail gates are wired into focused/classroom/broad classroom gates; before evidence caught Project/Import/Export card-heavy outer workflow hierarchy and the Verify open Signals rail at `136px`/`144px`; after evidence proves a loaded Project command board, Import wizard, Export package inspector, readable `224px` open Verify rail, compact collapsed rail, no root overflow, and no console/page errors at `1366x768` and `1440x900`, without changing simulation, Verify semantics, mapping, import parser/apply behavior, generated files, project format, goldens, or hardware proof claims. |
 | RB-RELEASE-SOLIDIFY-001 | Fixed 2026-06-18: `ide:gate:release-solidification-v1` is wired into focused/classroom/broad classroom gates; before evidence caught Verify open-Signals internal overflow, missing Export readiness checklist depth, and selected-source Import width underuse; after evidence proves Verify no-overflow stimulus/waveform balance, Export Package / Verify / Pin Mapping / E0 Boundary checklist, Import editor plus source-review lane and reload continuity, no root overflow, and no console/page errors at `1366x768` and `1440x900`, without changing simulation, Verify semantics, mapping, import parser/apply behavior, generated files, project format, goldens, or hardware proof claims. |
