@@ -96,6 +96,10 @@ Release proof must stop for:
 - Also verify `https://redbyte-ui-genesis.pages.dev/os/build.json` or `/os/version.json` reports the final short or full SHA.
 - The final response must record the actual final commit and deployed SHA; this document records the stable proof protocol and current source proof.
 
+## Deployment CSP Note
+
+Cloudflare Pages injects the Cloudflare Insights beacon on the deployed site. `public/_headers` allows only `https://static.cloudflareinsights.com` in `script-src` in addition to the existing self/inline policy so deployed browser smoke can remain console-clean without opening script execution to arbitrary third-party origins. `connect-src` remains limited to self plus HTTPS.
+
 ## Current Blockers Before Package Or Commercial Release
 
 - Final pushed proof-package commit must be rebuilt, deployed, and SHA-verified after this docs update.

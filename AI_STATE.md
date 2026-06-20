@@ -1,5 +1,20 @@
 # AI State
 
+## Change Log 2026-06-19 (fix: allow Cloudflare Pages beacon in CSP)
+
+**Subsystem:** Cloudflare Pages deployment headers, deployed browser SHA smoke, and browser E0 release proof note.
+
+**Changes:**
+- After the proof-package push, deployed Project smoke at `https://redbyteapps.dev/os/` confirmed the final SHA metadata but reported a console CSP violation because Cloudflare injected `https://static.cloudflareinsights.com/beacon.min.js` while `public/_headers` only allowed self/inline scripts.
+- Updated `public/_headers` so `script-src` allows the exact Cloudflare Insights origin `https://static.cloudflareinsights.com` alongside the existing self/inline policy.
+- Documented the deployment CSP note in `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md`.
+
+**Evidence:** Initial deployed metadata matched `92f864947d2bc8e62b623e4e115d3bd9d366f6c2`, but the one-off Project/Design/Verify smoke stopped on the Cloudflare beacon CSP console error before this fix.
+
+**Safety:** Deployment-header and proof-doc fix only. It does not add accounts or a new SaaS integration; it aligns CSP with the Cloudflare Pages beacon already injected on the deployed site. It does not change application logic, simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, Vivado proof, Basys3 programming proof, or physical observation proof.
+
+**Remote sync:** This entry was written before the CSP fix commit and push. Final push, GitHub green, deployed SHA metadata, and deployed Project/Design/Verify smoke must be verified from live evidence in the session closeout.
+
 ## Change Log 2026-06-19 (docs: prove browser E0 under pinned Node)
 
 **Subsystem:** Pinned Node runtime proof, browser E0 release proof package, release-candidate proof docs, cockpit docs, and local Obsidian brain notes.
