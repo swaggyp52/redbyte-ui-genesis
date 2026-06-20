@@ -183,7 +183,37 @@ Closed evidence:
 
 - Before evidence caught browser Back leaving the RedByte app shell after mode navigation.
 - After evidence shows route sync, reload recovery, and browser Back/Forward through Project, Design, and Verify with build-hash proof, no root overflow, and no console/page errors.
-- Node 20 proof remains blocked in this shell because only Node `v24.15.0` is available and no local version switcher is installed or on PATH.
+- Node 20 proof was later closed by the pinned-runtime proof sprint using a checksum-verified portable runtime under ignored `.redbyte/tools/`.
+
+## Pinned Runtime + Browser E0 Release Proof Target
+
+The 2026-06-19 pinned-runtime proof sprint closed the repeated mismatch between the repo-pinned Node runtime and the available default shell runtime.
+
+Status: Closed locally by `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` and the Node 20 proof subset.
+
+Selected package:
+
+- **Pinned runtime proof:** Node `20.19.0` must be available through an installed manager or a safe repo-local portable runtime.
+- **Browser E0 release proof:** the release proof subset must pass under Node `20.19.0`, not just the default Node 24 shell.
+- **Proof boundary:** browser E0 proof must stay separate from Vivado/Basys3 E1-E3 hardware claims.
+
+Regression coverage:
+
+- `ide:gate:release-candidate-decision`
+- `ide:gate:release-final-sha-discipline`
+- `ide:gate:authoring-depth-release-safety`
+- `ide:gate:student-task-completion-flow`
+- `classroom:gate`
+- `build:unified`
+- `rb:doc:validate`
+- `rb:encoding:check`
+- `git diff --check`
+
+Closed evidence:
+
+- No installed `nvm`, `fnm`, `volta`, `nvs`, `nodist`, `mise`, or `asdf` was available.
+- Official Node `20.19.0` Windows x64 zip was downloaded under ignored `.redbyte/tools/` and checksum-verified.
+- The meaningful release subset passed under Node `v20.19.0` and pnpm `10.24.0`.
 
 ## Non-Claims
 

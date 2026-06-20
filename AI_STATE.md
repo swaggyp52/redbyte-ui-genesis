@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-19 (docs: prove browser E0 under pinned Node)
+
+**Subsystem:** Pinned Node runtime proof, browser E0 release proof package, release-candidate proof docs, cockpit docs, and local Obsidian brain notes.
+
+**Changes:**
+- Confirmed the canonical clone `C:\Users\conno\redbyte-ui-genesis-main` was on `main`, clean, synced with `origin/main` at `52d0b9172dab244ca7f9070e49ed28cef986f8bf`, and GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages checks were green before work.
+- Probed existing runtime managers and found no `nvm`, `fnm`, `volta`, `nvs`, `nodist`, `mise`, or `asdf` command available. `winget` was available but not used.
+- Added a local git exclude for `.redbyte/tools/` and provisioned official Node `20.19.0` as a repo-local portable runtime under ignored `.redbyte/tools/node-v20.19.0/`.
+- Verified the official Node zip SHA-256 as `be72284c7bc62de07d5a9fd0ae196879842c085f11f7f2b60bf8864c0c9d6a4f` against `SHASUMS256.txt`.
+- Used process-scoped `PATH`, `COREPACK_HOME`, and `PNPM_HOME`; no global PATH mutation, admin install, or committed binary was used.
+- Created `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` to record the current browser E0 proof package, pinned-runtime status, stop-ship rules, final-SHA rules, remaining package/commercial blockers, and no-hardware proof boundary.
+- Updated release-candidate/current-truth/work-queue/release-target/test-ownership/V1 docs so Node `20.19.0` is no longer listed as blocked when the portable runtime proof is available.
+
+**Evidence:** Portable Node setup proof is under `.redbyte/product-immersion/pinned-runtime-release-proof/2026-06-19/node20-portable-setup.txt`. Node `v20.19.0` / pnpm `10.24.0` proof passed for frozen install, `build:unified`, `ide:gate:release-candidate-decision`, `ide:gate:release-final-sha-discipline`, `ide:gate:authoring-depth-release-safety`, `ide:gate:student-task-completion-flow`, full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`.
+
+**Validation:** The first Node 20 install attempt hit pnpm's non-TTY module-removal safeguard; rerunning with `CI=true` exposed a stale-server file lock on Rollup's native binary. After stopping stale repo-local Vite servers, `corepack pnpm install --frozen-lockfile` passed under Node `v20.19.0`. No product/runtime failure was found under Node 20.
+
+**Safety:** Runtime proof and docs-only release package. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. Browser evidence remains E0 only.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push, final current-build smoke, deployed SHA proof, and GitHub `Classroom Truth Gates` / deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** If a Vivado 2024.2 + Basys3 setup is available, run the separate E1/E2/E3 proof restoration. Otherwise, continue browser-first release packaging with one contained Project/Verify density maturity defect selected from fresh live inspection.
+
 ## Change Log 2026-06-19 (fix: preserve mode history for release candidate)
 
 **Subsystem:** Release-candidate decision sprint, Project/Verify browser audit, active mode browser back/forward recovery, Node 20 proof status, release-candidate decision report, cockpit docs, and local Obsidian brain notes.

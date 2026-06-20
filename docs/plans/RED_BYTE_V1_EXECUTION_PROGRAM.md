@@ -233,6 +233,37 @@ Acceptance:
 - Node status is honest: either Node `20.19.0` is active, or the exact local blocker is recorded.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12af - Pinned Runtime + Browser E0 Release Proof
+
+Status: Closed locally 2026-06-19 by `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` and Node `20.19.0` proof.
+
+Goal: Stop the repeated `.nvmrc` proof gap by running a meaningful RedByte browser E0 release subset under Node `20.19.0`.
+
+Why: Previous release-candidate work was locally green under Node `v24.15.0` while the repo pins Node `20.19.0`. Release confidence needed either direct Node 20 proof or an exact durable blocker.
+
+Proof:
+
+- Official Node `20.19.0` portable runtime under ignored `.redbyte/tools/node-v20.19.0/`
+- SHA-256 verification against official `SHASUMS256.txt`
+- `corepack pnpm install --frozen-lockfile`
+- `build:unified`
+- `ide:gate:release-candidate-decision`
+- `ide:gate:release-final-sha-discipline`
+- `ide:gate:authoring-depth-release-safety`
+- `ide:gate:student-task-completion-flow`
+- `classroom:gate`
+- `rb:doc:validate`
+- `rb:encoding:check`
+- `git diff --check`
+
+Acceptance:
+
+- Node `v20.19.0` is active for proof commands.
+- The full release/classroom subset passes under Node 20.
+- Portable tools remain ignored and uncommitted.
+- Browser E0 proof is documented separately from Vivado/Basys3 E1-E3 proof.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.

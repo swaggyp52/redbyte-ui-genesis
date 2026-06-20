@@ -4,7 +4,7 @@ Last updated: 2026-06-19
 
 ## Decision
 
-RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, but packaging should wait for final deployed-SHA proof on the release commit, pinned Node 20.19.0 validation, and one more product-owner pass on remaining density/card composition.
+RedByte is approaching a browser E0 student/classroom release candidate, but it is not yet packageable as a full release. The current browser app can support the core Project -> Design -> Verify -> Map Pins -> Export classroom loop with local evidence, and the required release subset now has direct Node 20.19.0 proof. Packaging should still wait for final deployed-SHA proof on the proof-package commit and one more product-owner pass on remaining density/card composition.
 
 Current proof tier: E0 browser proof only. This does not claim Vivado build success, bitstream programming, Basys3 behavior, or physical board observation.
 
@@ -17,16 +17,16 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 
 ## What Is Still Not Shippable
 
-- Node 20.19.0 status: blocked in this local shell. Exact proof attempt recorded `current node=v24.15.0`, `nvm=NOT_FOUND`, `fnm=NOT_FOUND`, `volta=NOT_FOUND`, `nvs=NOT_FOUND`, `nodist=NOT_FOUND`, and `nvm use 20.19.0` failed because `nvm` is not recognized.
+- Node 20.19.0 status: passed via a repo-local portable runtime under ignored `.redbyte/tools/node-v20.19.0/`. The official Windows x64 zip checksum matched `be72284c7bc62de07d5a9fd0ae196879842c085f11f7f2b60bf8864c0c9d6a4f`, and the release subset passed under Node `v20.19.0` / pnpm `10.24.0`.
 - Project still trends dashboard-like: the loaded Project surface is usable, but metrics/status composition remains visually heavier than ideal.
 - Verify evidence is functionally clear enough for E0, but it still has dense instrument/report sections and should keep improving toward a more direct evidence-and-repair tool.
 - Commercial/licensed delivery is out of scope until legal/licensing, distribution packaging, support docs, and production operational ownership are explicitly closed.
 
 ## Main Release Blockers
 
-1. Pinned-runtime proof: install or expose Node 20.19.0 and rerun the required release subset under the repo-pinned runtime.
-2. Final deployed-SHA proof: after the release commit, rebuild, run final-current build smoke, push, and verify deployed `/os/build.json` or `/os/version.json` reports the final commit.
-3. Remaining visual maturity: reduce card/status heaviness in Project and Verify without changing simulation, Verify truth, pin mapping, import/export semantics, or generated artifacts.
+1. Final deployed-SHA proof: after the proof-package commit, rebuild, run final-current build smoke, push, and verify deployed `/os/build.json` or `/os/version.json` reports the final commit.
+2. Remaining visual maturity: reduce card/status heaviness in Project and Verify without changing simulation, Verify truth, pin mapping, import/export semantics, or generated artifacts.
+3. Commercial/package readiness: close legal/licensing, distribution packaging, support docs, and operational ownership before paid/unsupervised classroom claims.
 4. Hardware proof boundary: Vivado/Basys3 E1-E3 claims still require explicit Vivado build, bitstream, and physical-board evidence.
 
 ## Before Packaging
@@ -47,5 +47,8 @@ Current proof tier: E0 browser proof only. This does not claim Vivado build succ
 - Base commit audited: `f0ba2925ea2d3d3fa3ba7b8b6fcedc3663e354e1`.
 - Browser proof: `.redbyte/product-immersion/release-candidate-decision/2026-06-19/before/` and `.redbyte/product-immersion/release-candidate-decision/2026-06-19/after/`.
 - Node proof attempt: `.redbyte/product-immersion/release-candidate-decision/2026-06-19/node20-proof.txt`.
+- Pinned-runtime proof package: `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md`.
+- Portable Node proof artifact: `.redbyte/product-immersion/pinned-runtime-release-proof/2026-06-19/node20-portable-setup.txt`.
+- Node 20 release subset: `build:unified`, `ide:gate:release-candidate-decision`, `ide:gate:final-current-build-smoke`, `ide:gate:authoring-depth-release-safety`, `ide:gate:student-task-completion-flow`, `classroom:gate`, docs validation, encoding check, and diff check all passed under Node `v20.19.0`.
 - Strengthened gate: `ide:gate:active-mode-reload-recovery`.
 - Release aggregate: `ide:gate:release-candidate-decision`.

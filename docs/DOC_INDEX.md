@@ -103,6 +103,7 @@ When docs conflict:
 |------|---------|
 | [STUDENT_RELEASE_READINESS.md](./STUDENT_RELEASE_READINESS.md) | Canonical TA surface: certified starter matrix, E0/E1/E2/E3 claims, safe class posture |
 | [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) | RC1 honest posture and TA checklist |
+| [product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md](./product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md) | Current browser E0 proof package, pinned Node status, final-SHA rules, and no-hardware boundary |
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |
 | [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | E0/E1/E2/E3 evidence classification model |
@@ -235,7 +236,7 @@ The primary package under active development is `packages/rb-apps`. Other packag
 - The user explicitly reprioritized visual stewardship on 2026-06-12; keep visual work scoped to the ordered V1 queue rather than broad polish.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`, the first lab-profile/course-pack seam is covered by `lab:profile-contract`, and current student/instructor/TA quickstarts live under `docs/course/`. The next implementation slice is Vivado/Basys3 Proof Restoration.
 - Tests passing is evidence, not product readiness; use browser workflows, visual inspection, and hardware/Vivado proof for the claims they actually prove.
-- Node 20.19.0 proof remains pending in this shell; recent local validation ran under Node 24.15.0 / pnpm 10.24.0.
+- Node 20.19.0 proof now passes through a checksum-verified portable runtime under ignored `.redbyte/tools/`; the default shell still reports Node 24.15.0 / pnpm 10.24.0.
 - Vivado 2024.2 was not found on this desktop at `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`; no fresh local hardware proof should be claimed from this clone.
 - RedByte is not commercially ready for unsupervised paid classroom use; accounts/SaaS remain deferred until a concrete hosted-data or classroom-management need exists.
 - `build:unified` is not a current blocker unless a fresh run reproduces a failure; later validation logs record passing build/unified checks after the old drift was fixed.
