@@ -32061,6 +32061,22 @@ button:disabled,
   cursor: pointer;
 }
 
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact .ide-design-view-tools-toggle {
+  position: relative;
+  min-height: 28px;
+  padding: 4px 8px;
+  gap: 0;
+}
+
+[data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact .ide-design-view-tools-toggle span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 [data-ide-mode-marker='design'] .ide-design-view-tools-toggle:hover,
 [data-ide-mode-marker='design'] .ide-design-view-tools-toggle:focus-visible {
   border-color: rgba(120, 183, 245, 0.58);
@@ -35021,20 +35037,30 @@ button:disabled,
   border-radius: 0;
 }
 
-/* Verify: keep the open Signals rail readable without changing other modes. */
-.ide-workbench-shell[data-ide-mode-marker='verify'] {
+/* Verify: keep the legacy Signals rail readable only when it is explicitly visible. */
+.ide-workbench-shell[data-ide-mode-marker='verify']:not([data-left-dock-state='hidden']) {
   --ide-workbench-left-width: clamp(224px, 16vw, 248px) !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed).hide-right-dock {
+.ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-workbench-main:not(.hide-left-dock):not(.is-left-dock-collapsed).hide-right-dock {
   grid-template-columns: clamp(224px, 16vw, 248px) minmax(0, 1fr) !important;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main:not(.is-left-dock-collapsed):not(.hide-right-dock) {
+.ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-workbench-main:not(.hide-left-dock):not(.is-left-dock-collapsed):not(.hide-right-dock) {
   grid-template-columns:
     clamp(224px, 16vw, 248px)
     minmax(0, 1fr)
     var(--ide-workbench-right-slot-width) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main.hide-left-dock.hide-right-dock {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+  grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-workbench-dock-left,

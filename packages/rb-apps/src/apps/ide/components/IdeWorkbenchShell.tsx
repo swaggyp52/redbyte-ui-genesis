@@ -109,8 +109,14 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
   const [layoutMode, setLayoutMode] = useState<WorkbenchLayoutMode>(() => detectLayoutMode());
   const [chromeToggles, setChromeToggles] = useState<IdeChromeToggles>(DEFAULT_IDE_CHROME_TOGGLES);
   const [chromeTogglesReady, setChromeTogglesReady] = useState(false);
-  const effectiveLeftDockMode = chromeToggles.sideRailsVisible ? leftDockMode : 'hidden';
-  const effectiveRightDockMode = chromeToggles.sideRailsVisible ? rightDockMode : 'hidden';
+  const effectiveLeftDockMode = normalizeStudentDockMode(
+    chromeToggles.sideRailsVisible ? leftDockMode : 'hidden',
+    showDevChrome
+  );
+  const effectiveRightDockMode = normalizeStudentDockMode(
+    chromeToggles.sideRailsVisible ? rightDockMode : 'hidden',
+    showDevChrome
+  );
   const effectiveConsoleMode = chromeToggles.consoleVisible ? consoleMode : 'hidden';
   const policy = useMemo<ResolvedWorkbenchPolicy>(
     () => ({
@@ -387,10 +393,10 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       const widthCaps =
         mode === 'design'
           ? layoutMode === 'wide'
-            ? { left: { min: 296, max: 312 }, right: { min: 296, max: 312 } }
+            ? { left: { min: 288, max: 304 }, right: { min: 265, max: 284 } }
             : layoutMode === 'standard'
-              ? { left: { min: 280, max: 304 }, right: { min: 280, max: 300 } }
-              : { left: { min: 264, max: 292 }, right: { min: 276, max: 292 } }
+              ? { left: { min: 260, max: 276 }, right: { min: 265, max: 280 } }
+              : { left: { min: 260, max: 264 }, right: { min: 265, max: 272 } }
           : mode === 'verify'
             ? layoutMode === 'wide'
               ? { left: { min: 132, max: 152 }, right: { min: 248, max: 312 } }
@@ -493,6 +499,8 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
       data-shell-density={policy.shellDensity}
       data-surface-frame={policy.surfaceFrame}
       data-layout-intent={policy.layoutIntent}
+      data-workspace-foundation="v2"
+      data-workspace-primitive={resolveV2WorkspacePrimitive(mode)}
       data-design-toolbar-visible={chromeToggles.designToolbarVisible ? 'true' : 'false'}
       data-verify-command-rows-visible={chromeToggles.verifyCommandRowsVisible ? 'true' : 'false'}
       data-side-rails-visible={chromeToggles.sideRailsVisible ? 'true' : 'false'}
@@ -806,6 +814,33 @@ function detectLayoutMode(width?: number): WorkbenchLayoutMode {
 
 function resolveDefaultWorkbenchLayoutIntent(mode: IdeSurfaceMode): WorkbenchLayoutIntent {
   return mode === 'import' ? 'readable' : 'workbench';
+}
+
+function resolveV2WorkspacePrimitive(mode: IdeSurfaceMode): string {
+  switch (mode) {
+    case 'project':
+      return 'course-workspace';
+    case 'design':
+      return 'fixed-tool-palette';
+    case 'verify':
+      return 'testbench-workspace';
+    case 'hardware':
+      return 'board-mapping-workspace';
+    case 'export':
+      return 'artifact-workspace';
+    case 'import':
+      return 'step-workflow';
+    default:
+      return 'workspace';
+  }
+}
+
+function normalizeStudentDockMode<TMode extends LeftDockMode | RightDockMode>(
+  dockMode: TMode,
+  showDevChrome: boolean
+): TMode | 'hidden' {
+  if (showDevChrome) return dockMode;
+  return dockMode === 'collapsed' ? 'hidden' : dockMode;
 }
 
 const SCROLL_SAVE_SELECTORS =

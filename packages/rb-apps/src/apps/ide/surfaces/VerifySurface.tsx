@@ -3765,8 +3765,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             : verifySession.summary;
   const verifyLayoutPolicy = useMemo(
     () => ({
-      /** Keep shell rails secondary so the stimulus/waveform pair owns the page. */
-      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('collapsed' as const),
+      /** Keep the stimulus/waveform pair as the page owner; signal tools move into the workbench in a later phase. */
+      leftDockMode: 'hidden' as const,
       /** Saved cases and mismatch detail now live in the lower details tray. */
       rightDockMode: ('hidden' as const),
       consoleMode: isNoCircuitTaskFirst

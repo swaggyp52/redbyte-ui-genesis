@@ -7,8 +7,8 @@
  * 1) Export presents one visible handoff station at 1366x768.
  * 2) Draft/Needs Review does not look trusted and has a repair path.
  * 3) Trusted/Ready keeps Export's primary action on build/download.
- * 4) Artifact previews, README E0 boundary, mapping, and Vivado next steps are visible.
- * 5) Browser Export never claims E1/E2/E3 success.
+ * 4) Artifact previews, package boundary, mapping, and Vivado next steps are visible.
+ * 5) Browser Export never claims Vivado build, programming, or observed-board success.
  */
 
 import {
@@ -196,14 +196,16 @@ async function assertEvidenceBoundary(page) {
   await boundary.scrollIntoViewIfNeeded();
   assert(await visible(boundary), 'evidence boundary section must be visible');
   const boundaryText = await normalizedText(boundary);
-  for (const tier of ['E0', 'E1', 'E2', 'E3']) {
-    assert(boundaryText.includes(tier), `evidence boundary must include ${tier}`);
+  for (const label of ['Package', 'Build', 'Program', 'Observe']) {
+    assert(boundaryText.includes(label), `evidence boundary must include ${label}`);
   }
-  assert(/external evidence required/i.test(boundaryText), 'E1/E2 must require external evidence');
-  assert(/manual observation required/i.test(boundaryText), 'E3 must require manual observation');
-  assert(!/E1\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E1 success');
-  assert(!/E2\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E2 success');
-  assert(!/E3\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E3 success');
+  assert(!/\bE0\b|\bE1\b|\bE2\b|\bE3\b/.test(boundaryText), 'Export student boundary must not expose E-tier labels');
+  assert(/Run Vivado synthesis|Record outside RedByte/i.test(boundaryText), 'Vivado build must require an outside record');
+  assert(/Program success proves delivery to the board only/i.test(boundaryText), 'board programming must not imply behavior proof');
+  assert(/Manual record required|record physical/i.test(boundaryText), 'board observation must require a manual record');
+  assert(!/Vivado build\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim Vivado build success');
+  assert(!/board programming\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim board programming success');
+  assert(!/observed board behavior\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim observed-board success');
 }
 
 async function assertVivadoNextSteps(page) {

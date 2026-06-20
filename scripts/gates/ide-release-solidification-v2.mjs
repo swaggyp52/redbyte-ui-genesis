@@ -172,7 +172,7 @@ async function assertVerifyActionBand(page, viewport, label) {
     ].map((selector) => ({ selector, box: box(selector) })).filter((entry) => entry.box?.visibleHeight > 12);
 
     return {
-      buildHash: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      buildHash: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
@@ -185,7 +185,7 @@ async function assertVerifyActionBand(page, viewport, label) {
     };
   });
 
-  assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
+  assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: root build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(metrics.phase === 'post-run', `${viewport.label}/${label}: Verify should be post-run, got "${metrics.phase}"`);
   assert(metrics.workspaceMode === 'split', `${viewport.label}/${label}: Verify should remain split, got "${metrics.workspaceMode}"`);
   if (label !== 'FAIL') {

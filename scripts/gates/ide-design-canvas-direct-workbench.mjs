@@ -90,9 +90,10 @@ function assertDirectCanvas(metrics, viewport, label) {
   assert(metrics.mode === 'design', `${label}: expected Design mode, got ${metrics.mode}`);
   assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
   assert(metrics.liveCanvas.visible, `${label}: live canvas must be visible`);
+  const minLiveCanvasWidth = Math.floor(Math.min(760, viewport.width * 0.54));
   assert(
-    metrics.liveCanvas.width >= Math.min(760, viewport.width * 0.54),
-    `${label}: live canvas is too narrow (${metrics.liveCanvas.width.toFixed(1)}px)`
+    metrics.liveCanvas.width >= minLiveCanvasWidth,
+    `${label}: live canvas is too narrow (${metrics.liveCanvas.width.toFixed(1)}px < ${minLiveCanvasWidth}px)`
   );
   assert(
     metrics.liveVisibleHeight >= viewport.height * 0.4,

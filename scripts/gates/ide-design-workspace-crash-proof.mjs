@@ -122,7 +122,10 @@ async function readRecoveredDesignState(page) {
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
-      buildBadge: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      buildBadge:
+        document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ??
+        document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ??
+        '',
       rootOverflowX: Math.max(
         0,
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth

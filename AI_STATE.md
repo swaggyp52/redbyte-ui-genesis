@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-20 (refactor: separate student chrome from diagnostics)
+
+**Subsystem:** Product Trust Reset v2 Phase 2, student chrome, V2 workspace foundation, diagnostics boundary, browser gates, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `fe8847c3252b638e89a6e492bce0d2c66a1b597c`; `main` was not changed and the draft PR remains unmerged.
+- Removed the normal top-bar raw build badge and moved build/runtime metadata behind Help / Diagnostics.
+- Replaced normal student E-tier proof language with plain lab state language in the workflow ribbon, footer/status copy, Hardware, and Export browser surfaces. Generated artifact README/provenance bytes were not changed.
+- Added `IdeHelpMenu` with About and Diagnostics dialogs; Diagnostics exposes the full build fingerprint and plain external-build/board-record boundary while staying closed by default.
+- Updated `IdeWorkbenchShell` and real surfaces so normal Project, Verify, Hardware, Export, and Import no longer expose generic HIDE / SHOW INFO side rails; Design now uses a fixed V2 palette/context workbench, Verify uses a `testbench-workspace`, Hardware uses a `board-mapping-workspace`, Export uses an artifact workspace, and Import uses a step workflow.
+- Fixed a V2 Verify layout regression where stale CSS still reserved a phantom `224px` Signals rail even with both docks hidden, squeezing the testbench and waveform lanes.
+- Added `ide:gate:v2-student-chrome` and package aliases for the V2 student-chrome contracts; rewrote stale classroom gates that required raw build hashes, E-tier browser wording, restore rails, or V1 closed-rail Design canvas budgets.
+
+**Evidence:** Before screenshots and inventory are under `.redbyte/product-immersion/product-trust-reset-v2/2026-06-20/before/` and `.redbyte-brain/student-chrome-inventory.md`. After screenshots for Project, Design, Verify before/after Compare, Hardware, Export, Import, and Diagnostics at `1366x768`, `1440x900`, and `1920x1080` are under `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`. After observations verified preview URL `http://127.0.0.1:59085/os`, build hash `fe8847c`, full SHA `fe8847c3252b638e89a6e492bce0d2c66a1b597c`, zero root overflow, zero visible generic rails, no visible normal-ui raw build hash, no visible normal-ui E-tier labels, no HIDE / SHOW INFO text, and no console/page errors in the checked paths.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `@redbyte/playground` build, `ide:gate:v2-student-chrome`, the affected Project/Design/Verify/Hardware/Export/Import gates, full `classroom:gate` including the determinism/parity suite, focused V2 shell/status/Design idle Vitest suites (`31` tests), `build:unified`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`. `git diff --check` emitted only the repo's normal CRLF working-copy warnings.
+
+**Safety:** Browser presentation, shell layout, diagnostics, and gate-contract slice only. It does not change simulation semantics, Verify result semantics, Compare rules, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Phase 3 should rebuild Verify's truth/workbench model on top of this V2 frame: course checks versus My checks, expected/observed editability, stale/PASS/FAIL/repair hierarchy, and integrated signal controls without changing generated artifacts or hardware-proof claims.
+
 ## Change Log 2026-06-20 (docs: define Product Trust Reset v2 contracts)
 
 **Subsystem:** Product Trust Reset v2 branch setup, student UI contract, Verify truth model, workspace layout, visual system, codebase/source-map scratch audits, and gate-reset routing.

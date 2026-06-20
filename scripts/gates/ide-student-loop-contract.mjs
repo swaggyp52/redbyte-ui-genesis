@@ -43,19 +43,25 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   let designInspectorVisible = await designInspector.isVisible().catch(() => false);
   let designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
   if (!designInspectorVisible && !designSelectionVisible) {
-    const inspectorToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
+    const designRoot = page.locator('[data-testid="ide-mode-design"]').first();
     assert(
-      await visible(inspectorToggle).catch(() => false),
-      'design surface must expose a restorable inspector rail after starter load',
+      (await designRoot.getAttribute('data-workspace-primitive').catch(() => '')) === 'fixed-tool-palette',
+      'design surface must use the fixed tool palette workspace primitive',
     );
-    await inspectorToggle.click();
-    await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
+    assert(
+      !(await page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().isVisible().catch(() => false)),
+      'design surface must not require a generic restorable inspector rail',
+    );
+    const firstNode = page.locator('[data-node-id]').first();
+    assert(await visible(firstNode), 'design surface must expose selectable canvas nodes after starter load');
+    await firstNode.click();
+    await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 5000 });
     designInspectorVisible = await designInspector.isVisible().catch(() => false);
     designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
   }
   assert(
     designInspectorVisible || designSelectionVisible,
-    'design surface must render inspector content after opening the restorable rail',
+    'design surface must render inspector content in the fixed workspace after selecting a node',
   );
 
   // 2. Verify: generate basics -> run -> PASS/FAIL banner
@@ -204,14 +210,6 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   //   ide-hardware-command-strip        — always present, encodes current status + next action
   // All three encode the Build → Verify → Export → Program trust chain.
   await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
-  const leftSupportRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(
-    await visible(leftSupportRail).catch(() => false),
-    'hardware proof mode must expose a restorable left support rail before proof details are opened',
-  );
-  await leftSupportRail.click();
-  await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { timeout: 5000 });
-
   const hasProgramCta = await page
     .locator('[data-testid="ide-hardware-program-handoff-cta"]')
     .first()

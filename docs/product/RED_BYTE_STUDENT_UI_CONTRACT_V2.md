@@ -57,12 +57,13 @@ Diagnostics may show:
 
 - full Git SHA
 - runtime/build version
-- internal proof tiers
 - state hashes
 - gate/debug data
 - low-level logs
 
 Diagnostics must be reachable through Help / About / Diagnostics or dev mode. Diagnostics must not be the default student surface.
+
+Current Phase 2 implementation uses plain-language proof boundaries in Diagnostics instead of E0/E1/E2/E3 labels. Keep E-tier labels out of normal student chrome and do not reintroduce them into Diagnostics unless the gate contract is deliberately revised.
 
 ## Layout Contract
 
@@ -99,3 +100,13 @@ A V2 student surface is not accepted until:
 - no generic side rail is required for normal desktop use
 - no region exists only because an old gate expected it
 - screenshots at `1366x768`, `1440x900`, and `1920x1080` look materially unlike the old card/rail app
+
+## Phase 2 Implemented Baseline
+
+As of the Phase 2 branch slice:
+
+- Help / About / Diagnostics is the student-accessible diagnostics boundary.
+- Normal top chrome hides raw build hashes; the root keeps `data-build-sha` / `data-build-full-sha` for gates.
+- Normal Project, Verify, Map Pins, Export, and Import do not expose generic dock restore/collapse rails.
+- Design uses a fixed parts palette and bounded context surface; this is the one Phase 2 surface that still visibly carries side tool regions, but not generic HIDE / SHOW INFO rails.
+- The focused browser contract is `ide:gate:v2-student-chrome`; the full classroom aggregate now runs against the V2 primitive model.

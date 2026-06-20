@@ -173,7 +173,7 @@ describe('DesignSurface idle inspector contract', () => {
     expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('proof');
   });
 
-  it('keeps the default inspector contract while handling the empty-canvas branch', () => {
+  it('keeps the fixed palette open and hides the context inspector for an empty canvas', () => {
     useCircuitStore.setState({
       circuit: { nodes: [], connections: [] },
       isDirty: false,
@@ -183,9 +183,13 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Empty canvas.');
-    expect(view.queryByTestId('ide-design-inspector-idle-stats')).toBeNull();
+    expect(view.getByTestId('ide-mode-design')).toHaveAttribute(
+      'data-workspace-primitive',
+      'fixed-tool-palette'
+    );
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-design-dock-palette')).toBeTruthy();
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
   });
 });

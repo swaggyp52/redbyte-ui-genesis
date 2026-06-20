@@ -273,7 +273,8 @@ async function assertExportHandoff(page, viewport) {
   const checklist = page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first();
   assert(await visible(checklist), `${viewport.label}: Export handoff checklist missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
-  assert(/E0/i.test(text), `${viewport.label}: Export must state E0 package boundary`);
+  assert(/package|handoff|generated files/i.test(text), `${viewport.label}: Export must state package handoff context`);
+  assert(/Vivado|board records|outside RedByte|separate/i.test(text), `${viewport.label}: Export must keep downstream build/board records separate`);
   assert(/Verify|Compare/i.test(text), `${viewport.label}: Export must carry Verify state forward`);
   assert(/Pin|Mapping|Basys3/i.test(text), `${viewport.label}: Export must carry pin mapping context forward`);
   assert(

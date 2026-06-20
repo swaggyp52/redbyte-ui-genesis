@@ -21,6 +21,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Product Trust Reset v2 student UI | `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md` | Current reset-branch contract for student-facing language, chrome, card usage, diagnostics boundary, and normal-surface prohibitions. |
 | Product Trust Reset v2 Verify truth | `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md` | Current reset-branch authority for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair semantics. |
 | Product Trust Reset v2 workspace/visual contracts | `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md` | Current reset-branch layout and visual direction; supersedes generic side-rail and one-note card/chrome assumptions for V2 work. |
+| Product Trust Reset v2 Phase 2 proof | `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`, `ide:gate:v2-student-chrome`, `classroom:gate` | Current branch evidence that normal student chrome hides raw build/E-tier rail language, Diagnostics owns the full build fingerprint, and Project/Design/Verify/Hardware/Export/Import use V2 workspace primitives. |
 | V1 product contract | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` | Current V1 target contract and work order. |
 | Under-the-hood source map | `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md` | Concrete subsystem, state owner, mutation, persistence, proof, and risk map. |
 | State authority matrix | `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md` | Canonical state owners and invalidation rules. |
@@ -56,6 +57,8 @@ Practical read order for a normal session:
 9. For stateful product work, `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`
 
 For Product Trust Reset v2 work, read the V2 student UI, Verify truth, workspace layout, and visual system contracts before using older V1 shell, side-rail, or pixel-level specs.
+
+Phase 2 branch truth: normal student UI must not show raw build badges, E0/E1/E2/E3 labels, `HIDE`, or `SHOW INFO` side rails. Diagnostics currently uses plain-language proof boundaries while exposing the full Git fingerprint. V1 gates that expected collapsed/restore side rails have been rewritten for the V2 primitive model on this branch.
 
 ## 2. Current Product Thesis
 

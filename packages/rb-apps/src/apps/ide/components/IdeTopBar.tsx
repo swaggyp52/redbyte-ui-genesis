@@ -1,6 +1,7 @@
 import React from 'react';
 import type { IdeBuildIdentity } from '../buildIdentity';
 import { getIdeModeLabel, type IdeMode } from '../workflowStages';
+import { IdeHelpMenu } from './IdeHelpMenu';
 
 export interface IdeTopBarProps {
   projectName: string;
@@ -169,17 +170,6 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
       </div>
 
       <div className="ide-top-right">
-        {buildIdentity && (
-          <span
-            className={`ide-build-badge ide-build-badge--${buildIdentity.envLabel}`}
-            data-testid="ide-build-badge"
-            title={buildIdentity.title}
-            aria-label={buildIdentity.title}
-          >
-            <span className="ide-build-badge-label">Build</span>
-            <code className="ide-build-badge-sha">{buildIdentity.shortSha}</code>
-          </span>
-        )}
         <span
           className={`ide-save-dot ${saveDotClass}`}
           data-testid="ide-save-state"
@@ -200,17 +190,7 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
             Flow
           </button>
         )}
-        {onHelp && (
-          <button
-            className="ide-topbar-help-btn"
-            onClick={onHelp}
-            title="Keyboard shortcuts (?)"
-            aria-label="Keyboard shortcuts"
-            data-testid="ide-topbar-help-btn"
-          >
-            ?
-          </button>
-        )}
+        <IdeHelpMenu buildIdentity={buildIdentity} onKeyboardShortcuts={onHelp} />
       </div>
     </header>
   );

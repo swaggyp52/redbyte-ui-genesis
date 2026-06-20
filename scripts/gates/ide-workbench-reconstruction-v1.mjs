@@ -27,7 +27,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await assertShellChrome(page, viewport, 'design-loaded');
       await assertVisibleRect(page, ['[data-testid="ide-design-live-canvas"]'], `${viewport.label}/design canvas`, {
         maxTop: 226,
-        minWidth: Math.round(viewport.width * 0.78),
+        minWidth: Math.floor(viewport.width * 0.53),
         minHeight: Math.round(viewport.height * 0.50),
       });
 

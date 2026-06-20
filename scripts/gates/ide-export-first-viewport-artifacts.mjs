@@ -53,10 +53,10 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
       await openReadyToBuildExport(page, baseUrl, viewport.label);
       await capture(page, viewport.label);
 
-      const buildSha = (await page.locator('.ide-build-badge-sha').first().textContent().catch(() => ''))?.trim() ?? '';
+      const buildSha = (await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => ''))?.trim() ?? '';
       assert(
         buildSha === CURRENT_SHA,
-        `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
+        `${viewport.label}: root build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
       );
 
       const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();

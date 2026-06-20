@@ -14,12 +14,21 @@ Use this guide when adding or changing RedByte proof. Tests passing is useful ev
 
 The Product Trust Reset v2 branch must not preserve old UI structure only because a V1 gate expects it. Treat gates that assert generic side rails, raw build hashes in normal student chrome, E0/E1/E2/E3 labels in normal student surfaces, or old Verify rail/result composition as legacy safety until V2 replacements exist.
 
-New V2 gate family to add before merge:
+Phase 2 landed the first integrated V2 browser gate:
+
+- `ide:gate:v2-student-chrome`
+
+Package aliases route the same gate for the Phase 2 student-chrome contract:
 
 - `ide:gate:no-internal-proof-language`
 - `ide:gate:no-raw-build-hash-student-ui`
 - `ide:gate:no-generic-side-rails`
 - `ide:gate:student-status-language`
+
+These aliases inspect Project, Design, Verify, Hardware, Export, and Import at classroom/desktop viewports, verify Help / Diagnostics reachability, prove the full build fingerprint is recoverable outside normal chrome, reject visible raw build badges and E-tier labels in normal UI, reject generic restore/collapse rails, and assert V2 workspace primitives.
+
+V2 gates still to add before merge:
+
 - `ide:gate:verify-truth-model-v2`
 - `ide:gate:verify-locked-course-checks`
 - `ide:gate:verify-stale-result-invalidation`
@@ -27,7 +36,7 @@ New V2 gate family to add before merge:
 - `ide:gate:verify-testbench-results-layout-v2`
 - `ide:gate:verify-sequential-consistency-v2`
 
-Legacy gates to rewrite or retire as V2 surfaces land include `ide:gate:side-dock-affordance`, `ide:gate:open-side-panel-density`, `ide:gate:verify-signals-dock-not-clipped`, old release-solidification layout gates that prove E0 chrome or generic rails, and unit/render tests that click `ide-workbench-dock-toggle-*` as normal student behavior.
+Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 
 ## Proof Layers
 
@@ -45,14 +54,13 @@ Legacy gates to rewrite or retire as V2 surfaces land include `ide:gate:side-doc
 
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
+- `ide:gate:v2-student-chrome`
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`
 - `ide:gate:export-package-inspector`
 - `ide:gate:outer-workflow-action-density`
 - `ide:gate:card-chrome-regression`
-- `ide:gate:verify-signals-dock-not-clipped`
-- `ide:gate:release-solidification-v1`
 - `ide:gate:release-solidification-v2`
 - `ide:gate:release-candidate-decision`
 - `ide:gate:node20-proof-status`
@@ -86,9 +94,6 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:design-workbench-v1`
 - `ide:gate:interaction-affordance`
 - `ide:gate:project-identity-editing`
-- `ide:gate:side-dock-affordance`
-- `ide:gate:open-side-panel-density`
-- `ide:gate:workbench-obstruction-usability`
 - `ide:gate:export-first-viewport-artifacts`
 - `ide:gate:export-artifact-direct-preview`
 - `ide:gate:export-handoff-station`
@@ -108,14 +113,13 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 
 Why:
 
+- V2 student chrome protects the Phase 2 reset: normal UI has no raw build badge, no E-tier browser labels, no generic HIDE / SHOW INFO rails, and Diagnostics remains reachable with the full build fingerprint.
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Project loaded command surface protects loaded Project from reverting to a metric-first report page before direct Design / Verify / Map Pins / Export actions.
 - Import guided recovery wizard protects Import first-look from reverting to passive recovery prose instead of a staged recovery tool with a no-overwrite boundary.
 - Export package inspector protects Export ready state from hiding generated-file inspection behind extra interaction.
 - Outer workflow action density protects Project, Import, and Export from losing direct first-viewport commands.
 - Card chrome regression protects the current reduction in non-interactive card-like chrome on outer workflow surfaces.
-- Verify Signals dock not clipped protects the open Verify Signals rail from returning to the cropped `136px`/`144px` state while adjacent gates keep collapsed Signals compact.
-- Release Solidification v1 protects the current Verify / Export / Import release package: open-Signals Verify no-overflow geometry, Export package-readiness checklist, and Import selected-source editor plus review lane with reload continuity.
 - Release Solidification v2 protects first-launch Project orientation from blocking starter/launch actions and protects Verify Compare PASS/repair PASS next-action visibility while keeping FAIL evidence usable.
 - Release Candidate Decision protects the release-closeout bundle: active-mode reload/history, Project loaded command-center final pass, Verify evidence clarity final pass, and honest Node 20 status.
 - Browser E0 Release Proof protects pinned-runtime release confidence: Node `20.19.0` setup/proof status, `build:unified`, release-candidate/final-current gates, authoring/student gates, full `classroom:gate`, docs validation, encoding, diff check, and deployed-SHA proof after push.

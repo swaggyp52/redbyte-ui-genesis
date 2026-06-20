@@ -91,7 +91,10 @@ async function assertCleanWorkbench(page, viewport, label) {
       urlMode: new URL(window.location.href).searchParams.get('mode'),
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       loading: document.querySelector('[data-testid="ide-surface-loading"]')?.textContent?.trim() ?? '',
-      buildBadge: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      buildBadge:
+        document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ??
+        document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ??
+        '',
       rootOverflowX: Math.max(
         0,
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
@@ -102,7 +105,7 @@ async function assertCleanWorkbench(page, viewport, label) {
   assert(!state.hasBoundary, `${viewport.label} ${label}: error boundary was visible`);
   assert(state.mode === state.urlMode, `${viewport.label} ${label}: URL mode ${state.urlMode} did not match active mode ${state.mode}`);
   assert(state.loading.length === 0, `${viewport.label} ${label}: surface stayed in loading state (${state.loading})`);
-  assert(state.buildBadge.length > 0, `${viewport.label} ${label}: build badge missing`);
+  assert(state.buildBadge.length > 0, `${viewport.label} ${label}: build hash missing`);
   assert(state.rootOverflowX <= 2, `${viewport.label} ${label}: root has horizontal overflow (${state.rootOverflowX.toFixed(1)}px)`);
 }
 

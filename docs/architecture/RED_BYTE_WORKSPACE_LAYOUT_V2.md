@@ -39,6 +39,8 @@ Phase 2 should implement or equivalent:
 - `StudentStatus`
 - `DiagnosticsPanel`
 
+Phase 2 implementation note: the first branch implementation wires these concepts through the existing shell/components rather than a fully new component library. The real acceptance point is visible surface behavior and `data-workspace-primitive` markers on live workspaces, not unused abstractions.
+
 ## Project
 
 - No side rails.
@@ -52,7 +54,7 @@ Phase 2 should implement or equivalent:
 
 ## Design
 
-- Fixed `240px` to `280px` parts palette.
+- Fixed `260px` to `304px` parts palette depending on viewport.
 - Main canvas receives remaining width.
 - No persistent generic right rail.
 - Contextual property bar sits beneath the toolbar:
@@ -115,3 +117,12 @@ Phase 2 should implement or equivalent:
 ## Legacy Gate Routing
 
 Old gates that primarily preserve docks, rails, or old card composition become legacy safety while V2 gates are introduced. They should be rewritten or retired as each V2 surface lands.
+
+Phase 2 rewrote the active classroom gates that expected normal restore rails, visible build badges, E-tier browser wording, or V1 closed-rail Design canvas budgets. The current primitives used by live surfaces are:
+
+- Project: `course-workspace`
+- Design: `fixed-tool-palette`
+- Verify: `testbench-workspace`
+- Map Pins / Hardware: `board-mapping-workspace`
+- Export: `artifact-workspace`
+- Import: `step-workflow`

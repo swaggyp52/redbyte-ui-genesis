@@ -262,8 +262,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [copyError, setCopyError] = useState(false);
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
-    const readme = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-    return readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
+    const sourceArtifact = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() !== 'readme.txt');
+    return sourceArtifact?.path ?? baseViewModel.artifacts[0]?.path ?? '';
   });
   const [openFixPathId, setOpenFixPathId] = useState<string | null>(null);
   // Phase 32: pipeline rebuild state
@@ -299,8 +299,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
     const exists = viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath);
     if (!exists) {
-      const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-      setSelectedArtifactPath(readme?.path ?? viewModel.artifacts[0].path);
+      const sourceArtifact = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() !== 'readme.txt');
+      setSelectedArtifactPath(sourceArtifact?.path ?? viewModel.artifacts[0].path);
     }
   }, [viewModel.artifacts, selectedArtifactPath]);
 
@@ -867,11 +867,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           return 'Draft export available';
         case 'export-stale':
         case 'export-missing':
-          return 'E0 export package ready to build';
+          return 'Export package ready to build';
         case 'mapping-review':
-          return 'E0 export package ready - mapping review pending';
+          return 'Export package ready - mapping review pending';
         case 'ready':
-          return 'E0 export package ready';
+          return 'Export package ready';
         default:
           return 'Export status';
       }
@@ -886,7 +886,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'export-stale':
         case 'export-missing':
         case 'ready':
-          return `${handoffTruth.message} This is E0 export-package evidence only; Vivado build, board programming, and observed behavior remain external.`;
+          return `${handoffTruth.message} This browser package is ready for review; Vivado build, board programming, and observed behavior remain outside RedByte.`;
         default:
           return handoffTruth.message;
       }
@@ -907,13 +907,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Vivado handoff package generated';
         case 'export-stale':
-          return 'Previous E0 package needs rebuild';
+          return 'Previous package needs rebuild';
         case 'export-missing':
-          return 'E0 Vivado package ready to build';
+          return 'Vivado package ready to build';
         case 'mapping-review':
-          return 'E0 Vivado package generated with mapping review pending';
+          return 'Vivado package generated with mapping review pending';
         case 'ready':
-          return 'E0 Vivado handoff ready';
+          return 'Vivado handoff ready';
         default:
           return 'Vivado handoff status';
       }
@@ -939,11 +939,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Trace-only evidence is observation, not proof. Run Compare before calling the package trusted.';
         case 'export-stale':
-          return 'Rebuild the E0 package so the downloadable Vivado project matches the current design. E1/E2/E3 still require external Vivado and board evidence.';
+          return 'Rebuild the package so the downloadable Vivado project matches the current design. Vivado build logs and board observations stay outside RedByte.';
         case 'export-missing':
-          return 'Build the E0 Vivado project package after checking mapping, timing, and Verify evidence. E1/E2/E3 still require external Vivado and board evidence.';
+          return 'Build the Vivado project package after checking mapping, timing, and Verify results. Vivado build logs and board observations stay outside RedByte.';
         case 'ready':
-          return 'Current Verify evidence, mapping, and generated files agree for an E0 Vivado handoff; Vivado build, programming, and observation remain external.';
+          return 'Current Verify results, mapping, and generated files agree for a Vivado handoff; Vivado build, programming, and observation remain outside RedByte.';
         default:
           return handoffTruth.message;
       }
@@ -967,13 +967,13 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Run Compare checks in Verify to generate comparison evidence';
         case 'export-stale':
-          return 'Rebuild the current E0 bundle';
+          return 'Rebuild the current package';
         case 'export-missing':
-          return 'Build the first E0 Vivado package';
+          return 'Build the first Vivado package';
         case 'mapping-review':
           return 'Complete mapping review in Map Pins, then build';
         case 'ready':
-          return 'Download E0 Vivado package for external build';
+          return 'Download Vivado package for external build';
         default:
           return handoffTruth.title;
       }
@@ -990,7 +990,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'design-blocked':
         case 'export-stale':
         case 'export-missing':
-          return 'Build or rebuild the E0 export bundle for Vivado synthesis. RedByte does not claim Vivado build, board programming, or observed board behavior.';
+          return 'Build or rebuild the export bundle for Vivado synthesis. RedByte does not claim Vivado build, board programming, or observed board behavior.';
         case 'verify-not-run':
           return 'Switch to Verify, author or generate test stimulus, and run Compare checks to lock in expected behavior.';
         case 'verify-stale':
@@ -1000,7 +1000,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         case 'trace-only':
           return 'Return to Verify and execute Compare checks (not Observe only) to generate assertion-based proof.';
         case 'ready':
-          return 'The E0 export bundle is ready for Vivado synthesis. Download the kit and run synthesis, implementation, bitstream, programming, and observation outside RedByte.';
+          return 'The export bundle is ready for Vivado synthesis. Download the kit and run synthesis, implementation, bitstream, programming, and observation outside RedByte.';
         default:
           return handoffTruth.message;
       }
@@ -1416,9 +1416,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const downloadDisabled = !downloadReady || isRebuilding;
   const vivadoEvidenceRows = [
     {
-      id: 'e0',
-      level: 'E0',
-      label: 'Export package',
+      id: 'browser-package',
+      level: 'Package',
+      label: 'Generated files',
       tone: hasBlockingErrors ? 'error' as const : 'ok' as const,
       status: hasBlockingErrors
         ? 'Blocked'
@@ -1427,30 +1427,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           : 'Generated in RedByte',
       detail: hasBlockingErrors
         ? 'Resolve export blockers before the package can be considered export-valid.'
-        : 'RedByte generated the VHDL, XDC, Tcl, README, and project handoff artifacts. This is export/package evidence only.',
+        : 'RedByte generated the VHDL, XDC, Tcl, README, and project handoff artifacts.',
     },
     {
-      id: 'e1',
-      level: 'E1',
+      id: 'vivado-build',
+      level: 'Build',
       label: 'Vivado build / bitstream',
       tone: 'warn' as const,
-      status: 'External evidence required',
-      detail: 'Run Vivado synthesis, implementation, and bitstream generation outside RedByte. Preserve and classify warnings before claiming E1.',
+      status: 'Record outside RedByte',
+      detail: 'Run Vivado synthesis, implementation, and bitstream generation outside RedByte. Preserve and classify warnings before claiming the build is clean.',
     },
     {
-      id: 'e2',
-      level: 'E2',
+      id: 'board-programming',
+      level: 'Program',
       label: 'Board programming',
       tone: 'warn' as const,
-      status: 'External evidence required',
-      detail: 'Program success proves delivery to the board only; E2 does not prove behavior and must not be treated as E3.',
+      status: 'Record outside RedByte',
+      detail: 'Program success proves delivery to the board only; it does not prove the circuit behavior.',
     },
     {
-      id: 'e3',
-      level: 'E3',
+      id: 'board-observation',
+      level: 'Observe',
       label: 'Observed board behavior',
       tone: 'warn' as const,
-      status: 'manual observation required',
+      status: 'Manual record required',
       detail: 'Toggle the expected controls and record physical LED/output behavior before making any behavior-certified claim.',
     },
   ];
@@ -1473,8 +1473,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       consoleHasBlocking={hasBlockingErrors}
       consoleHasEntries={diagnosticsList.length > 0}
       leftDockMode="hidden"
-      rightDockMode="collapsed"
-      rightDockCanCollapse
+      rightDockMode="hidden"
       consoleMode="collapsed"
       inspector={
         <>
@@ -1648,11 +1647,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             : exportBlocked
               ? 'Export Blocked'
               : handoffTruth.condition === 'export-missing'
-                ? 'E0 Export Ready to Build'
+                ? 'Export Ready to Build'
                 : handoffTruth.condition === 'export-stale'
-                  ? 'E0 Export Stale'
+                  ? 'Export Stale'
                   : exportTrusted
-                    ? 'E0 Export Ready'
+                    ? 'Export Ready'
                     : 'Export Needs Review'
         }
         description={
@@ -1778,9 +1777,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <p>{packageHandoffSummary.mappingPlain}</p>
               </div>
               <div className="ide-export-handoff-checklist-v1__item ide-export-handoff-checklist-v1__item--boundary">
-                <span>E0 boundary</span>
-                <strong>External Vivado/Basys3 proof required</strong>
-                <p>E0 confirms this package was generated by RedByte; E1/E2/E3 remain external evidence.</p>
+                <span>Handoff boundary</span>
+                <strong>Vivado and board records are separate</strong>
+                <p>RedByte confirms package generation. Vivado build logs, programming, and observed board behavior are recorded outside the browser.</p>
               </div>
             </div>
             <div className="ide-export-package-inspector-v1__body">
@@ -1940,7 +1939,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   RedByte separates package generation, Vivado build evidence, board programming, and observed behavior.
                 </p>
               </div>
-              <IdeStatusPill tone="warn">E3 manual</IdeStatusPill>
+              <IdeStatusPill tone="warn">Manual board record</IdeStatusPill>
             </header>
             <div className="ide-kv-list" data-testid="ide-export-vivado-evidence-rows">
               {vivadoEvidenceRows.map((row) => (
@@ -1966,7 +1965,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </div>
             <IdeCallout tone="info" testId="ide-export-bench-empty-state" className="ide-mt-2">
               No local bench classification is attached to this browser session. Use `pnpm rb:bench:evidence:classify`
-              on a machine with bench run artifacts, then keep E1/E2/E3 claims separated.
+              on a machine with bench run artifacts, then keep package, build, programming, and observation claims separated.
             </IdeCallout>
             </section>
           </section>

@@ -14,8 +14,7 @@ const SCREENSHOT_ROOT = process.env.RB_VERIFY_NO_CIRCUIT_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_NO_CIRCUIT_SCREENSHOTS_DIR)
   : '';
 
-const HEAD_SHORT = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-const BUILD_BADGE_HASH = HEAD_SHORT.slice(0, 7);
+const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUrl }) => {
   const findings = [];
@@ -41,7 +40,7 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
 
     const metrics = await readMetrics(page);
     assert(metrics.mode === 'verify', `${viewport.label}: expected Verify mode, got "${metrics.mode}"`);
-    assert(metrics.buildText.includes(BUILD_BADGE_HASH), `${viewport.label}: build badge "${metrics.buildText}" must include ${BUILD_BADGE_HASH}`);
+    assert(metrics.buildSha === CURRENT_SHA, `${viewport.label}: root build hash "${metrics.buildSha || 'missing'}" must equal ${CURRENT_SHA}`);
     assert(!metrics.hasBoundary, `${viewport.label}: error boundary must not be visible`);
     assert(metrics.rootOverflowX <= 2, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.taskBox, `${viewport.label}: no-circuit task panel must be measurable`);
@@ -141,7 +140,7 @@ async function readMetrics(page) {
     }
 
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      buildSha: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '',
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       rootOverflowX: Math.max(

@@ -1398,6 +1398,36 @@ Rollback:
 - Revert the Import active taskbar presentation changes, Import active CSS, stale gate/test selector updates, target doc, and focused gate wiring; existing Import recovery, workbench visual finish, action-first entry, and workbench reconstruction gates remain adjacent coverage.
 
 
+## Product Trust Reset v2 - Phase 2 Student Chrome / Workspace Foundation
+
+Status: Closed locally 2026-06-20 on draft PR branch `product/redbyte-trust-reset-v2`; pending final commit, push, and PR check verification.
+
+Goal: Make the normal app stop reading like an internal proof harness by removing raw build badges, E-tier labels, and generic side rails from student chrome while preserving diagnostics and existing product semantics.
+
+Implementation slices:
+
+- Added Help / About / Diagnostics as the student-accessible diagnostics boundary.
+- Removed normal visible build hash and E-tier workflow/status language from the browser shell.
+- Hid generic HIDE / SHOW INFO dock affordances from normal Project, Verify, Hardware, Export, and Import paths.
+- Marked real surfaces with V2 workspace primitives: course workspace, fixed tool palette, testbench workspace, board mapping workspace, artifact workspace, and step workflow.
+- Rewrote stale V1 gates that required visible build badges, E-tier browser copy, restore rails, or closed-rail Design canvas budgets.
+
+Proof:
+
+- `ide:gate:v2-student-chrome`
+- Full `classroom:gate` under portable Node `20.19.0`
+- After screenshots and observations under `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`
+
+Acceptance:
+
+- Normal student UI shows no raw build badge, E0/E1/E2/E3 labels, HIDE, or SHOW INFO side rails on the checked browser paths.
+- Diagnostics exposes full build fingerprint and plain external-proof boundary when explicitly opened.
+- No simulation, Verify semantics, expected-output meaning, mapping semantics, import parser/apply behavior, export generation bytes, project format, goldens, Vivado proof, or Basys3 proof changed.
+
+Rollback:
+
+- Revert the shell/status/help changes, V2 dock-mode routing, Phase 2 CSS overrides, V2 gate aliases, and stale gate rewrites as one branch slice. Do not revert Phase 1 contracts unless the whole Product Trust Reset branch is abandoned.
+
 ## Phase 11 - Vivado/Basys3 Proof Restoration
 
 Goal: Restore fresh E1/E2/E3 proof on a machine with Vivado 2024.2 and Basys3 hardware.

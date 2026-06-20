@@ -1586,12 +1586,12 @@ export const IdeApp: React.FC = () => {
           : 'draft';
     const exportValue = projectHealthCore.lastExport?.status === 'ok'
       ? projectHealthCore.dirtySinceExport
-        ? 'Stale E0'
-        : 'E0 ready'
+        ? 'Package stale'
+        : 'Package ready'
       : projectHealthCore.lastExport?.status === 'blocked'
         ? 'Blocked'
         : workflowAuthority.trustedVerifyCurrent
-          ? 'E0 ready'
+          ? 'Ready to build'
           : workflowAuthority.draftExportAvailable
             ? 'Draft Export'
             : workflowAuthority.exportAvailable
@@ -1618,10 +1618,10 @@ export const IdeApp: React.FC = () => {
               ? 'Compare FAIL'
               : 'Not run',
         detail: latestVerifyPass
-          ? 'Proof current'
+          ? 'Compare current'
           : projectHealthCore.dirtySinceVerify
             ? 'Rerun Compare'
-            : 'Needs evidence',
+            : 'Needs run',
         tone: verifyTone,
         mode: 'verify',
       },
@@ -1637,15 +1637,15 @@ export const IdeApp: React.FC = () => {
         id: 'export',
         label: 'Export',
         value: exportValue,
-        detail: 'Vivado package only',
+        detail: 'Project package',
         tone: exportTone,
         mode: 'export',
       },
       {
-        id: 'evidence',
-        label: 'Evidence',
-        value: 'E0 only',
-        detail: 'E1-E3 external',
+        id: 'student-status',
+        label: 'Workspace',
+        value: latestVerifyPass ? 'Checked in browser' : 'Draft workspace',
+        detail: 'Board records separate',
         tone: 'external',
       },
     ];
@@ -1666,7 +1666,14 @@ export const IdeApp: React.FC = () => {
 
   return (
     <BoardSignalProvider>
-    <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
+    <div
+      className="ide-root"
+      data-testid="ide-root"
+      data-redbyte-mode="ide"
+      data-student-ui-contract="v2"
+      data-build-sha={buildIdentity.shortSha}
+      data-build-full-sha={buildIdentity.fullSha}
+    >
       {autosaveAvailable && projectKind === 'home' && !hasCircuit && (
         <div className="ide-autosave-banner" data-testid="ide-autosave-banner">
           <span><strong>Restore previous session?</strong> A circuit from your last session is available. Restore it or start fresh.</span>
@@ -2366,7 +2373,7 @@ const IdeProofRibbon: React.FC<{
   <section
     className="ide-proof-ribbon"
     data-testid="ide-proof-ribbon"
-    aria-label="Lab proof and workflow state"
+    aria-label="Lab workflow state"
   >
     <div className="ide-proof-ribbon__flow" data-testid="ide-lab-flow-map">
       <span className="ide-proof-ribbon__eyebrow">Workflow state</span>
@@ -2398,7 +2405,11 @@ const IdeProofRibbon: React.FC<{
           })}
       </div>
     </div>
-    <div className="ide-proof-ribbon__evidence" data-testid="ide-proof-ribbon-evidence">
+    <div
+      className="ide-proof-ribbon__evidence"
+      data-testid="ide-proof-ribbon-evidence"
+      data-student-status="true"
+    >
       {items
         .filter((item) => !item.mode)
         .map((item) => (

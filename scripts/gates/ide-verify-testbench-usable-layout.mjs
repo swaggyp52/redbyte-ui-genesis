@@ -2,6 +2,7 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import {
   assert,
   ensureVerifyVectorsReady,
@@ -17,6 +18,7 @@ const VIEWPORTS = [
 const SCREENSHOT_ROOT = process.env.RB_VERIFY_TESTBENCH_LAYOUT_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_TESTBENCH_LAYOUT_SCREENSHOTS_DIR)
   : '';
+const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ page, baseUrl }) => {
   const findings = [];
@@ -44,10 +46,7 @@ await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ pag
     const metrics = await readPreRunMetrics(page);
     await capture(page, viewport, 'prerun-testbench-layout');
 
-    assert(
-      metrics.buildText && /Build/.test(metrics.buildText),
-      `${viewport.label}: visible build badge must be present (${JSON.stringify(metrics.buildText)})`
-    );
+    assert(metrics.buildSha === CURRENT_SHA, `${viewport.label}: root build hash ${metrics.buildSha || 'missing'} != ${CURRENT_SHA}`);
     assert(metrics.rootOverflowX <= 1, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.expectedCells >= 12, `${viewport.label}: starter checks must expose all expected-output cells (${metrics.expectedCells})`);
     assert(metrics.runButtonVisible, `${viewport.label}: Run Compare must remain visible before the first run`);
@@ -136,7 +135,7 @@ async function readPreRunMetrics(page) {
     const gridScroll = box('.ide-stimulus-grid-scroll');
 
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      buildSha: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       phase: labGridElement?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGridElement?.getAttribute('data-workspace-mode') ?? '',
       stimulusLayout: labGridElement?.getAttribute('data-stimulus-layout') ?? '',

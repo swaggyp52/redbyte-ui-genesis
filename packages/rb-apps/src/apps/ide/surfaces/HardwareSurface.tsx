@@ -1136,11 +1136,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         : 'warn';
   const hardwareReadinessTitle =
     failureTruth.condition === 'ready'
-      ? 'E0 handoff ready'
+      ? 'Browser handoff ready'
       : failureTruth.title;
   const hardwareReadinessMessage =
     failureTruth.condition === 'ready'
-      ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
+      ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are recorded outside RedByte.'
       : failureTruth.message;
   const mappingReadyFollowUp = useMemo(() => {
     switch (failureTruth.condition) {
@@ -1179,9 +1179,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'ready':
         return {
           commandStrip:
-            'E0 only: pin mapping, Verify Compare, and Export are current. RedByte does not prove Vivado build, bitstream programming, or board observation; E1/E2/E3 remain external.',
+            'Pin mapping, Verify Compare, and Export are current. RedByte does not claim Vivado build, bitstream programming, or board observation.',
           headerHint:
-            'Mapping complete - E0 export package is current; E1/E2/E3 proof stays external.',
+            'Mapping complete - export package is current; board records stay separate.',
         };
       default:
         return {
@@ -1354,7 +1354,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
     return {
       title: 'Follow the board check steps, then review pre-flight',
-      body: 'Once the guided checks match, open Pre-flight for E0 handoff notes and downstream Vivado steps.',
+      body: 'Once the guided checks match, open Pre-flight for handoff notes and downstream Vivado steps.',
       primaryLabel: 'Open Pre-flight',
       primaryAction: () => setHwMode('proof'),
       primaryTestId: 'ide-hardware-next-primary',
@@ -2318,9 +2318,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="hardware"
       layoutIntent="workbench"
-      leftDockMode="collapsed"
-      rightDockMode="collapsed"
-      rightDockCanCollapse
+      leftDockMode="hidden"
+      rightDockMode="hidden"
       consoleMode="hidden"
       dock={activeDock}
       inspector={

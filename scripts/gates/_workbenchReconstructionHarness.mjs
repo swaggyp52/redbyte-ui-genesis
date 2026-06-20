@@ -73,8 +73,13 @@ export async function runComparePass(page) {
 }
 
 export async function assertBuildHash(page, label) {
-  const visibleSha = ((await page.locator('.ide-build-badge-sha').first().textContent().catch(() => '')) ?? '').trim();
-  assert(visibleSha === CURRENT_SHA, `${label}: visible build sha ${visibleSha || 'missing'} != ${CURRENT_SHA}`);
+  const rootSha = ((await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => '')) ?? '').trim();
+  if (rootSha) {
+    assert(rootSha === CURRENT_SHA, `${label}: build sha ${rootSha} != ${CURRENT_SHA}`);
+    return;
+  }
+  const visibleSha = ((await page.locator('.ide-build-badge-sha').first().textContent({ timeout: 1000 }).catch(() => '')) ?? '').trim();
+  assert(visibleSha === CURRENT_SHA, `${label}: build sha ${visibleSha || 'missing'} != ${CURRENT_SHA}`);
 }
 
 export async function assertNoRootOverflow(page, label) {

@@ -35,15 +35,18 @@ await runIdeGate('IDE authoring depth and release safety satisfied', async ({ pa
 });
 
 async function runAuthoringDepthPath(page, baseUrl, viewport) {
+  logStep(viewport, 'reset storage');
   await resetStorage(page, baseUrl);
+  logStep(viewport, 'project first launch');
   await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=authoring-depth-release-safety-${viewport.label}`, {
     waitUntil: 'domcontentloaded',
   });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await waitBrieflyForSettledPage(page);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Project first launch`);
   await assertTopbarRename(page, viewport);
 
+  logStep(viewport, 'build fresh');
   await clickVisible(page, '[data-testid="ide-project-build-fresh-primary"]', `${viewport.label}: Build Fresh`);
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design blank`);
@@ -53,11 +56,13 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
   await clickVisible(page, '[data-testid="ide-design-empty-add-io"]', `${viewport.label}: Add boundary I/O`);
   await waitForRuntimeNodes(page, 2, `${viewport.label}: Add boundary I/O`);
 
+  logStep(viewport, 'partial blank authoring');
   await assertPartialBlankAuthoring(page, viewport);
   await clickVisible(page, '[data-testid="ide-design-quick-add-and"], [data-testid="ide-design-status-add-and"]', `${viewport.label}: quick Add AND`);
   await waitForRuntimeNodes(page, 3, `${viewport.label}: Add AND after boundary I/O`);
   await assertPartialBlankAuthoring(page, viewport, { expectAnd: true });
 
+  logStep(viewport, 'wire tool and reload');
   await clickVisible(page, '[data-testid="ide-design-quick-wire"], [data-testid="ide-design-tool-wire"]', `${viewport.label}: Wire tool`);
   await page.waitForFunction(
     () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'wire',
@@ -66,30 +71,43 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
   );
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+  await waitBrieflyForSettledPage(page);
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design reload`);
   await assertPartialBlankAuthoring(page, viewport, { expectAnd: true });
 
+  logStep(viewport, 'project continuity');
   await openMode(page, baseUrl, 'project', `authoring-depth-release-safety-${viewport.label}`);
   await assertProjectContinuity(page, viewport);
 
+  logStep(viewport, 'half-adder starter');
   await clickVisible(page, '[data-testid="ide-project-path-course-starter"]', `${viewport.label}: Course Starter path`);
   await loadStarterProject(page, { exactExampleId: 'half-adder' });
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design starter`);
   await assertStarterDesignLoop(page, viewport);
 
+  logStep(viewport, 'verify after design edit');
   await openMode(page, baseUrl, 'verify', `authoring-depth-release-safety-${viewport.label}`);
   await assertVerifyAfterDesignEdit(page, viewport);
 
   for (const mode of ['hardware', 'export', 'import']) {
+    logStep(viewport, `${mode} reload`);
     await openMode(page, baseUrl, mode, `authoring-depth-release-safety-${viewport.label}`);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+    await waitBrieflyForSettledPage(page);
     await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 });
     await assertSurfaceSafe(page, `${viewport.label}/${mode} reload`);
   }
+}
+
+function logStep(viewport, label) {
+  const line = `[authoring-depth] ${new Date().toISOString()} ${viewport.label}: ${label}`;
+  console.log(line);
+}
+
+async function waitBrieflyForSettledPage(page) {
+  await page.waitForLoadState('networkidle', { timeout: 1500 }).catch(() => null);
 }
 
 async function resetStorage(page, baseUrl) {
@@ -189,10 +207,13 @@ async function assertProjectContinuity(page, viewport) {
 
 async function assertStarterDesignLoop(page, viewport) {
   await assertSurfaceSafe(page, `${viewport.label}/Design starter authoring loop`);
-  await revealDock(page, 'left');
   const before = await readCircuitCounts(page);
   assert(before.nodes >= 6 && before.connections >= 4, `${viewport.label}: Half Adder starter did not load ${JSON.stringify(before)}`);
-  assert(await isVisible(page, '[data-testid="ide-design-dock-palette"]'), `${viewport.label}: Design library must be restorable`);
+  assert(await isVisible(page, '[data-testid="ide-design-dock-palette"]'), `${viewport.label}: Design fixed Parts palette must be visible`);
+  assert(
+    !(await isVisible(page, '[data-testid="ide-workbench-dock-toggle-left"]')),
+    `${viewport.label}: Design must not require a generic palette rail`
+  );
   assert(await isVisible(page, '[data-testid="ide-design-palette-and"]'), `${viewport.label}: Design library must expose logic gates`);
 
   await selectFirstNode(page);

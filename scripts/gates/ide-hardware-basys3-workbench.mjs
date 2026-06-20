@@ -6,7 +6,7 @@
  * Contract:
  * 1) Map Pins presents a Basys3 workbench at 1366x768 and 1440x900.
  * 2) A selected row exposes the full signal -> board resource -> package pin -> XDC consequence chain.
- * 3) Mapping Complete remains E0/browser evidence only after Verify Compare PASS and Export are current.
+ * 3) Mapping Complete remains a browser handoff state after Verify Compare PASS and Export are current.
  * 4) Hardware never claims Vivado build, bitstream programming, or physical board observation proof.
  */
 
@@ -92,13 +92,29 @@ async function assertMapWorkbench(page, viewportName) {
   const table = page.locator('[data-testid="ide-hw-map-table"]').first();
   const board = page.locator('[data-testid="ide-hw-map-board"]').first();
   const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
+  const shell = page.locator('.ide-workbench-shell[data-ide-mode-marker="hardware"]').first();
 
-  const mapRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(await visible(mapRail), `${viewportName} Map Pins restore rail must be visible on entry`);
-  const railText = await normalizedText(mapRail);
-  assert(/show/i.test(railText) && /map/i.test(railText), `${viewportName} Map Pins rail must clearly restore map support, got "${railText}"`);
-  await mapRail.click();
-  assert(await visible(page.locator('[data-testid="ide-hw-map-dock"]').first()), `${viewportName} Map Pins dock must open from the restore rail`);
+  assert(await visible(shell), `${viewportName} V2 hardware workbench shell must be visible`);
+  assert(
+    (await shell.getAttribute('data-workspace-primitive')) === 'board-mapping-workspace',
+    `${viewportName} Hardware must use the board-mapping workspace primitive`
+  );
+  assert(
+    (await shell.getAttribute('data-left-dock-state')) === 'hidden',
+    `${viewportName} Hardware must not reserve a generic left rail`
+  );
+  assert(
+    (await shell.getAttribute('data-right-dock-state')) === 'hidden',
+    `${viewportName} Hardware must not reserve a generic right rail`
+  );
+  assert(
+    !(await visible(page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first())),
+    `${viewportName} Hardware must not expose a generic restore rail`
+  );
+  assert(
+    !(await visible(page.locator('[data-testid="ide-hw-map-dock"]').first())),
+    `${viewportName} Hardware must not depend on the legacy Map Pins dock`
+  );
   assert(await visible(workspace), `${viewportName} board workspace must be visible`);
   assert(await visible(summary), `${viewportName} Basys3 resource summary must be visible`);
   assert(await visible(table), `${viewportName} mapping table must be visible`);
@@ -159,12 +175,15 @@ async function assertReadyStateBoundary(page, baseUrl) {
   const boundaryText = `${calloutText} ${hardwareText}`;
 
   assert(/MAPPING COMPLETE/i.test(hardwareText), 'Hardware should show mapping complete after current Verify and Export');
-  assert(/E0/i.test(boundaryText), `ready Hardware boundary must identify E0/browser evidence, got "${boundaryText}"`);
-  assert(/E1\/E2\/E3|E1.*E2.*E3/i.test(boundaryText), `ready Hardware boundary must keep E1/E2/E3 external, got "${boundaryText}"`);
-  assert(/not prove|not proven/i.test(boundaryText), `ready Hardware boundary must avoid hardware-proof overclaim, got "${boundaryText}"`);
+  assert(!/\bE0\b|\bE1\b|\bE2\b|\bE3\b/.test(boundaryText), `ready Hardware boundary must not expose E-tier labels, got "${boundaryText}"`);
+  assert(/browser|RedByte|outside/i.test(boundaryText), `ready Hardware boundary must identify the browser handoff boundary, got "${boundaryText}"`);
+  assert(
+    /outside RedByte|proof pending|records stay separate|external/i.test(boundaryText),
+    `ready Hardware boundary must keep hardware proof outside the browser, got "${boundaryText}"`
+  );
   assert(/external|pending|Vivado/i.test(terminalText), `program terminal step must remain external/pending, got "${terminalText}"`);
   assert(!/In Vivado|ready for the Basys3|Continue to Program Handoff/i.test(hardwareText), 'Hardware ready state must not claim Vivado or program handoff success');
-  assert(!/Vivado build passed|bitstream programmed|board observed/i.test(calloutText), `Hardware callout must not claim E1/E2/E3 proof, got "${calloutText}"`);
+  assert(!/Vivado build passed|bitstream programmed|board observed/i.test(calloutText), `Hardware callout must not claim external hardware proof, got "${calloutText}"`);
   await assertNoRootHorizontalOverflow(page, 'Hardware ready boundary');
 }
 

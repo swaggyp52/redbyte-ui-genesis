@@ -90,7 +90,7 @@ async function assertShellChrome(page, viewport, label) {
       };
     };
     return {
-      buildHash: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      buildHash: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       topbar: rect('[data-testid="ide-top-bar"]'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
@@ -103,7 +103,7 @@ async function assertShellChrome(page, viewport, label) {
     };
   });
 
-  assert(state.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${state.buildHash || 'missing'} != ${CURRENT_SHA}`);
+  assert(state.buildHash === CURRENT_SHA, `${viewport.label}/${label}: root build hash ${state.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(state.overflowX <= 1, `${viewport.label}/${label}: root horizontal overflow ${state.overflowX}px`);
   assert(state.topbar.visible && state.topbar.height <= 48, `${viewport.label}/${label}: top bar too tall/missing ${JSON.stringify(state.topbar)}`);
   assert(state.ribbon.visible && state.ribbon.height <= 44, `${viewport.label}/${label}: proof ribbon too tall/missing ${JSON.stringify(state.ribbon)}`);

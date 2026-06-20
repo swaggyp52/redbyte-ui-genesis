@@ -23,13 +23,23 @@ await runIdeGate('IDE release-readiness visual contract satisfied', async ({ pag
       await openDesignLibrary(page, baseUrl, `release-readiness-design-${viewport.label}`);
       const designLibrary = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design Library`);
       const designCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas`);
+      const designPrimitive = await page
+        .locator('.ide-workbench-shell[data-ide-mode-marker="design"]')
+        .first()
+        .getAttribute('data-workspace-primitive')
+        .catch(() => '');
       const designClip = await getDockClipping(page, '[data-testid="ide-left-dock"]', [
         '[data-testid="ide-design-search"]',
         '[data-testid^="ide-design-board-input-"]',
         '[data-testid^="ide-design-board-output-"]',
       ]);
+      const minDesignCanvasWidth = Math.floor(viewport.width * 0.53);
+      assert(designPrimitive === 'fixed-tool-palette', `${viewport.label}: Design must use V2 fixed-tool-palette primitive`);
       assert(designLibrary.visibleWidth >= 260, `${viewport.label}: Design Library width below release target ${JSON.stringify(designLibrary)}`);
-      assert(designCanvas.visibleWidth >= 920, `${viewport.label}: Design canvas below release target ${JSON.stringify(designCanvas)}`);
+      assert(
+        designCanvas.visibleWidth >= minDesignCanvasWidth,
+        `${viewport.label}: Design canvas below V2 release target ${JSON.stringify(designCanvas)}`
+      );
       assert(designClip.clipped.filter((item) => item.outsideDock || item.offViewport).length === 0, `${viewport.label}: Design Library clipped controls ${JSON.stringify(designClip.clipped.slice(0, 8))}`);
 
       await openHardwareMapPins(page, baseUrl, `release-readiness-hardware-${viewport.label}`);

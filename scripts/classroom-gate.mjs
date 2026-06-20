@@ -40,19 +40,9 @@ const STEPS = [
     args: ['-s', 'ide:gate:project-identity-editing'],
   },
   {
-    name: 'ide:gate:side-dock-affordance',
+    name: 'ide:gate:v2-student-chrome',
     cmd: 'pnpm',
-    args: ['-s', 'ide:gate:side-dock-affordance'],
-  },
-  {
-    name: 'ide:gate:open-side-panel-density',
-    cmd: 'pnpm',
-    args: ['-s', 'ide:gate:open-side-panel-density'],
-  },
-  {
-    name: 'ide:gate:workbench-obstruction-usability',
-    cmd: 'pnpm',
-    args: ['-s', 'ide:gate:workbench-obstruction-usability'],
+    args: ['-s', 'ide:gate:v2-student-chrome'],
   },
   {
     name: 'ide:gate:active-mode-reload-recovery',
@@ -95,11 +85,6 @@ const STEPS = [
     args: ['-s', 'ide:gate:design-workbench-integrity'],
   },
   {
-    name: 'ide:gate:design-workbench-v1',
-    cmd: 'pnpm',
-    args: ['-s', 'ide:gate:design-workbench-v1'],
-  },
-  {
     name: 'ide:gate:design-canvas-direct-workbench',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:design-canvas-direct-workbench'],
@@ -138,11 +123,6 @@ const STEPS = [
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],
-  },
-  {
-    name: 'ide:gate:verify-signals-dock-not-clipped',
-    cmd: 'pnpm',
-    args: ['-s', 'ide:gate:verify-signals-dock-not-clipped'],
   },
   {
     name: 'ide:gate:verify-no-circuit-task-first',
@@ -303,11 +283,6 @@ const STEPS = [
     name: 'ide:gate:card-chrome-regression',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:card-chrome-regression'],
-  },
-  {
-    name: 'ide:gate:release-solidification-v1',
-    cmd: 'pnpm',
-    args: ['-s', 'ide:gate:release-solidification-v1'],
   },
   {
     name: 'ide:gate:release-solidification-v2',

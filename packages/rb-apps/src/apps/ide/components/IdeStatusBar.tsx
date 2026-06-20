@@ -10,19 +10,19 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, gateStatus }) 
   const isQuietDesignMode = mode === 'design';
   const supportLabel =
     gateStatus === 'pass'
-      ? 'Checks synced'
+      ? 'Ready'
       : gateStatus === 'warn'
-        ? 'Checks need review'
-        : 'Checks flagged';
+        ? 'Needs review'
+        : 'Issue flagged';
 
   return (
     <footer
       className={`ide-status-bar${isQuietDesignMode ? ' ide-status-bar--quiet' : ''}`}
       data-testid="ide-status-bar"
-      aria-label="Workbench support context"
+      aria-label="Workspace status"
     >
       <span className="ide-status-item">
-        {isQuietDesignMode ? 'Support context' : `Support: ${mode}`}
+        {isQuietDesignMode ? 'Design workspace' : `${capitalizeMode(mode)} workspace`}
       </span>
       <span className={`ide-status-support ide-status-support--${gateStatus}`}>
         {supportLabel}
@@ -30,3 +30,8 @@ export const IdeStatusBar: React.FC<IdeStatusBarProps> = ({ mode, gateStatus }) 
     </footer>
   );
 };
+
+function capitalizeMode(value: string): string {
+  if (!value) return 'Current';
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
+}

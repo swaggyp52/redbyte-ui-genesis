@@ -24,7 +24,8 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  designCanvasWidthRatio: 0.72,
+  designCanvasWidthRatio: 0.53,
+  designFixedToolWidthBudget: 660,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
   verifyWaveformMinHeightRatio: 0.30,
@@ -176,10 +177,14 @@ async function assertDesignSpace(page, viewport) {
   const metrics = await readSurfaceMetrics(page);
   const canvas = metrics.rects.designCanvas;
   assert(canvas.visible, `${viewport.label}: Design canvas must be visible`);
+  const minDesignCanvasWidth = Math.max(
+    Math.floor(viewport.width * SPACE_BUDGETS.designCanvasWidthRatio),
+    Math.floor(viewport.width - SPACE_BUDGETS.designFixedToolWidthBudget)
+  );
   assert(
-    canvas.width >= viewport.width * SPACE_BUDGETS.designCanvasWidthRatio,
+    canvas.width >= minDesignCanvasWidth,
     `${viewport.label}: Design canvas is squeezed to ${canvas.width.toFixed(1)}px; expected at least ${Math.round(
-      viewport.width * SPACE_BUDGETS.designCanvasWidthRatio
+      minDesignCanvasWidth
     )}px`
   );
   assert(
@@ -193,41 +198,26 @@ async function assertDesignSpace(page, viewport) {
     `${viewport.label}: Design canvas must keep the starter graph readable (${JSON.stringify(metrics.design)})`
   );
   assert(
-    !metrics.rects.leftDock.visible && metrics.rects.leftToggle.visible,
-    `${viewport.label}: Design Library should start collapsed with a restore rail`
+    metrics.rects.leftDock.visible && !metrics.rects.leftToggle.visible,
+    `${viewport.label}: Design should use a fixed Parts palette without a generic restore rail`
   );
   assert(
-    !metrics.rects.rightDock.visible && metrics.rects.rightToggle.visible,
-    `${viewport.label}: Design Inspector should start collapsed with a restore rail`
+    !metrics.rects.rightToggle.visible,
+    `${viewport.label}: Design should not expose a generic Inspector restore rail`
   );
 }
 
 async function assertDesignRailsCanOpen(page, viewport) {
   const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
   const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  assert(await leftToggle.isVisible().catch(() => false), `${viewport.label}: collapsed Library restore rail missing`);
-  await leftToggle.click();
+  assert(!(await leftToggle.isVisible().catch(() => false)), `${viewport.label}: Design must not expose a generic Library restore rail`);
+  assert(!(await rightToggle.isVisible().catch(() => false)), `${viewport.label}: Design must not expose a generic Inspector restore rail`);
   await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
   assert(
     await visible(page.locator('[data-testid="ide-design-dock-palette"]').first()),
-    `${viewport.label}: opening Library rail must reveal the Design palette`
+    `${viewport.label}: fixed Design palette must be visible`
   );
-  const leftCollapse = page.locator('[data-testid="ide-workbench-dock-collapse-left"]').first();
-  if (await leftCollapse.isVisible().catch(() => false)) {
-    await leftCollapse.click();
-  }
-
-  assert(await rightToggle.isVisible().catch(() => false), `${viewport.label}: collapsed Inspector restore rail missing`);
-  await rightToggle.click();
-  await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
-  assert(
-    await visible(page.locator('[data-testid="ide-inspector"]').first()),
-    `${viewport.label}: opening Inspector rail must reveal the inspector`
-  );
-  const rightCollapse = page.locator('[data-testid="ide-workbench-dock-collapse-right"]').first();
-  if (await rightCollapse.isVisible().catch(() => false)) {
-    await rightCollapse.click();
-  }
+  await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 }).catch(() => null);
 }
 
 async function assertVerifySpace(page, viewport, phase) {
@@ -251,7 +241,7 @@ async function assertVerifySpace(page, viewport, phase) {
       `${viewport.label}: Verify ${phase} stimulus grid needs horizontal mini-scroll (${metrics.verify.gridExtraX}px)`
     );
     assert(
-      metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === true,
+      metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === false,
       `${viewport.label}: Verify signal rail should not squeeze testbench by default`
     );
     return;
@@ -268,7 +258,7 @@ async function assertVerifySpace(page, viewport, phase) {
     `${viewport.label}: Verify ${phase} waveform height ${waveform.visibleHeight.toFixed(1)}px is below useful size`
   );
   assert(
-    metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === true,
+    metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === false,
     `${viewport.label}: Verify signal rail should not squeeze waveform by default`
   );
 }

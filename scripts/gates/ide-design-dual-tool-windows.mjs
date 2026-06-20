@@ -10,8 +10,8 @@ import {
 } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
-  { label: 'classroom-exclusive', width: 1366, height: 768, expected: 'exclusive' },
-  { label: 'wide-dual', width: 1920, height: 1080, expected: 'dual' },
+  { label: 'classroom-fixed-palette', width: 1366, height: 768, minCanvasWidth: 724, minCanvasHeight: 380 },
+  { label: 'wide-fixed-palette', width: 1920, height: 1080, minCanvasWidth: 1150, minCanvasHeight: 620 },
 ];
 
 await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUrl }) => {
@@ -28,13 +28,8 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
 
       const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
       const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-      assert(await visible(leftToggle), `${viewport.label}: Library restore rail missing`);
-      assert(await visible(rightToggle), `${viewport.label}: Inspector restore rail missing`);
-
-      await leftToggle.click();
-      await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
-      await rightToggle.click();
-      await page.waitForTimeout(180);
+      assert(!(await visible(leftToggle)), `${viewport.label}: Design must not expose a generic Library restore rail`);
+      assert(!(await visible(rightToggle)), `${viewport.label}: Design must not expose a generic Inspector restore rail`);
 
       const state = await page.evaluate(() => {
         const rect = (selector) => {
@@ -48,7 +43,9 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
             height: Math.round(bounds.height),
           };
         };
+        const shell = document.querySelector('.ide-workbench-shell[data-ide-mode-marker="design"]');
         return {
+          primitive: shell?.getAttribute('data-workspace-primitive') ?? '',
           layoutMode: document.querySelector('[data-testid="ide-mode-design"]')?.getAttribute('data-layout-mode') ?? '',
           left: rect('[data-testid="ide-left-dock"]'),
           right: rect('[data-testid="ide-inspector"]'),
@@ -56,15 +53,16 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
         };
       });
 
-      if (viewport.expected === 'dual') {
-        assert(state.layoutMode === 'wide', `${viewport.label}: expected wide layout, got ${state.layoutMode}`);
-        assert(state.left.visible && state.right.visible, `${viewport.label}: wide Design should allow Library and Inspector together ${JSON.stringify(state)}`);
-        assert(state.canvas.width >= 1200 && state.canvas.height >= 620, `${viewport.label}: dual tools must still leave a large canvas ${JSON.stringify(state)}`);
-      } else {
-        const visibleDockCount = Number(state.left.visible) + Number(state.right.visible);
-        assert(visibleDockCount <= 1, `${viewport.label}: classroom Design should keep support docks exclusive ${JSON.stringify(state)}`);
-        assert(state.canvas.width >= 920 && state.canvas.height >= 380, `${viewport.label}: exclusive tools must preserve canvas ${JSON.stringify(state)}`);
+      assert(state.primitive === 'fixed-tool-palette', `${viewport.label}: expected V2 fixed-tool-palette primitive ${JSON.stringify(state)}`);
+      assert(state.left.visible, `${viewport.label}: fixed Parts palette must be visible ${JSON.stringify(state)}`);
+      assert(state.left.width <= 330, `${viewport.label}: fixed Parts palette is too wide ${JSON.stringify(state)}`);
+      if (state.right.visible) {
+        assert(state.right.width <= 330, `${viewport.label}: context surface is too wide ${JSON.stringify(state)}`);
       }
+      assert(
+        state.canvas.width >= viewport.minCanvasWidth && state.canvas.height >= viewport.minCanvasHeight,
+        `${viewport.label}: fixed-palette Design must preserve canvas ${JSON.stringify(state)}`
+      );
 
       await assertNoRootOverflow(page, viewport.label);
     } catch (error) {

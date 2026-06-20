@@ -136,7 +136,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
     const waveformPreview = box('[data-testid="ide-verify-waveform-preview"]');
     const statusText = document.querySelector('[data-testid="ide-verify-summary-status"]')?.textContent?.trim() ?? '';
     return {
-      buildHash: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      buildHash: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       viewportHeight: window.innerHeight,
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
       documentOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
@@ -165,7 +165,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
     };
   });
 
-  assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
+  assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: root build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(metrics.rootOverflowX <= 1 && metrics.documentOverflowX <= 1, `${viewport.label}/${label}: root/document overflow ${JSON.stringify(metrics)}`);
   assert(metrics.phase === 'post-run', `${viewport.label}/${label}: expected post-run phase, got "${metrics.phase}"`);
   assert(metrics.workspaceMode === 'split', `${viewport.label}/${label}: expected split workspace, got "${metrics.workspaceMode}"`);

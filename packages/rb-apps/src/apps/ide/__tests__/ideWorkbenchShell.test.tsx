@@ -163,9 +163,22 @@ describe('IdeWorkbenchShell', () => {
     });
   });
 
-  it('shows a left restore rail when the left dock is collapsed and restores the dock on click', async () => {
+  it('normalizes a collapsed left dock to hidden in student chrome', () => {
     const { queryByTestId, getByTestId } = renderShell({
       leftDockMode: 'collapsed',
+    });
+
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('0px');
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-left-dock-state', 'hidden');
+    expect(getByTestId('ide-surface-grid').className).toContain('hide-left-dock');
+  });
+
+  it('preserves the left restore rail only in dev chrome', async () => {
+    const { queryByTestId, getByTestId } = renderShell({
+      leftDockMode: 'collapsed',
+      showDevChrome: true,
     });
 
     expect(queryByTestId('ide-left-dock')).toBeNull();
@@ -190,7 +203,7 @@ describe('IdeWorkbenchShell', () => {
     });
 
     const shell = getByTestId('ide-mode-project');
-    expect(shell).toHaveAttribute('data-left-dock-state', 'collapsed');
+    expect(shell).toHaveAttribute('data-left-dock-state', 'hidden');
     expect(shell).toHaveAttribute('data-right-dock-state', 'visible');
   });
 
@@ -236,9 +249,21 @@ describe('IdeWorkbenchShell', () => {
     expect(queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
   });
 
-  it('preserves the existing collapsed right dock restore flow', async () => {
+  it('normalizes a collapsed right dock to hidden in student chrome', () => {
     const { queryByTestId, getByTestId } = renderShell({
       rightDockMode: 'collapsed',
+    });
+
+    expect(queryByTestId('ide-inspector')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-right-dock-state', 'hidden');
+    expect(getByTestId('ide-surface-grid').className).toContain('hide-right-dock');
+  });
+
+  it('preserves the collapsed right dock restore flow only in dev chrome', async () => {
+    const { queryByTestId, getByTestId } = renderShell({
+      rightDockMode: 'collapsed',
+      showDevChrome: true,
     });
 
     expect(queryByTestId('ide-inspector')).toBeNull();

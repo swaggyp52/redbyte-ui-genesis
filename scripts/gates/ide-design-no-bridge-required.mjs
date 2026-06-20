@@ -112,7 +112,10 @@ async function readDesignNoBridgeState(page) {
     const bodyText = document.body.innerText || '';
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
-      buildSha: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      buildSha:
+        document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ??
+        document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ??
+        '',
       hasErrorBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       hasBootCrash: Boolean(document.querySelector('[data-testid="rb-ide-boot-crash"]')),
       hasBridgeFatalText: /RedByte Bridge Unreachable|Bridge Unreachable|bridge agent/i.test(bodyText),

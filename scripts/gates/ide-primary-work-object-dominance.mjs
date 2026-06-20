@@ -42,13 +42,14 @@ await runIdeGate('IDE primary work object dominance satisfied', async ({ page, b
 
       await openMode(page, baseUrl, viewport, 'design');
       await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
-      await assertPrimaryRect(page, viewport, 'Design closed-rail canvas', ['[data-testid="ide-design-live-canvas"]'], {
-        minWidthRatio: 0.80,
+      await assertWorkspacePrimitive(page, viewport, 'design', 'fixed-tool-palette');
+      await assertPrimaryRect(page, viewport, 'Design V2 canvas with fixed palette', ['[data-testid="ide-design-live-canvas"]'], {
+        minWidthRatio: 0.53,
         minHeightRatio: 0.54,
       });
       await openSupportSequence(page, viewport, 'design');
-      await assertPrimaryRect(page, viewport, 'Design focused canvas with support opened', ['[data-testid="ide-design-live-canvas"]'], {
-        minWidthRatio: 0.70,
+      await assertPrimaryRect(page, viewport, 'Design V2 canvas after support check', ['[data-testid="ide-design-live-canvas"]'], {
+        minWidthRatio: 0.53,
         minHeightRatio: 0.54,
       });
 
@@ -62,6 +63,7 @@ await runIdeGate('IDE primary work object dominance satisfied', async ({ page, b
 
       await openMode(page, baseUrl, viewport, 'hardware');
       await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
+      await assertWorkspacePrimitive(page, viewport, 'hardware', 'board-mapping-workspace');
       await assertPrimaryRect(page, viewport, 'Hardware closed-rail board workspace', ['[data-testid="ide-hw-board-workspace"]'], {
         minWidthRatio: 0.78,
         minHeightRatio: 0.52,
@@ -104,10 +106,10 @@ async function openMode(page, baseUrl, viewport, mode) {
 }
 
 async function assertBuildHash(page, viewport) {
-  const visibleSha = ((await page.locator('.ide-build-badge-sha').first().textContent().catch(() => '')) ?? '').trim();
+  const visibleSha = ((await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => '')) ?? '').trim();
   assert(
     visibleSha === CURRENT_SHA,
-    `${viewport.label}: visible build sha must match current HEAD ${CURRENT_SHA}, got ${visibleSha || 'missing'}`
+    `${viewport.label}: root build sha must match current HEAD ${CURRENT_SHA}, got ${visibleSha || 'missing'}`
   );
 }
 
@@ -128,6 +130,22 @@ async function openSupportSequence(page, viewport, mode) {
   }
 
   const support = await readSupportState(page);
+  if (mode === 'design') {
+    const primitive = await page
+      .locator('.ide-workbench-shell[data-ide-mode-marker="design"]')
+      .first()
+      .getAttribute('data-workspace-primitive')
+      .catch(() => '');
+    assert(
+      primitive === 'fixed-tool-palette',
+      `${viewport.label}/${mode}: Design support check must be running against the V2 fixed-tool-palette primitive`
+    );
+    assert(
+      support.visibleDockCount <= 2,
+      `${viewport.label}/${mode}: fixed palette/context regions must remain bounded, got ${JSON.stringify(support)}`
+    );
+    return;
+  }
   assert(
     support.visibleDockCount <= 1,
     `${viewport.label}/${mode}: support docks must be mutually exclusive in focused workbench mode, got ${JSON.stringify(support)}`
@@ -207,6 +225,21 @@ async function assertPrimaryRect(page, viewport, label, selectors, thresholds) {
 async function assertNoRootOverflow(page, viewport, label) {
   const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth);
   assert(overflow <= 1, `${viewport.label}/${label}: root horizontal overflow ${overflow}px`);
+}
+
+async function assertWorkspacePrimitive(page, viewport, mode, expectedPrimitive) {
+  const state = await page.evaluate((targetMode) => {
+    const shell = document.querySelector(`.ide-workbench-shell[data-ide-mode-marker="${targetMode}"]`);
+    return {
+      primitive: shell?.getAttribute('data-workspace-primitive') ?? '',
+      leftDockState: shell?.getAttribute('data-left-dock-state') ?? '',
+      rightDockState: shell?.getAttribute('data-right-dock-state') ?? '',
+    };
+  }, mode);
+  assert(
+    state.primitive === expectedPrimitive,
+    `${viewport.label}/${mode}: expected workspace primitive ${expectedPrimitive}, got ${JSON.stringify(state)}`
+  );
 }
 
 async function readSupportState(page) {

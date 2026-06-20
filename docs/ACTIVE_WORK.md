@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `0abe87af980ee673e1ab90720ea64d32469e4c87`
-**Latest product/control slice:** Product Trust Reset v2 Phase 1 contracts
+**Latest product/control slice:** Product Trust Reset v2 Phase 2 student chrome / workspace foundation
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -31,8 +31,9 @@ The active branch is a coordinated reconstruction branch, not a one-slice polish
 
 ## Top Priorities
 
-1. **Product Trust Reset v2 is the active branch direction.** Do not preserve raw build hashes, normal-surface E0/E1/E2/E3 proof language, generic side rails, or old card-first layouts just because V1 gates describe them. Replace them with V2 student UI, Verify truth, deterministic workspace, and visual-system contracts.
-2. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
+1. **Product Trust Reset v2 Phase 2 is closed locally pending commit/push/PR-green closeout.** Normal student chrome no longer exposes raw build badges, E-tier labels, or generic HIDE / SHOW INFO side rails; Help / Diagnostics owns the full build fingerprint and plain external-proof boundary. After evidence is under `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`, and full `classroom:gate` passed under portable Node `20.19.0`.
+2. **Phase 3 should rebuild Verify on the V2 frame.** The next Product Trust Reset task is Verify truth/workbench reconstruction: course checks versus My checks, expected/observed editability, stale/PASS/FAIL/repair hierarchy, and integrated signal controls. Do not change simulation semantics, generated artifacts, pin mapping, project format, or hardware proof claims as part of Phase 3 unless directly proven necessary.
+3. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
 2. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 3. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
 4. **Side Dock Affordance v1 is closed locally.** `ide:gate:side-dock-affordance` now proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails use compact horizontal `+ / Show / Lib|Sig|Info` restore controls, stay within a `48px` slot, reopen readable content, close back to restored workbench space, keep focal work objects visible at `1366x768` and `1440x900`, and produce no root overflow or console/page errors.

@@ -88,12 +88,10 @@ async function loadLogicGatesStarter(page) {
 }
 
 async function assertBuildMatchesHead(page) {
-  const buildBadge = page.locator('[data-testid="ide-build-badge"]').first();
-  assert(await visible(buildBadge), 'build identity must be visible before browser proof');
-  const buildText = await text(buildBadge);
+  const buildText = (await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => '')) ?? '';
   assert(
-    buildText.includes(EXPECTED_UI_BUILD),
-    `visible build hash must match local HEAD ${EXPECTED_UI_BUILD}, got "${buildText}"`
+    buildText === EXPECTED_UI_BUILD,
+    `build hash must match local HEAD ${EXPECTED_UI_BUILD}, got "${buildText || 'missing'}"`
   );
 }
 

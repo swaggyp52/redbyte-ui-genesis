@@ -3863,13 +3863,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const designRightDockMode =
     isCanvasWorkspace &&
     (hasInspectorSelectionContext ||
+      liveIoSignals.inputRows.length > 0 ||
+      liveIoSignals.outputRows.length > 0 ||
       activeVerifySignal != null ||
       activeDebugContext != null ||
       effectiveExternalDebugTick != null ||
       simRunning ||
       diagnosticRouteRequest != null)
       ? 'visible'
-      : workspacePreset.rightDockMode;
+      : 'hidden';
   const designRightDockRevealKey = useMemo(() => {
     if (!isCanvasWorkspace) return null;
     if (hasInspectorSelectionContext) {
@@ -5587,7 +5589,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         layoutIntent="workbench"
         consoleHasBlocking={compilerErrorCount > 0}
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
-        leftDockMode={workspacePreset.leftDockMode}
+        leftDockMode="visible"
         rightDockMode={designRightDockMode}
         rightDockCanCollapse={false}
         rightDockRevealKey={designRightDockRevealKey}

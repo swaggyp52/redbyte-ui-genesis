@@ -21,8 +21,18 @@ await runIdeGate('IDE Design library is not cropped', async ({ page, baseUrl }) 
 
       const leftDock = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design library`);
       const canvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas`);
+      const primitive = await page
+        .locator('.ide-workbench-shell[data-ide-mode-marker="design"]')
+        .first()
+        .getAttribute('data-workspace-primitive')
+        .catch(() => '');
+      assert(primitive === 'fixed-tool-palette', `${viewport.label}: Design must use the V2 fixed-tool-palette primitive`);
       assert(leftDock.visibleWidth >= 260, `${viewport.label}: Design library is too narrow (${leftDock.visibleWidth}px < 260px)`);
-      assert(canvas.visibleWidth >= 920, `${viewport.label}: Design canvas lost too much width (${canvas.visibleWidth}px < 920px)`);
+      const minCanvasWidth = Math.floor(viewport.width * 0.53);
+      assert(
+        canvas.visibleWidth >= minCanvasWidth,
+        `${viewport.label}: Design canvas lost too much width (${canvas.visibleWidth}px < ${minCanvasWidth}px)`
+      );
 
       const clipping = await getDockClipping(page, '[data-testid="ide-left-dock"]', [
         '[data-testid="ide-design-search"]',

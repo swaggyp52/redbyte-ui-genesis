@@ -81,6 +81,12 @@ Cards are not a surface level. Use them only for discrete choices or self-contai
 - Do not add more unrelated overrides to `ide-root.css` or `ide-polish-pass.css` unless a temporary bridge is unavoidable.
 - Keep old global styles scoped to old surfaces until removed.
 
+Phase 2 implementation note:
+
+- The current branch uses the existing `ide-root.css` / `ide-polish-pass.css` layers as a bridge while the visible V2 shell is integrated.
+- The bridge removed normal raw build/E-tier chrome and generic side rails, and fixed stale Verify CSS that reserved a phantom Signals column.
+- Remaining visual-system work is to extract these bridge rules into named V2 layers/primitives as Phase 3+ rebuilds Verify and deeper surface internals.
+
 ## Acceptance
 
 Screenshots at `1366x768`, `1440x900`, and `1920x1080` must show:

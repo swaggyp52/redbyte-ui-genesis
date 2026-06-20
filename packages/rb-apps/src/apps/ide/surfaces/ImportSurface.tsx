@@ -2649,7 +2649,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={blockingErrors.length > 0}
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
-      rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
+      rightDockMode="hidden"
       consoleMode="hidden"
       dock={
         leftDockContent ?? (

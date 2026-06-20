@@ -4,7 +4,7 @@
  * Hardware first-viewport hierarchy gate.
  *
  * Contract:
- * 1) The visible build badge matches the current Git SHA.
+ * 1) The hidden root build identity matches the current Git SHA.
  * 2) Hardware opens the Logic Gates starter in Map Pins at classroom and desktop sizes.
  * 3) The Basys3 board/table and selected signal -> board -> pin -> XDC chain are first-viewport content.
  * 4) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
@@ -39,10 +39,10 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openStarterHardware(page, baseUrl, viewport.label);
 
-      const buildSha = (await page.locator('.ide-build-badge-sha').first().textContent().catch(() => ''))?.trim() ?? '';
+      const buildSha = (await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => ''))?.trim() ?? '';
       assert(
         buildSha === CURRENT_SHA,
-        `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
+        `${viewport.label}: root build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
       );
 
       const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();

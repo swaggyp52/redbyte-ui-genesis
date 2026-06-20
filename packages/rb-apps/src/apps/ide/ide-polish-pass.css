@@ -78,6 +78,7 @@
   background: linear-gradient(180deg, #0d1c2e 0%, #0a1624 100%);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  z-index: 120;
 }
 .ide-root .ide-brand-wordmark { letter-spacing: -0.01em; font-weight: 700; }
 .ide-root .ide-breadcrumb-sep { color: rgba(140, 168, 196, 0.35); margin: 0 4px; }
@@ -113,12 +114,16 @@
 .ide-root .ide-save-dot--unsaved { background: #ff9090; box-shadow: 0 0 6px rgba(255, 107, 107, 0.55); }
 .ide-root .ide-topbar-help-btn,
 .ide-root .ide-topbar-workflow-help-btn {
-  width: 28px; height: 28px;
+  min-width: 44px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: var(--rb-text-2);
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
@@ -126,14 +131,162 @@
   width: auto;
   min-width: 44px;
   padding: 0 10px;
-  font-size: 11px;
-  letter-spacing: 0.02em;
 }
 .ide-root .ide-topbar-help-btn:hover,
 .ide-root .ide-topbar-workflow-help-btn:hover {
   background: rgba(46, 196, 182, 0.10);
   border-color: rgba(46, 196, 182, 0.30);
   color: var(--rb-accent);
+}
+
+.ide-root .ide-help-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ide-root .ide-help-menu-popover {
+  position: fixed;
+  top: calc(var(--ide-topbar-height, 48px) + 8px);
+  right: 16px;
+  z-index: 10000;
+  display: grid;
+  width: 190px;
+  padding: 6px;
+  border: 1px solid rgba(154, 184, 214, 0.20);
+  border-radius: 8px;
+  background: #0b1725;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
+}
+
+.ide-root .ide-help-menu-popover button {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--rb-text-2);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-root .ide-help-menu-popover button:hover,
+.ide-root .ide-help-menu-popover button:focus-visible {
+  outline: none;
+  background: rgba(46, 196, 182, 0.10);
+  color: #e7fbf8;
+}
+
+.ide-root .ide-help-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(1, 6, 12, 0.62);
+}
+
+.ide-root .ide-help-dialog {
+  display: grid;
+  gap: 16px;
+  width: min(620px, calc(100vw - 48px));
+  max-height: min(640px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(154, 184, 214, 0.20);
+  border-radius: 10px;
+  background: #0b1725;
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.50);
+}
+
+.ide-root .ide-help-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.ide-root .ide-help-dialog-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(190, 213, 236, 0.62);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ide-root .ide-help-dialog h2 {
+  margin: 0;
+  color: #f2f8ff;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.ide-root .ide-help-dialog-close {
+  min-width: 68px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(154, 184, 214, 0.22);
+  border-radius: 6px;
+  background: rgba(154, 184, 214, 0.08);
+  color: var(--rb-text-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ide-root .ide-help-dialog-close:hover,
+.ide-root .ide-help-dialog-close:focus-visible {
+  outline: none;
+  border-color: rgba(46, 196, 182, 0.34);
+  color: #e7fbf8;
+}
+
+.ide-root .ide-help-dialog-body {
+  display: grid;
+  gap: 10px;
+  color: var(--rb-text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ide-root .ide-help-dialog-body p {
+  margin: 0;
+}
+
+.ide-root .ide-diagnostics-grid {
+  gap: 8px;
+}
+
+.ide-root .ide-diagnostics-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.36fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 12px;
+  border: 1px solid rgba(154, 184, 214, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.ide-root .ide-diagnostics-row span {
+  color: rgba(190, 213, 236, 0.68);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ide-root .ide-diagnostics-row code {
+  overflow-wrap: anywhere;
+  color: #eaf7ff;
+  font-family: var(--rb-font-mono);
+  font-size: 12px;
 }
 
 /* ───────── §4. Left rail polish (label legibility) ────────── */
@@ -5174,4 +5327,21 @@
   [data-testid='ide-verify-waveform-preview'] {
   min-height: clamp(322px, calc(100vh - 446px), 560px) !important;
   height: clamp(322px, calc(100vh - 446px), 560px) !important;
+}
+
+/* Product Trust Reset v2: normal Verify chrome must not reserve a phantom Signals rail. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-workbench-main.hide-left-dock.hide-right-dock,
+.ide-root
+  .ide-workbench-shell[data-ide-mode-marker='verify'][data-left-dock-state='hidden'][data-right-dock-state='hidden']
+  .ide-workbench-main {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-workbench-main.hide-left-dock:not(.hide-right-dock),
+.ide-root
+  .ide-workbench-shell[data-ide-mode-marker='verify'][data-left-dock-state='hidden']:not([data-right-dock-state='hidden'])
+  .ide-workbench-main {
+  grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important;
 }

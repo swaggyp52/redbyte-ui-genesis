@@ -73,21 +73,26 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const waveformGrid = page.locator('[data-testid="ide-verify-workspace-waveform"]').first();
   assert(await visible(waveformGrid), 'waveform grid must be visible after run');
 
+  const verifyShell = page.locator('[data-testid="ide-mode-verify"]').first();
+  assert(
+    (await verifyShell.getAttribute('data-workspace-primitive').catch(() => '')) === 'testbench-workspace',
+    'Verify must use the V2 testbench workspace primitive'
+  );
+  assert(
+    (await verifyShell.getAttribute('data-left-dock-state').catch(() => '')) === 'hidden',
+    'Verify V2 student frame must not expose the legacy signal dock'
+  );
+  assert(
+    !(await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().isVisible().catch(() => false)),
+    'Verify V2 student frame must not expose a generic left dock restore toggle'
+  );
+
+  const waveformRows = await page.locator('[data-testid^="ide-verify-waveform-row-"]').count().catch(() => 0);
+  assert(waveformRows >= 1, `waveform must show at least one signal row, got ${waveformRows}`);
+
   const signalList = page.locator('[data-testid="ide-verify-signal-list"]').first();
-  if (!(await visible(signalList))) {
-    const leftDockToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-    assert(await visible(leftDockToggle), 'left dock toggle must be visible when signal list is collapsed');
-    await leftDockToggle.click();
+  if (await visible(signalList)) {
+    const signalRows = await page.locator('.ide-signal-row[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
+    assert(signalRows >= 1, `signal list must show at least one signal, got ${signalRows}`);
   }
-
-  const signalRailToggle = page.locator('[data-testid="ide-verify-signal-rail-toggle"]').first();
-  const railExpanded = (await signalRailToggle.getAttribute('aria-expanded').catch(() => 'true')) === 'true';
-  if (!railExpanded) {
-    await signalRailToggle.click();
-  }
-
-  assert(await visible(signalList), 'signal list must be visible after run');
-
-  const signalRows = await page.locator('.ide-signal-row[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
-  assert(signalRows >= 1, `signal list must show at least one signal, got ${signalRows}`);
 });

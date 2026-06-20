@@ -4,10 +4,10 @@
  * Export trust-integrity gate.
  *
  * Contract:
- * 1) Export trust labels distinguish buildable/draft from current trusted E0 handoff.
+ * 1) Export trust labels distinguish buildable/draft from current trusted handoff.
  * 2) The selected generated preview is visible in the normal Export workspace.
  * 3) Previewed artifact bodies agree with the downloaded Vivado Project ZIP bytes.
- * 4) README/provenance/E0-E3 wording and mapping counts agree across UI and ZIP.
+ * 4) README/provenance wording and mapping counts agree across UI and ZIP.
  */
 
 import fs from 'node:fs/promises';
@@ -85,14 +85,16 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   );
 
   const evidenceRows = await text(page.locator('[data-testid="ide-export-vivado-evidence-rows"]'));
-  for (const tier of ['E0', 'E1', 'E2', 'E3']) {
-    assert(evidenceRows.includes(tier), `Vivado evidence rows must include ${tier}`);
+  for (const label of ['Package', 'Build', 'Program', 'Observe']) {
+    assert(evidenceRows.includes(label), `Vivado evidence rows must include ${label}`);
   }
-  assert(/external evidence required/i.test(evidenceRows), 'E1/E2 rows must require external evidence');
-  assert(/manual observation required/i.test(evidenceRows), 'E3 row must require manual observation');
-  assert(!/E1\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E1 success');
-  assert(!/E2\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E2 success');
-  assert(!/E3\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E3 success');
+  assert(!/\bE0\b|\bE1\b|\bE2\b|\bE3\b/.test(evidenceRows), 'Vivado evidence rows must not expose E-tier labels');
+  assert(/Run Vivado synthesis|Record outside RedByte/i.test(evidenceRows), 'Vivado build row must require an outside record');
+  assert(/Program success proves delivery to the board only/i.test(evidenceRows), 'board programming row must not imply behavior proof');
+  assert(/Manual record required|record physical/i.test(evidenceRows), 'board observation row must require a manual record');
+  assert(!/Vivado build\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim Vivado build success');
+  assert(!/board programming\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim board programming success');
+  assert(!/observed board behavior\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim observed-board success');
 
   await page.waitForSelector('[data-testid="ide-export-artifact-tabs"]', { timeout: 10000 });
   const topPreview = await readVisiblePreviewByPath(page, 'top.vhd');

@@ -15,7 +15,7 @@ const SCREENSHOT_ROOT = process.env.RB_PROJECT_LOADED_PATHS_SCREENSHOTS_DIR
   : '';
 
 const HEAD_SHORT = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-const BUILD_BADGE_HASH = HEAD_SHORT.slice(0, 7);
+const BUILD_HASH = HEAD_SHORT.slice(0, 7);
 
 await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, baseUrl }) => {
   const findings = [];
@@ -41,7 +41,7 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
 
     const metrics = await readMetrics(page);
     assert(metrics.mode === 'project', `${viewport.label}: expected Project mode, got "${metrics.mode}"`);
-    assert(metrics.buildText.includes(BUILD_BADGE_HASH), `${viewport.label}: build badge "${metrics.buildText}" must include ${BUILD_BADGE_HASH}`);
+    assert(metrics.buildText === BUILD_HASH, `${viewport.label}: build hash "${metrics.buildText}" must equal ${BUILD_HASH}`);
     assert(!metrics.hasBoundary, `${viewport.label}: error boundary must not be visible`);
     assert(metrics.rootOverflowX <= 2, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.commandBox, `${viewport.label}: loaded command center must be measurable`);
@@ -131,7 +131,7 @@ async function readMetrics(page) {
     const entry = document.querySelector('[data-testid="ide-project-entry-paths"]');
     const entryButtons = Array.from(document.querySelectorAll('[data-testid^="ide-project-path-"]'));
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      buildText: document.querySelector('[data-testid="ide-root"]')?.getAttribute('data-build-sha')?.trim() ?? '',
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '',
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       rootOverflowX: Math.max(

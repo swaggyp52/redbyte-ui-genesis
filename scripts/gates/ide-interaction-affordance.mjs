@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import { execSync } from 'node:child_process';
 import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+
+const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
@@ -47,8 +50,8 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  const buildBadge = page.locator('[data-testid="ide-build-badge"]').first();
-  assert(await visible(buildBadge), 'build identity must be visible before browser interaction proof');
+  const buildSha = await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => '');
+  assert(buildSha === CURRENT_SHA, `build identity must match current HEAD ${CURRENT_SHA}, got ${buildSha || 'missing'}`);
 
   const orientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
   assert(await visible(orientation), 'first Project launch must show workflow orientation');
