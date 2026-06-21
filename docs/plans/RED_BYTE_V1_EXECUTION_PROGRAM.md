@@ -20,7 +20,7 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 
 ## Product Trust Reset v2 - Phase 3 Verify Truth Foundation And Authority Cutover
 
-Status: Foundation and Phase 3C rendered authority cutover added 2026-06-21 on `product/redbyte-trust-reset-v2`; stale reason, selected-failure repair display, and sequential timing visibility remain open.
+Status: Foundation, Phase 3C rendered authority cutover, and Phase 3D rendered stale/repair/timing authority added 2026-06-21 on `product/redbyte-trust-reset-v2`; sequential/clocked scenario rehearsal plus multi-context/a11y classroom proof remain open.
 
 Goal: Make Verify truth explicit and make the rendered Verify workbench consume that truth before rebuilding deeper Verify presentation.
 
@@ -31,6 +31,7 @@ Proof:
 - `verify:truth-state-gate`
 - `verify:truth-integration-gate`
 - `ide:gate:verify-v2-authority-cutover`
+- `ide:gate:verify-authority-phase-3d`
 - `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`
 - `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`
 - `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`
@@ -47,7 +48,8 @@ Acceptance:
 - Rendered Verify check authority, expected-output editability, result status, Project verify status, and Export readiness consume the V2 adapter selectors.
 - Design changes invalidate prior trusted results as stale design.
 - Scenario/check changes invalidate prior trusted results as stale testbench.
-- Sequential timing mode is preserved through run request and completion.
+- Rendered stale reason/recovery copy, selected-failure repair authority, and timing labels consume the V2 adapter selectors.
+- Sequential timing mode is preserved through run request and completion; broader sequential/clocked browser rehearsal remains pending.
 - No simulation, Verify runtime semantics, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
 
 ## Phase 12x - Release Readiness Tool Windows

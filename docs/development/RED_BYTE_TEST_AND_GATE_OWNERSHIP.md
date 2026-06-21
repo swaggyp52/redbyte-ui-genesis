@@ -27,17 +27,16 @@ Package aliases route the same gate for the Phase 2 student-chrome contract:
 
 These aliases inspect Project, Design, Verify, Hardware, Export, and Import at classroom/desktop viewports, verify Help / Diagnostics reachability, prove the full build fingerprint is recoverable outside normal chrome, reject visible raw build badges and E-tier labels in normal UI, reject generic restore/collapse rails, and assert V2 workspace primitives.
 
-Phase 3C adds the source-level Verify runtime integration gate plus the rendered browser cutover gate:
+Phase 3D adds the source-level Verify runtime integration gate plus rendered browser authority gates:
 
 - `verify:truth-integration-gate`
 - `ide:gate:verify-v2-authority-cutover`
+- `ide:gate:verify-authority-phase-3d`
 
-The integration gate proves the pure truth statechart plus the runtime/scenario/hash adapter that maps current runtime records into Project verify state and Export readiness selectors. The browser gate proves rendered Course checks are locked, Duplicate to My checks makes expected outputs editable, Compare remains available, and the rendered V2 result authority exposes current result, Project status, and Export readiness. Both gates are wired into `classroom:gate` and `verify:gates:classroom`.
+The integration gate proves the pure truth statechart plus the runtime/scenario/hash adapter that maps current runtime records into Project verify state and Export readiness selectors, including report-row alias resolution so Half Adder-style `ld0carry` failures attach to authored `ld0_node` checks instead of rendering false PASS. The Phase 3C browser gate proves rendered Course checks are locked, Duplicate to My checks makes expected outputs editable, Compare remains available, and the rendered V2 result authority exposes current result, Project status, and Export readiness. The Phase 3D browser gate proves V2 stale reason/recovery copy, timing labels, selected My-check failure repair authority, expected-output repair affordance, and repaired PASS. All three gates are wired into `classroom:gate` and `verify:gates:classroom`.
 
 V2 gates still to add before merge:
 
-- `ide:gate:verify-stale-result-invalidation`
-- `ide:gate:verify-failure-repair-v2`
 - `ide:gate:verify-testbench-results-layout-v2`
 - `ide:gate:verify-sequential-consistency-v2`
 
@@ -62,6 +61,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:v2-student-chrome`
 - `verify:truth-integration-gate`
 - `ide:gate:verify-v2-authority-cutover`
+- `ide:gate:verify-authority-phase-3d`
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`
@@ -121,7 +121,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 Why:
 
 - V2 student chrome protects the Phase 2 reset: normal UI has no raw build badge, no E-tier browser labels, no generic HIDE / SHOW INFO rails, and Diagnostics remains reachable with the full build fingerprint.
-- Verify V2 authority cutover protects the Phase 3C rendered contract: Course checks are locked, My checks are editable only after duplication, result status/Project status/Export readiness come from the V2 model, and legacy rail/proof-language assumptions stay out of normal Verify.
+- Verify V2 authority cutover protects the Phase 3C rendered contract: Course checks are locked, My checks are editable only after duplication, result status/Project status/Export readiness come from the V2 model, and legacy rail/proof-language assumptions stay out of normal Verify. Verify authority Phase 3D extends this to stale reason/recovery copy, timing labels, selected My-check failure repair authority, visible expected-output repair, and repaired PASS.
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Project loaded command surface protects loaded Project from reverting to a metric-first report page before direct Design / Verify / Map Pins / Export actions.
 - Import guided recovery wizard protects Import first-look from reverting to passive recovery prose instead of a staged recovery tool with a no-overwrite boundary.

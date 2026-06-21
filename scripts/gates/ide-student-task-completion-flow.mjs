@@ -190,11 +190,13 @@ async function assertVerifyFailRepairPass(page, viewport) {
   await ensureExpectedChecksEditable(page, viewport);
   const target = await pickExpectedCell(page);
   await clickExpectedCellToValue(page, target, target.value === 0 ? 1 : 0);
+  await waitForVerifyResultStale(page, viewport, 'expected-output edit');
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare must remain selectable after expected edit`);
   status = await clickRunAndReadStatus(page);
   assert(isVerifyFail(status), `${viewport.label}: edited expected output should FAIL Compare, got "${status}"`);
 
   await clickExpectedCellToValue(page, target, target.value);
+  await waitForVerifyResultStale(page, viewport, 'expected-output repair');
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare must remain selectable after expected repair`);
   status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: repaired expected output should PASS Compare, got "${status}"`);
@@ -203,21 +205,29 @@ async function assertVerifyFailRepairPass(page, viewport) {
 }
 
 async function ensureExpectedChecksEditable(page, viewport) {
-  const firstExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
-  await firstExpectedCell.waitFor({ state: 'visible', timeout: 10000 });
-  if (!(await firstExpectedCell.isDisabled().catch(() => false))) return;
+  await page.locator('[data-testid="ide-verify-check-authority"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const authority = await page.locator('[data-testid="ide-verify-check-authority"]').first().evaluate((node) => ({
+    provenance: node.getAttribute('data-provenance'),
+    editable: node.getAttribute('data-editable'),
+  }));
+  if (authority.provenance === 'student' && authority.editable === 'true') return;
 
   const duplicateCourseChecks = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
   assert(
     await duplicateCourseChecks.isVisible().catch(() => false),
-    `${viewport.label}: locked Course checks must expose Duplicate to My checks before fail/repair editing`
+    `${viewport.label}: locked Course checks must expose Duplicate to My checks before fail/repair editing, got ${JSON.stringify(authority)}`
   );
   await duplicateCourseChecks.click();
   await page.waitForFunction(() => {
     const authority = document.querySelector('[data-testid="ide-verify-check-authority"]');
     return authority?.getAttribute('data-provenance') === 'student' &&
       authority?.getAttribute('data-editable') === 'true';
-  }, null, { timeout: 10000 });
+  }, null, { timeout: 10000 }).catch(async () => {
+    const snapshot = await readVerifyAuthoritySnapshot(page);
+    throw new Error(`${viewport.label}: Duplicate to My checks did not make expected outputs editable: ${JSON.stringify(snapshot)}`);
+  });
+  const firstExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]:not([disabled])').first();
+  await firstExpectedCell.waitFor({ state: 'visible', timeout: 10000 });
   assert(
     !(await firstExpectedCell.isDisabled().catch(() => true)),
     `${viewport.label}: duplicated My checks must make expected-output cells editable`
@@ -236,16 +246,71 @@ async function clickRunAndReadStatus(page) {
     },
     previousReportHash,
     { timeout: 20000 }
-  );
+  ).catch(async () => {
+    const snapshot = await readVerifyAuthoritySnapshot(page);
+    throw new Error(`Verify run did not publish a new report hash: ${JSON.stringify(snapshot)}`);
+  });
   await waitForVerifyResult(page, { timeout: 10000 });
-  return ((await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')) ?? '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  await page.waitForFunction(() => {
+    const lastRun = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun ?? null;
+    const authority = document.querySelector('[data-testid="ide-verify-v2-authority"]');
+    const renderedStatus = authority?.getAttribute('data-result-status') ?? null;
+    if (!lastRun || !renderedStatus) return false;
+    if (lastRun.status === 'pass') return renderedStatus === 'pass';
+    if (lastRun.status === 'fail') return renderedStatus === 'fail';
+    return renderedStatus === 'observe' || renderedStatus === 'error';
+  }, null, { timeout: 10000 }).catch(async () => {
+    const snapshot = await readVerifyAuthoritySnapshot(page);
+    throw new Error(`Verify V2 authority did not match runtime status: ${JSON.stringify(snapshot)}`);
+  });
+  return (await page.locator('[data-testid="ide-verify-v2-authority"]').first().getAttribute('data-result-status')) ?? '';
+}
+
+async function readVerifyAuthoritySnapshot(page) {
+  return page.evaluate(() => {
+    const runtime = window.__RB_PROJECT_RUNTIME__?.getState?.() ?? null;
+    const lastRun = runtime?.verifyLastRun ?? null;
+    const authority = document.querySelector('[data-testid="ide-verify-v2-authority"]');
+    const checkAuthority = document.querySelector('[data-testid="ide-verify-check-authority"]');
+    return {
+      runtimeStatus: lastRun?.status ?? null,
+      runtimeReportHash: lastRun?.reportHash ?? null,
+      runtimeRows: lastRun?.report?.rows?.map((row) => ({
+        signal: row.signal,
+        status: row.status,
+        expected: row.expected,
+        actual: row.actual,
+        tick: row.tick,
+        caseIndex: row.caseIndex,
+      })).slice(0, 8) ?? [],
+      renderedStatus: authority?.getAttribute('data-result-status') ?? null,
+      renderedValidity: authority?.getAttribute('data-result-validity') ?? null,
+      staleReason: authority?.getAttribute('data-stale-reason-code') ?? null,
+      checkProvenance: checkAuthority?.getAttribute('data-provenance') ?? null,
+      checkEditable: checkAuthority?.getAttribute('data-editable') ?? null,
+      duplicateVisible: Boolean(document.querySelector('[data-testid="ide-verify-duplicate-course-checks"]')),
+      enabledExpectedCells: Array.from(document.querySelectorAll('button[data-testid^="ide-stimulus-expected-"]'))
+        .filter((element) => element instanceof HTMLButtonElement && !element.disabled && element.getClientRects().length > 0)
+        .length,
+    };
+  });
+}
+
+async function waitForVerifyResultStale(page, viewport, reason) {
+  await page.waitForFunction(() => {
+    const authority = document.querySelector('[data-testid="ide-verify-v2-authority"]');
+    return authority?.getAttribute('data-result-status') === 'stale';
+  }, null, { timeout: 10000 }).catch(() => {
+    throw new Error(`${viewport.label}: Verify result did not become stale after ${reason}`);
+  });
 }
 
 async function pickExpectedCell(page) {
   const cells = await page.locator('button[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
-    elements.map((element) => {
+    elements.filter((element) => {
+      if (!(element instanceof HTMLButtonElement)) return false;
+      return !element.disabled && element.getClientRects().length > 0;
+    }).map((element) => {
       const testId = element.getAttribute('data-testid') ?? '';
       const title = element.getAttribute('title') ?? '';
       const parsedTitle = /:\s*(0|1|not set)\s*-\s*drag/i.exec(title);
@@ -261,12 +326,11 @@ async function pickExpectedCell(page) {
 }
 
 async function clickExpectedCellToValue(page, target, expectedValue) {
-  const cell = page.getByTestId(target.testId).first();
-  await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const current = await readExpectedCellValue(page, target.testId);
     if (current === expectedValue) return;
-    await cell.click();
+    const clicked = await clickVisibleExpectedCell(page, target.testId);
+    assert(clicked, `expected visible editable expected-output cell ${target.testId}`);
     await page.waitForTimeout(120);
   }
   const current = await readExpectedCellValue(page, target.testId);
@@ -274,10 +338,31 @@ async function clickExpectedCellToValue(page, target, expectedValue) {
 }
 
 async function readExpectedCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
+  const title = await page.locator(`button[data-testid="${testId}"]`).evaluateAll((elements) => {
+    const element = elements.find((candidate) => (
+      candidate instanceof HTMLButtonElement &&
+      !candidate.disabled &&
+      candidate.getClientRects().length > 0
+    ));
+    return element?.getAttribute('title') ?? null;
+  });
   if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
   if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
   return null;
+}
+
+async function clickVisibleExpectedCell(page, testId) {
+  return page.locator(`button[data-testid="${testId}"]`).evaluateAll((elements) => {
+    const element = elements.find((candidate) => (
+      candidate instanceof HTMLButtonElement &&
+      !candidate.disabled &&
+      candidate.getClientRects().length > 0
+    ));
+    if (!element) return false;
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    element.click();
+    return true;
+  });
 }
 
 async function assertHardwareMappingWorkbench(page, viewport) {

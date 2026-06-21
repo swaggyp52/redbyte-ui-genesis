@@ -265,6 +265,7 @@
         "ide:gate:verify-evidence-workbench-integrity": "node ./scripts/gates/ide-verify-evidence-workbench-integrity.mjs",
         "ide:gate:verify-workbench-contract": "node ./scripts/gates/ide-verify-workbench-contract.mjs",
         "ide:gate:verify-v2-authority-cutover": "node ./scripts/gates/ide-verify-v2-authority-cutover.mjs",
+        "ide:gate:verify-authority-phase-3d": "node ./scripts/gates/ide-verify-authority-phase-3d.mjs",
         "ide:gate:verify-summary-contract": "node ./scripts/gates/ide-verify-summary-contract.mjs",
         "ide:gate:evidence-capsule-contract": "node ./scripts/gates/ide-evidence-capsule-contract.mjs",
         "ide:gate:verify-evidence-clarity-final": "pnpm -s ide:gate:verify-evidence-workbench-integrity",

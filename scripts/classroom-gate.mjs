@@ -130,6 +130,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-v2-authority-cutover'],
   },
   {
+    name: 'ide:gate:verify-authority-phase-3d',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-authority-phase-3d'],
+  },
+  {
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],

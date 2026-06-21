@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-21 (fix: complete Verify V2 rendered authority)
+
+**Subsystem:** Product Trust Reset v2 Phase 3D, rendered Verify stale reason, repair authority, timing labels, classroom gate ownership, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `07565b461a1f186c9269e5d2dad90a419b7dcf77`; `main` was not changed and the draft PR remains unmerged.
+- Extended `verifyTruthAdapter.ts` selectors with V2 stale reason codes, stale recovery text, timing labels/hints, and provenance-aware selected-failure repair labels/hints.
+- Passed the live Verify schedule contract into the adapter so the rendered workbench can show V2 timing authority before a run exists and after Compare completes.
+- Fixed V2 report-row resolution so Half Adder-style runtime aliases such as `ld0carry` attach to authored expected-output checks such as `ld0_node`; a failing Compare report can no longer render as trusted PASS when the adapter cannot resolve an exact check id.
+- Cut the rendered Verify workbench off remaining local/hash-only stale wording for the exercised path: expected-output edits now render as saved-check/testbench stale, not design-build stale, in the result authority and primary status copy.
+- Gated expected-output repair controls through the V2 selected-failure repair authority: Course-check failures keep expected-output repair hidden, while My-check failures expose direct expected-output repair and Design repair actions.
+- Added `ide:gate:verify-authority-phase-3d` and wired it into `classroom:gate` plus `verify:gates:classroom`.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with the Phase 3D authority map.
+
+**Evidence:** Browser proof screenshots for the Phase 3D Verify authority loop are under `.redbyte/product-immersion/verify-authority-phase-3d/2026-06-21/after/`: Course locked checks, My-check PASS with V2 timing, expected-output edit stale reason, My-check failure repair authority, and repaired PASS.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` has passed for `verify:truth-integration-gate` (`35` tests), `ide:gate:verify-authority-phase-3d`, `ide:gate:verify-v2-authority-cutover`, `ide:gate:verify-summary-contract`, `ide:gate:verify-fail-edit-repair`, `ide:gate:student-task-completion-flow`, `build:unified`, full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`. A broad focused attempt against legacy `verifySurface.workstation.test.tsx` / `verifySurface.panelOwnership.test.tsx` failed on pre-existing V2 side-dock removals (`ide-left-dock` / `ide-workbench-dock-toggle-left` expectations), not on the Phase 3D authority path. Commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Rendered Verify authority/gate/docs slice only. It does not change simulation semantics, Compare execution semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Keep Phase 3D closed to rendered authority, then run the next contained Verify V2 slice on sequential/clocked scenario rehearsal and multi-context persistence/a11y proof without changing Compare semantics or generated artifacts.
+
 ## Change Log 2026-06-21 (fix: cut over Verify V2 authority rendering)
 
 **Subsystem:** Product Trust Reset v2 Phase 3C, rendered Verify authority, Project/Export selector authority, browser gate ownership, and draft PR #78.

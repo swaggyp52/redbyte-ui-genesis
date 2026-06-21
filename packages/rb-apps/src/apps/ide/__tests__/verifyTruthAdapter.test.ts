@@ -3,6 +3,7 @@ import type { TestVector } from '@redbyte/rb-utils';
 import { buildVerifyReport } from '../verifyReport';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { deriveProjectVerifyState, type ProjectHealthCore } from '../projectHealth';
+import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
 import {
   computeScenarioContentHash,
   computeScenarioStimulusHash,
@@ -207,7 +208,77 @@ describe('verifyTruthAdapter', () => {
       canEditExpected: false,
       checkProvenance: 'course',
     });
+    expect(run.selectors.selectedFailureRepairLabel).toBe('Fix circuit in Design');
+    expect(run.selectors.selectedFailureRepairHint).toContain('duplicate');
     expect(run.selectors.repairActions).toMatchObject(run.selectors.selectedFailureRepair);
+  });
+
+  it('exposes My check failures as expected-output editable repair authority', () => {
+    const run = expectNoInvariantProblems(
+      buildVerifyTruthStateFromRuntime({
+        hasDesign: true,
+        vectors: [BASE_VECTOR],
+        checkProvenance: 'student',
+        lastRun: makeRun({
+          runKind: 'verify',
+          status: 'fail',
+          rows: [{ tick: 0, signal: 'sum', expected: '1', actual: '0', caseIndex: 0 }],
+        }),
+        activeScenario: BASE_SCENARIO,
+        dirtySinceVerify: false,
+      })
+    );
+
+    expect(run.selectors.selectedFailureRepair).toMatchObject({
+      canFixCircuit: true,
+      canEditExpected: true,
+      checkProvenance: 'student',
+      lockedReason: null,
+    });
+    expect(run.selectors.selectedFailureRepairLabel).toBe('Fix circuit or update My expected output');
+    expect(run.selectors.selectedFailureRepairHint).toContain('My checks');
+  });
+
+  it('keeps aliased report failures attached to the authored expected-output check', () => {
+    const halfAdderVector: TestVector = {
+      tick: 0,
+      inputs: { sw0: 1, sw1: 1 },
+      expected: { ld0_node: 1 },
+    };
+    const halfAdderScenario: VerifyScenario = {
+      ...BASE_SCENARIO,
+      vectors: [halfAdderVector],
+    };
+
+    const run = expectNoInvariantProblems(
+      buildVerifyTruthStateFromRuntime({
+        hasDesign: true,
+        vectors: [halfAdderVector],
+        checkProvenance: 'student',
+        lastRun: makeRun({
+          runKind: 'verify',
+          status: 'fail',
+          rows: [{ tick: 0, signal: 'ld0carry', expected: '1', actual: '0', caseIndex: 0 }],
+          scenario: halfAdderScenario,
+        }),
+        activeScenario: halfAdderScenario,
+        dirtySinceVerify: false,
+      })
+    );
+
+    expect(run.state.status).toBe('failed');
+    expect(run.selectors.resultStatus).toBe('fail');
+    expect(run.selectors.projectVerifyState).toBe('assertions-differ');
+    expect(run.selectors.selectedFailure).toMatchObject({
+      signal: 'ld0carry',
+      expected: '1',
+      observed: '0',
+    });
+    expect(run.selectors.selectedFailureRepair).toMatchObject({
+      canFixCircuit: true,
+      canEditExpected: true,
+      checkProvenance: 'student',
+    });
   });
 
   it('classifies stale design separately from stale expected-output edits', () => {
@@ -246,10 +317,43 @@ describe('verifyTruthAdapter', () => {
     expect(staleDesign.state.staleReason).toBe('design-changed');
     expect(staleDesign.selectors.resultStatus).toBe('stale');
     expect(staleDesign.selectors.resultIsCurrent).toBe(false);
+    expect(staleDesign.selectors.staleReasonCode).toBe('design-changed');
     expect(staleDesign.selectors.staleReason).toContain('Design changed');
+    expect(staleDesign.selectors.staleRecoveryAction).toContain('Design');
     expect(staleTestbench.state.status).toBe('staleTestbench');
     expect(staleTestbench.state.staleReason).toBe('check-set-changed');
+    expect(staleTestbench.selectors.staleReasonCode).toBe('check-set-changed');
     expect(staleTestbench.selectors.staleReason).toContain('Saved checks changed');
+    expect(staleTestbench.selectors.staleRecoveryAction).toContain('expected outputs');
+  });
+
+  it('derives V2 timing labels from the live schedule contract before a run exists', () => {
+    const clockedContract = {
+      schedule: 'clocked_macro',
+      timingMode: 'synchronous_board_clock',
+      reason: 'circuit-sequential',
+      needsSimClockInjection: false,
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
+      analysis: {},
+    } as unknown as VerifyScheduleContract;
+
+    const run = expectNoInvariantProblems(
+      buildVerifyTruthStateFromRuntime({
+        hasDesign: true,
+        vectors: [BASE_VECTOR],
+        checkProvenance: 'student',
+        activeScenario: BASE_SCENARIO,
+        scheduleContract: clockedContract,
+      })
+    );
+
+    expect(run.state.sequentialTimingMode).toBe('auto-board-clock');
+    expect(run.selectors.timingMode).toBe('auto-board-clock');
+    expect(run.selectors.timingModeLabel).toBe('Auto board clock');
+    expect(run.selectors.timingModeHint).toContain('board clock');
   });
 
   it('matches legacy Project health verify states during shadow migration', () => {

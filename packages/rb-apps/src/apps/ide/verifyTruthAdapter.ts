@@ -50,6 +50,8 @@ export interface VerifyTruthRuntimeInput {
   checkProvenance?: VerifyCheckProvenance;
   designRevision?: number;
   activeScenario?: VerifyScenario | null;
+  scheduleContract?: VerifyScheduleContract | null;
+  clockPolicy?: VerifyClockPolicy | null;
   lastRun?: RuntimeVerifyRun | null;
   latestVerifyLedgerEntry?: Pick<VerifyRunLedgerEntry, 'projectHash'> | null;
   currentVerifyProjectHash?: string | null;
@@ -65,19 +67,25 @@ export interface VerifyTruthSelectors {
   lockedReason: string | null;
   resultStatus: VerifyTruthResultStatus;
   resultIsCurrent: boolean;
+  staleReasonCode: VerifyTruthState['staleReason'];
   staleReason: string | null;
+  staleRecoveryAction: string | null;
   projectVerifyState: ProjectVerifyState;
   projectVerifyStatus: ProjectVerifyState;
   projectStatusText: string;
   exportReadiness: VerifyTruthExportReadiness;
   resultValidity: VerifyTruthState['resultValidity'];
   timingMode: VerifySequentialTimingMode;
+  timingModeLabel: string;
+  timingModeHint: string;
   canRunObserve: boolean;
   canRunCompare: boolean;
   canExportTrusted: boolean;
   selectedFailure: VerifyFailure | null;
   repairActions: ReturnType<typeof deriveFailureRepairActions>;
   selectedFailureRepair: ReturnType<typeof deriveFailureRepairActions>;
+  selectedFailureRepairLabel: string | null;
+  selectedFailureRepairHint: string | null;
   invariantProblems: string[];
 }
 
@@ -146,7 +154,11 @@ export function buildVerifyTruthStateFromRuntime(
   const checks = buildVerifyTruthChecksFromVectors(input.vectors, {
     provenance: defaultCheckProvenance,
   });
-  const sequentialTimingMode = deriveSequentialTimingMode(input.lastRun);
+  const sequentialTimingMode = deriveSequentialTimingMode(
+    input.lastRun,
+    input.scheduleContract,
+    input.clockPolicy
+  );
   const revisions = deriveRuntimeRevisions(input, checks);
   let state = createVerifyTruthInitialState({
     hasDesign: input.hasDesign,
@@ -233,19 +245,25 @@ export function deriveVerifyTruthSelectors(
     lockedReason,
     resultStatus: deriveResultStatus(state, projectVerifyState),
     resultIsCurrent: Boolean(state.lastRun) && state.resultValidity === 'current',
+    staleReasonCode: state.staleReason,
     staleReason: deriveStaleReasonText(state),
+    staleRecoveryAction: deriveStaleRecoveryAction(state),
     projectVerifyState,
     projectVerifyStatus: projectVerifyState,
     projectStatusText: deriveProjectStatusText(state, projectVerifyState),
     exportReadiness: deriveExportReadiness(state, projectVerifyState),
     resultValidity: state.resultValidity,
     timingMode: state.sequentialTimingMode,
+    timingModeLabel: deriveTimingModeLabel(state.sequentialTimingMode),
+    timingModeHint: deriveTimingModeHint(state.sequentialTimingMode),
     canRunObserve,
     canRunCompare,
     canExportTrusted,
     selectedFailure,
     repairActions: selectedFailureRepair,
     selectedFailureRepair,
+    selectedFailureRepairLabel: deriveFailureRepairLabel(selectedFailureRepair),
+    selectedFailureRepairHint: deriveFailureRepairHint(selectedFailureRepair),
     invariantProblems: assertVerifyTruthInvariants(state),
   };
 }
@@ -270,11 +288,9 @@ function buildRunCompletedPayload(
   const failures: VerifyFailure[] = [];
 
   for (const row of run.report.rows) {
-    const caseId = deriveReportCaseId(row.vectorId, row.caseIndex, row.tick);
-    const signal = normalizeSignalToken(row.signal);
-    const checkId = buildCheckId(caseId, row.tick, signal);
-    if (!checks.some((check) => check.id === checkId)) continue;
-    const valueKey = buildCheckValueKey(caseId, row.tick, signal);
+    const resolved = resolveReportCheck(row, checks);
+    if (!resolved) continue;
+    const { caseId, checkId, tick, valueKey } = resolved;
     observedValuesByCheck[checkId] = {
       ...(observedValuesByCheck[checkId] ?? {}),
       [valueKey]: normalizeSignalValue(row.actual),
@@ -285,11 +301,19 @@ function buildRunCompletedPayload(
         checkId,
         signal: row.signal,
         caseId,
-        tick: row.tick,
+        tick,
         expected: normalizeSignalValue(row.expected),
         observed: normalizeSignalValue(row.actual),
       });
     }
+  }
+
+  if (mode === 'compare' && run.status === 'fail' && failures.length === 0) {
+    return {
+      type: 'RUN_FAILED',
+      runId,
+      message: 'Verify comparison failed, but no matching V2 check could be resolved.',
+    };
   }
 
   return {
@@ -299,6 +323,138 @@ function buildRunCompletedPayload(
     observedValuesByCheck,
     failures,
   };
+}
+
+interface ResolvedReportCheck {
+  caseId: string;
+  checkId: string;
+  tick: number;
+  valueKey: string;
+}
+
+interface ParsedCheckReference {
+  check: VerifyCheck;
+  caseToken: string;
+  tick: number;
+  signalToken: string;
+  valueKey: string;
+}
+
+function resolveReportCheck(
+  row: RuntimeVerifyRun['report']['rows'][number],
+  checks: readonly VerifyCheck[]
+): ResolvedReportCheck | null {
+  const caseIds = deriveReportCaseIdCandidates(row);
+  const tick = normalizeTick(row.tick, 0);
+  const signalToken = normalizeSignalToken(row.signal);
+
+  for (const caseId of caseIds) {
+    const exactCheckId = buildCheckId(caseId, tick, signalToken);
+    const exact = checks.find((check) => check.id === exactCheckId);
+    if (exact) {
+      return {
+        caseId,
+        checkId: exact.id,
+        tick,
+        valueKey: buildCheckValueKey(caseId, tick, signalToken),
+      };
+    }
+  }
+
+  const caseTokens = new Set(caseIds.map(normalizeSignalToken));
+  const sameSlotMatches = checks
+    .map(parseCheckReference)
+    .filter((reference): reference is ParsedCheckReference => Boolean(reference))
+    .filter((reference) => caseTokens.has(reference.caseToken) && reference.tick === tick)
+    .filter((reference) => signalTokensCanAlias(signalToken, reference.signalToken));
+
+  if (sameSlotMatches.length !== 1) return null;
+  const [match] = sameSlotMatches;
+  return {
+    caseId: match.caseToken,
+    checkId: match.check.id,
+    tick,
+    valueKey: match.valueKey,
+  };
+}
+
+function deriveReportCaseIdCandidates(row: RuntimeVerifyRun['report']['rows'][number]): string[] {
+  const candidates = [
+    deriveReportCaseId(row.vectorId, row.caseIndex, row.tick),
+  ];
+  if (Number.isFinite(row.caseIndex)) {
+    candidates.push(`case-${Math.max(0, Math.floor(Number(row.caseIndex))) + 1}`);
+  }
+  candidates.push(`tick-${Math.max(0, Math.floor(row.tick))}`);
+  return Array.from(new Set(candidates.map((candidate) => candidate.trim()).filter(Boolean)));
+}
+
+function parseCheckReference(check: VerifyCheck): ParsedCheckReference | null {
+  const valueKey = Object.keys(check.expectedValues)[0];
+  const parsedValueKey = valueKey ? parseCheckValueKey(valueKey) : null;
+  if (parsedValueKey) {
+    return {
+      check,
+      ...parsedValueKey,
+      valueKey,
+    };
+  }
+
+  const parsedId = parseCheckId(check.id);
+  if (!parsedId) return null;
+  return {
+    check,
+    ...parsedId,
+    valueKey: buildCheckValueKey(parsedId.caseToken, parsedId.tick, parsedId.signalToken),
+  };
+}
+
+function parseCheckValueKey(
+  valueKey: string
+): Pick<ParsedCheckReference, 'caseToken' | 'tick' | 'signalToken'> | null {
+  const [caseToken, tickToken, ...signalParts] = valueKey.split(':');
+  const tick = Number(String(tickToken ?? '').replace(/^t/, ''));
+  const signalToken = normalizeSignalToken(signalParts.join(':'));
+  if (!caseToken || !Number.isFinite(tick) || signalParts.length === 0) return null;
+  return {
+    caseToken: normalizeSignalToken(caseToken),
+    tick: normalizeTick(tick, 0),
+    signalToken,
+  };
+}
+
+function parseCheckId(
+  checkId: string
+): Pick<ParsedCheckReference, 'caseToken' | 'tick' | 'signalToken'> | null {
+  const [prefix, caseToken, tickToken, ...signalParts] = checkId.split(':');
+  const tick = Number(String(tickToken ?? '').replace(/^t/, ''));
+  const signalToken = normalizeSignalToken(signalParts.join(':'));
+  if (prefix !== 'check' || !caseToken || !Number.isFinite(tick) || signalParts.length === 0) {
+    return null;
+  }
+  return {
+    caseToken: normalizeSignalToken(caseToken),
+    tick: normalizeTick(tick, 0),
+    signalToken,
+  };
+}
+
+function signalTokensCanAlias(reportSignal: string, checkSignal: string): boolean {
+  const reportBoardSignal = extractBoardSignalPrefix(reportSignal);
+  const checkBoardSignal = extractBoardSignalPrefix(checkSignal);
+  return (
+    reportSignal === checkSignal ||
+    reportSignal.startsWith(checkSignal) ||
+    checkSignal.startsWith(reportSignal) ||
+    (reportBoardSignal !== null && reportBoardSignal === checkBoardSignal)
+  );
+}
+
+function extractBoardSignalPrefix(signal: string): string | null {
+  const match = /^(sw|ld|btn|led|clk)(?:-|_|\.)?([a-z]|\d+)?/i.exec(signal);
+  if (!match) return null;
+  const suffix = match[2] ?? '';
+  return `${match[1].toLowerCase()}${suffix.toLowerCase()}`;
 }
 
 function deriveRuntimeStaleEvent(
@@ -364,9 +520,12 @@ function deriveRunMode(run: RuntimeVerifyRun): VerifyRunMode {
 }
 
 function deriveSequentialTimingMode(
-  run: RuntimeVerifyRun | null | undefined
+  run: RuntimeVerifyRun | null | undefined,
+  scheduleContract?: VerifyScheduleContract | null,
+  clockPolicy?: VerifyClockPolicy | null
 ): VerifySequentialTimingMode {
-  if (!run) return 'combinational';
+  if (clockPolicy) return deriveSequentialTimingModeFromClockPolicy(clockPolicy);
+  if (!run) return deriveSequentialTimingModeFromSchedule(scheduleContract ?? undefined, undefined);
   if (run.clockPolicy) return deriveSequentialTimingModeFromClockPolicy(run.clockPolicy);
   return deriveSequentialTimingModeFromSchedule(run.scheduleContract, run.schedule);
 }
@@ -383,7 +542,7 @@ function deriveSequentialTimingModeFromClockPolicy(
 
 function deriveSequentialTimingModeFromSchedule(
   scheduleContract: VerifyScheduleContract | undefined,
-  fallbackSchedule: RuntimeVerifyRun['schedule']
+  fallbackSchedule: RuntimeVerifyRun['schedule'] | undefined
 ): VerifySequentialTimingMode {
   const schedule = scheduleContract?.schedule ?? fallbackSchedule;
   if (schedule !== 'clocked_macro') return 'combinational';
@@ -466,15 +625,64 @@ function deriveResultStatus(
 function deriveStaleReasonText(state: VerifyTruthState): string | null {
   if (state.resultValidity !== 'stale') return null;
   if (state.staleReason === 'design-changed') {
-    return 'Design changed after the last run.';
+    return 'Design changed - rerun Compare for the current circuit.';
   }
   if (state.staleReason === 'check-set-changed') {
-    return 'Saved checks changed after the last run.';
+    return 'Saved checks changed - rerun Compare for the current testbench.';
   }
   if (state.staleReason === 'scenario-changed') {
-    return 'Selected testbench changed after the last run.';
+    return 'Selected testbench changed - rerun Compare for the active scenario.';
   }
   return 'Re-run Verify for the current work.';
+}
+
+function deriveStaleRecoveryAction(state: VerifyTruthState): string | null {
+  if (state.resultValidity !== 'stale') return null;
+  if (state.staleReason === 'design-changed') return 'Review Design if needed, then run Compare again.';
+  if (state.staleReason === 'check-set-changed') return 'Review saved expected outputs, then run Compare again.';
+  if (state.staleReason === 'scenario-changed') return 'Confirm the selected testbench, then run Compare again.';
+  return 'Run Compare again before trusting this evidence.';
+}
+
+function deriveTimingModeLabel(mode: VerifySequentialTimingMode): string {
+  if (mode === 'auto-board-clock') return 'Auto board clock';
+  if (mode === 'manual-clock') return 'Manual clock';
+  if (mode === 'custom-pattern') return 'Custom pattern';
+  return 'Combinational no clock';
+}
+
+function deriveTimingModeHint(mode: VerifySequentialTimingMode): string {
+  if (mode === 'auto-board-clock') {
+    return 'Verify generates the board clock activity; data inputs remain the editable testbench work.';
+  }
+  if (mode === 'manual-clock') {
+    return 'Clock activity is part of the authored testbench and must be visible before Compare.';
+  }
+  if (mode === 'custom-pattern') {
+    return 'The authored pattern defines the clock edges and sampled output checks.';
+  }
+  return 'Combinational checks use data inputs only; no clock lane is required.';
+}
+
+function deriveFailureRepairLabel(
+  repair: ReturnType<typeof deriveFailureRepairActions>
+): string | null {
+  if (!repair.canFixCircuit && !repair.canEditExpected) return null;
+  if (repair.canFixCircuit && repair.canEditExpected) return 'Fix circuit or update My expected output';
+  if (repair.canFixCircuit) return 'Fix circuit in Design';
+  return 'Update My expected output';
+}
+
+function deriveFailureRepairHint(
+  repair: ReturnType<typeof deriveFailureRepairActions>
+): string | null {
+  if (repair.checkProvenance === 'course') {
+    return repair.lockedReason ?? COURSE_LOCKED_REASON;
+  }
+  if (repair.canEditExpected) {
+    return 'This mismatch belongs to My checks, so expected-output repair is available.';
+  }
+  return null;
 }
 
 function readVectorCaseId(vector: TestVector, index: number): string {
