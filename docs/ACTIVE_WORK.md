@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `0abe87af980ee673e1ab90720ea64d32469e4c87`
-**Latest product/control slice:** Product Trust Reset v2 Phase 3B Verify runtime integration
+**Latest product/control slice:** Product Trust Reset v2 Phase 3C Verify authority cutover
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -31,8 +31,8 @@ The active branch is a coordinated reconstruction branch, not a one-slice polish
 
 ## Top Priorities
 
-1. **Product Trust Reset v2 Phase 3B runtime integration is the active branch slice.** `verifyTruthState.ts` defines the pure Verify truth statechart, and `verifyTruthAdapter.ts` now maps existing runtime/scenario/hash records into that state plus Project verify state, Export readiness, selected failure, and repair selectors. `verify:truth-integration-gate` is the focused invariant/equivalence proof and is wired into classroom gates.
-2. **Rendered Phase 3 UI integration remains open.** The next Product Trust Reset task is to make the Verify workbench consume the adapter selectors around Course checks versus My checks, locked expected outputs, observed values, failure repair, stale hierarchy, and integrated signal controls. Do not change simulation semantics, generated artifacts, pin mapping, project format, or hardware proof claims unless directly proven necessary.
+1. **Product Trust Reset v2 Phase 3C Verify authority cutover is the active branch slice.** `verifyTruthState.ts` defines the pure Verify truth statechart, `verifyTruthAdapter.ts` maps existing runtime/scenario/hash records into that state, and rendered Verify now consumes the adapter for Course checks versus My checks, locked expected-output controls, result status, Project verify status, and Export readiness. `verify:truth-integration-gate` plus `ide:gate:verify-v2-authority-cutover` are the focused invariant/browser proofs and are wired into classroom gates.
+2. **Remaining Phase 3 UI integration is narrower but still open.** The next Product Trust Reset task is to remove remaining legacy Verify-local derivations around stale reason, selected failure repair display, and sequential timing visibility, then browser-prove staleDesign/staleTestbench and failure-repair guidance from the same V2 model. Do not change simulation semantics, generated artifacts, pin mapping, project format, or hardware proof claims unless directly proven necessary.
 3. **Classroom reliability is documented but not migrated.** `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md` and `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md` record the current localStorage/.rbproj authorities, the target journal/rolling-snapshot/storage-facade model, and the missing multi-context rehearsal proof.
 4. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`, `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`, `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
 2. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.

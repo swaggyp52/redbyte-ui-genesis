@@ -9,6 +9,7 @@ import {
   type ProjectVerifyState,
 } from './projectHealth';
 import type { VerifyRunLedgerEntry } from './projectRuntime';
+import type { VerifyTruthRuntimeModel } from './verifyTruthAdapter';
 import {
   deriveProjectTruthSnapshot,
   type ProjectTruthSnapshot,
@@ -48,6 +49,7 @@ export interface ProjectWorkflowAuthorityInput {
   verifyRunHistory?: Array<Pick<VerifyRunLedgerEntry, 'projectHash'>>;
   currentVerifyProjectHash?: string | null;
   currentExportHash?: string | null;
+  verifyTruthModel?: Pick<VerifyTruthRuntimeModel, 'state' | 'selectors'>;
 }
 
 export type HardwareExportFailureTruthCondition =
@@ -281,15 +283,19 @@ export function deriveProjectWorkflowAuthority(
 ): ProjectWorkflowAuthority {
   const projectHealth = deriveProjectHealth(input.projectHealthCore, input.readiness);
   const latestVerifyLedgerEntry = input.verifyRunHistory?.[input.verifyRunHistory.length - 1];
-  const verifyCurrent = deriveVerifyCurrent({
+  const legacyVerifyCurrent = deriveVerifyCurrent({
     hasVerifyRun: Boolean(input.verifyLastRun ?? input.projectHealthCore.lastVerify),
     latestVerifyLedgerEntry,
     currentVerifyProjectHash: input.currentVerifyProjectHash,
     dirtySinceVerify: input.projectHealthCore.dirtySinceVerify,
   });
+  const verifyCurrent = input.verifyTruthModel
+    ? Boolean(input.verifyTruthModel.state.lastRun) && input.verifyTruthModel.selectors.resultIsCurrent
+    : legacyVerifyCurrent;
   const rawVerifyState = deriveProjectVerifyState(input.projectHealthCore);
-  const verifyState =
-    !verifyCurrent && input.projectHealthCore.lastVerify
+  const verifyState = input.verifyTruthModel
+    ? input.verifyTruthModel.selectors.projectVerifyStatus
+    : !verifyCurrent && input.projectHealthCore.lastVerify
       ? 'stale'
       : rawVerifyState;
   const comparePassCurrent = verifyCurrent && verifyState === 'assertions-match';
@@ -339,7 +345,7 @@ export function deriveProjectWorkflowAuthority(
       ? 'fail'
       : truth.state === 'hardware-proof-required'
         ? 'pass'
-        : compareDiffers || compareTraceOnly || projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport
+        : compareDiffers || compareTraceOnly || verifyState === 'stale' || projectHealth.dirtySinceVerify || projectHealth.dirtySinceExport
         ? 'warn'
         : !verifyCurrent && Boolean(input.projectHealthCore.lastVerify)
           ? 'warn'

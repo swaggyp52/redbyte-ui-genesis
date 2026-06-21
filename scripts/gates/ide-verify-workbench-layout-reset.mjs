@@ -60,8 +60,9 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
   assert(layout.phase === 'post-run', `after PASS phase must be post-run, got ${JSON.stringify(layout)}`);
   assert(layout.waveform.width >= 520, `after PASS waveform evidence must remain usable, got ${JSON.stringify(layout)}`);
   assert(layout.stimulus.width >= 360, `after PASS repair/editor lane must remain usable, got ${JSON.stringify(layout)}`);
-  assert(layout.expectedCells >= 12, `after PASS expected-output cells must remain editable, got ${layout.expectedCells}`);
+  assert(layout.expectedCells >= 12, `after PASS expected-output cells must remain visible, got ${layout.expectedCells}`);
 
+  await ensureExpectedChecksEditable(page);
   const target = await pickExpectedCell(page);
   await clickExpectedCellToValue(page, target, target.value === 0 ? 1 : 0);
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected edit');
@@ -108,10 +109,32 @@ async function readLayoutState(page) {
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
       gridExtraX: Math.max(0, grid.scrollWidth - grid.clientWidth),
-      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      expectedCells: document.querySelectorAll('button[data-testid^="ide-stimulus-expected-"]').length,
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
     };
   });
+}
+
+async function ensureExpectedChecksEditable(page) {
+  const firstExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
+  await firstExpectedCell.waitFor({ state: 'visible', timeout: 10000 });
+  if (!(await firstExpectedCell.isDisabled().catch(() => false))) return;
+
+  const duplicateCourseChecks = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
+  assert(
+    await duplicateCourseChecks.isVisible().catch(() => false),
+    'locked Course checks must expose Duplicate to My checks before fail/repair editing'
+  );
+  await duplicateCourseChecks.click();
+  await page.waitForFunction(() => {
+    const authority = document.querySelector('[data-testid="ide-verify-check-authority"]');
+    return authority?.getAttribute('data-provenance') === 'student' &&
+      authority?.getAttribute('data-editable') === 'true';
+  }, null, { timeout: 10000 });
+  assert(
+    !(await firstExpectedCell.isDisabled().catch(() => true)),
+    'duplicated My checks must make expected-output cells editable'
+  );
 }
 
 async function runAndReadStatus(page) {
@@ -132,7 +155,7 @@ async function runAndReadStatus(page) {
 }
 
 async function pickExpectedCell(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('button[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') ?? '';
       const title = element.getAttribute('title') ?? '';

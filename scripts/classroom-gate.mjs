@@ -125,6 +125,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-saved-checks-default'],
   },
   {
+    name: 'ide:gate:verify-v2-authority-cutover',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-v2-authority-cutover'],
+  },
+  {
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],

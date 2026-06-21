@@ -49,7 +49,7 @@ await runIdeGate('IDE verify contract satisfied', async ({ page, baseUrl }) => {
     'verify waveform workspace must render after a Compare run'
   );
   assert(
-    await visible(page.locator('[data-testid^="ide-stimulus-expected-"]').first()),
+    await visible(page.locator('button[data-testid^="ide-stimulus-expected-"]').first()),
     'verify must expose expected-output cells for the current starter checks'
   );
 });

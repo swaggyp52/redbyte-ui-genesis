@@ -34,7 +34,7 @@ function parseCellValueFromTitle(title) {
 }
 
 async function pickRenderedExpectedTarget(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('button[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') || '';
       const title = element.getAttribute('title') || '';
@@ -58,6 +58,28 @@ async function pickRenderedExpectedTarget(page) {
     )}`
   );
   return target;
+}
+
+async function ensureExpectedChecksEditable(page) {
+  const firstExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
+  await firstExpectedCell.waitFor({ state: 'visible', timeout: 10000 });
+  if (!(await firstExpectedCell.isDisabled().catch(() => false))) return;
+
+  const duplicateCourseChecks = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
+  assert(
+    await duplicateCourseChecks.isVisible().catch(() => false),
+    'locked Course checks must expose Duplicate to My checks before fail/repair editing'
+  );
+  await duplicateCourseChecks.click();
+  await page.waitForFunction(() => {
+    const authority = document.querySelector('[data-testid="ide-verify-check-authority"]');
+    return authority?.getAttribute('data-provenance') === 'student' &&
+      authority?.getAttribute('data-editable') === 'true';
+  }, null, { timeout: 10000 });
+  assert(
+    !(await firstExpectedCell.isDisabled().catch(() => true)),
+    'duplicated My checks must make expected-output cells editable'
+  );
 }
 
 async function readRenderedCellValue(page, target) {
@@ -114,6 +136,7 @@ await runIdeGate('IDE verify fail-edit-repair contract satisfied', async ({ page
   assert(isVerifyPass(status), `initial Compare should PASS, got "${status}"`);
   await capture(page, '01-initial-compare-pass.png');
 
+  await ensureExpectedChecksEditable(page);
   const target = await pickRenderedExpectedTarget(page);
   const wrongValue = target.value === 0 ? 1 : 0;
   await clickExpectedCellToValue(page, target, wrongValue);

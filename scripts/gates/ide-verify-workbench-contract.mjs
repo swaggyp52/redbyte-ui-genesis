@@ -48,7 +48,7 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   await waitForVerifyResult(page, { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-verify-workspace-waveform"]', { timeout: 10000 });
 
-  let editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+  let editableExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
   let editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
   if (!editableExpectedCellVisible) {
     const initialSummaryText = (
@@ -75,10 +75,10 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     await checksToggle.click();
     await page.waitForTimeout(150);
 
-    editableExpectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+    editableExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
     editableExpectedCellVisible = await editableExpectedCell.isVisible().catch(() => false);
   }
-  assert(editableExpectedCellVisible, 'verify must expose an editable expected-output cell after checks are saved');
+  assert(editableExpectedCellVisible, 'verify must expose expected-output cells after checks are saved or loaded');
   assert(
     await hasVisibleExactText(page, 'Expected outputs'),
     'verify student flow must label expected-output checks as Expected outputs'
@@ -95,12 +95,31 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
     'verify command deck must expose Compare checks in the student flow'
   );
 
+  if (await editableExpectedCell.isDisabled().catch(() => false)) {
+    const duplicateCourseChecks = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
+    assert(
+      await duplicateCourseChecks.isVisible().catch(() => false),
+      'locked Course checks must expose Duplicate to My checks before expected-output editing'
+    );
+    await duplicateCourseChecks.click();
+    await page.waitForFunction(() => {
+      const authority = document.querySelector('[data-testid="ide-verify-check-authority"]');
+      return authority?.getAttribute('data-provenance') === 'student' &&
+        authority?.getAttribute('data-editable') === 'true';
+    }, null, { timeout: 10000 });
+    editableExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
+    assert(
+      !(await editableExpectedCell.isDisabled().catch(() => true)),
+      'duplicated My checks must make expected-output cells directly editable'
+    );
+  }
+
   const leftDock = page.locator('[data-testid="ide-left-dock"]').first();
   const leftDockVisible = await leftDock.isVisible().catch(() => false);
   assert(!leftDockVisible, 'verify must start on the collapsed signals rail, not an expanded left dock');
   assert(
-    await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().isVisible().catch(() => false),
-    'verify must keep a collapsed left rail toggle visible by default'
+    !(await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().isVisible().catch(() => false)),
+    'verify must keep signals out of default shell rails'
   );
   assert(
     !(await page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().isVisible().catch(() => false)),

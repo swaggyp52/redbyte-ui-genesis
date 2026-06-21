@@ -2052,6 +2052,81 @@
   padding: 2px 8px;
 }
 
+[data-ide-mode-marker='verify'] .ide-verify-check-authority {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.42);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority.is-editable {
+  border-color: rgba(45, 212, 191, 0.26);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority.is-locked {
+  border-color: rgba(251, 191, 36, 0.34);
+  background: rgba(63, 48, 18, 0.26);
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority-kicker {
+  color: var(--rb-text-1, #e9f2ff);
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority-label {
+  color: var(--rb-text-3, #9eb4cb);
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-check-authority-state {
+  color: var(--rb-text-3, #9eb4cb);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+[data-ide-mode-marker='verify'] .ide-stimulus-value-cell-button--expected.is-locked {
+  opacity: 0.58;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-result-authority {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid rgba(45, 212, 191, 0.24);
+  background: rgba(13, 148, 136, 0.12);
+  color: var(--rb-text-2, #cfdbeb);
+  font-size: 0.76rem;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-result-authority-label {
+  color: var(--rb-text-3, #9eb4cb);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.62rem;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-result-authority strong {
+  color: var(--rb-text-1, #e9f2ff);
+}
+
 [data-ide-mode-marker='verify'] .ide-verify-stimulus-how {
   margin-left: auto;
 }

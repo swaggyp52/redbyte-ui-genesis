@@ -102,7 +102,7 @@ async function assertVerifyPreRunScrollSpace(page, viewport) {
       stimulusHeight: Math.round(stimulusRect.height),
       gridExtraX: grid ? Math.max(0, grid.scrollWidth - grid.clientWidth) : 9999,
       gridExtraY: grid ? Math.max(0, grid.scrollHeight - grid.clientHeight) : 9999,
-      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      expectedCells: document.querySelectorAll('button[data-testid^="ide-stimulus-expected-"]').length,
     };
   });
   assert(state.expectedCells >= 12, `${viewport.label}: Verify starter expected cells missing (${state.expectedCells})`);

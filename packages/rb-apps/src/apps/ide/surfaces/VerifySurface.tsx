@@ -54,6 +54,10 @@ import {
 } from '../verifyScenario';
 import type { VerifyMode } from '../verifyMode';
 import type { ProjectKind, ScenarioAuthority } from '../projectIdentity';
+import type {
+  VerifyTruthResultStatus,
+  VerifyTruthRuntimeModel,
+} from '../verifyTruthAdapter';
 import {
   createClockTimingGuidance,
   deriveTimingGuidance,
@@ -247,6 +251,8 @@ export interface VerifySurfaceProps {
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
+  verifyTruthModel?: VerifyTruthRuntimeModel;
+  onDuplicateCourseChecks?: () => void;
   unsupportedFeedbackDiagnostic?: {
     title: string;
     message: string;
@@ -365,6 +371,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   projectKind = 'blank',
   sourceExampleId = null,
   scenarioAuthority = 'none',
+  verifyTruthModel,
+  onDuplicateCourseChecks,
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
 }) => {
@@ -4181,6 +4189,33 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return 'Custom pattern mode uses the clock lane so you can paint the exact timing sequence.';
   }, [boardClockBinding, effectiveClockPolicy, isSequentialRun]);
+  const verifyTruthSelectors = verifyTruthModel?.selectors;
+  const truthResultStatus =
+    verifyTruthSelectors?.resultStatus ??
+    deriveLegacyTruthResultStatus({
+      isRunStale,
+      sessionShowsAssertionMatch,
+      sessionSignalsAssertionFailure,
+      sessionShowsTraceEvidence,
+      lastRun,
+    });
+  const truthResultKind = mapTruthResultStatusToSummaryKind(truthResultStatus);
+  const truthResultCurrent = verifyTruthSelectors?.resultIsCurrent ?? (!isRunStale && Boolean(lastRun));
+  const truthResultHeadline = deriveTruthResultHeadline({
+    status: truthResultStatus,
+    staleReason: verifyTruthSelectors?.staleReason ?? null,
+    failingRows: failingRows.length,
+    qualification: lastRun?.qualification,
+  });
+  const truthWaveformState =
+    truthResultStatus === 'pass'
+      ? 'pass'
+      : truthResultStatus === 'fail'
+        ? 'fail'
+        : truthResultStatus === 'stale'
+          ? 'stale'
+          : 'idle';
+  const truthResultLabel = formatTruthResultStatus(truthResultStatus, truthResultCurrent);
 
   return (
     <IdeSurfaceLayout
@@ -4981,6 +5016,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           clockLane={clockLaneConfig}
           stimulusAssist={stimulusAssist}
           runSummary={testbenchRunSummary}
+          checkSetLabel={verifyTruthSelectors?.selectedCheckSet}
+          selectedCheckProvenance={verifyTruthSelectors?.selectedCheckProvenance}
+          canEditExpected={verifyTruthSelectors?.canEditExpected}
+          expectedLockedReason={verifyTruthSelectors?.lockedReason}
+          onDuplicateCourseChecks={onDuplicateCourseChecks}
         />
         </VerifyStimulusRegion>
 
@@ -5036,33 +5076,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-instrument-deck">
             {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
             {lastRun ? (
+              <>
+              <div
+                className="ide-verify-result-authority"
+                data-testid="ide-verify-v2-authority"
+                data-result-status={truthResultStatus}
+                data-result-current={truthResultCurrent ? 'true' : 'false'}
+                data-project-status={verifyTruthSelectors?.projectVerifyStatus ?? ''}
+                data-export-readiness={verifyTruthSelectors?.exportReadiness ?? ''}
+              >
+                <span className="ide-verify-result-authority-label">Result</span>
+                <strong data-testid="ide-verify-v2-result-label">{truthResultLabel}</strong>
+              </div>
               <VerifyResultsSummary
-                kind={
-                  isRunStale
-                    ? 'stale'
-                    : sessionShowsAssertionMatch
-                      ? 'pass'
-                      : sessionSignalsAssertionFailure
-                        ? 'fail'
-                        : sessionShowsTraceEvidence
-                          ? 'observe-done'
-                          : 'not-run'
-                }
-                headline={
-                  isRunStale
-                    ? 'This result is stale because the design changed.'
-                    : sessionShowsAssertionMatch
-                      ? lastRun.qualification === 'incomplete-mapping'
-                        ? 'Checks aligned (mapping incomplete).'
-                        : 'All checks aligned with the observed run.'
-                      : sessionSignalsAssertionFailure
-                        ? failingRows.length === 1
-                          ? '1 check failed in the last run.'
-                          : `${failingRows.length} checks failed in the last run.`
-                        : sessionShowsTraceEvidence
-                          ? 'Observed outputs recorded — no expected checks compared.'
-                          : 'Run recorded.'
-                }
+                kind={truthResultKind}
+                headline={truthResultHeadline}
                 subline={
                   lastRun.scenarioName
                     ? `Scenario: ${lastRun.scenarioName}`
@@ -5095,29 +5123,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   return list;
                 })()}
                 primaryActionLabel={
-                  isRunStale
+                  truthResultStatus === 'stale'
                     ? 'Re-run Verify'
-                    : sessionSignalsAssertionFailure
+                    : truthResultStatus === 'fail'
                       ? 'Open first failing check'
                       : undefined
                 }
                 onPrimaryAction={
-                  isRunStale
+                  truthResultStatus === 'stale'
                     ? () => handleRunWithPreflight()
-                    : sessionSignalsAssertionFailure
+                    : truthResultStatus === 'fail'
                       ? handleJumpToFirstFailure
                       : undefined
                 }
                 primaryActionTestId={
-                  isRunStale
+                  truthResultStatus === 'stale'
                     ? 'ide-verify-results-summary-rerun'
-                    : sessionSignalsAssertionFailure
+                    : truthResultStatus === 'fail'
                       ? 'ide-verify-results-summary-open-fail'
                       : undefined
                 }
               />
+              </>
             ) : null}
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
+            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={truthWaveformState}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
                 <div className="ide-verify-scope-copy">
@@ -6100,6 +6129,66 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
+
+function deriveLegacyTruthResultStatus(input: {
+  isRunStale: boolean;
+  sessionShowsAssertionMatch: boolean;
+  sessionSignalsAssertionFailure: boolean;
+  sessionShowsTraceEvidence: boolean;
+  lastRun?: RuntimeVerifyRun;
+}): VerifyTruthResultStatus {
+  if (!input.lastRun) return 'not-run';
+  if (input.isRunStale) return 'stale';
+  if (input.sessionShowsAssertionMatch) return 'pass';
+  if (input.sessionSignalsAssertionFailure) return 'fail';
+  if (input.sessionShowsTraceEvidence) return 'observe';
+  return 'not-run';
+}
+
+function mapTruthResultStatusToSummaryKind(status: VerifyTruthResultStatus): VerifyResultsKind {
+  if (status === 'stale') return 'stale';
+  if (status === 'pass') return 'pass';
+  if (status === 'fail' || status === 'error') return 'fail';
+  if (status === 'observe') return 'observe-done';
+  return 'not-run';
+}
+
+function deriveTruthResultHeadline(input: {
+  status: VerifyTruthResultStatus;
+  staleReason: string | null;
+  failingRows: number;
+  qualification?: RuntimeVerifyRun['qualification'];
+}): string {
+  if (input.status === 'stale') {
+    return input.staleReason ?? 'This result is stale. Re-run Verify for the current work.';
+  }
+  if (input.status === 'pass') {
+    return input.qualification === 'incomplete-mapping'
+      ? 'Checks aligned with mapping still incomplete.'
+      : 'All checks aligned with the observed run.';
+  }
+  if (input.status === 'fail') {
+    return input.failingRows === 1
+      ? '1 check failed in the last run.'
+      : `${input.failingRows} checks failed in the last run.`;
+  }
+  if (input.status === 'observe') {
+    return 'Observed outputs recorded; no expected checks compared.';
+  }
+  if (input.status === 'error') {
+    return 'Verify needs repair before this result can be trusted.';
+  }
+  return 'Run recorded.';
+}
+
+function formatTruthResultStatus(status: VerifyTruthResultStatus, isCurrent: boolean): string {
+  if (status === 'pass') return isCurrent ? 'Checks passed' : 'Passed, needs rerun';
+  if (status === 'fail') return isCurrent ? 'Checks need review' : 'Failed, needs rerun';
+  if (status === 'stale') return 'Needs rerun';
+  if (status === 'observe') return isCurrent ? 'Observed only' : 'Observed, needs rerun';
+  if (status === 'error') return 'Needs repair';
+  return 'Not run';
+}
 
 function normalizeVectors(
   vectors: VerifySurfaceProps['vectors'],

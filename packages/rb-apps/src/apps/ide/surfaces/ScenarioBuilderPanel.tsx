@@ -4,6 +4,7 @@ import {
   StimulusCanvas,
   type StimulusClockLaneConfig,
 } from '../components/StimulusCanvas';
+import type { VerifyTruthCheckSetProvenance } from '../verifyTruthAdapter';
 
 export interface VerifyVectorDraftInput {
   id: string;
@@ -72,6 +73,11 @@ export interface ScenarioBuilderPanelProps {
   runSummary?: React.ReactNode;
   authoringModeSummary?: string;
   authoringModeHint?: string;
+  checkSetLabel?: string;
+  selectedCheckProvenance?: VerifyTruthCheckSetProvenance;
+  canEditExpected?: boolean;
+  expectedLockedReason?: string | null;
+  onDuplicateCourseChecks?: () => void;
 }
 
 export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
@@ -110,6 +116,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   runSummary,
   authoringModeSummary,
   authoringModeHint,
+  checkSetLabel,
+  selectedCheckProvenance = 'student',
+  canEditExpected = true,
+  expectedLockedReason = null,
+  onDuplicateCourseChecks,
 }) => {
   const [showHowItWorks, setShowHowItWorks] = React.useState(false);
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
@@ -159,9 +170,11 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
       previousIsFirstRunRef.current = isFirstRun;
     }
   }, [isFirstRun, shouldCollapseFirstRunEditor]);
-  const compareCheckCopy = showsAssertedExpectedCells
-    ? 'Expected outputs are active Compare checks.'
-    : 'Add expected outputs to turn on Compare checks. Empty cells stay Observe-only.';
+  const compareCheckCopy = !canEditExpected
+    ? (expectedLockedReason ?? 'Course checks are locked. Duplicate to My checks before editing expected outputs.')
+    : showsAssertedExpectedCells
+      ? 'Expected outputs are active Compare checks.'
+      : 'Add expected outputs to turn on Compare checks. Empty cells stay Observe-only.';
   const inputSummary =
     starterInputCount > 0
       ? `${starterInputCount} signal${starterInputCount === 1 ? '' : 's'} editable in the table.`
@@ -206,6 +219,32 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
         <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-checks">Checks: {outputFields.length}</span>
         <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-cases">Cases: {compactCaseCount}</span>
         <span className="ide-verify-stimulus-compact-chip" data-testid="ide-verify-stimulus-stat-ticks">Ticks: {compactTickCount}</span>
+      </div>
+      <div
+        className={`ide-verify-check-authority${canEditExpected ? ' is-editable' : ' is-locked'}`}
+        data-testid="ide-verify-check-authority"
+        data-provenance={selectedCheckProvenance}
+        data-editable={canEditExpected ? 'true' : 'false'}
+      >
+        <div className="ide-verify-check-authority-copy">
+          <span className="ide-verify-check-authority-kicker">Expected outputs</span>
+          <span className="ide-verify-check-authority-label" data-testid="ide-verify-check-set-label">
+            {checkSetLabel ?? (selectedCheckProvenance === 'course' ? 'Course checks' : 'My checks')}
+          </span>
+          <span className="ide-verify-check-authority-state" data-testid="ide-verify-check-editability">
+            {canEditExpected ? 'Expected values editable' : 'Expected values locked'}
+          </span>
+        </div>
+        {!canEditExpected && onDuplicateCourseChecks ? (
+          <button
+            type="button"
+            className="ide-stimulus-mini-btn ide-stimulus-mini-btn--primary"
+            onClick={onDuplicateCourseChecks}
+            data-testid="ide-verify-duplicate-course-checks"
+          >
+            Duplicate to My checks
+          </button>
+        ) : null}
       </div>
       <div className="ide-verify-stimulus-how" data-testid="ide-verify-stimulus-how">
         <button
@@ -349,6 +388,8 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           clockLane={clockLane}
           secondaryTools={secondaryTools}
           density="compact"
+          expectedOutputReadOnly={!canEditExpected}
+          expectedOutputLockedReason={expectedLockedReason}
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>

@@ -41,6 +41,8 @@ export interface StimulusCanvasProps {
   selectedTick?: number;
   onSelectedTickChange?: (tick: number) => void;
   density?: 'normal' | 'compact';
+  expectedOutputReadOnly?: boolean;
+  expectedOutputLockedReason?: string | null;
 }
 
 function makeId(): string {
@@ -294,6 +296,8 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   selectedTick: controlledSelectedTick,
   onSelectedTickChange,
   density = 'normal',
+  expectedOutputReadOnly = false,
+  expectedOutputLockedReason = null,
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const canvasRootRef = useRef<HTMLDivElement | null>(null);
@@ -380,6 +384,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
 
   const handleRowFill = useCallback((value: 0 | 1) => {
     if (!selectedLane) return;
+    if (expectedOutputReadOnly && selectedLane.kind === 'expected') return;
     const targetTicks = buildOperationTicks(latestVectorsRef.current, 1);
     commitVectors((vectors) => {
       let next = ensureTicks(vectors, inputFields, targetTicks);
@@ -391,7 +396,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
       }
       return next;
     });
-  }, [commitVectors, inputFields, selectedLane]);
+  }, [commitVectors, expectedOutputReadOnly, inputFields, selectedLane]);
 
   const handleRowToggle = useCallback(() => {
     if (!selectedLane || selectedLane.kind !== 'input') return;
@@ -408,6 +413,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
 
   const handleExpectedClear = useCallback(() => {
     if (!selectedLane || selectedLane.kind !== 'expected') return;
+    if (expectedOutputReadOnly) return;
     const targetTicks = buildOperationTicks(latestVectorsRef.current, 1);
     commitVectors((vectors) => {
       let next = ensureTicks(vectors, inputFields, targetTicks);
@@ -416,7 +422,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
       }
       return next;
     });
-  }, [commitVectors, inputFields, selectedLane]);
+  }, [commitVectors, expectedOutputReadOnly, inputFields, selectedLane]);
 
   const handleInputPattern = useCallback((resolver: (index: number) => 0 | 1) => {
     if (!selectedLane || selectedLane.kind !== 'input') return;
@@ -475,13 +481,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }, [commitVectors, inputFields, selectTick]);
 
   const handleExpectedPointerDown = useCallback((tick: number, fieldId: string) => {
+    if (expectedOutputReadOnly) return;
     const current = getExpectedValue(latestVectorsRef.current, tick, fieldId);
     const value: 0 | 1 | null = current == null ? 0 : current === 0 ? 1 : null;
     selectTick(tick);
     setSelectedLaneKey(`expected:${fieldId}`);
     commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, fieldId, value));
     setPaintSession({ kind: 'expected', value });
-  }, [commitVectors, inputFields, selectTick]);
+  }, [commitVectors, expectedOutputReadOnly, inputFields, selectTick]);
 
   const markDirectCellActivation = useCallback((testId: string) => {
     lastDirectCellActivationRef.current = {
@@ -562,13 +569,21 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
       text,
       inputFields,
       outputFields,
-    });
+    }).map((vector) =>
+      expectedOutputReadOnly
+        ? {
+            ...vector,
+            expected:
+              latestVectorsRef.current.find((current) => current.tick === vector.tick)?.expected ?? {},
+          }
+        : vector
+    );
     latestVectorsRef.current = nextVectors;
     onVectorsChange(nextVectors);
     if (nextVectors.length > 0) {
       selectTick(nextVectors[0].tick);
     }
-  }, [inputFields, onVectorsChange, outputFields, selectTick]);
+  }, [expectedOutputReadOnly, inputFields, onVectorsChange, outputFields, selectTick]);
 
   const describeCase = useCallback(
     (tick: number) => {
@@ -643,8 +658,8 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             <select className="ide-stimulus-target-select" aria-label="Selected stimulus row" title="Selected stimulus row" value={selectedLane?.key ?? ''} onChange={(event) => setSelectedLaneKey(event.target.value)} data-testid="ide-stimulus-row-target">
               {laneOptions.map((option) => <option key={option.key} value={option.key}>{option.kind === 'input' ? 'Stimulus' : 'Check'}: {option.label}</option>)}
             </select>
-            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
-            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(0)} disabled={expectedOutputReadOnly && selectedLane?.kind === 'expected'} data-testid="ide-stimulus-row-fill-0">Fill 0</button>
+            <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleRowFill(1)} disabled={expectedOutputReadOnly && selectedLane?.kind === 'expected'} data-testid="ide-stimulus-row-fill-1">Fill 1</button>
             {selectedLane?.kind === 'input' ? (
               <>
                 <button type="button" className="ide-stimulus-mini-btn" onClick={handleRowToggle} data-testid="ide-stimulus-row-toggle">Toggle</button>
@@ -652,7 +667,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 <button type="button" className="ide-stimulus-mini-btn" onClick={() => handleInputPattern((index) => Math.floor(index / 2) % 2 === 0 ? 0 : 1)} data-testid="ide-stimulus-pattern-clock">Clock pattern</button>
               </>
             ) : (
-              <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} data-testid="ide-stimulus-row-clear">Clear</button>
+              <button type="button" className="ide-stimulus-mini-btn" onClick={handleExpectedClear} disabled={expectedOutputReadOnly} data-testid="ide-stimulus-row-clear">Clear</button>
             )}
           </div>
           <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-case-edit">
@@ -780,7 +795,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         {outputFields.length > 0 ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
+              <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
+                Expected outputs
+                {expectedOutputReadOnly ? (
+                  <span data-testid="ide-stimulus-expected-locked" title={expectedOutputLockedReason ?? undefined} style={{ marginLeft: 6, color: 'var(--rb-text-secondary)' }}>
+                    locked
+                  </span>
+                ) : null}
+              </div>
               {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: addColW, flexShrink: 0 }} />
             </div>
@@ -791,12 +813,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                   const value = getExpectedValue(authoredVectors, tick, field.id);
                   const expectedCellTestId = `ide-stimulus-expected-${field.id}-t${tick}`;
                   return (
-                    <button key={tick} ref={field.id === outputFields[0]?.id && tick === ticks[0] ? firstExpectedCellRef : undefined} type="button" className="ide-stimulus-value-cell-button ide-stimulus-value-cell-button--expected" onPointerDown={() => { markDirectCellActivation(expectedCellTestId); handleExpectedPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(expectedCellTestId)) return; handleExpectedPointerDown(tick, field.id); }} onPointerEnter={(event) => {
-                      if (!paintSession || paintSession.kind !== 'expected' || (event.buttons & 1) === 0) return;
+                    <button key={tick} ref={field.id === outputFields[0]?.id && tick === ticks[0] ? firstExpectedCellRef : undefined} type="button" className={`ide-stimulus-value-cell-button ide-stimulus-value-cell-button--expected${expectedOutputReadOnly ? ' is-locked' : ''}`} disabled={expectedOutputReadOnly} aria-disabled={expectedOutputReadOnly ? 'true' : undefined} onPointerDown={() => { markDirectCellActivation(expectedCellTestId); handleExpectedPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(expectedCellTestId)) return; handleExpectedPointerDown(tick, field.id); }} onPointerEnter={(event) => {
+                      if (expectedOutputReadOnly || !paintSession || paintSession.kind !== 'expected' || (event.buttons & 1) === 0) return;
                       selectTick(tick);
                       setSelectedLaneKey(`expected:${field.id}`);
                       commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, field.id, paintSession.value));
-                    }} data-testid={expectedCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowH, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
+                    }} data-testid={expectedCellTestId} data-locked={expectedOutputReadOnly ? 'true' : 'false'} title={expectedOutputReadOnly ? (expectedOutputLockedReason ?? 'Expected outputs are locked.') : `${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowH, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: expectedOutputReadOnly ? 'not-allowed' : 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
                       {value != null ? <div style={{ width: tickW - 8, height: rowH - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
                     </button>
                   );

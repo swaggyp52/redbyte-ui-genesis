@@ -147,7 +147,7 @@ async function readPreRunMetrics(page) {
         ...gridScroll,
         extraX: gridScroll ? Math.max(0, gridScroll.scrollWidth - gridScroll.clientWidth) : 9999,
       },
-      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      expectedCells: document.querySelectorAll('button[data-testid^="ide-stimulus-expected-"]').length,
       visibleCaseHeaders,
       runButtonVisible: Boolean(document.querySelector('[data-testid="ide-vcb-run"]')),
     };

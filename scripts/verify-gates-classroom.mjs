@@ -86,6 +86,7 @@ function main() {
         ]),
     runGate('ide:verify-contract', 'pnpm -s ide:gate:verify-contract', true),
     runGate('ide:verify-saved-checks-default', 'pnpm -s ide:gate:verify-saved-checks-default', true),
+    runGate('ide:verify-v2-authority-cutover', 'pnpm -s ide:gate:verify-v2-authority-cutover', true),
     runGate('ide:verify-no-circuit-task-first', 'pnpm -s ide:gate:verify-no-circuit-task-first', true),
     runGate('ide:verify-testbench-usable-layout', 'pnpm -s ide:gate:verify-testbench-usable-layout', true),
     runGate('ide:verify-workbench-layout-reset', 'pnpm -s ide:gate:verify-workbench-layout-reset', true),

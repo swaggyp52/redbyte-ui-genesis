@@ -97,6 +97,9 @@ describe('verifyTruthAdapter', () => {
   it('derives locked course checks for starter/example work and editable checks for student work', () => {
     expect(deriveVerifyCheckProvenanceFromProject({ projectKind: 'example' })).toBe('course');
     expect(deriveVerifyCheckProvenanceFromProject({ projectKind: 'blank' })).toBe('student');
+    expect(deriveVerifyCheckProvenanceFromProject({ projectKind: 'custom', sourceExampleId: 'logic-gates' })).toBe(
+      'student'
+    );
 
     const starter = expectNoInvariantProblems(
       buildVerifyTruthStateFromRuntime({
@@ -120,10 +123,16 @@ describe('verifyTruthAdapter', () => {
       editability: 'locked',
     });
     expect(starter.state.checks[0].lockedReason).toContain('duplicate');
+    expect(starter.selectors.selectedCheckSet).toBe('Course checks (1 check)');
+    expect(starter.selectors.canEditExpected).toBe(false);
+    expect(starter.selectors.lockedReason).toContain('duplicate');
     expect(student.state.checks[0]).toMatchObject({
       provenance: 'student',
       editability: 'editable',
     });
+    expect(student.selectors.selectedCheckSet).toBe('My checks (1 check)');
+    expect(student.selectors.canEditExpected).toBe(true);
+    expect(student.selectors.lockedReason).toBeNull();
   });
 
   it('keeps observe-only runtime evidence out of trusted Project and Export states', () => {
@@ -140,6 +149,8 @@ describe('verifyTruthAdapter', () => {
     expect(run.state.status).toBe('needsTestbench');
     expect(run.state.lastRun?.status).toBe('observe');
     expect(run.selectors.projectVerifyState).toBe('trace');
+    expect(run.selectors.resultStatus).toBe('observe');
+    expect(run.selectors.resultIsCurrent).toBe(true);
     expect(run.selectors.canExportTrusted).toBe(false);
     expect(run.selectors.exportReadiness).toBe('blocked-no-checks');
   });
@@ -162,6 +173,8 @@ describe('verifyTruthAdapter', () => {
 
     expect(run.state.status).toBe('passed');
     expect(run.selectors.projectVerifyState).toBe('assertions-match');
+    expect(run.selectors.projectVerifyStatus).toBe('assertions-match');
+    expect(run.selectors.resultStatus).toBe('pass');
     expect(run.selectors.canExportTrusted).toBe(true);
     expect(run.selectors.exportReadiness).toBe('trusted-ready');
   });
@@ -194,6 +207,7 @@ describe('verifyTruthAdapter', () => {
       canEditExpected: false,
       checkProvenance: 'course',
     });
+    expect(run.selectors.repairActions).toMatchObject(run.selectors.selectedFailureRepair);
   });
 
   it('classifies stale design separately from stale expected-output edits', () => {
@@ -230,8 +244,12 @@ describe('verifyTruthAdapter', () => {
 
     expect(staleDesign.state.status).toBe('staleDesign');
     expect(staleDesign.state.staleReason).toBe('design-changed');
+    expect(staleDesign.selectors.resultStatus).toBe('stale');
+    expect(staleDesign.selectors.resultIsCurrent).toBe(false);
+    expect(staleDesign.selectors.staleReason).toContain('Design changed');
     expect(staleTestbench.state.status).toBe('staleTestbench');
     expect(staleTestbench.state.staleReason).toBe('check-set-changed');
+    expect(staleTestbench.selectors.staleReason).toContain('Saved checks changed');
   });
 
   it('matches legacy Project health verify states during shadow migration', () => {

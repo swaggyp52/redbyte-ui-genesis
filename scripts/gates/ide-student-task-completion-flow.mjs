@@ -187,6 +187,7 @@ async function assertVerifyFailRepairPass(page, viewport) {
   assert(await visible(page.locator('[data-testid="ide-verify-region-waveform"]').first()), `${viewport.label}: Verify waveform region missing`);
   assert(await visible(page.locator('[data-testid="ide-verify-region-stimulus"]').first()), `${viewport.label}: Verify stimulus region missing`);
 
+  await ensureExpectedChecksEditable(page, viewport);
   const target = await pickExpectedCell(page);
   await clickExpectedCellToValue(page, target, target.value === 0 ? 1 : 0);
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare must remain selectable after expected edit`);
@@ -199,6 +200,28 @@ async function assertVerifyFailRepairPass(page, viewport) {
   assert(isVerifyPass(status), `${viewport.label}: repaired expected output should PASS Compare, got "${status}"`);
 
   await assertNoRootOverflow(page, `${viewport.label}/Verify`);
+}
+
+async function ensureExpectedChecksEditable(page, viewport) {
+  const firstExpectedCell = page.locator('button[data-testid^="ide-stimulus-expected-"]').first();
+  await firstExpectedCell.waitFor({ state: 'visible', timeout: 10000 });
+  if (!(await firstExpectedCell.isDisabled().catch(() => false))) return;
+
+  const duplicateCourseChecks = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
+  assert(
+    await duplicateCourseChecks.isVisible().catch(() => false),
+    `${viewport.label}: locked Course checks must expose Duplicate to My checks before fail/repair editing`
+  );
+  await duplicateCourseChecks.click();
+  await page.waitForFunction(() => {
+    const authority = document.querySelector('[data-testid="ide-verify-check-authority"]');
+    return authority?.getAttribute('data-provenance') === 'student' &&
+      authority?.getAttribute('data-editable') === 'true';
+  }, null, { timeout: 10000 });
+  assert(
+    !(await firstExpectedCell.isDisabled().catch(() => true)),
+    `${viewport.label}: duplicated My checks must make expected-output cells editable`
+  );
 }
 
 async function clickRunAndReadStatus(page) {
@@ -221,7 +244,7 @@ async function clickRunAndReadStatus(page) {
 }
 
 async function pickExpectedCell(page) {
-  const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
+  const cells = await page.locator('button[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') ?? '';
       const title = element.getAttribute('title') ?? '';

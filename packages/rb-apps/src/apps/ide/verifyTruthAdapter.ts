@@ -34,6 +34,16 @@ export type VerifyTruthExportReadiness =
   | 'trusted-ready'
   | 'verify-error';
 
+export type VerifyTruthActiveWorkspace = 'testbench' | 'results';
+export type VerifyTruthCheckSetProvenance = VerifyCheckProvenance | 'mixed' | 'none';
+export type VerifyTruthResultStatus =
+  | 'not-run'
+  | 'observe'
+  | 'pass'
+  | 'fail'
+  | 'stale'
+  | 'error';
+
 export interface VerifyTruthRuntimeInput {
   hasDesign: boolean;
   vectors: readonly TestVector[];
@@ -47,14 +57,26 @@ export interface VerifyTruthRuntimeInput {
 }
 
 export interface VerifyTruthSelectors {
+  activeWorkspace: VerifyTruthActiveWorkspace;
+  canRun: boolean;
+  selectedCheckSet: string;
+  selectedCheckProvenance: VerifyTruthCheckSetProvenance;
+  canEditExpected: boolean;
+  lockedReason: string | null;
+  resultStatus: VerifyTruthResultStatus;
+  resultIsCurrent: boolean;
+  staleReason: string | null;
   projectVerifyState: ProjectVerifyState;
+  projectVerifyStatus: ProjectVerifyState;
   projectStatusText: string;
   exportReadiness: VerifyTruthExportReadiness;
   resultValidity: VerifyTruthState['resultValidity'];
+  timingMode: VerifySequentialTimingMode;
   canRunObserve: boolean;
   canRunCompare: boolean;
   canExportTrusted: boolean;
   selectedFailure: VerifyFailure | null;
+  repairActions: ReturnType<typeof deriveFailureRepairActions>;
   selectedFailureRepair: ReturnType<typeof deriveFailureRepairActions>;
   invariantProblems: string[];
 }
@@ -75,7 +97,6 @@ export function deriveVerifyCheckProvenanceFromProject(input: {
 }): VerifyCheckProvenance {
   if (
     input.projectKind === 'example' ||
-    Boolean(input.sourceExampleId) ||
     Boolean(input.activeExampleId) ||
     input.scenarioAuthority === 'starter'
   ) {
@@ -121,8 +142,9 @@ export function buildVerifyTruthChecksFromVectors(
 export function buildVerifyTruthStateFromRuntime(
   input: VerifyTruthRuntimeInput
 ): VerifyTruthRuntimeModel {
+  const defaultCheckProvenance = input.checkProvenance ?? 'student';
   const checks = buildVerifyTruthChecksFromVectors(input.vectors, {
-    provenance: input.checkProvenance,
+    provenance: defaultCheckProvenance,
   });
   const sequentialTimingMode = deriveSequentialTimingMode(input.lastRun);
   const revisions = deriveRuntimeRevisions(input, checks);
@@ -147,7 +169,9 @@ export function buildVerifyTruthStateFromRuntime(
     if (!requested.pendingRun) {
       return {
         state: requested,
-        selectors: deriveVerifyTruthSelectors(requested),
+        selectors: deriveVerifyTruthSelectors(requested, {
+          defaultCheckProvenance,
+        }),
       };
     }
 
@@ -170,12 +194,23 @@ export function buildVerifyTruthStateFromRuntime(
 
   return {
     state,
-    selectors: deriveVerifyTruthSelectors(state),
+    selectors: deriveVerifyTruthSelectors(state, {
+      defaultCheckProvenance,
+    }),
   };
 }
 
-export function deriveVerifyTruthSelectors(state: VerifyTruthState): VerifyTruthSelectors {
+export function deriveVerifyTruthSelectors(
+  state: VerifyTruthState,
+  context: {
+    defaultCheckProvenance?: VerifyCheckProvenance;
+  } = {}
+): VerifyTruthSelectors {
   const projectVerifyState = deriveVerifyTruthProjectState(state);
+  const selectedCheckProvenance = deriveSelectedCheckProvenance(
+    state.checks,
+    context.defaultCheckProvenance ?? 'student'
+  );
   const selectedFailure =
     state.selectedFailureId && state.lastRun
       ? state.lastRun.failures.find((failure) => failure.id === state.selectedFailureId) ?? null
@@ -184,15 +219,32 @@ export function deriveVerifyTruthSelectors(state: VerifyTruthState): VerifyTruth
   const canRunObserve = state.hasDesign;
   const canRunCompare = state.hasDesign && state.checks.length > 0;
   const canExportTrusted = projectVerifyState === 'assertions-match';
+  const canEditExpected = selectedCheckProvenance !== 'course';
+  const lockedReason = canEditExpected
+    ? null
+    : state.checks.find((check) => check.editability === 'locked')?.lockedReason ??
+      COURSE_LOCKED_REASON;
   return {
+    activeWorkspace: state.lastRun ? 'results' : 'testbench',
+    canRun: canRunObserve,
+    selectedCheckSet: deriveSelectedCheckSetLabel(state.checks, selectedCheckProvenance),
+    selectedCheckProvenance,
+    canEditExpected,
+    lockedReason,
+    resultStatus: deriveResultStatus(state, projectVerifyState),
+    resultIsCurrent: Boolean(state.lastRun) && state.resultValidity === 'current',
+    staleReason: deriveStaleReasonText(state),
     projectVerifyState,
+    projectVerifyStatus: projectVerifyState,
     projectStatusText: deriveProjectStatusText(state, projectVerifyState),
     exportReadiness: deriveExportReadiness(state, projectVerifyState),
     resultValidity: state.resultValidity,
+    timingMode: state.sequentialTimingMode,
     canRunObserve,
     canRunCompare,
     canExportTrusted,
     selectedFailure,
+    repairActions: selectedFailureRepair,
     selectedFailureRepair,
     invariantProblems: assertVerifyTruthInvariants(state),
   };
@@ -374,6 +426,55 @@ function deriveExportReadiness(
   if (projectVerifyState === 'assertions-differ') return 'draft-failed';
   if (projectVerifyState === 'verify-error') return 'verify-error';
   return 'trusted-ready';
+}
+
+function deriveSelectedCheckProvenance(
+  checks: readonly VerifyCheck[],
+  fallback: VerifyCheckProvenance
+): VerifyTruthCheckSetProvenance {
+  if (checks.length === 0) return fallback;
+  const provenances = new Set(checks.map((check) => check.provenance));
+  if (provenances.size === 1) return checks[0]?.provenance ?? fallback;
+  return 'mixed';
+}
+
+function deriveSelectedCheckSetLabel(
+  checks: readonly VerifyCheck[],
+  provenance: VerifyTruthCheckSetProvenance
+): string {
+  const count = checks.length;
+  const countLabel = count === 1 ? '1 check' : `${count} checks`;
+  if (provenance === 'course') return `Course checks (${countLabel})`;
+  if (provenance === 'student') return `My checks (${countLabel})`;
+  if (provenance === 'mixed') return `Course + My checks (${countLabel})`;
+  return 'No checks saved';
+}
+
+function deriveResultStatus(
+  state: VerifyTruthState,
+  projectVerifyState: ProjectVerifyState
+): VerifyTruthResultStatus {
+  if (projectVerifyState === 'verify-error' || state.status === 'runtimeError') return 'error';
+  if (projectVerifyState === 'stale') return 'stale';
+  if (!state.lastRun) return 'not-run';
+  if (state.lastRun.status === 'observe') return 'observe';
+  if (projectVerifyState === 'assertions-match') return 'pass';
+  if (projectVerifyState === 'assertions-differ') return 'fail';
+  return 'not-run';
+}
+
+function deriveStaleReasonText(state: VerifyTruthState): string | null {
+  if (state.resultValidity !== 'stale') return null;
+  if (state.staleReason === 'design-changed') {
+    return 'Design changed after the last run.';
+  }
+  if (state.staleReason === 'check-set-changed') {
+    return 'Saved checks changed after the last run.';
+  }
+  if (state.staleReason === 'scenario-changed') {
+    return 'Selected testbench changed after the last run.';
+  }
+  return 'Re-run Verify for the current work.';
 }
 
 function readVectorCaseId(vector: TestVector, index: number): string {

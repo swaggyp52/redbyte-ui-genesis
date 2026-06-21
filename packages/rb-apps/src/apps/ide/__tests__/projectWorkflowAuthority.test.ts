@@ -4,6 +4,7 @@ import {
   deriveHardwareExportFailureTruth,
   deriveProjectWorkflowAuthority,
 } from '../projectWorkflowAuthority';
+import type { VerifyTruthRuntimeModel } from '../verifyTruthAdapter';
 
 function deriveAuthority(input: {
   core?: Partial<ProjectHealthCore>;
@@ -11,6 +12,7 @@ function deriveAuthority(input: {
   currentVerifyProjectHash?: string | null;
   currentExportHash?: string | null;
   verifyRunHistory?: Array<{ projectHash: string }>;
+  verifyTruthModel?: Pick<VerifyTruthRuntimeModel, 'state' | 'selectors'>;
 } = {}) {
   const core: ProjectHealthCore = {
     lastVerify: undefined,
@@ -34,6 +36,7 @@ function deriveAuthority(input: {
     verifyRunHistory: input.verifyRunHistory,
     currentVerifyProjectHash: input.currentVerifyProjectHash,
     currentExportHash: input.currentExportHash,
+    verifyTruthModel: input.verifyTruthModel,
   });
 }
 
@@ -90,6 +93,37 @@ describe('project workflow authority', () => {
     expect(authority.verifyState).toBe('assertions-differ');
     expect(authority.compareDiffers).toBe(true);
     expect(authority.exportAvailable).toBe(true);
+    expect(authority.exportTrusted).toBe(false);
+    expect(authority.statusBarGateStatus).toBe('warn');
+  });
+
+  it('uses V2 verify truth model as the Project and Export authority when provided', () => {
+    const authority = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'legacy-pass-hash',
+          reportHash: 'legacy-report-hash',
+          ranAtIso: '2026-06-21T10:00:00.000Z',
+        },
+      },
+      currentVerifyProjectHash: 'legacy-pass-hash',
+      verifyRunHistory: [{ projectHash: 'legacy-pass-hash' }],
+      verifyTruthModel: {
+        state: {
+          lastRun: { status: 'compare' },
+        },
+        selectors: {
+          projectVerifyStatus: 'stale',
+          projectVerifyState: 'stale',
+          resultIsCurrent: false,
+        },
+      } as unknown as Pick<VerifyTruthRuntimeModel, 'state' | 'selectors'>,
+    });
+
+    expect(authority.verifyCurrent).toBe(false);
+    expect(authority.verifyState).toBe('stale');
+    expect(authority.compareMatches).toBe(false);
     expect(authority.exportTrusted).toBe(false);
     expect(authority.statusBarGateStatus).toBe('warn');
   });

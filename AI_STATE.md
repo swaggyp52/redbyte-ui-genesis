@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-21 (fix: cut over Verify V2 authority rendering)
+
+**Subsystem:** Product Trust Reset v2 Phase 3C, rendered Verify authority, Project/Export selector authority, browser gate ownership, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `523d5021375b73861948323a05704f6a27b4a3dc`; `main` was not changed and the draft PR remains unmerged.
+- Fed `verifyTruthAdapter.ts` selectors into the rendered Verify workbench so Course checks, My checks, expected-output editability, result status, stale/current status, Project verify status, and Export readiness come from the V2 truth model instead of JSX-local booleans.
+- Added the rendered Course-check lock path: starter/course checks show as locked, expected-output cells are disabled with a duplicate explanation, and `Duplicate to My checks` converts the project to editable student-owned checks without changing scenario vector bytes.
+- Passed the V2 truth model into `deriveProjectWorkflowAuthority` so Project and Export readiness can use the same current/stale/PASS/FAIL authority as the Verify workbench.
+- Updated `StimulusCanvas`, `ScenarioBuilderPanel`, and `VerifySurface` to render the authority label, lock state, editable expected-output path, and V2 result marker while preserving the stable `Expected outputs` work-object label.
+- Added `ide:gate:verify-v2-authority-cutover`, wired it into `classroom:gate` and `verify:gates:classroom`, and expanded `verify:truth-integration-gate` to include `projectWorkflowAuthority.test.ts`.
+- Updated `ide:gate:verify-workbench-contract` to prove the current V2 student path: Course checks are duplicated before expected-output edits, and default Verify no longer requires legacy open/close side-rail toggles.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with the Phase 3C cutover map.
+
+**Evidence:** Browser proof screenshots for the rendered Course-locked, My-checks-editable, and V2 result-authority states are under `.redbyte/product-immersion/verify-v2-authority-cutover/2026-06-21/after/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` has passed for `verify:truth-integration-gate` (`32` tests), `build:unified`, `ide:gate:verify-v2-authority-cutover`, affected Verify/student surface gates (`ide:gate:verify-saved-checks-default`, `ide:gate:v2-student-chrome`, `ide:gate:verify-workbench-contract`, `ide:gate:student-task-completion-flow`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:release-solidification-v2`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:nested-scroll-regression`, `ide:gate:verify-contract`, `ide:gate:verify-fail-edit-repair`, and `ide:gate:export-handoff-station`), full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only the repo's normal CRLF working-copy warnings. Final commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Rendered Verify authority, Project/Export selector consumption, and gate-contract slice only. It does not change simulation semantics, Compare execution semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Continue Phase 3D by removing remaining legacy Verify-local derivations around stale reason, selected-failure repair display, and sequential timing visibility, then add browser proof for staleDesign/staleTestbench and failure-repair guidance using the same V2 authority model.
+
 ## Change Log 2026-06-21 (feat: add Verify truth runtime adapter)
 
 **Subsystem:** Product Trust Reset v2 Phase 3B, Verify runtime integration, Project/Export selector boundary, classroom gate ownership, and draft PR #78.
