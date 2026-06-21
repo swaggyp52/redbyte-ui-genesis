@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: Product Trust Reset v2 Verify truth model contract
@@ -11,6 +11,8 @@ role: Product Trust Reset v2 Verify truth model contract
 This contract defines the Verify truth model for Product Trust Reset v2. It supersedes older Verify UI contracts wherever they allow expected outputs, observed outputs, Compare state, and repair actions to appear in the same ambiguous editing mode.
 
 This is a product and implementation contract. It must be proven by runtime tests plus focused browser gates before the V2 Verify redesign can merge.
+
+Phase 3 foundation note: `packages/rb-apps/src/apps/ide/verifyTruthState.ts` now implements a pure statechart foundation for this contract, with focused proof in `verify:truth-state-gate`. The rendered Verify UI still needs to consume this model before the V2 Verify workbench can be called rebuilt.
 
 ## Core Objects
 
@@ -126,6 +128,7 @@ Stale copy must say why:
 
 ## Gates Required Before Merge
 
+- `verify:truth-state-gate`
 - `ide:gate:verify-truth-model-v2`
 - `ide:gate:verify-locked-course-checks`
 - `ide:gate:verify-stale-result-invalidation`

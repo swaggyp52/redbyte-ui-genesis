@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: compact product issue routing index for RedByte V1 hardening
@@ -23,6 +23,9 @@ Primary reset docs:
 - `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md`
 - `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md`
 - `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`
+- `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`
+- `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`
+- `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md`
 
 Prior source audits:
 
@@ -79,6 +82,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 12af. Pinned Runtime + Browser E0 Release Proof. Closed locally 2026-06-19.
 12ag. Release Proof Fork / Browser E0 Verify Evidence Density. Closed locally 2026-06-20.
 12ai. Product Trust Reset v2 Phase 2 / Student Chrome Foundation. Closed locally 2026-06-20 pending final commit/PR checks.
+12aj. Product Trust Reset v2 Phase 3 / Verify Truth Foundation. Foundation added 2026-06-21; rendered Verify UI integration remains open.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 
@@ -89,6 +93,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 | RB-V1-001 | P1 | Docs / product control | Prior queue routed directly to lab-profile work even though current UI evidence shows shell/workbench hierarchy is the stronger bottleneck. | Agents could build data seams before the core workbench feels coherent to students. | Create research, visual audit, V1 contract, delete/demote/rebuild inventory, execution program, and cockpit updates. | `docs/research/**`; `docs/audits/**`; `docs/contracts/**`; `docs/plans/**`; cockpit docs | Docs validation, encoding check, diff check; commit/push/GitHub closeout. | Fixed / historical |
 | RB-UNDER-001 | P1 | Product control / gates | The Design zoom bug showed RedByte lacked explicit subsystem ownership, state authority, and invariant gates around normal user actions. | Students could find entire classes of breakage before gates did. | Create source/state/invariant maps, normal-use audit, gate ownership docs, and invariant gates. | `docs/architecture/**`; `docs/audits/**`; `docs/development/**`; `scripts/gates/**`; gate aggregators | `ide:gate:design-workbench-integrity`; `ide:gate:shell-layout-integrity`; classroom gate; docs checks; GitHub closeout. | Fixed / historical |
 | RB-TRUST-V2-002 | P1 | Global student chrome / diagnostics / workspaces | Normal RedByte still exposed raw build badges, E-tier proof language, and generic HIDE / SHOW INFO side rails, making the app feel like an internal prototype instead of a deterministic lab tool. | Students and professors could see proof-harness vocabulary before lab work, distrust the surface, and lose workspace width to chrome that was no longer part of the V2 model. | Separate student chrome from diagnostics, remove normal raw build/E-tier/rail language, mark real surfaces with V2 workspace primitives, and rewrite stale V1 gates against the new model. | `IdeApp.tsx`; `IdeTopBar.tsx`; `IdeHelpMenu.tsx`; `IdeWorkbenchShell.tsx`; surface dock modes; `ide-root.css`; `ide-polish-pass.css`; gate aggregators | `ide:gate:v2-student-chrome`; affected Project/Design/Verify/Hardware/Export/Import gates; full `classroom:gate`; after screenshots under `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`. | Fixed locally 2026-06-20 |
+| RB-TRUST-V2-003 | P1 | Verify truth / classroom reliability | Verify had valid runtime pieces but no one typed statechart for Course checks, My checks, expected/observed values, stale PASS/FAIL, selected failure repair actions, and sequential timing mode. Classroom durability risks were also implicit in scattered localStorage paths. | Students can distrust or break Verify when the UI does not clearly say whether they should fix the circuit, edit their own check, rerun stale evidence, or preserve a locked course check. Professors cannot trust classroom reliability if save/recovery risks stay hidden. | Add a pure Verify truth-state model and invariant gate; document runtime owners and durability target before the UI rebuild. Next slice should wire the model into Verify UI and browser gates. | `verifyTruthState.ts`; `verifyTruthState.test.ts`; `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`; `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`; repo-local skills; `.redbyte-brain/**` | `verify:truth-state-gate`; affected Verify runtime tests; docs/encoding/diff checks; later browser gates for Course/My checks, stale invalidation, selected failure repair, and sequential timing. | Foundation added 2026-06-21; UI integration open |
 | RB-EXPORT-TRUST-001 | P1 | Export | Normal-use audit reached generated-artifact state but did not find an obvious artifact preview; earlier V1 screenshots also showed mapping-summary contradiction risk. | Students may distrust whether the downloaded package matches the visible proof and mapping state. | Prove and, if needed, repair Export trust integrity across summary, artifact count, visible preview, ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier wording. | `ExportSurface.tsx`; export primitives; `projectWorkflowAuthority.ts`; Basys3 export services; export gates | `ide:gate:export-trust-integrity`; export download/e2e/artifact explorer gates; ZIP entry inspection. | Fixed 2026-06-13 |
 | RB-SHELL-001 | P1 | Global shell / workbench frame | Workflow/status state repeated across top ribbon, left rail, evidence box, surface heroes, right rail, and bottom status. | The current job object was harder to find, especially on common laptop viewports. | Rebuild one compact shell/status authority and stabilize the first-viewport frame across surfaces. | `IdeApp.tsx`; `IdeLeftRail.tsx`; `IdeStatusBar.tsx`; Verify waveform density; shell CSS; shell hierarchy gate | `ide:gate:shell-workbench-hierarchy`; `ide:gate:shell-layout-integrity`; product/Verify/Export gates; screenshots. | Fixed 2026-06-13 |
 | RB-VERIFY-EVIDENCE-001 | P1 | Verify | Verify PASS/FAIL behavior was credible, but the evidence/repair hierarchy remained dense and instrument-panel-like. | Students could miss the relation between stimulus, expected output, observed output, mismatch, waveform, and repair action. | Rebuild Verify as an evidence workbench with first-order PASS/FAIL/repair hierarchy. | `ScenarioBuilderPanel.tsx`; Verify CSS; Verify gates | `ide:gate:verify-evidence-workbench-integrity`; `ide:gate:verify-fail-edit-repair`; Verify contract/workbench gates; PASS/FAIL screenshots. | Fixed 2026-06-13 |

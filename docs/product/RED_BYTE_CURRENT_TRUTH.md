@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -20,6 +20,8 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Ordered work | `docs/product/RED_BYTE_WORK_QUEUE.md` | Near-term V1 queue for agents and maintainers. |
 | Product Trust Reset v2 student UI | `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md` | Current reset-branch contract for student-facing language, chrome, card usage, diagnostics boundary, and normal-surface prohibitions. |
 | Product Trust Reset v2 Verify truth | `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md` | Current reset-branch authority for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair semantics. |
+| Product Trust Reset v2 Verify statechart | `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`; `packages/rb-apps/src/apps/ide/verifyTruthState.ts`; `verify:truth-state-gate` | Current Phase 3 foundation for legal Verify states, events, revisions, check provenance, locked expected outputs, stale invalidation, and repair actions. |
+| Classroom durability target | `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`, `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md` | Current local persistence authority and future storage-facade/journal/rolling-snapshot target. No storage migration is implied by the docs. |
 | Product Trust Reset v2 workspace/visual contracts | `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md` | Current reset-branch layout and visual direction; supersedes generic side-rail and one-note card/chrome assumptions for V2 work. |
 | Product Trust Reset v2 Phase 2 proof | `.redbyte/product-immersion/product-trust-reset-v2/phase-2/after/`, `ide:gate:v2-student-chrome`, `classroom:gate` | Current branch evidence that normal student chrome hides raw build/E-tier rail language, Diagnostics owns the full build fingerprint, and Project/Design/Verify/Hardware/Export/Import use V2 workspace primitives. |
 | V1 product contract | `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md` | Current V1 target contract and work order. |
@@ -59,6 +61,8 @@ Practical read order for a normal session:
 For Product Trust Reset v2 work, read the V2 student UI, Verify truth, workspace layout, and visual system contracts before using older V1 shell, side-rail, or pixel-level specs.
 
 Phase 2 branch truth: normal student UI must not show raw build badges, E0/E1/E2/E3 labels, `HIDE`, or `SHOW INFO` side rails. Diagnostics currently uses plain-language proof boundaries while exposing the full Git fingerprint. V1 gates that expected collapsed/restore side rails have been rewritten for the V2 primitive model on this branch.
+
+Phase 3 branch truth: Verify now has a pure truth-state foundation in `verifyTruthState.ts`, but the Verify UI has not yet been rebuilt on top of it. Course/My check presentation, locked expected-output controls, stale/PASS/FAIL repair hierarchy, and browser gates for that rebuilt workbench remain open.
 
 ## 2. Current Product Thesis
 

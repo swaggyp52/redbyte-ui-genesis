@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte state authority and mutation matrix
@@ -25,6 +25,7 @@ Base audited for this matrix: `d235823a` on `main`.
 | Design undo/redo | runtime `designPast` and `designFuture` | undo/redo buttons; circuitStore history as cache support | committed graph mutations, Ctrl+Z/Ctrl+Y | runtime persist | restore graph and stale proof consistently | `projectRuntime.history-authority.test.tsx`, design workbench integrity |
 | Circuit diagnostics and build health | `projectHealth.ts` and derived compiler/simulation result | Design health row, Project blockers, Export blockers | circuit edits, compile/sim checks | derived plus runtime health core | stale after graph/vector/mapping change | project health tests, diagnostics jump gate |
 | Verify scenarios and vectors | runtime `scenarios`, `projectVectors`, selected scenario fields | `StimulusCanvas`, Verify panels | add/edit rows, edit inputs/expected outputs, starter load | runtime persist | stale compare/export proof after edits | verify authority tests, verify fail-edit-repair gate |
+| Verify truth-state model | `verifyTruthState.ts` pure model, fed by runtime/scenario/hash owners when integrated | Future V2 Verify workbench, Verify viewmodels | design/scenario/check edits, run request/completion/failure, Course check duplicate, My check edit, failure selection | none directly; runtime persists the source records | PASS/FAIL only from current Compare revisions; design edits stale design; scenario/check edits stale testbench | `verify:truth-state-gate` |
 | Observed output rows | runtime `verifyLastRun` and history | Verify observed columns, waveform, Project summaries | Observe or Compare run | runtime run history | not sufficient for PASS unless Compare checked expected outputs | verify contract/reality/summary gates |
 | Expected output grid | runtime scenario/vector expected values | `StimulusCanvas` cells, repair controls | save observed as expected, manual expected edit | runtime persist | stale old PASS after edit | expected-output tests, verify fail-edit-repair |
 | Compare PASS/FAIL/STALE | `projectHealthCore.lastVerify` and `deriveProjectWorkflowAuthority` | Project, Verify, Export, top-level status | Compare run, source edits | runtime health core | stale on circuit/vector/mapping edits | projectWorkflowAuthority tests, verify gates |

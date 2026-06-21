@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -17,6 +17,34 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 - Do not combine layout, Verify behavior, lab-profile data, Export generation, Hardware proof, or commercial packaging unless a direct dependency is proven.
 - Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Preserve E0/E1/E2/E3 truth at every phase.
+
+## Product Trust Reset v2 - Phase 3 Verify Truth Foundation
+
+Status: Foundation added 2026-06-21 on `product/redbyte-trust-reset-v2`; rendered Verify UI integration remains open.
+
+Goal: Make Verify truth explicit before rebuilding the Verify surface again.
+
+Why: The product had valid runtime pieces for scenarios, project freshness, run evidence, and expected-output editing, but no single state model describing legal transitions between ready, running, PASS, FAIL, stale design, stale testbench, locked Course checks, editable My checks, selected failure repair, and sequential timing mode.
+
+Proof:
+
+- `verify:truth-state-gate`
+- `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`
+- `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`
+- `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md`
+- Repo-local skills under `.agents/skills/redbyte-verify-truth-steward/`, `.agents/skills/redbyte-classroom-reliability/`, and `.agents/skills/redbyte-v2-design-review/`
+- Obsidian scratch notes under `.redbyte-brain/verify-runtime-code-map.md` and `.redbyte-brain/project-durability-audit.md`
+
+Acceptance:
+
+- PASS and FAIL are possible only from completed Compare runs tied to current revisions.
+- Observe can record outputs without becoming trusted PASS/FAIL.
+- Course checks are locked and require duplication before expected-output edits.
+- Student-owned checks are editable and invalidate prior trusted results.
+- Design changes invalidate prior trusted results as stale design.
+- Scenario/check changes invalidate prior trusted results as stale testbench.
+- Sequential timing mode is preserved through run request and completion.
+- No simulation, Verify runtime semantics, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
 
 ## Phase 12x - Release Readiness Tool Windows
 

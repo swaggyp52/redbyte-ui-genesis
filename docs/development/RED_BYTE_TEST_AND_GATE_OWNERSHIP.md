@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -184,6 +184,7 @@ Why:
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, loaded Project workflow-help auto-collapse, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, `ide:gate:release-solidification-v2` when first-launch orientation could block launch actions, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, blank/partial authoring continuation, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:authoring-depth-release-safety`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
+| Verify truth state, Course/My checks, locked expected values, stale/PASS/FAIL, selected failure repair, or sequential timing mode | `verify:truth-state-gate` plus affected runtime/viewmodel tests; add browser gates only when the rendered Verify UI consumes the model |
 | Verify behavior, run intent, repair loop, testbench layout, no-circuit entry, Signals rail geometry, or post-run next-action visibility | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, `ide:gate:release-solidification-v1` when release workbench geometry is involved, `ide:gate:release-solidification-v2` when Project orientation plus Verify next-action visibility are involved, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |
@@ -198,7 +199,7 @@ Why:
 ## Browser Gate Rules
 
 - Always verify the visible build hash before using an existing local server as evidence.
-- Final release closeouts that rely on browser proof should run `ide:gate:final-current-build-smoke` after committing and rebuilding so the clean worktree, visible build badge, and `/os/build.json` match current HEAD.
+- Final release closeouts that rely on browser proof should run `ide:gate:final-current-build-smoke` after committing and rebuilding so the clean worktree, root build metadata, and `/os/build.json` match current HEAD. In the V2 student UI, raw build hashes remain hidden from normal chrome and are checked through metadata/Diagnostics rather than a visible badge.
 - Release-candidate closeouts should use `ide:gate:release-candidate-decision` before commit and `ide:gate:release-final-sha-discipline` only after a clean final commit/build. The Node status gate is not Vivado or hardware proof.
 - Treat `verify:gates:classroom` as broad local/nightly regression breadth, not the final interactive closeout authority. If an outer runner times out, inspect the script and changed gate wiring, run syntax checks, and run the new/affected gates directly; do not record the timeout as either green proof or a product regression without a failing child gate.
 - Start from a realistic path: Project load, starter/blank selection, user actions, navigation, reload.
@@ -293,6 +294,8 @@ Why:
 `ide:gate:verify-workbench-layout-reset` proves the same layout contract survives the normal evidence loop at `1366x768`: pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS.
 
 `ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, waveform evidence minimum width, waveform evidence top offset, viewport-visible chart height, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
+
+`verify:truth-state-gate` proves the Product Trust Reset v2 Verify state foundation in pure Vitest: no-design, no-testbench, ready, running, compare PASS, compare FAIL, observe-only, staleDesign, staleTestbench, locked Course checks, editable My checks, selected failure repair affordances, rejected impossible completions, and sequential timing mode carried through runs. It is not a browser layout gate and does not claim the Verify UI has been rebuilt.
 
 ## State Authority Rules
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-21
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-20
+**Last Updated:** 2026-06-21
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -26,7 +26,7 @@ For a normal agent session:
 6. `docs/product/RED_BYTE_CURRENT_TRUTH.md`
 7. `docs/product/RED_BYTE_WORK_QUEUE.md`
 8. `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`
-9. For Product Trust Reset v2 work: `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`
+9. For Product Trust Reset v2 work: `docs/product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md`, `docs/contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md`, `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`, `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`, `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md`, `docs/architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md`, and `docs/architecture/RED_BYTE_VISUAL_SYSTEM_V2.md`
 10. `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`
 11. `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`
 12. `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`
@@ -68,6 +68,9 @@ When docs conflict:
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
 | [product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md](./product/RED_BYTE_STUDENT_UI_CONTRACT_V2.md) | Product Trust Reset v2 student-facing UI language, diagnostics boundary, no-internal-proof-language, no-generic-rails, and card-use contract |
 | [contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md](./contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md) | Product Trust Reset v2 Verify truth model for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair |
+| [architecture/ADR_VERIFY_STATE_ORCHESTRATION.md](./architecture/ADR_VERIFY_STATE_ORCHESTRATION.md) | Product Trust Reset v2 Verify statechart decision and integration plan |
+| [architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md](./architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md) | Classroom project durability model, current storage authorities, and target reliability guarantee |
+| [architecture/ADR_PROJECT_DURABILITY_STORAGE.md](./architecture/ADR_PROJECT_DURABILITY_STORAGE.md) | Project storage durability ADR and rejected storage-migration alternatives |
 | [architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md](./architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md) | Product Trust Reset v2 deterministic workspace layout contract |
 | [architecture/RED_BYTE_VISUAL_SYSTEM_V2.md](./architecture/RED_BYTE_VISUAL_SYSTEM_V2.md) | Product Trust Reset v2 visual token and surface-level direction |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
@@ -164,6 +167,9 @@ The manual describes current behavior. The contract describes target-state oblig
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level map for RedByte subsystem ownership |
 | [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | State authority matrix for project, graph, Verify, mapping, Export, Import, and proof tiers |
 | [architecture/RED_BYTE_INVARIANT_MATRIX.md](./architecture/RED_BYTE_INVARIANT_MATRIX.md) | Invariant matrix and missing-gate routing |
+| [architecture/ADR_VERIFY_STATE_ORCHESTRATION.md](./architecture/ADR_VERIFY_STATE_ORCHESTRATION.md) | Verify truth-state orchestration ADR |
+| [architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md](./architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md) | Classroom durability and local persistence model |
+| [architecture/ADR_PROJECT_DURABILITY_STORAGE.md](./architecture/ADR_PROJECT_DURABILITY_STORAGE.md) | Storage durability ADR |
 | [development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md](./development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md) | Gate ownership, proof layer selection, and closeout rules |
 | [plans/2026-06-12-redbyte-product-issue-index.md](./plans/2026-06-12-redbyte-product-issue-index.md) | Compact issue routing extracted from the current whole-app audit |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset |

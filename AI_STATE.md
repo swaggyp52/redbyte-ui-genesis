@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-21 (feat: add Verify truth-state foundation)
+
+**Subsystem:** Product Trust Reset v2 Phase 3, Verify truth model, classroom reliability foundation, repo-local skills, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `d2fe3a7e950693b95d5b4181cd458fdeee945c7d`; `main` was not changed and the draft PR remains unmerged.
+- Reviewed external skill patterns from OpenAI, Anthropic, Microsoft, and the local Build Web Apps frontend guidance as patterns only; no external skill was installed and RedByte docs remain product authority.
+- Added repo-local skills for Verify truth stewardship, classroom reliability, and V2 design review under `.agents/skills/`.
+- Added ignored Obsidian/scratch notes for the external skill review, Verify runtime code map, Phase 3 current sprint, and project durability audit under `.redbyte-brain/`.
+- Added `verifyTruthState.ts`, a pure Verify truth statechart covering Course checks, My checks, locked expected outputs, observed values, design/scenario/check revisions, run mode, PASS/FAIL/STALE, selected failure repair actions, rejected impossible completions, and sequential timing mode.
+- Added `verify:truth-state-gate` and focused Vitest coverage for the new model.
+- Added architecture docs for Verify state orchestration and project durability storage; updated cockpit/current-truth docs so Phase 3 is recorded as a foundation, not a completed Verify UI rebuild.
+- Repaired `ide:gate:final-current-build-smoke` for V2 student chrome so it verifies root build metadata and `build.json` instead of requiring a visible raw build badge that Phase 2 intentionally removed.
+
+**Evidence:** Source audit confirmed Verify truth was split across `projectRuntime.ts`, `verifyScenario.ts`, `verifyProjectHash.ts`, Verify viewmodels, `StimulusCanvas.tsx`, and `VerifySurface.tsx`. The new model is intentionally pure and not yet wired into the rendered Verify surface.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `verify:truth-state-gate` (`10` tests), adjacent Verify viewmodel/hash tests (`16` tests), `build:unified`, full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check`. `ide:gate:final-current-build-smoke` was updated after it correctly exposed a stale V1 visible-build-badge assumption; final clean post-commit smoke, push, and GitHub PR checks must still be completed before this branch is reported remote-green.
+
+**Safety:** Foundation/model/docs slice only. It does not change simulation semantics, generated Verify evidence, Compare implementation, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Feed `verifyTruthState.ts` from runtime/scenario/hash owners and rebuild Verify UI around Course checks versus My checks, locked expected-output controls, observed output evidence, staleDesign/staleTestbench, selected failure repair, and sequential timing visibility with focused browser gates.
+
 ## Change Log 2026-06-20 (refactor: separate student chrome from diagnostics)
 
 **Subsystem:** Product Trust Reset v2 Phase 2, student chrome, V2 workspace foundation, diagnostics boundary, browser gates, and draft PR #78.
