@@ -10,7 +10,7 @@ role: Verify truth-state orchestration decision for Product Trust Reset v2
 
 ## Status
 
-Accepted for Product Trust Reset v2 Phase 3 foundation.
+Accepted for Product Trust Reset v2 Phase 3 foundation and Phase 3B runtime integration.
 
 ## Context
 
@@ -40,7 +40,9 @@ The model defines:
 - selected failure and repair-action derivation
 - sequential timing mode carried from requested run to completed run
 
-The initial proof is `verify:truth-state-gate`, a focused Vitest gate for legal and illegal state transitions.
+The initial pure-model proof is `verify:truth-state-gate`, a focused Vitest gate for legal and illegal state transitions.
+
+Phase 3B adds `packages/rb-apps/src/apps/ide/verifyTruthAdapter.ts` and `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`. The adapter feeds existing runtime/scenario/hash records into the state model and derives legacy-compatible Project verify state plus Export readiness selectors. The current source-level proof is `verify:truth-integration-gate`, which includes the pure-model tests and adapter equivalence tests.
 
 ## Consequences
 
@@ -53,10 +55,10 @@ The initial proof is `verify:truth-state-gate`, a focused Vitest gate for legal 
 
 ## Integration Plan
 
-1. Feed this model from existing runtime/scenario/hash owners.
+1. Make rendered Verify consume `verifyTruthAdapter.ts` selectors from existing runtime/scenario/hash owners.
 2. Replace ambiguous Verify expected-output controls with Course checks and My checks.
 3. Keep viewmodels as surface adapters, not independent truth authorities.
-4. Add browser gates after UI integration: PASS, FAIL, duplicate Course check, edit My check, stale design, stale testbench, selected failure repair, and sequential timing visibility.
+4. Add browser gates after UI integration: PASS, FAIL, duplicate Course check, edit My check, stale design, stale testbench, selected failure repair, Project readiness, Export readiness, and sequential timing visibility.
 
 ## Non-Goals
 

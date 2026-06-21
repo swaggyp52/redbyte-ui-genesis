@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-21 (feat: add Verify truth runtime adapter)
+
+**Subsystem:** Product Trust Reset v2 Phase 3B, Verify runtime integration, Project/Export selector boundary, classroom gate ownership, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `3de4e558785636f5ece0e0c0becb491be72f608d`; `main` was not changed and the draft PR remains unmerged.
+- Added `verifyTruthAdapter.ts` as the shadow integration boundary from existing runtime/scenario/hash records into `VerifyTruthState`.
+- Added selectors for legacy-compatible Project verify state, plain Project status text, Export readiness, run availability, trusted export eligibility, selected failure, and provenance-aware repair actions.
+- Tightened `verifyTruthState.ts` so Observe can run without checks while Compare remains blocked without checks; observe-only evidence stays out of trusted PASS/FAIL.
+- Added `verifyTruthAdapter.test.ts` and expanded `verifyTruthState.test.ts` to prove Course/My check provenance, observe-only trust limits, compare PASS, compare FAIL repair actions, staleDesign versus staleTestbench classification, runtime compare-error classification, and equivalence with `deriveProjectVerifyState`.
+- Added `verify:truth-integration-gate` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Added `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`; updated current-truth, active-work, work-queue, state/invariant, and gate-ownership docs so the next UI rebuild consumes the adapter instead of re-deriving Verify truth in surfaces.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with the Phase 3B sprint and Verify authority integration map.
+
+**Evidence:** The adapter is intentionally source-level and shadow-only. It proves the runtime-to-truth boundary before the rendered Verify workbench is rebuilt.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `verify:truth-integration-gate` (`17` tests), `build:unified`, full `classroom:gate` including the new truth integration step, `rb:doc:validate`, `rb:encoding:check`, `node --check` for `scripts/classroom-gate.mjs` and `scripts/verify-gates-classroom.mjs`, and `git diff --check`. `git diff --check` emitted only the repo's normal CRLF working-copy warnings. Final commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Runtime adapter/test/docs slice only. It does not change simulation semantics, Compare execution, generated Verify evidence, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Rebuild the rendered Verify Testbench/Results workbench to consume `verifyTruthAdapter.ts` selectors for Course/My checks, locked expected-output controls, observed output evidence, staleDesign/staleTestbench, selected failure repair, Project readiness, and Export readiness with focused browser gates.
+
 ## Change Log 2026-06-21 (feat: add Verify truth-state foundation)
 
 **Subsystem:** Product Trust Reset v2 Phase 3, Verify truth model, classroom reliability foundation, repo-local skills, and draft PR #78.

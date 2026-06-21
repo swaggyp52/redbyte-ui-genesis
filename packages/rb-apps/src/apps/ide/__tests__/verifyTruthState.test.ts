@@ -219,6 +219,27 @@ describe('verifyTruthState', () => {
     expect(observed.resultValidity).toBe('current');
   });
 
+  it('allows observe runs without checks but keeps the testbench incomplete', () => {
+    const initial = createVerifyTruthInitialState({ checks: [] });
+    const running = verifyTruthReducer(initial, {
+      type: 'RUN_REQUESTED',
+      runId: 'observe-empty',
+      mode: 'observe',
+    });
+    const observed = expectValid(
+      verifyTruthReducer(running, {
+        type: 'RUN_COMPLETED',
+        runId: 'observe-empty',
+        mode: 'observe',
+      })
+    );
+
+    expect(observed.status).toBe('needsTestbench');
+    expect(observed.lastRun?.status).toBe('observe');
+    expect(observed.resultValidity).toBe('current');
+    expect(observed.lastRejectedEvent).toBeNull();
+  });
+
   it('derives repair actions from check provenance and editability', () => {
     const initial = createVerifyTruthInitialState({ checks: [courseCarryCheck, studentSumCheck] });
     const running = verifyTruthReducer(initial, {

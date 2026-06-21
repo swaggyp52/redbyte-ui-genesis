@@ -10,6 +10,11 @@ const STEPS = [
     args: ['build'],
   },
   {
+    name: 'verify:truth-integration-gate',
+    cmd: 'pnpm',
+    args: ['-s', 'verify:truth-integration-gate'],
+  },
+  {
     name: 'ide:gate:examples-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:examples-contract'],

@@ -27,9 +27,14 @@ Package aliases route the same gate for the Phase 2 student-chrome contract:
 
 These aliases inspect Project, Design, Verify, Hardware, Export, and Import at classroom/desktop viewports, verify Help / Diagnostics reachability, prove the full build fingerprint is recoverable outside normal chrome, reject visible raw build badges and E-tier labels in normal UI, reject generic restore/collapse rails, and assert V2 workspace primitives.
 
+Phase 3B adds the source-level Verify runtime integration gate:
+
+- `verify:truth-integration-gate`
+
+This gate proves the pure truth statechart plus the runtime/scenario/hash adapter that maps current runtime records into Project verify state and Export readiness selectors. It is wired into `classroom:gate` and `verify:gates:classroom`, but it is not a browser proof that the rendered Verify UI has been rebuilt.
+
 V2 gates still to add before merge:
 
-- `ide:gate:verify-truth-model-v2`
 - `ide:gate:verify-locked-course-checks`
 - `ide:gate:verify-stale-result-invalidation`
 - `ide:gate:verify-failure-repair-v2`
@@ -55,6 +60,7 @@ Legacy gates rewritten during Phase 2 include workbench reconstruction, Design t
 The following under-the-hood invariant gates are required in both `classroom:gate` and `verify:gates:classroom`:
 
 - `ide:gate:v2-student-chrome`
+- `verify:truth-integration-gate`
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`
@@ -184,7 +190,7 @@ Why:
 | Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
 | Project identity rename, first-run help, loaded Project `Flow` placement, loaded Project workflow-help auto-collapse, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, `ide:gate:release-solidification-v2` when first-launch orientation could block launch actions, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, blank/partial authoring continuation, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:authoring-depth-release-safety`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
-| Verify truth state, Course/My checks, locked expected values, stale/PASS/FAIL, selected failure repair, or sequential timing mode | `verify:truth-state-gate` plus affected runtime/viewmodel tests; add browser gates only when the rendered Verify UI consumes the model |
+| Verify truth state, runtime adapter, Course/My checks, locked expected values, stale/PASS/FAIL, selected failure repair, Project/Export readiness selectors, or sequential timing mode | `verify:truth-integration-gate` plus affected runtime/viewmodel tests; add browser gates only when the rendered Verify UI consumes the model |
 | Verify behavior, run intent, repair loop, testbench layout, no-circuit entry, Signals rail geometry, or post-run next-action visibility | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, `ide:gate:release-solidification-v1` when release workbench geometry is involved, `ide:gate:release-solidification-v2` when Project orientation plus Verify next-action visibility are involved, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |
@@ -295,7 +301,9 @@ Why:
 
 `ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, waveform evidence minimum width, waveform evidence top offset, viewport-visible chart height, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
 
-`verify:truth-state-gate` proves the Product Trust Reset v2 Verify state foundation in pure Vitest: no-design, no-testbench, ready, running, compare PASS, compare FAIL, observe-only, staleDesign, staleTestbench, locked Course checks, editable My checks, selected failure repair affordances, rejected impossible completions, and sequential timing mode carried through runs. It is not a browser layout gate and does not claim the Verify UI has been rebuilt.
+`verify:truth-state-gate` proves the Product Trust Reset v2 Verify state foundation in pure Vitest: no-design, no-testbench, ready, running, compare PASS, compare FAIL, observe-only, staleDesign, staleTestbench, locked Course checks, editable My checks, selected failure repair affordances, rejected impossible completions, and sequential timing mode carried through runs. It remains available as the pure-model subset.
+
+`verify:truth-integration-gate` is the current Phase 3B authority gate. It runs the truth-state tests plus the runtime adapter tests that prove Course/My check provenance, observe-only trust limits, current compare PASS, compare FAIL repair actions, stale design versus stale testbench classification, compare-error classification, and equivalence with `deriveProjectVerifyState`. It is not a browser layout gate and does not claim the Verify UI has been rebuilt.
 
 ## State Authority Rules
 

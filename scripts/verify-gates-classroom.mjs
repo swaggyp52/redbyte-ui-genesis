@@ -35,6 +35,7 @@ function main() {
     runGate('golden-basys3-export', 'pnpm -s rc:e1:golden-basys3-export-gate', true),
     runGate('golden-basys3-alu-export', 'pnpm -s rc:e1:golden-basys3-alu-export-gate', true),
     runGate('dev-guards', 'pnpm -s ui:dev-guards-contract-gate', true),
+    runGate('verify:truth-integration-gate', 'pnpm -s verify:truth-integration-gate', true),
     runGate('ide:boot-shadow-contract', 'pnpm -s gates:ide-boot-shadow-contract', true),
     // PHASE 5: New IDE unification gates
     runGate('ide:route-contract', 'pnpm -s ide:gate:route-contract', true),

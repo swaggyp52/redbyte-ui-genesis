@@ -289,7 +289,7 @@ export function verifyTruthReducer(
 
     case 'RUN_REQUESTED': {
       if (!state.hasDesign) return rejectEvent(state, event.type, 'Verify needs a circuit before running.');
-      if (state.checks.length === 0) {
+      if (event.mode === 'compare' && state.checks.length === 0) {
         return rejectEvent(state, event.type, 'Verify needs at least one check before a run can be trusted.');
       }
       const sequentialTimingMode = event.sequentialTimingMode ?? state.sequentialTimingMode;
@@ -339,7 +339,7 @@ export function verifyTruthReducer(
       }));
       return {
         ...state,
-        status: status === 'observe' ? 'ready' : status === 'pass' ? 'passed' : 'failed',
+        status: status === 'observe' ? deriveReadyStatus(state.hasDesign, checks) : status === 'pass' ? 'passed' : 'failed',
         checks,
         lastRun,
         pendingRun: null,
