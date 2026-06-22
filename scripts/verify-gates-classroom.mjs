@@ -88,6 +88,7 @@ function main() {
     runGate('ide:verify-saved-checks-default', 'pnpm -s ide:gate:verify-saved-checks-default', true),
     runGate('ide:verify-v2-authority-cutover', 'pnpm -s ide:gate:verify-v2-authority-cutover', true),
     runGate('ide:verify-authority-phase-3d', 'pnpm -s ide:gate:verify-authority-phase-3d', true),
+    runGate('ide:verify-sequential-authority-v2', 'pnpm -s ide:gate:verify-sequential-authority-v2', true),
     runGate('ide:verify-no-circuit-task-first', 'pnpm -s ide:gate:verify-no-circuit-task-first', true),
     runGate('ide:verify-testbench-usable-layout', 'pnpm -s ide:gate:verify-testbench-usable-layout', true),
     runGate('ide:verify-workbench-layout-reset', 'pnpm -s ide:gate:verify-workbench-layout-reset', true),

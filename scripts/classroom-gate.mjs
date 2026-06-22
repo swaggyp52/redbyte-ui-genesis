@@ -135,6 +135,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-authority-phase-3d'],
   },
   {
+    name: 'ide:gate:verify-sequential-authority-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-sequential-authority-v2'],
+  },
+  {
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],

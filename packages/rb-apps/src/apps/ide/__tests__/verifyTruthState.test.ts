@@ -73,15 +73,22 @@ describe('verifyTruthState', () => {
   it('names the allowed statechart transitions for every Verify truth event', () => {
     expect(Object.keys(VERIFY_TRUTH_STATECHART).sort()).toEqual([
       'CHECK_SET_CHANGED',
+      'CLOCK_PATTERN_CHANGED',
       'COURSE_CHECK_DUPLICATED',
       'DESIGN_CHANGED',
       'FAILURE_SELECTED',
+      'MANUAL_PULSE_ADDED',
+      'MANUAL_PULSE_REMOVED',
       'RESET',
+      'RESET_PATTERN_CHANGED',
       'RUN_COMPLETED',
       'RUN_FAILED',
       'RUN_REQUESTED',
       'SCENARIO_CHANGED',
+      'SEQUENTIAL_RUN_COMPLETED',
+      'SEQUENTIAL_RUN_REQUESTED',
       'STUDENT_CHECK_EDITED',
+      'TIMING_MODE_CHANGED',
     ]);
     expect(VERIFY_TRUTH_STATECHART.RUN_COMPLETED.from).toEqual(['running']);
     expect(VERIFY_TRUTH_STATECHART.RUN_COMPLETED.to).toEqual(['ready', 'passed', 'failed']);
@@ -168,6 +175,77 @@ describe('verifyTruthState', () => {
     expect(stale.status).toBe('staleDesign');
     expect(stale.resultValidity).toBe('stale');
     expect(stale.revisions.designRevision).toBe(passed.revisions.designRevision + 1);
+  });
+
+  it('invalidates a trusted PASS when sequential timing changes', () => {
+    const initial = createVerifyTruthInitialState({
+      checks: [studentSumCheck],
+      sequentialTimingMode: 'auto-board-clock',
+      timing: {
+        mode: 'auto-board-clock',
+        clockSource: 'board-clock',
+        resetMode: 'auto-sequence',
+        clockLaneEditable: false,
+        timingSummary: 'Auto board clock from CLK100MHZ / W5; rising edge; 8 cycles; reset sequence applied.',
+      },
+    });
+    const running = verifyTruthReducer(initial, {
+      type: 'SEQUENTIAL_RUN_REQUESTED',
+      runId: 'counter-pass',
+      mode: 'compare',
+      sequentialTimingMode: 'auto-board-clock',
+      timing: initial.timing,
+    });
+    const passed = expectValid(
+      verifyTruthReducer(running, {
+        type: 'SEQUENTIAL_RUN_COMPLETED',
+        runId: 'counter-pass',
+        mode: 'compare',
+        observedValuesByCheck: { 'student-sum': { 'case-1:t0:sum': '0' } },
+      })
+    );
+
+    const stale = verifyTruthReducer(passed, {
+      type: 'TIMING_MODE_CHANGED',
+      sequentialTimingMode: 'manual-clock',
+      timing: {
+        mode: 'manual-clock',
+        clockSource: 'manual-pulses',
+        resetMode: 'custom',
+        clockLaneEditable: true,
+        clockPatternRevision: passed.timing.clockPatternRevision + 1,
+        timingSummary: 'Manual pulses; rising edge; 8 cycles; student-authored reset.',
+      },
+    });
+
+    expectValid(stale);
+    expect(stale.status).toBe('staleTiming');
+    expect(stale.resultValidity).toBe('stale');
+    expect(stale.staleReason).toBe('timing-changed');
+    expect(stale.timing.timingStaleReason).toBe('timing-changed');
+    expect(stale.sequentialTimingMode).toBe('manual-clock');
+    expect(stale.timing.clockLaneEditable).toBe(true);
+  });
+
+  it('rejects custom timing patterns from trusted novice Verify', () => {
+    const initial = createVerifyTruthInitialState({ checks: [studentSumCheck] });
+    const rejected = verifyTruthReducer(initial, {
+      type: 'TIMING_MODE_CHANGED',
+      sequentialTimingMode: 'custom-pattern',
+      timing: {
+        mode: 'custom-pattern',
+        clockSource: 'custom-pattern',
+      },
+    });
+
+    expect(rejected.status).toBe('ready');
+    expect(rejected.lastRejectedEvent).toEqual({
+      event: 'TIMING_MODE_CHANGED',
+      reason: 'Custom clock patterns are not supported in trusted novice Verify yet.',
+    });
+    expect(rejected.sequentialTimingMode).toBe('combinational');
+    expect(rejected.timing.mode).toBe('combinational');
+    expect(rejected.timing.sequentialRunEligibility).toBe(true);
   });
 
   it('only produces PASS or FAIL from completed compare runs tied to current revisions', () => {

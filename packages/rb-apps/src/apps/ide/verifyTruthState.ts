@@ -7,6 +7,7 @@ export type VerifyTruthStatus =
   | 'failed'
   | 'staleDesign'
   | 'staleTestbench'
+  | 'staleTiming'
   | 'runtimeError';
 
 export type VerifyRunMode = 'observe' | 'compare';
@@ -14,12 +15,29 @@ export type VerifyCheckProvenance = 'course' | 'student';
 export type VerifyCheckEditability = 'locked' | 'editable';
 export type VerifySignalValue = '0' | '1' | 'X' | null;
 export type VerifyResultValidity = 'none' | 'running' | 'current' | 'stale' | 'runtime-error';
-export type VerifyStaleReason = 'design-changed' | 'scenario-changed' | 'check-set-changed';
+export type VerifyStaleReason = 'design-changed' | 'scenario-changed' | 'check-set-changed' | 'timing-changed';
 export type VerifySequentialTimingMode =
   | 'combinational'
   | 'auto-board-clock'
   | 'manual-clock'
   | 'custom-pattern';
+export type VerifyTimingActiveEdge = 'rising';
+export type VerifyTimingClockSource = 'none' | 'board-clock' | 'manual-pulses' | 'sim-clock' | 'custom-pattern';
+export type VerifyTimingResetMode = 'none' | 'auto-sequence' | 'custom';
+
+export interface VerifyTimingAuthority {
+  mode: VerifySequentialTimingMode;
+  activeEdge: VerifyTimingActiveEdge;
+  clockSource: VerifyTimingClockSource;
+  clockPatternRevision: number;
+  resetMode: VerifyTimingResetMode;
+  currentCycle: number;
+  timingSummary: string;
+  clockLaneEditable: boolean;
+  sequentialRunEligibility: boolean;
+  timingStaleReason: VerifyStaleReason | null;
+  unsupportedReason: string | null;
+}
 
 export interface VerifyRevisionSet {
   designRevision: number;
@@ -52,6 +70,7 @@ export interface VerifyRunRecord {
   mode: VerifyRunMode;
   revisions: VerifyRevisionSet;
   sequentialTimingMode: VerifySequentialTimingMode;
+  timing: VerifyTimingAuthority;
   status: 'observe' | 'pass' | 'fail' | 'error';
   observedValuesByCheck: Record<string, Record<string, VerifySignalValue>>;
   failures: VerifyFailure[];
@@ -62,6 +81,7 @@ export interface VerifyPendingRun {
   mode: VerifyRunMode;
   revisions: VerifyRevisionSet;
   sequentialTimingMode: VerifySequentialTimingMode;
+  timing: VerifyTimingAuthority;
 }
 
 export interface VerifyRejectedEvent {
@@ -80,20 +100,34 @@ export interface VerifyTruthState {
   staleReason: VerifyStaleReason | null;
   selectedFailureId: string | null;
   sequentialTimingMode: VerifySequentialTimingMode;
+  timing: VerifyTimingAuthority;
   lastRuntimeError: string | null;
   lastRejectedEvent: VerifyRejectedEvent | null;
 }
 
 export type VerifyTruthEvent =
-  | { type: 'RESET'; hasDesign?: boolean; checks?: VerifyCheck[]; sequentialTimingMode?: VerifySequentialTimingMode }
+  | { type: 'RESET'; hasDesign?: boolean; checks?: VerifyCheck[]; sequentialTimingMode?: VerifySequentialTimingMode; timing?: Partial<VerifyTimingAuthority> }
   | { type: 'DESIGN_CHANGED'; designRevision?: number }
   | { type: 'SCENARIO_CHANGED'; scenarioRevision?: number }
   | { type: 'CHECK_SET_CHANGED'; checks?: VerifyCheck[]; checkSetRevision?: number }
   | { type: 'COURSE_CHECK_DUPLICATED'; sourceCheckId: string; newCheckId: string; label?: string }
   | { type: 'STUDENT_CHECK_EDITED'; checkId: string; expectedValues: Record<string, VerifySignalValue> }
-  | { type: 'RUN_REQUESTED'; runId: string; mode: VerifyRunMode; sequentialTimingMode?: VerifySequentialTimingMode }
+  | { type: 'TIMING_MODE_CHANGED'; sequentialTimingMode: VerifySequentialTimingMode; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'MANUAL_PULSE_ADDED'; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'MANUAL_PULSE_REMOVED'; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'CLOCK_PATTERN_CHANGED'; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'RESET_PATTERN_CHANGED'; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'RUN_REQUESTED'; runId: string; mode: VerifyRunMode; sequentialTimingMode?: VerifySequentialTimingMode; timing?: Partial<VerifyTimingAuthority> }
+  | { type: 'SEQUENTIAL_RUN_REQUESTED'; runId: string; mode: VerifyRunMode; sequentialTimingMode?: VerifySequentialTimingMode; timing?: Partial<VerifyTimingAuthority> }
   | {
       type: 'RUN_COMPLETED';
+      runId: string;
+      mode: VerifyRunMode;
+      observedValuesByCheck?: Record<string, Record<string, VerifySignalValue>>;
+      failures?: VerifyFailure[];
+    }
+  | {
+      type: 'SEQUENTIAL_RUN_COMPLETED';
       runId: string;
       mode: VerifyRunMode;
       observedValuesByCheck?: Record<string, Record<string, VerifySignalValue>>;
@@ -109,34 +143,62 @@ export const VERIFY_TRUTH_STATECHART: Record<
   { from: VerifyTruthStatus[]; to: VerifyTruthStatus[] }
 > = {
   RESET: {
-    from: ['unavailable', 'needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['unavailable', 'needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['unavailable', 'needsTestbench', 'ready'],
   },
   DESIGN_CHANGED: {
-    from: ['unavailable', 'needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['unavailable', 'needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['needsTestbench', 'ready', 'staleDesign'],
   },
   SCENARIO_CHANGED: {
-    from: ['needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['needsTestbench', 'ready', 'staleTestbench'],
   },
   CHECK_SET_CHANGED: {
-    from: ['needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['needsTestbench', 'ready', 'running', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['needsTestbench', 'ready', 'staleTestbench'],
   },
   COURSE_CHECK_DUPLICATED: {
-    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['ready', 'staleTestbench'],
   },
   STUDENT_CHECK_EDITED: {
-    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['ready', 'staleTestbench'],
   },
+  TIMING_MODE_CHANGED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['ready', 'staleTiming'],
+  },
+  MANUAL_PULSE_ADDED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['ready', 'staleTiming'],
+  },
+  MANUAL_PULSE_REMOVED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['ready', 'staleTiming'],
+  },
+  CLOCK_PATTERN_CHANGED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['ready', 'staleTiming'],
+  },
+  RESET_PATTERN_CHANGED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['ready', 'staleTiming'],
+  },
   RUN_REQUESTED: {
-    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'runtimeError'],
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
+    to: ['running'],
+  },
+  SEQUENTIAL_RUN_REQUESTED: {
+    from: ['ready', 'passed', 'failed', 'staleDesign', 'staleTestbench', 'staleTiming', 'runtimeError'],
     to: ['running'],
   },
   RUN_COMPLETED: {
+    from: ['running'],
+    to: ['ready', 'passed', 'failed'],
+  },
+  SEQUENTIAL_RUN_COMPLETED: {
     from: ['running'],
     to: ['ready', 'passed', 'failed'],
   },
@@ -157,11 +219,16 @@ export function createVerifyTruthInitialState(input: {
   checks?: VerifyCheck[];
   revisions?: Partial<VerifyRevisionSet>;
   sequentialTimingMode?: VerifySequentialTimingMode;
+  timing?: Partial<VerifyTimingAuthority>;
 } = {}): VerifyTruthState {
   const hasDesign = input.hasDesign ?? true;
   const checks = normalizeChecks(input.checks ?? []);
   const revisions = normalizeRevisions(input.revisions);
-  const sequentialTimingMode = input.sequentialTimingMode ?? 'combinational';
+  const timing = normalizeTimingAuthority({
+    mode: input.sequentialTimingMode ?? 'combinational',
+    ...input.timing,
+  });
+  const sequentialTimingMode = timing.mode;
 
   return {
     hasDesign,
@@ -174,6 +241,7 @@ export function createVerifyTruthInitialState(input: {
     staleReason: null,
     selectedFailureId: null,
     sequentialTimingMode,
+    timing,
     lastRuntimeError: null,
     lastRejectedEvent: null,
   };
@@ -188,7 +256,8 @@ export function verifyTruthReducer(
       return createVerifyTruthInitialState({
         hasDesign: event.hasDesign,
         checks: event.checks,
-        sequentialTimingMode: event.sequentialTimingMode,
+        sequentialTimingMode: event.sequentialTimingMode ?? event.timing?.mode,
+        timing: event.timing,
       });
 
     case 'DESIGN_CHANGED': {
@@ -287,12 +356,66 @@ export function verifyTruthReducer(
       return verifyTruthReducer(state, { type: 'CHECK_SET_CHANGED', checks });
     }
 
+    case 'TIMING_MODE_CHANGED':
+    case 'MANUAL_PULSE_ADDED':
+    case 'MANUAL_PULSE_REMOVED':
+    case 'CLOCK_PATTERN_CHANGED':
+    case 'RESET_PATTERN_CHANGED': {
+      const timing = normalizeTimingAuthority({
+        ...state.timing,
+        ...event.timing,
+        mode:
+          event.type === 'TIMING_MODE_CHANGED'
+            ? event.sequentialTimingMode
+            : event.timing?.mode ?? state.timing.mode,
+        clockPatternRevision:
+          event.timing?.clockPatternRevision ??
+          (event.type === 'TIMING_MODE_CHANGED'
+            ? state.timing.clockPatternRevision
+            : state.timing.clockPatternRevision + 1),
+        timingStaleReason: state.lastRun ? 'timing-changed' : null,
+      });
+      if (timing.mode === 'custom-pattern') {
+        return rejectEvent(
+          state,
+          event.type,
+          timing.unsupportedReason ?? 'Custom clock patterns are not supported in trusted novice Verify yet.'
+        );
+      }
+      const next = {
+        ...state,
+        timing,
+        sequentialTimingMode: timing.mode,
+        pendingRun: null,
+        selectedFailureId: null,
+        lastRuntimeError: null,
+        lastRejectedEvent: null,
+      };
+      return state.lastRun
+        ? markStale(next, 'staleTiming', 'timing-changed')
+        : { ...next, status: deriveReadyStatus(state.hasDesign, state.checks), resultValidity: 'none', staleReason: null };
+    }
+
+    case 'SEQUENTIAL_RUN_REQUESTED':
     case 'RUN_REQUESTED': {
       if (!state.hasDesign) return rejectEvent(state, event.type, 'Verify needs a circuit before running.');
       if (event.mode === 'compare' && state.checks.length === 0) {
         return rejectEvent(state, event.type, 'Verify needs at least one check before a run can be trusted.');
       }
-      const sequentialTimingMode = event.sequentialTimingMode ?? state.sequentialTimingMode;
+      const timing = normalizeTimingAuthority({
+        ...state.timing,
+        ...event.timing,
+        mode: event.sequentialTimingMode ?? event.timing?.mode ?? state.timing.mode,
+        timingStaleReason: null,
+      });
+      if (!timing.sequentialRunEligibility) {
+        return rejectEvent(
+          state,
+          event.type,
+          timing.unsupportedReason ?? 'The selected timing mode is not supported for trusted Verify.'
+        );
+      }
+      const sequentialTimingMode = timing.mode;
       return {
         ...state,
         status: 'running',
@@ -301,16 +424,19 @@ export function verifyTruthReducer(
           mode: event.mode,
           revisions: { ...state.revisions },
           sequentialTimingMode,
+          timing,
         },
         resultValidity: 'running',
         staleReason: null,
         selectedFailureId: null,
         sequentialTimingMode,
+        timing,
         lastRuntimeError: null,
         lastRejectedEvent: null,
       };
     }
 
+    case 'SEQUENTIAL_RUN_COMPLETED':
     case 'RUN_COMPLETED': {
       if (!state.pendingRun) return rejectEvent(state, event.type, 'No pending Verify run exists.');
       if (state.pendingRun.runId !== event.runId) {
@@ -327,6 +453,7 @@ export function verifyTruthReducer(
         mode: event.mode,
         revisions: { ...state.pendingRun.revisions },
         sequentialTimingMode: state.pendingRun.sequentialTimingMode,
+        timing: state.pendingRun.timing,
         status,
         observedValuesByCheck,
         failures,
@@ -346,6 +473,11 @@ export function verifyTruthReducer(
         resultValidity: 'current',
         staleReason: null,
         selectedFailureId: failures.length > 0 ? failures[0].id : null,
+        timing: {
+          ...state.pendingRun.timing,
+          timingStaleReason: null,
+        },
+        sequentialTimingMode: state.pendingRun.sequentialTimingMode,
         lastRuntimeError: null,
         lastRejectedEvent: null,
       };
@@ -449,8 +581,23 @@ export function assertVerifyTruthInvariants(state: VerifyTruthState): string[] {
   if (state.status === 'staleTestbench' && state.staleReason !== 'scenario-changed' && state.staleReason !== 'check-set-changed') {
     problems.push('staleTestbench requires scenario or check-set stale reason');
   }
-  if ((state.status === 'staleDesign' || state.status === 'staleTestbench') && state.resultValidity !== 'stale') {
+  if (state.status === 'staleTiming' && state.staleReason !== 'timing-changed') {
+    problems.push('staleTiming requires timing-changed stale reason');
+  }
+  if ((state.status === 'staleDesign' || state.status === 'staleTestbench' || state.status === 'staleTiming') && state.resultValidity !== 'stale') {
     problems.push('stale statuses require stale result validity');
+  }
+  if (state.timing.mode !== state.sequentialTimingMode) {
+    problems.push('timing mode and sequential timing mode must match');
+  }
+  if (state.timing.activeEdge !== 'rising') {
+    problems.push('only rising-edge timing is supported');
+  }
+  if (state.timing.mode === 'auto-board-clock' && state.timing.clockLaneEditable) {
+    problems.push('auto board clock lane must be read-only');
+  }
+  if (state.timing.mode === 'custom-pattern' && state.timing.sequentialRunEligibility) {
+    problems.push('custom timing pattern must not be eligible for trusted Verify');
   }
   if (state.status === 'unavailable' && state.hasDesign) {
     problems.push('unavailable status requires no design');
@@ -478,7 +625,7 @@ function deriveReadyStatus(hasDesign: boolean, checks: VerifyCheck[]): VerifyTru
 
 function markStale(
   state: VerifyTruthState,
-  status: 'staleDesign' | 'staleTestbench',
+  status: 'staleDesign' | 'staleTestbench' | 'staleTiming',
   staleReason: VerifyStaleReason
 ): VerifyTruthState {
   return {
@@ -486,6 +633,9 @@ function markStale(
     status,
     resultValidity: 'stale',
     staleReason,
+    timing: status === 'staleTiming'
+      ? { ...state.timing, timingStaleReason: staleReason }
+      : state.timing,
   };
 }
 
@@ -526,6 +676,55 @@ function normalizeRevisions(revisions: Partial<VerifyRevisionSet> = {}): VerifyR
 
 function normalizeRevision(value: number | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+function normalizeTimingAuthority(input: Partial<VerifyTimingAuthority> = {}): VerifyTimingAuthority {
+  const mode = input.mode ?? 'combinational';
+  const clockSource = input.clockSource ?? deriveClockSource(mode);
+  const unsupportedReason =
+    mode === 'custom-pattern'
+      ? input.unsupportedReason ?? 'Custom clock patterns are not supported in trusted novice Verify yet.'
+      : null;
+  return {
+    mode,
+    activeEdge: 'rising',
+    clockSource,
+    clockPatternRevision: normalizeRevision(input.clockPatternRevision),
+    resetMode: input.resetMode ?? 'none',
+    currentCycle: normalizeRevision(input.currentCycle),
+    timingSummary: input.timingSummary ?? deriveTimingSummary(mode, clockSource, input.resetMode ?? 'none'),
+    clockLaneEditable:
+      input.clockLaneEditable ??
+      (mode === 'manual-clock' && clockSource === 'manual-pulses'),
+    sequentialRunEligibility:
+      input.sequentialRunEligibility ?? (mode !== 'custom-pattern'),
+    timingStaleReason: input.timingStaleReason ?? null,
+    unsupportedReason,
+  };
+}
+
+function deriveClockSource(mode: VerifySequentialTimingMode): VerifyTimingClockSource {
+  if (mode === 'auto-board-clock') return 'board-clock';
+  if (mode === 'manual-clock') return 'manual-pulses';
+  if (mode === 'custom-pattern') return 'custom-pattern';
+  return 'none';
+}
+
+function deriveTimingSummary(
+  mode: VerifySequentialTimingMode,
+  clockSource: VerifyTimingClockSource,
+  resetMode: VerifyTimingResetMode
+): string {
+  if (mode === 'auto-board-clock') {
+    return `Auto board clock, rising edge, ${resetMode === 'auto-sequence' ? 'reset sequence applied' : 'no reset sequence'}.`;
+  }
+  if (mode === 'manual-clock') {
+    return `Manual pulses, rising edge, ${resetMode === 'custom' ? 'student-authored reset' : 'no reset sequence'}.`;
+  }
+  if (mode === 'custom-pattern') {
+    return 'Custom clock pattern is outside trusted novice Verify.';
+  }
+  return clockSource === 'none' ? 'Combinational checks use no clock lane.' : 'Combinational timing.';
 }
 
 function cloneObserved(

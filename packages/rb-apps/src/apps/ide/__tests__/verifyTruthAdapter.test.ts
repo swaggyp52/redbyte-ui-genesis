@@ -354,6 +354,80 @@ describe('verifyTruthAdapter', () => {
     expect(run.selectors.timingMode).toBe('auto-board-clock');
     expect(run.selectors.timingModeLabel).toBe('Auto board clock');
     expect(run.selectors.timingModeHint).toContain('board clock');
+    expect(run.selectors.timingActiveEdgeLabel).toBe('Rising edge');
+    expect(run.selectors.clockLaneEditable).toBe(false);
+    expect(run.selectors.clockLaneReadOnlyReason).toContain('generated');
+    expect(run.selectors.sequentialRunEligibility).toBe(true);
+  });
+
+  it('marks Project and Export stale when current sequential timing differs from the trusted run', () => {
+    const clockedContract = {
+      schedule: 'clocked_macro',
+      timingMode: 'synchronous_board_clock',
+      reason: 'circuit-sequential',
+      needsSimClockInjection: false,
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      hasUnsupportedTemporal: false,
+      temporalIssues: [],
+      analysis: {},
+    } as unknown as VerifyScheduleContract;
+    const passRun: RuntimeVerifyRun = {
+      ...makeRun({
+        runKind: 'verify',
+        status: 'pass',
+        rows: [{ tick: 0, signal: 'sum', expected: '1', actual: '1', caseIndex: 0 }],
+      }),
+      schedule: 'clocked_macro',
+      scheduleContract: clockedContract,
+      clockPolicy: {
+        signalId: 'clk',
+        signalLabel: 'CLK100MHZ',
+        sourceType: 'board-clock',
+        executionModel: 'external-input-auto-toggle',
+        overrideMode: 'auto',
+        autoRunEnabled: true,
+        activeEdge: 'rising',
+        startLevel: 0,
+        dutyCycle: 0.5,
+        runCycles: 8,
+        frequencyMHz: 100,
+        boardAlias: 'CLK100MHZ',
+        packagePin: 'W5',
+        resetSignalName: 'rst',
+        resetBehavior: 'auto-sequence',
+      },
+    };
+    const run = expectNoInvariantProblems(
+      buildVerifyTruthStateFromRuntime({
+        hasDesign: true,
+        vectors: [BASE_VECTOR],
+        checkProvenance: 'student',
+        lastRun: passRun,
+        activeScenario: BASE_SCENARIO,
+        scheduleContract: clockedContract,
+        clockPolicy: {
+          ...passRun.clockPolicy!,
+          sourceType: 'manual',
+          executionModel: 'manual',
+          overrideMode: 'manual-pulses',
+          autoRunEnabled: false,
+          runCycles: 8,
+          resetBehavior: 'custom',
+          manualWarning: 'Manual clock source',
+        },
+      })
+    );
+
+    expect(run.state.status).toBe('staleTiming');
+    expect(run.state.staleReason).toBe('timing-changed');
+    expect(run.selectors.resultStatus).toBe('stale');
+    expect(run.selectors.resultIsCurrent).toBe(false);
+    expect(run.selectors.projectVerifyState).toBe('stale');
+    expect(run.selectors.exportReadiness).toBe('draft-stale');
+    expect(run.selectors.timingMode).toBe('manual-clock');
+    expect(run.selectors.clockLaneEditable).toBe(true);
+    expect(run.selectors.staleReason).toContain('Timing changed');
   });
 
   it('matches legacy Project health verify states during shadow migration', () => {

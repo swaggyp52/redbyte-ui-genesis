@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-21 (fix: add sequential Verify timing authority)
+
+**Subsystem:** Product Trust Reset v2 Phase 3E, sequential/clocked Verify authority, timing stale propagation, Project/Export readiness selectors, browser gate ownership, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `aed8c56b74a7e5ca95bf25b18a7879022cf43483`; `main` was not changed and the draft PR remains unmerged.
+- Extended `verifyTruthState.ts` with explicit sequential timing authority: supported modes are combinational, auto board clock, and manual pulses; only rising edge is trusted; custom clock patterns are rejected for trusted novice Verify instead of becoming partially accepted state.
+- Extended `verifyTruthAdapter.ts` selectors so clock source, active edge, reset mode, clock-lane editability, sequential run eligibility, timing stale reason, Project verify state, and Export readiness come from the V2 truth model.
+- Wired the rendered Verify surface back into the adapter through the live `VerifyClockPolicy`, so the Counter starter starts with generated/read-only auto board-clock timing, and switching to manual pulses makes the trusted PASS stale across Verify, Project, and Export.
+- Kept custom clock patterns disabled in the normal Verify UI with explicit unsupported copy; no custom-pattern Compare path is silently trusted.
+- Added `ide:gate:verify-sequential-authority-v2` and wired it into `classroom:gate` plus `verify:gates:classroom`.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with the Phase 3E authority map.
+
+**Evidence:** Browser proof screenshots for the sequential Verify authority loop are under `.redbyte/product-immersion/product-trust-reset-v2/phase-3e/after/`: Counter auto board-clock testbench, current auto-clock PASS, manual-pulse stale timing, Project stale agreement, and Export stale agreement.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `verify:truth-integration-gate` (`38` tests), focused Verify surface tests (`18` tests), `ide:gate:verify-sequential-authority-v2`, `ide:gate:verify-v2-authority-cutover`, `ide:gate:verify-authority-phase-3d`, `ide:gate:verify-summary-contract`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-testbench-usable-layout`, `build:unified`, full `classroom:gate`, `rb:doc:validate`, `rb:encoding:check`, and `node --check` for the changed gate/aggregate scripts. Final `git diff --check`, commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Sequential Verify authority/rendered selector/gate/docs slice only. It does not change simulation semantics, Compare execution semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Finish Phase 3E closeout, then keep the next slice focused on broader multi-context persistence/a11y classroom rehearsal or one remaining Verify V2 product hierarchy defect without changing Compare semantics or generated artifacts.
+
 ## Change Log 2026-06-21 (fix: complete Verify V2 rendered authority)
 
 **Subsystem:** Product Trust Reset v2 Phase 3D, rendered Verify stale reason, repair authority, timing labels, classroom gate ownership, and draft PR #78.

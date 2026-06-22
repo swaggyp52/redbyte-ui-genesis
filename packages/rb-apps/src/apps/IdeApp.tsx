@@ -91,6 +91,7 @@ import {
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
 import { computeVectorStimulusHash, getActiveScenario } from './ide/verifyScenario';
+import type { VerifyClockPolicy } from './ide/verifyClockPolicy';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
@@ -1434,6 +1435,16 @@ export const IdeApp: React.FC = () => {
     [activeExampleId, projectKind, scenarioAuthority, sourceExampleId]
   );
   const latestVerifyLedgerEntry = verifyRunHistory[verifyRunHistory.length - 1] ?? null;
+  const [verifyTimingPolicy, setVerifyTimingPolicy] = useState<VerifyClockPolicy | null>(null);
+  useEffect(() => {
+    setVerifyTimingPolicy(verifyLastRun?.clockPolicy ? { ...verifyLastRun.clockPolicy } : null);
+  }, [verifyLastRun?.reportHash]);
+  useEffect(() => {
+    if (liveScheduleContract?.schedule !== 'clocked_macro') {
+      setVerifyTimingPolicy(null);
+    }
+  }, [liveScheduleContract?.schedule]);
+  const activeVerifyTimingPolicy = verifyTimingPolicy ?? verifyLastRun?.clockPolicy ?? null;
   const verifyTruthModel = useMemo(
     () =>
       buildVerifyTruthStateFromRuntime({
@@ -1442,6 +1453,7 @@ export const IdeApp: React.FC = () => {
         checkProvenance: verifyCheckProvenance,
         activeScenario,
         scheduleContract: liveScheduleContract,
+        clockPolicy: activeVerifyTimingPolicy,
         lastRun: verifyLastRun ?? null,
         latestVerifyLedgerEntry,
         currentVerifyProjectHash,
@@ -1449,6 +1461,7 @@ export const IdeApp: React.FC = () => {
       }),
     [
       activeScenario,
+      activeVerifyTimingPolicy,
       authoritativeProjectVectors,
       currentVerifyProjectHash,
       hasCircuit,
@@ -2049,6 +2062,7 @@ export const IdeApp: React.FC = () => {
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
               verifyTruthModel={verifyTruthModel}
+              onTimingAuthorityChange={setVerifyTimingPolicy}
               onDuplicateCourseChecks={handleDuplicateCourseChecksToMyChecks}
             />
             </Suspense>

@@ -12,7 +12,7 @@ This contract defines the Verify truth model for Product Trust Reset v2. It supe
 
 This is a product and implementation contract. It must be proven by runtime tests plus focused browser gates before the V2 Verify redesign can merge.
 
-Phase 3 foundation note: `packages/rb-apps/src/apps/ide/verifyTruthState.ts` now implements a pure statechart foundation for this contract, with focused proof in `verify:truth-state-gate`. The rendered Verify UI still needs to consume this model before the V2 Verify workbench can be called rebuilt.
+Phase 3E foundation note: `packages/rb-apps/src/apps/ide/verifyTruthState.ts` now implements a pure statechart foundation for this contract, `verifyTruthAdapter.ts` adapts runtime/scenario/hash/timing records into that model, and the rendered Verify UI consumes the model for Course/My checks, stale reason/recovery copy, selected failure repair authority, sequential timing authority, Project status, and Export readiness. Broader multi-context/a11y rehearsal remains required before the V2 Verify branch can be considered release-ready.
 
 ## Core Objects
 
@@ -118,22 +118,45 @@ Current Compare result becomes stale when:
 - selected check set changes
 - an expected value changes
 - scenario/testbench steps change
+- sequential timing mode, clock source, clock pattern, or reset pattern changes
 - relevant mapping changes for downstream Hardware/Export trust
 
 Stale copy must say why:
 
 - Design changed - rerun checks
 - Testbench changed - rerun checks
+- Timing changed - rerun checks
 - Pin mapping changed - review package readiness
+
+## Sequential Timing Authority
+
+Supported trusted novice modes:
+
+- `combinational`: no clock lane is part of the trusted run.
+- `auto-board-clock`: RedByte generates the board clock for the run; the clock lane is read-only in the testbench.
+- `manual-clock`: the student exposes manual pulses intentionally; the clock lane is editable and any change invalidates prior trusted results.
+
+Current restrictions:
+
+- Only rising-edge timing is trusted in V2.
+- Auto board-clock runs may use an automatic reset sequence when the schedule contract supplies a reset signal.
+- Manual pulses may use a student-authored reset pattern.
+- Custom clock patterns are not trusted novice Verify; the UI must reject or disable them explicitly instead of silently accepting a trusted run.
+
+Authority rules:
+
+- The active timing contract is part of `VerifyTruthState`.
+- `RUN_REQUESTED` / `SEQUENTIAL_RUN_REQUESTED` must carry the timing authority into the pending run and completed run record.
+- A timing change after PASS/FAIL creates `staleTiming` with stale reason `timing-changed`.
+- Project verify state and Export readiness must consume the same stale timing authority; a timing-stale PASS cannot be trusted-ready for Export.
 
 ## Gates Required Before Merge
 
 - `verify:truth-state-gate`
-- `ide:gate:verify-truth-model-v2`
-- `ide:gate:verify-locked-course-checks`
-- `ide:gate:verify-stale-result-invalidation`
-- `ide:gate:verify-failure-repair-v2`
+- `verify:truth-integration-gate`
+- `ide:gate:verify-v2-authority-cutover`
+- `ide:gate:verify-authority-phase-3d`
+- `ide:gate:verify-sequential-authority-v2`
 - `ide:gate:verify-testbench-results-layout-v2`
-- `ide:gate:verify-sequential-consistency-v2`
 
 Legacy Verify gates may stay temporarily, but they must not force the old signal rail, ambiguous editable result cells, or Observe-first novice flow back into the V2 design.

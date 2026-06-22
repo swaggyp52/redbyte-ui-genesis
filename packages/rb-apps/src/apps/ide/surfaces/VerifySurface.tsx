@@ -252,6 +252,7 @@ export interface VerifySurfaceProps {
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
   verifyTruthModel?: VerifyTruthRuntimeModel;
+  onTimingAuthorityChange?: (policy: VerifyClockPolicy | null) => void;
   onDuplicateCourseChecks?: () => void;
   unsupportedFeedbackDiagnostic?: {
     title: string;
@@ -372,6 +373,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   sourceExampleId = null,
   scenarioAuthority = 'none',
   verifyTruthModel,
+  onTimingAuthorityChange,
   onDuplicateCourseChecks,
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
@@ -1758,6 +1760,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const autoExternalClockMode = Boolean(
     autoClockModeActive && effectiveClockPolicy?.executionModel === 'external-input-auto-toggle'
   );
+  const v2ClockLaneEditable = verifyTruthSelectors?.clockLaneEditable ?? !autoExternalClockMode;
+  const v2ClockLaneReadOnlyReason = verifyTruthSelectors?.clockLaneReadOnlyReason ?? null;
+  useEffect(() => {
+    onTimingAuthorityChange?.(effectiveClockPolicy ? { ...effectiveClockPolicy } : null);
+  }, [
+    effectiveClockPolicy?.activeEdge,
+    effectiveClockPolicy?.autoRunEnabled,
+    effectiveClockPolicy?.boardAlias,
+    effectiveClockPolicy?.executionModel,
+    effectiveClockPolicy?.frequencyMHz,
+    effectiveClockPolicy?.overrideMode,
+    effectiveClockPolicy?.packagePin,
+    effectiveClockPolicy?.resetBehavior,
+    effectiveClockPolicy?.runCycles,
+    effectiveClockPolicy?.signalId,
+    effectiveClockPolicy?.signalLabel,
+    effectiveClockPolicy?.sourceType,
+    onTimingAuthorityChange,
+  ]);
   const stimulusPanelInputFields = useMemo(
     () => (autoExternalClockMode ? editableInputFields : stimulusInputFields),
     [autoExternalClockMode, editableInputFields, stimulusInputFields]
@@ -3038,7 +3059,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, clockPatternCount, clockSignalNames, editableInputFields, onVectorsChange]
   );
   const clockLaneField = useMemo(() => {
-    if (autoExternalClockMode) return null;
+    if (autoExternalClockMode || !v2ClockLaneEditable) return null;
     const candidateNames =
       effectiveTimingGuidance.kind === 'latch-control'
         ? [effectiveTimingGuidance.signalName ?? '']
@@ -3053,7 +3074,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )
       ) ?? null
     );
-  }, [autoExternalClockMode, clockSignalNames, effectiveTimingGuidance, stimulusPanelInputFields]);
+  }, [autoExternalClockMode, clockSignalNames, effectiveTimingGuidance, stimulusPanelInputFields, v2ClockLaneEditable]);
   const clockLaneConfig = useMemo(
     () =>
       clockLaneField
@@ -4128,6 +4149,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ? 'custom reset'
                     : 'no reset detected'}
               </span>
+              {verifyTruthSelectors ? (
+                <span
+                  className="ide-verify-clock-policy-line"
+                  data-testid="ide-verify-v2-timing-summary"
+                  data-clock-lane-editable={verifyTruthSelectors.clockLaneEditable ? 'true' : 'false'}
+                  data-sequential-run-eligible={verifyTruthSelectors.sequentialRunEligibility ? 'true' : 'false'}
+                  data-active-edge={verifyTruthSelectors.timingActiveEdge}
+                  data-clock-source={verifyTruthSelectors.timingClockSource}
+                  data-reset-mode={verifyTruthSelectors.timingResetMode}
+                >
+                  V2 timing: {verifyTruthSelectors.timingActiveEdgeLabel}; {verifyTruthSelectors.timingResetSummary} {verifyTruthSelectors.clockLaneEditable ? 'Clock lane editable.' : verifyTruthSelectors.clockLaneReadOnlyReason}
+                </span>
+              ) : null}
               <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
                 <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
                   Auto mode generates the board clock. Manual/custom modes expose an editable clock lane.
@@ -4153,9 +4187,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     type="button"
                     className={`ide-verify-clock-policy-btn${clockOverrideMode === 'custom-pattern' ? ' is-active' : ''}`}
                     onClick={() => setClockOverrideMode('custom-pattern')}
+                    disabled
+                    aria-disabled="true"
+                    title="Custom clock patterns are not supported in trusted novice Verify yet."
                     data-testid="ide-verify-clock-mode-custom"
                   >
-                    Custom pattern
+                    Custom pattern unavailable
                   </button>
                 </div>
                 <label className="ide-verify-clock-policy-cycles" data-testid="ide-verify-clock-run-cycles">
@@ -4202,6 +4239,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     sequentialGuidanceCopy.introStep,
     sequentialGuidanceCopy.introTitle,
     sequentialGuidanceCopy.missingActivity,
+    verifyTruthSelectors?.clockLaneEditable,
+    verifyTruthSelectors?.clockLaneReadOnlyReason,
+    verifyTruthSelectors?.sequentialRunEligibility,
+    verifyTruthSelectors?.timingActiveEdge,
+    verifyTruthSelectors?.timingActiveEdgeLabel,
+    verifyTruthSelectors?.timingClockSource,
+    verifyTruthSelectors?.timingResetMode,
+    verifyTruthSelectors?.timingResetSummary,
     verifyMode,
   ]);
 
@@ -4245,6 +4290,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       sessionShowsTraceEvidence,
       lastRun,
     });
+  const v2RunCompareAllowed = verifyTruthSelectors?.canRunCompare ?? true;
   const truthResultKind = mapTruthResultStatusToSummaryKind(truthResultStatus);
   const truthResultCurrent = verifyTruthSelectors?.resultIsCurrent ?? (!isRunStale && Boolean(lastRun));
   const truthResultHeadline = deriveTruthResultHeadline({
@@ -4525,10 +4571,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           isCompareMode={nextRunIsCompare}
           onSetObserve={handleSetObserveMode}
           onSetCompare={handleSetCompareMode}
-          compareAvailable={totalExpectedCaseCount > 0}
+          compareAvailable={totalExpectedCaseCount > 0 && v2RunCompareAllowed}
           onRun={() => handleRunWithPreflight()}
           runLabel={compactCommandRunLabel}
-          runDisabled={runState === 'running'}
+          runDisabled={runState === 'running' || (nextRunIsCompare && !v2RunCompareAllowed)}
           runPulsing={readyDraftCanRun}
           onGenerate={handleGenerateBasicVectors}
           generateLabel={isSequentialRun ? 'Generate starter stimulus' : 'Seed stimulus'}
@@ -5134,12 +5180,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 data-export-readiness={verifyTruthSelectors?.exportReadiness ?? ''}
                 data-stale-reason-code={verifyTruthSelectors?.staleReasonCode ?? ''}
                 data-timing-mode={verifyTruthSelectors?.timingMode ?? ''}
+                data-clock-lane-editable={verifyTruthSelectors?.clockLaneEditable ? 'true' : 'false'}
+                data-sequential-run-eligible={verifyTruthSelectors?.sequentialRunEligibility ? 'true' : 'false'}
               >
                 <span className="ide-verify-result-authority-label">Result</span>
                 <strong data-testid="ide-verify-v2-result-label">{truthResultLabel}</strong>
                 {verifyTruthSelectors ? (
                   <span className="ide-copy" data-testid="ide-verify-v2-timing-label">
-                    {verifyTruthSelectors.timingModeLabel}
+                    {verifyTruthSelectors.timingModeLabel} - {verifyTruthSelectors.timingSummary}
                   </span>
                 ) : null}
               </div>
