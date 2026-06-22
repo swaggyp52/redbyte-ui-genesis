@@ -1,9 +1,14 @@
 import { decodeRBProject, encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
+import {
+  PROJECT_INDEX_STORAGE_KEY,
+  buildProjectStorageKey as buildFacadeProjectStorageKey,
+  saveProjectIndex,
+  saveSnapshot,
+} from './projectStorageFacade';
 
 const STORAGE_VERSION = 1 as const;
-const PROJECT_INDEX_KEY = `rb.ide.projects.v${STORAGE_VERSION}.index`;
-const PROJECT_KEY_PREFIX = `rb.ide.project.v${STORAGE_VERSION}:`;
+const PROJECT_INDEX_KEY = PROJECT_INDEX_STORAGE_KEY;
 
 export interface PersistedIdeProjectSnapshot {
   version: typeof STORAGE_VERSION;
@@ -22,7 +27,7 @@ export interface PersistedIdeProjectIndexEntry {
 }
 
 export function buildProjectStorageKey(projectId: string): string {
-  return `${PROJECT_KEY_PREFIX}${projectId.trim()}`;
+  return buildFacadeProjectStorageKey(projectId);
 }
 
 export function saveIdeProjectSnapshot(input: {
@@ -46,7 +51,13 @@ export function saveIdeProjectSnapshot(input: {
   };
 
   try {
-    localStorage.setItem(buildProjectStorageKey(projectId), JSON.stringify(snapshot));
+    const saved = saveSnapshot({
+      projectId,
+      projectName: snapshot.projectName,
+      projectHash: snapshot.projectHash,
+      snapshotRaw: JSON.stringify(snapshot),
+    });
+    if (saved.status !== 'ok') return null;
     upsertProjectIndex({
       projectId: snapshot.projectId,
       projectName: snapshot.projectName,
@@ -140,7 +151,7 @@ function upsertProjectIndex(entry: PersistedIdeProjectIndexEntry): void {
     .slice(0, 40);
 
   try {
-    localStorage.setItem(PROJECT_INDEX_KEY, JSON.stringify(next));
+    saveProjectIndex(JSON.stringify(next));
   } catch {
     // Ignore storage failures.
   }

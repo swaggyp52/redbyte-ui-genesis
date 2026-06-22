@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-06-22 (feat: add project storage facade durability boundary)
+
+**Subsystem:** Product Trust Reset v2 Phase 3H, project durability boundary, save journal, last-known-good recovery, quota recovery UI, multi-tab/dirty-update guards, diagnostics storage proof, and draft PR #78 merge-readiness.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `cbcbef7d7f824971594d6b79e22924011b8cb56b`; `main` was not changed and the draft PR remains unmerged.
+- Added `packages/rb-apps/src/apps/ide/projectStorageFacade.ts` as the browser-local project storage boundary for runtime state, saved snapshots/index, session metadata, legacy autosave, journal metadata, last-known-good runtime, recovery points, recovery status, backup export/import, quota classification, and stale-writer revision checks.
+- Routed active runtime persistence through a custom Zustand storage adapter while preserving the existing `rb.ide.project-runtime.v1` raw JSON bytes for compatibility.
+- Routed saved project snapshots/index, session metadata, and legacy autosave helpers through the facade without changing `.rbproj`, snapshot JSON, project format, Verify semantics, mapping semantics, generated artifacts, or goldens.
+- Added a visible Project save recovery banner with Download backup, Retry save, and Dismiss actions for quota/conflict/save failures, and added a dirty-work beforeunload guard.
+- Extended Diagnostics support bundles with facade schema, journal status, last-known-good presence, recovery-point count, approximate storage size, quota state, and last recovery status.
+- Added Phase 3H gates for storage facade, atomic save journal, schema migration, quota recovery, multi-tab conflict, dirty update guard, recovery workflow, diagnostics storage, and recovery accessibility.
+- Extended the 30-context classroom rehearsal to write Phase 3H evidence under `.redbyte/rehearsal/phase-3h/` and record storage waves G-K for journal, last-known-good, recovery point, snapshot/index, and reload runtime availability.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with the Phase 3H sprint and project storage authority map.
+
+**Evidence:** Local source gates passed for `ide:gate:project-storage-facade-v2`, `ide:gate:atomic-save-journal-v2`, and `ide:gate:project-schema-migration-v2` (`7` tests each). Browser gates passed for `ide:gate:project-quota-recovery-v2`, `ide:gate:project-multitab-conflict-v2`, `ide:gate:dirty-update-guard-v2`, `ide:gate:project-recovery-workflow-v2`, `ide:gate:diagnostics-storage-v2`, and `ide:gate:recovery-accessibility-v2`. Existing Phase 3F durability gates also passed: `ide:gate:project-durability-v2`, `ide:gate:verify-corrupt-state-recovery-v2`, `ide:gate:verify-multitab-conflict-v2`, and `ide:gate:diagnostics-bundle-v2`.
+
+**Validation:** Local closeout validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for the new Phase 3H gates, affected Phase 3F durability gates, `gate:manifest:validate`, `gate:no-hardcoded-redbyte-test-ports`, `classroom:gate` (`85/85`), `verify:gates:classroom` (`104/104`), `rehearsal:classroom-30` (`30/30`), `build:unified`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 3H is browser-local storage durability, diagnostics, and recovery UI work only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed. Human keyboard/semantic recovery review is documented separately; no screen-reader certification is claimed without an actual assistive-technology pass.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Finish Phase 3H closeout, keep PR #78 draft, then run a final branch-level merge review focused on Product Trust Reset v2 scope, production/deployed SHA proof, and any remaining human assistive-technology or hardware-gated blockers.
+
 ## Change Log 2026-06-22 (test: reset classroom gate authority)
 
 **Subsystem:** Product Trust Reset v2 Phase 3G, classroom gate manifest, broad verifier reconciliation, legacy V1 gate retirement audit, and draft PR #78 merge-readiness.

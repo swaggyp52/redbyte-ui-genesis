@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
 import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/rb-utils';
@@ -113,12 +113,16 @@ import {
   materializeVectorsForClockPolicy,
   type VerifyClockPolicy,
 } from './verifyClockPolicy';
+import {
+  PROJECT_RUNTIME_STORAGE_KEY,
+  createProjectRuntimeStorage,
+} from './projectStorageFacade';
 
 export type { IdeImportMeta } from './projectImportMeta';
 
 export type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 
-const STORAGE_KEY = 'rb.ide.project-runtime.v1';
+const STORAGE_KEY = PROJECT_RUNTIME_STORAGE_KEY;
 const DEFAULT_MAX_DESIGN_HISTORY = 100;
 const MAX_ALLOWED_DESIGN_HISTORY = 500;
 
@@ -1871,6 +1875,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
     }),
     {
       name: STORAGE_KEY,
+      storage: createJSONStorage(() => createProjectRuntimeStorage()),
       version: 5,
       merge: (persistedState, currentState) =>
         mergePersistedRuntimeState(persistedState, currentState as ProjectRuntimeState),

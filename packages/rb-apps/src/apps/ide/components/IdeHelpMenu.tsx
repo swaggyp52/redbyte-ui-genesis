@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import type { IdeBuildIdentity } from '../buildIdentity';
+import { getProjectStorageHealth } from '../projectStorageFacade';
 
 export interface IdeHelpMenuProps {
   buildIdentity?: IdeBuildIdentity;
@@ -240,6 +241,7 @@ function readRuntimeSummary(): {
     : null;
   const lastRun = runtime?.verifyLastRun;
   const storageKeys = readStorageKeys();
+  const storageHealth = getProjectStorageHealth();
   const savedAt = typeof runtime?.lastSavedAt === 'string' && runtime.lastSavedAt.trim()
     ? runtime.lastSavedAt.trim()
     : 'not saved in this session';
@@ -250,7 +252,7 @@ function readRuntimeSummary(): {
     checks: `${scenario?.name ?? 'Default'} / ${runtime?.scenarioAuthority ?? 'unknown'} / ${
       lastRun?.status ?? 'not run'
     }`,
-    storage: `${storageKeys.length} RedByte keys; ${savedAt}; build ${root?.dataset.buildSha ?? 'dev'}`,
+    storage: `${storageKeys.length} RedByte keys; ${storageHealth.journalStatus} journal; ${storageHealth.recoveryPointCount} recovery points; ${savedAt}; build ${root?.dataset.buildSha ?? 'dev'}`,
   };
 }
 
@@ -270,6 +272,7 @@ function buildSupportDiagnosticsBundle(buildIdentity?: IdeBuildIdentity): string
     : null;
   const lastRun = runtime?.verifyLastRun;
   const storageKeys = readStorageKeys();
+  const storageHealth = getProjectStorageHealth();
 
   return JSON.stringify(
     {
@@ -311,6 +314,14 @@ function buildSupportDiagnosticsBundle(buildIdentity?: IdeBuildIdentity): string
         sessionMetaPresent: storageKeys.includes('rb.ide.sessionMeta.v1'),
         runtimeStatePresent: storageKeys.includes('rb.ide.project-runtime.v1'),
         savedProjectIndexPresent: storageKeys.includes('rb.ide.projects.v1.index'),
+        facadeSchemaVersion: storageHealth.schemaVersion,
+        facadeJournalStatus: storageHealth.journalStatus,
+        facadePendingJournal: storageHealth.pendingJournal,
+        lastKnownGoodPresent: storageHealth.lastKnownGoodPresent,
+        recoveryPointCount: storageHealth.recoveryPointCount,
+        approxBytes: storageHealth.approxBytes,
+        quotaState: storageHealth.quotaState,
+        lastRecoveryStatus: storageHealth.lastRecoveryStatus,
       },
       browser: {
         viewport: { width: window.innerWidth, height: window.innerHeight },

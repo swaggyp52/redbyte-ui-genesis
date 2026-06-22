@@ -1,27 +1,27 @@
 [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
 
-[1m[7m[36m RUN [39m[27m[22m [36mv2.1.8 [39m[90mC:/Users/conno/redbyte-ui-genesis-main[39m
+ RUN  v2.1.8 C:/Users/conno/redbyte-ui-genesis-main
 
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mauthorized debug keys[2m > [22m[2mreads DEV_DEBUG_FLAGS.md and verifies documentation
-[22m[39mFound 11 rb:* keys documented in DEV_DEBUG_FLAGS.md: [
-  [32m'rb:classroom:v1'[39m,
-  [32m'rb:file-associations'[39m,
-  [32m'rb:filesystem'[39m,
-  [32m'rb:flags:${name}'[39m,
-  [32m'rb:onboarding:dismissed'[39m,
-  [32m'rb:renderStormReport'[39m,
-  [32m'rb:shell:booted'[39m,
-  [32m'rb:shell:booted:v1'[39m,
-  [32m'rb:shell:pinnedApps'[39m,
-  [32m'rb:window-layout'[39m,
-  [32m'rb:windowDebug'[39m
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > authorized debug keys > reads DEV_DEBUG_FLAGS.md and verifies documentation
+Found 11 rb:* keys documented in DEV_DEBUG_FLAGS.md: [
+  'rb:classroom:v1',
+  'rb:file-associations',
+  'rb:filesystem',
+  'rb:flags:${name}',
+  'rb:onboarding:dismissed',
+  'rb:renderStormReport',
+  'rb:shell:booted',
+  'rb:shell:booted:v1',
+  'rb:shell:pinnedApps',
+  'rb:window-layout',
+  'rb:windowDebug'
 ]
 
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mwindow.__RB_* assignments are guarded[2m > [22m[2mscans packages/*/src and logs all window.__RB_* assignments for audit
-[22m[39mDiscovered 10 window.__RB_* globals:
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > window.__RB_* assignments are guarded > scans packages/*/src and logs all window.__RB_* assignments for audit
+Discovered 10 window.__RB_* globals:
   - window.__RB_
   - window.__RB_DEBUG__
   - window.__RB_FATAL_CAPTURE_INSTALLED__
@@ -33,21 +33,21 @@ Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   - window.__RB_WATCHDOG_CLEANUP__
   - window.__RB_WATCHDOG_MICROTASK_INTERVAL__
 
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mno unguarded console spam in production[2m > [22m[2mfails on console.log/debug/info leakage in production bundles
-[22m[39mActive production bundle files scanned: 0
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > no unguarded console spam in production > fails on console.log/debug/info leakage in production bundles
+Active production bundle files scanned: 0
 
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mui:brightness-contract-gate[2m > [22m[2mvalidates that ThemeProvider defaults to light theme
-[22m[39m✓ ThemeProvider defaults to light theme
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > ui:brightness-contract-gate > validates that ThemeProvider defaults to light theme
+✓ ThemeProvider defaults to light theme
 
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mui:brightness-contract-gate[2m > [22m[2mvalidates that os-tokens.css has light theme styles defined
-[22m[39m✓ Light theme CSS variables are properly defined
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > ui:brightness-contract-gate > validates that os-tokens.css has light theme styles defined
+✓ Light theme CSS variables are properly defined
 
-[90mstdout[2m | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts[2m > [22m[2mui:dev-guards-contract-gate[2m > [22m[2mui:brightness-contract-gate[2m > [22m[2mvalidates that localStorage key for theme is authorized
-[22m[39m✓ Theme persistence is properly configured
+stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > ui:brightness-contract-gate > validates that localStorage key for theme is authorized
+✓ Theme persistence is properly configured
 
- [32m✓[39m packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m[33m 6364[2mms[22m[39m
+ ✓ packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts (10 tests | 2 skipped) 2484ms
 
-[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
-[2m      Tests [22m [1m[32m8 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (10)[39m
-[2m   Start at [22m 02:05:53
-[2m   Duration [22m 7.46s[2m (transform 1.93s, setup 233ms, collect 59ms, tests 6.36s, environment 442ms, prepare 98ms)[22m
+ Test Files  1 passed (1)
+      Tests  8 passed | 2 skipped (10)
+   Start at  12:40:47
+   Duration  3.80s (transform 1.48s, setup 165ms, collect 22ms, tests 2.48s, environment 432ms, prepare 108ms)

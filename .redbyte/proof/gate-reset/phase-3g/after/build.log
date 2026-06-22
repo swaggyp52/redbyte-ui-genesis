@@ -1,34 +1,34 @@
 🏗️ Starting Unified Build Pipeline...
 0. Pre-building workspace packages...
 1. Building playground OS...
-[36mvite v7.2.6 [32mbuilding client environment for production...[36m[39m
+vite v7.2.6 building client environment for production...
 transforming...
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
-[32m✓[39m 318 modules transformed.
+✓ 319 modules transformed.
 rendering chunks...
 computing gzip size...
-[2mdist/[22m[32mindex.html                           [39m[1m[2m  1.06 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
-[2mdist/[22m[35massets/HardwareSurface-Dcu8sb02.css  [39m[1m[2m  1.97 kB[22m[1m[22m[2m │ gzip:   0.67 kB[22m
-[2mdist/[22m[35massets/full-bootstrap-sxITypeF.css   [39m[1m[2m 81.89 kB[22m[1m[22m[2m │ gzip:  14.90 kB[22m
-[2mdist/[22m[35massets/index-Ch7BzmIE.css            [39m[1m[2m847.04 kB[22m[1m[22m[2m │ gzip: 125.79 kB[22m
-[2mdist/[22m[36massets/index-Up6ba9MC.js             [39m[1m[2m  0.52 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m[2m │ map:     0.10 kB[22m
-[2mdist/[22m[36massets/bisect-steps-cXdvOmEy.js      [39m[1m[2m  0.90 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m[2m │ map:     2.05 kB[22m
-[2mdist/[22m[36massets/e2e-bridge-CDlvHtHb.js        [39m[1m[2m  0.92 kB[22m[1m[22m[2m │ gzip:   0.57 kB[22m[2m │ map:     3.41 kB[22m
-[2mdist/[22m[36massets/index-s2B560Vv.js             [39m[1m[2m  3.70 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m[2m │ map:    13.03 kB[22m
-[2mdist/[22m[36massets/full-bootstrap-CYgkmpMB.js    [39m[1m[2m  4.06 kB[22m[1m[22m[2m │ gzip:   1.52 kB[22m[2m │ map:    11.38 kB[22m
-[2mdist/[22m[36massets/main-Bf1kB3A3.js              [39m[1m[2m  5.39 kB[22m[1m[22m[2m │ gzip:   2.28 kB[22m[2m │ map:    11.19 kB[22m
-[2mdist/[22m[36massets/circuitStore-Bt5-BhLn.js      [39m[1m[2m  7.10 kB[22m[1m[22m[2m │ gzip:   2.98 kB[22m[2m │ map:    41.83 kB[22m
-[2mdist/[22m[36massets/index-BnJBJpg5.js             [39m[1m[2m  7.87 kB[22m[1m[22m[2m │ gzip:   3.03 kB[22m[2m │ map:    29.60 kB[22m
-[2mdist/[22m[36massets/HardwareSurface-DUjPZNCz.js   [39m[1m[2m101.07 kB[22m[1m[22m[2m │ gzip:  26.11 kB[22m[2m │ map:   319.69 kB[22m
-[2mdist/[22m[36massets/ExportSurface-DQxNHH47.js     [39m[1m[2m114.00 kB[22m[1m[22m[2m │ gzip:  31.11 kB[22m[2m │ map:   330.57 kB[22m
-[2mdist/[22m[36massets/ImportSurface-BDZtcCkK.js     [39m[1m[2m117.67 kB[22m[1m[22m[2m │ gzip:  32.04 kB[22m[2m │ map:   430.56 kB[22m
-[2mdist/[22m[36massets/client-DBJpVRru.js            [39m[1m[2m180.99 kB[22m[1m[22m[2m │ gzip:  56.95 kB[22m[2m │ map:   865.77 kB[22m
-[2mdist/[22m[36massets/VerifySurface-1MfpBsrt.js     [39m[1m[2m246.17 kB[22m[1m[22m[2m │ gzip:  67.27 kB[22m[2m │ map:   897.88 kB[22m
-[2mdist/[22m[36massets/DesignSurface-BzQqFkBg.js     [39m[1m[2m282.39 kB[22m[1m[22m[2m │ gzip:  75.48 kB[22m[2m │ map: 1,055.63 kB[22m
-[2mdist/[22m[36massets/index-BJ2xoE0V.js             [39m[1m[2m726.98 kB[22m[1m[22m[2m │ gzip: 203.80 kB[22m[2m │ map: 2,538.77 kB[22m
-[32m✓ built in 5.49s[39m
+dist/index.html                             1.06 kB │ gzip:   0.64 kB
+dist/assets/HardwareSurface-Dcu8sb02.css    1.97 kB │ gzip:   0.67 kB
+dist/assets/full-bootstrap-sxITypeF.css    81.89 kB │ gzip:  14.90 kB
+dist/assets/index-Ch7BzmIE.css            847.04 kB │ gzip: 125.79 kB
+dist/assets/index-Up6ba9MC.js               0.52 kB │ gzip:   0.38 kB │ map:     0.10 kB
+dist/assets/bisect-steps-C0pJH7KB.js        0.90 kB │ gzip:   0.54 kB │ map:     2.05 kB
+dist/assets/e2e-bridge-BXxTiru5.js          0.92 kB │ gzip:   0.57 kB │ map:     3.41 kB
+dist/assets/index-s2B560Vv.js               3.70 kB │ gzip:   1.42 kB │ map:    13.03 kB
+dist/assets/full-bootstrap-BRYVIJTk.js      4.06 kB │ gzip:   1.52 kB │ map:    11.38 kB
+dist/assets/main-3dCBnqVr.js                5.39 kB │ gzip:   2.29 kB │ map:    11.19 kB
+dist/assets/circuitStore-Bt5-BhLn.js        7.10 kB │ gzip:   2.98 kB │ map:    41.83 kB
+dist/assets/index-BnJBJpg5.js               7.87 kB │ gzip:   3.03 kB │ map:    29.60 kB
+dist/assets/HardwareSurface-BbfbCrKd.js   101.07 kB │ gzip:  26.10 kB │ map:   319.69 kB
+dist/assets/ExportSurface-BigUFBw8.js     114.00 kB │ gzip:  31.11 kB │ map:   330.57 kB
+dist/assets/ImportSurface-DUsw4XSD.js     117.67 kB │ gzip:  32.04 kB │ map:   430.56 kB
+dist/assets/client-DBJpVRru.js            180.99 kB │ gzip:  56.95 kB │ map:   865.77 kB
+dist/assets/VerifySurface-Cw-cu8M6.js     246.17 kB │ gzip:  67.27 kB │ map:   897.88 kB
+dist/assets/DesignSurface-BuHRjHiZ.js     282.39 kB │ gzip:  75.47 kB │ map: 1,055.63 kB
+dist/assets/index-BaF2hPkA.js             738.68 kB │ gzip: 207.20 kB │ map: 2,588.12 kB
+✓ built in 6.14s
 ✅ Wrote build.json to C:\Users\conno\redbyte-ui-genesis-main\apps\playground\dist\build.json
 2. Merging artifacts...
 🚀 Merging deployments into unified dist/

@@ -17,7 +17,7 @@ import { isVerifyPass, waitForVerifyResult } from '../gates/_verifyStatus.mjs';
 const HOST = '127.0.0.1';
 const DEFAULT_PROFILES = 30;
 const START_TIMEOUT_MS = 30_000;
-const OUTPUT_ROOT = path.resolve('.redbyte/rehearsal/phase-3f');
+const OUTPUT_ROOT = path.resolve('.redbyte/rehearsal/phase-3h');
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -45,7 +45,7 @@ try {
   const passCount = results.filter((result) => result.pass).length;
   const failCount = results.length - passCount;
   const summary = {
-    schema: 'redbyte.phase3f.classroom-rehearsal.v1',
+    schema: 'redbyte.phase3h.classroom-rehearsal.v2',
     scenario: options.scenario,
     profiles: options.profiles,
     passCount,
@@ -55,7 +55,7 @@ try {
     results,
     limits: [
       'Browser rehearsal only; no Vivado build, board programming, or physical board observation.',
-      'Current storage remains localStorage; journaled rolling snapshots remain future work.',
+      'Project storage remains local-browser storage; Phase 3H proves facade journal, last-known-good, recovery points, and conflict/recovery gates, not backend sync.',
     ],
   };
 
@@ -97,12 +97,12 @@ async function runProfile(browserInstance, baseUrl, studentId, scenario) {
 
   try {
     await page.addInitScript((id) => {
-      const marker = `rb-phase-3f-classroom-${id}`;
+      const marker = `rb-phase-3h-classroom-${id}`;
       if (window.name === marker) return;
       localStorage.clear();
       sessionStorage.clear();
       localStorage.setItem('rb-onboarding-v1-seen', '1');
-      sessionStorage.setItem('rb.phase3f.studentId', id);
+      sessionStorage.setItem('rb.phase3h.studentId', id);
       window.name = marker;
     }, studentId);
     await page.setViewportSize({ width: 1366, height: 768 });
@@ -112,7 +112,7 @@ async function runProfile(browserInstance, baseUrl, studentId, scenario) {
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
     await loadStarterProject(page, { exactExampleId: 'logic-gates' });
 
-    const projectName = `Phase 3F ${studentId}`;
+    const projectName = `Phase 3H ${studentId}`;
     await renameProject(page, projectName);
 
     if (scenario === 'verify' || scenario === 'full') {
@@ -137,13 +137,14 @@ async function runProfile(browserInstance, baseUrl, studentId, scenario) {
     assert(restored.nodeCount > 0, `${studentId}: project graph did not restore after reload: ${JSON.stringify(restored)}`);
     assert(restored.runtimeStatePresent, `${studentId}: runtime storage key missing after reload`);
     assert(restored.snapshotCount >= 1, `${studentId}: saved project snapshot missing after reload`);
+    const storageWaves = await readStorageWaves(page, studentId);
 
     if (scenario === 'recovery' || scenario === 'full') {
       await proveCorruptStorageRecovery(page, studentId);
     }
 
     assert(findings.length === 0, `${studentId}: browser findings ${JSON.stringify(findings.slice(0, 8))}`);
-    return { studentId, pass: true, restored };
+    return { studentId, pass: true, restored, storageWaves };
   } catch (error) {
     return {
       studentId,
@@ -205,6 +206,45 @@ async function proveCorruptStorageRecovery(page, studentId) {
   assert(recovered.lastRunStatus !== 'pass', `${studentId}: corrupt storage resurrected trusted PASS`);
 }
 
+async function readStorageWaves(page, studentId) {
+  const waves = await page.evaluate(() => {
+    const journalRaw = localStorage.getItem('rb.ide.project-runtime.v2.journal');
+    const lkgRaw = localStorage.getItem('rb.ide.project-runtime.v2.lastKnownGood');
+    const runtimeRaw = localStorage.getItem('rb.ide.project-runtime.v1');
+    const snapshotCount = Object.keys(localStorage).filter((key) => key.startsWith('rb.ide.project.v1:')).length;
+    const recoveryPointCount = Object.keys(localStorage).filter((key) => key.startsWith('rb.ide.project-recovery.v2:')).length;
+    let journalStatus = null;
+    let lkgProjectName = null;
+    try {
+      journalStatus = journalRaw ? JSON.parse(journalRaw).status ?? null : null;
+    } catch {
+      journalStatus = 'malformed';
+    }
+    try {
+      lkgProjectName = lkgRaw ? JSON.parse(lkgRaw).projectName ?? null : null;
+    } catch {
+      lkgProjectName = 'malformed';
+    }
+    return {
+      G_saveJournalCommitted: journalStatus === 'committed',
+      H_lastKnownGoodAvailable: Boolean(lkgRaw) && typeof lkgProjectName === 'string',
+      I_recoveryPointAvailable: recoveryPointCount >= 1,
+      J_snapshotAndIndexAvailable: snapshotCount >= 1 && Boolean(localStorage.getItem('rb.ide.projects.v1.index')),
+      K_reloadRuntimeAvailable: Boolean(runtimeRaw),
+      journalStatus,
+      lkgProjectName,
+      recoveryPointCount,
+      snapshotCount,
+    };
+  });
+  assert(waves.G_saveJournalCommitted, `${studentId}: wave G journal not committed: ${JSON.stringify(waves)}`);
+  assert(waves.H_lastKnownGoodAvailable, `${studentId}: wave H LKG missing: ${JSON.stringify(waves)}`);
+  assert(waves.I_recoveryPointAvailable, `${studentId}: wave I recovery point missing: ${JSON.stringify(waves)}`);
+  assert(waves.J_snapshotAndIndexAvailable, `${studentId}: wave J snapshot/index missing: ${JSON.stringify(waves)}`);
+  assert(waves.K_reloadRuntimeAvailable, `${studentId}: wave K runtime missing after reload: ${JSON.stringify(waves)}`);
+  return waves;
+}
+
 async function readV2AuthorityStatus(page) {
   const authority = page.locator('[data-testid="ide-verify-v2-authority"]').first();
   if (await authority.isVisible().catch(() => false)) {
@@ -244,7 +284,7 @@ function renderMarkdown(summary) {
   const rows = summary.results
     .map((result) => `| ${result.studentId} | ${result.pass ? 'PASS' : 'FAIL'} | ${result.error ?? 'Reload/recovery path completed'} |`)
     .join('\n');
-  return `# Phase 3F Classroom Rehearsal
+  return `# Phase 3H Classroom Rehearsal
 
 - Scenario: ${summary.scenario}
 - Profiles: ${summary.profiles}

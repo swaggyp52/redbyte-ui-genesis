@@ -57,9 +57,23 @@ Phase 3G resets the classroom gate authority:
 
 `classroom:gate` and `verify:gates:classroom` now read current gates from the same manifest. `verify:gates:classroom` remains broader than `classroom:gate`, but the difference is explicit current-focused breadth rather than stale V1 structure. `verify:gates:legacy` is diagnostic-only: retired gates are listed with replacements and are not default merge requirements. Default current gates must not depend on hardcoded `localhost:5173` or old V1 side-rail/dock/raw-build structure.
 
+Phase 3H adds the project storage facade and durability gates:
+
+- `ide:gate:project-storage-facade-v2`
+- `ide:gate:atomic-save-journal-v2`
+- `ide:gate:project-schema-migration-v2`
+- `ide:gate:project-quota-recovery-v2`
+- `ide:gate:project-multitab-conflict-v2`
+- `ide:gate:dirty-update-guard-v2`
+- `ide:gate:project-recovery-workflow-v2`
+- `ide:gate:diagnostics-storage-v2`
+- `ide:gate:recovery-accessibility-v2`
+
+The first three are source-level facade gates for journal/LKG/recovery, failed/quota writes, stale writer conflicts, backup import/export, and future-schema fail-closed behavior. The browser gates prove quota recovery UI, same-origin multi-tab warning, dirty refresh confirmation, malformed runtime recovery from last-known-good, Diagnostics storage fields, and accessible recovery actions. These gates preserve the existing runtime/snapshot/session/autosave storage bytes and do not change `.rbproj`, Verify semantics, mapping semantics, generated artifacts, goldens, or proof-tier language.
+
 V2 gates still to add before merge:
 
-- none as a Phase 3G gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk.
+- none as a Phase 3H gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk, and a real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
 
 Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 
@@ -91,6 +105,15 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:verify-corrupt-state-recovery-v2`
 - `ide:gate:verify-multitab-conflict-v2`
 - `ide:gate:diagnostics-bundle-v2`
+- `ide:gate:project-storage-facade-v2`
+- `ide:gate:atomic-save-journal-v2`
+- `ide:gate:project-schema-migration-v2`
+- `ide:gate:project-quota-recovery-v2`
+- `ide:gate:project-multitab-conflict-v2`
+- `ide:gate:dirty-update-guard-v2`
+- `ide:gate:project-recovery-workflow-v2`
+- `ide:gate:diagnostics-storage-v2`
+- `ide:gate:recovery-accessibility-v2`
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`
@@ -223,7 +246,7 @@ Why:
 | Project identity rename, first-run help, loaded Project `Flow` placement, loaded Project workflow-help auto-collapse, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, `ide:gate:release-solidification-v2` when first-launch orientation could block launch actions, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, blank/partial authoring continuation, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:authoring-depth-release-safety`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify truth state, runtime adapter, Course/My checks, locked expected values, rendered duplicate-to-My-checks editing, stale/PASS/FAIL, selected failure repair, Project/Export readiness selectors, or sequential timing mode | `verify:truth-integration-gate`, `ide:gate:verify-v2-authority-cutover`, `ide:gate:verify-authority-phase-3d`, `ide:gate:verify-sequential-authority-v2`, and affected runtime/viewmodel tests; add narrower browser gates when stale/repair/timing presentation consumes more of the model |
-| Verify accessibility, keyboard operation, zoom/contrast, diagnostics support data, corrupt storage, reload durability, or multi-tab browser conflicts | `ide:gate:verify-accessibility-v2`, `ide:gate:verify-keyboard-grid-v2`, `ide:gate:verify-zoom-contrast-v2`, `ide:gate:diagnostics-bundle-v2`, `ide:gate:project-durability-v2`, `ide:gate:verify-corrupt-state-recovery-v2`, `ide:gate:verify-multitab-conflict-v2`, plus `rehearsal:classroom-30` when release-style endurance proof is required |
+| Verify accessibility, keyboard operation, zoom/contrast, diagnostics support data, corrupt storage, reload durability, quota recovery, dirty update guard, or multi-tab browser conflicts | `ide:gate:verify-accessibility-v2`, `ide:gate:verify-keyboard-grid-v2`, `ide:gate:verify-zoom-contrast-v2`, `ide:gate:diagnostics-bundle-v2`, `ide:gate:project-durability-v2`, `ide:gate:verify-corrupt-state-recovery-v2`, `ide:gate:verify-multitab-conflict-v2`, `ide:gate:project-storage-facade-v2`, `ide:gate:atomic-save-journal-v2`, `ide:gate:project-schema-migration-v2`, `ide:gate:project-quota-recovery-v2`, `ide:gate:project-multitab-conflict-v2`, `ide:gate:dirty-update-guard-v2`, `ide:gate:project-recovery-workflow-v2`, `ide:gate:diagnostics-storage-v2`, `ide:gate:recovery-accessibility-v2`, plus `rehearsal:classroom-30` when release-style endurance proof is required |
 | Verify behavior, run intent, repair loop, testbench layout, no-circuit entry, Signals rail geometry, or post-run next-action visibility | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, `ide:gate:release-solidification-v1` when release workbench geometry is involved, `ide:gate:release-solidification-v2` when Project orientation plus Verify next-action visibility are involved, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
 | Export trust, visible handoff, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |

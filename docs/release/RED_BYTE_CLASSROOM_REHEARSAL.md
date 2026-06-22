@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-21
+last_validated: 2026-06-22
 owner: Connor Angiel
 used_by_claude: true
 role: Product Trust Reset v2 classroom rehearsal protocol
@@ -8,7 +8,7 @@ role: Product Trust Reset v2 classroom rehearsal protocol
 
 # RedByte Classroom Rehearsal
 
-This document defines the Phase 3F browser classroom rehearsal for Product Trust Reset v2 PR #78.
+This document defines the browser classroom rehearsal for Product Trust Reset v2 PR #78. Phase 3F established the 30-context rehearsal; Phase 3H extends the script with project storage waves.
 
 ## Commands
 
@@ -21,7 +21,7 @@ pnpm -s rehearsal:classroom-recovery
 Each command launches one local preview and runs 30 isolated browser contexts. Evidence is written under:
 
 ```text
-.redbyte/rehearsal/phase-3f/
+.redbyte/rehearsal/phase-3h/
 ```
 
 The output includes JSON and Markdown summaries for pass/fail counts, duration, per-profile status, and explicit proof limits.
@@ -36,11 +36,17 @@ The output includes JSON and Markdown summaries for pass/fail counts, duration, 
 
 ## Current Evidence
 
-The latest Phase 3F local run wrote:
+The latest completed tracked Phase 3H evidence is:
 
-- `.redbyte/rehearsal/phase-3f/classroom-full-30.md`: `30` passed, `0` failed.
-- `.redbyte/rehearsal/phase-3f/classroom-verify-30.md`: `30` passed, `0` failed.
-- `.redbyte/rehearsal/phase-3f/classroom-recovery-30.md`: `30` passed, `0` failed.
+- `.redbyte/rehearsal/phase-3h/classroom-full-30.md`: `30` passed, `0` failed.
+
+Each successful Phase 3H profile records storage waves:
+
+- G: committed save journal exists
+- H: last-known-good runtime exists
+- I: at least one recovery point exists
+- J: saved snapshot and index exist
+- K: runtime key exists after reload
 
 ## Acceptance
 
@@ -52,6 +58,7 @@ For each profile:
 - Verify can reach Compare PASS where the scenario requires it
 - reload restores the project identity and graph
 - saved runtime and project snapshot keys exist
+- Phase 3H storage waves G-K pass
 - corrupt runtime/session storage does not crash the app
 - corrupt runtime/session storage does not resurrect trusted PASS
 - browser console/page errors fail the profile
@@ -65,9 +72,8 @@ This is browser E0 rehearsal. It does not prove:
 - physical board observation
 - cloud sync
 - roster/account behavior
-- journaled storage commits or rolling snapshots
 
-The current Phase 3F implementation adds a visible multi-tab overwrite warning, but full conflict resolution remains a future durability slice.
+Phase 3H adds browser-local journal, last-known-good, recovery points, quota recovery UI, and dirty update guard proof. It does not prove backend sync, full collaborative conflict merge UI, screen-reader certification, Vivado/Basys3 proof, or physical classroom observation.
 
 ## Attribution
 

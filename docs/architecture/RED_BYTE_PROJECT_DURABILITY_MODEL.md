@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-21
+last_validated: 2026-06-22
 owner: Connor Angiel
 used_by_claude: true
 role: classroom project durability model for RedByte
@@ -15,10 +15,11 @@ This model defines how RedByte should protect classroom work across reloads, rec
 | Concern | Owner | Storage |
 |---|---|---|
 | Portable project interchange | `packages/rb-apps/src/export/projectFormat.ts` | `.rbproj` encoded JSON |
-| Saved IDE project snapshots | `packages/rb-apps/src/apps/ide/projectPersistence.ts` | `localStorage` project snapshot and index keys |
-| Runtime project state | `packages/rb-apps/src/apps/ide/projectRuntime.ts` | `localStorage` runtime key |
-| Last session metadata | `packages/rb-apps/src/apps/ide/persistence/labSession.ts` | `localStorage` session metadata key |
-| Legacy autosave draft | `packages/rb-apps/src/apps/IdeApp.tsx` | `rb-autosave-circuit` fallback key |
+| Browser storage facade | `packages/rb-apps/src/apps/ide/projectStorageFacade.ts` | Local-browser runtime, snapshot/index, session, legacy autosave, journal, last-known-good, recovery, backup keys |
+| Saved IDE project snapshots | `packages/rb-apps/src/apps/ide/projectPersistence.ts` through the facade | Existing `localStorage` project snapshot and index keys |
+| Runtime project state | `packages/rb-apps/src/apps/ide/projectRuntime.ts` through the facade-backed Zustand storage adapter | Existing `rb.ide.project-runtime.v1` raw JSON plus Phase 3H sidecar keys |
+| Last session metadata | `packages/rb-apps/src/apps/ide/persistence/labSession.ts` through the facade | Existing `rb.ide.sessionMeta.v1` key |
+| Legacy autosave draft | `packages/rb-apps/src/apps/IdeApp.tsx` through the facade | Existing `rb-autosave-circuit` fallback key |
 
 ## Current Guarantee
 
@@ -31,22 +32,34 @@ Phase 3F adds focused browser proof for the current guarantee:
 - `ide:gate:verify-multitab-conflict-v2` proves another tab writing the runtime project key raises a visible Reload/Dismiss warning instead of remaining silent.
 - `rehearsal:classroom-30`, `rehearsal:classroom-verify`, and `rehearsal:classroom-recovery` run 30 isolated browser contexts and write local evidence under `.redbyte/rehearsal/phase-3f/`.
 
+Phase 3H extends the current guarantee:
+
+- `ide:gate:project-storage-facade-v2` proves the facade writes committed journal metadata, last-known-good runtime, and recovery points while preserving the runtime key.
+- `ide:gate:atomic-save-journal-v2` proves failed/quota writes are classified and do not mark a save committed.
+- `ide:gate:project-schema-migration-v2` proves future-schema recovery metadata fails closed instead of being misread.
+- `ide:gate:project-quota-recovery-v2` proves a forced quota failure surfaces a visible backup/retry/dismiss recovery banner.
+- `ide:gate:project-multitab-conflict-v2` proves same-origin multi-tab writes still show an explicit saved-work-changed warning.
+- `ide:gate:dirty-update-guard-v2` proves dirty work raises a browser beforeunload confirmation instead of silently relying on best-effort save.
+- `ide:gate:project-recovery-workflow-v2` proves malformed current runtime recovers from last-known-good without resurrecting trusted PASS.
+- `ide:gate:diagnostics-storage-v2` proves Diagnostics exposes facade schema, journal, last-known-good, recovery, quota, and recovery-status fields.
+- `ide:gate:recovery-accessibility-v2` proves recovery warnings use `role="alert"` and named backup/retry/dismiss actions.
+- The classroom rehearsal script now writes Phase 3H evidence under `.redbyte/rehearsal/phase-3h/` and records storage waves G-K for journal, last-known-good, recovery point, snapshot/index, and reload runtime availability.
+
 ## Current Limits
 
-- Snapshot and index writes are not atomic.
-- No journal marker proves a save fully committed.
-- No rolling per-project snapshot history is maintained by the project persistence helper.
-- Multi-tab conflicts are only warned, not resolved.
-- Quota failures can be silent.
-- Session metadata, runtime state, and legacy autosave can disagree.
-- Browser gates cover key reload/recovery paths and Phase 3F adds a many-context browser rehearsal script; human classroom rehearsal and hardware proof remain separate.
+- The facade is browser-local and `localStorage` compatible; no backend, cloud sync, roster/account recovery, or IndexedDB migration exists.
+- The save journal is atomic-ish browser metadata, not a transactional database.
+- Recovery points are bounded local sidecars, not a user-facing full history manager.
+- Multi-tab conflicts are warned and stale-writer saves are blocked in facade contract tests, but full conflict merge/resolution UI remains future work.
+- Quota failures are surfaced with backup/retry actions, but the app cannot expand browser quota.
+- Browser gates cover key reload/recovery paths and the rehearsal records storage waves; human classroom rehearsal, actual screen-reader certification, and hardware proof remain separate.
 
 ## Target Guarantee
 
 For classroom use, RedByte should be able to say:
 
 1. The current project can be restored after reload.
-2. A corrupt current snapshot does not destroy the last good project.
+2. A corrupt current runtime does not destroy the last good project.
 3. A student can choose a recovery candidate with clear recency and project identity.
 4. Multiple tabs cannot silently overwrite a project without a visible conflict.
 5. Storage quota or persistence failure is surfaced as an action, not hidden as a status line.
@@ -55,12 +68,13 @@ For classroom use, RedByte should be able to say:
 ## Target Architecture
 
 - Keep `.rbproj` as the portable format.
-- Introduce a storage facade so UI code does not write raw `localStorage` keys directly.
-- Add journaled local commits: pending snapshot, commit marker, then index promotion.
-- Keep rolling snapshots per project.
-- Track session owner and heartbeat for multi-tab conflict detection.
-- Add explicit recovery states for current save, recovered draft, last good snapshot, corrupt snapshot ignored, and quota risk.
-- Extend the Phase 3F multi-context rehearsal after the storage facade exists so it covers journal rollback, quota-risk UI, and real conflict resolution.
+- Keep `.rbproj` as the portable format and preserve existing browser storage bytes for compatibility.
+- Keep project runtime writes behind `createProjectRuntimeStorage()`.
+- Keep saved snapshots/index, session metadata, and legacy autosave behind facade helpers.
+- Use sidecar journal, last-known-good, recovery-point, and recovery-status keys for browser-local durability.
+- Track writer id and revision for stale-writer conflict detection.
+- Add explicit user recovery states for quota risk and failed save.
+- Extend future rehearsal only when new user-facing conflict resolution or storage backend behavior is added.
 
 ## Non-Goals
 

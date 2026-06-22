@@ -1,4 +1,11 @@
-const SESSION_META_KEY = 'rb.ide.sessionMeta.v1' as const;
+import {
+  SESSION_META_STORAGE_KEY,
+  clearSessionMeta,
+  loadSessionMetaRaw,
+  saveSessionMetaRaw,
+} from '../projectStorageFacade';
+
+const SESSION_META_KEY = SESSION_META_STORAGE_KEY;
 
 export interface LabSessionMeta {
   version: 1;
@@ -15,7 +22,7 @@ export interface LabSessionMeta {
 export function saveLabSessionMeta(meta: LabSessionMeta): void {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.setItem(SESSION_META_KEY, JSON.stringify(meta));
+    saveSessionMetaRaw(JSON.stringify(meta));
   } catch {
     // Ignore storage failures silently
   }
@@ -24,7 +31,7 @@ export function saveLabSessionMeta(meta: LabSessionMeta): void {
 export function loadLabSessionMeta(): LabSessionMeta | null {
   try {
     if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(SESSION_META_KEY);
+    const raw = loadSessionMetaRaw();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LabSessionMeta>;
     if (!parsed || typeof parsed !== 'object') return null;
@@ -52,7 +59,7 @@ export function loadLabSessionMeta(): LabSessionMeta | null {
 export function clearLabSessionMeta(): void {
   try {
     if (typeof localStorage === 'undefined') return;
-    localStorage.removeItem(SESSION_META_KEY);
+    clearSessionMeta();
   } catch {
     // Ignore
   }
