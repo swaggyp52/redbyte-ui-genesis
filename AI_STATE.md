@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-22 (test: reset classroom gate authority)
+
+**Subsystem:** Product Trust Reset v2 Phase 3G, classroom gate manifest, broad verifier reconciliation, legacy V1 gate retirement audit, and draft PR #78 merge-readiness.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `26de52957cf97400175f1d8cfc0ff0b4a9391e4e`; `main` was not changed and the draft PR remains unmerged.
+- Captured the red `verify:gates:classroom` baseline under `.redbyte/proof/gate-reset/phase-3g/before/` before editing the gate authority.
+- Added `scripts/gates/gate-manifest.mjs` as the single current gate manifest for `classroom:gate`, `verify:gates:classroom`, and diagnostic-only `verify:gates:legacy`.
+- Replaced the old parallel classroom/broad aggregator lists with manifest runners, and deleted the stale TypeScript verifier entrypoint so there is no second broad-suite definition.
+- Fixed async SHA handling in classroom smoke/golden scripts so deterministic ZIP hashes compare actual digest strings instead of unresolved promises.
+- Documented retired V1 gates with current replacements instead of leaving old shell/rail/dock/CTA/hardcoded-port checks in default merge-required suites.
+- Added the PR #78 merge-readiness report at `docs/release/RED_BYTE_PR78_MERGE_READINESS.md` and Phase 3G ignored brain notes under `.redbyte-brain/`.
+
+**Evidence:** The intentional baseline failed `verify:gates:classroom` on Lab 4 unresolved SHA promises, the retired Lab 8 smoke rule, hardcoded `localhost:5173` gates, and stale V1 structure checks. After the reset, `classroom:gate` passed `76/76`, `verify:gates:classroom` passed `95/95`, `verify:gates:legacy` generated a diagnostic-only retired-gate manifest, and proof summaries are under `.redbyte/proof/gate-reset/phase-3g/after/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check` on the changed manifest/runner scripts, `gate:manifest:validate`, `gate:no-hardcoded-redbyte-test-ports`, `verify:gates:legacy`, `classroom:smoke:lab4`, `classroom:rehearse:lab4`, `lab:profile-contract`, `ci:no-solution:lab8`, both Basys3 golden export gates, the three 30-context classroom rehearsals (`30/30` each), full `classroom:gate` (`76/76`), broad `verify:gates:classroom` (`95/95`), `build:unified`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 3G is test-authority, proof, and documentation work only. It does not change simulation semantics, Compare semantics, expected-output meaning, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Finish Phase 3G closeout, keep PR #78 draft, then run branch-level human review plus the remaining storage-facade/human-accessibility decisions before any merge-ready move.
+
 ## Change Log 2026-06-21 (test: add Phase 3F classroom proof gates)
 
 **Subsystem:** Product Trust Reset v2 Phase 3F, Verify accessibility, project durability, diagnostics support bundle, multi-tab warning, 30-profile browser classroom rehearsal, and draft PR #78.

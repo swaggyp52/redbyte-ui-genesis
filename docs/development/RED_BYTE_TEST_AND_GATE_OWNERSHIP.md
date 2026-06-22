@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-21
+last_validated: 2026-06-22
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -48,9 +48,18 @@ Phase 3F adds acceptance/rehearsal proof gates:
 
 These focused gates are wired into `classroom:gate` and `verify:gates:classroom`. The heavier `rehearsal:classroom-30`, `rehearsal:classroom-verify`, and `rehearsal:classroom-recovery` scripts run 30 isolated browser contexts and remain explicit rehearsal commands rather than lightweight per-surface smoke.
 
+Phase 3G resets the classroom gate authority:
+
+- `scripts/gates/gate-manifest.mjs`
+- `gate:manifest:validate`
+- `gate:no-hardcoded-redbyte-test-ports`
+- `verify:gates:legacy`
+
+`classroom:gate` and `verify:gates:classroom` now read current gates from the same manifest. `verify:gates:classroom` remains broader than `classroom:gate`, but the difference is explicit current-focused breadth rather than stale V1 structure. `verify:gates:legacy` is diagnostic-only: retired gates are listed with replacements and are not default merge requirements. Default current gates must not depend on hardcoded `localhost:5173` or old V1 side-rail/dock/raw-build structure.
+
 V2 gates still to add before merge:
 
-- `ide:gate:verify-testbench-results-layout-v2`
+- none as a Phase 3G gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk.
 
 Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 

@@ -1,0 +1,13 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.8 [39m[90mC:/Users/conno/redbyte-ui-genesis-main[39m
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ [32m✓[39m packages/rb-apps/src/apps/ide/labProfiles/__tests__/labProfiles.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 6132[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 02:05:26
+[2m   Duration [22m 7.64s[2m (transform 2.03s, setup 346ms, collect 245ms, tests 6.13s, environment 555ms, prepare 120ms)[22m

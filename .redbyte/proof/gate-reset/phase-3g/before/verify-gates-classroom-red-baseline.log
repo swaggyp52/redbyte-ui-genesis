@@ -1,0 +1,220 @@
+[verify:gates:classroom] Starting classroom gate suite...
+
+
+--- CLASSROOM GATES =======
+  NO-SOLUTION:LAB1: PASS
+  NO-SOLUTION:LAB2: PASS
+  NO-SOLUTION:LAB3: PASS
+  REHEARSE:LAB4: FAIL
+    exit=1
+    [classroom:rehearse:lab4] Starting rehearsal...
+
+
+    ========== LAB 4 REHEARSAL ==========
+      SMOKE: FAIL
+        exit=1
+        [classroom:smoke:lab4] FAIL: Deterministic smoke bundle mismatch: run1=[object Promise] run2=[object Promise]
+      NO-SOLUTION: PASS
+      HW: PASS
+      FINAL: FAIL
+    =====================================
+  NO-SOLUTION:LAB4: PASS
+  SMOKE:LABS-5-8: FAIL
+    exit=1
+    [classroom:smoke:labs-5-8] FAIL: lab-8 starter contains solution-like logic nodes: XOR, AND, OR
+  NO-SOLUTION:LAB5: PASS
+  NO-SOLUTION:LAB6: PASS
+  NO-SOLUTION:LAB7: PASS
+  NO-SOLUTION:LAB8: PASS
+  GOLDEN-BASYS3-EXPORT: PASS
+  GOLDEN-BASYS3-ALU-EXPORT: PASS
+  DEV-GUARDS: PASS
+  VERIFY:TRUTH-INTEGRATION-GATE: PASS
+  IDE:BOOT-SHADOW-CONTRACT: PASS
+  IDE:ROUTE-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE route contract violated.
+    page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "domcontentloaded"[22m
+  IDE:LAYOUT-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE layout contract satisfied.
+    left rail width out of contract range: 56px
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m50542[22m/os/[39m
+  IDE:WORKBENCH-LAYOUT-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE workbench layout contract satisfied.
+    mode=hardware missing left dock
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m50971[22m/os/[39m
+  IDE:DESIGN-BUILD-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE design build contract satisfied.
+    page.waitForSelector: Timeout 10000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('[data-testid="ide-design-canvas-stat-zoom"]') to be visible[22m
+    [2m    24 × locator resolved to hidden <span data-testid="ide-design-canvas-stat-zoom">100%</span>[22m
+
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m52358[22m/os/[39m
+  IDE:DESIGN-WORKBENCH-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE design workbench contract satisfied.
+    design right inspector marker missing
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m51611[22m/os/[39m
+  IDE:DESIGN-FIT-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE design fit contract satisfied.
+    fit-to-circuit control must be visible
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m54290[22m/os/[39m
+  IDE:DESIGN-NO-BRIDGE-REQUIRED: PASS
+  IDE:DESIGN-CANVAS-ZOOM-INTEGRITY: PASS
+  IDE:DESIGN-WORKBENCH-INTEGRITY: PASS
+  IDE:DESIGN-CANVAS-DIRECT-WORKBENCH: PASS
+  IDE:DESIGN-WORKSPACE-CRASH-PROOF: PASS
+  IDE:WORKBENCH-STABILITY-OVERHAUL: PASS
+  IDE:DESIGN-BUILD-FAST-CONTRACT: PASS
+  IDE:DESIGN-LIVE-SIM-CONTRACT: PASS
+  IDE:LIVE-SIM-CONTRACT: PASS
+  IDE:SEQ-SIM-CONTRACT: PASS
+  IDE:DESIGN-MULTISELECT-CONTRACT: PASS
+  IDE:DESIGN-INSPECTOR-CONTRACT: PASS
+  IDE:PROJECT-OVERVIEW-CONTRACT: PASS
+  IDE:PROJECT-COMMAND-CENTER: PASS
+  IDE:PROJECT-LOADED-PATHS-FIRST-VIEWPORT: PASS
+  IDE:PROJECT-LOADED-COMMAND-SURFACE: PASS
+  IDE:INTERACTION-AFFORDANCE: PASS
+  IDE:PROJECT-IDENTITY-EDITING: PASS
+  IDE:V2-STUDENT-CHROME: PASS
+  IDE:ACTIVE-MODE-RELOAD-RECOVERY: PASS
+  IDE:PROJECT-HEALTH-LIVE-CONTRACT: PASS
+  IDE:PROJECT-CONTINUE-CTA-CONTRACT: PASS
+  IDE:PERSISTENCE-CONTRACT: PASS
+  IDE:EXAMPLES-CONTRACT: PASS
+  IDE:DESIGN-SYSTEM-CONTRACT: PASS
+  IDE:SHELL-CHROME-CONTRACT: PASS
+  IDE:SHELL-DENSITY-CONTRACT: PASS
+  IDE:CANVAS-LEGIBILITY-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE canvas legibility contract satisfied.
+    design zoom indicator must be visible
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m63883[22m/os/[39m
+  IDE:CONSOLE-AUTOCOLLAPSE-CONTRACT: PASS
+  IDE:SCREENSHOT-BASELINES: PASS
+  IDE:VERIFY-CONTRACT: PASS
+  IDE:VERIFY-SAVED-CHECKS-DEFAULT: PASS
+  IDE:VERIFY-V2-AUTHORITY-CUTOVER: PASS
+  IDE:VERIFY-AUTHORITY-PHASE-3D: PASS
+  IDE:VERIFY-SEQUENTIAL-AUTHORITY-V2: PASS
+  IDE:VERIFY-ACCESSIBILITY-V2: PASS
+  IDE:VERIFY-KEYBOARD-GRID-V2: PASS
+  IDE:VERIFY-ZOOM-CONTRAST-V2: PASS
+  IDE:PROJECT-DURABILITY-V2: PASS
+  IDE:VERIFY-CORRUPT-STATE-RECOVERY-V2: PASS
+  IDE:VERIFY-MULTITAB-CONFLICT-V2: PASS
+  IDE:DIAGNOSTICS-BUNDLE-V2: PASS
+  IDE:VERIFY-NO-CIRCUIT-TASK-FIRST: PASS
+  IDE:VERIFY-TESTBENCH-USABLE-LAYOUT: PASS
+  IDE:VERIFY-WORKBENCH-LAYOUT-RESET: PASS
+  IDE:VERIFY-POSTRUN-WORKBENCH-USABILITY: PASS
+  IDE:SYNTH-SUBSET-CONTRACT: PASS
+  IDE:VIVADO-PACK-CONTRACT: PASS
+  IDE:EXPORT-INCLUDES-RBPROJ-CONTRACT: PASS
+  IDE:ZIP-IMPORT-CONTRACT: PASS
+  IDE:IMPORT-RECOVERY-CONTRACT: PASS
+  IDE:IMPORT-GUIDED-RECOVERY-WORKFLOW: PASS
+  IDE:IMPORT-GUIDED-RECOVERY-WIZARD: PASS
+  IDE:BRINGUP-CONTRACT: PASS
+  IDE:VERIFY-EVIDENCE-WORKBENCH-INTEGRITY: PASS
+  IDE:VERIFY-WORKBENCH-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE verify workbench contract satisfied.
+    page.waitForFunction: Timeout 10000ms exceeded.
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m63753[22m/os/[39m
+  IDE:VERIFY-SUMMARY-CONTRACT: PASS
+  IDE:EVIDENCE-CAPSULE-CONTRACT: PASS
+  IDE:EXPORT-ARTIFACT-EXPLORER-CONTRACT: PASS
+  IDE:EXPORT-HANDOFF-STATION: PASS
+  IDE:EXPORT-FIRST-VIEWPORT-ARTIFACTS: PASS
+  IDE:EXPORT-PACKAGE-INSPECTOR: PASS
+  IDE:EXPORT-ARTIFACT-DIRECT-PREVIEW: PASS
+  IDE:EXPORT-BLOCKERS-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE export blockers contract satisfied.
+    export blockers list must render
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m60785[22m/os/[39m
+  IDE:EXPORT-READY-CONTRACT: PASS
+  IDE:EXPORT-DOWNLOAD-CONTRACT: PASS
+  IDE:EXPORT-TRUST-INTEGRITY: PASS
+  IDE:HARDWARE-BASYS3-WORKBENCH: PASS
+  IDE:HARDWARE-FIRST-VIEWPORT: PASS
+  IDE:HARDWARE-CHECKLIST-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE hardware checklist contract satisfied.
+    hardware checklist panel must render
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m56091[22m/os/[39m
+  IDE:STUDENT-LOOP-CONTRACT: PASS
+  IDE:STUDENT-TASK-COMPLETION-FLOW: PASS
+  IDE:AUTHORING-DEPTH-RELEASE-SAFETY: PASS
+  IDE:VIEWPORT-OVERFLOW-CONTRACT: PASS
+  IDE:SHELL-LAYOUT-INTEGRITY: PASS
+  IDE:SHELL-WORKBENCH-HIERARCHY: PASS
+  IDE:SHELL-NAVIGATION-OVERHAUL: PASS
+  IDE:PRIMARY-WORK-OBJECT-DOMINANCE: PASS
+  IDE:NESTED-SCROLL-REGRESSION: PASS
+  IDE:ROOT-OVERFLOW-REGRESSION: PASS
+  IDE:WORKBENCH-RECONSTRUCTION-V1: PASS
+  IDE:DESIGN-DUAL-TOOL-WINDOWS: PASS
+  IDE:DESIGN-LIBRARY-NOT-CROPPED: PASS
+  IDE:DESIGN-TOOL-WINDOW-COEXISTENCE: PASS
+  IDE:VERIFY-TASK-PLANE-USABILITY: PASS
+  IDE:HARDWARE-BOARD-DOMINANCE: PASS
+  IDE:HARDWARE-BOARD-UNBLOCKED: PASS
+  IDE:HARDWARE-RESOURCE-CATALOG-NOT-OBSTRUCTING: PASS
+  IDE:RELEASE-READINESS-VISUAL-CONTRACT: PASS
+  IDE:NO-CROPPED-CONTROLS-REGRESSION: PASS
+  IDE:ACTION-FIRST-ENTRY-SURFACES: PASS
+  IDE:OUTER-WORKFLOW-ACTION-DENSITY: PASS
+  IDE:CARD-CHROME-REGRESSION: PASS
+  IDE:RELEASE-SOLIDIFICATION-V2: PASS
+  IDE:BROWSER-E0-PACKAGING-READINESS: PASS
+  IDE:WORKBENCH-SPACE-UTILIZATION: PASS
+  IDE:WORKBENCH-VISUAL-FINISH: PASS
+  IDE:PRIMARY-CTA-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE primary CTA contract satisfied.
+    mode=verify expected a guided verify CTA or run action to be visible
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m56300[22m/os/[39m
+  IDE:DIAGNOSTICS-JUMP-CONTRACT: PASS
+  IDE:VISUAL-CONTRACT: FAIL
+    exit=1
+    FAIL: IDE visual contract satisfied.
+    mode=project missing ide-left-dock
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m64716[22m/os/[39m
+  IDE:SHELL-STRUCTURE: FAIL
+    exit=1
+    FAIL: IDE shell structure contract satisfied.
+    design mode marker missing
+    [preview logs]
+    [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m56467[22m/os/[39m
+  IDE:FULLSCREEN-NO-CHROME: PASS
+  IDE:DEFAULT-LAUNCHER-HIDDEN: FAIL
+    exit=1
+    ❌ IDE Default Launcher Hidden gate FAIL: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/
+    Call log:
+    [2m  - navigating to "http://localhost:5173/", waiting until "networkidle"[22m
+  IDE:LAB4-LOAD-FAST: PASS
+  IDE:EXPORT-GENERATES-HDL: PASS
+  IDE:IMPORT-RENDERS-SCHEMATIC: PASS
+  FINAL: FAIL
+---

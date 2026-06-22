@@ -1,0 +1,78 @@
+🏗️ Starting Unified Build Pipeline...
+0. Pre-building workspace packages...
+1. Building playground OS...
+[36mvite v7.2.6 [32mbuilding client environment for production...[36m[39m
+transforming...
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[32m✓[39m 318 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                           [39m[1m[2m  1.06 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mdist/[22m[35massets/HardwareSurface-Dcu8sb02.css  [39m[1m[2m  1.97 kB[22m[1m[22m[2m │ gzip:   0.67 kB[22m
+[2mdist/[22m[35massets/full-bootstrap-sxITypeF.css   [39m[1m[2m 81.89 kB[22m[1m[22m[2m │ gzip:  14.90 kB[22m
+[2mdist/[22m[35massets/index-Ch7BzmIE.css            [39m[1m[2m847.04 kB[22m[1m[22m[2m │ gzip: 125.79 kB[22m
+[2mdist/[22m[36massets/index-Up6ba9MC.js             [39m[1m[2m  0.52 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m[2m │ map:     0.10 kB[22m
+[2mdist/[22m[36massets/bisect-steps-cXdvOmEy.js      [39m[1m[2m  0.90 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m[2m │ map:     2.05 kB[22m
+[2mdist/[22m[36massets/e2e-bridge-CDlvHtHb.js        [39m[1m[2m  0.92 kB[22m[1m[22m[2m │ gzip:   0.57 kB[22m[2m │ map:     3.41 kB[22m
+[2mdist/[22m[36massets/index-s2B560Vv.js             [39m[1m[2m  3.70 kB[22m[1m[22m[2m │ gzip:   1.42 kB[22m[2m │ map:    13.03 kB[22m
+[2mdist/[22m[36massets/full-bootstrap-CYgkmpMB.js    [39m[1m[2m  4.06 kB[22m[1m[22m[2m │ gzip:   1.52 kB[22m[2m │ map:    11.38 kB[22m
+[2mdist/[22m[36massets/main-Bf1kB3A3.js              [39m[1m[2m  5.39 kB[22m[1m[22m[2m │ gzip:   2.28 kB[22m[2m │ map:    11.19 kB[22m
+[2mdist/[22m[36massets/circuitStore-Bt5-BhLn.js      [39m[1m[2m  7.10 kB[22m[1m[22m[2m │ gzip:   2.98 kB[22m[2m │ map:    41.83 kB[22m
+[2mdist/[22m[36massets/index-BnJBJpg5.js             [39m[1m[2m  7.87 kB[22m[1m[22m[2m │ gzip:   3.03 kB[22m[2m │ map:    29.60 kB[22m
+[2mdist/[22m[36massets/HardwareSurface-DUjPZNCz.js   [39m[1m[2m101.07 kB[22m[1m[22m[2m │ gzip:  26.11 kB[22m[2m │ map:   319.69 kB[22m
+[2mdist/[22m[36massets/ExportSurface-DQxNHH47.js     [39m[1m[2m114.00 kB[22m[1m[22m[2m │ gzip:  31.11 kB[22m[2m │ map:   330.57 kB[22m
+[2mdist/[22m[36massets/ImportSurface-BDZtcCkK.js     [39m[1m[2m117.67 kB[22m[1m[22m[2m │ gzip:  32.04 kB[22m[2m │ map:   430.56 kB[22m
+[2mdist/[22m[36massets/client-DBJpVRru.js            [39m[1m[2m180.99 kB[22m[1m[22m[2m │ gzip:  56.95 kB[22m[2m │ map:   865.77 kB[22m
+[2mdist/[22m[36massets/VerifySurface-1MfpBsrt.js     [39m[1m[2m246.17 kB[22m[1m[22m[2m │ gzip:  67.27 kB[22m[2m │ map:   897.88 kB[22m
+[2mdist/[22m[36massets/DesignSurface-BzQqFkBg.js     [39m[1m[2m282.39 kB[22m[1m[22m[2m │ gzip:  75.48 kB[22m[2m │ map: 1,055.63 kB[22m
+[2mdist/[22m[36massets/index-BJ2xoE0V.js             [39m[1m[2m726.98 kB[22m[1m[22m[2m │ gzip: 203.80 kB[22m[2m │ map: 2,538.77 kB[22m
+[32m✓ built in 5.49s[39m
+✅ Wrote build.json to C:\Users\conno\redbyte-ui-genesis-main\apps\playground\dist\build.json
+2. Merging artifacts...
+🚀 Merging deployments into unified dist/
+⚠️  No root app found — writing canonical public start fallback...
+✅ Root public fallback written to dist\index.html
+✅ Public start page copied to dist\start.html
+📦 Copying OS from C:\Users\conno\redbyte-ui-genesis-main\apps\playground\dist to /os...
+✅ Wrote /os/version.json for deploy verification.
+✅ Copied build.json to dist\build.json
+📦 Explicitly copying unified _redirects to root dist...
+📦 Explicitly copying unified _headers to root dist...
+✅ Verified: Public start fallback is at root.
+✅ Verified: OS IDE index is at /os/.
+✨ Merge complete! Deploy the root /dist directory.
+3. Verifying distribution...
+Verifying static dist artifact...
+OK: dist/ exists
+OK: dist/index.html exists
+OK: dist/start.html exists
+OK: dist/build.json exists
+OK: dist/index.html has REDBYTE_PUBLIC_ROOT marker
+OK: dist/index.html fallback targets /start.html
+OK: dist/index.html does not fallback-redirect root to /os/
+OK: dist/start.html is the RedByte public start page
+OK: dist/start.html states current product truth
+OK: dist/start.html links to the IDE at /os/
+OK: dist/start.html keeps E0/E1/E2/E3 evidence levels visible
+OK: dist/os/ exists
+OK: dist/os/index.html exists
+OK: dist/os/assets/ exists
+OK: dist/os/assets/ contains files
+OK: dist/os/index.html is the OS
+OK: dist/os/index.html has REDBYTE_OS_IDE marker
+OK: dist/os/index.html uses /os assets
+OK: dist/os/version.json exists
+OK: dist/os/version.json includes sha
+OK: dist/os/version.json includes builtAt
+OK: dist/_redirects exists
+OK: dist/_redirects root redirect sends / to /start.html
+OK: dist/_redirects root redirect does not send / to /os/
+OK: dist/_redirects normalizes /os to /os/
+OK: dist/_headers exists
+OK: dist/_headers contains root index cache rule
+OK: dist/_headers contains public start page cache rule
+OK: dist/_headers contains /os index cache rule
+dist/ verification complete. Artifact is valid.
+✨ Unified Build Succeeded!

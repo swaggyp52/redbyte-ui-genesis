@@ -69,7 +69,7 @@ async function main() {
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, Buffer.from(zipBytes));
 
-  const sha = sha256Hex(zipBytes);
+  const sha = await sha256Hex(zipBytes);
   const expectedSha = parseExpectedSha(readFileSync(goldenShaPath, 'utf8'));
   const pass = sha === expectedSha;
 

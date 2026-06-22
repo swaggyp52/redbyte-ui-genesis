@@ -1,0 +1,11 @@
+﻿{
+    "startedUtc":  "2026-06-22T04:41:55.3965854Z",
+    "branch":  "product/redbyte-trust-reset-v2",
+    "endedUtc":  "2026-06-22T04:57:28.8639465Z",
+    "node":  "v20.19.0",
+    "command":  "corepack pnpm -s verify:gates:classroom",
+    "pnpm":  "10.24.0",
+    "log":  "C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\proof\\gate-reset\\phase-3g\\before\\verify-gates-classroom-red-baseline.log",
+    "exitCode":  1,
+    "head":  "26de52957cf97400175f1d8cfc0ff0b4a9391e4e"
+}

@@ -1,0 +1,209 @@
+{
+  "schema": "redbyte_legacy_gate_manifest_v1",
+  "suiteName": "verify:gates:legacy",
+  "label": "verify:gates:legacy",
+  "generatedUtc": "2026-06-22T05:37:09.285Z",
+  "head": "26de52957cf97400175f1d8cfc0ff0b4a9391e4e",
+  "branch": "product/redbyte-trust-reset-v2",
+  "note": "Diagnostic-only list of retired V1 gates and their current replacements. These are not default merge requirements.",
+  "gates": [
+    {
+      "gateId": "classroom:smoke:labs-5-8",
+      "command": "pnpm -s classroom:smoke:labs-5-8",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "course",
+      "failureCategory": "C",
+      "retirementReason": "Lab 8 bridge no-solution coverage now lives in dedicated no-solution/profile gates; old smoke falsely treats unconnected placeholder gates as a solved scaffold.",
+      "replacement": [
+        "ci:no-solution:lab5",
+        "ci:no-solution:lab6",
+        "ci:no-solution:lab7",
+        "ci:no-solution:lab8",
+        "lab:profile-contract"
+      ]
+    },
+    {
+      "gateId": "ide:gate:route-contract",
+      "command": "pnpm -s ide:gate:route-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "D",
+      "retirementReason": "Hardcoded localhost:5173 route smoke is superseded by dynamic shared-harness route/reload/history coverage.",
+      "replacement": [
+        "ide:gate:active-mode-reload-recovery",
+        "ide:gate:shell-navigation-overhaul"
+      ]
+    },
+    {
+      "gateId": "ide:gate:default-launcher-hidden",
+      "command": "pnpm -s ide:gate:default-launcher-hidden",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "D",
+      "retirementReason": "Hardcoded localhost:5173 default-launcher contract targets a retired launcher/chrome path.",
+      "replacement": [
+        "ide:gate:v2-student-chrome",
+        "ide:gate:final-current-build-smoke"
+      ]
+    },
+    {
+      "gateId": "ide:gate:layout-contract",
+      "command": "pnpm -s ide:gate:layout-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "C",
+      "retirementReason": "Old rail-width structural contract conflicts with V2 compact shell measurements.",
+      "replacement": [
+        "ide:gate:shell-layout-integrity",
+        "ide:gate:v2-student-chrome"
+      ]
+    },
+    {
+      "gateId": "ide:gate:workbench-layout-contract",
+      "command": "pnpm -s ide:gate:workbench-layout-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "C",
+      "retirementReason": "Old contract requires generic left docks in modes where V2 fixed workspaces replaced them.",
+      "replacement": [
+        "ide:gate:shell-workbench-hierarchy",
+        "ide:gate:workbench-reconstruction-v1"
+      ]
+    },
+    {
+      "gateId": "ide:gate:visual-contract",
+      "command": "pnpm -s ide:gate:visual-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "C",
+      "retirementReason": "Old visual contract requires V1 left dock structure and is superseded by V2 visual/work-object gates.",
+      "replacement": [
+        "ide:gate:v2-student-chrome",
+        "ide:gate:primary-work-object-dominance",
+        "ide:gate:card-chrome-regression"
+      ]
+    },
+    {
+      "gateId": "ide:gate:shell-structure",
+      "command": "pnpm -s ide:gate:shell-structure",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "shell",
+      "failureCategory": "C",
+      "retirementReason": "Old shell structure contract looks for retired mode markers/chrome instead of V2 primitives.",
+      "replacement": [
+        "ide:gate:shell-layout-integrity",
+        "ide:gate:shell-navigation-overhaul"
+      ]
+    },
+    {
+      "gateId": "ide:gate:design-build-contract",
+      "command": "pnpm -s ide:gate:design-build-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "design",
+      "failureCategory": "C",
+      "retirementReason": "Old Design build gate expects the hidden zoom-stat element as visible proof; V2 proves direct canvas and build readiness elsewhere.",
+      "replacement": [
+        "ide:gate:design-workbench-integrity",
+        "ide:gate:design-canvas-direct-workbench"
+      ]
+    },
+    {
+      "gateId": "ide:gate:design-workbench-contract",
+      "command": "pnpm -s ide:gate:design-workbench-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "design",
+      "failureCategory": "C",
+      "retirementReason": "Old Design workbench gate requires a V1 right-inspector marker instead of the fixed/contextual V2 workbench contract.",
+      "replacement": [
+        "ide:gate:design-workbench-integrity",
+        "ide:gate:design-tool-window-coexistence"
+      ]
+    },
+    {
+      "gateId": "ide:gate:design-fit-contract",
+      "command": "pnpm -s ide:gate:design-fit-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "design",
+      "failureCategory": "C",
+      "retirementReason": "Old visible fit-control assertion is superseded by direct canvas and zoom-integrity V2 gates.",
+      "replacement": [
+        "ide:gate:design-canvas-direct-workbench",
+        "ide:gate:design-canvas-zoom-integrity"
+      ]
+    },
+    {
+      "gateId": "ide:gate:canvas-legibility-contract",
+      "command": "pnpm -s ide:gate:canvas-legibility-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "design",
+      "failureCategory": "C",
+      "retirementReason": "Old zoom-indicator visibility contract is superseded by no-cropped-controls and direct canvas proof.",
+      "replacement": [
+        "ide:gate:no-cropped-controls-regression",
+        "ide:gate:design-canvas-direct-workbench"
+      ]
+    },
+    {
+      "gateId": "ide:gate:verify-workbench-contract",
+      "command": "pnpm -s ide:gate:verify-workbench-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "verify",
+      "failureCategory": "C",
+      "retirementReason": "Old Verify workbench path waits on pre-V2 side/workbench conditions; V2 coverage is split across authority, testbench, postrun, and task-plane gates.",
+      "replacement": [
+        "ide:gate:verify-v2-authority-cutover",
+        "ide:gate:verify-testbench-usable-layout",
+        "ide:gate:verify-workbench-layout-reset",
+        "ide:gate:verify-postrun-workbench-usability",
+        "ide:gate:verify-task-plane-usability"
+      ]
+    },
+    {
+      "gateId": "ide:gate:export-blockers-contract",
+      "command": "pnpm -s ide:gate:export-blockers-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "export",
+      "failureCategory": "C",
+      "retirementReason": "Old Export blocker-list assertion targets a retired blocker panel while V2 Export uses handoff/readiness/artifact workspace authority.",
+      "replacement": [
+        "ide:gate:export-handoff-station",
+        "ide:gate:export-trust-integrity",
+        "ide:gate:export-ready-contract"
+      ]
+    },
+    {
+      "gateId": "ide:gate:hardware-checklist-contract",
+      "command": "pnpm -s ide:gate:hardware-checklist-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "hardware",
+      "failureCategory": "C",
+      "retirementReason": "Old Hardware checklist panel assertion targets retired panel structure; V2 Map Pins is covered by board/table/resource gates.",
+      "replacement": [
+        "ide:gate:hardware-basys3-workbench",
+        "ide:gate:hardware-first-viewport",
+        "ide:gate:hardware-board-unblocked"
+      ]
+    },
+    {
+      "gateId": "ide:gate:primary-cta-contract",
+      "command": "pnpm -s ide:gate:primary-cta-contract",
+      "status": "retired-with-replacement",
+      "ownerSubsystem": "workflow",
+      "failureCategory": "C",
+      "retirementReason": "Old universal CTA contract is too generic for V2 surface-specific primary actions.",
+      "replacement": [
+        "ide:gate:student-task-completion-flow",
+        "ide:gate:action-first-entry-surfaces",
+        "ide:gate:verify-no-circuit-task-first"
+      ]
+    },
+    {
+      "gateId": "ide:gate:fullscreen-no-chrome",
+      "command": "pnpm -s ide:gate:fullscreen-no-chrome",
+      "status": "legacy-diagnostic",
+      "ownerSubsystem": "shell",
+      "retirementReason": "Historical fullscreen chrome diagnostic; not a V2 merge requirement.",
+      "replacement": []
+    }
+  ]
+}

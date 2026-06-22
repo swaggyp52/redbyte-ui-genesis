@@ -1,0 +1,15 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.8 [39m[90mC:/Users/conno/redbyte-ui-genesis-main[39m
+
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ [32m✓[39m packages/rb-apps/src/apps/ide/__tests__/verifyTruthState.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 3879[2mms[22m[39m
+ [32m✓[39m packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 3825[2mms[22m[39m
+ [32m✓[39m packages/rb-apps/src/apps/ide/__tests__/verifyTruthAdapter.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 936[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m38 passed[39m[22m[90m (38)[39m
+[2m   Start at [22m 01:53:47
+[2m   Duration [22m 5.19s[2m (transform 2.29s, setup 826ms, collect 3.35s, tests 8.64s, environment 1.57s, prepare 354ms)[22m

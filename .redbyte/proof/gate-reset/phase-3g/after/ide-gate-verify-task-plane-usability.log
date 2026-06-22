@@ -1,0 +1,10 @@
+[ide:gate:verify-task-plane-usability] START verify-testbench-usable-layout
+PASS: IDE Verify pre-run testbench owns usable layout.
+[ide:gate:verify-task-plane-usability] PASS verify-testbench-usable-layout
+[ide:gate:verify-task-plane-usability] START verify-postrun-workbench-usability
+PASS: IDE Verify post-run workbench remains usable.
+[ide:gate:verify-task-plane-usability] PASS verify-postrun-workbench-usability
+[ide:gate:verify-task-plane-usability] START verify-workbench-layout-reset
+PASS: IDE Verify layout resets across pre-run, pass, fail, and repair.
+[ide:gate:verify-task-plane-usability] PASS verify-workbench-layout-reset
+PASS: IDE Verify task-plane usability satisfied.
