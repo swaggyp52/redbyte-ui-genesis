@@ -5,11 +5,11 @@
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
- ✓ packages/rb-apps/src/apps/ide/__tests__/verifyTruthAdapter.test.ts (10 tests) 377ms
- ✓ packages/rb-apps/src/apps/ide/__tests__/verifyTruthState.test.ts (13 tests) 1481ms
- ✓ packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts (15 tests) 1459ms
+ ✓ packages/rb-apps/src/apps/ide/__tests__/projectWorkflowAuthority.test.ts (15 tests) 3889ms
+ ✓ packages/rb-apps/src/apps/ide/__tests__/verifyTruthState.test.ts (13 tests) 3982ms
+ ✓ packages/rb-apps/src/apps/ide/__tests__/verifyTruthAdapter.test.ts (10 tests) 1078ms
 
  Test Files  3 passed (3)
       Tests  38 passed (38)
-   Start at  12:29:28
-   Duration  2.84s (transform 1.75s, setup 585ms, collect 1.22s, tests 3.32s, environment 1.38s, prepare 338ms)
+   Start at  18:30:46
+   Duration  5.25s (transform 2.46s, setup 772ms, collect 3.24s, tests 8.95s, environment 1.61s, prepare 242ms)

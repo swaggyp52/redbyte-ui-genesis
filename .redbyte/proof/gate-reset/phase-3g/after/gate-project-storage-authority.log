@@ -1,0 +1,4 @@
+[gate:project-storage-authority] PASS approvedDirectStorageFiles=24 compatibilityProjectFiles=5
+[gate:project-storage-authority] compatibility services/projectPersistence.ts: Phase 4 storage cleanup: retire package-root projectPersistence export after consumers are audited.
+[gate:project-storage-authority] compatibility utils/ceAutosave.ts: Phase 4 storage cleanup: replace CE autosave compatibility once legacy CE paths are retired.
+[gate:project-storage-authority] compatibility utils/rbprojAutosave.ts: Phase 4 storage cleanup: move remaining RBProject autosave/recent-project metadata behind facade helpers or retire package-root consumers.

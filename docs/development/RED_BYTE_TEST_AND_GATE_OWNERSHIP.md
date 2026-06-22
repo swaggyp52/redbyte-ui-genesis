@@ -71,9 +71,16 @@ Phase 3H adds the project storage facade and durability gates:
 
 The first three are source-level facade gates for journal/LKG/recovery, failed/quota writes, stale writer conflicts, backup import/export, and future-schema fail-closed behavior. The browser gates prove quota recovery UI, same-origin multi-tab warning, dirty refresh confirmation, malformed runtime recovery from last-known-good, Diagnostics storage fields, and accessible recovery actions. These gates preserve the existing runtime/snapshot/session/autosave storage bytes and do not change `.rbproj`, Verify semantics, mapping semantics, generated artifacts, goldens, or proof-tier language.
 
+Phase 3I adds branch-review authority gates and rehearsal self-tests:
+
+- `gate:project-storage-authority`
+- `rehearsal:classroom-fault-injection`
+
+`gate:project-storage-authority` is a source-level guard in the current classroom-required manifest. It fails when new production direct project persistence is introduced outside the facade or documented compatibility allowlist. `rehearsal:classroom-fault-injection` is not a lightweight classroom gate; it rebuilds and intentionally proves the 30-context rehearsal fails on wrong build, visible error boundary, Course-check mutation, stale trusted PASS, context state leak, and post-reload page error.
+
 V2 gates still to add before merge:
 
-- none as a Phase 3H gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk, and a real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
+- none as a Phase 3I gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk, and a real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
 
 Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 

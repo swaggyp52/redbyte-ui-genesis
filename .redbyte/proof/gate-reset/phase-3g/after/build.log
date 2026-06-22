@@ -14,21 +14,21 @@ dist/assets/HardwareSurface-Dcu8sb02.css    1.97 kB │ gzip:   0.67 kB
 dist/assets/full-bootstrap-sxITypeF.css    81.89 kB │ gzip:  14.90 kB
 dist/assets/index-Ch7BzmIE.css            847.04 kB │ gzip: 125.79 kB
 dist/assets/index-Up6ba9MC.js               0.52 kB │ gzip:   0.38 kB │ map:     0.10 kB
-dist/assets/bisect-steps-C0pJH7KB.js        0.90 kB │ gzip:   0.54 kB │ map:     2.05 kB
-dist/assets/e2e-bridge-BXxTiru5.js          0.92 kB │ gzip:   0.57 kB │ map:     3.41 kB
+dist/assets/bisect-steps-SWMXwBP9.js        0.90 kB │ gzip:   0.54 kB │ map:     2.05 kB
+dist/assets/e2e-bridge-CXfPqz0W.js          0.92 kB │ gzip:   0.57 kB │ map:     3.41 kB
 dist/assets/index-s2B560Vv.js               3.70 kB │ gzip:   1.42 kB │ map:    13.03 kB
-dist/assets/full-bootstrap-BRYVIJTk.js      4.06 kB │ gzip:   1.52 kB │ map:    11.38 kB
-dist/assets/main-3dCBnqVr.js                5.39 kB │ gzip:   2.29 kB │ map:    11.19 kB
+dist/assets/full-bootstrap-1u78WvSM.js      4.06 kB │ gzip:   1.52 kB │ map:    11.38 kB
+dist/assets/main-B5x-j6ib.js                5.39 kB │ gzip:   2.29 kB │ map:    11.19 kB
 dist/assets/circuitStore-Bt5-BhLn.js        7.10 kB │ gzip:   2.98 kB │ map:    41.83 kB
 dist/assets/index-BnJBJpg5.js               7.87 kB │ gzip:   3.03 kB │ map:    29.60 kB
-dist/assets/HardwareSurface-BbfbCrKd.js   101.07 kB │ gzip:  26.10 kB │ map:   319.69 kB
-dist/assets/ExportSurface-BigUFBw8.js     114.00 kB │ gzip:  31.11 kB │ map:   330.57 kB
-dist/assets/ImportSurface-DUsw4XSD.js     117.67 kB │ gzip:  32.04 kB │ map:   430.56 kB
+dist/assets/HardwareSurface-Dg7jXTnx.js   101.07 kB │ gzip:  26.11 kB │ map:   319.69 kB
+dist/assets/ExportSurface-B5LqhSiO.js     114.00 kB │ gzip:  31.11 kB │ map:   330.57 kB
+dist/assets/ImportSurface-_lXAZSGo.js     117.67 kB │ gzip:  32.04 kB │ map:   430.56 kB
 dist/assets/client-DBJpVRru.js            180.99 kB │ gzip:  56.95 kB │ map:   865.77 kB
-dist/assets/VerifySurface-Cw-cu8M6.js     246.17 kB │ gzip:  67.27 kB │ map:   897.88 kB
-dist/assets/DesignSurface-BuHRjHiZ.js     282.39 kB │ gzip:  75.47 kB │ map: 1,055.63 kB
-dist/assets/index-BaF2hPkA.js             738.68 kB │ gzip: 207.20 kB │ map: 2,588.12 kB
-✓ built in 6.14s
+dist/assets/VerifySurface-BawtDQIZ.js     246.17 kB │ gzip:  67.27 kB │ map:   897.88 kB
+dist/assets/DesignSurface-CVtbpRyP.js     282.39 kB │ gzip:  75.47 kB │ map: 1,055.63 kB
+dist/assets/index-Cc9-MT8F.js             738.68 kB │ gzip: 207.20 kB │ map: 2,588.12 kB
+✓ built in 6.48s
 ✅ Wrote build.json to C:\Users\conno\redbyte-ui-genesis-main\apps\playground\dist\build.json
 2. Merging artifacts...
 🚀 Merging deployments into unified dist/

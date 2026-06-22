@@ -9,7 +9,7 @@ Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
 
  Test Files  1 passed (1)
       Tests  1 passed (1)
-   Start at  12:39:20
-   Duration  3.02s (transform 1.39s, setup 149ms, collect 869ms, tests 1.20s, environment 399ms, prepare 66ms)
+   Start at  18:41:38
+   Duration  7.89s (transform 2.14s, setup 217ms, collect 3.26s, tests 3.60s, environment 431ms, prepare 87ms)
 
 [ide-zip-import-contract] PASS

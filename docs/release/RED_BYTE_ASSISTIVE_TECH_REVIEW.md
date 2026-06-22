@@ -41,6 +41,22 @@ Manual review outcome:
 - This document does not claim screen-reader announcement quality.
 - A future release-readiness pass should run actual assistive technology on the normal Project -> Design -> Verify -> Map Pins -> Export flow and the storage recovery path before making stronger accessibility claims.
 
+## 15-20 Minute Human AT Script
+
+Use Windows Narrator or NVDA in a fresh browser profile. Record the browser, assistive technology name/version, build SHA, viewport, and pass/fail notes for each step.
+
+| Step | Action | Expected announcement / observation | Result to record |
+|---|---|---|---|
+| 1 | Open `/os/?mode=project&e2e=1` and tab through the top bar and workflow rail. | App name, current project title, active workflow step, and Help control are announced with usable names. | pass/fail, confusing labels |
+| 2 | Double-click or keyboard-activate the project title rename path if available. | The edit field announces as the project name input; Escape cancels and Enter/blur saves without losing focus context. | pass/fail |
+| 3 | Load the Logic Gates starter and move to Design. | Design canvas region, primary tools, and selected object controls have reachable names; no unlabeled critical buttons. | pass/fail, skipped controls |
+| 4 | Move to Verify and inspect Course checks. | Expected-output authority announces Course checks as locked/read-only; Duplicate to My checks is reachable and named. | pass/fail |
+| 5 | Duplicate to My checks, edit one expected output, and run Compare. | Editable cells/buttons have distinct names; PASS/FAIL/stale status is announced from the visible result authority, not only color. | pass/fail |
+| 6 | Trigger or simulate a storage quota/recovery banner using the recovery gate path. | Recovery warning is announced as an alert; Download backup, Retry save, and Dismiss are named buttons. | pass/fail |
+| 7 | Open Help / Diagnostics. | About and Diagnostics are separated; diagnostics copy action is reachable; engineering details are not mixed into normal surface navigation. | pass/fail |
+
+Do not mark this review screen-reader complete until the table is filled from a real AT session. Automated axe/browser accessibility-tree checks are useful support evidence only.
+
 ## Attribution
 
 Connor Angiel

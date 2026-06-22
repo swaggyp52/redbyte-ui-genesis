@@ -52,6 +52,7 @@ const classroomRequired = [
   ['ide:gate:verify-multitab-conflict-v2', 'pnpm -s ide:gate:verify-multitab-conflict-v2', { owner: 'project', category: 'durability' }],
   ['ide:gate:diagnostics-bundle-v2', 'pnpm -s ide:gate:diagnostics-bundle-v2', { owner: 'diagnostics', category: 'release identity' }],
   ['ide:gate:project-storage-facade-v2', 'pnpm -s ide:gate:project-storage-facade-v2', { owner: 'project', category: 'durability' }],
+  ['gate:project-storage-authority', 'pnpm -s gate:project-storage-authority', { owner: 'project', category: 'durability', semanticOrStructural: 'semantic' }],
   ['ide:gate:atomic-save-journal-v2', 'pnpm -s ide:gate:atomic-save-journal-v2', { owner: 'project', category: 'durability' }],
   ['ide:gate:project-schema-migration-v2', 'pnpm -s ide:gate:project-schema-migration-v2', { owner: 'project', category: 'durability' }],
   ['ide:gate:project-quota-recovery-v2', 'pnpm -s ide:gate:project-quota-recovery-v2', { owner: 'project', category: 'durability' }],

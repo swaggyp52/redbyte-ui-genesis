@@ -1,0 +1,21 @@
+{
+  "schema": "redbyte.phase3h.classroom-rehearsal.v2",
+  "scenario": "full",
+  "profiles": 1,
+  "passCount": 0,
+  "failCount": 1,
+  "durationMs": 1390,
+  "generatedAtIso": "2026-06-22T22:46:10.668Z",
+  "results": [
+    {
+      "studentId": "student-01",
+      "pass": false,
+      "error": "fault:course-check-mutated Course checks became editable",
+      "findings": []
+    }
+  ],
+  "limits": [
+    "Browser rehearsal only; no Vivado build, board programming, or physical board observation.",
+    "Project storage remains local-browser storage; Phase 3H proves facade journal, last-known-good, recovery points, and conflict/recovery gates, not backend sync."
+  ]
+}

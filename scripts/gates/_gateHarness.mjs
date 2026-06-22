@@ -425,6 +425,7 @@ function startPreviewProcess(port, onOutput) {
 
   child.stdout?.on('data', (chunk) => onOutput(String(chunk)));
   child.stderr?.on('data', (chunk) => onOutput(String(chunk)));
+  child.redbytePreviewPort = port;
   return child;
 }
 
@@ -448,17 +449,30 @@ async function waitForPreview(baseUrl) {
 }
 
 function stopPreviewProcess(processRef) {
-  if (processRef.exitCode !== null || processRef.killed) return;
-
   try {
     if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/pid', String(processRef.pid), '/t', '/f'], { stdio: 'ignore' });
+      if (processRef.pid) {
+        spawnSync('taskkill', ['/pid', String(processRef.pid), '/t', '/f'], { stdio: 'ignore' });
+      }
+      stopWindowsPreviewByPort(processRef.redbytePreviewPort);
       return;
     }
+    if (processRef.exitCode !== null || processRef.killed) return;
     processRef.kill('SIGTERM');
   } catch {
     // fallback no-op
   }
+}
+
+function stopWindowsPreviewByPort(port) {
+  if (!port) return;
+  const script = [
+    '$port = ' + Number(port),
+    "Get-CimInstance Win32_Process |",
+    "  Where-Object { $_.CommandLine -like ('*--port*' + $port + '*') -and $_.CommandLine -like '*vite*preview*' } |",
+    "  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+  ].join(' ');
+  spawnSync('powershell.exe', ['-NoProfile', '-Command', script], { stdio: 'ignore' });
 }
 
 function delay(ms) {

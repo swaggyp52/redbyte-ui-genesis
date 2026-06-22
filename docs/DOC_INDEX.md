@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-21
+last_validated: 2026-06-22
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-21
+**Last Updated:** 2026-06-22
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -70,7 +70,7 @@ When docs conflict:
 | [contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md](./contracts/RED_BYTE_VERIFY_TRUTH_MODEL_V2.md) | Product Trust Reset v2 Verify truth model for observed, expected, course checks, My checks, stale, PASS/FAIL, and repair |
 | [architecture/ADR_VERIFY_STATE_ORCHESTRATION.md](./architecture/ADR_VERIFY_STATE_ORCHESTRATION.md) | Product Trust Reset v2 Verify statechart decision and integration plan |
 | [architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md](./architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md) | Product Trust Reset v2 Verify runtime adapter, selector boundary, and source-level proof |
-| [architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md](./architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md) | Classroom project durability model, current storage authorities, and target reliability guarantee |
+| [architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md](./architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md) | Classroom project durability model, current storage authorities, source authority gate, compatibility writers, and target reliability guarantee |
 | [architecture/ADR_PROJECT_DURABILITY_STORAGE.md](./architecture/ADR_PROJECT_DURABILITY_STORAGE.md) | Project storage durability ADR and rejected storage-migration alternatives |
 | [architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md](./architecture/RED_BYTE_WORKSPACE_LAYOUT_V2.md) | Product Trust Reset v2 deterministic workspace layout contract |
 | [architecture/RED_BYTE_VISUAL_SYSTEM_V2.md](./architecture/RED_BYTE_VISUAL_SYSTEM_V2.md) | Product Trust Reset v2 visual token and surface-level direction |
@@ -117,6 +117,9 @@ When docs conflict:
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |
 | [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | E0/E1/E2/E3 evidence classification model |
+| [release/RED_BYTE_PR78_MERGE_READINESS.md](./release/RED_BYTE_PR78_MERGE_READINESS.md) | Draft PR #78 Phase 3I branch review, blockers, and readiness decision |
+| [release/RED_BYTE_PR78_PERFORMANCE_REVIEW.md](./release/RED_BYTE_PR78_PERFORMANCE_REVIEW.md) | Draft PR #78 performance/resource review |
+| [release/RED_BYTE_PR78_SECURITY_PRIVACY_REVIEW.md](./release/RED_BYTE_PR78_SECURITY_PRIVACY_REVIEW.md) | Draft PR #78 security/privacy review |
 | [release/proof/](./release/proof/) | Tracked proof notes |
 | [release/vivado-basys3-bench-intelligence-2026-05-05.md](./release/vivado-basys3-bench-intelligence-2026-05-05.md) | Prior Vivado/Basys3 bench intelligence summary |
 

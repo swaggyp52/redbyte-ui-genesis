@@ -45,6 +45,13 @@ Phase 3H extends the current guarantee:
 - `ide:gate:recovery-accessibility-v2` proves recovery warnings use `role="alert"` and named backup/retry/dismiss actions.
 - The classroom rehearsal script now writes Phase 3H evidence under `.redbyte/rehearsal/phase-3h/` and records storage waves G-K for journal, last-known-good, recovery point, snapshot/index, and reload runtime availability.
 
+Phase 3I adds a source-level storage authority guard:
+
+- `gate:project-storage-authority` scans production source for direct `localStorage` / `sessionStorage` writes.
+- Current project-affecting writers must go through `projectStorageFacade.ts` or be explicitly documented as compatibility-only.
+- The current compatibility list is `services/projectPersistence.ts`, `utils/ceAutosave.ts`, `utils/rbprojAutosave.ts`, `utils/snapshotSystem.ts`, and the explicit user-reset path in `components/ErrorBoundary.tsx`.
+- New direct project persistence outside the allowlist fails the gate.
+
 ## Current Limits
 
 - The facade is browser-local and `localStorage` compatible; no backend, cloud sync, roster/account recovery, or IndexedDB migration exists.
@@ -53,6 +60,7 @@ Phase 3H extends the current guarantee:
 - Multi-tab conflicts are warned and stale-writer saves are blocked in facade contract tests, but full conflict merge/resolution UI remains future work.
 - Quota failures are surfaced with backup/retry actions, but the app cannot expand browser quota.
 - Browser gates cover key reload/recovery paths and the rehearsal records storage waves; human classroom rehearsal, actual screen-reader certification, and hardware proof remain separate.
+- Compatibility storage writers still exist outside the current IDE facade boundary. They are retained for package-root/legacy compatibility and should be retired only after each consumer is proven replaced.
 
 ## Target Guarantee
 
@@ -67,7 +75,6 @@ For classroom use, RedByte should be able to say:
 
 ## Target Architecture
 
-- Keep `.rbproj` as the portable format.
 - Keep `.rbproj` as the portable format and preserve existing browser storage bytes for compatibility.
 - Keep project runtime writes behind `createProjectRuntimeStorage()`.
 - Keep saved snapshots/index, session metadata, and legacy autosave behind facade helpers.

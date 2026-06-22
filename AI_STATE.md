@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-22 (test: add PR78 branch review authority)
+
+**Subsystem:** Product Trust Reset v2 Phase 3I, draft PR #78 branch audit, project storage authority guard, classroom rehearsal fault injection, performance/security review, assistive-technology proof boundary, and merge-readiness decision.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `24db2554c25b218f10267df22a669ca53167ca04`; `main` was not changed and draft PR #78 remains unmerged.
+- Reviewed the complete PR scope against current V2 student UI, Verify truth, gate authority, classroom durability, release proof, and Obsidian/scratch brain notes before choosing the Phase 3I fixes.
+- Added `scripts/gates/project-storage-authority.mjs` and wired `gate:project-storage-authority` into the current classroom-required gate manifest to reject new production direct project persistence outside `projectStorageFacade.ts` or documented compatibility-only allowlist entries.
+- Extended `scripts/rehearsal/classroom-30-contexts.mjs` with visible current-build SHA assertions, cross-context leak checks, Course-check authority checks, stale trusted-PASS checks, and an opt-in `--fault` mode.
+- Added `scripts/rehearsal/classroom-fault-injection.mjs` and `rehearsal:classroom-fault-injection` to rebuild first and prove the rehearsal fails for wrong build, visible error boundary, Course-check mutation, stale trusted PASS, cross-context state leak, and post-reload page error.
+- Added PR78 performance and security/privacy review docs, updated classroom rehearsal/durability/test-ownership/invariant/current-truth docs, and added a 15-20 minute human Narrator/NVDA-style assistive-technology script while keeping screen-reader certification explicitly open.
+- Updated `docs/release/RED_BYTE_PR78_MERGE_READINESS.md` with decision `C. READY FOR REVIEW, KEEP DRAFT`, P0/P1/P2 issue taxonomy, rollback plan, post-merge proof plan, and Phase 4 readiness.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with full-diff, authority, rehearsal-validity, and dead-code/CSS review artifacts.
+
+**Evidence:** Phase 3I local proof passed for `gate:project-storage-authority`, `gate:manifest:validate`, `classroom:gate` (`86/86`), `verify:gates:classroom` (`105/105`), and `rehearsal:classroom-fault-injection` with all six deliberate faults detected. Final current-build smoke, push, and GitHub checks must still be completed before claiming the branch is remote-green.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check` on the changed gate/rehearsal/harness scripts, `gate:project-storage-authority`, `gate:manifest:validate`, `verify:truth-integration-gate`, project storage facade/journal/schema gates, storage recovery browser gates, Verify accessibility/keyboard/zoom gates, full `classroom:gate` (`86/86`), broad `verify:gates:classroom` (`105/105`), `rehearsal:classroom-fault-injection` (`6/6` deliberate faults detected), `build:unified`, `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Final clean-tree current-build smoke, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 3I is branch review, source gate, rehearsal self-test, and documentation work only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed. No screen-reader certification is claimed without a real assistive-technology session.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** After Phase 3I commit, push, and GitHub green, keep PR #78 draft and begin Phase 4 Design and Map Pins V2 reconstruction with the current truth model, storage facade, gate manifest, and no-overclaim boundaries treated as fixed constraints.
+
 ## Change Log 2026-06-22 (feat: add project storage facade durability boundary)
 
 **Subsystem:** Product Trust Reset v2 Phase 3H, project durability boundary, save journal, last-known-good recovery, quota recovery UI, multi-tab/dirty-update guards, diagnostics storage proof, and draft PR #78 merge-readiness.

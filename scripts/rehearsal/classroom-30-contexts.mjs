@@ -17,7 +17,8 @@ import { isVerifyPass, waitForVerifyResult } from '../gates/_verifyStatus.mjs';
 const HOST = '127.0.0.1';
 const DEFAULT_PROFILES = 30;
 const START_TIMEOUT_MS = 30_000;
-const OUTPUT_ROOT = path.resolve('.redbyte/rehearsal/phase-3h');
+const OUTPUT_ROOT = path.resolve(process.env.RB_CLASSROOM_REHEARSAL_OUT_DIR ?? '.redbyte/rehearsal/phase-3h');
+const CURRENT_SHA = git(['rev-parse', '--short=7', 'HEAD']);
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -39,7 +40,7 @@ try {
   const results = [];
   for (let index = 0; index < options.profiles; index += 1) {
     const studentId = `student-${String(index + 1).padStart(2, '0')}`;
-    results.push(await runProfile(browser, baseUrl, studentId, options.scenario));
+    results.push(await runProfile(browser, baseUrl, studentId, options.scenario, options.fault));
   }
   const durationMs = Math.round(performance.now() - startedAt);
   const passCount = results.filter((result) => result.pass).length;
@@ -83,7 +84,7 @@ try {
   if (previewProcess) stopPreviewProcess(previewProcess);
 }
 
-async function runProfile(browserInstance, baseUrl, studentId, scenario) {
+async function runProfile(browserInstance, baseUrl, studentId, scenario, fault) {
   const context = await browserInstance.newContext({ serviceWorkers: 'block' });
   const page = await context.newPage();
     const findings = [];
@@ -110,17 +111,27 @@ async function runProfile(browserInstance, baseUrl, studentId, scenario) {
       waitUntil: 'domcontentloaded',
     });
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
+    await injectFault(page, fault, 'wrong-build');
+    await injectFault(page, fault, 'error-boundary');
+    await assertCurrentBuildIdentity(page, studentId);
+    await assertNoErrorBoundary(page, studentId);
+    await assertNoContextLeak(page, studentId);
+    await injectFault(page, fault, 'state-leak');
+    await assertNoContextLeak(page, studentId);
     await loadStarterProject(page, { exactExampleId: 'logic-gates' });
 
     const projectName = `Phase 3H ${studentId}`;
     await renameProject(page, projectName);
 
     if (scenario === 'verify' || scenario === 'full') {
-      await runVerifyPass(page);
+      await runVerifyPass(page, fault);
     }
 
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    await injectFault(page, fault, 'reload-failure');
+    await reloadProfilePage(page, studentId, fault);
     await page.waitForSelector('[data-testid="ide-root"]', { timeout: 15000 });
+    await assertCurrentBuildIdentity(page, studentId);
+    await assertNoErrorBoundary(page, studentId);
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
     const restored = await page.evaluate((expectedName) => {
       const runtime = window.__RB_PROJECT_RUNTIME__?.getState?.();
@@ -168,9 +179,11 @@ async function renameProject(page, nextName) {
   await page.waitForFunction((name) => document.body.innerText.includes(name), nextName, { timeout: 10000 });
 }
 
-async function runVerifyPass(page) {
+async function runVerifyPass(page, fault) {
   await page.locator('[data-testid="mode-button-verify"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
+  await injectFault(page, fault, 'course-check-mutated');
+  await assertCourseCheckAuthority(page);
   const duplicate = page.locator('[data-testid="ide-verify-duplicate-course-checks"]').first();
   if (await duplicate.isVisible().catch(() => false)) {
     await duplicate.click();
@@ -182,8 +195,10 @@ async function runVerifyPass(page) {
   assert(await setVerifyRunMode(page, 'compare'), 'Compare mode must be selectable in classroom rehearsal');
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 15000 });
+  await injectFault(page, fault, 'stale-pass-trusted');
   const status = await readV2AuthorityStatus(page);
   assert(isVerifyPass(status), `classroom rehearsal Verify should PASS, got "${status}"`);
+  await assertNoStalePassTrusted(page);
 }
 
 async function proveCorruptStorageRecovery(page, studentId) {
@@ -245,6 +260,110 @@ async function readStorageWaves(page, studentId) {
   return waves;
 }
 
+async function injectFault(page, activeFault, expectedFault) {
+  if (activeFault !== expectedFault) return;
+  if (expectedFault === 'wrong-build') {
+    await page.evaluate(() => {
+      document.querySelector('[data-testid="ide-root"]')?.setAttribute('data-build-sha', 'faulty');
+    });
+    return;
+  }
+  if (expectedFault === 'error-boundary') {
+    await page.evaluate(() => {
+      document.body.insertAdjacentHTML('afterbegin', '<div data-testid="error-boundary-fallback">fault:error-boundary</div>');
+    });
+    return;
+  }
+  if (expectedFault === 'state-leak') {
+    await page.evaluate(() => {
+      localStorage.setItem('rb.phase3h.leak.student-99', 'fault:state-leak');
+    });
+    return;
+  }
+  if (expectedFault === 'reload-failure') {
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('rb.phase3h.forceReloadFailure') === '1') {
+        setTimeout(() => {
+          throw new Error('fault:reload-failure');
+        }, 0);
+      }
+    });
+    await page.evaluate(() => {
+      sessionStorage.setItem('rb.phase3h.forceReloadFailure', '1');
+    });
+    return;
+  }
+  if (expectedFault === 'course-check-mutated') {
+    await page.locator('[data-testid="ide-verify-check-authority"]').first().waitFor({
+      state: 'attached',
+      timeout: 10000,
+    }).catch(() => null);
+    await page.evaluate(() => {
+      document.querySelector('[data-testid="ide-verify-check-authority"]')?.setAttribute('data-editable', 'true');
+    });
+    return;
+  }
+  if (expectedFault === 'stale-pass-trusted') {
+    await page.evaluate(() => {
+      const authority = document.querySelector('[data-testid="ide-verify-v2-authority"]');
+      authority?.setAttribute('data-result-status', 'pass');
+      authority?.setAttribute('data-result-current', 'false');
+    });
+  }
+}
+
+async function reloadProfilePage(page, studentId, fault) {
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  } catch (error) {
+    if (fault === 'reload-failure') {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${studentId}: fault:reload-failure page reload failed: ${message}`);
+    }
+    throw error;
+  }
+}
+
+async function assertCurrentBuildIdentity(page, studentId) {
+  const actual = await page.locator('[data-testid="ide-root"]').first().getAttribute('data-build-sha').catch(() => null);
+  assert(actual === CURRENT_SHA, `${studentId}: fault:wrong-build visible SHA ${actual ?? 'missing'} != ${CURRENT_SHA}`);
+}
+
+async function assertNoErrorBoundary(page, studentId) {
+  const visibleBoundary = await page
+    .locator('[data-testid="error-boundary-fallback"], [data-testid="ide-error-boundary"]')
+    .first()
+    .isVisible()
+    .catch(() => false);
+  assert(!visibleBoundary, `${studentId}: fault:error-boundary visible`);
+}
+
+async function assertNoContextLeak(page, studentId) {
+  const leakedKeys = await page.evaluate((id) => {
+    const own = String(id);
+    return Object.keys(localStorage).filter((key) => /student-\d+/i.test(key) && !key.includes(own));
+  }, studentId);
+  assert(leakedKeys.length === 0, `${studentId}: fault:state-leak cross-context keys ${leakedKeys.join(', ')}`);
+}
+
+async function assertCourseCheckAuthority(page) {
+  const authority = page.locator('[data-testid="ide-verify-check-authority"]').first();
+  if (!(await authority.isVisible().catch(() => false))) return;
+  const provenance = await authority.getAttribute('data-provenance').catch(() => null);
+  const editable = await authority.getAttribute('data-editable').catch(() => null);
+  if (provenance === 'course') {
+    assert(editable !== 'true', 'fault:course-check-mutated Course checks became editable');
+  }
+}
+
+async function assertNoStalePassTrusted(page) {
+  const authority = page.locator('[data-testid="ide-verify-v2-authority"]').first();
+  if (!(await authority.isVisible().catch(() => false))) return;
+  const status = await authority.getAttribute('data-result-status').catch(() => null);
+  const current = await authority.getAttribute('data-result-current').catch(() => null);
+  assert(!(status === 'pass' && current === 'false'), 'fault:stale-pass-trusted stale PASS remained trusted');
+}
+
 async function readV2AuthorityStatus(page) {
   const authority = page.locator('[data-testid="ide-verify-v2-authority"]').first();
   if (await authority.isVisible().catch(() => false)) {
@@ -254,7 +373,7 @@ async function readV2AuthorityStatus(page) {
 }
 
 function parseArgs(argv) {
-  const parsed = { profiles: DEFAULT_PROFILES, scenario: 'full' };
+  const parsed = { profiles: DEFAULT_PROFILES, scenario: 'full', fault: null };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === '--profiles') {
@@ -273,10 +392,25 @@ function parseArgs(argv) {
     }
     if (arg?.startsWith('--scenario=')) {
       parsed.scenario = arg.split('=')[1] ?? parsed.scenario;
+      continue;
+    }
+    if (arg === '--fault') {
+      parsed.fault = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+    if (arg?.startsWith('--fault=')) {
+      parsed.fault = arg.split('=')[1] ?? null;
     }
   }
   if (!Number.isFinite(parsed.profiles) || parsed.profiles < 1) parsed.profiles = DEFAULT_PROFILES;
   if (!['full', 'verify', 'recovery'].includes(parsed.scenario)) parsed.scenario = 'full';
+  if (
+    parsed.fault &&
+    !['wrong-build', 'error-boundary', 'course-check-mutated', 'stale-pass-trusted', 'state-leak', 'reload-failure'].includes(parsed.fault)
+  ) {
+    throw new Error(`unknown classroom rehearsal fault: ${parsed.fault}`);
+  }
   return parsed;
 }
 
@@ -339,6 +473,7 @@ function startPreviewProcess(port, onOutput) {
   });
   child.stdout?.on('data', (chunk) => onOutput(String(chunk)));
   child.stderr?.on('data', (chunk) => onOutput(String(chunk)));
+  child.redbytePreviewPort = port;
   return child;
 }
 
@@ -371,14 +506,36 @@ async function resolveIdeBaseUrl(rootBaseUrl) {
 }
 
 function stopPreviewProcess(processRef) {
-  if (processRef.exitCode !== null || processRef.killed) return;
   try {
     if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/pid', String(processRef.pid), '/t', '/f'], { stdio: 'ignore' });
+      if (processRef.pid) {
+        spawnSync('taskkill', ['/pid', String(processRef.pid), '/t', '/f'], { stdio: 'ignore' });
+      }
+      stopWindowsPreviewByPort(processRef.redbytePreviewPort);
       return;
     }
+    if (processRef.exitCode !== null || processRef.killed) return;
     processRef.kill('SIGTERM');
   } catch {
     // no-op
   }
+}
+
+function stopWindowsPreviewByPort(port) {
+  if (!port) return;
+  const script = [
+    '$port = ' + Number(port),
+    "Get-CimInstance Win32_Process |",
+    "  Where-Object { $_.CommandLine -like ('*--port*' + $port + '*') -and $_.CommandLine -like '*vite*preview*' } |",
+    "  ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+  ].join(' ');
+  spawnSync('powershell.exe', ['-NoProfile', '-Command', script], { stdio: 'ignore' });
+}
+
+function git(args) {
+  const result = spawnSync('git', args, { encoding: 'utf8' });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed`);
+  }
+  return result.stdout.trim();
 }

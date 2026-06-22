@@ -1,0 +1,86 @@
+{
+  "schema": "redbyte.phase3i.classroom-fault-injection.v1",
+  "generatedAtIso": "2026-06-22T22:46:23.843Z",
+  "head": "24db2554c25b218f10267df22a669ca53167ca04",
+  "branch": "product/redbyte-trust-reset-v2",
+  "results": [
+    {
+      "fault": "wrong-build",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\wrong-build\\classroom-full-1.json",
+        "",
+        "student-01: student-01: fault:wrong-build visible SHA faulty != 24db255"
+      ]
+    },
+    {
+      "fault": "error-boundary",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\error-boundary\\classroom-full-1.json",
+        "",
+        "student-01: student-01: fault:error-boundary visible"
+      ]
+    },
+    {
+      "fault": "course-check-mutated",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\course-check-mutated\\classroom-full-1.json",
+        "",
+        "student-01: fault:course-check-mutated Course checks became editable"
+      ]
+    },
+    {
+      "fault": "stale-pass-trusted",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\stale-pass-trusted\\classroom-full-1.json",
+        "",
+        "student-01: fault:stale-pass-trusted stale PASS remained trusted"
+      ]
+    },
+    {
+      "fault": "state-leak",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\state-leak\\classroom-full-1.json",
+        "",
+        "student-01: student-01: fault:state-leak cross-context keys rb.phase3h.leak.student-99"
+      ]
+    },
+    {
+      "fault": "reload-failure",
+      "pass": true,
+      "exitCode": 1,
+      "signal": null,
+      "note": "Fault was detected by the rehearsal harness.",
+      "excerpt": [
+        "[classroom-rehearsal] scenario=full profiles=1 pass=0 fail=1",
+        "[classroom-rehearsal] evidence=C:\\Users\\conno\\redbyte-ui-genesis-main\\.redbyte\\rehearsal\\phase-3i\\faults\\reload-failure\\classroom-full-1.json",
+        "",
+        "student-01: student-01: browser findings [{\"type\":\"pageerror\",\"text\":\"fault:reload-failure\"},{\"type\":\"pageerror\",\"text\":\"fault:reload-failure\"}]"
+      ]
+    }
+  ]
+}
