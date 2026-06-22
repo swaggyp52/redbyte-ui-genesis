@@ -18,11 +18,11 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 - Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Preserve E0/E1/E2/E3 truth at every phase.
 
-## Product Trust Reset v2 - Phase 3 Verify Truth Foundation And Authority Cutover
+## Product Trust Reset v2 - Phase 3 Verify Truth Foundation, Authority Cutover, And Classroom Proof
 
-Status: Foundation, Phase 3C rendered authority cutover, Phase 3D rendered stale/repair/timing authority, and Phase 3E sequential timing authority added 2026-06-21 on `product/redbyte-trust-reset-v2`; broader multi-context/a11y classroom proof remains open.
+Status: Foundation, Phase 3C rendered authority cutover, Phase 3D rendered stale/repair/timing authority, Phase 3E sequential timing authority, and Phase 3F browser accessibility/durability/classroom rehearsal proof added 2026-06-21 on `product/redbyte-trust-reset-v2`; storage-facade implementation, human assistive-technology review, and merge-readiness review remain open.
 
-Goal: Make Verify truth explicit and make the rendered Verify workbench consume that truth before rebuilding deeper Verify presentation.
+Goal: Make Verify truth explicit, make the rendered Verify workbench consume that truth, and prove the current browser persistence/accessibility boundary before merge readiness.
 
 Why: The product had valid runtime pieces for scenarios, project freshness, run evidence, and expected-output editing, but no single state model describing legal transitions between ready, running, PASS, FAIL, stale design, stale testbench, locked Course checks, editable My checks, selected failure repair, and sequential timing mode.
 
@@ -33,6 +33,16 @@ Proof:
 - `ide:gate:verify-v2-authority-cutover`
 - `ide:gate:verify-authority-phase-3d`
 - `ide:gate:verify-sequential-authority-v2`
+- `ide:gate:verify-accessibility-v2`
+- `ide:gate:verify-keyboard-grid-v2`
+- `ide:gate:verify-zoom-contrast-v2`
+- `ide:gate:project-durability-v2`
+- `ide:gate:verify-corrupt-state-recovery-v2`
+- `ide:gate:verify-multitab-conflict-v2`
+- `ide:gate:diagnostics-bundle-v2`
+- `rehearsal:classroom-30`
+- `rehearsal:classroom-verify`
+- `rehearsal:classroom-recovery`
 - `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`
 - `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`
 - `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`
@@ -53,6 +63,10 @@ Acceptance:
 - Sequential timing mode is preserved through run request and completion.
 - Auto board-clock timing is generated/read-only; manual pulses expose the clock lane; custom clock patterns are explicitly unsupported for trusted novice Verify.
 - Timing changes after PASS/FAIL invalidate prior trusted results as `staleTiming` / `timing-changed` and Project/Export readiness consume that stale state.
+- Core Verify controls have accessible names; Course expected-output cells expose locked/duplicate guidance; keyboard-only users can duplicate to My checks, edit an expected output, stale prior evidence, and rerun Compare.
+- The Verify workbench remains visible and contrast-guarded at 125 percent browser zoom for the Phase 3F focus set.
+- Named project snapshot/index/runtime state restores after reload, corrupt runtime/session storage does not resurrect trusted PASS, and same-origin runtime-key writes from another tab show an explicit Reload/Dismiss warning.
+- The Phase 3F classroom rehearsal scripts pass `30/30` isolated browser contexts for full, verify-only, and recovery-only scenarios and write evidence under `.redbyte/rehearsal/phase-3f/`.
 - No simulation, Verify runtime semantics, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
 
 ## Phase 12x - Release Readiness Tool Windows

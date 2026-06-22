@@ -10,7 +10,7 @@ role: project durability storage decision for Product Trust Reset v2
 
 ## Status
 
-Accepted as a foundation decision; implementation remains future work.
+Accepted as a foundation decision; storage-facade implementation remains future work.
 
 ## Context
 
@@ -21,6 +21,8 @@ The Product Trust Reset v2 branch should not jump directly to a storage migratio
 ## Decision
 
 Keep the current `localStorage` persistence for this Phase 3 foundation slice, but document the target durability model and require the next reliability implementation to introduce a storage facade before any backend migration.
+
+Phase 3F keeps that decision. It adds browser proof gates, 30-context rehearsal scripts, richer Diagnostics support data, and a minimal multi-tab storage-event warning. It does not introduce a new storage backend, change `.rbproj`, or claim journaled commits.
 
 The target facade must support:
 
@@ -45,7 +47,7 @@ The target facade must support:
 
 - Current project format and saved snapshot bytes remain unchanged.
 - The next durability slice has an explicit target and can be gated without changing Verify semantics.
-- Browser E0 proof remains honest: reload/recovery paths are covered, but multi-context classroom reliability is not yet proven.
+- Browser E0 proof remains honest: reload/recovery paths, corrupt runtime/session recovery, and a multi-tab warning are covered, but full conflict resolution, quota UX, rolling snapshots, human classroom rehearsal, and Vivado/Basys3 proof are not yet proven.
 
 ## Attribution
 

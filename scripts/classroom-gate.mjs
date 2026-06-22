@@ -140,6 +140,41 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-sequential-authority-v2'],
   },
   {
+    name: 'ide:gate:verify-accessibility-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-accessibility-v2'],
+  },
+  {
+    name: 'ide:gate:verify-keyboard-grid-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-keyboard-grid-v2'],
+  },
+  {
+    name: 'ide:gate:verify-zoom-contrast-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-zoom-contrast-v2'],
+  },
+  {
+    name: 'ide:gate:project-durability-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:project-durability-v2'],
+  },
+  {
+    name: 'ide:gate:verify-corrupt-state-recovery-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-corrupt-state-recovery-v2'],
+  },
+  {
+    name: 'ide:gate:verify-multitab-conflict-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:verify-multitab-conflict-v2'],
+  },
+  {
+    name: 'ide:gate:diagnostics-bundle-v2',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:diagnostics-bundle-v2'],
+  },
+  {
     name: 'ide:gate:verify-testbench-usable-layout',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:verify-testbench-usable-layout'],

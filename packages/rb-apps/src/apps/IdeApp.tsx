@@ -119,6 +119,7 @@ const ImportSurface = React.lazy(() =>
 );
 
 const DEFAULT_FPGA_PART = 'xc7a35tcpg236-1';
+const IDE_RUNTIME_STORAGE_KEY = 'rb.ide.project-runtime.v1';
 
 interface IdeFpgaConfig {
   board: 'basys3';
@@ -146,6 +147,7 @@ export const IdeApp: React.FC = () => {
   const [studentName, setStudentName] = useState<string>('');
   const hasRestoredRef = useRef(false);
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
+  const [externalProjectUpdate, setExternalProjectUpdate] = useState<string | null>(null);
   const isRestoringRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [workflowOrientationRequest, setWorkflowOrientationRequest] = useState(0);
@@ -185,6 +187,22 @@ export const IdeApp: React.FC = () => {
     restoringModeFromHistoryRef.current = false;
     syncActiveModeIntoUrl(activeMode, { replace });
   }, [activeMode]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage) return;
+      if (event.key !== IDE_RUNTIME_STORAGE_KEY) return;
+      if (!event.newValue || event.newValue === event.oldValue) return;
+      const projectLabel = readExternalRuntimeProjectLabel(event.newValue);
+      setExternalProjectUpdate(
+        projectLabel
+          ? `Project changed in another tab: ${projectLabel}. Reload to review the latest saved work.`
+          : 'Project changed in another tab. Reload to review the latest saved work.'
+      );
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -1747,6 +1765,13 @@ export const IdeApp: React.FC = () => {
           <button onClick={() => { setAutosaveAvailable(false); localStorage.removeItem('rb-autosave-circuit'); }}>Dismiss</button>
         </div>
       )}
+      {externalProjectUpdate && (
+        <div className="ide-autosave-banner ide-storage-conflict-banner" data-testid="ide-storage-conflict-banner">
+          <span><strong>Saved work changed elsewhere.</strong> {externalProjectUpdate}</span>
+          <button onClick={() => window.location.reload()}>Reload</button>
+          <button onClick={() => setExternalProjectUpdate(null)}>Dismiss</button>
+        </div>
+      )}
       <IdeTopBar
         projectName={projectName}
         projectId={projectId}
@@ -2574,6 +2599,20 @@ function normalizeProjectIdSeed(value: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
   return normalized.length > 0 ? `rb-${normalized}` : 'rb-project';
+}
+
+function readExternalRuntimeProjectLabel(rawRuntimeState: string): string | null {
+  try {
+    const parsed = JSON.parse(rawRuntimeState) as {
+      state?: { projectName?: unknown; projectId?: unknown };
+    };
+    const name = typeof parsed.state?.projectName === 'string' ? parsed.state.projectName.trim() : '';
+    const id = typeof parsed.state?.projectId === 'string' ? parsed.state.projectId.trim() : '';
+    if (name && id) return `${name} (${id})`;
+    return name || id || null;
+  } catch {
+    return null;
+  }
 }
 
 export default IdeApp;

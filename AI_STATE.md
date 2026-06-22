@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-06-21 (test: add Phase 3F classroom proof gates)
+
+**Subsystem:** Product Trust Reset v2 Phase 3F, Verify accessibility, project durability, diagnostics support bundle, multi-tab warning, 30-profile browser classroom rehearsal, and draft PR #78.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `14a3e9dc20b66576f978932193e42fd2a6b70662`; `main` was not changed and the draft PR remains unmerged.
+- Added Help / Diagnostics support-bundle output behind the diagnostics boundary. Normal student chrome still hides raw build hashes and E-tier labels, while Diagnostics exposes full build fingerprint plus project, mode, Verify, storage, and browser context for TA support.
+- Added a visible saved-work-changed banner when another same-origin tab writes the runtime project storage key. The warning gives explicit Reload and Dismiss choices; it is not full conflict resolution.
+- Fixed the primary button computed background fallback so classroom zoom/contrast proof sees the same accent background that users see when gradients are unavailable or inspected by tooling.
+- Added focused browser gates for Verify accessible names, keyboard-only My-check expected-output editing, 125 percent zoom/contrast tolerance, project snapshot/runtime reload durability, corrupt storage recovery, multi-tab conflict warning, and diagnostics support bundle.
+- Added a 30-profile classroom rehearsal harness with `full`, `verify`, and `recovery` scenarios and tracked JSON/Markdown evidence under `.redbyte/rehearsal/phase-3f/`.
+- Updated Phase 3F release, accessibility, rehearsal, durability, ADR, invariant, gate-ownership, and cockpit docs so the proof posture is explicit.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with Phase 3F risk/durability/current-sprint notes.
+
+**Evidence:** Browser rehearsal evidence is tracked under `.redbyte/rehearsal/phase-3f/`: `classroom-full-30`, `classroom-verify-30`, and `classroom-recovery-30` each passed `30/30` isolated contexts. The focused proof anchors are `ide:gate:verify-accessibility-v2`, `ide:gate:verify-keyboard-grid-v2`, `ide:gate:verify-zoom-contrast-v2`, `ide:gate:project-durability-v2`, `ide:gate:verify-corrupt-state-recovery-v2`, `ide:gate:verify-multitab-conflict-v2`, and `ide:gate:diagnostics-bundle-v2`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check` on the changed gate/rehearsal/aggregate scripts, `build:unified`, all seven focused Phase 3F gates, the three 30-profile rehearsals, full `classroom:gate` (all steps), `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Broad `verify:gates:classroom` was run with a longer timeout and failed on pre-existing/stale legacy aggregate checks including Lab 4 smoke `[object Promise]`, lab 8 solution-like starter smoke, fixed `localhost:5173` assumptions, and old V1 shell/dock/control expectations; all Phase 3F gates passed inside that broad run. Commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 3F is proof/durability/diagnostics infrastructure only. It does not change simulation semantics, Compare semantics, pin mapping semantics, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project data format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** After Phase 3F closeout, keep the next slice on the Product Trust Reset v2 merge-readiness path: either storage-facade/journal/quota-risk durability design, human assistive-technology rehearsal, or branch-level PR merge review. Do not add more Verify feature behavior unless a directly observed trust defect requires it.
+
 ## Change Log 2026-06-21 (fix: add sequential Verify timing authority)
 
 **Subsystem:** Product Trust Reset v2 Phase 3E, sequential/clocked Verify authority, timing stale propagation, Project/Export readiness selectors, browser gate ownership, and draft PR #78.

@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `0abe87af980ee673e1ab90720ea64d32469e4c87`
-**Latest product/control slice:** Product Trust Reset v2 Phase 3E sequential Verify timing authority
+**Latest product/control slice:** Product Trust Reset v2 Phase 3F classroom proof and durability rehearsal
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -31,9 +31,9 @@ The active branch is a coordinated reconstruction branch, not a one-slice polish
 
 ## Top Priorities
 
-1. **Product Trust Reset v2 Phase 3E sequential Verify timing authority is in closeout.** `verifyTruthState.ts` defines the pure Verify truth statechart, `verifyTruthAdapter.ts` maps existing runtime/scenario/hash/timing records into that state, and rendered Verify now consumes the adapter for Course checks versus My checks, locked expected-output controls, result status, stale reason/recovery text, selected-failure repair authority, timing authority, Project verify status, and Export readiness. Phase 3E adds explicit clocked-lab authority: Counter starts with generated/read-only auto board-clock timing, a current auto-clock Compare PASS becomes `staleTiming` when the user switches to manual pulses, and Project/Export both lose trusted readiness until Compare reruns. `verify:truth-integration-gate`, `ide:gate:verify-v2-authority-cutover`, `ide:gate:verify-authority-phase-3d`, and `ide:gate:verify-sequential-authority-v2` are the current proof anchors.
-2. **Remaining Phase 3 work is narrower but still open.** The next Product Trust Reset task should exercise broader multi-context persistence and a11y classroom rehearsal on top of the same V2 model. Do not change simulation semantics, generated artifacts, pin mapping, project format, or hardware proof claims unless directly proven necessary.
-3. **Classroom reliability is documented but not migrated.** `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md` and `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md` record the current localStorage/.rbproj authorities, the target journal/rolling-snapshot/storage-facade model, and the missing multi-context rehearsal proof.
+1. **Product Trust Reset v2 Phase 3F is in closeout.** The branch now has focused browser proof for Verify accessible names, keyboard-only My-check expected-output editing, 125 percent zoom/contrast tolerance, project snapshot/runtime reload durability, corrupt storage recovery without stale trusted PASS, same-origin multi-tab overwrite warning, and Help / Diagnostics support-bundle metadata. The Phase 3F proof anchors are `ide:gate:verify-accessibility-v2`, `ide:gate:verify-keyboard-grid-v2`, `ide:gate:verify-zoom-contrast-v2`, `ide:gate:project-durability-v2`, `ide:gate:verify-corrupt-state-recovery-v2`, `ide:gate:verify-multitab-conflict-v2`, and `ide:gate:diagnostics-bundle-v2`.
+2. **Classroom rehearsal is now browser-proven, not hardware-proven.** `rehearsal:classroom-30`, `rehearsal:classroom-verify`, and `rehearsal:classroom-recovery` each passed `30/30` isolated browser contexts and wrote JSON/Markdown evidence under `.redbyte/rehearsal/phase-3f/`. This proves browser E0 reload/Verify/recovery endurance only; it does not prove Vivado synthesis, Basys3 programming, physical observation, cloud sync, accounts, or roster behavior.
+3. **Classroom reliability is still not a storage migration.** `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md` and `docs/architecture/ADR_PROJECT_DURABILITY_STORAGE.md` record the current localStorage/.rbproj authorities, the Phase 3F warning/rehearsal proof, and the target journal/rolling-snapshot/storage-facade model. Full conflict resolution, quota-risk UX, and human assistive-technology rehearsal remain open.
 4. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, `docs/architecture/ADR_VERIFY_STATE_ORCHESTRATION.md`, `docs/architecture/RED_BYTE_VERIFY_RUNTIME_INTEGRATION_V2.md`, `docs/architecture/RED_BYTE_PROJECT_DURABILITY_MODEL.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
 2. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 3. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
@@ -125,7 +125,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Product Trust Reset v2 Phase 3E closeout, then Phase 3F multi-context/a11y Verify V2 rehearsal.
+**Target:** Product Trust Reset v2 Phase 3F closeout, then merge-readiness review for storage-facade gaps, human assistive-technology rehearsal, and PR #78 risk.
 
 Structured hardening ticket fields to start from after inspection:
 

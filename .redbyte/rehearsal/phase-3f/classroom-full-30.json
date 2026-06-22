@@ -1,0 +1,375 @@
+{
+  "schema": "redbyte.phase3f.classroom-rehearsal.v1",
+  "scenario": "full",
+  "profiles": 30,
+  "passCount": 30,
+  "failCount": 0,
+  "durationMs": 75938,
+  "generatedAtIso": "2026-06-22T02:46:28.104Z",
+  "results": [
+    {
+      "studentId": "student-01",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-01",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-02",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-02",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-03",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-03",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-04",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-04",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-05",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-05",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-06",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-06",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-07",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-07",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-08",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-08",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-09",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-09",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-10",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-10",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-11",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-11",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-12",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-12",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-13",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-13",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-14",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-14",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-15",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-15",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-16",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-16",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-17",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-17",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-18",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-18",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-19",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-19",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-20",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-20",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-21",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-21",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-22",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-22",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-23",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-23",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-24",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-24",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-25",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-25",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-26",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-26",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-27",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-27",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-28",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-28",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-29",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-29",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    },
+    {
+      "studentId": "student-30",
+      "pass": true,
+      "restored": {
+        "projectName": "Phase 3F student-30",
+        "nodeCount": 8,
+        "lastRunStatus": null,
+        "hasExpectedName": true,
+        "runtimeStatePresent": true,
+        "snapshotCount": 1
+      }
+    }
+  ],
+  "limits": [
+    "Browser rehearsal only; no Vivado build, board programming, or physical board observation.",
+    "Current storage remains localStorage; journaled rolling snapshots remain future work."
+  ]
+}
