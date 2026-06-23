@@ -302,6 +302,7 @@
         "ide:gate:export-first-viewport-artifacts": "node ./scripts/gates/ide-export-first-viewport-artifacts.mjs",
         "ide:gate:export-artifact-direct-preview": "node ./scripts/gates/ide-export-artifact-direct-preview.mjs",
         "ide:gate:export-package-inspector": "node ./scripts/gates/ide-export-package-inspector.mjs",
+        "ide:gate:export-workspace-density-v2": "node ./scripts/gates/ide-export-workspace-density-v2.mjs",
         "ide:gate:export-blockers-contract": "node ./scripts/gates/ide-export-blockers-contract.mjs",
         "ide:gate:export-ready-contract": "node ./scripts/gates/ide-export-ready-contract.mjs",
         "ide:gate:export-download-contract": "node ./scripts/gates/ide-export-download-contract.mjs",

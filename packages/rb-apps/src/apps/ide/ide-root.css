@@ -35194,41 +35194,57 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {
   display: grid;
-  grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
-  gap: 10px;
-  min-height: clamp(300px, 44vh, 560px);
+  grid-template-columns: minmax(246px, 0.28fr) minmax(0, 1fr);
+  gap: 8px;
+  min-height: clamp(380px, 52vh, 640px);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1 {
   display: grid;
   align-content: start;
-  gap: 7px;
   min-height: 0;
   overflow: auto;
-  padding-right: 4px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(70, 115, 150, 0.28);
+  background: rgba(4, 12, 21, 0.64);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 3px 8px;
+  grid-template-columns: minmax(82px, 0.36fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
-  padding: 8px 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(70, 115, 150, 0.34);
-  background: rgba(7, 16, 27, 0.72);
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 0;
+  border-bottom: 1px solid rgba(70, 115, 150, 0.2);
+  border-radius: 0;
+  background: transparent;
   color: rgba(232, 244, 255, 0.94);
   text-align: left;
   cursor: pointer;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file.is-active,
-.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file:hover {
-  border-color: rgba(46, 196, 182, 0.56);
-  background: rgba(8, 38, 45, 0.78);
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file:first-child {
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file span {
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file:last-child {
+  border-bottom: 0;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file.is-active,
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file:hover {
+  background: rgba(8, 38, 45, 0.7);
+  box-shadow: inset 3px 0 0 rgba(46, 196, 182, 0.72);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__path {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -35238,9 +35254,60 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__file small {
-  grid-column: 1 / -1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: rgba(177, 202, 224, 0.72);
   font-size: 11px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 58px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: rgba(185, 212, 232, 0.76);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.78);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.18);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--ready {
+  color: rgba(116, 231, 183, 0.82);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--ready::before {
+  background: rgba(46, 196, 182, 0.94);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--blocked {
+  color: rgba(255, 157, 157, 0.82);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--blocked::before {
+  background: rgba(248, 113, 113, 0.94);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--pending {
+  color: rgba(246, 213, 124, 0.82);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-file-browser-v1__status--pending::before {
+  background: rgba(245, 158, 11, 0.94);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1 {

@@ -4925,11 +4925,12 @@
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  padding: 6px;
-  border-radius: 10px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
   border: 1px solid rgba(46, 196, 182, 0.2);
-  background: rgba(4, 19, 28, 0.72);
+  background: rgba(4, 17, 27, 0.58);
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1 {
@@ -4944,15 +4945,20 @@
   display: grid;
   gap: 2px;
   min-width: 0;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(70, 115, 150, 0.24);
-  background: rgba(6, 15, 25, 0.68);
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 0;
+  border-right: 1px solid rgba(70, 115, 150, 0.22);
+  border-radius: 0;
+  background: transparent;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item:last-child {
+  border-right: 0;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item--boundary {
-  border-color: rgba(245, 158, 11, 0.28);
-  background: rgba(29, 20, 6, 0.46);
+  background: rgba(29, 20, 6, 0.42);
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item span {

@@ -72,6 +72,7 @@ const classroomRequired = [
   ['ide:gate:export-handoff-station', 'pnpm -s ide:gate:export-handoff-station', { owner: 'export', category: 'product workflow' }],
   ['ide:gate:export-first-viewport-artifacts', 'pnpm -s ide:gate:export-first-viewport-artifacts', { owner: 'export', category: 'visual geometry' }],
   ['ide:gate:export-package-inspector', 'pnpm -s ide:gate:export-package-inspector', { owner: 'export', category: 'product workflow' }],
+  ['ide:gate:export-workspace-density-v2', 'pnpm -s ide:gate:export-workspace-density-v2', { owner: 'export', category: 'visual geometry' }],
   ['ide:gate:export-artifact-direct-preview', 'pnpm -s ide:gate:export-artifact-direct-preview', { owner: 'export', category: 'product workflow' }],
   ['ide:gate:export-e2e-contract', 'pnpm -s ide:gate:export-e2e-contract', { owner: 'export', category: 'semantic browser' }],
   ['ide:gate:export-trust-integrity', 'pnpm -s ide:gate:export-trust-integrity', { owner: 'export', category: 'semantic browser' }],

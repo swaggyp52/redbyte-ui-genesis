@@ -52,7 +52,7 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       await assertVisibleRect(page, ['[data-testid="ide-export-file-top-vhd"]', '[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export artifact preview`, {
         maxTop: viewport.height === 768 ? 430 : 470,
         minWidth: 120,
-        minHeight: 42,
+        minHeight: 40,
       });
 
       await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=action-first-entry-surfaces-${viewport.label}-import`, {

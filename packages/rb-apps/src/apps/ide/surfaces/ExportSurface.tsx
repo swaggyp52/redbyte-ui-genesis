@@ -1804,19 +1804,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       aria-label={`Preview ${artifact.path}`}
                       aria-pressed={selectedArtifact?.path === artifact.path}
                     >
-                      <span>{artifact.path}</span>
+                      <strong className="ide-export-file-browser-v1__path">{artifact.path}</strong>
                       <small>{artifact.note}</small>
-                      <IdeStatusPill
-                        tone={
-                          artifact.status === 'ready'
-                            ? 'ok'
-                            : artifact.status === 'blocked'
-                              ? 'error'
-                              : 'warn'
-                        }
+                      <em
+                        className={`ide-export-file-browser-v1__status ide-export-file-browser-v1__status--${artifact.status}`}
+                        aria-label={`Artifact status ${artifact.status}`}
                       >
                         {artifact.status === 'ready' ? 'Ready' : artifact.status === 'blocked' ? 'Blocked' : 'Pending'}
-                      </IdeStatusPill>
+                      </em>
                     </button>
                   ))
                 ) : (

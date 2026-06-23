@@ -106,6 +106,12 @@ V2 gates still to add before merge:
 
 Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 
+Export density hardening adds one focused visual geometry gate:
+
+- `ide:gate:export-workspace-density-v2`
+
+This gate protects the rendered Export artifact workspace from drifting back into repeated status-pill cards. It runs the normal starter -> Verify Compare PASS -> Export path at `1366x768`, `1440x900`, and `1920x1080`, captures screenshots under `.redbyte/product-immersion/export-workspace-density/YYYY-MM-DD/`, rejects file-row `ide-status-pill` usage, rejects oversized artifact rows, requires a compact handoff strip, requires a dominant selected-file preview, verifies direct `top.xdc` preview, and checks root overflow/browser errors. It is visual/workflow proof only and must not be used as generated-byte or Vivado/Basys3 proof.
+
 ## Proof Layers
 
 | Layer | Owns | Best for | Required when |
@@ -153,6 +159,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`
 - `ide:gate:export-package-inspector`
+- `ide:gate:export-workspace-density-v2`
 - `ide:gate:outer-workflow-action-density`
 - `ide:gate:card-chrome-regression`
 - `ide:gate:release-solidification-v2`

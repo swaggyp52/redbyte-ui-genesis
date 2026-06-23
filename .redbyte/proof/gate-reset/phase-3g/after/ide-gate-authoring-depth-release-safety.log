@@ -1,23 +1,23 @@
-[authoring-depth] 2026-06-23T03:43:24.811Z 1366x768: reset storage
-[authoring-depth] 2026-06-23T03:43:24.835Z 1366x768: project first launch
-[authoring-depth] 2026-06-23T03:43:25.690Z 1366x768: build fresh
-[authoring-depth] 2026-06-23T03:43:26.167Z 1366x768: partial blank authoring
-[authoring-depth] 2026-06-23T03:43:26.210Z 1366x768: wire tool and reload
-[authoring-depth] 2026-06-23T03:43:26.851Z 1366x768: project continuity
-[authoring-depth] 2026-06-23T03:43:27.083Z 1366x768: half-adder starter
-[authoring-depth] 2026-06-23T03:43:27.867Z 1366x768: verify after design edit
-[authoring-depth] 2026-06-23T03:43:43.623Z 1366x768: hardware reload
-[authoring-depth] 2026-06-23T03:43:44.822Z 1366x768: export reload
-[authoring-depth] 2026-06-23T03:43:45.858Z 1366x768: import reload
-[authoring-depth] 2026-06-23T03:43:47.504Z 1440x900: reset storage
-[authoring-depth] 2026-06-23T03:43:47.525Z 1440x900: project first launch
-[authoring-depth] 2026-06-23T03:43:48.333Z 1440x900: build fresh
-[authoring-depth] 2026-06-23T03:43:48.757Z 1440x900: partial blank authoring
-[authoring-depth] 2026-06-23T03:43:48.821Z 1440x900: wire tool and reload
-[authoring-depth] 2026-06-23T03:43:49.506Z 1440x900: project continuity
-[authoring-depth] 2026-06-23T03:43:49.710Z 1440x900: half-adder starter
-[authoring-depth] 2026-06-23T03:43:50.430Z 1440x900: verify after design edit
-[authoring-depth] 2026-06-23T03:44:06.115Z 1440x900: hardware reload
-[authoring-depth] 2026-06-23T03:44:07.260Z 1440x900: export reload
-[authoring-depth] 2026-06-23T03:44:08.280Z 1440x900: import reload
+[authoring-depth] 2026-06-23T18:06:02.425Z 1366x768: reset storage
+[authoring-depth] 2026-06-23T18:06:02.459Z 1366x768: project first launch
+[authoring-depth] 2026-06-23T18:06:03.346Z 1366x768: build fresh
+[authoring-depth] 2026-06-23T18:06:03.831Z 1366x768: partial blank authoring
+[authoring-depth] 2026-06-23T18:06:03.878Z 1366x768: wire tool and reload
+[authoring-depth] 2026-06-23T18:06:04.541Z 1366x768: project continuity
+[authoring-depth] 2026-06-23T18:06:04.770Z 1366x768: half-adder starter
+[authoring-depth] 2026-06-23T18:06:05.503Z 1366x768: verify after design edit
+[authoring-depth] 2026-06-23T18:06:21.244Z 1366x768: hardware reload
+[authoring-depth] 2026-06-23T18:06:22.425Z 1366x768: export reload
+[authoring-depth] 2026-06-23T18:06:23.402Z 1366x768: import reload
+[authoring-depth] 2026-06-23T18:06:25.049Z 1440x900: reset storage
+[authoring-depth] 2026-06-23T18:06:25.067Z 1440x900: project first launch
+[authoring-depth] 2026-06-23T18:06:25.859Z 1440x900: build fresh
+[authoring-depth] 2026-06-23T18:06:26.303Z 1440x900: partial blank authoring
+[authoring-depth] 2026-06-23T18:06:26.347Z 1440x900: wire tool and reload
+[authoring-depth] 2026-06-23T18:06:26.988Z 1440x900: project continuity
+[authoring-depth] 2026-06-23T18:06:27.186Z 1440x900: half-adder starter
+[authoring-depth] 2026-06-23T18:06:27.907Z 1440x900: verify after design edit
+[authoring-depth] 2026-06-23T18:06:43.616Z 1440x900: hardware reload
+[authoring-depth] 2026-06-23T18:06:44.789Z 1440x900: export reload
+[authoring-depth] 2026-06-23T18:06:45.821Z 1440x900: import reload
 PASS: IDE authoring depth and release safety satisfied.

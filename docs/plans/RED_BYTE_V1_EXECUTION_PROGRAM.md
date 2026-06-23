@@ -18,6 +18,26 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 - Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Preserve E0/E1/E2/E3 truth at every phase.
 
+## Product Trust Reset v2 - Export Workspace Density Hardening
+
+Status: Closed locally pending final validation/commit/PR checks on `product/redbyte-trust-reset-v2`; PR #78 remains draft.
+
+Goal: Make Export's ready-to-build artifact workspace read as a compact file inspector, not a status-card stack, while preserving generated artifact bytes and downstream proof boundaries.
+
+Why: Live browser evidence showed repeated green `Ready` bars in each generated-file row and four bordered checklist cards competing with the selected-file preview. That made Export feel less like a deterministic handoff tool and more like a report page.
+
+Proof:
+
+- `ide:gate:export-workspace-density-v2`
+- Before/after screenshots under `.redbyte/product-immersion/export-workspace-density/2026-06-23/`
+
+Acceptance:
+
+- The intentional red gate fails on repeated file-row status pills in the old Export tree.
+- The after gate passes at `1366x768`, `1440x900`, and `1920x1080`.
+- Export artifact rows are compact, selected preview remains the dominant work object, direct `top.xdc` preview still works, and no root overflow or browser errors appear.
+- No simulation, Verify, mapping, generated artifact, project-format, golden, Vivado, or Basys3 physical-proof semantics change.
+
 ## Product Trust Reset v2 - Phase 6B RedByte Jury Primary Trial
 
 Status: Closed locally pending final commit/PR checks on `product/redbyte-trust-reset-v2`; PR #78 remains draft.

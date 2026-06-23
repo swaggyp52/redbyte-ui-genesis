@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-23 (fix: compact Export workspace density)
+
+**Subsystem:** Product Trust Reset v2 Export workspace density, artifact tree hierarchy, focused browser proof, and draft PR #78 continuation.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `6226f1b15f6633532eb8e93ebae93ce6a844a534`; `main` was not changed and draft PR #78 remains unmerged.
+- Added `ide:gate:export-workspace-density-v2` and wired it into package scripts plus the current gate manifest.
+- Replaced repeated `IdeStatusPill` artifact-row chrome in Export with compact file-tree status text and flattened the handoff checklist from four mini-cards into one compact status strip.
+- Tightened Export artifact-tree/workspace CSS so the generated file list is denser and the selected preview remains the dominant work object at `1366x768`, `1440x900`, and `1920x1080`.
+- Updated cockpit/current-truth, work queue, invariant, gate ownership, execution program, issue index, and ignored Obsidian scratch notes for the new Export density guard.
+
+**Evidence:** The intentional red run of `ide:gate:export-workspace-density-v2` failed on the prior UI with `9` repeated status pills in the Export artifact rows at all three viewports. After rebuild, the gate passed and wrote before/after screenshots under `.redbyte/product-immersion/export-workspace-density/2026-06-23/`. The after `1366x768` capture shows compact artifact rows, no repeated status pills, a flatter handoff strip, and a wider selected-file preview.
+
+**Validation:** Local validation passed for the intentional red `ide:gate:export-workspace-density-v2` baseline, `node --check scripts/gates/ide-export-workspace-density-v2.mjs`, `build:unified`, `gate:manifest:validate` (`128` gates, `93` current required, `19` focused, `15` retired, `1` legacy diagnostic), `ide:gate:export-workspace-density-v2`, affected Export gates `ide:gate:export-package-inspector`, `ide:gate:export-artifact-workspace-v2`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-handoff-station`, and `ide:gate:export-trust-integrity`, adjusted shared gate `ide:gate:action-first-entry-surfaces`, and full `classroom:gate` (`93/93`) under portable Node `v20.19.0` / pnpm `10.24.0`. `rb:doc:validate`, `rb:encoding:check`, `git diff --check`, final current-build smoke, commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** This is a browser UI density/layout slice only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the Export density commit, push, final current-build smoke, and GitHub checks. Final push and PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** Keep PR #78 draft and continue with secondary jury trials plus human review/actual assistive-technology review; if another product slice is allowed first, inspect live browser state and choose one remaining normal-use defect rather than following stale docs.
+
 ## Change Log 2026-06-23 (test: establish RedByte Jury primary trial)
 
 **Subsystem:** Product Trust Reset v2 Phase 6B, PR #78 standing RedByte Jury, visible from-scratch Half Adder browser trial, Map Pins materialization fix, and draft PR continuation.
