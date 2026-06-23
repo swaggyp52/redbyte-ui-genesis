@@ -149,8 +149,8 @@ afterEach(() => {
   window.cancelAnimationFrame = nativeCancelRaf;
 });
 
-describe('DesignSurface idle inspector contract', () => {
-  it('renders the default canvas inspector and useful idle overview stats when nothing is selected', () => {
+describe('DesignSurface idle workspace context contract', () => {
+  it('renders current I/O in the workspace context bar while keeping the idle inspector hidden', () => {
     useCircuitStore.setState({
       circuit: structuredClone(BASE_CIRCUIT),
       isDirty: false,
@@ -160,17 +160,15 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
-    expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-idle-outputs').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-idle-nodes').textContent).toBe('2');
-    expect(view.getByTestId('ide-design-inspector-idle-wires').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-io-state').textContent).toContain('Current I/O');
-    expect(view.getByTestId('ide-design-inspector-input-sw0_node').textContent).toContain('SW0');
-    expect(view.getByTestId('ide-design-inspector-output-ld0_node').textContent).toContain('LD0');
-    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('Verify');
-    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('proof');
+    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+    expect(view.getByTestId('ide-design-v2-context-bar')).toHaveAttribute('data-context-state', 'canvas');
+    expect(view.getByTestId('ide-design-v2-context-title').textContent).toBe('Canvas ready');
+    expect(view.getByTestId('ide-design-workspace-io-state').textContent).toContain('Current I/O');
+    expect(view.getByTestId('ide-design-workspace-input-sw0_node').textContent).toContain('SW0');
+    expect(view.getByTestId('ide-design-workspace-output-ld0_node').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-workspace-input-sw0_node-value').textContent).toBe('0');
+    expect(view.getByTestId('ide-design-workspace-output-ld0_node-value').textContent).toBe('0');
   });
 
   it('keeps the fixed palette open and hides the context inspector for an empty canvas', () => {

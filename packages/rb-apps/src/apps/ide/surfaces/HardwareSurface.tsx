@@ -3389,6 +3389,16 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                                   : 'Edit mapping'}
                             </span>
                           </span>
+                          {selectedMappingRowId === row.id ? (
+                            <span className="ide-hw-map-row-detail" data-testid={`ide-hw-map-row-detail-${row.id}`}>
+                              <span>
+                                <strong>{selectedBoardResourceStatus}</strong>
+                                {' | '}
+                                {selectedMappingResource}
+                              </span>
+                              <code>{selectedBoardResourceXdc || 'Select a compatible board resource to preview XDC.'}</code>
+                            </span>
+                          ) : null}
                         </button>
                       );
                     })}

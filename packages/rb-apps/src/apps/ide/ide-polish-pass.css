@@ -4866,15 +4866,21 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-mode {
+  display: grid !important;
+  grid-template-columns: minmax(500px, 41fr) minmax(0, 59fr) !important;
   gap: 12px !important;
+  align-items: stretch !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map .ide-hw-map-table {
-  flex-basis: min(350px, 31vw) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: unset !important;
   max-height: calc(100vh - 292px) !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-board {
+  min-width: 0 !important;
   min-height: clamp(350px, calc(100vh - 300px), 640px) !important;
 }
 

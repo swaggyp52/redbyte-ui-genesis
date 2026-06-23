@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-22 (fix: reconstruct Design and Map Pins V2 workspaces)
+
+**Subsystem:** Product Trust Reset v2 Phase 4A, Design workspace hierarchy, Map Pins table-board binding workspace, focused browser gates, accessibility review, and draft PR #78 continuation.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `b6aae2ecdd1a6ecd0b8ffa42bd5996c9805713ec`; `main` was not changed and draft PR #78 remains unmerged.
+- Captured before screenshots for Design and Map Pins at `1366x768` and `1440x900` under `.redbyte/product-immersion/product-trust-reset-v2/phase-4/before/`.
+- Rebuilt Design around a fixed parts palette, canvas-first workspace, compact context property bar, no default right inspector for ordinary live I/O, clean-state status-band removal, and active-canvas `Ctrl+A` select-all.
+- Rebuilt Map Pins around a table/board split, selected-row inline resource/XDC consequence detail, and preserved row-to-board assignment behavior.
+- Added `ide:gate:design-workspace-v2` and `ide:gate:map-pins-workspace-v2` to the manifest-backed classroom gate list.
+- Added Design/Map Pins V2 architecture docs, a browser-only accessibility review, and ignored Obsidian/scratch authority notes.
+
+**Evidence:** Phase 4A browser proof passes locally under portable Node `v20.19.0` / pnpm `10.24.0`: `ide:gate:design-workspace-v2`, `ide:gate:map-pins-workspace-v2`, the affected Design/Hardware geometry gates, full `classroom:gate` (`88/88`), and broad `verify:gates:classroom` (`107/107`). After screenshots were captured under `.redbyte/product-immersion/product-trust-reset-v2/phase-4/after/`.
+
+**Validation:** Local closeout validation passed for `build:unified`, `ide:gate:design-workspace-v2`, `ide:gate:map-pins-workspace-v2`, `ide:gate:design-correctness-contract`, `ide:gate:workbench-reconstruction-v1`, affected Design/Hardware browser gates, focused Design/Hardware unit tests (`78` tests), `classroom:gate` (`88/88`), `verify:gates:classroom` (`107/107`), `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Final commit, push, and GitHub PR checks must still pass before reporting the branch remote-green.
+
+**Safety:** Phase 4A is a browser UI/workspace reconstruction slice only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** After Phase 4A commit, push, and GitHub green, keep PR #78 draft and continue with one focused product-reconstruction slice chosen from live browser inspection, likely Project/Export/Import visual simplification or a deeper Design keyboard/accessibility pass. Do not move to hardware proof unless Vivado and a Basys3 board are physically available.
+
 ## Change Log 2026-06-22 (test: add PR78 branch review authority)
 
 **Subsystem:** Product Trust Reset v2 Phase 3I, draft PR #78 branch audit, project storage authority guard, classroom rehearsal fault injection, performance/security review, assistive-technology proof boundary, and merge-readiness decision.

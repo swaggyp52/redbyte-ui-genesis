@@ -1034,6 +1034,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     } else if (e.key === 'Control') {
       // Ctrl: Temporarily disable snap while held
       setIsCtrlPressed(true);
+    } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'a') {
+      const nodeIds = circuit.nodes.map((node) => node.id);
+      if (nodeIds.length > 0) {
+        e.preventDefault();
+        selectMultipleNodesRef.current(nodeIds);
+      }
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       handleDeleteRef.current();
     } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
@@ -1096,7 +1102,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         resetViewRef.current();
       }
     }
-  }, [interactionMode, onPlacementCancel, onRedo, onUndo, zoomFn]);
+  }, [circuit.nodes, interactionMode, onPlacementCancel, onRedo, onUndo, zoomFn]);
 
   const handleKeyUpActive = React.useCallback((e: KeyboardEvent) => {
     if (e.key === ' ') {

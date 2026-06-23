@@ -51,6 +51,10 @@ export async function openDesignInspector(page, baseUrl, gateLabel) {
     await rightToggle.click();
     await page.waitForTimeout(180);
   }
+  if (!(await page.locator('[data-testid="ide-inspector"]').first().isVisible().catch(() => false))) {
+    await page.keyboard.press('Control+A');
+    await page.waitForTimeout(180);
+  }
   await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
 }
 

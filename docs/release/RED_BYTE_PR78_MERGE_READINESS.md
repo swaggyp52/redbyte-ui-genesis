@@ -13,12 +13,15 @@ Branch: `product/redbyte-trust-reset-v2`
 PR: #78, draft
 Base reviewed: `origin/main` at `0abe87af980ee673e1ab90720ea64d32469e4c87`
 Starting Phase 3I head: `24db2554c25b218f10267df22a669ca53167ca04`
+Phase 4A starting head: `b6aae2ecdd1a6ecd0b8ffa42bd5996c9805713ec`
 
 ## Executive Decision
 
 **C. READY FOR REVIEW, KEEP DRAFT**
 
-PR #78 is coherent enough to continue into Phase 4 Design and Map Pins reconstruction after the Phase 3I commit is pushed and GitHub checks are green. It must remain draft and unmerged. This decision does not mark the PR non-draft, does not merge it, and does not claim Vivado/Basys3 E1-E3 proof.
+PR #78 is coherent enough to continue through focused Phase 4 product reconstruction after each slice is validated and GitHub checks are green. It must remain draft and unmerged. This decision does not mark the PR non-draft, does not merge it, and does not claim Vivado/Basys3 E1-E3 proof.
+
+Phase 4A has now begun that continuation with a contained Design and Map Pins workspace reconstruction. This does not change the executive decision: PR #78 remains draft and unmerged.
 
 ## Full Scope
 
@@ -30,6 +33,7 @@ PR #78 now includes:
 - manifest-backed classroom gate ownership and retired V1 diagnostic mapping
 - browser-local project storage facade with journal, last-known-good, recovery points, quota recovery, dirty-update guard, multi-tab warnings, and Diagnostics storage fields
 - 30-context browser rehearsal evidence and Phase 3I rehearsal fault-injection proof
+- Phase 4A Design workspace and Map Pins workspace reconstruction proof
 
 ## Architecture Review
 
@@ -101,14 +105,16 @@ Current branch UI is substantially stronger than pre-reset, but not finished:
 | Area | Finding | Severity |
 |---|---|---|
 | Project | V2 command/identity work is usable; remaining product polish is Phase 4+ depth, not a Phase 3I blocker. | P2 |
-| Design | Still needs Phase 4 reconstruction depth and CSS retirement; do not rebuild in Phase 3I. | P2 |
+| Design | Phase 4A replaces the default generic inspector path with a fixed palette, canvas-first layout, and compact context property bar; deeper keyboard/property editing and CSS retirement remain P2. | P2 |
 | Verify | Authority is much stronger; visual complexity and testbench/evidence clarity can still improve. | P2 |
-| Map Pins / Hardware | Browser E0 mapping workbench is guarded; Phase 4 should continue surface reconstruction without changing pin truth. | P2 |
+| Map Pins / Hardware | Phase 4A gives Map Pins a table/board split and selected-row resource/XDC context while preserving pin truth; richer conflict/repair flows remain P2. | P2 |
 | Export | Handoff and previews are stronger; generated preview escaping deserves focused review before non-draft. | P2 |
 | Import | Utility path remains acceptable; broader recovery polish is deferred. | P2 |
 | Help / Diagnostics | Properly owns build/storage details; human support process still needs rehearsal. | P2 |
 
-No Phase 3I P0/P1 UI blocker was found that justified changing product surfaces during this review phase.
+No current P0/P1 UI blocker was found that changes the draft decision or justifies merging PR #78 without human review.
+
+Phase 4A follow-up: Design now has a fixed palette, compact context property bar, usable canvas geometry, active-canvas select-all, and no default generic inspector. Map Pins now has table/board split geometry and selected-row inline resource/XDC detail. This closes the first Phase 4 surface-reconstruction slice only; it does not make the PR non-draft.
 
 ## Dead-Code Review
 
@@ -138,6 +144,11 @@ Phase 3I added:
 - `gate:project-storage-authority`
 - `rehearsal:classroom-fault-injection`
 
+Phase 4A adds:
+
+- `ide:gate:design-workspace-v2`
+- `ide:gate:map-pins-workspace-v2`
+
 Phase 3I local closeout matrix passed under portable Node `v20.19.0` / pnpm `10.24.0`:
 
 - `node --check` for changed gate/rehearsal/harness scripts
@@ -152,7 +163,20 @@ Phase 3I local closeout matrix passed under portable Node `v20.19.0` / pnpm `10.
 - `rb:encoding:check`
 - `git diff --check` with only normal CRLF working-copy warnings
 
-Still required after the Phase 3I commit is created:
+Phase 4A local closeout matrix passed under portable Node `v20.19.0` / pnpm `10.24.0`:
+
+- focused Design/Map Pins browser gates: `ide:gate:design-workspace-v2`, `ide:gate:map-pins-workspace-v2`
+- corrected Design semantic gate: `ide:gate:design-correctness-contract`
+- affected workbench geometry gates, including `ide:gate:workbench-reconstruction-v1`
+- focused Design/Hardware unit tests (`78` tests)
+- `build:unified`
+- `classroom:gate` (`88/88`)
+- `verify:gates:classroom` (`107/107`)
+- `rb:doc:validate`
+- `rb:encoding:check`
+- `git diff --check` with only normal CRLF working-copy warnings
+
+Still required after the Phase 4A commit is created:
 
 - final current-build smoke after the commit is clean
 - GitHub Classroom Truth Gates and deploy checks green after push
@@ -165,7 +189,7 @@ None currently known.
 
 ### P1
 
-None currently known after Phase 3I source/rehearsal gate additions and local validation. Final clean-tree current-build smoke and GitHub checks remain required closeout proof.
+None currently known after Phase 4A local full classroom and broad verifier gates. Final clean-tree current-build smoke and GitHub checks remain required closeout proof.
 
 ### P2
 
@@ -174,7 +198,8 @@ None currently known after Phase 3I source/rehearsal gate additions and local va
 - Run real Narrator/NVDA/VoiceOver/JAWS review before accessibility certification.
 - Run focused generated-preview escaping review before non-draft.
 - Generate exact clean origin/main performance deltas before non-draft.
-- Continue Phase 4 Design and Map Pins reconstruction without changing simulation, Verify, mapping, export bytes, project format, or goldens.
+- Continue Phase 4 product reconstruction without changing simulation, Verify, mapping, export bytes, project format, or goldens.
+- Continue visible product reconstruction from live browser inspection after Phase 4A; do not assume Design/Map Pins are fully finished from one slice.
 
 ## Merge Blockers
 
@@ -184,7 +209,7 @@ Blocking before merge/non-draft:
 - Human review has not approved marking non-draft.
 - Actual screen-reader certification is not complete.
 - Vivado/Basys3 E1-E3 proof has not been run.
-- Final Phase 3I commit, clean-tree current-build smoke, push, and GitHub green proof must be recorded.
+- Final Phase 4A commit, clean-tree current-build smoke, push, and GitHub green proof must be recorded.
 
 Not blockers for continuing Phase 4:
 
@@ -194,7 +219,7 @@ Not blockers for continuing Phase 4:
 
 ## Rollback Strategy
 
-If Phase 3I gate additions cause CI issues, revert the Phase 3I commit only. If Phase 3H storage facade causes a runtime problem, revert the Phase 3H storage-facade commit range rather than reverting Verify truth/model work. Do not re-bless goldens or change generated artifacts as part of a Phase 3I rollback.
+If Phase 4A workspace changes cause CI issues, revert the Phase 4A commit only. If Phase 3I gate additions cause CI issues, revert the Phase 3I commit only. If Phase 3H storage facade causes a runtime problem, revert the Phase 3H storage-facade commit range rather than reverting Verify truth/model work. Do not re-bless goldens or change generated artifacts as part of a rollback.
 
 ## Post-Merge Proof Plan
 
@@ -209,7 +234,7 @@ Before any eventual merge or non-draft transition:
 
 ## Phase 4 Readiness
 
-Phase 4 can begin after this Phase 3I commit is pushed and GitHub checks are green. The recommended Phase 4 entry point is Design and Map Pins V2 reconstruction, with the current truth model, storage facade, gate manifest, and no-overclaim boundaries treated as fixed constraints.
+Phase 4A began with Design and Map Pins V2 reconstruction, with the current truth model, storage facade, gate manifest, and no-overclaim boundaries treated as fixed constraints. After Phase 4A is committed/pushed and GitHub checks are green, continue with one live-browser-selected product reconstruction slice at a time while keeping PR #78 draft.
 
 ## Attribution
 

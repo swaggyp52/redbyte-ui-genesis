@@ -4,7 +4,7 @@
  * Contract:
  * 1) Design must update combinational outputs immediately from real UI input toggles.
  * 2) No Run/Step action is required for combinational updates.
- * 3) Inspector I/O state shown to students must match expected truth tables.
+ * 3) Workspace I/O state shown to students must match expected truth tables.
  */
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
@@ -25,7 +25,7 @@ await runIdeGate('IDE design correctness contract satisfied', async ({ page, bas
 async function verifySignalTourTruthTable(page) {
   await loadExampleIntoDesign(page, 'signal-tour');
   await ensureSimPaused(page);
-  await assertInspectorIoStatePresent(
+  await assertWorkspaceIoStatePresent(
     page,
     ['sw0_node', 'sw1_node', 'sw2_node', 'sw3_node'],
     ['ld0_node', 'ld1_node', 'ld2_node', 'ld3_node'],
@@ -53,7 +53,7 @@ async function verifySignalTourTruthTable(page) {
 async function verifyLogicGatesTruthTable(page) {
   await loadExampleIntoDesign(page, 'logic-gates');
   await ensureSimPaused(page);
-  await assertInspectorIoStatePresent(page, ['sw0_node', 'sw1_node'], ['ld0_node', 'ld1_node', 'ld2_node']);
+  await assertWorkspaceIoStatePresent(page, ['sw0_node', 'sw1_node'], ['ld0_node', 'ld1_node', 'ld2_node']);
 
   const scenarios = [
     { sw0: 0, sw1: 0, ld0: 0, ld1: 0, ld2: 0 },
@@ -99,19 +99,24 @@ async function loadExampleIntoDesign(page, exampleId) {
     await page.locator('[data-testid="mode-button-design"]').click();
   }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
-  await revealDesignInspector(page);
-  await page.waitForSelector('[data-testid="ide-design-inspector-io-state"]', { timeout: 10000 });
+  await ensureCanvasWorkspace(page);
+  await page.waitForSelector('[data-testid="ide-design-workspace-io-state"]', { timeout: 10000 });
 }
 
-async function revealDesignInspector(page) {
-  if (await page.locator('[data-testid="ide-design-inspector-io-state"]').first().isVisible().catch(() => false)) {
-    return;
-  }
-  const inspectorToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  if (await inspectorToggle.isVisible().catch(() => false)) {
-    await clickElement(inspectorToggle);
-    await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
-  }
+async function ensureCanvasWorkspace(page) {
+  const workspace = page.locator('[data-testid="ide-design-workspace"]').first();
+  const currentView = await workspace.getAttribute('data-design-view').catch(() => null);
+  if (currentView === 'canvas') return;
+
+  const canvasButton = page.locator('[data-testid="ide-design-view-canvas"]').first();
+  assert(
+    await canvasButton.isVisible().catch(() => false),
+    `design canvas view button must be visible before correctness checks (current view: ${currentView ?? 'unknown'})`,
+  );
+  await canvasButton.click();
+  await page.waitForFunction(() => {
+    return document.querySelector('[data-testid="ide-design-workspace"]')?.getAttribute('data-design-view') === 'canvas';
+  }, { timeout: 5000 });
 }
 
 async function revealDesignLibrary(page) {
@@ -188,14 +193,14 @@ async function ensureSimPaused(page) {
   // It only verifies that real input toggles update current Design state.
 }
 
-async function assertInspectorIoStatePresent(page, inputNodeIds, outputNodeIds) {
+async function assertWorkspaceIoStatePresent(page, inputNodeIds, outputNodeIds) {
   for (const nodeId of inputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-inspector-input-${nodeId}-value"]`, {
+    await page.waitForSelector(`[data-testid="ide-design-workspace-input-${nodeId}-value"]`, {
       timeout: 10000,
     });
   }
   for (const nodeId of outputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-inspector-output-${nodeId}-value"]`, {
+    await page.waitForSelector(`[data-testid="ide-design-workspace-output-${nodeId}-value"]`, {
       timeout: 10000,
     });
   }
@@ -203,7 +208,7 @@ async function assertInspectorIoStatePresent(page, inputNodeIds, outputNodeIds) 
 
 async function setInputBit(page, nodeId, value) {
   const target = String(value);
-  const inputValueSelector = `[data-testid="ide-design-inspector-input-${nodeId}-value"]`;
+  const inputValueSelector = `[data-testid="ide-design-workspace-input-${nodeId}-value"]`;
   const current = await text(page.locator(inputValueSelector));
   assert(
     current === '0' || current === '1',
@@ -213,7 +218,6 @@ async function setInputBit(page, nodeId, value) {
 
   await ensureLiveInputsExpanded(page);
   await page.locator(`[data-testid="ide-design-input-toggle-${nodeId}"]`).click();
-  await revealDesignInspector(page);
 
   await page.waitForFunction(
     ({ selector, expected }) => {
@@ -242,7 +246,7 @@ async function ensureLiveInputsExpanded(page) {
 }
 
 async function assertOutputBit(page, nodeId, expected) {
-  const selector = `[data-testid="ide-design-inspector-output-${nodeId}-value"]`;
+  const selector = `[data-testid="ide-design-workspace-output-${nodeId}-value"]`;
   await page.waitForFunction(
     ({ outputSelector, expectedValue }) => {
       const element = document.querySelector(outputSelector);

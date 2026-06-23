@@ -41,6 +41,8 @@ Phase 2 should implement or equivalent:
 
 Phase 2 implementation note: the first branch implementation wires these concepts through the existing shell/components rather than a fully new component library. The real acceptance point is visible surface behavior and `data-workspace-primitive` markers on live workspaces, not unused abstractions.
 
+Phase 4A implementation note: Design and Map Pins now have focused workspace contracts at `docs/architecture/RED_BYTE_DESIGN_WORKSPACE_V2.md` and `docs/architecture/RED_BYTE_MAP_PINS_WORKSPACE_V2.md`. The acceptance point is the live browser behavior guarded by `ide:gate:design-workspace-v2` and `ide:gate:map-pins-workspace-v2`.
+
 ## Project
 
 - No side rails.
@@ -66,6 +68,7 @@ Phase 2 implementation note: the first branch implementation wires these concept
 - Zoom is integrated into the toolbar.
 - Default view fits the loaded circuit.
 - Palette categories and resources must not crop.
+- Current Phase 4A proof: `ide:gate:design-workspace-v2` verifies the fixed palette, context property bar, default-hidden generic inspector, canvas geometry, active-canvas select-all, and selected context actions.
 
 ## Verify
 
@@ -88,6 +91,7 @@ Phase 2 implementation note: the first branch implementation wires these concept
 - Selecting a row highlights the exact board resource.
 - Selected mapping details appear inline or immediately beneath the selected row.
 - Board and mapping table remain visible together.
+- Current Phase 4A proof: `ide:gate:map-pins-workspace-v2` verifies the table/board split, selected row highlight, inline XDC/detail context, board-resource assignment, no root overflow, and no browser errors.
 
 ## Export
 

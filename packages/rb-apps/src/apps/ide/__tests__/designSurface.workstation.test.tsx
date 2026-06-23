@@ -274,15 +274,24 @@ describe('DesignSurface workstation redesign', () => {
     );
   });
 
-  it('keeps canvas mode support rails collapsed by default while preserving restorable library and inspector context', async () => {
+  it('keeps the V2 canvas library fixed while moving idle actions into the workspace context bar', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+      expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     });
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-design-dock-palette')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.getByTestId('ide-design-v2-context-bar').getAttribute('data-context-state')).toBe('canvas');
+    expect(view.getByTestId('ide-design-v2-context-title').textContent).toBe('Canvas ready');
+    expect(view.getByTestId('ide-design-workspace-io-state').textContent).toContain('Current I/O');
+    expect(view.getByTestId('ide-design-workspace-input-sw0_node').textContent).toContain('SW0');
+    expect(view.getByTestId('ide-design-workspace-output-ld0_node').textContent).toContain('LD0');
+    expect(view.getByTestId('ide-design-context-add-boundary-io')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-add-and')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-open-verify')).toBeTruthy();
 
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
@@ -292,12 +301,17 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-inspector')).toBeTruthy();
     });
 
+    expect(view.getByTestId('ide-design-v2-context-bar').getAttribute('data-context-state')).toBe('node');
+    expect(view.getByTestId('ide-design-v2-context-title').textContent).toContain('Output');
+    expect(view.getByTestId('ide-design-context-rename')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-duplicate')).toBeTruthy();
+    expect(view.getByTestId('ide-design-context-delete')).toBeTruthy();
     expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
   it('keeps the selection inspector pinned open instead of collapsing it behind a restore rail', async () => {
@@ -674,7 +688,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(onGoToImport).toHaveBeenCalledTimes(1);
   });
 
-  it('collapses support rails in code and split modes so the authoring surface stays focused', async () => {
+  it('keeps code and split modes in the V2 workspace without restore rails or diagnostic chrome', async () => {
     const view = renderSurface();
     const modeRoot = view.getByTestId('ide-mode-design');
 
@@ -686,10 +700,11 @@ describe('DesignSurface workstation redesign', () => {
     expect(modeRoot.getAttribute('data-shell-density')).toBe('immersive');
     expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-design-dock-palette')).toBeTruthy();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-collapse-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
 
@@ -698,10 +713,11 @@ describe('DesignSurface workstation redesign', () => {
     await waitFor(() => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
     });
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-design-dock-palette')).toBeTruthy();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
   });
 

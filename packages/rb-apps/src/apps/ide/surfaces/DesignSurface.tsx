@@ -3863,8 +3863,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const designRightDockMode =
     isCanvasWorkspace &&
     (hasInspectorSelectionContext ||
-      liveIoSignals.inputRows.length > 0 ||
-      liveIoSignals.outputRows.length > 0 ||
       activeVerifySignal != null ||
       activeDebugContext != null ||
       effectiveExternalDebugTick != null ||
@@ -3906,6 +3904,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     selectedWireIdsAll,
     simRunning,
   ]);
+  const designContextState =
+    !isCanvasWorkspace
+      ? 'artifact'
+      : hasSingleSelectedNode && selectedNode
+        ? 'node'
+        : selectedWireContext
+          ? 'wire'
+          : selectedNodeIdsAll.length > 1
+            ? 'multi-node'
+            : selectedWireIdsAll.length > 1
+              ? 'multi-wire'
+              : 'canvas';
+  const designContextTitle =
+    designContextState === 'node' && selectedNode
+      ? selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type)
+      : designContextState === 'wire' && selectedWireContext
+        ? `${selectedWireContext.sourceLabel} -> ${selectedWireContext.targetLabel}`
+        : designContextState === 'multi-node'
+          ? `${selectedNodeIdsAll.length} nodes selected`
+          : designContextState === 'multi-wire'
+            ? `${selectedWireIdsAll.length} wire segments selected`
+            : designContextState === 'artifact'
+              ? primaryArtifactLabel
+              : 'Canvas ready';
+  const designContextSubtitle =
+    designContextState === 'node' && selectedNode
+      ? `${nodeTypeLabel(selectedNode.type)} | ${selectedNodePins.length} port${selectedNodePins.length === 1 ? '' : 's'} | ${selectionStatusLabel}`
+      : designContextState === 'wire' && selectedWireContext
+        ? `${describeStudentSignalKey(selectedWireContext.signalKey, editorCircuit, ioRowByNodeId)} | ${selectionStatusLabel}`
+        : designContextState === 'multi-node'
+          ? 'Duplicate, align, or remove the selected parts.'
+          : designContextState === 'multi-wire'
+            ? 'Trace or remove selected wire segments.'
+            : designContextState === 'artifact'
+              ? `Generated ${primaryArtifactFileName}`
+              : `${editorCircuit.nodes.length} parts | ${editorCircuit.connections.length} wires | ${compilerErrorCount} errors | ${compilerWarningCount} warnings`;
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
       {editingLabelNodeId === node.id ? (
@@ -4089,13 +4123,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const activeEl = document.activeElement as HTMLElement | null;
       const tagName = activeEl?.tagName?.toLowerCase();
       const isTextInput = tagName === 'input' || tagName === 'textarea' || activeEl?.isContentEditable;
+      const key = event.key.toLowerCase();
 
       if (event.key === 'Escape' && !isTextInput) {
         setWireFeedback(null);
       }
 
       // Shift+D: toggle design debug overlay
-      if (event.shiftKey && event.key.toLowerCase() === 'd' && !isTextInput) {
+      if (event.shiftKey && key === 'd' && !isTextInput) {
         event.preventDefault();
         setDesignDebugEnabled((previous) => !previous);
         return;
@@ -4103,42 +4138,42 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
       // G: toggle grid snap
       if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
-          && (event.key === 'g' || event.key === 'G') && !isTextInput) {
+          && key === 'g' && !isTextInput) {
         event.preventDefault();
         toggleSnapToGrid();
         return;
       }
 
       // Ctrl+C / Cmd+C: copy selection
-      if ((event.ctrlKey || event.metaKey) && event.key === 'c' && !isTextInput) {
+      if ((event.ctrlKey || event.metaKey) && key === 'c' && !isTextInput) {
         event.preventDefault();
         handleCopy();
         return;
       }
 
       // Ctrl+V / Cmd+V: paste clipboard
-      if ((event.ctrlKey || event.metaKey) && event.key === 'v' && !isTextInput) {
+      if ((event.ctrlKey || event.metaKey) && key === 'v' && !isTextInput) {
         event.preventDefault();
         handlePaste();
         return;
       }
 
       // Ctrl+D / Cmd+D: duplicate selection in-place
-      if ((event.ctrlKey || event.metaKey) && event.key === 'd' && !isTextInput) {
+      if ((event.ctrlKey || event.metaKey) && key === 'd' && !isTextInput) {
         event.preventDefault();
         handleDuplicate();
         return;
       }
 
       // Ctrl+A / Cmd+A: select all nodes
-      if ((event.ctrlKey || event.metaKey) && event.key === 'a' && !isTextInput) {
+      if ((event.ctrlKey || event.metaKey) && key === 'a' && !isTextInput) {
         event.preventDefault();
         handleSelectAll();
         return;
       }
 
       // Ctrl+X / Cmd+X: cut (copy + delete)
-      if ((event.ctrlKey || event.metaKey) && event.key === 'x' && !isTextInput) {
+      if ((event.ctrlKey || event.metaKey) && key === 'x' && !isTextInput) {
         event.preventDefault();
         handleCut();
         return;
@@ -4146,7 +4181,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
       // Shift+F: fit camera to selection (falls back to all nodes)
       if (event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
-          && event.key.toLowerCase() === 'f' && !isTextInput) {
+          && key === 'f' && !isTextInput) {
         event.preventDefault();
         handleFitToSelection();
         return;
@@ -4180,16 +4215,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
       // Gate hotkeys (bare, no modifier): a=AND, o=OR, n=NOT, x=XOR
       if (!event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey && !isTextInput) {
-        if (event.key === 'a') { event.preventDefault(); beginNodePlacement('AND'); return; }
-        if (event.key === 'o') { event.preventDefault(); beginNodePlacement('OR'); return; }
-        if (event.key === 'n') { event.preventDefault(); beginNodePlacement('NOT'); return; }
-        if (event.key === 'x') { event.preventDefault(); beginNodePlacement('XOR'); return; }
+        if (key === 'a') { event.preventDefault(); beginNodePlacement('AND'); return; }
+        if (key === 'o') { event.preventDefault(); beginNodePlacement('OR'); return; }
+        if (key === 'n') { event.preventDefault(); beginNodePlacement('NOT'); return; }
+        if (key === 'x') { event.preventDefault(); beginNodePlacement('XOR'); return; }
       }
 
       // Ctrl+Z / Cmd+Z: undo — fires only when CanvasHost has not already handled it
       // (CanvasHost calls e.preventDefault() for Ctrl+Z when canvas is active, so we
       // check defaultPrevented to avoid a double-undo when both handlers fire)
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === 'z'
+      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && key === 'z'
           && !isTextInput && !event.defaultPrevented) {
         event.preventDefault();
         handleUndo();
@@ -4198,7 +4233,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
       // Ctrl+Y / Cmd+Y or Ctrl+Shift+Z: redo — same defaultPrevented guard
       if ((event.ctrlKey || event.metaKey) && !isTextInput && !event.defaultPrevented &&
-          (event.key.toLowerCase() === 'y' || (event.shiftKey && event.key.toLowerCase() === 'z'))) {
+          (key === 'y' || (event.shiftKey && key === 'z'))) {
         event.preventDefault();
         handleRedo();
         return;
@@ -6343,7 +6378,103 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
 
-            {/* ── Expanded secondary toolbar ── */}
+            {/* V2 context properties stay in the workspace instead of a default right rail. */}
+            {isCanvasWorkspace ? (
+              <div
+                className="ide-design-v2-context-bar"
+                data-testid="ide-design-v2-context-bar"
+                data-context-state={designContextState}
+                aria-label="Design context properties"
+              >
+                <div className="ide-design-v2-context-main">
+                  <span className="ide-design-v2-context-label">
+                    {designContextState === 'canvas'
+                      ? 'Canvas context'
+                      : designContextState === 'wire' || designContextState === 'multi-wire'
+                        ? 'Wire context'
+                        : designContextState === 'node' || designContextState === 'multi-node'
+                          ? 'Selection context'
+                          : 'Artifact context'}
+                  </span>
+                  <strong data-testid="ide-design-v2-context-title">{designContextTitle}</strong>
+                  <span data-testid="ide-design-v2-context-summary">{designContextSubtitle}</span>
+                </div>
+                <div className="ide-design-v2-context-actions" data-testid="ide-design-v2-context-actions">
+                  {designContextState === 'canvas' ? (
+                    <>
+                      <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-context-add-boundary-io">
+                        Add boundary I/O
+                      </IdeButton>
+                      <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-context-add-and">
+                        Add AND
+                      </IdeButton>
+                      <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-context-fit">
+                        Fit
+                      </IdeButton>
+                    </>
+                  ) : null}
+                  {designContextState === 'node' && selectedNode ? (
+                    <>
+                      <IdeButton tone="secondary" onClick={() => beginNodeLabelEdit(selectedNode)} testId="ide-design-context-rename">
+                        Rename
+                      </IdeButton>
+                      <IdeButton tone="ghost" onClick={handleDuplicate} testId="ide-design-context-duplicate">
+                        Duplicate
+                      </IdeButton>
+                      <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete">
+                        Delete
+                      </IdeButton>
+                    </>
+                  ) : null}
+                  {designContextState === 'multi-node' ? (
+                    <>
+                      <IdeButton tone="ghost" onClick={handleDuplicate} testId="ide-design-context-duplicate">
+                        Duplicate
+                      </IdeButton>
+                      <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete">
+                        Delete
+                      </IdeButton>
+                    </>
+                  ) : null}
+                  {designContextState === 'wire' || designContextState === 'multi-wire' ? (
+                    <>
+                      <IdeButton tone="ghost" onClick={traceSelectedContext} disabled={!primarySelectedWireId} testId="ide-design-context-trace-wire">
+                        Trace
+                      </IdeButton>
+                      <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete">
+                        Delete
+                      </IdeButton>
+                    </>
+                  ) : null}
+                  {onGoToVerify ? (
+                    <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-context-open-verify">
+                      Open Verify
+                    </IdeButton>
+                  ) : null}
+                </div>
+                {liveIoSignals.inputRows.length > 0 || liveIoSignals.outputRows.length > 0 ? (
+                  <div className="ide-design-workspace-io-state" data-testid="ide-design-workspace-io-state">
+                    <span className="ide-design-workspace-io-state-label">Current I/O</span>
+                    <div className="ide-design-workspace-io-state-list">
+                      {[...liveIoSignals.inputRows, ...liveIoSignals.outputRows].map((row) => (
+                        <div
+                          key={`${row.kind}-${row.id}`}
+                          className={`ide-design-workspace-io-state-row is-${row.kind}`}
+                          data-testid={`ide-design-workspace-${row.kind}-${row.id}`}
+                        >
+                          <span>{row.label}</span>
+                          <code data-testid={`ide-design-workspace-${row.kind}-${row.id}-value`}>
+                            {row.value}
+                          </code>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Expanded secondary toolbar. */}
             {toolsExpanded && !showSplitCompareToolbar && (
               <div className="ide-design-toolbarExpanded" data-testid="ide-design-toolbar-expanded">
                 <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">

@@ -19,16 +19,16 @@ afterEach(() => {
 });
 
 function openLeftSupportDock(getByTestId: (testId: string) => HTMLElement): void {
-  fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
+  getByTestId('ide-hw-board-workspace');
 }
 
 function openMapDock(getByTestId: (testId: string) => HTMLElement): HTMLElement {
   openLeftSupportDock(getByTestId);
-  return getByTestId('ide-hw-map-dock');
+  return getByTestId('ide-hw-map-table');
 }
 
 function openInspector(getByTestId: (testId: string) => HTMLElement): void {
-  fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
+  getByTestId('ide-hw-board-workspace');
 }
 
 function makeVerifyRunWithRoles(
@@ -139,13 +139,14 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Hardware');
+    expect(queryByTestId('ide-hardware-command-strip')).toBeNull();
     expect(getByTestId('ide-hw-workflow-ribbon')).toBeTruthy();
     expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
     expect(queryByTestId('ide-hw-callout')).toBeNull();
     expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('LD0');
     expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('pin U16');
     expect(queryByTestId('ide-workbench-console')).toBeNull();
@@ -232,7 +233,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('warns when verification is current but the export bundle is stale', () => {
-    const { getAllByTestId, getByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Fresh Verify, Stale Export"
@@ -262,9 +263,7 @@ describe('HardwareSurface readiness', () => {
     expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
     expect(getByTestId('ide-hardware-command-strip').textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-hardware-next-primary').textContent).toContain('Rebuild Current Bundle');
-    expect(getByTestId('ide-hardware-build-export').textContent).toContain(
-      'Rebuild Current Bundle'
-    );
+    expect(queryByTestId('ide-hardware-build-export')).toBeNull();
     expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   });
 
@@ -330,7 +329,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('treats combinational projects as timing-ready when no control signal is required', () => {
-    const { getAllByTestId, getByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Combinational Mapping"
@@ -355,9 +354,8 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     const mapDock = openMapDock(getByTestId);
 
-    expect(mapDock.textContent).toContain('Combinational');
     expect(mapDock.textContent).toContain('Mapped');
-    expect(mapDock.textContent).toContain('Complete');
+    expect(mapDock.textContent).not.toContain('Missing');
   });
 
   it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
@@ -387,7 +385,7 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     const mapDock = openMapDock(getByTestId);
     expect(mapDock.textContent).toContain('Clock');
-    expect(mapDock.textContent).toContain('Needs clock pin');
+    expect(getByTestId('ide-hw-map-row-status-clk_aux').textContent).toContain('Missing');
   });
 
   it('claims clock is mapped when all required clock rows have pins', () => {
@@ -446,7 +444,7 @@ describe('HardwareSurface readiness', () => {
           expectedBehavior="Q holds its last value when EN is low."
           mappingRows={[
             { id: 'd', label: 'D', direction: 'in', pin: 'V17', required: true },
-            { id: 'en', label: 'EN', direction: 'in', pin: 'W16', required: true },
+            { id: 'en', label: 'EN', direction: 'in', pin: 'W16', required: true, timingRole: 'clock' },
             { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true },
           ]}
           expectedIoRows={[]}
@@ -461,9 +459,9 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-live').at(-1)!);
-    openLeftSupportDock(getByTestId);
-    expect(getByTestId('ide-hw-live-dock').textContent).toContain('Latch control');
+    expect(latchGuidance.kind).toBe('latch-control');
+    expect(latchGuidance.signalLabelSingular).toBe('Latch control');
+    expect(getByTestId('ide-hw-map-row-role-en').textContent).toContain('Role: clock');
   });
 
   it('uses semantic verify signal roles so non-regex clock labels still count as clock mapping', () => {
@@ -564,8 +562,8 @@ describe('HardwareSurface readiness', () => {
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     const mapDock = openMapDock(getByTestId);
 
-    expect(mapDock.textContent).toContain('1 left');
-    expect(getByTestId('ide-hardware-map-export-gap').textContent).toContain('required port');
+    expect(mapDock.textContent).toContain('Mapped');
+    expect(getByTestId('ide-hw-map-reset-header').textContent).toContain('required pin');
   });
 
   it('shows Map Pins Complete when only inputs are required (no output rows) and pins are set', () => {
@@ -573,7 +571,7 @@ describe('HardwareSurface readiness', () => {
       blockingIssues: [],
       dirtySinceExport: false,
     });
-    const { getAllByTestId, getByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Inputs-only boundary"
@@ -599,7 +597,7 @@ describe('HardwareSurface readiness', () => {
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
     const mapDock = openMapDock(getByTestId);
-    expect(mapDock.textContent).toContain('Complete');
+    expect(mapDock.textContent).toContain('Mapped');
     expect(mapDock.textContent).not.toContain('0 left');
   });
 
@@ -701,22 +699,16 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    // Inspector details are on demand; open them before checking inspector-specific copy.
+    // V2 Hardware keeps mapping resources in the main board workspace, not a generic inspector rail.
     expect(queryByTestId('ide-inspector')).toBeNull();
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Ready to map');
     fireEvent.click(getByTestId('ide-hw-clock-resource-card'));
 
     expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('CLK100MHZ');
     expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('W5');
     expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('SW0-SW15');
-    expect(getByTestId('ide-hw-selected-resource-card').textContent).toContain('100 MHz oscillator');
-    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('W5');
-    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('10 ns');
-    fireEvent.click(getByText('Advanced XDC preview'));
-    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('PACKAGE_PIN W5');
-    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('create_clock -period 10.000');
+    fireEvent.click(getByTestId('ide-hw-map-row-clk'));
+    expect(getByTestId('ide-hw-map-row-detail-clk').textContent).toContain('PACKAGE_PIN W5');
+    expect(getByTestId('ide-hw-map-row-detail-clk').textContent).toContain('create_clock -period 10.000');
     expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Supported Basys3 resource catalog');
     expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Expanded official XDC catalog');
   });
@@ -743,14 +735,13 @@ describe('HardwareSurface readiness', () => {
     );
 
     expect(queryByTestId('ide-inspector')).toBeNull();
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Select a signal row');
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Select a signal row');
     expect(queryByTestId('ide-hw-xdc-preview')).toBeNull();
     expect(queryByTestId('ide-hw-map-preflight-details')).toBeNull();
 
-    fireEvent.click(getByText('Advanced XDC preview'));
-    expect(getByTestId('ide-hw-xdc-preview')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-hw-map-row-clk'));
+    expect(getByTestId('ide-hw-map-row-detail-clk').textContent).toContain('PACKAGE_PIN W5');
   });
 
   it('uses board workspace task copy to state next action by selection state', () => {
@@ -829,7 +820,7 @@ describe('HardwareSurface readiness', () => {
   });
 
   it('points students to Verify first without calling a missing bundle blocked', () => {
-    const { getAllByTestId } = render(
+    const { getAllByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Needs Verify"
@@ -856,18 +847,10 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    const commandText = getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent ?? '';
-    expect(commandText).toContain('Map project signals to Basys3 controls');
-    expect(commandText).toContain('MAPPING COMPLETE');
-    expect(commandText).not.toContain('Build the current bundle');
-    expect(commandText).not.toContain('BLOCKED');
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Run Verify before relying on this handoff'
-    );
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Open Verify before you rely on the hardware or export handoff'
-    );
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).not.toContain('BLOCKED');
+    expect(queryByTestId('ide-hardware-command-strip')).toBeNull();
+    expect(getAllByTestId('ide-hw-map-table').at(-1)?.textContent).toContain('Mapped');
+    expect(getAllByTestId('ide-hw-map-table').at(-1)?.textContent).not.toContain('Build the current bundle');
+    expect(getAllByTestId('ide-hw-map-table').at(-1)?.textContent).not.toContain('BLOCKED');
   });
 
   it('shows program handoff CTA when export is current', () => {
@@ -875,7 +858,7 @@ describe('HardwareSurface readiness', () => {
       blockingIssues: [],
       dirtySinceExport: false,
     });
-    const { getAllByTestId, getByTestId } = render(
+    const { getAllByTestId, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
           projectName="Ready to Program"
@@ -900,16 +883,12 @@ describe('HardwareSurface readiness', () => {
     );
 
     fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
-    openLeftSupportDock(getByTestId);
+    openInspector(getByTestId);
 
-    // When export is current the program handoff CTA must be present and must not imply a .bit ships from RedByte.
-    const cta = getByTestId('ide-hardware-program-handoff-cta');
-    expect(cta).toBeDefined();
-    expect(cta.textContent).toContain('Vivado project ZIP');
-    expect(cta.textContent).toContain('Generate Bitstream');
-    expect(cta.textContent).toContain('Hardware Manager');
-    expect(cta.textContent).toContain('Program Device');
-    expect(getByTestId('ide-hardware-submission-hint').textContent).toContain('export ZIP');
+    // V2 normal chrome keeps proof guidance in the command strip/readiness lane, not a support dock.
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Review board inputs with guided bring-up');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain('outside RedByte');
+    expect(queryByTestId('ide-hardware-program-handoff-cta')).toBeNull();
   });
 
   it('applies structured hardware mapping pin edits from map mode', () => {
