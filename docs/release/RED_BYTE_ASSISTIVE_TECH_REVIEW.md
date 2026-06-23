@@ -3,12 +3,12 @@ doc_status: current
 last_validated: 2026-06-22
 owner: Connor Angiel
 used_by_claude: true
-role: Product Trust Reset v2 Phase 3H human accessibility review notes
+role: Product Trust Reset v2 assistive technology review boundary
 ---
 
 # RedByte Assistive Technology Review
 
-This note records the Phase 3H human accessibility review boundary for draft PR #78.
+This note records the assistive-technology review boundary for draft PR #78.
 
 ## Reviewed Areas
 
@@ -37,9 +37,20 @@ Manual review outcome:
 ## Limits
 
 - No NVDA, Narrator, VoiceOver, JAWS, or other screen-reader session was run in Phase 3H.
+- No NVDA, Narrator, VoiceOver, JAWS, or other screen-reader session was run in Phase 6.
 - This document does not certify full WCAG conformance.
 - This document does not claim screen-reader announcement quality.
-- A future release-readiness pass should run actual assistive technology on the normal Project -> Design -> Verify -> Map Pins -> Export flow and the storage recovery path before making stronger accessibility claims.
+- A future release-readiness pass must run actual assistive technology on the normal Project -> Design -> Verify -> Map Pins -> Export flow, Import guarded recovery, Help / Diagnostics, and the storage recovery path before making stronger accessibility claims.
+
+## Phase 6 Human Script
+
+Phase 6 adds the required human AT runbook at:
+
+```text
+docs/release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md
+```
+
+The script covers Project, Design, Verify, Map Pins, Export, Import, Help / Diagnostics, keyboard-only recovery, 200 percent zoom, and blocking criteria. It is still pending until a human reviewer runs it with a real assistive technology tool and fills the result table.
 
 ## 15-20 Minute Human AT Script
 

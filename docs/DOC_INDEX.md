@@ -117,7 +117,9 @@ When docs conflict:
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |
 | [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | E0/E1/E2/E3 evidence classification model |
-| [release/RED_BYTE_PR78_MERGE_READINESS.md](./release/RED_BYTE_PR78_MERGE_READINESS.md) | Draft PR #78 Phase 3I branch review, blockers, and readiness decision |
+| [release/RED_BYTE_PR78_MERGE_READINESS.md](./release/RED_BYTE_PR78_MERGE_READINESS.md) | Draft PR #78 branch review, blockers, and readiness decision |
+| [release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md](./release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md) | Draft PR #78 Phase 6 professor/student walkthrough packet and P0/P1/P2 triage |
+| [release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md](./release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md) | Draft PR #78 actual assistive-technology human review script |
 | [release/RED_BYTE_PR78_PERFORMANCE_REVIEW.md](./release/RED_BYTE_PR78_PERFORMANCE_REVIEW.md) | Draft PR #78 performance/resource review |
 | [release/RED_BYTE_PR78_SECURITY_PRIVACY_REVIEW.md](./release/RED_BYTE_PR78_SECURITY_PRIVACY_REVIEW.md) | Draft PR #78 security/privacy review |
 | [release/proof/](./release/proof/) | Tracked proof notes |

@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-23 (docs: prepare PR78 Phase 6 pilot review)
+
+**Subsystem:** Product Trust Reset v2 Phase 6, PR #78 pilot-readiness browser audit, human professor/student walkthrough packet, assistive-technology human script, merge-readiness decision, and draft PR continuation.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `6c9575b8072134e062e746fad1be9bac43bd5c1c`; `main` was not changed and draft PR #78 remains unmerged.
+- Ran a fresh browser pilot-readiness audit across Project, Design, Verify, Map Pins, Export, Import, Help / Diagnostics, reload/navigation, and dirty-resume paths at the current branch head.
+- Added `docs/release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md` with professor/student walkthrough steps, evidence paths, P0/P1/P2 triage, and non-draft exit criteria.
+- Added `docs/release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md` with a real human AT runbook for Narrator/NVDA or equivalent review, keyboard-only recovery, 200 percent zoom, and blocking criteria.
+- Updated PR78 merge-readiness, assistive-technology boundary, classroom rehearsal, performance, security/privacy, cockpit, current-truth, and work-queue docs for the Phase 6 review posture.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with Phase 6 human UX audit and blocker triage notes.
+
+**Evidence:** Phase 6 browser audit evidence is local/generated under `.redbyte/product-immersion/product-trust-reset-v2/phase-6/current-baseline/`. It captured 27 screenshots, served build JSON matching reviewed head prefix `6c9575b80`, recorded browser problems `0`, root overflow findings `0`, and no P0/P1 blocker. P2 follow-ups remain: Design legacy support-collapse copy, Verify 1366px locked-check internal scroll, Export density, support-only Diagnostics raw build fingerprint, CSS/legacy selector debt, no actual screen-reader session, and no human professor/student walkthrough.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `rb:doc:validate`, `rb:encoding:check`, `git diff --check` with only normal CRLF working-copy warnings, `gate:manifest:validate` (`127` gates, `92` current required), `build:unified`, full `classroom:gate` (`92/92`), and broad `verify:gates:classroom` (`111/111`). Final clean-tree current-build smoke, commit, push, and GitHub PR checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 6 is review/documentation and browser evidence only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, import parser/apply behavior, export goldens, storage facade behavior, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No screen-reader certification is claimed without a real AT session, and no Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the Phase 6 docs closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** After Phase 6 docs commit, push, and GitHub green, keep PR #78 draft and run the human professor/student walkthrough plus actual assistive-technology script before deciding whether the PR can be marked non-draft.
+
 ## Change Log 2026-06-23 (feat: rebuild outer workflow V2 surfaces)
 
 **Subsystem:** Product Trust Reset v2 Phase 5, Project Command Center V2, Export Artifact Workspace V2, Import Recovery Workflow V2, outer workflow continuity gates, and draft PR #78 continuation.

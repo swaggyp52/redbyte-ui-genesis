@@ -15,6 +15,7 @@ Base reviewed: `origin/main` at `0abe87af980ee673e1ab90720ea64d32469e4c87`
 Starting Phase 3I head: `24db2554c25b218f10267df22a669ca53167ca04`
 Phase 4A starting head: `b6aae2ecdd1a6ecd0b8ffa42bd5996c9805713ec`
 Phase 5 starting head: `27c0473863d35c07998c1529d17135342337f480`
+Phase 6 reviewed head: `6c9575b8072134e062e746fad1be9bac43bd5c1c`
 
 ## Executive Decision
 
@@ -22,7 +23,7 @@ Phase 5 starting head: `27c0473863d35c07998c1529d17135342337f480`
 
 PR #78 is coherent enough to continue through focused product reconstruction and Phase 6 pilot-readiness review after each slice is validated and GitHub checks are green. It must remain draft and unmerged. This decision does not mark the PR non-draft, does not merge it, and does not claim Vivado/Basys3 E1-E3 proof.
 
-Phase 5 has now continued that reconstruction with contained Project, Export, and Import V2 workspace work. This does not change the executive decision: PR #78 remains draft and unmerged.
+Phase 5 continued that reconstruction with contained Project, Export, and Import V2 workspace work. Phase 6 reviewed the current branch in browser and prepared the human pilot/assistive-technology review packet. This does not change the executive decision: PR #78 remains draft and unmerged.
 
 ## Full Scope
 
@@ -36,6 +37,7 @@ PR #78 now includes:
 - 30-context browser rehearsal evidence and Phase 3I rehearsal fault-injection proof
 - Phase 4A Design workspace and Map Pins workspace reconstruction proof
 - Phase 5 Project command center, Export artifact workspace, Import step workflow, and outer-workflow continuity proof
+- Phase 6 pilot-readiness browser audit, human walkthrough packet, and assistive-technology script
 
 ## Architecture Review
 
@@ -120,6 +122,10 @@ Phase 4A follow-up: Design now has a fixed palette, compact context property bar
 
 Phase 5 follow-up: Project now exposes compact workflow progress and direct tool commands, Export now opens as a generated-artifact workspace, and Import now exposes a five-step guarded recovery workflow. This closes the outer-workflow reconstruction slice only; it does not make the PR non-draft.
 
+Phase 6 follow-up: the fresh branch audit at head `6c9575b8072134e062e746fad1be9bac43bd5c1c` captured 27 browser screenshots and observations under `.redbyte/product-immersion/product-trust-reset-v2/phase-6/current-baseline/`. Project, Design, Verify, Map Pins, Export, Import, Diagnostics, reload, Back/Forward, and dirty-resume paths produced no browser/page errors and no root overflow. The audit found no P0/P1 browser blocker. Remaining product concerns are P2: Design legacy support-collapse copy in normal authoring, Verify 1366px locked-check internal scroll, Export density, support-only raw build fingerprint in Diagnostics, CSS/legacy selector debt, no actual screen-reader session, and no human professor/student walkthrough.
+
+`docs/release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md` now records the professor/student walkthrough and P0/P1/P2 triage. `docs/release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md` now records the required human AT script. These are review inputs, not completed human certifications.
+
 ## Dead-Code Review
 
 No production code was deleted in Phase 3I because no candidate was proven dead without risk. Retained debt:
@@ -199,10 +205,28 @@ Phase 5 local focused proof passed under portable Node `v20.19.0` / pnpm `10.24.
 - `rb:encoding:check`
 - `git diff --check` with only normal CRLF working-copy warnings
 
-Still required after the Phase 5 commit is created:
+Phase 6 current-baseline browser audit at head `6c9575b8072134e062e746fad1be9bac43bd5c1c`:
+
+- `phase6-audit-runner.mjs` captured 27 screenshots across Project, Design, Verify, Map Pins, Export, Import, Diagnostics, navigation/reload, and dirty resume.
+- Served build JSON matched reviewed head prefix `6c9575b80`.
+- Browser problems: `0`.
+- Root overflow findings: `0`.
+- P0/P1 blockers: `0`.
+
+Phase 6 local docs/branch validation under portable Node `v20.19.0` / pnpm `10.24.0`:
+
+- `rb:doc:validate` (`29` passed, `0` failed)
+- `rb:encoding:check`
+- `git diff --check` with only normal CRLF working-copy warnings
+- `gate:manifest:validate` (`127` gates, `92` current required)
+- `build:unified`
+- `classroom:gate` (`92/92`)
+- `verify:gates:classroom` (`111/111`)
+
+Still required after the Phase 6 docs commit is created:
 
 - final current-build smoke after the commit is clean
-- GitHub Classroom Truth Gates and deploy checks green after push
+- GitHub Classroom Truth Gates and Cloudflare Pages checks green after push
 
 ## Known Issues
 
@@ -212,17 +236,17 @@ None currently known.
 
 ### P1
 
-None currently known after Phase 5 local full classroom and broad verifier gates. Final clean-tree current-build smoke and GitHub checks remain required closeout proof.
+None currently known after the Phase 6 browser audit. Final clean-tree current-build smoke and GitHub checks remain required closeout proof.
 
 ### P2
 
 - Retire package-root storage compatibility writers after consumer audit.
 - Reduce large accumulated IDE CSS and delete stale V1 selectors only when replacement proof is clear.
 - Run real Narrator/NVDA/VoiceOver/JAWS review before accessibility certification.
+- Run the professor/student pilot walkthrough packet before marking PR #78 non-draft.
 - Run focused generated-preview escaping review before non-draft.
 - Generate exact clean origin/main performance deltas before non-draft.
-- Continue Phase 6 pilot-readiness review without changing simulation, Verify, mapping, export bytes, project format, or goldens.
-- Continue visible product review from live browser inspection after Phase 5; do not assume Project/Export/Import are fully finished from one slice.
+- Continue visible product review from live browser inspection; do not assume the V2 surfaces are fully finished from one branch pass.
 
 ## Merge Blockers
 
@@ -232,9 +256,9 @@ Blocking before merge/non-draft:
 - Human review has not approved marking non-draft.
 - Actual screen-reader certification is not complete.
 - Vivado/Basys3 E1-E3 proof has not been run.
-- Final Phase 5 commit, clean-tree current-build smoke, push, and GitHub green proof must be recorded.
+- Final Phase 6 docs commit, clean-tree current-build smoke, push, and GitHub green proof must be recorded.
 
-Not blockers for continuing Phase 4:
+Not blockers for continuing Phase 6 review:
 
 - P2 CSS/source cleanup debt
 - compatibility storage writers documented by the source gate
@@ -255,9 +279,13 @@ Before any eventual merge or non-draft transition:
 5. Run clean performance/security follow-up checks.
 6. Keep E1/E2/E3 hardware proof out of release claims unless Vivado/Basys3 proof is actually run.
 
-## Phase 4 Readiness
+## Historical Phase 4 Readiness
 
-Phase 4A began with Design and Map Pins V2 reconstruction, with the current truth model, storage facade, gate manifest, and no-overclaim boundaries treated as fixed constraints. After Phase 4A is committed/pushed and GitHub checks are green, continue with one live-browser-selected product reconstruction slice at a time while keeping PR #78 draft.
+Phase 4A began with Design and Map Pins V2 reconstruction, with the current truth model, storage facade, gate manifest, and no-overclaim boundaries treated as fixed constraints. It is now historical context for the current Phase 6 review posture.
+
+## Phase 6 Readiness
+
+Phase 6 found the branch ready for human review while remaining draft. The branch is not ready to mark non-draft until the pilot walkthrough, actual AT script, final current-build smoke, and GitHub green closeout are recorded.
 
 ## Attribution
 

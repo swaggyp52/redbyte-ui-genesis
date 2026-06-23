@@ -8,7 +8,7 @@ role: Product Trust Reset v2 classroom rehearsal protocol
 
 # RedByte Classroom Rehearsal
 
-This document defines the browser classroom rehearsal for Product Trust Reset v2 PR #78. Phase 3F established the 30-context rehearsal; Phase 3H extends the script with project storage waves. Phase 3I adds current-build identity assertions and deliberate fault injection for the harness itself. Phase 5 adds focused outer-workflow browser gates for Project, Export, Import, and continuity; it does not add new 20-context rehearsal waves.
+This document defines the browser classroom rehearsal for Product Trust Reset v2 PR #78. Phase 3F established the 30-context rehearsal; Phase 3H extends the script with project storage waves. Phase 3I adds current-build identity assertions and deliberate fault injection for the harness itself. Phase 5 adds focused outer-workflow browser gates for Project, Export, Import, and continuity; it does not add new 20-context rehearsal waves. Phase 6 adds a pilot-readiness browser audit and human walkthrough packet, not another automated rehearsal wave.
 
 ## Commands
 
@@ -54,6 +54,16 @@ Phase 5 focused browser evidence is:
 - `classroom:gate` (`92/92`) and `verify:gates:classroom` (`111/111`)
 - screenshots under `.redbyte/product-immersion/product-trust-reset-v2/phase-5/after/`
 
+Phase 6 pilot-readiness evidence is:
+
+- `.redbyte/product-immersion/product-trust-reset-v2/phase-6/current-baseline/phase-6-observations.md`
+- 27 screenshots under `.redbyte/product-immersion/product-trust-reset-v2/phase-6/current-baseline/screenshots/`
+- `docs/release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md`
+- `docs/release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md`
+- browser problems `0`
+- root overflow findings `0`
+- P0/P1 blockers `0`
+
 Each successful Phase 3H profile records storage waves:
 
 - G: committed save journal exists
@@ -97,7 +107,7 @@ This is browser E0 rehearsal. It does not prove:
 - cloud sync
 - roster/account behavior
 
-Phase 3H adds browser-local journal, last-known-good, recovery points, quota recovery UI, and dirty update guard proof. Phase 3I proves the rehearsal harness can fail on wrong-build, error-boundary, authority-mutation, stale-trust, state-leak, and reload-error classes. Phase 5 proves focused outer-workflow browser continuity only. It does not prove backend sync, full collaborative conflict merge UI, screen-reader certification, Vivado/Basys3 proof, or physical classroom observation.
+Phase 3H adds browser-local journal, last-known-good, recovery points, quota recovery UI, and dirty update guard proof. Phase 3I proves the rehearsal harness can fail on wrong-build, error-boundary, authority-mutation, stale-trust, state-leak, and reload-error classes. Phase 5 proves focused outer-workflow browser continuity only. Phase 6 proves browser-visible pilot-readiness observations only. It does not prove backend sync, full collaborative conflict merge UI, screen-reader certification, Vivado/Basys3 proof, or physical classroom observation.
 
 ## Attribution
 
