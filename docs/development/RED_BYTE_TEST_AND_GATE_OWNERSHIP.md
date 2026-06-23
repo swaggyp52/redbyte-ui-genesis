@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-22
+last_validated: 2026-06-23
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -85,6 +85,15 @@ Phase 4A adds visible workspace reconstruction gates:
 
 Both gates are wired into `classroom:gate` and `verify:gates:classroom`. The Design gate proves fixed-palette/canvas/context-bar geometry, no default generic inspector, active-canvas select-all, selected context actions, no root overflow, and no browser errors. The Map Pins gate proves table/board split geometry, row selection state, board highlight, inline selected-row XDC/detail context, board-resource assignment, no root overflow, and no browser errors.
 
+Phase 5 adds outer-workflow workspace gates:
+
+- `ide:gate:project-command-center-v2`
+- `ide:gate:export-artifact-workspace-v2`
+- `ide:gate:import-step-workflow-v2`
+- `ide:gate:outer-workflow-continuity-v2`
+
+All four gates are wired into `classroom:gate` and `verify:gates:classroom`. The Project gate protects compact workflow progress and direct tool commands. The Export gate protects artifact-tree/selected-preview/copy-download workflow plus plain Vivado handoff copy. The Import gate protects the five-step guarded recovery workflow and no-overwrite boundary. The continuity gate protects Project -> Verify PASS -> Project/Export agreement. These gates do not claim generated-byte, project-format, Verify semantic, pin mapping, or hardware proof changes.
+
 V2 gates still to add before merge:
 
 - none as a Phase 3I gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk, and a real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
@@ -130,6 +139,10 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:recovery-accessibility-v2`
 - `ide:gate:design-workspace-v2`
 - `ide:gate:map-pins-workspace-v2`
+- `ide:gate:project-command-center-v2`
+- `ide:gate:export-artifact-workspace-v2`
+- `ide:gate:import-step-workflow-v2`
+- `ide:gate:outer-workflow-continuity-v2`
 - `ide:gate:design-canvas-zoom-integrity`
 - `ide:gate:project-loaded-command-surface`
 - `ide:gate:import-guided-recovery-wizard`

@@ -45,10 +45,9 @@ stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > u
 stdout | packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts > ui:dev-guards-contract-gate > ui:brightness-contract-gate > validates that localStorage key for theme is authorized
 ✓ Theme persistence is properly configured
 
- ✓ packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts (10 tests | 2 skipped) 12242ms
-   ✓ ui:dev-guards-contract-gate > window.__RB_* assignments are guarded > scans packages/*/src and logs all window.__RB_* assignments for audit 5814ms
+ ✓ packages/rb-utils/src/__tests__/ui-dev-guards-contract-gate.test.ts (10 tests | 2 skipped) 2296ms
 
  Test Files  1 passed (1)
       Tests  8 passed | 2 skipped (10)
-   Start at  18:44:11
-   Duration  13.72s (transform 2.02s, setup 225ms, collect 56ms, tests 12.24s, environment 498ms, prepare 81ms)
+   Start at  23:54:34
+   Duration  3.42s (transform 1.49s, setup 148ms, collect 23ms, tests 2.30s, environment 381ms, prepare 124ms)

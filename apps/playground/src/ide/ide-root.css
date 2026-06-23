@@ -249,9 +249,9 @@
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px 12px;
+  gap: 6px 10px;
   align-items: center;
-  padding: 10px 12px !important;
+  padding: 7px 10px !important;
   border-radius: 12px !important;
   border: 1px solid rgba(46, 196, 182, 0.18) !important;
   background:
@@ -262,7 +262,7 @@
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 1px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__eyebrow {
@@ -274,15 +274,18 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy strong {
-  font-size: 16px;
+  font-size: 14px;
   color: rgba(239, 247, 255, 0.96);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar .ide-copy {
   margin: 0;
   max-width: 78ch;
-  font-size: 12px !important;
-  line-height: 1.35 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
   color: rgba(176, 201, 225, 0.78) !important;
 }
 
@@ -297,8 +300,8 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__actions .ide-button {
-  min-height: 32px;
-  padding: 6px 10px !important;
+  min-height: 28px;
+  padding: 4px 9px !important;
   white-space: nowrap;
 }
 

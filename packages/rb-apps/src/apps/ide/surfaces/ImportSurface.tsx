@@ -960,19 +960,19 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       {
         id: 'upload',
         order: 1,
-        label: 'Upload ZIP',
+        label: 'Choose source',
         state:
           hasZipInspection
             ? 'done'
             : currentWorkflowStepId === 'upload'
               ? 'active'
               : 'pending',
-        detail: hasZipInspection ? 'ZIP loaded' : 'Load a Vivado ZIP or sample',
+        detail: hasZipInspection ? 'ZIP loaded' : 'Pick ZIP, HDL, XDC, or sample',
       },
       {
         id: 'parse',
         order: 2,
-        label: 'Parse HDL',
+        label: 'Inspect',
         state:
           hasParsedHdl
             ? 'done'
@@ -981,12 +981,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               : hasZipInspection || hdlText.trim().length > 0
                 ? 'pending'
                 : 'blocked',
-        detail: hasParsedHdl ? `${parsedEntityName} detected` : 'Detect top entity and ports',
+        detail: hasParsedHdl ? `${parsedEntityName} detected` : 'Detect source, top entity, ports',
       },
       {
         id: 'map',
         order: 3,
-        label: 'Map ports',
+        label: 'Resolve',
         state:
           !hasParsedHdl
             ? 'blocked'
@@ -997,15 +997,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 : 'pending',
         detail:
           !hasParsedHdl
-            ? 'Parse HDL first'
+            ? 'Inspect first'
             : unmappedPorts.length === 0
-              ? 'All required ports mapped'
+              ? 'Ports resolved'
               : `${unmappedPorts.length} port${unmappedPorts.length === 1 ? '' : 's'} still need pins`,
       },
       {
         id: 'review',
         order: 4,
-        label: 'Review schematic',
+        label: 'Review replacement',
         state:
           !hasParsedHdl
             ? 'blocked'
@@ -1014,13 +1014,13 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               : 'pending',
         detail:
           !hasParsedHdl
-            ? 'Preview appears after parse'
+            ? 'Replacement preview appears after inspection'
             : `Review ${reviewModeLabel.toLowerCase()}`,
       },
       {
         id: 'apply',
         order: 5,
-        label: 'Apply import',
+        label: 'Apply',
         state:
           showVerifyResetNotice
             ? 'done'
@@ -1033,7 +1033,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           showVerifyResetNotice
             ? 'Project replaced; rerun Verify'
             : pendingApplyProject
-              ? 'Confirm project replacement'
+              ? 'Confirm replacement'
               : 'Review before replacing the active project',
       },
     ],
@@ -1051,7 +1051,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     ]
   );
   const workflowActiveLabel =
-    workflowSteps.find((step) => step.id === currentWorkflowStepId)?.label ?? 'Upload ZIP';
+    workflowSteps.find((step) => step.id === currentWorkflowStepId)?.label ?? 'Choose source';
 
   const portRows = useMemo(
     () =>
@@ -2098,7 +2098,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   );
 
   const sourceReviewLane = (
-    <aside className="ide-import-source-review-v1" data-testid="ide-import-source-review-v1" aria-label="Import source review">
+    <aside
+      className="ide-import-source-review-v1"
+      data-testid="ide-import-source-review-v1"
+      data-v2-testid="ide-import-inspection-summary-v2"
+      aria-label="Import source review"
+    >
       <header className="ide-import-source-review-v1__header">
         <span className="ide-surface-block-label">Source selected</span>
         <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
@@ -3051,13 +3056,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
         {isImportFirstLook && importEntryAction ? (
           <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
-            <div className="ide-import-guided-wizard-v1" data-testid="ide-import-guided-wizard-v1">
+            <div
+              className="ide-import-guided-wizard-v1"
+              data-testid="ide-import-guided-wizard-v1"
+              data-v2-testid="ide-import-step-workflow-v2"
+            >
               <ol className="ide-import-wizard-track" data-testid="ide-import-wizard-track" aria-label="Import recovery steps">
                 <li className="is-active"><span>1</span><strong>Choose source</strong></li>
                 <li><span>2</span><strong>Inspect</strong></li>
-                <li><span>3</span><strong>Map or repair</strong></li>
-                <li><span>4</span><strong>Review</strong></li>
-                <li><span>5</span><strong>Apply import</strong></li>
+                <li><span>3</span><strong>Resolve</strong></li>
+                <li><span>4</span><strong>Review replacement</strong></li>
+                <li><span>5</span><strong>Apply</strong></li>
               </ol>
             <SurfacePanel
               className="ide-import-start-hero"
@@ -3333,6 +3342,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 ) : null}
               </div>
             </SurfacePanel>
+            <ol
+              className="ide-import-step-workflow-v2"
+              data-testid="ide-import-step-workflow-v2"
+              aria-label="Import transactional workflow"
+            >
+              {workflowSteps.map((step) => (
+                <li
+                  key={step.id}
+                  className={`ide-import-step-workflow-v2__step is-${step.state}`}
+                  data-testid={`ide-import-step-workflow-${step.id}`}
+                  aria-current={step.state === 'active' ? 'step' : undefined}
+                >
+                  <span className="ide-import-step-workflow-v2__order">{step.order}</span>
+                  <strong>{step.label}</strong>
+                  <span>{step.detail}</span>
+                </li>
+              ))}
+            </ol>
             <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
               <div className="ide-import-source-and-review">
                 {sourceStageContent}

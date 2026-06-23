@@ -5,9 +5,9 @@
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
- ✓ packages/rb-apps/src/apps/ide/__tests__/projectStorageFacade.test.ts (7 tests) 6670ms
+ ✓ packages/rb-apps/src/apps/ide/__tests__/projectStorageFacade.test.ts (7 tests) 2063ms
 
  Test Files  1 passed (1)
       Tests  7 passed (7)
-   Start at  18:35:06
-   Duration  7.83s (transform 2.18s, setup 214ms, collect 96ms, tests 6.67s, environment 525ms, prepare 121ms)
+   Start at  23:46:21
+   Duration  3.19s (transform 1.46s, setup 196ms, collect 55ms, tests 2.06s, environment 508ms, prepare 99ms)

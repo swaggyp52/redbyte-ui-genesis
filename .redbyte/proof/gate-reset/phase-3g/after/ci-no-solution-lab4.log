@@ -5,9 +5,9 @@
 Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
   npx update-browserslist-db@latest
   Why you should do it regularly: https://github.com/browserslist/update-db#readme
- ✓ packages/rb-apps/src/__tests__/ci-no-solution-lab4-gate.test.ts (2 tests) 6187ms
+ ✓ packages/rb-apps/src/__tests__/ci-no-solution-lab4-gate.test.ts (2 tests) 2005ms
 
  Test Files  1 passed (1)
       Tests  2 passed (2)
-   Start at  18:42:57
-   Duration  7.74s (transform 1.99s, setup 285ms, collect 92ms, tests 6.19s, environment 488ms, prepare 110ms)
+   Start at  23:53:58
+   Duration  3.04s (transform 1.41s, setup 178ms, collect 45ms, tests 2.00s, environment 431ms, prepare 82ms)

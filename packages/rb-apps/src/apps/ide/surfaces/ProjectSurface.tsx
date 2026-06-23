@@ -39,12 +39,9 @@ import {
 import {
   ProjectIdentityHeader,
   ProjectNextActionCard,
-  ProjectMetricsRow,
   ProjectSessionCard,
   ExamplesBrowser,
   type BrowsableExample,
-  type ProjectMetric,
-  type ProjectNextActionTone,
 } from '../components/ProjectSurfacePrimitives';
 import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
@@ -246,7 +243,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const identityStripCancelBlurRef = useRef(false);
   const mappingInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const mappingSectionRef = useRef<HTMLElement | null>(null);
-  const examplesSectionRef = useRef<HTMLElement | null>(null);
+  const examplesSectionRef = useRef<HTMLDivElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
   const { activeBoardSignal, hoverBoardSignal } = useBoardSignal();
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
@@ -412,8 +409,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [sortedMappingRows]
   );
 
-  const inputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'in').length, [mappingRows]);
-  const outputCount = useMemo(() => mappingRows.filter((r) => r.direction === 'out').length, [mappingRows]);
   const savedAgoLabel = useMemo(() => {
     if (!lastSavedAt) return null;
     try {
@@ -782,41 +777,59 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     () => [
       {
         label: 'Design',
-        tone: (designCardDone ? 'ok' : 'warn') as const,
-        status: designCardDone ? 'CURRENT' : 'NEEDS CIRCUIT',
+        tone: !readiness.hasCircuit ? 'warn' : health.dirtySinceVerify ? 'warn' : 'ok',
+        status: !readiness.hasCircuit ? 'Not started' : health.dirtySinceVerify ? 'Changed' : 'Ready',
         copy: designCardDone
           ? 'Circuit structure is loaded in this project record.'
           : 'Start in Design before Verify, Map Pins, or Export can be trusted.',
+        action: 'Open Design',
+        testId: 'ide-project-workflow-design',
       },
       {
         label: 'Verify',
-        tone: (compareMatches ? 'ok' : 'warn') as const,
+        tone: compareMatches ? 'ok' : 'warn',
         status: compareMatches
-          ? 'CHECKS CURRENT'
+          ? 'Passed'
           : comparePassIncomplete
-            ? 'REVIEW MAPPING'
+            ? 'Passed; map pins'
             : compareDiffers
-              ? 'CHECKS DIFFER'
+              ? 'Failed'
               : compareTraceOnly
-                ? 'OBSERVATION ONLY'
+                ? 'Observe only'
                 : compareCurrent
-                  ? 'TRACE CURRENT'
-                  : 'NOT RUN',
+                  ? 'Needs checks'
+                  : projectVerifyState === 'stale'
+                    ? 'Needs rerun'
+                    : 'Not run',
         copy: verifySummary,
+        action: 'Open Verify',
+        testId: 'ide-project-workflow-verify',
       },
       {
         label: MAP_PINS_STAGE_LABEL,
-        tone: (readiness.hasIoMapping ? 'ok' : 'warn') as const,
-        status: readiness.hasIoMapping ? 'READY' : 'BLOCKED',
+        tone: readiness.hasIoMapping ? 'ok' : 'warn',
+        status: readiness.hasIoMapping
+          ? 'Complete'
+          : mappedRequiredCount > 0
+            ? 'Partial'
+            : 'Missing',
         copy: readiness.hasIoMapping
           ? `${mappedRequiredCount}/${requiredCount} required pins assigned.`
           : `${unmappedRequiredCount} required pin${unmappedRequiredCount !== 1 ? 's are' : ' is'} still missing.`,
+        action: 'Map Pins',
+        testId: 'ide-project-workflow-map-pins',
       },
       {
         label: EXPORT_STAGE_LABEL,
-        tone: (exportPackageCurrent ? 'ok' : 'warn') as const,
-        status: exportPackageCurrent ? 'CURRENT PACKAGE' : exportAvailable ? 'AVAILABLE' : 'BLOCKED',
+        tone: exportPackageCurrent ? 'ok' : 'warn',
+        status: exportPackageCurrent
+          ? 'Ready'
+          : exportAvailable
+            ? hasSuccessfulExportBundle ? 'Draft available' : 'Ready to build'
+            : 'Blocked',
         copy: exportSummary,
+        action: 'Open Export',
+        testId: 'ide-project-workflow-export',
       },
     ],
     [
@@ -829,7 +842,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       exportAvailable,
       exportPackageCurrent,
       exportSummary,
+      hasSuccessfulExportBundle,
+      health.dirtySinceVerify,
       mappedRequiredCount,
+      projectVerifyState,
+      readiness.hasCircuit,
       readiness.hasIoMapping,
       requiredCount,
       unmappedRequiredCount,
@@ -1364,67 +1381,23 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <strong>{exportPackageCurrent ? 'Current package' : exportAvailable ? 'Draft ready' : 'Build files'}</strong>
             </button>
           </section>
-          <div className="ide-project-evidence-strip-v1" data-testid="ide-project-evidence-strip-v1">
-          <ProjectMetricsRow
-            metrics={[
-              {
-                id: 'inputs',
-                label: 'Inputs',
-                value: String(inputCount),
-                tone: 'neutral',
-              },
-              {
-                id: 'outputs',
-                label: 'Outputs',
-                value: String(outputCount),
-                tone: 'neutral',
-              },
-              {
-                id: 'mapping',
-                label: 'Mapped',
-                value: `${mappedRequiredCount}/${requiredCount}`,
-                tone: unmappedRequiredCount > 0 ? 'attention' : 'ok',
-              },
-              {
-                id: 'verify',
-                label: 'Verify',
-                value:
-                  projectVerifyState === 'stale'
-                    ? 'Stale'
-                    : compareMatches
-                      ? 'Matched'
-                      : compareDiffers
-                        ? 'Differs'
-                        : compareTraceOnly
-                          ? 'Trace only'
-                          : 'Not run',
-                tone:
-                  compareMatches && !comparePassIncomplete
-                    ? 'ok'
-                    : compareDiffers
-                      ? 'blocked'
-                      : 'neutral',
-              },
-              {
-                id: 'export',
-                label: 'Export',
-                value: exportPackageCurrent
-                  ? 'Current'
-                  : exportAvailable
-                    ? 'Draft'
-                    : hasSuccessfulExportBundle
-                      ? 'Stale'
-                      : 'None',
-                tone: exportPackageCurrent ? 'ok' : exportAvailable ? 'attention' : 'neutral',
-              },
-              {
-                id: 'board',
-                label: 'Board',
-                value: fpgaConfig?.board ?? 'Basys3',
-                tone: 'neutral',
-              },
-            ]}
-          />
+          <div
+            className="ide-project-workflow-progress-v2 ide-project-evidence-strip-v1"
+            data-testid="ide-project-evidence-strip-v1"
+            data-v2-testid="ide-project-workflow-progress-v2"
+            aria-label="Project workflow progress"
+          >
+            {workflowTruthRows.map((row) => (
+              <div
+                key={row.label}
+                className={`ide-project-workflow-progress-v2__step is-${row.tone}`}
+                data-testid={row.testId}
+              >
+                <span className="ide-project-workflow-progress-v2__label">{row.label}</span>
+                <strong className="ide-project-workflow-progress-v2__status">{row.status}</strong>
+                <span className="ide-project-workflow-progress-v2__copy">{row.copy}</span>
+              </div>
+            ))}
           </div>
           <section
             className="ide-project-entry-paths"

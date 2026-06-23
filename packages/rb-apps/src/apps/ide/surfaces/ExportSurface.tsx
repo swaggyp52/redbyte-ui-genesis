@@ -1414,7 +1414,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     primaryExportActionDownloadsProject;
 
   const downloadDisabled = !downloadReady || isRebuilding;
-  const vivadoEvidenceRows = [
+  const vivadoHandoffRows = [
     {
       id: 'browser-package',
       level: 'Package',
@@ -1454,14 +1454,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       detail: 'Toggle the expected controls and record physical LED/output behavior before making any behavior-certified claim.',
     },
   ];
-  const vivadoWarningClasses = [
-    'expected/no-clock/combinational',
-    'needs RedByte explanation',
-    'build blocker',
-    'programming blocker',
-    'observation blocker',
-  ];
-
   const partNumberCopied = copiedTarget === 'part-number';
   const debugReportCopyState: ExportDebugCopyState =
     copiedTarget === 'report' ? 'copied' : copyError ? 'error' : 'idle';
@@ -1715,6 +1707,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           <section
             className="ide-export-package-inspector-v1"
             data-testid="ide-export-package-inspector-v1"
+            data-v2-testid="ide-export-artifact-workspace-v2"
             aria-label="Export package inspector"
           >
             <header className="ide-export-package-inspector-v1__header">
@@ -1722,7 +1715,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 <p className="ide-surface-block-label">Package inspector</p>
                 <h3>{selectedArtifact ? selectedArtifact.path : 'Generated package files'}</h3>
                 <p>
-                  Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.
+                  Select a generated file, preview its contents, copy or download that file, then download the package when the status allows it.
                 </p>
               </div>
               <div className="ide-export-package-inspector-v1__actions">
@@ -1754,6 +1747,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 >
                   {selectedArtifact && copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy current file'}
                 </IdeButton>
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => selectedArtifact && handleDownloadArtifact(selectedArtifact)}
+                  disabled={!selectedArtifact || selectedArtifact.preview.trim().length === 0}
+                  testId="ide-export-package-download-file-v2"
+                >
+                  Download selected file
+                </IdeButton>
               </div>
             </header>
             <div
@@ -1778,12 +1779,17 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               </div>
               <div className="ide-export-handoff-checklist-v1__item ide-export-handoff-checklist-v1__item--boundary">
                 <span>Handoff boundary</span>
-                <strong>Vivado and board records are separate</strong>
-                <p>RedByte confirms package generation. Vivado build logs, programming, and observed board behavior are recorded outside the browser.</p>
+                <strong>Vivado work happens after download</strong>
+                <p>RedByte packages files. Synthesis, implementation, bitstream generation, programming, and physical observation happen outside this browser.</p>
               </div>
             </div>
             <div className="ide-export-package-inspector-v1__body">
-              <nav className="ide-export-file-browser-v1" data-testid="ide-export-file-browser-v1" aria-label="Generated files">
+              <nav
+                className="ide-export-file-browser-v1"
+                data-testid="ide-export-file-browser-v1"
+                data-v2-testid="ide-export-artifact-tree-v2"
+                aria-label="Generated files"
+              >
                 {viewModel.artifacts.length > 0 ? (
                   viewModel.artifacts.map((artifact) => (
                     <button
@@ -1817,20 +1823,34 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p className="ide-copy ide-copy--flush">Generated files appear after the circuit and pin mapping are ready.</p>
                 )}
               </nav>
-              <section className="ide-export-selected-preview-v1" data-testid="ide-export-selected-preview-v1">
+              <section
+                className="ide-export-selected-preview-v1"
+                data-testid="ide-export-selected-preview-v1"
+                data-v2-testid="ide-export-artifact-preview-v2"
+              >
                 <header className="ide-export-selected-preview-v1__header">
                   <div>
                     <span data-testid="ide-export-preview-path">{selectedArtifact?.path ?? ''}</span>
                     <p>{selectedArtifact?.note ?? 'Select a generated file to inspect its contents.'}</p>
                   </div>
                   {selectedArtifact ? (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)}
-                      disabled={selectedArtifact.content.trim().length === 0}
-                    >
-                      {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
-                    </IdeButton>
+                    <>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={() => void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)}
+                        disabled={selectedArtifact.content.trim().length === 0}
+                      >
+                        {copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy'}
+                      </IdeButton>
+                      <IdeButton
+                        tone="secondary"
+                        onClick={() => handleDownloadArtifact(selectedArtifact)}
+                        disabled={selectedArtifact.preview.trim().length === 0}
+                        testId="ide-export-selected-download-file-v2"
+                      >
+                        Download
+                      </IdeButton>
+                    </>
                   ) : null}
                 </header>
                 <div className="ide-export-selected-preview-v1__body">
@@ -1934,15 +1954,15 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             >
             <header className="ide-export-section-header">
               <div>
-                <h3>Vivado evidence diagnostics</h3>
+                <h3>Vivado handoff boundary</h3>
                 <p className="ide-export-section-subcopy">
-                  RedByte separates package generation, Vivado build evidence, board programming, and observed behavior.
+                  RedByte prepares the package. Vivado build, board programming, and physical observation are downstream steps you run and record outside RedByte.
                 </p>
               </div>
-              <IdeStatusPill tone="warn">Manual board record</IdeStatusPill>
+              <IdeStatusPill tone="warn">External Vivado work</IdeStatusPill>
             </header>
             <div className="ide-kv-list" data-testid="ide-export-vivado-evidence-rows">
-              {vivadoEvidenceRows.map((row) => (
+              {vivadoHandoffRows.map((row) => (
                 <div
                   key={row.id}
                   className="ide-kv-row"
@@ -1958,14 +1978,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </div>
               ))}
             </div>
-            <div className="ide-mt-2" data-testid="ide-export-vivado-warning-classes">
-              <p className="ide-copy ide-copy--flush">
-                <strong>Warning classes to preserve:</strong> {vivadoWarningClasses.join(' | ')}
-              </p>
-            </div>
             <IdeCallout tone="info" testId="ide-export-bench-empty-state" className="ide-mt-2">
-              No local bench classification is attached to this browser session. Use `pnpm rb:bench:evidence:classify`
-              on a machine with bench run artifacts, then keep package, build, programming, and observation claims separated.
+              This browser page does not claim Vivado synthesis, implementation, bitstream generation, board programming, or observed board behavior.
             </IdeCallout>
             </section>
           </section>

@@ -34744,9 +34744,9 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px 12px;
+  gap: 6px 10px;
   align-items: center;
-  padding: 10px 12px !important;
+  padding: 7px 10px !important;
   border-radius: 12px !important;
   border: 1px solid rgba(46, 196, 182, 0.18) !important;
   background:
@@ -34757,7 +34757,7 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 1px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__eyebrow {
@@ -34769,15 +34769,18 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__copy strong {
-  font-size: 16px;
+  font-size: 14px;
   color: rgba(239, 247, 255, 0.96);
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar .ide-copy {
   margin: 0;
   max-width: 78ch;
-  font-size: 12px !important;
-  line-height: 1.35 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
   color: rgba(176, 201, 225, 0.78) !important;
 }
 
@@ -34792,8 +34795,8 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-active-taskbar__actions .ide-button {
-  min-height: 32px;
-  padding: 6px 10px !important;
+  min-height: 28px;
+  padding: 4px 9px !important;
   white-space: nowrap;
 }
 
@@ -34966,6 +34969,78 @@ button:disabled,
   box-shadow: none !important;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2 {
+  grid-area: evidence;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  align-items: stretch;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__step {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 3px;
+  min-width: 0;
+  min-height: 74px;
+  padding: 8px 9px;
+  border-radius: 8px;
+  border: 1px solid rgba(76, 105, 132, 0.34);
+  background: rgba(6, 14, 24, 0.68);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__step.is-ok {
+  border-color: rgba(42, 157, 143, 0.46);
+  background: linear-gradient(180deg, rgba(7, 28, 31, 0.72), rgba(5, 13, 21, 0.84));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__step.is-warn {
+  border-color: rgba(232, 190, 104, 0.38);
+  background: linear-gradient(180deg, rgba(36, 29, 12, 0.42), rgba(5, 13, 21, 0.84));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__label {
+  color: rgba(145, 175, 202, 0.84);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__status {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(242, 248, 255, 0.96);
+  font-size: 13px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2__copy {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(179, 204, 226, 0.72);
+  font-size: 11px;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (max-width: 1120px) {
+  .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "identity"
+      "next"
+      "modes"
+      "evidence"
+      "starts";
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-workflow-progress-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-guided-wizard-v1 {
   display: grid;
   gap: 10px;
@@ -35080,6 +35155,11 @@ button:disabled,
   background: linear-gradient(180deg, rgba(5, 14, 25, 0.94), rgba(4, 10, 18, 0.98));
 }
 
+.ide-workbench-shell[data-ide-mode-marker='export'] [data-v2-testid='ide-export-artifact-workspace-v2'] {
+  border-color: rgba(42, 157, 143, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -35175,11 +35255,17 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
   gap: 10px;
   padding: 9px 10px;
   border-bottom: 1px solid rgba(70, 115, 150, 0.22);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__header .ide-button {
+  min-height: 30px;
+  padding: 5px 9px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-selected-preview-v1__header span {
@@ -35203,6 +35289,80 @@ button:disabled,
   margin: 0;
   border: 0;
   border-radius: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2 {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  width: min(100%, 1120px);
+  max-width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 7px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  border: 1px solid rgba(76, 105, 132, 0.32);
+  background: rgba(6, 14, 24, 0.64);
+  color: rgba(188, 210, 230, 0.78);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step.is-active {
+  border-color: rgba(42, 157, 143, 0.54);
+  background: rgba(8, 38, 45, 0.76);
+  color: rgba(242, 248, 255, 0.96);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step.is-done {
+  border-color: rgba(82, 183, 136, 0.42);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step.is-blocked {
+  opacity: 0.64;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__order {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(42, 157, 143, 0.16);
+  color: rgba(163, 225, 219, 0.95);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2__step span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(176, 201, 225, 0.7);
+  font-size: 10px;
+}
+
+@media (max-width: 1180px) {
+  .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-step-workflow-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Verify: keep the legacy Signals rail readable only when it is explicitly visible. */

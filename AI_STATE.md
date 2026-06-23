@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-23 (feat: rebuild outer workflow V2 surfaces)
+
+**Subsystem:** Product Trust Reset v2 Phase 5, Project Command Center V2, Export Artifact Workspace V2, Import Recovery Workflow V2, outer workflow continuity gates, and draft PR #78 continuation.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `27c0473863d35c07998c1529d17135342337f480`; `main` was not changed and draft PR #78 remains unmerged.
+- Reworked loaded Project from a status-card dashboard toward a command center with editable identity retained, one current action, compact Design / Verify / Map Pins / Export workflow progress, and direct route commands.
+- Reworked Export ready state around a generated artifact file list, selected preview, copy/download selected-file actions, and plain downstream Vivado handoff copy in the normal UI.
+- Reworked Import first-look and active recovery around a guarded five-step workflow: Choose source, Inspect, Resolve, Review replacement, Apply.
+- Added `scripts/gates/ide-outer-workflow-v2.mjs` with focused Project, Export, Import, and continuity checks; wired `ide:gate:project-command-center-v2`, `ide:gate:export-artifact-workspace-v2`, `ide:gate:import-step-workflow-v2`, and `ide:gate:outer-workflow-continuity-v2` into package scripts and the gate manifest.
+- Added current Phase 5 architecture/accessibility docs for Project, Export, Import, and outer-workflow browser accessibility.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` with Phase 5 sprint and authority maps.
+
+**Evidence:** Focused Phase 5 browser gates pass locally under portable Node `v20.19.0` / pnpm `10.24.0`: `ide:gate:project-command-center-v2`, `ide:gate:export-artifact-workspace-v2`, `ide:gate:import-step-workflow-v2`, and `ide:gate:outer-workflow-continuity-v2`. Affected legacy guards also pass locally: `ide:gate:project-loaded-command-surface`, `ide:gate:export-package-inspector`, `ide:gate:export-handoff-station`, `ide:gate:export-trust-integrity`, `ide:gate:import-guided-recovery-wizard`, and `ide:gate:import-guided-recovery-workflow`. After screenshots were captured under `.redbyte/product-immersion/product-trust-reset-v2/phase-5/after/`; no true Phase 5 before screenshots were captured before the worktree changed.
+
+**Validation:** Local closeout validation passed under portable Node `v20.19.0` / pnpm `10.24.0` for `build:unified`, `gate:manifest:validate`, the four new Phase 5 browser gates, affected Project/Export/Import legacy guards, full `classroom:gate` (`92/92`), broad `verify:gates:classroom` (`111/111` after rerun), `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings. Final clean-tree current-build smoke, commit, push, and GitHub checks must still be completed before claiming the branch is remote-green.
+
+**Safety:** Phase 5 is a browser UI/workspace reconstruction slice only. It does not change simulation truth, Compare semantics, expected-output meaning, pin mapping truth, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, or physical observation proof. No Vivado/Basys3 E1-E3 proof was run or claimed.
+
+**Remote sync:** This entry was written before the closeout commit and push. Final push and GitHub PR checks must be verified from live evidence before claiming the branch is remote-green.
+
+**Next recommended task:** After Phase 5 commit, push, and GitHub green, keep PR #78 draft and run a Phase 6 pilot-readiness review: final visual consistency, human assistive-technology review, professor/student walkthrough, package/support decisions, and an explicit decision on whether PR #78 can be marked non-draft.
+
 ## Change Log 2026-06-22 (fix: reconstruct Design and Map Pins V2 workspaces)
 
 **Subsystem:** Product Trust Reset v2 Phase 4A, Design workspace hierarchy, Map Pins table-board binding workspace, focused browser gates, accessibility review, and draft PR #78 continuation.
