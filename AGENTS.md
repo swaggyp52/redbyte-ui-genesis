@@ -24,6 +24,9 @@ Repo-local RedByte skills live under `.agents/skills/`. Read the applicable `SKI
 - `redbyte-frontend-surface-builder` for building RedByte frontend surfaces with current contracts, workbench hierarchy, direct controls, and browser proof.
 - `redbyte-interaction-affordance-review` for browser-first review of inert labels, weak edit/click affordances, awkward panels, and normal-use interaction gaps.
 - `redbyte-obsidian-brain` for consulting/updating the Obsidian engineering brain and ignored `.redbyte-brain/` scratchpad without overriding canonical docs.
+- `redbyte-jury-orchestrator` for establishing or running the 12-agent browser jury, jury trials, deliberation, fix packages, retrials, and release-readiness verdicts.
+
+The RedByte Jury is required for major surface redesign, Verify truth changes, persistence/recovery/storage changes, import/export trust-boundary changes, new educational authoring flows, and pilot/non-draft/merge decisions. Jury output is agentic browser review only unless a separate human review is actually performed.
 
 For any product, UX, workflow, or surface task, read these in order before proposing or implementing changes:
 1. `docs/contracts/RedByte_Product_Contract.md`

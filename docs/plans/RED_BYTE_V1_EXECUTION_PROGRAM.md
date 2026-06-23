@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-21
+last_validated: 2026-06-23
 owner: Connor Angiel
 used_by_claude: true
 role: ordered RedByte V1 execution program after contract reset
@@ -17,6 +17,31 @@ This program is the authoritative near-term execution sequence for RedByte V1 pr
 - Do not combine layout, Verify behavior, lab-profile data, Export generation, Hardware proof, or commercial packaging unless a direct dependency is proven.
 - Browser screenshots prove layout. Tests prove behavior. Vivado/hardware runs prove downstream handoff.
 - Preserve E0/E1/E2/E3 truth at every phase.
+
+## Product Trust Reset v2 - Phase 6B RedByte Jury Primary Trial
+
+Status: Closed locally pending final commit/PR checks on `product/redbyte-trust-reset-v2`; PR #78 remains draft.
+
+Goal: Establish the permanent 12-agent browser jury and prove the primary visible from-scratch Half Adder workflow without using starters, store mutation, hidden shortcuts, or hardware overclaims.
+
+Why: Phase 6 produced a useful review packet, but release-readiness still needed a standing independent review institution and a concrete from-scratch student task that could expose normal authoring, Verify, mapping, Export, and recovery defects.
+
+Proof:
+
+- `.agents/jury/`
+- `.agents/skills/redbyte-jury-orchestrator/SKILL.md`
+- `docs/development/RED_BYTE_JURY_REVIEW_PROCESS.md`
+- `docs/release/RED_BYTE_JURY_REVIEW_001.md`
+- `docs/release/RED_BYTE_JURY_RETRIAL_001.md`
+- `ide:gate:jury-half-adder-visible-trial`
+- `.redbyte/proof/jury/2026-06-23/`
+
+Acceptance:
+
+- The primary Half Adder flow is completed through visible UI: Project rename, Design authoring, undo/redo, wiring, reload persistence, Verify My-check authoring, intentional FAIL, repair PASS, stale/rerun PASS, Map Pins, post-map Verify PASS, Export package inspection/download, and Project reload/back-forward resume.
+- From-scratch scalar mapping rows materialize from live boundary rows even when the canonical V2 mapping document starts empty.
+- Export package evidence includes a downloaded ZIP, manifest, hash, and VHDL/XDC/testbench/Tcl/README inspection.
+- Jury verdict remains `READY WITH FIXES / KEEP DRAFT`; secondary jury trials, human walkthrough, actual assistive-technology review, and Vivado/Basys3 proof remain separate.
 
 ## Product Trust Reset v2 - Phase 4A Design And Map Pins Workspace Reconstruction
 

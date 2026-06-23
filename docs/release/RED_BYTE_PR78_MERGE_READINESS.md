@@ -16,14 +16,15 @@ Starting Phase 3I head: `24db2554c25b218f10267df22a669ca53167ca04`
 Phase 4A starting head: `b6aae2ecdd1a6ecd0b8ffa42bd5996c9805713ec`
 Phase 5 starting head: `27c0473863d35c07998c1529d17135342337f480`
 Phase 6 reviewed head: `6c9575b8072134e062e746fad1be9bac43bd5c1c`
+Phase 6B starting head: `502a163ae907d76a0fea473853adb8d80e864022`
 
 ## Executive Decision
 
 **C. READY FOR REVIEW, KEEP DRAFT**
 
-PR #78 is coherent enough to continue through focused product reconstruction and Phase 6 pilot-readiness review after each slice is validated and GitHub checks are green. It must remain draft and unmerged. This decision does not mark the PR non-draft, does not merge it, and does not claim Vivado/Basys3 E1-E3 proof.
+PR #78 is coherent enough to continue through focused product reconstruction, Phase 6 pilot-readiness review, and Phase 6B standing jury review after each slice is validated and GitHub checks are green. It must remain draft and unmerged. This decision does not mark the PR non-draft, does not merge it, and does not claim Vivado/Basys3 E1-E3 proof.
 
-Phase 5 continued that reconstruction with contained Project, Export, and Import V2 workspace work. Phase 6 reviewed the current branch in browser and prepared the human pilot/assistive-technology review packet. This does not change the executive decision: PR #78 remains draft and unmerged.
+Phase 5 continued that reconstruction with contained Project, Export, and Import V2 workspace work. Phase 6 reviewed the current branch in browser and prepared the human pilot/assistive-technology review packet. Phase 6B establishes the permanent 12-agent browser jury and proves the primary from-scratch Half Adder path after fixing the mapping/proof defect the jury exposed. This does not change the executive decision: PR #78 remains draft and unmerged.
 
 ## Full Scope
 
@@ -38,6 +39,7 @@ PR #78 now includes:
 - Phase 4A Design workspace and Map Pins workspace reconstruction proof
 - Phase 5 Project command center, Export artifact workspace, Import step workflow, and outer-workflow continuity proof
 - Phase 6 pilot-readiness browser audit, human walkthrough packet, and assistive-technology script
+- Phase 6B RedByte Jury institution, first agentic browser jury verdict, from-scratch Half Adder primary trial, and retrial/fix-package docs
 
 ## Architecture Review
 
@@ -125,6 +127,8 @@ Phase 5 follow-up: Project now exposes compact workflow progress and direct tool
 Phase 6 follow-up: the fresh branch audit at head `6c9575b8072134e062e746fad1be9bac43bd5c1c` captured 27 browser screenshots and observations under `.redbyte/product-immersion/product-trust-reset-v2/phase-6/current-baseline/`. Project, Design, Verify, Map Pins, Export, Import, Diagnostics, reload, Back/Forward, and dirty-resume paths produced no browser/page errors and no root overflow. The audit found no P0/P1 browser blocker. Remaining product concerns are P2: Design legacy support-collapse copy in normal authoring, Verify 1366px locked-check internal scroll, Export density, support-only raw build fingerprint in Diagnostics, CSS/legacy selector debt, no actual screen-reader session, and no human professor/student walkthrough.
 
 `docs/release/RED_BYTE_PILOT_WALKTHROUGH_PACKET.md` now records the professor/student walkthrough and P0/P1/P2 triage. `docs/release/RED_BYTE_ASSISTIVE_TECH_HUMAN_SCRIPT.md` now records the required human AT script. These are review inputs, not completed human certifications.
+
+Phase 6B follow-up: `docs/release/RED_BYTE_JURY_REVIEW_001.md` and `docs/release/RED_BYTE_JURY_RETRIAL_001.md` record the standing agentic browser jury. The first primary Half Adder trial initially exposed P1 proof/product problems: stale Verify could be accepted, from-scratch scalar mapping rows could be incomplete, and Export could remain blocked while proof looked green. The implemented package hardens `ide:gate:jury-half-adder-visible-trial`, fixes from-scratch mapping authority, tracks `.agents/jury/**`, and persists Export ZIP evidence. The hardened retrial completed the visible from-scratch Half Adder flow in `21448ms` with `75` clicks, `0` scrolls, `2` backtracks, browser problems `0`, and package SHA-256 `fc7f908bc0439f26dc2ebd0c495e11a42849c26b3dafa7c14114d968ee58c996`. Secondary jury trials and human review remain open before non-draft.
 
 ## Dead-Code Review
 
@@ -218,6 +222,12 @@ Phase 6 local docs/branch validation under portable Node `v20.19.0` / pnpm `10.2
 - `rb:doc:validate` (`29` passed, `0` failed)
 - `rb:encoding:check`
 - `git diff --check` with only normal CRLF working-copy warnings
+
+Phase 6B primary jury proof:
+
+- `ide:gate:jury-half-adder-visible-trial` completed the visible from-scratch Half Adder flow, intentional Verify FAIL, repair PASS, stale/re-run PASS, Map Pins row-to-board linking, post-map Verify PASS, Export package inspection/download, and Project reload/back-forward resume.
+- Focused mapping authority tests cover empty canonical V2 mapping documents and pin preservation.
+- Final closeout validation and GitHub checks must still be recorded before claiming the Phase 6B commit is remote-green.
 - `gate:manifest:validate` (`127` gates, `92` current required)
 - `build:unified`
 - `classroom:gate` (`92/92`)
@@ -285,7 +295,7 @@ Phase 4A began with Design and Map Pins V2 reconstruction, with the current trut
 
 ## Phase 6 Readiness
 
-Phase 6 found the branch ready for human review while remaining draft. The branch is not ready to mark non-draft until the pilot walkthrough, actual AT script, final current-build smoke, and GitHub green closeout are recorded.
+Phase 6 found the branch ready for human review while remaining draft. Phase 6B adds the standing jury and proves the primary from-scratch browser path after a focused fix package. The branch is not ready to mark non-draft until secondary jury trials, the pilot walkthrough, actual AT script, final current-build smoke, and GitHub green closeout are recorded.
 
 ## Attribution
 

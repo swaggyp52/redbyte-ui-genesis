@@ -31,6 +31,8 @@ yarn-debug.log*
 yarn-error.log*
 # .redbyte local run outputs - never commit these
 .redbyte-brain/
+.redbyte/human-review/
+.redbyte/proof/jury/
 .redbyte/work/
 .redbyte/agent/
 .redbyte/bench/runs/
@@ -49,6 +51,8 @@ yarn-error.log*
 .redbyte/**/server-contract*
 .redbyte/**/marcus-doctor*
 .agents/*
+!.agents/jury/
+!.agents/jury/**
 !.agents/skills/
 !.agents/skills/**/
 !.agents/skills/**/SKILL.md

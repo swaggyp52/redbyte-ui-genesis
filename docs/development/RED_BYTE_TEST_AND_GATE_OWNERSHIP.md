@@ -94,9 +94,15 @@ Phase 5 adds outer-workflow workspace gates:
 
 All four gates are wired into `classroom:gate` and `verify:gates:classroom`. The Project gate protects compact workflow progress and direct tool commands. The Export gate protects artifact-tree/selected-preview/copy-download workflow plus plain Vivado handoff copy. The Import gate protects the five-step guarded recovery workflow and no-overwrite boundary. The continuity gate protects Project -> Verify PASS -> Project/Export agreement. These gates do not claim generated-byte, project-format, Verify semantic, pin mapping, or hardware proof changes.
 
+Phase 6B adds the standing jury primary workflow gate:
+
+- `ide:gate:jury-half-adder-visible-trial`
+
+This gate is a jury-specific focused gate, not a substitute for all classroom gates. It proves the visible from-scratch Half Adder path through Project rename, Design authoring, undo/redo, wiring, reload persistence, Verify My-check authoring, intentional FAIL, repair PASS, stale-after-design-edit, rerun PASS, Map Pins row-to-board linking, post-map Verify PASS, Export package inspection/download, and Project reload/back-forward resume. It records metrics, screenshots, git status, dirty-worktree state, package manifest, downloaded ZIP hash, and explicit non-claims under `.redbyte/proof/jury/YYYY-MM-DD/`. Keep it visible-UI only: no store mutation, no injected starter/project, and no hidden authoring shortcuts.
+
 V2 gates still to add before merge:
 
-- none as a Phase 3I gate-authority blocker. Future V2 surface review may still add `ide:gate:verify-testbench-results-layout-v2` or equivalent if live product review reopens that layout risk, and a real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
+- secondary jury gates remain open for Course/My check safety, sequential timing, recovery/multi-tab, import safety, and agentic accessibility/200% zoom. A real assistive-technology pass may add manual proof artifacts without claiming screen-reader certification from browser automation alone.
 
 Legacy gates rewritten during Phase 2 include workbench reconstruction, Design tool-window, workbench-space, Hardware Basys3, Export handoff/trust, primary dominance, release-readiness visual, and affected Project/Verify/Hardware/Export gates that previously required visible build badges, E-tier browser copy, generic restore rails, or V1 closed-rail canvas budgets. Do not add new normal-use assertions that click `ide-workbench-dock-toggle-*`; those controls are no longer student chrome for V2 paths.
 

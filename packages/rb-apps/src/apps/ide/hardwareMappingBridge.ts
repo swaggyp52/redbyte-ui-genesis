@@ -305,10 +305,6 @@ export function synchronizeScalarHardwareMappingV2WithProjectIoRows(
   const scalarEntries = next.entries.filter(
     (entry): entry is HardwareMappingScalarV2 => entry.kind === 'scalar'
   );
-  if (scalarEntries.length === 0) {
-    return next;
-  }
-
   const liveScalarRows = rows.filter((row) => (row.mappingKind ?? 'scalar') === 'scalar');
   const usedScalarIndexes = new Set<number>();
   const scalarRekeyMap = new Map<string, string>();
@@ -343,6 +339,9 @@ export function synchronizeScalarHardwareMappingV2WithProjectIoRows(
       matchedEntry?.boardResourceType ??
       inferBoardResourceFromLabel(row.label ?? row.id);
 
+    const rowPin = row.pin?.trim() ?? '';
+    const preservedPin = matchedEntry?.pin?.trim() ?? '';
+
     synchronizedScalars.push({
       kind: 'scalar',
       width: 1,
@@ -355,7 +354,7 @@ export function synchronizeScalarHardwareMappingV2WithProjectIoRows(
       portName: (row.label ?? row.id).trim() || row.id,
       timingRole: row.timingRole ?? matchedEntry?.timingRole,
       boardResourceType: inferredBoardResource,
-      pin: row.pin?.trim() ?? matchedEntry?.pin ?? '',
+      pin: rowPin.length > 0 ? rowPin : preservedPin,
     });
   }
 

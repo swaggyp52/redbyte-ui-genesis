@@ -89,6 +89,7 @@ This is a routing index, not a replacement for hardening tickets. Use one issue 
 12an. Product Trust Reset v2 Phase 3F / Classroom Proof and Durability Rehearsal. Closed locally 2026-06-21 pending final commit/PR checks.
 12ao. Product Trust Reset v2 Phase 3G/H/I / Gate Authority, Storage Durability, Branch Review. Closed locally 2026-06-22 pending final commit/PR checks.
 12ap. Product Trust Reset v2 Phase 4A / Design and Map Pins Workspace Reconstruction. Closed locally 2026-06-22 pending final commit/PR checks.
+12aq. Product Trust Reset v2 Phase 6B / RedByte Jury Primary Trial. Closed locally 2026-06-23 pending final commit/PR checks: standing 12-agent jury, primary visible Half Adder trial, mapping/proof fix package, and retrial docs exist. Secondary jury trials remain open before non-draft.
 13. Vivado/Basys3 Proof Restoration.
 14. Packaging/Commercial Readiness.
 

@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-23 (test: establish RedByte Jury primary trial)
+
+**Subsystem:** Product Trust Reset v2 Phase 6B, PR #78 standing RedByte Jury, visible from-scratch Half Adder browser trial, Map Pins materialization fix, and draft PR continuation.
+
+**Changes:**
+- Continued on branch `product/redbyte-trust-reset-v2` from `502a163ae907d76a0fea473853adb8d80e864022`; `main` was not changed and draft PR #78 remains unmerged.
+- Added the permanent RedByte Jury institution under `.agents/jury/` with a charter, twelve standing juror role briefs, review templates, issue/vote/minority/verdict/retrial templates, and a repo-local orchestration skill.
+- Added `docs/development/RED_BYTE_JURY_REVIEW_PROCESS.md` and release evidence docs `docs/release/RED_BYTE_JURY_REVIEW_001.md` / `docs/release/RED_BYTE_JURY_RETRIAL_001.md`.
+- Added `ide:gate:jury-half-adder-visible-trial`, a browser-only from-scratch Half Adder trial that uses visible UI to create the circuit, rename the project, author and repair My checks, prove stale-after-design-edit behavior, map Basys3 pins, rerun Verify, inspect/download Export, inspect ZIP contents, and return through Project.
+- Fixed the materialized mapping path for from-scratch projects by deriving authoritative hardware state before applying pin edits and allowing scalar mapping rows to be created from live project I/O when canonical V2 mapping is empty.
+- Updated cockpit/current-truth, work queue, invariant, gate ownership, execution plan, issue index, PR78 merge-readiness, DOC_INDEX, AGENTS, and CLAUDE notes for the standing jury process and Phase 6B evidence boundary.
+- Updated ignored Obsidian/scratch notes under `.redbyte-brain/` and local ignored jury proof manifests under `.redbyte/proof/jury/`.
+
+**Evidence:** Primary browser evidence is local/generated under `.redbyte/proof/jury/2026-06-23/browser-trial/2026-06-23T14-17-07-171Z/`. The visible trial ran at `1366x768` against preview `http://127.0.0.1:56797/os/`, recorded browser problems `0`, issues `0`, elapsed `21448ms`, clicks `75`, scrolls `0`, backtracks `2`, first component at `1375ms`, circuit complete at `7615ms`, testbench authored at `14510ms`, first compare at `14516ms`, and first PASS at `16892ms`. The generated package ZIP SHA-256 was `fc7f908bc0439f26dc2ebd0c495e11a42849c26b3dafa7c14114d968ee58c996`, with visible-package contents inspected for `top.vhd`, `top.xdc`, `testbench.vhd`, `vivado_import.tcl`, `README.txt`, and Basys3 pins `V17`, `V16`, `U16`, `E19`. Screenshots captured intentional fail, repaired pass, stale-after-design-edit, post-stale rerun pass, hardware mapped, post-map Verify pass, Export inspected, and Project back/forward resume states.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-jury-half-adder-visible-trial.mjs`, focused unit tests for `hardwareMappingBridge` and `projectRuntime.fromScratchMapping` (`10` tests), `gate:manifest:validate` (`127` gates, `92` current required, `19` focused, `15` retired, `1` legacy diagnostic), `build:unified`, `ide:gate:jury-half-adder-visible-trial`, affected gates `ide:gate:map-pins-workspace-v2`, `ide:gate:export-trust-integrity`, `ide:gate:outer-workflow-continuity-v2`, full `classroom:gate` (`92/92`) after a transient process-exit rerun, broad `verify:gates:classroom` (`111/111`), `rb:doc:validate`, `rb:encoding:check`, and `git diff --check` with only normal CRLF working-copy warnings.
+
+**Safety:** Phase 6B establishes review infrastructure and fixes the observed from-scratch mapping materialization defect. It does not change simulation truth, Compare semantics, expected-output meaning, VHDL/XDC/testbench/Tcl/ZIP generation bytes, project format, import parser/apply behavior, export goldens, SaaS/accounts, Vivado proof, Basys3 programming proof, physical observation proof, or human assistive-technology certification. The Export ZIP inspection is browser/download proof only, not Vivado or hardware proof.
+
+**Remote sync:** This entry was written before the Phase 6B commit, push, PR body update, and GitHub checks. Final clean-tree current-build smoke, push, and live GitHub checks must be verified before claiming the branch is remote-green.
+
+**Next recommended task:** Keep PR #78 draft and run secondary jury trials for Course checks, My checks, sequential timing boundaries, recovery/multitab durability, import recovery, generated artifact preview security, and actual human accessibility review before marking the PR ready.
+
 ## Change Log 2026-06-23 (docs: prepare PR78 Phase 6 pilot review)
 
 **Subsystem:** Product Trust Reset v2 Phase 6, PR #78 pilot-readiness browser audit, human professor/student walkthrough packet, assistive-technology human script, merge-readiness decision, and draft PR continuation.

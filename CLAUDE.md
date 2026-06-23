@@ -38,9 +38,12 @@ Before starting any task:
    - `redbyte-frontend-surface-builder`: frontend surface implementation, hierarchy, direct controls, and browser proof.
    - `redbyte-interaction-affordance-review`: live interaction audits for inert labels, rename/edit paths, weak affordances, and panel usability.
    - `redbyte-obsidian-brain`: Obsidian vault and ignored `.redbyte-brain/` working memory, with canonical docs still authoritative.
+   - `redbyte-jury-orchestrator`: standing 12-agent browser jury process, juror artifacts, verdicts, fix packages, and retrials for major product/release decisions.
 6. Run only the validation appropriate to the user-approved slice. For source or gate changes, use the relevant focused tests and `pnpm verify:gates`; for docs-only changes, prefer doc validation and encoding checks.
 
 For strategic direction or multi-surface work, use the redbyte-prime agent in `.claude/agents/redbyte-prime.md` when that workflow is available.
+
+For major RedByte surface redesigns, Verify truth changes, persistence/recovery changes, import/export trust-boundary changes, educational authoring changes, and PR pilot/non-draft/merge decisions, run the RedByte Jury process in `docs/development/RED_BYTE_JURY_REVIEW_PROCESS.md`. Treat it as agentic browser review, not human review.
 
 ---
 

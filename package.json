@@ -315,6 +315,7 @@
         "ide:gate:authoring-depth-release-safety": "node ./scripts/gates/ide-authoring-depth-release-safety.mjs",
         "ide:gate:blank-canvas-product-proof": "node ./scripts/gates/ide-blank-canvas-product-proof.mjs",
         "ide:gate:from-scratch-general-workflow": "node ./scripts/gates/ide-from-scratch-general-workflow.mjs",
+        "ide:gate:jury-half-adder-visible-trial": "node ./scripts/gates/ide-jury-half-adder-visible-trial.mjs",
         "ide:gate:viewport-overflow-contract": "node ./scripts/gates/ide-viewport-overflow-contract.mjs",
         "ide:gate:shell-layout-integrity": "node ./scripts/gates/ide-shell-layout-integrity.mjs",
         "ide:gate:shell-workbench-hierarchy": "node ./scripts/gates/ide-shell-workbench-hierarchy.mjs",

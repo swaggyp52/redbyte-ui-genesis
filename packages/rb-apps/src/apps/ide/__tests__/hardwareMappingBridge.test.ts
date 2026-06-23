@@ -6,6 +6,7 @@ import {
   deriveMappingCompleteness,
   enrichProjectIoRowsWithV2Metadata,
   materializedIoRowsFromHardwareMappingV2,
+  synchronizeScalarHardwareMappingV2WithProjectIoRows,
 } from '../hardwareMappingBridge';
 
 describe('hardwareMappingBridge', () => {
@@ -111,6 +112,71 @@ describe('hardwareMappingBridge', () => {
       if (scalar?.kind === 'scalar') {
         expect(scalar.timingRole).toBe('clock');
         expect(scalar.boardResourceType).toBe('clock_pin');
+      }
+    });
+  });
+
+  describe('synchronizeScalarHardwareMappingV2WithProjectIoRows', () => {
+    it('creates scalar entries for live boundary rows when the canonical document is empty', () => {
+      const synchronized = synchronizeScalarHardwareMappingV2WithProjectIoRows(
+        { schemaVersion: '2.0', boardId: 'basys3', entries: [] },
+        [
+          {
+            id: 'a',
+            nodeId: 'node-a',
+            port: 'out',
+            label: 'A',
+            direction: 'in',
+            pin: '',
+            required: true,
+          },
+        ]
+      );
+
+      const scalar = synchronized.entries[0];
+      expect(scalar?.kind).toBe('scalar');
+      if (scalar?.kind === 'scalar') {
+        expect(scalar.id).toBe('a');
+        expect(scalar.nodeId).toBe('node-a');
+        expect(scalar.label).toBe('A');
+      }
+    });
+
+    it('preserves a canonical scalar pin when the live row has not supplied a replacement', () => {
+      const doc: HardwareMappingDocumentV2 = {
+        schemaVersion: '2.0',
+        boardId: 'basys3',
+        entries: [
+          {
+            kind: 'scalar',
+            id: 'a',
+            direction: 'in',
+            width: 1,
+            portName: 'A',
+            nodeId: 'node-a',
+            port: 'out',
+            label: 'A',
+            pin: 'SW0',
+          },
+        ],
+      };
+
+      const synchronized = synchronizeScalarHardwareMappingV2WithProjectIoRows(doc, [
+        {
+          id: 'a',
+          nodeId: 'node-a',
+          port: 'out',
+          label: 'A',
+          direction: 'in',
+          pin: '',
+          required: true,
+        },
+      ]);
+
+      const scalar = synchronized.entries[0];
+      expect(scalar?.kind).toBe('scalar');
+      if (scalar?.kind === 'scalar') {
+        expect(scalar.pin).toBe('SW0');
       }
     });
   });

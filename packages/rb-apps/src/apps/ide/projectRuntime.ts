@@ -752,8 +752,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setMappingPin: (rowId, pin) => {
         set((state) => {
+          const { hardwareMappingV2: baseHardwareMappingV2 } = deriveAuthoritativeHardwareState(
+            state.circuit,
+            state.hardwareMappingV2
+          );
           const nextDoc = applyMaterializedPinToHardwareMappingV2(
-            structuredClone(state.hardwareMappingV2),
+            baseHardwareMappingV2,
             rowId,
             pin
           );
