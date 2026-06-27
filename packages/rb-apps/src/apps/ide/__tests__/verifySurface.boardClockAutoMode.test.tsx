@@ -129,4 +129,72 @@ describe('VerifySurface board clock auto mode', () => {
       })
     );
   });
+
+  it('does not describe an imported sim-only Clock component as a board clock', () => {
+    const onRunVerification = vi.fn();
+    const simClockContract: VerifyScheduleContract = {
+      ...liveBoardClockContract,
+      clockSignalName: 'CLK',
+      resetHint: undefined,
+      analysis: {
+        ...liveBoardClockContract.analysis,
+        clockNetName: 'CLK',
+      },
+    };
+    const view = render(
+      <VerifySurface
+        deterministicHash="imported-sim-clock"
+        hasVectors
+        verifyMode="sequential"
+        vectors={[]}
+        mappedInputs={[
+          { id: 'clk', label: 'CLK100MHZ', pin: 'W5', nodeId: 'clk_node' },
+          { id: 'd', label: 'D', pin: 'V17', nodeId: 'd_node' },
+        ]}
+        mappedSignals={[
+          { id: 'clk', label: 'CLK100MHZ', direction: 'in', pin: 'W5', nodeId: 'clk_node' },
+          { id: 'd', label: 'D', direction: 'in', pin: 'V17', nodeId: 'd_node' },
+          { id: 'q', label: 'Q', direction: 'out', pin: 'U16', nodeId: 'q_node' },
+        ]}
+        liveSignalRoles={{ clk: 'clock', d: 'input', q: 'output' }}
+        liveScheduleContract={simClockContract}
+        circuitGraph={{
+          nodes: [
+            {
+              id: 'clk_node',
+              type: 'Clock',
+              label: 'CLK',
+              config: { role: 'sim', period: 2 },
+            },
+          ],
+          connections: [],
+        }}
+        onRunVerification={onRunVerification}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.queryByTestId('ide-verify-board-clock-source')).toBeNull();
+    expect(view.getByTestId('ide-verify-clock-detected').textContent).toContain('CLK');
+    expect(view.getByTestId('ide-verify-clock-detected').textContent).not.toContain('W5');
+    expect(view.getByTestId('ide-verify-clock-mode-summary').textContent).toContain('Manual pulses');
+    expect(view.getByTestId('ide-verify-clock-policy-copy').textContent).toContain(
+      'Sim Clock components are import-only'
+    );
+    expect(view.getByTestId('ide-verify-clock-manual-warning').textContent).toContain(
+      'Sim Clock components are import-only'
+    );
+
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
+
+    const clockPolicy = onRunVerification.mock.calls.at(-1)?.[0].clockPolicy;
+    expect(clockPolicy).toMatchObject({
+      sourceType: 'explicit-clock-component',
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
+    });
+    expect(clockPolicy).not.toHaveProperty('boardAlias');
+    expect(clockPolicy).not.toHaveProperty('packagePin');
+  });
 });

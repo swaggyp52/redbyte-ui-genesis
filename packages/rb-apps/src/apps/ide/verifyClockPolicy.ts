@@ -55,6 +55,8 @@ interface DetectVerifyClockPolicyInput {
 }
 
 const DEFAULT_AUTO_RUN_CYCLES = 8;
+const SIM_CLOCK_IMPORT_WARNING =
+  'Sim Clock components are import-only in this release. Replace the component with the CLK100MHZ board resource before trusting auto Verify or Export.';
 const DEFAULT_MANUAL_WARNING =
   'Manual clock source — use this only if your hardware design really clocks from a switch or button.';
 
@@ -68,7 +70,9 @@ export function detectVerifyClockPolicy(
 
   const inputRows = input.ioRows.filter((row) => row.direction === 'in');
   const resetSignalName = resolveResetSignalName(inputRows, scheduleContract);
-  const boardClockRow = inputRows.find((row) => isAuthoritativeBoardClockRow(row));
+  const boardClockRow = inputRows.find(
+    (row) => isAuthoritativeBoardClockRow(row) && !isRowBackedBySimOnlyClock(row, input.circuit)
+  );
   if (boardClockRow) {
     const binding = resolveBasys3SignalBinding(boardClockRow);
     return {
@@ -91,7 +95,9 @@ export function detectVerifyClockPolicy(
     };
   }
 
-  const manualClockRow = inputRows.find((row) => isManualClockRow(row, scheduleContract));
+  const manualClockRow = inputRows.find(
+    (row) => !isRowBackedBySimOnlyClock(row, input.circuit) && isManualClockRow(row, scheduleContract)
+  );
   if (manualClockRow) {
     return {
       signalId: manualClockRow.id,
@@ -119,19 +125,23 @@ export function detectVerifyClockPolicy(
       signalLabel,
       sourceType: 'explicit-clock-component',
       executionModel: 'component-oscillator',
-      overrideMode: 'auto',
-      autoRunEnabled: true,
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
       activeEdge: 'rising',
       startLevel: 0,
       dutyCycle: 0.5,
       runCycles: DEFAULT_AUTO_RUN_CYCLES,
       periodTicks: readPeriodTicks(explicitClockNode.config),
       resetSignalName,
-      resetBehavior: resetSignalName ? 'auto-sequence' : 'none',
+      resetBehavior: resetSignalName ? 'custom' : 'none',
+      manualWarning: SIM_CLOCK_IMPORT_WARNING,
     };
   }
 
-  const inferredRow = findClockLikeInputRow(inputRows, scheduleContract.clockSignalName);
+  const inferredRow = findClockLikeInputRow(
+    inputRows.filter((row) => !isRowBackedBySimOnlyClock(row, input.circuit)),
+    scheduleContract.clockSignalName
+  );
   if (inferredRow) {
     const manualLike =
       scheduleContract.timingMode === 'manual_event_driven_lab' ||
@@ -289,11 +299,33 @@ function findExplicitClockComponent(
     nodes.find(
       (node) =>
         node.type === 'Clock' &&
-        String((node.config as Record<string, unknown> | undefined)?.role ?? 'sim')
-          .toLowerCase()
-          .trim() === 'sim'
+        readClockRole(node.config as Record<string, unknown> | undefined) === 'sim'
     ) ?? null
   );
+}
+
+function isRowBackedBySimOnlyClock(
+  row: VerifyClockPolicyIoRow,
+  circuit: Pick<Circuit, 'nodes'> | null | undefined
+): boolean {
+  const nodes = circuit?.nodes ?? [];
+  const clockNodes = nodes.filter((node) => node.type === 'Clock');
+  const exactNode = row.nodeId
+    ? clockNodes.find((node) => matchesSignalToken(node.id, row.nodeId))
+    : undefined;
+  if (exactNode) {
+    return readClockRole(exactNode.config as Record<string, unknown> | undefined) === 'sim';
+  }
+  return clockNodes.some(
+    (node) =>
+      readClockRole(node.config as Record<string, unknown> | undefined) === 'sim' &&
+      matchesSignalToken(node.id, row.id)
+  );
+}
+
+function readClockRole(config: Record<string, unknown> | undefined): string | undefined {
+  const role = config?.role;
+  return typeof role === 'string' ? role.toLowerCase().trim() : undefined;
 }
 
 function isAuthoritativeBoardClockRow(row: VerifyClockPolicyIoRow): boolean {

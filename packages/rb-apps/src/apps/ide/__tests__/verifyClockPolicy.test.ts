@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import {
   detectVerifyClockPolicy,
@@ -89,6 +90,65 @@ describe('verifyClockPolicy', () => {
       resetBehavior: 'custom',
     });
     expect(policy?.manualWarning).toContain('Manual clock source');
+  });
+
+  it('does not promote an imported sim-only Clock row to a Basys3 board clock', () => {
+    const circuit = {
+      nodes: [
+        {
+          id: 'clk_node',
+          type: 'Clock',
+          label: 'CLK',
+          position: { x: 0, y: 0 },
+          rotation: 0,
+          config: { role: 'sim', period: 2 },
+          state: {},
+        },
+      ],
+    } satisfies Pick<Circuit, 'nodes'>;
+    const ioRows = [
+      {
+        id: 'clk',
+        label: 'CLK100MHZ',
+        nodeId: 'clk_node',
+        direction: 'in' as const,
+        pin: 'W5',
+      },
+      { id: 'd', label: 'D', nodeId: 'd_node', direction: 'in' as const, pin: 'SW0' },
+      { id: 'q', label: 'Q', nodeId: 'q_node', direction: 'out' as const, pin: 'LD0' },
+    ];
+
+    const policy = detectVerifyClockPolicy({
+      circuit,
+      ioRows,
+      scheduleContract: makeClockedContract({
+        clockSignalName: 'CLK',
+        resetHint: undefined,
+      }),
+    });
+
+    expect(policy).toMatchObject({
+      signalId: 'CLK',
+      signalLabel: 'CLK',
+      sourceType: 'explicit-clock-component',
+      executionModel: 'component-oscillator',
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
+      periodTicks: 2,
+      resetBehavior: 'none',
+    });
+    expect(policy?.boardAlias).toBeUndefined();
+    expect(policy?.packagePin).toBeUndefined();
+    expect(policy?.manualWarning).toContain('Sim Clock components are import-only');
+
+    const vectors = materializeVectorsForClockPolicy({
+      vectors: [{ tick: 0, inputs: { d: 1 }, expected: { q: 0 } }],
+      ioRows,
+      policy,
+    });
+
+    expect(vectors).toHaveLength(1);
+    expect(vectors[0]?.inputs).toEqual({ d: 1 });
   });
 
   it('materializes auto board-clock cycles without requiring authored clock pulses', () => {

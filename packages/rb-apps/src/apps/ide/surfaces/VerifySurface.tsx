@@ -399,9 +399,24 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const inputFields = useMemo(() => normalizeVerifyFields(inputFieldSeed), [inputFieldSeed]);
   const outputFields = useMemo(() => normalizeVerifyFields(outputFieldSeed), [outputFieldSeed]);
+  const simOnlyClockFieldKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const node of circuitGraph?.nodes ?? []) {
+      const role = typeof node.config?.role === 'string' ? node.config.role.toLowerCase().trim() : '';
+      if (node.type !== 'Clock' || role !== 'sim') continue;
+      keys.add(normalizeFieldId(node.id));
+    }
+    return keys;
+  }, [circuitGraph]);
   const inputFieldBoardBindings = useMemo(() => {
     const bindings = new Map<string, NonNullable<ReturnType<typeof resolveBasys3SignalBinding>>>();
     for (const entry of inputFieldSeed) {
+      const entryKeys = [entry.nodeId, entry.id]
+        .filter((value): value is string => Boolean(value))
+        .map((value) => normalizeFieldId(value));
+      if (entryKeys.some((key) => simOnlyClockFieldKeys.has(key))) {
+        continue;
+      }
       const binding = resolveBasys3SignalBinding({
         id: entry.id,
         label: entry.label,
@@ -412,7 +427,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       bindings.set(normalizeFieldId(entry.id), binding);
     }
     return bindings;
-  }, [inputFieldSeed]);
+  }, [inputFieldSeed, simOnlyClockFieldKeys]);
   const boardClockInputField = useMemo(
     () => inputFields.find((field) => inputFieldBoardBindings.get(normalizeFieldId(field.id))?.role === 'clock') ?? null,
     [inputFieldBoardBindings, inputFields]
@@ -4022,6 +4037,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       effectiveClockPolicy?.overrideMode === 'custom-pattern'
         ? effectiveClockPolicy.manualWarning
         : null;
+    const clockPolicyCopy =
+      effectiveClockPolicy?.sourceType === 'explicit-clock-component'
+        ? 'Sim Clock components are import-only in this release. Replace the component with the CLK100MHZ board resource before trusting auto Verify or Export.'
+        : effectiveClockPolicy?.sourceType === 'board-clock'
+          ? 'Auto mode generates the board clock. Manual/custom modes expose an editable clock lane.'
+          : 'Auto mode generates clock cycles. Manual/custom modes expose an editable clock lane.';
+    const autoModeLabel =
+      effectiveClockPolicy?.sourceType === 'board-clock' ? 'Auto board clock' : 'Auto clock';
 
     return (
       <div
@@ -4081,7 +4104,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </span>
               <div className="ide-verify-clock-policy-controls" data-testid="ide-verify-clock-policy-controls">
                 <span className="ide-verify-clock-policy-copy" data-testid="ide-verify-clock-policy-copy">
-                  Auto mode generates the board clock. Manual/custom modes expose an editable clock lane.
+                  {clockPolicyCopy}
                 </span>
                 <div className="ide-verify-clock-policy-mode-buttons">
                   <button
@@ -4090,7 +4113,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     onClick={() => setClockOverrideMode('auto')}
                     data-testid="ide-verify-clock-mode-auto"
                   >
-                    Auto board clock
+                    {autoModeLabel}
                   </button>
                   <button
                     type="button"

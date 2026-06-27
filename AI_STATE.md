@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-06-27 (fix: stop sim-only Clock board-clock overclaim)
+
+**Subsystem:** Verify clock policy detection, imported sim-only Clock honesty, Verify surface clock copy, focused clock regression tests, and release hardening docs.
+
+**Changes:**
+- Reproduced the P1 custom sequential complaint against deployed/local build `0abe87a`: the Sim Clock palette path is absent, but imported `role:"sim"` Clock DFF/TFF projects were still labeled as `CLK100MHZ` / `W5` auto board-clock Verify and could not complete a repair-to-PASS Compare loop.
+- Updated `detectVerifyClockPolicy` so IO rows backed by explicit `config.role === "sim"` Clock nodes are excluded from board-clock, manual-row, and inferred-row classification.
+- Changed imported sim-only Clock policy to `sourceType: "explicit-clock-component"`, `overrideMode: "manual-pulses"`, `autoRunEnabled: false`, with import-only guidance instead of board-clock alias/frequency/package-pin metadata.
+- Tightened `findExplicitClockComponent` so missing-role legacy Clock nodes are not defaulted into the sim-only path.
+- Updated VerifySurface board-clock chrome and policy copy so stale `W5`/`CLK100MHZ` rows backed by sim-only Clock nodes do not render board-clock source language.
+- Added focused policy, runtime, and surface regressions for the imported sim-only Clock misclassification.
+- Added `docs/release/clock-custom-sequential-hardening-2026-06-27.md` and updated current Verify/cockpit/doc-index docs to record the partial repair and remaining full-support tickets.
+
+**Evidence:** Browser proof artifacts are local-only under `.redbyte/clock-hardening/2026-06-27/`. They show deployed and local build metadata at `0abe87af980ee673e1ab90720ea64d32469e4c87`, no Sim Clock palette card, imported sim-only Clock Verify mislabeled as board-clock before this repair, Compare failing instead of repairing to PASS, and Export blocking hardware package generation for the sim Clock fixture. After the local repair, `local-after-sim-clock-honesty.json` showed `boardClockSourceVisible: false`, `Detected clock: CLK`, `Mode: Manual pulses`, import-only warning copy, runtime `sourceType: "explicit-clock-component"`, `autoRunEnabled: false`, and zero browser console/page problems.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for the focused post-repair command: `corepack pnpm exec vitest run --config vitest.config.ts packages/rb-apps/src/apps/ide/__tests__/verifyClockPolicy.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.boardClockAutoMode.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.boardClockAuto.test.ts -t "verifyClockPolicy|VerifySurface board clock auto mode|keeps imported sim-only Clock components"` (`11` passed, `3` skipped by filter). Browser after-proof passed with `node .redbyte/clock-hardening/2026-06-27/local-after-sim-clock-honesty.mjs`. The initial broad red run caught the new sim-only Clock policy/UI failures and also exposed two existing board-clock runtime expectation failures in `projectRuntime.boardClockAuto.test.ts`; those board-clock expectations remain a separate audit item.
+
+**Safety:** Partial honesty repair only. It does not implement full explicit Clock oscillator Verify semantics, does not restore a Sim Clock palette path, does not change trusted board-clock semantics, does not change VHDL/XDC generation, does not claim Vivado/Basys3 E1/E2/E3 proof, and does not push, deploy, create a PR, or modify production settings.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** Decide whether to implement first-class explicit Clock component Verify semantics or formally migrate/remove imported sim-only Clock components from board-ready workflows. Then separately audit the existing board-clock runtime expectation failures before using that file as a broad closeout gate.
+
 ## Change Log 2026-06-20 (fix: finalize Project command center packaging readiness)
 
 **Subsystem:** Loaded Project command center composition, Browser E0 packaging checklist, focused browser gates, release proof docs, and local Obsidian brain notes.

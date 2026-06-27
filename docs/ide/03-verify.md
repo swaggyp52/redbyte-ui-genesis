@@ -70,7 +70,7 @@ When a current run becomes stale, the copy must say why:
 2. `Testbench changed - rerun Compare`
 3. Mapping-driven downstream review in Export / Hardware when bindings changed
 
-For sequential circuits, current proof still requires useful timing stimulus, but Basys3 board clocks and explicit clock components now provide that stimulus automatically by default. Manual clock rows remain an override/debug path and are explicitly labeled for switch/button-clocked hardware designs. Latch-control designs use the same panel but describe the control signal instead of a generic clock.
+For sequential circuits, current proof still requires useful timing stimulus, but Basys3 board clocks now provide that stimulus automatically by default. Imported or legacy explicit `role:"sim"` Clock components are import-only in this release: Verify must not describe them as `CLK100MHZ` / `W5` board clocks, and students should replace them with the `CLK100MHZ` board resource before trusting auto Verify or Export. Manual clock rows remain an override/debug path and are explicitly labeled for switch/button-clocked hardware designs. Latch-control designs use the same panel but describe the control signal instead of a generic clock.
 
 ## Board Clock Truth
 
@@ -79,6 +79,7 @@ For sequential circuits, current proof still requires useful timing stimulus, bu
 - `Generate starter stimulus` no longer requires students to author `CLK100MHZ` pulse cells first.
 - The waveform and Verify report record the auto-materialized clock values alongside the sampled outputs.
 - If a design intentionally clocks from a switch or button, students can switch the policy to **Manual pulses** or **Custom pattern** and author the lane directly.
+- A sim-only Clock component, even if an imported/synchronized row still has `W5` or `CLK100MHZ`, is not board-clock proof. It stays manual/import-only until replaced by the board resource.
 
 ## Batch 1 Product Audit Notes (2026-04-30)
 

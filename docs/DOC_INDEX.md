@@ -105,6 +105,7 @@ When docs conflict:
 | [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) | RC1 honest posture and TA checklist |
 | [product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md](./product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md) | Current browser E0 proof package, pinned Node status, final-SHA rules, and no-hardware boundary |
 | [product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md](./product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md) | Browser E0 package/demo checklist, release/deploy SHA rules, blockers, and no-overclaim language |
+| [release/clock-custom-sequential-hardening-2026-06-27.md](./release/clock-custom-sequential-hardening-2026-06-27.md) | Clock/custom sequential P1 hardening report, partial sim-clock honesty repair, and remaining explicit Clock tickets |
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |
 | [release/redbyte-bench-evidence-model.md](./release/redbyte-bench-evidence-model.md) | E0/E1/E2/E3 evidence classification model |
@@ -155,6 +156,7 @@ The manual describes current behavior. The contract describes target-state oblig
 | [IDE_SYSTEM_MAP.md](./IDE_SYSTEM_MAP.md) | Product/system surface map |
 | [ide/SURFACE_CONFORMANCE.md](./ide/SURFACE_CONFORMANCE.md) | Surface-change proof and conformance rules |
 | [release/product-hardening-ticket-template.md](./release/product-hardening-ticket-template.md) | Local product-hardening ticket schema |
+| [release/clock-custom-sequential-hardening-2026-06-27.md](./release/clock-custom-sequential-hardening-2026-06-27.md) | Product-hardening report for imported sim-only Clock false board-clock classification |
 | [.github/ISSUE_TEMPLATE/product-hardening.yml](../.github/ISSUE_TEMPLATE/product-hardening.yml) | GitHub issue-form version of the hardening ticket |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level map for RedByte subsystem ownership |
 | [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | State authority matrix for project, graph, Verify, mapping, Export, Import, and proof tiers |
