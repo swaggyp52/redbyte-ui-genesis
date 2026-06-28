@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-06-28
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Clock and Custom Sequential Hardening (partial local repair)
+**Latest product/control slice:** Blank 4-bit Adder Authoring Depth (local browser E0 proof)
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -50,6 +50,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 21. **Release Proof Fork / Browser E0 Verify Evidence Density is closed locally.** Vivado, `xsct`, `hw_server`, Xilinx/Vivado environment variables, and a Basys3/Digilent/Xilinx-like USB device were unavailable, so no E1/E2/E3 proof was run or claimed. Path B tightened Verify post-run evidence density: `ide:gate:verify-postrun-workbench-usability` now proves waveform evidence starts high enough and exposes a useful visible chart area through Compare PASS, induced FAIL, and repair PASS at `1366x768` and `1440x900`. Before/after proof is under `.redbyte/product-immersion/browser-e0-polish/2026-06-20/`.
 22. **Project Loaded Command Center + Browser E0 Packaging Readiness is closed locally pending final commit/deploy proof.** `ide:gate:project-loaded-command-surface` now rejects loaded Project command boards that revert to boxed metric-card stacks; after proof under `.redbyte/product-immersion/project-packaging-readiness/2026-06-20/after/` shows visible build `53e0481`, zero overflow, zero boxed Project metric cards, Design edit return, Verify PASS/FAIL/repair Project states, Hardware, Export, Import, reload, and Back/Forward continuity. `ide:gate:browser-e0-packaging-readiness` requires `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md`, and is wired into the release-candidate aggregate, `classroom:gate`, and the broad classroom verifier. Browser proof remains E0 only; no Vivado/Basys3 E1-E3 proof was run or claimed.
 23. **Clock and Custom Sequential Hardening is closed locally as a partial repair.** Browser proof against deployed/local build `0abe87a` showed the Sim Clock palette is absent, but imported `role:"sim"` Clock projects were still mislabeled as `CLK100MHZ` / `W5` auto board-clock Verify and could not complete the Compare fail/repair/PASS loop. The local repair keeps sim-only Clock rows out of board-clock policy detection, surfaces them as import-only/manual in Verify, and records the remaining full-support tickets in `docs/release/clock-custom-sequential-hardening-2026-06-27.md`. Full custom explicit Clock Design -> Verify -> Export support remains not certified; students should use the `CLK100MHZ` board resource for board-ready sequential work.
+24. **Blank 4-bit Adder Authoring Depth is closed locally.** `ide:gate:blank-adder-authoring-depth` now proves Build Fresh -> blank Design -> manual primitive full-adder authoring from SW/LD I/O and XOR/AND/OR gates -> invalid/cancel/delete/undo/move wire handling -> Verify Observe/save/Compare PASS/intentional FAIL/repair/PASS -> four-`FullAdder` 4-bit adder carry chain -> Verify sample vectors -> Hardware conflict/remap/final mapping -> Export preview and ZIP inspection at `1366x768` and `1440x900`. The slice also hardens low-zoom chip port hit targets so body selection/label editing and adjacent chip pins remain deterministic. Browser evidence remains E0 only; no Vivado/Basys3 E1-E3 proof was run or claimed.
 9. **Design Canvas Direct Workbench v1 is closed locally.** `ide:gate:design-canvas-direct-workbench` now proves the loaded Logic Gates Design canvas starts with only a compact `View <zoom>` control, no expanded Fit/Center/preset HUD, no minimap over the graph, open/reclose View-tools behavior, no graph overlap in the default state, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 7. **Workbench Obstruction Usability v1 is closed locally.** `ide:gate:workbench-obstruction-usability` now proves Hardware Map Pins opens with the Map support dock collapsed, compact `Map` restore control visible, board/table workspace first-order, right/left support docks proportional when opened, close-to-restore behavior intact, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 8. **Workflow Orientation Integrated v1 is closed locally.** `ide:gate:interaction-affordance` now also proves a loaded Project `Flow` reopen uses an integrated callout that does not cover Project entry paths at `1440x900`; after IAB proof at `1366x768` and `1440x900` shows the compact callout above the Project paths with no root overflow.

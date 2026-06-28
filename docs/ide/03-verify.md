@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-06-28
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -63,6 +63,8 @@ Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, b
 The Verify evidence signature is tied to the same normalized current-project hash that workflow authority compares: circuit, project vectors, custom vectors, and project I/O mapping. Vector UI IDs are ignored for trust so helper-generated clock rows do not create a phantom stale loop after the run completes.
 
 `ide:gate:verify-evidence-workbench-integrity` guards the classroom Verify evidence path: visible first-run expected-output editing, Compare PASS, intentional expected-output edit to FAIL, first mismatch expected/observed evidence, waveform controls, repair back to PASS, and no meaningful overlap between stimulus and waveform evidence regions.
+
+`ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
 When a current run becomes stale, the copy must say why:
 

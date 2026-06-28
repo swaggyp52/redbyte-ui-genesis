@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-28
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -61,7 +61,8 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 - `ide:gate:design-workbench-v1` is the scoped Design Workbench v1 gate.
 - It proves blank/fresh Design, Logic Gates starter, Half Adder, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`.
-- It must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by the gate.
+- `ide:gate:blank-adder-authoring-depth` is the focused blank-canvas depth gate. It proves manual SW/LD placement, signal labeling, primitive full-adder XOR/AND/OR wiring, invalid/cancel/delete/undo/move wire handling, four-`FullAdder` carry-chain authoring, and low-zoom chip port hit targets at `1366x768` and `1440x900`.
+- `ide:gate:design-workbench-v1` must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by that gate.
 - Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
 
 ## Error / Status Rules

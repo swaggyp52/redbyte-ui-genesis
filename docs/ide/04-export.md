@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-28
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -74,6 +74,8 @@ Export must also keep downstream Vivado/bench evidence separated:
 4. **E3** - Physical board behavior was observed and recorded.
 
 E2 programming success must never imply E3 behavior proof. When no bench classifier output is attached to the browser session, Export should say so plainly and keep E1/E2/E3 as external/manual evidence.
+
+`ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, generated previews must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
 
 Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
 When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.

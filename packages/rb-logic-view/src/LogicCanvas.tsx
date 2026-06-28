@@ -749,12 +749,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
 
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;
+    const liveState = useLogicViewStore.getState();
+    const liveInteractionMode = liveState.interactionMode;
+    const liveWireStartPort = liveState.editingState.wireStartPort;
     // Don't allow port interactions while panning or dragging
-    if (interactionMode === 'panning' || interactionMode === 'draggingNode') return;
+    if (liveInteractionMode === 'panning' || liveInteractionMode === 'draggingNode') return;
 
-    if (interactionMode === 'wiring' && editingState.wireStartPort) {
+    if (liveWireStartPort) {
       // End wire - validate connection first
-      const from = editingState.wireStartPort;
+      const from = liveWireStartPort;
       const to = { nodeId, portName };
 
       const validation = isValidConnection(from, to, circuitForValidation, getChipMetadata);
@@ -792,7 +795,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         // Auto-hide after 4 seconds
         setTimeout(() => setShowFirstWireToast(false), 4000);
       }
-    } else if (interactionMode === 'idle') {
+    } else if (liveInteractionMode === 'idle') {
       // Start wire - only from idle state
       setWireRewireDraft(null);
       startWire({ nodeId, portName }); // This sets interactionMode to 'wiring'

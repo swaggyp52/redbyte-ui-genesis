@@ -203,7 +203,6 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const screenY = pos.y * camera.zoom + camera.y;
   const presentationScale = presentationZoomMode === 'classroom' ? 1.15 : 1;
   const size = 48 * camera.zoom * presentationScale;
-  const portHitRadius = presentationZoomMode === 'classroom' ? 20 : 16;
   const inlinePortRadius = presentationZoomMode === 'classroom' ? 6.4 : 5;
   const inlinePortGlowRadius = presentationZoomMode === 'classroom' ? 9.5 : 8;
   const nodeLabelFont = Math.max(11, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
@@ -343,6 +342,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     const chipColor = chipMetadata.color || '#1e293b'; // Dark slate for chips
     const chipHeight = size * 1.5; // Taller for chips with multiple ports
     const portSpacing = chipHeight / (Math.max(chipMetadata.inputs.length, chipMetadata.outputs.length) + 1);
+    const chipPortHitSize = Math.max(12, Math.min(32, portSpacing * 0.8));
+    const chipPortHitHalf = chipPortHitSize / 2;
     return (
       <g
         transform={nodeTransform}
@@ -607,12 +608,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 />
               )}
               {renderMismatchRing(-size / 2, yPos, input.id)}
-              {/* Invisible hit area (32×32px for student-friendly wiring) */}
+              {/* Invisible hit area scales with pin spacing and stays biased outside the chip body. */}
               <rect
-                x={-size / 2 - 16}
-                y={yPos - 16}
-                width={32}
-                height={32}
+                x={-size / 2 - (chipPortHitSize - 4)}
+                y={yPos - chipPortHitHalf}
+                width={chipPortHitSize}
+                height={chipPortHitSize}
                 fill="transparent"
                 data-port-id={input.id}
                 style={{ cursor: 'crosshair' }}
@@ -810,11 +811,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 />
               )}
               {renderMismatchRing(size / 2, yPos, output.id)}
-              {/* Invisible hit area (16px radius circle = ~32px diameter for student-friendly wiring) */}
-              <circle
-                cx={size / 2}
-                cy={yPos}
-                r={portHitRadius}
+              {/* Invisible hit area scales with pin spacing and stays biased outside the chip body. */}
+              <rect
+                x={size / 2 - 4}
+                y={yPos - chipPortHitHalf}
+                width={chipPortHitSize}
+                height={chipPortHitSize}
+                rx={chipPortHitHalf}
                 fill="transparent"
                 data-port-id={output.id}
                 style={{ cursor: 'crosshair' }}

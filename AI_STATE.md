@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-28 (fix: prove blank 4-bit adder authoring depth)
+
+**Subsystem:** Design chip port hit targets, blank-canvas adder authoring workflow, focused browser gate, Verify custom checks, Hardware mapping, and Export E0 package proof.
+
+**Changes:**
+- Added `ide:gate:blank-adder-authoring-depth`, a real-browser workflow gate for Project Build Fresh -> blank Design -> manually placed/labeled primitive full-adder gates -> invalid/cancel/delete/undo/move wiring -> Verify Observe/save/Compare PASS/intentional FAIL/repair/PASS -> manually placed four-`FullAdder` 4-bit adder -> Verify sample vectors -> Hardware mapping conflict/remap -> Export ZIP inspection at `1366x768` and `1440x900`.
+- Hardened `LogicCanvas` port clicks to read the current wire-start and interaction state from the live logic-view store at click time, avoiding stale-render races when a target is clicked immediately after a source.
+- Adjusted chip port hit areas in `NodeView` so low-zoom chip pins remain clickable without covering the node body or adjacent chip pins; this fixes body selection/label editing and deterministic port targeting in dense blank-canvas authoring.
+- Registered the new focused gate in `package.json`.
+
+**Evidence:** Local browser proof artifacts are under `.redbyte/product-immersion/blank-adder-authoring-depth/`, including screenshots, JSON records, and downloaded ZIPs from the passing gate. Initial gate failures showed low-zoom hitbox/overlap failures before the repair; final proof passed both required viewports and inspected the exported package.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, focused Vitest (`wireValidation`, `designSurface.connectionAffordance`, `StimulusCanvas.rowAuthoringClarity`: `35` tests), and affected browser gates `ide:gate:design-workbench-integrity`, `ide:gate:design-workbench-v1`, `ide:gate:student-task-completion-flow`, and `ide:gate:export-trust-integrity`.
+
+**Safety:** Browser E0 authoring-depth repair only. It does not implement clock/sequential behavior, does not change generated artifact semantics or goldens, does not run Vivado, does not prove bitstream programming or physical board behavior, and does not claim E1/E2/E3.
+
+**Remote sync:** Local-only so far: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** If continuing browser-first product proof, add this gate to the broader classroom aggregate only after deciding the runtime cost is acceptable; otherwise keep it as the focused closeout gate for blank 4-bit adder authoring depth.
+
 ## Change Log 2026-06-27 (fix: stop sim-only Clock board-clock overclaim)
 
 **Subsystem:** Verify clock policy detection, imported sim-only Clock honesty, Verify surface clock copy, focused clock regression tests, and release hardening docs.
