@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-28
+last_validated: 2026-06-29
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -50,6 +50,7 @@ Hard block export when:
 1. Missing IO mapping.
 2. Unsupported nodes for synthesis.
 3. Missing top-level constraints.
+4. Imported sim-only `Clock` components are present in a board-ready package path.
 
 Each error must include a direct fix path.
 
@@ -81,6 +82,8 @@ Verify freshness is based on the normalized Verify evidence signature shared wit
 When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.
 
 For Basys3 board-clock exports, generated `testbench.vhd` now includes a dedicated free-running clock process for the detected board clock port (for example `CLK100MHZ` on `W5`) and samples stimulus against `rising_edge(...)` waits instead of requiring manual clock assignments in every vector. The current repo only ships the VHDL testbench generation path; there is no separate Verilog testbench generator to update in this slice.
+
+Imported `config.role === "sim"` Clock components are import-only. Export must block them with copy that tells students to replace the component with the `CLK100MHZ` Board Resource before trusting auto Verify or Export; it must not tell students to add a generic `Clock` node for Basys3 work.
 
 ## Batch 1 Product Audit Notes (2026-04-30)
 

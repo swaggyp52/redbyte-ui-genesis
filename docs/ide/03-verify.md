@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-28
+last_validated: 2026-06-29
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -27,7 +27,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 2. **Workspace**: **Build testbench** (scenario library, clock/timing guidance, unified stimulus/check grid) and **waveform** instrument in a lab grid. The first-run starter path keeps the stimulus and expected-output editor visible; after a run, the left setup area stays editable but removes first-run teaching chrome so stimulus/check edits and waveform evidence remain readable together.
 
-3. **Clock / timing panel**: sequential designs surface a detected clock policy, not just a raw lane. A Basys3 board clock such as `CLK100MHZ` / `W5` defaults to **Auto board clock** with run-cycle control, edge/reset summary, and explicit manual-override actions. Manual pulses remain available for switch/button-clocked labs, but board-clocked designs are no longer manual-first.
+3. **Clock / timing panel**: sequential designs surface a detected clock policy, not just a raw lane. A Basys3 board clock such as `CLK100MHZ` / `W5` defaults to **Auto board clock** with run-cycle control, edge/reset summary, and explicit manual-override actions. Non-board inferred clock rows, including switch/button-clocked labs, stay in **Manual pulses** rather than auto-running as a board oscillator.
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
@@ -66,6 +66,8 @@ The Verify evidence signature is tied to the same normalized current-project has
 
 `ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
+`ide:gate:custom-clock-sequential-truth` guards the current clock policy boundary: `CLK100MHZ` board clocks auto-run, manual switch/button clocks stay manual-pulses, imported sim-only Clock components stay import-only/manual, and a non-starter board-clock sequential fixture reaches Verify/Export browser E0 proof.
+
 When a current run becomes stale, the copy must say why:
 
 1. `Design changed - rerun Compare`
@@ -80,7 +82,7 @@ For sequential circuits, current proof still requires useful timing stimulus, bu
 - `Run` / `Observe` auto-toggle that clock for the selected number of cycles.
 - `Generate starter stimulus` no longer requires students to author `CLK100MHZ` pulse cells first.
 - The waveform and Verify report record the auto-materialized clock values alongside the sampled outputs.
-- If a design intentionally clocks from a switch or button, students can switch the policy to **Manual pulses** or **Custom pattern** and author the lane directly.
+- If a design intentionally clocks from a switch or button, Verify keeps that row in **Manual pulses** or **Custom pattern** so students author the lane directly.
 - A sim-only Clock component, even if an imported/synchronized row still has `W5` or `CLK100MHZ`, is not board-clock proof. It stays manual/import-only until replaced by the board resource.
 
 ## Batch 1 Product Audit Notes (2026-04-30)

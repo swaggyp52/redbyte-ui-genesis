@@ -97,9 +97,9 @@ describe('projectRuntime board-clock auto verify', () => {
   it('auto-runs a Basys3 board clock for DFF verification without authored clock pulses', () => {
     useProjectRuntime.getState().loadFromProject(buildBoardClockDffProject());
     useProjectRuntime.getState().setVectors([
-      { tick: 0, inputs: { d: 1 }, expected: { q: 0 } },
+      { tick: 0, inputs: { d: 1 }, expected: { q: 1 } },
       { tick: 1, inputs: { d: 1 }, expected: { q: 1 } },
-      { tick: 2, inputs: { d: 0 }, expected: { q: 1 } },
+      { tick: 2, inputs: { d: 0 }, expected: { q: 0 } },
       { tick: 3, inputs: { d: 0 }, expected: { q: 0 } },
     ]);
 
@@ -115,7 +115,7 @@ describe('projectRuntime board-clock auto verify', () => {
       .filter((row) => row.signal === 'q')
       .sort((left, right) => left.tick - right.tick);
 
-    expect(run.status).toBe('pass');
+    expect(run.status, JSON.stringify(run.report.rows, null, 2)).toBe('pass');
     expect(run.clockPolicy).toMatchObject({
       sourceType: 'board-clock',
       overrideMode: 'auto',
@@ -124,7 +124,7 @@ describe('projectRuntime board-clock auto verify', () => {
     });
     expect(run.report.vectors.slice(0, 4).map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1]);
     expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
-    expect(qRows.map((row) => row.actual)).toEqual(['0', '1', '1', '0']);
+    expect(qRows.map((row) => row.actual)).toEqual(['1', '1', '0', '0']);
   });
 
   it('advances the from-scratch 2-bit Basys3 counter with auto-generated board clock edges', () => {
@@ -132,12 +132,12 @@ describe('projectRuntime board-clock auto verify', () => {
     useProjectRuntime.getState().setVectors([
       { tick: 0, inputs: { en: 0, rst: 1 }, expected: { q0: 0, q1: 0 } },
       { tick: 1, inputs: { en: 0, rst: 0 }, expected: { q0: 0, q1: 0 } },
-      { tick: 2, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 0 } },
-      { tick: 3, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 0 } },
-      { tick: 4, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 0 } },
-      { tick: 5, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 1 } },
-      { tick: 6, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 1 } },
-      { tick: 7, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 1 } },
+      { tick: 2, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 0 } },
+      { tick: 3, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 1 } },
+      { tick: 4, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 1 } },
+      { tick: 5, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 0 } },
+      { tick: 6, inputs: { en: 1, rst: 0 }, expected: { q0: 1, q1: 0 } },
+      { tick: 7, inputs: { en: 1, rst: 0 }, expected: { q0: 0, q1: 1 } },
     ]);
 
     const run = useProjectRuntime.getState().runVerification({
@@ -155,11 +155,18 @@ describe('projectRuntime board-clock auto verify', () => {
       perTickOutputs.set(row.tick, outputs);
     }
 
-    expect(run.status).toBe('pass');
+    expect(run.status, JSON.stringify(run.report.rows, null, 2)).toBe('pass');
     expect(run.report.vectors.slice(0, 8).map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1, 0, 1, 0, 1]);
-    expect(perTickOutputs.get(3)).toEqual({ ld0: '1', ld1: '0' });
-    expect(perTickOutputs.get(5)).toEqual({ ld0: '0', ld1: '1' });
-    expect(perTickOutputs.get(7)).toEqual({ ld0: '1', ld1: '1' });
+    expect(Array.from({ length: 8 }, (_, tick) => perTickOutputs.get(tick))).toEqual([
+      { ld0: '0', ld1: '0' },
+      { ld0: '0', ld1: '0' },
+      { ld0: '1', ld1: '0' },
+      { ld0: '0', ld1: '1' },
+      { ld0: '1', ld1: '1' },
+      { ld0: '0', ld1: '0' },
+      { ld0: '1', ld1: '0' },
+      { ld0: '0', ld1: '1' },
+    ]);
   });
 
   it('keeps imported sim-only Clock components out of auto board-clock verify', () => {

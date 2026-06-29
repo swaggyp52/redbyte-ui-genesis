@@ -495,13 +495,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   }, [mappedCount, requiredCount, requiredMappedCount]);
   // Use diagnostic codes rather than regex-on-message-text so that RBEX3001
   // ("Ignoring source XDC directive "create_clock"…") is never mistaken for a
-  // clock-domain blocker.  Clock blockers are RBEX4200–RBEX4204 only.
+  // clock-domain blocker. Clock blockers are the RBEX420x clock codes listed here.
   const clockDiag = diagnosticsList.find((d) =>
     d.code === 'RBEX4200' ||
     d.code === 'RBEX4201' ||
     d.code === 'RBEX4202' ||
     d.code === 'RBEX4203' ||
-    d.code === 'RBEX4204'
+    d.code === 'RBEX4204' ||
+    d.code === 'RBEX4206'
   );
   const feedbackDiag = diagnosticsList.find((d) => d.code === 'RBEX4102');
   /** Manual-event labs do not need a board oscillator net; RBEX4200 is advisory, not a screaming blocker. */

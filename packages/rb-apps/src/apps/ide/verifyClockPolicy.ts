@@ -145,7 +145,8 @@ export function detectVerifyClockPolicy(
   if (inferredRow) {
     const manualLike =
       scheduleContract.timingMode === 'manual_event_driven_lab' ||
-      inferredRow.timingRole === 'manual_step';
+      inferredRow.timingRole === 'manual_step' ||
+      !isAuthoritativeBoardClockRow(inferredRow);
     return {
       signalId: inferredRow.id,
       signalLabel: readSignalLabel(inferredRow),

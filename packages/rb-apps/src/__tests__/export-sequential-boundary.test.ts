@@ -137,6 +137,70 @@ end architecture;
     expect(sequentialBoundaryErrors).toEqual([]);
   });
 
+  it('blocks export for sim-only Clock components and gives the CLK100MHZ migration path', () => {
+    const project: RBProject = {
+      name: 'sim-clock-import-only-test',
+      circuit: {
+        nodes: [
+          { id: 'clk_node', type: 'Clock', label: 'CLK', x: 0, y: 80, config: { role: 'sim', period: 2 }, state: {} },
+          { id: 'ff', type: 'DFlipFlop', label: 'ff', x: 220, y: 40, config: {}, state: {} },
+          { id: 'led0', type: 'LED', label: 'led0', x: 400, y: 40, config: {}, state: {} },
+          { id: 'd_in', type: 'Switch', label: 'd', x: 0, y: 160, config: {}, state: { isOn: 0 } },
+        ],
+        connections: [
+          { id: 'c1', from: { nodeId: 'clk_node', portName: 'out' }, to: { nodeId: 'ff', portName: 'CLK' } },
+          { id: 'c2', from: { nodeId: 'ff', portName: 'Q' }, to: { nodeId: 'led0', portName: 'in' } },
+          { id: 'c3', from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'ff', portName: 'D' } },
+        ],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'clk', nodeId: 'clk_node', port: 'out', label: 'CLK100MHZ', pin: 'CLK100MHZ' },
+          { id: 'd', nodeId: 'd_in', port: 'out', label: 'd', pin: 'SW1' },
+        ],
+        outputs: [{ id: 'led0', nodeId: 'led0', port: 'in', label: 'led0', pin: 'LD0' }],
+      },
+    };
+
+    const result = exportProjectAsBasys3(project);
+    const simClockErrors = result.errors.filter((e) =>
+      e.message.includes('Sim Clock components are import-only')
+    );
+    expect(simClockErrors.length).toBeGreaterThan(0);
+    expect(simClockErrors[0]!.severity).toBe('error');
+    expect(simClockErrors[0]!.message).toContain('Replace the component with the CLK100MHZ board resource');
+    expect(simClockErrors[0]!.message).not.toContain('add a Clock node');
+  });
+
+  it('does not tell students to add a Clock node when a sequential circuit has no clock', () => {
+    const project: RBProject = {
+      name: 'missing-clock-guidance-test',
+      circuit: {
+        nodes: [
+          { id: 'ff', type: 'DFlipFlop', label: 'ff', x: 220, y: 40, config: {}, state: {} },
+          { id: 'led0', type: 'LED', label: 'led0', x: 400, y: 40, config: {}, state: {} },
+          { id: 'd_in', type: 'Switch', label: 'd', x: 0, y: 160, config: {}, state: { isOn: 0 } },
+        ],
+        connections: [
+          { id: 'c1', from: { nodeId: 'ff', portName: 'Q' }, to: { nodeId: 'led0', portName: 'in' } },
+          { id: 'c2', from: { nodeId: 'd_in', portName: 'out' }, to: { nodeId: 'ff', portName: 'D' } },
+        ],
+      },
+      ioMapping: {
+        inputs: [{ id: 'd', nodeId: 'd_in', port: 'out', label: 'd', pin: 'SW1' }],
+        outputs: [{ id: 'led0', nodeId: 'led0', port: 'in', label: 'led0', pin: 'LD0' }],
+      },
+    };
+
+    const result = exportProjectAsBasys3(project);
+    const missingClockErrors = result.errors.filter((e) =>
+      e.message.includes('no clock signal bound')
+    );
+    expect(missingClockErrors.length).toBeGreaterThan(0);
+    expect(missingClockErrors[0]!.message).toContain('use the CLK100MHZ board resource');
+    expect(missingClockErrors[0]!.message).not.toContain('add a Clock node');
+  });
+
   it('blocks export when source constraints request create_generated_clock', () => {
     const project: RBProject = {
       name: 'generated-clock-xdc-test',

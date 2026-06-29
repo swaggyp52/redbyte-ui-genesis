@@ -92,6 +92,35 @@ describe('verifyClockPolicy', () => {
     expect(policy?.manualWarning).toContain('Manual clock source');
   });
 
+  it('keeps inferred non-board clock rows in manual pulse mode', () => {
+    const policy = detectVerifyClockPolicy({
+      ioRows: [
+        {
+          id: 'enter',
+          label: 'ENTER (SW5)',
+          direction: 'in',
+          pin: 'SW5',
+        },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16' },
+      ],
+      scheduleContract: makeClockedContract({
+        timingMode: 'synchronous_board_clock',
+        needsSimClockInjection: false,
+        clockSignalName: 'ENTER (SW5)',
+      }),
+    });
+
+    expect(policy).toMatchObject({
+      signalId: 'enter',
+      sourceType: 'manual',
+      executionModel: 'manual',
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
+      resetBehavior: 'none',
+    });
+    expect(policy?.manualWarning).toContain('Manual clock source');
+  });
+
   it('does not promote an imported sim-only Clock row to a Basys3 board clock', () => {
     const circuit = {
       nodes: [

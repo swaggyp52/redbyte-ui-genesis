@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-29 (fix: prove custom clock sequential truth)
+
+**Subsystem:** Verify clock policy, imported sim-only Clock Export blocking, manual switch/button clock honesty, focused browser gate, and clock regression tests.
+
+**Changes:**
+- Added `ide:gate:custom-clock-sequential-truth`, a real-browser gate for `1366x768` and `1440x900` that proves the supported `CLK100MHZ` board-clock starter path, hidden Sim Clock palette truth, imported sim-only Clock Verify/Export handling, manual switch/button clock policy, and a non-starter custom sequential board-clock export.
+- Kept the product decision as Option B: explicit `config.role === "sim"` Clock components remain import-only and are blocked from trusted Basys3 Export with a direct migration path to the `CLK100MHZ` Board Resource.
+- Updated Export diagnostics so sim-only Clock projects no longer receive generic or misleading board-clock guidance, and missing-clock sequential designs now tell students to use `CLK100MHZ` / `W5` instead of adding a generic `Clock` node.
+- Updated `detectVerifyClockPolicy` so only authoritative Basys3 board clocks auto-run; inferred non-board clock rows, including switch/button clock rows, remain manual-pulses with `autoRunEnabled: false`.
+- Updated the stale board-clock runtime expectations to the current sampled-output sequence while preserving the auto-materialized `CLK100MHZ` pattern and board-clock policy assertions.
+
+**Evidence:** The first corrected Round 6 gate run failed red for the intended product gap: `Export must label sim Clock as import-only` at both required viewports. After the repair, `corepack pnpm -s ide:gate:custom-clock-sequential-truth` passed. Local browser artifacts are under `.redbyte/product-immersion/custom-clock-sequential-truth/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-custom-clock-sequential-truth.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:ece141-counter-clock-export`, `corepack pnpm -s ide:gate:ece141-counter-compare-pass`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, focused Vitest (`verifyClockPolicy`, `projectRuntime.boardClockAuto`, `verifySurface.boardClockAutoMode`, `testbench.board-clock-process`, `export-sequential-boundary`: `23` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 and local unit/browser proof only. This does not restore the Sim Clock palette, does not implement first-class explicit Clock oscillator Verify semantics, does not generate FPGA clocks from sim-only Clock nodes, does not run Vivado, does not produce a bitstream, does not program a Basys3 board, and does not claim E1/E2/E3. No push, deploy, PR, or production setting change was performed in this slice.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** If RedByte wants true explicit Clock component support later, implement it as a separate product decision with deterministic oscillator semantics, waveform/export contracts, migration behavior, and new E0/E1 proof; otherwise keep sim-only Clock as import-only and steer students to `CLK100MHZ` for board-ready sequential work.
+
 ## Change Log 2026-06-29 (fix: prove export/import roundtrip integrity)
 
 **Subsystem:** Export ZIP determinism, Import review/apply recovery state, invalid ZIP classification, restored-project proof, focused browser gate, and import surface regression tests.

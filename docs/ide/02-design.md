@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-28
+last_validated: 2026-06-29
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -32,6 +32,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - Search and the core build categories stay first.
 - Default palette order is `Board -> IO -> Logic -> Sequential -> Reusable`.
 - `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately reachable; it remains a helper layer, not the primary dashboard story.
+- Sim `Clock` is not a student-authored palette item in the current release. Imported `config.role === "sim"` Clock nodes may render for recovery/migration, but board-ready sequential designs should use the `CLK100MHZ` Board Resource.
 - In code and split modes the library collapses to an overlay rail by default so it does not reserve workspace width while idle.
 
 3. Center workspace
@@ -62,6 +63,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - `ide:gate:design-workbench-v1` is the scoped Design Workbench v1 gate.
 - It proves blank/fresh Design, Logic Gates starter, Half Adder, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`.
 - `ide:gate:blank-adder-authoring-depth` is the focused blank-canvas depth gate. It proves manual SW/LD placement, signal labeling, primitive full-adder XOR/AND/OR wiring, invalid/cancel/delete/undo/move wire handling, four-`FullAdder` carry-chain authoring, and low-zoom chip port hit targets at `1366x768` and `1440x900`.
+- `ide:gate:custom-clock-sequential-truth` guards clock authoring truth: `CLK100MHZ` is the supported visible board clock, the Sim Clock palette path stays hidden, and imported sim-only Clock projects are migration-only.
 - `ide:gate:design-workbench-v1` must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by that gate.
 - Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
 

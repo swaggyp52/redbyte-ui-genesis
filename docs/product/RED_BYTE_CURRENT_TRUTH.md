@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-28
+last_validated: 2026-06-29
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -117,6 +117,7 @@ Supporting truths:
 - Release Solidification v2 is closed locally by `ide:gate:release-solidification-v2`: first-launch Project Workflow Orientation now uses the integrated callout and does not overlap Build Fresh, starter, or primary launch actions, while Verify Compare PASS and repair PASS expose a compact next-action band and FAIL keeps the first failing-check action with the evidence workspace using the lower viewport.
 - Authoring Depth + Release Safety Harness is closed and remote-green for implementation commit `9a9b3eb34340281f968c402c79f4b454fda4e58d` by `ide:gate:authoring-depth-release-safety`: after Build Fresh and Add boundary I/O, partial blank Design circuits now keep direct Add AND, Wire, and Open Verify continuation in the canvas instead of forcing students to hunt through collapsed support chrome. The release-safety harness also proves current visible build identity and broad reload smoke without changing simulation, Verify, mapping, generated artifacts, project format, goldens, import semantics, or hardware proof claims. Final current-build smoke and deployed `/os/version.json` proof verified the implementation SHA; browser evidence remains E0 only.
 - Blank 4-bit Adder Authoring Depth is closed locally by `ide:gate:blank-adder-authoring-depth`: the browser now proves from-scratch SW/LD placement, labels, primitive full-adder wiring, invalid/cancel/delete/undo/move wire handling, four-`FullAdder` carry chain, Verify PASS/FAIL/repair/PASS, Hardware conflict/remap/final mapping, and Export preview/ZIP inspection. This is browser E0 proof only and makes no Vivado, bitstream, or physical-board claim.
+- Custom Clock Sequential Truth is closed locally by `ide:gate:custom-clock-sequential-truth`: the browser now proves `CLK100MHZ` board-clock Verify/Export truth, hidden Sim Clock palette truth, imported sim-only Clock import-only Verify/Export blocking, manual switch/button clock policy, and a non-starter custom sequential board-clock export at `1366x768` and `1440x900`. This is Option B support/migration truth only; first-class explicit Clock oscillator semantics remain unimplemented.
 - Release Candidate Shakedown / Loaded Project Flow Auto-Collapse is closed locally by the strengthened `ide:gate:interaction-affordance`: Project first launch still auto-shows integrated workflow help, but loaded Project no longer defaults to the full Workflow Orientation card after real work exists. The `Flow` button remains the explicit reopen control and the reopened helper stays integrated without covering loaded Project entry paths. The slice changes only presentation/help behavior and browser proof; Node `20.19.0` proof remains environment-gated in this shell.
 - Release Candidate Decision / Mode History + Node 20 Status is closed locally: full Project/Verify release-candidate audit found a normal browser-history release blocker, then `IdeApp` mode URL sync was hardened so in-app mode changes create restorable history entries and `popstate` restores the active surface. The decision report keeps the current status honest: browser E0 is approaching release-candidate quality, but final deployed-SHA proof and remaining Project/Verify visual maturity work are still required before packageable release claims.
 - Pinned Runtime + Browser E0 Release Proof is closed locally: Node `20.19.0` proof now passes through an ignored repo-local portable runtime, and the release subset passed under Node `v20.19.0` / pnpm `10.24.0`, including full `classroom:gate`. `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` records the current browser E0 proof package and no-hardware boundary.
@@ -183,6 +184,7 @@ Supporting truths:
 - Sequential boundary enforcement is closed: falling-edge, multi-clock, and active-low reset are blocked.
 - Design-time circuit health feedback is live.
 - Basys3 board-clock truth (`CLK100MHZ` / `W5`) and exported testbench parity are proof-backed historically; do not casually reopen board-clock semantics.
+- Sim-only Clock components are import-only: Verify must not promote them to board-clock truth, and Export blocks them with `CLK100MHZ` Board Resource migration copy.
 - Import routes to Design after successful project import.
 - Project first-load black-screen issue is resolved.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`.

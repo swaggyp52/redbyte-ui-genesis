@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-06-29
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-06-14
+**Last updated:** 2026-06-29
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, `docs/course/TA_TROUBLESHOOTING_GUIDE.md`, `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -57,6 +57,8 @@ Proven on this lab machine unless noted:
 **Batch 1 browser proof caveat (2026-04-30):** the real Vivado E1 rows above are current, but several browser rehearsal gates still encode old Observe/Compare and Project-owned mapping assumptions. Do not treat those gate failures as hardware proof failures; track them through `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md`.
 
 **Honest fences (not blanket-certified):**
+
+- **Imported sim-only Clock components** (`config.role === "sim"`) are **not** board-ready clock proof. They are import-only in the browser workflow and must be replaced with the `CLK100MHZ` Board Resource before trusted auto Verify or Basys3 Export.
 
 - **Lab starters** (`labStarters.ts`) and file-backed examples under `packages/rb-apps/src/examples/*.json` are **not** all run through E1 in this slice — treat as **L0/E0 until a row exists** in the matrix with a log path.
 - **Lab 8 FSM lock**, **seven-segment-heavy**, **hierarchical/bus-native** work: see `docs/lab-day-vivado-basys3-readiness.md` — **partial or not a same-day promise**.

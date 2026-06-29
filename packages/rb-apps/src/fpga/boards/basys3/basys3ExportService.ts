@@ -815,6 +815,10 @@ function validateSynthSubset(
     });
   }
 
+  for (const diagnostic of validateExplicitSimClockExportContract(project)) {
+    pushDiagnostic(diagnostic);
+  }
+
   for (const diagnostic of validateClockResetContract(ir, simModel)) {
     pushDiagnostic(diagnostic);
   }
@@ -929,7 +933,7 @@ function validateClockResetContract(
     diagnostics.push({
       type: 'constraint',
       severity: 'error',
-      message: `Sequential circuit (${statefulPrimitives.length} stateful element${statefulPrimitives.length > 1 ? 's' : ''}) has no clock signal bound. Fix: add a Clock node to the circuit and map it to Basys3 pin CLK (W5) in IO mapping.`,
+      message: `Sequential circuit (${statefulPrimitives.length} stateful element${statefulPrimitives.length > 1 ? 's' : ''}) has no clock signal bound. Fix: use the CLK100MHZ board resource and map it to Basys3 CLK100MHZ / W5 in Map Pins.`,
     });
   }
 
@@ -965,6 +969,33 @@ function validateClockResetContract(
   }
 
   return diagnostics;
+}
+
+function validateExplicitSimClockExportContract(project: RBProject): Basys3ExportError[] {
+  const simClockLabels = (project.circuit?.nodes ?? [])
+    .filter((node) => node.type === 'Clock' && readClockRole(node.config) === 'sim')
+    .map((node) => (node.label ?? node.id ?? 'Clock').trim())
+    .filter((label) => label.length > 0)
+    .sort((left, right) => compareCodepoint(left, right));
+
+  if (simClockLabels.length === 0) return [];
+
+  const suffix = simClockLabels.length === 1
+    ? ` Found sim Clock "${simClockLabels[0]}".`
+    : ` Found sim Clocks ${simClockLabels.map((label) => `"${label}"`).join(', ')}.`;
+
+  return [{
+    type: 'constraint',
+    severity: 'error',
+    message:
+      `Sim Clock components are import-only in this release. Replace the component with the CLK100MHZ board resource before trusting auto Verify or Export.${suffix}`,
+  }];
+}
+
+function readClockRole(config: unknown): string | undefined {
+  if (!config || typeof config !== 'object') return undefined;
+  const role = (config as { role?: unknown }).role;
+  return typeof role === 'string' ? role.toLowerCase().trim() : undefined;
 }
 
 function findMappingRecord(entries: MappingRecord[], normalizedPortName: string): MappingRecord | undefined {
