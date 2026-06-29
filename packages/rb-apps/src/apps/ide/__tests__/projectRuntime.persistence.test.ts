@@ -1282,3 +1282,128 @@ describe('useProjectRuntime.setImportMeta', () => {
     expect(useProjectRuntime.getState().importMeta).toBeNull();
   });
 });
+
+describe('useProjectRuntime blank project replacement', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useProjectRuntime.getState().resetToActiveExample();
+  });
+
+  it('keeps startBlankProject as a continue-current action for blank/custom work', () => {
+    useProjectRuntime.getState().loadFromProject(buildBlankWorkProject('blank'));
+
+    const before = useProjectRuntime.getState();
+    useProjectRuntime.getState().startBlankProject();
+    const after = useProjectRuntime.getState();
+
+    expect(after.projectId).toBe(before.projectId);
+    expect(after.projectKind).toBe('blank');
+    expect(after.circuit.nodes.map((node) => node.id)).toEqual(['sw0_node', 'ld0_node']);
+    expect(after.projectIoRows.map((row) => row.id)).toEqual(['sw0', 'ld0']);
+  });
+
+  it('replaces existing blank/custom work with a new empty blank project', () => {
+    useProjectRuntime.getState().loadFromProject(buildBlankWorkProject('custom'));
+    useProjectRuntime.getState().setCustomVectors([
+      { id: 'custom-1', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+    ]);
+    useProjectRuntime.getState().runVerification({
+      scenarioId: 'blank-replacement-before',
+      scenarioName: 'Blank Replacement Before',
+      deterministicHash: 'blank-replacement-before-hash',
+      rows: [],
+      ranAtIso: '2026-06-29T00:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+    useProjectRuntime.getState().recordExport({
+      status: 'ok',
+      hash: 'exp_before_replacement',
+      ranAtIso: '2026-06-29T00:01:00.000Z',
+    });
+
+    const source = useProjectRuntime.getState();
+    expect(source.projectKind).toBe('custom');
+    expect(source.circuit.nodes).toHaveLength(2);
+    expect(source.projectIoRows).toHaveLength(2);
+    expect(source.hardwareMappingV2.entries.length).toBeGreaterThan(0);
+    expect(source.verifyLastRun?.status).toBe('pass');
+    expect(source.projectHealthCore.lastExport?.status).toBe('ok');
+
+    useProjectRuntime.getState().replaceWithBlankProject();
+    const replaced = useProjectRuntime.getState();
+
+    expect(replaced.projectId).not.toBe(source.projectId);
+    expect(replaced.projectName).toBe('Untitled Project');
+    expect(replaced.projectKind).toBe('blank');
+    expect(replaced.sourceExampleId).toBeNull();
+    expect(replaced.activeExampleId).toBeNull();
+    expect(replaced.importMeta).toBeNull();
+    expect(replaced.circuit).toEqual({ nodes: [], connections: [] });
+    expect(replaced.projectIoRows).toEqual([]);
+    expect(replaced.hardwareMappingV2.entries).toEqual([]);
+    expect(replaced.projectVectors).toEqual([]);
+    expect(replaced.customVectors).toEqual([]);
+    expect(replaced.verifyLastRun).toBeUndefined();
+    expect(replaced.verifyRunHistory).toEqual([]);
+    expect(replaced.projectHealthCore).toEqual({
+      dirtySinceVerify: false,
+      dirtySinceExport: false,
+    });
+    expect(replaced.designPast).toEqual([]);
+    expect(replaced.designFuture).toEqual([]);
+  });
+});
+
+function buildBlankWorkProject(projectKind: 'blank' | 'custom') {
+  return {
+    kind: 'rb-project' as const,
+    version: 1,
+    createdAt: '2026-06-29T00:00:00.000Z',
+    updatedAt: '2026-06-29T00:00:00.000Z',
+    name: 'Blank Work Source',
+    description: 'Existing blank/custom work that should be replaced only by the explicit replacement action.',
+    circuit: {
+      nodes: [
+        {
+          id: 'sw0_node',
+          type: 'INPUT',
+          label: 'SW0',
+          x: 80,
+          y: 120,
+          position: { x: 80, y: 120 },
+          config: {},
+          state: {},
+        },
+        {
+          id: 'ld0_node',
+          type: 'OUTPUT',
+          label: 'LD0',
+          x: 320,
+          y: 120,
+          position: { x: 320, y: 120 },
+          config: {},
+          state: {},
+        },
+      ],
+      connections: [
+        {
+          from: { nodeId: 'sw0_node', portName: 'out' },
+          to: { nodeId: 'ld0_node', portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [{ id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0', pin: 'SW0' }],
+      outputs: [{ id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'LD0', pin: 'LD0' }],
+    },
+    vectors: [
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+    ],
+    meta: {
+      projectId: `rb-${projectKind}-replacement-source`,
+      projectKind,
+      scenarioAuthority: 'authored',
+    },
+  };
+}

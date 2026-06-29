@@ -58,6 +58,7 @@
         "ide:gate:ece141-vivado-artifacts": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-vivado-artifacts.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-ui-art-direction": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-ui-art-direction.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-ui-hierarchy": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-ui-hierarchy.spec.ts --project=chromium --retries=0",
+        "ide:gate:build-fresh-replacement-integrity": "node ./scripts/gates/ide-build-fresh-replacement-integrity.mjs",
         "ide:gate:export-import-roundtrip-integrity": "node ./scripts/gates/ide-export-import-roundtrip-integrity.mjs",
         "ide:gate:custom-clock-sequential-truth": "node ./scripts/gates/ide-custom-clock-sequential-truth.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",

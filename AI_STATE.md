@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-29 (fix: prove Build Fresh replacement integrity)
+
+**Subsystem:** Project Build Fresh replacement, blank/custom runtime reset, cross-surface stale-state proof, focused browser gate, and runtime regression tests.
+
+**Changes:**
+- Added `ide:gate:build-fresh-replacement-integrity`, a real-browser gate for `1366x768` and `1440x900` that proves Build Fresh cancel preserves existing blank/custom work, confirmed Build Fresh creates a genuinely empty Basys3 blank project, stale SW0/LD0 nodes/I/O rows/mapping/Verify/export state do not survive, Import remains available, and SW0 can be placed again in the new project.
+- Kept `startBlankProject` as the existing continue/current-blank behavior so automatic Project Home -> Design and non-destructive blank/custom continuation remain stable.
+- Added `replaceWithBlankProject` as the distinct destructive runtime action used after the Project surface confirmation guard for existing blank/custom work.
+- Wired Project's guarded Build Fresh path in `IdeApp` to call the replacement action only for current blank/custom projects; starter/import/saved paths continue to use the existing start/load flows.
+- Added focused runtime coverage proving `startBlankProject` preserves blank/custom work while `replaceWithBlankProject` clears circuit nodes, I/O rows, `hardwareMappingV2`, vectors, Verify/export proof state, history, import metadata, and old project identity.
+
+**Evidence:** The first corrected Round 8 gate run failed red for the intended product gap: after confirmed Build Fresh, the target still had `2` nodes at both `1366x768` and `1440x900`. After the repair, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity` passed. Local browser artifacts are under `.redbyte/product-immersion/build-fresh-replacement-integrity/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:student-task-completion-flow`, and focused runtime Vitest `projectRuntime.persistence.test.ts` (`29` tests). A focused exploratory run including `ideApp.labday-wiring.test.tsx` still fails existing/stale selector expectations (`ide-hw-map-dock`, `ide-export-testbench-source`, and loaded Project direct `ide-project-load-start-logic-gates`), matching the Round 7 stale-test/R7-003 evidence rather than this replacement path.
+
+**Safety:** Browser E0 and local runtime/browser proof only. This does not change simulation semantics, Verify result semantics, pin mapping semantics, generated artifacts, export goldens, import parser/apply behavior, Vivado execution, bitstream generation, Basys3 programming, or physical board observation, and it does not claim E1/E2/E3. No push, deploy, PR, or production setting change was performed in this slice.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** Fix the Round 7 proof-harness `setExpectedCells` defect and then rerun the true 60-minute student-session stability pass against the Build Fresh replacement repair before starting broader Round 7/9 product work.
+
 ## Change Log 2026-06-29 (fix: prove custom clock sequential truth)
 
 **Subsystem:** Verify clock policy, imported sim-only Clock Export blocking, manual switch/button clock honesty, focused browser gate, and clock regression tests.

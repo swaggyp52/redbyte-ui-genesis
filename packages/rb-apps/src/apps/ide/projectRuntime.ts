@@ -368,6 +368,7 @@ export interface ProjectRuntimeState {
   }) => void;
   setImportMeta: (meta: IdeImportMeta | null) => void;
   startBlankProject: () => void;
+  replaceWithBlankProject: () => void;
   setLastSavedAt: (label: string) => void;
   resetToActiveExample: () => void;
   clearUnsavedState: (label?: string) => void;
@@ -1760,6 +1761,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 : '',
           };
         });
+      },
+      replaceWithBlankProject: () => {
+        set(() =>
+          createEmptyProjectState({
+            projectKind: 'blank',
+            projectName: 'Untitled Project',
+            lastSavedAt: 'Started fresh blank project',
+          })
+        );
       },
       setLastSavedAt: (label) => {
         const trimmed = label.trim();
