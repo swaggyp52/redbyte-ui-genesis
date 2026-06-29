@@ -43,6 +43,28 @@ describe('ImportSurface submission ZIP handling', () => {
     expect(zipInput.hasAttribute('hidden')).toBe(true);
   });
 
+  it('shows a visible safe error for non-ZIP uploads', async () => {
+    const { getByTestId } = render(
+      <ImportSurface onImportSubmission={vi.fn()} />
+    );
+
+    const zipInput = getByTestId('ide-import-zip-input') as HTMLInputElement;
+    const file = new File(['not a zip'], 'notes.txt', {
+      type: 'text/plain',
+    });
+
+    await act(async () => {
+      fireEvent.change(zipInput, { target: { files: [file] } });
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('ide-import-zip-error')).toBeTruthy();
+    });
+    expect(getByTestId('ide-import-zip-error').textContent).toContain('.zip archive');
+    expect(getByTestId('ide-import-zip-error').textContent).toContain('No files were changed');
+    expect(mockedParseIdeSubmissionZip).not.toHaveBeenCalled();
+  });
+
   it('shows an actionable integrity failure message for tampered submissions', async () => {
     mockedParseIdeSubmissionZip.mockRejectedValue(
       new SubmissionIntegrityError('hash mismatch for "project.rbproj.json"')

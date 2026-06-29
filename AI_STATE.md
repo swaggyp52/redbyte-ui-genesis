@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-06-29 (fix: prove export/import roundtrip integrity)
+
+**Subsystem:** Export ZIP determinism, Import review/apply recovery state, invalid ZIP classification, restored-project proof, focused browser gate, and import surface regression tests.
+
+**Changes:**
+- Added `ide:gate:export-import-roundtrip-integrity`, a real-browser workflow gate for imported RedByte manifest review/cancel/apply -> fresh Verify Compare PASS -> baseline/repeated Export ZIP hash equality -> Hardware mapping mutation/export diff -> Verify expected-output mutation/testbench diff -> baseline ZIP re-import/re-verify/re-export stable-content equality -> invalid non-ZIP import recovery at `1366x768` and `1440x900`.
+- The gate uses a generated four-bit adder RedByte manifest fixture and drives product mutations only through visible Project, Import, Verify, Hardware, and Export controls; runtime reads and ZIP inspection are assertion-only.
+- Hardened `ImportSurface` so non-`.zip` uploads now enter the visible `ide-import-zip-error` safe failure state, clear stale import preview state, and explicitly say no files were changed.
+- Added a focused ImportSurface component regression proving non-ZIP uploads render the safe ZIP error and do not enter submission ZIP parsing.
+- Registered the new focused gate in `package.json`.
+
+**Evidence:** Local browser proof artifacts are under `.redbyte/product-immersion/export-import-roundtrip-integrity/`, including screenshots, downloaded ZIPs, generated fixtures, and `roundtrip-summary.json`. The passing summary records identical repeated-export ZIP hashes per viewport, changed hashes for mapping and expected-output edits, restored mapping/circuit signatures, and matching restored stable-content hashes. Raw restored ZIP hashes differ because fresh Verify provenance timestamps are intentionally recorded in `EXPECTED_IO.json`; the gate normalizes that volatile field for restored stable-content comparison.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm -s build`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-trust-integrity`, `corepack pnpm -s ide:gate:import-recovery-contract`, and focused Vitest (`importSurface.submission`, `zipImport.manifest`, `zipImport.roundtrip`, `ide-zip-import-contract`, `export-authority-chain-contract`: `61` tests). A broader exploratory Vitest run that also included `export-reimport-roundtrip.test.ts` still failed one existing expectation that concurrent-assignment VHDL should not reconstruct as `full`; this slice did not modify that importer path.
+
+**Safety:** Browser E0 export/import integrity repair only. It does not change simulator truth, pin semantics, RedByte project schema, Vivado execution, bitstream generation, Basys3 programming, or physical board observation, and it does not claim E1/E2/E3.
+
+**Remote sync:** Local-only so far: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** Decide whether `export-reimport-roundtrip.test.ts` should be updated to reflect current concurrent-assignment reconstruction behavior or whether the importer should be constrained back to the old documented limitation; keep that separate from this export/import recovery-state proof.
+
 ## Change Log 2026-06-28 (fix: prove blank 4-bit adder authoring depth)
 
 **Subsystem:** Design chip port hit targets, blank-canvas adder authoring workflow, focused browser gate, Verify custom checks, Hardware mapping, and Export E0 package proof.

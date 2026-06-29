@@ -58,6 +58,7 @@
         "ide:gate:ece141-vivado-artifacts": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-vivado-artifacts.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-ui-art-direction": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-ui-art-direction.spec.ts --project=chromium --retries=0",
         "ide:gate:ece141-ui-hierarchy": "cross-env CI=1 PW_MODE=ci pnpm exec playwright test --config playwright.dev.config.ts tests/e2e/ece141-ui-hierarchy.spec.ts --project=chromium --retries=0",
+        "ide:gate:export-import-roundtrip-integrity": "node ./scripts/gates/ide-export-import-roundtrip-integrity.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",
         "lint:packages": "pnpm --filter @redbyte/rb-* run lint 2>&1 || true",

@@ -1581,7 +1581,24 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const handleZipFile = async (file: File) => {
     const fileName = file.name.trim().toLowerCase();
     if (!fileName.endsWith('.zip')) {
-      setStatusMessage('ZIP import requires a .zip archive.');
+      const message = `ZIP import requires a .zip archive. "${file.name}" was not opened. No files were changed.`;
+      zipFileRef.current = null;
+      setImportFirstLookDismissed(true);
+      setTab('upload');
+      setPendingApplyImportResult(null);
+      setShowVerifyResetNotice(false);
+      setZipInspection(null);
+      setParsedHdl(null);
+      setXdcResult(null);
+      setHdlText('');
+      setXdcText('');
+      setMapping({});
+      setSelectedZipHdl(null);
+      setSelectedZipXdc(null);
+      setSubmissionDetectedMessage('');
+      setSubmissionIntegrityMessage('');
+      setZipImportError(message);
+      setStatusMessage(`ZIP import failed: ${message}`);
       return;
     }
     setImportFirstLookDismissed(true);
