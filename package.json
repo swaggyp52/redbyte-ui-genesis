@@ -61,6 +61,7 @@
         "ide:gate:build-fresh-replacement-integrity": "node ./scripts/gates/ide-build-fresh-replacement-integrity.mjs",
         "ide:gate:export-import-roundtrip-integrity": "node ./scripts/gates/ide-export-import-roundtrip-integrity.mjs",
         "ide:gate:custom-clock-sequential-truth": "node ./scripts/gates/ide-custom-clock-sequential-truth.mjs",
+        "ide:gate:verify-counter-repeat-compare-stability": "node ./scripts/gates/ide-verify-counter-repeat-compare-stability.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",
         "lint:packages": "pnpm --filter @redbyte/rb-* run lint 2>&1 || true",

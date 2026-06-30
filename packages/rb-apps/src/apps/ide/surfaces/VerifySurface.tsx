@@ -551,7 +551,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
   const [isStepMode, setIsStepMode] = useState(false);
   const [pendingCaptureScope, setPendingCaptureScope] = useState<(CaptureScope & {
-    awaitNextReportHash: string | null;
+    awaitNextRunKey: string | null;
   }) | null>(null);
   const [pendingAssertionRun, setPendingAssertionRun] = useState(false);
   const [sweepPreset, setSweepPreset] = useState<SweepPreset>('binary-count');
@@ -581,7 +581,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       lastRun
         ? `${lastRun.reportHash ?? 'no-report'}:${lastRun.generatedAtIso ?? 'no-generated-at'}`
         : 'no-run',
-    [lastRun]
+    [lastRun?.generatedAtIso, lastRun?.reportHash]
   );
 
   useEffect(() => {
@@ -1077,7 +1077,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   useEffect(() => {
     if (!passRunWithNoMismatches) return;
     if (groupedVisibleSignals.Inputs.length === 0) return;
-    const runKey = lastRun?.reportHash ?? lastRun?.deterministicHash ?? null;
+    const runKey = lastRunWorkbenchKey === 'no-run' ? null : lastRunWorkbenchKey;
     if (!runKey || lastAutoExpandedPassRunRef.current === runKey) return;
     setCollapsedGroups((previous) =>
       previous.Inputs ? { ...previous, Inputs: false } : previous
@@ -1085,8 +1085,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastAutoExpandedPassRunRef.current = runKey;
   }, [
     groupedVisibleSignals.Inputs.length,
-    lastRun?.deterministicHash,
-    lastRun?.reportHash,
+    lastRunWorkbenchKey,
     passRunWithNoMismatches,
   ]);
   const displaySignalTimeline = useMemo(() => {
@@ -1324,7 +1323,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   useEffect(() => {
     if (!lastRun || lastRun.status !== 'fail' || failingRows.length === 0) return;
     applyFailureSelection(failingRows[0]);
-  }, [applyFailureSelection, failingRows, lastRun?.reportHash, lastRun?.status]);
+  }, [applyFailureSelection, failingRows, lastRunWorkbenchKey, lastRun?.status]);
 
   useEffect(() => {
     if (failingRows.length === 0 && showMismatchOnlySignals) {
@@ -1348,7 +1347,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (lastRun) {
       setRunState('complete');
     }
-  }, [lastRun?.reportHash]);
+  }, [lastRunWorkbenchKey]);
 
   // Auto-shape the lower analysis deck once per run:
   // fail runs open directly into mismatch analysis, while pass/trace runs
@@ -1357,7 +1356,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const autoHandledRunRef = useRef<string | null>(null);
   useEffect(() => {
     if (!lastRun) return;
-    const key = lastRun.reportHash ?? lastRun.generatedAtIso ?? '';
+    const key = lastRunWorkbenchKey;
     if (autoHandledRunRef.current === key) return;
     autoHandledRunRef.current = key;
 
@@ -1380,7 +1379,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setVerifyTab('mismatches');
     }
     setDrawerOpen(false);
-  }, [lastRun?.generatedAtIso, lastRun?.reportHash, lastRun?.status]);
+  }, [lastRun, lastRunWorkbenchKey, lastRun?.status]);
 
   const resultRows = useMemo(
     () =>
@@ -1777,7 +1776,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setIsStepMode(false);
     }
   }, [
-    lastRun?.reportHash,
+    lastRunWorkbenchKey,
     lastRun?.waveform?.length,
     lastRun?.scheduleContract?.timingMode,
     activeScheduleContract?.timingMode,
@@ -2228,7 +2227,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   useEffect(() => {
     if (!lastRun || combosUnavailableReason !== null) return;
     setTruthTableMode((prev) => (prev === 'ticks' ? 'combos' : prev));
-  }, [lastRun?.reportHash, combosUnavailableReason]);
+  }, [lastRunWorkbenchKey, combosUnavailableReason]);
 
   // Derive floating signal names from evidence failures for signal-specific hints
   const floatingSignals = useMemo(() => {
@@ -2547,7 +2546,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (!container) return;
     container.scrollTop = 0;
     container.scrollLeft = 0;
-  }, [lastRun?.reportHash, displaySignalTimeline.length]);
+  }, [lastRunWorkbenchKey, displaySignalTimeline.length]);
   useEffect(() => {
     const container = waveformScrollRef.current;
     if (!container || selectedTick === null || zoomedTicks.length === 0) return;
@@ -2697,7 +2696,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     setTickZoom('all');
     setTickWindowCenter(null);
-  }, [firstFailureTick, lastRun?.reportHash, lastRun?.status]);
+  }, [firstFailureTick, lastRunWorkbenchKey, lastRun?.status]);
 
   const isStarterScenario =
     scenarioAuthority === 'starter' || (projectKind === 'example' && Boolean(sourceExampleId));
@@ -3293,11 +3292,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if ((lastRun?.waveform?.length ?? 0) === 0) return;
       setPendingCaptureScope({
         ...scope,
-        awaitNextReportHash: lastRun?.reportHash ?? null,
+        awaitNextRunKey: lastRun === undefined ? null : lastRunWorkbenchKey,
       });
       runVerificationWithMode(false);
     },
-    [lastRun?.reportHash, lastRun?.waveform?.length, runVerificationWithMode]
+    [lastRun, lastRunWorkbenchKey, runVerificationWithMode]
   );
 
   const buildDefaultCaptureScope = useCallback(
@@ -3376,10 +3375,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   useEffect(() => {
-    if (!pendingCaptureScope || !lastRun?.reportHash) return;
+    if (!pendingCaptureScope || !lastRun) return;
     if (
-      pendingCaptureScope.awaitNextReportHash &&
-      lastRun.reportHash === pendingCaptureScope.awaitNextReportHash
+      pendingCaptureScope.awaitNextRunKey &&
+      lastRunWorkbenchKey === pendingCaptureScope.awaitNextRunKey
     ) {
       return;
     }
@@ -3391,7 +3390,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       vectorId: pendingCaptureScope.vectorId,
       rerunCompare: pendingCaptureScope.rerunCompare,
     });
-  }, [applyScopedCapture, lastRun?.reportHash, pendingCaptureScope]);
+  }, [applyScopedCapture, lastRun, lastRunWorkbenchKey, pendingCaptureScope]);
 
   useEffect(() => {
     if (!pendingAssertionRun) return;

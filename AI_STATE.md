@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-06-30 (fix: stabilize repeated Verify Compare completion)
+
+**Subsystem:** Verify repeated-run identity, 2-bit counter Compare completion, scoped capture freshness, focused browser gate, and VerifySurface regression tests.
+
+**Changes:**
+- Added `ide:gate:verify-counter-repeat-compare-stability`, a real-browser gate for `1366x768` and `1440x900` that loads `2-Bit Up Counter (Basys3)`, confirms `CLK100MHZ` / `W5` auto board-clock truth, runs Observe, runs repeated Compare PASS with the same deterministic report hash, forces an expected-output FAIL, repairs to PASS, and repeats Compare after repair.
+- Reproduced the Round 7 R7-001 failure red: runtime `verifyLastRun` and `verifyRunHistory` advanced to a fresh PASS with the same `reportHash`, but the visible Verify command deck stayed `RUNNING`, kept the run button disabled, and showed `38% coverage - Sequential`.
+- Updated VerifySurface run identity handling so UI completion, per-run auto handling, failure selection, waveform/tick resets, and scoped capture waits use `reportHash + generatedAtIso` through the existing run workbench key instead of treating `reportHash` alone as the run instance.
+- Added a focused `verifySurface.workstation.test.tsx` regression that clicks a repeat Compare run, rerenders with the same `reportHash` and a later `generatedAtIso`, and proves the visible run state returns from `RUNNING` to `COMPLETE`.
+
+**Evidence:** The first Round 9 gate run failed red with `Verify UI did not leave Running after fresh runtime completion` while runtime showed `runKind: "verify"`, `status: "pass"`, `reportHash: "vrf_8a4374ee"`, fresh `generatedAtIso`, advanced history, `clocked_macro`, and board-clock `W5`. After the repair, `corepack pnpm -s ide:gate:verify-counter-repeat-compare-stability` passed. Local browser artifacts are under `.redbyte/product-immersion/verify-counter-repeat-compare-stability/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:verify-counter-repeat-compare-stability`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:ece141-counter-compare-pass`, and focused Vitest `verifySurface.workstation.test.tsx` (`43` tests). The local Round 7 dry harness was attempted with `ROUND7_MIN_SESSION_MS=0` against a local preview and stopped before workflow execution because the local preview serves `/os/build.json` but not JSON at `/os/version.json`, so `version.body.sha` was `undefined`.
+
+**Safety:** Browser E0 and local component/browser proof only. This does not change simulator semantics, deterministic report hashing, Verify comparison semantics, vectors, mapping, generated artifacts, export goldens, Vivado execution, bitstream generation, Basys3 programming, or physical board observation, and it does not claim E1/E2/E3. No push, deploy, PR, or production setting change was performed in this slice.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** Push and deploy the Round 9 repair only after the user approves, then rerun the true 60-minute Round 7 student-session stability pass against deployed production. If using the local dry harness first, repair or parameterize its local `/os/version.json` identity assumption separately from product behavior.
+
 ## Change Log 2026-06-29 (fix: prove Build Fresh replacement integrity)
 
 **Subsystem:** Project Build Fresh replacement, blank/custom runtime reset, cross-surface stale-state proof, focused browser gate, and runtime regression tests.

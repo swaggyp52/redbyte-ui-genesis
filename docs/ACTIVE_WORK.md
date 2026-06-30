@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-29
+last_validated: 2026-06-30
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Build Fresh Replacement Integrity (local browser E0 proof)
+**Latest product/control slice:** Verify Counter Repeat Compare Stability (local browser E0 proof)
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -28,7 +28,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 ## Top Priorities
 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
-2. **Build Fresh Replacement Integrity is closed locally.** `ide:gate:build-fresh-replacement-integrity` now proves confirmed Build Fresh replaces existing blank/custom work with a new empty Basys3 blank project at `1366x768` and `1440x900`, while cancel preserves existing work and SW0 can be placed again in the target project. This remains browser E0 proof only; no Vivado/Basys3 E1-E3 proof was run or claimed.
+2. **Verify Counter Repeat Compare Stability is closed locally.** `ide:gate:verify-counter-repeat-compare-stability` now proves the `2-Bit Up Counter (Basys3)` path can Observe, run repeated Compare PASS with the same deterministic `reportHash`, force FAIL, repair to PASS, and repeat Compare after repair without leaving Verify visibly stuck in `RUNNING`. This remains browser E0 proof only; no Vivado/Basys3 E1-E3 proof was run or claimed.
 3. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 4. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
 5. **Side Dock Affordance v1 is closed locally.** `ide:gate:side-dock-affordance` now proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails use compact horizontal `+ / Show / Lib|Sig|Info` restore controls, stay within a `48px` slot, reopen readable content, close back to restored workbench space, keep focal work objects visible at `1366x768` and `1440x900`, and produce no root overflow or console/page errors.
@@ -122,7 +122,7 @@ Do not jump to accounts/SaaS, website polish, pilot/commercial packaging, broad 
 
 ## Next Technical Task
 
-**Target:** Round 7 rerun prep: fix the local `setExpectedCells` proof-harness defect, then rerun the true 60-minute student-session stability pass against the Build Fresh replacement repair. Do not start a new broad product slice before that stability rerun unless the user reprioritizes.
+**Target:** Sync/deploy the Round 9 repeated-Compare repair only after user approval, then rerun the true 60-minute student-session stability pass against production. If a local dry Round 7 harness is required first, repair or parameterize its local `/os/version.json` identity assumption separately from product behavior.
 
 Structured hardening ticket fields to start from after inspection:
 
@@ -139,6 +139,7 @@ Board-gated proof remains a separate path: `docs: restore RedByte Vivado Basys3 
 
 | Evidence | Result |
 |---|---|
+| Verify Counter Repeat Compare Stability | Closed locally 2026-06-30: added `ide:gate:verify-counter-repeat-compare-stability` and repaired VerifySurface run-instance handling so repeated deterministic Compare runs are keyed by `reportHash + generatedAtIso`, not `reportHash` alone. The intentional red gate caught the counter starter runtime completing a fresh PASS while the visible Verify UI stayed `RUNNING` with the run button disabled; after proof covers repeated PASS, intentional FAIL, repair PASS, and post-repair repeated PASS at `1366x768` and `1440x900`. A local Round 7 dry harness attempt was blocked before workflow execution because local preview lacks JSON `/os/version.json`. |
 | Build Fresh Replacement Integrity | Closed locally 2026-06-29: added `ide:gate:build-fresh-replacement-integrity` and a distinct `replaceWithBlankProject` runtime action. The corrected red run caught confirmed Build Fresh leaving `2` old nodes after replacement at both `1366x768` and `1440x900`; after proof shows cancel preserves existing work, confirm creates an empty target with no stale nodes/I/O rows/mapping/Verify/export state, Import remains available, and SW0 can be placed again. Focused runtime Vitest passed; `ideApp.labday-wiring.test.tsx` still has stale selector failures unrelated to the replacement path. |
 | Shell and Navigation De-Scaffold v1 | Closed locally 2026-06-17: added `ide:gate:shell-navigation-overhaul`, `ide:gate:primary-work-object-dominance`, and `ide:gate:nested-scroll-regression` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The red/debug runs caught stale build proof, proof-ribbon height drift, non-exclusive support docks, Verify pre-run squeeze, Verify post-run mini horizontal scroll, and an outdated Import navigation assumption. After proof shows compact rail/proof-ribbon shell, Import utility route/reload reachability, one open support dock in focused workbench modes, Verify waveform/testbench dominance, no meaningful Verify/Hardware mini-scroll traps, no root overflow, and no console/page errors at `1366x768` and `1440x900`. Before screenshots and observations are under `.redbyte/product-immersion/shell-navigation-overhaul/2026-06-17/before/`; after screenshots and observations are under `.redbyte/product-immersion/shell-navigation-overhaul/2026-06-17/after/`. |
 | Design Canvas Direct Workbench v1 | Closed locally 2026-06-16: added `ide:gate:design-canvas-direct-workbench` to focused scripts, `classroom:gate`, and `verify:gates:classroom`. The intentional red run caught the loaded Logic Gates Design canvas lacking a compact View-tools toggle while the expanded zoom/control HUD and minimap were visible by default; after proof shows compact `View <zoom>` default control, user-requested Fit/Center/preset expansion and reclose, no default graph overlap, no root overflow, and no console/page errors. Before screenshots are under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/before/`; after screenshots are under `.redbyte/product-immersion/workbench-usability-overhaul/2026-06-16/after/`. |

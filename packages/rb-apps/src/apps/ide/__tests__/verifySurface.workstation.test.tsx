@@ -999,6 +999,60 @@ describe('VerifySurface workstation controls', () => {
     });
   });
 
+  it('clears running state for repeated compare runs with the same report hash and a fresh timestamp', async () => {
+    const firstRun = makePassRun();
+    const secondRun: RuntimeVerifyRun = {
+      ...firstRun,
+      generatedAtIso: '2026-02-27T00:00:01.000Z',
+    };
+    const onRunVerification = vi.fn();
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={firstRun}
+        vectors={firstRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-verify-run-state').textContent).toContain('COMPLETE');
+
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
+
+    await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
+    expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(true);
+    expect(view.getByTestId('ide-verify-run-state').textContent).toContain('RUNNING');
+
+    view.rerender(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={secondRun}
+        vectors={secondRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-verify-run-state').textContent).toContain('COMPLETE');
+      expect(view.getByTestId('ide-verify-run-state').textContent).not.toContain('RUNNING');
+      expect((view.getByTestId('ide-vcb-run') as HTMLButtonElement).disabled).toBe(false);
+    });
+  });
+
   it('describes saved assertions as inactive when the student switches back to trace mode', () => {
     const { getAllByText, getByTestId, queryByTestId } = render(
       <VerifySurface

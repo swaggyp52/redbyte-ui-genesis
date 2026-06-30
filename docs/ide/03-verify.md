@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-29
+last_validated: 2026-06-30
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -67,6 +67,8 @@ The Verify evidence signature is tied to the same normalized current-project has
 `ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
 `ide:gate:custom-clock-sequential-truth` guards the current clock policy boundary: `CLK100MHZ` board clocks auto-run, manual switch/button clocks stay manual-pulses, imported sim-only Clock components stay import-only/manual, and a non-starter board-clock sequential fixture reaches Verify/Export browser E0 proof.
+
+`ide:gate:verify-counter-repeat-compare-stability` guards repeated Verify run completion for the `2-Bit Up Counter (Basys3)` path. It requires Observe, repeated Compare PASS using the same deterministic report hash with fresh run timestamps, intentional expected-output FAIL, repair PASS, and post-repair repeated PASS without leaving the command deck, waveform run state, or run button visibly stuck in `RUNNING`.
 
 When a current run becomes stale, the copy must say why:
 
