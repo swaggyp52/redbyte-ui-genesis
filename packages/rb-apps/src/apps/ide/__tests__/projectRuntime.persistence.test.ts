@@ -1352,9 +1352,42 @@ describe('useProjectRuntime blank project replacement', () => {
     expect(replaced.designPast).toEqual([]);
     expect(replaced.designFuture).toEqual([]);
   });
+
+  it('replaces imported work with a new empty blank project', () => {
+    useProjectRuntime.getState().loadFromProject(buildBlankWorkProject('import'));
+    useProjectRuntime.getState().setImportMeta({
+      fidelity: 'full',
+      importMode: 'manifest',
+      reconstructionLevel: 'full',
+      sourceName: 'round12-import.zip',
+    });
+
+    const source = useProjectRuntime.getState();
+    expect(source.projectName).toBe('Blank Work Source');
+    expect(source.projectKind).toBe('import');
+    expect(source.importMeta?.sourceName).toBe('round12-import.zip');
+    expect(source.circuit.nodes).toHaveLength(2);
+    expect(source.projectIoRows).toHaveLength(2);
+    expect(source.hardwareMappingV2.entries.length).toBeGreaterThan(0);
+
+    useProjectRuntime.getState().replaceWithBlankProject();
+    const replaced = useProjectRuntime.getState();
+
+    expect(replaced.projectId).not.toBe(source.projectId);
+    expect(replaced.projectName).toBe('Untitled Project');
+    expect(replaced.projectKind).toBe('blank');
+    expect(replaced.importMeta).toBeNull();
+    expect(replaced.circuit).toEqual({ nodes: [], connections: [] });
+    expect(replaced.projectIoRows).toEqual([]);
+    expect(replaced.hardwareMappingV2.entries).toEqual([]);
+    expect(replaced.projectVectors).toEqual([]);
+    expect(replaced.customVectors).toEqual([]);
+    expect(replaced.verifyLastRun).toBeUndefined();
+    expect(replaced.verifyRunHistory).toEqual([]);
+  });
 });
 
-function buildBlankWorkProject(projectKind: 'blank' | 'custom') {
+function buildBlankWorkProject(projectKind: 'blank' | 'custom' | 'import') {
   return {
     kind: 'rb-project' as const,
     version: 1,

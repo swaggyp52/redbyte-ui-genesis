@@ -58,6 +58,7 @@ Destructive action guard:
 1. Opening a starter example while unsaved work exists must require explicit confirmation.
 2. Starting a fresh blank project from a loaded project must require explicit confirmation.
 3. If the loaded project is already blank/custom, canceling the confirmation must preserve the current work; confirming must create a new empty Basys3 blank project rather than continuing the existing blank/custom state.
+4. If the loaded project is an applied import, canceling the confirmation must preserve the imported graph, I/O rows, mapping, and name; confirming must create a new empty Basys3 blank project and clear stale import metadata, import URL state, Verify/export state, and old imported identity.
 
 ## Success State
 

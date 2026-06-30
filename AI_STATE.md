@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-06-30 (fix: prove Build Fresh after Import replacement)
+
+**Subsystem:** Project Build Fresh after applied Import, imported-state replacement, import URL cleanup, focused browser gate, and runtime regression tests.
+
+**Changes:**
+- Added `ide:gate:build-fresh-after-import-replacement`, a real-browser gate for `1366x768` and `1440x900` that applies a generated RedByte ZIP import, proves Project Build Fresh cancel preserves the imported graph/I/O rows/mapping/name, then proves confirmed Build Fresh creates a new empty Basys3 blank project with stale imported graph, I/O rows, `hardwareMappingV2`, import metadata, import URL state, Verify/export state, and old identity cleared.
+- Reproduced the Round 11/Round 12 product gap red: after the focused gate advanced to confirmed Build Fresh, the old implementation still kept the imported project identity at both classroom viewports.
+- Updated `IdeApp` so the guarded Project Build Fresh path routes `projectKind === "import"` through the existing destructive `replaceWithBlankProject()` action after confirmation, while starter/example paths still use the existing non-destructive `startBlankProject()` continuation behavior.
+- Cleared stale `importActive` / `importSource` URL markers when an applied import is confirmed into a fresh blank replacement, so the browser URL no longer implies the user is still recovering the imported project.
+- Added focused runtime coverage proving `replaceWithBlankProject()` clears imported work into a new empty blank project, including import metadata, circuit nodes, I/O rows, `hardwareMappingV2`, vectors, Verify proof, and run history.
+- Updated Project/Import/current-truth/work-queue docs to describe the applied-import Build Fresh guard and local-only proof boundary.
+
+**Evidence:** The first intended red run of `corepack pnpm -s ide:gate:build-fresh-after-import-replacement` failed with `confirmed Build Fresh: imported project identity survived replacement` at both `1366x768` and `1440x900`. After the repair, the same gate passed. Local browser artifacts are under `.redbyte/product-immersion/build-fresh-after-import-replacement/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-build-fresh-after-import-replacement.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, focused Vitest `projectRuntime.persistence.test.ts` + `ideApp.import-navigates-to-design.test.tsx` (`31` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 and local runtime/browser proof only. This does not change import parsing, RedByte ZIP schema, simulator semantics, Verify comparison semantics, pin mapping semantics, generated export artifacts, export goldens, Vivado execution, bitstream generation, Basys3 programming, or physical board observation, and it does not claim production behavior or E1/E2/E3.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** After local validation is complete, commit locally and wait for user approval before pushing/deploying. Once synced and deployed, rerun the true 60-minute Round 7 student-session stability pass; keep the 3-hour run, Vivado E1, bitstream E2, and board observation E3 separate.
+
 ## Change Log 2026-06-30 (fix: stabilize repeated Verify Compare completion)
 
 **Subsystem:** Verify repeated-run identity, 2-bit counter Compare completion, scoped capture freshness, focused browser gate, and VerifySurface regression tests.

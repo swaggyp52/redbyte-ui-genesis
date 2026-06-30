@@ -1755,8 +1755,11 @@ export const IdeApp: React.FC = () => {
               onOpenHardware={() => setCurrentMode('hardware')}
               onOpenImport={() => setCurrentMode('import')}
               onStartBlankProject={() => {
-                if (projectKind === 'blank' || projectKind === 'custom') {
+                if (projectKind === 'blank' || projectKind === 'custom' || projectKind === 'import') {
                   replaceWithBlankProject();
+                  if (projectKind === 'import') {
+                    clearImportRecoveryUrlState();
+                  }
                 } else {
                   startBlankProject();
                 }
@@ -2207,6 +2210,18 @@ function syncActiveModeIntoUrl(activeMode: IdeMode, options: ModeUrlSyncOptions 
     return;
   }
   window.history.pushState(historyState, '', nextUrl);
+}
+
+function clearImportRecoveryUrlState(): void {
+  if (typeof window === 'undefined') return;
+
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has('importActive') && !params.has('importSource')) return;
+  params.delete('importActive');
+  params.delete('importSource');
+  const nextSearch = params.toString();
+  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
+  window.history.replaceState(window.history.state, '', nextUrl);
 }
 
 function normalizeSignalKey(value: string): string {
