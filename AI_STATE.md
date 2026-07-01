@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-07-01 (fix: restore loaded Project command surface fit)
+
+**Subsystem:** Loaded Project command-surface first-viewport fit, loaded identity-strip density, and Round 13A-Fix3 release-green recovery.
+
+**Changes:**
+- Reproduced the remote `Classroom Truth Gates` failure locally with `corepack pnpm -s ide:gate:project-loaded-command-surface`: `1366x768/Project command board: starts too low (224px > 210px)`.
+- Diagnosed the failure as real loaded-Project vertical pressure, not a stale gate. The loaded Project page rendered an outer Project identity strip above a loaded command board that already carries project identity/current-action context; the Gannon Pilot lab pack was not the cause.
+- Added a loaded-state class to the Project identity strip and compacted only the loaded-mode strip into a deliberate 32px rename line, preserving the rename affordance while moving the command board top from `224px` to `184px` against the `210px` gate threshold.
+
+**Evidence:** Before the repair, loaded Project measured `outerIdentity.top=134`, `outerIdentity.bottom=202`, `outerIdentity.height=68`, and `commandBoard.top=224`. After the repair, loaded Project measured `outerIdentity.top=134`, `outerIdentity.bottom=166`, `outerIdentity.height=32`, and `commandBoard.top=184`; `modeActions.top=384`, `evidenceStrip.top=445`, and `entryPaths.top=487` remained reachable below the board.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:project-loaded-command-surface`, `corepack pnpm -s ide:gate:project-command-center`, `corepack pnpm -s ide:gate:project-loaded-paths-first-viewport`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, focused Vitest `projectSurface.continuity.test.tsx` + `projectSurface.submission.test.tsx` (`24` tests), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 loaded-Project layout repair only. This does not change simulator semantics, Verify/testbench behavior, pin mapping, generated export artifacts, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, production behavior, or proof-tier claims.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for this Fix3 commit.
+
+**Next recommended task:** Commit locally, then push the small Fix3 release-green repair in a sync checkpoint and wait for GitHub checks/deploy proof. After release-green is restored, the next strategic product slice should be Round 14: scratch-build and testbench-repair UX, focused on letting students build circuits, make mistakes, understand failures, repair Verify/testbench issues, and export a current E0 package without touching VHDL.
+
 ## Change Log 2026-07-01 (test: align loaded project Build Fresh guard copy)
 
 **Subsystem:** Loaded Project first-viewport gate, shared Build Fresh replacement dialog assertions, and Round 13A-Fix release-green recovery.

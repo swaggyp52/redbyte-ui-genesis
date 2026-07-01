@@ -1020,7 +1020,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       <IdePanel
         testId="ide-project-panel"
       >
-        <div className="ide-project-identity-strip" data-testid="ide-project-identity-strip">
+        <div
+          className={`ide-project-identity-strip${readiness.hasCircuit ? ' ide-project-identity-strip--loaded' : ''}`}
+          data-testid="ide-project-identity-strip"
+        >
           {identityStripEditing ? (
             <input
               ref={identityStripInputRef}

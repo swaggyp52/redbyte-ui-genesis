@@ -2942,6 +2942,22 @@
   margin-bottom: 14px;
 }
 
+.ide-root [data-ide-mode-marker='project'] .ide-project-identity-strip--loaded {
+  min-height: 32px;
+  padding: 2px 0 4px;
+  margin-bottom: 0;
+  border-bottom-color: rgba(142, 199, 255, 0.08);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-identity-strip--loaded .ide-project-identity-name {
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-identity-strip--loaded .ide-project-identity-name-button {
+  padding: 2px 5px;
+}
+
 .ide-root [data-ide-mode-marker='project'] .ide-project-entry-paths {
   display: grid;
   gap: 10px;
