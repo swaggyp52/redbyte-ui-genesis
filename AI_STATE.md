@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-01 (fix: restore Project first viewport after Gannon flow)
+
+**Subsystem:** Project first-launch command center, Gannon Pilot lab-pack placement, all-lab starter density, Build Fresh guard assertion, and Round 13A release-check process correction.
+
+**Changes:**
+- Reproduced the required-check failure locally with `corepack pnpm -s ide:gate:project-command-center`: `Project first-launch command center 1366x768 must fit in the first viewport`.
+- Moved the full Gannon Pilot lab pack out of the measured first-launch Project command center and placed it after the open all-lab starter gallery, while keeping the Project `Start a Lab` primary action as the scroll/focus path to the lab pack.
+- Kept the five Project first-launch primary actions on one desktop row and tightened only the launch-specific all-lab gallery spacing so starter cards remain visible in the first viewport.
+- Updated `ide:gate:project-command-center` to assert the current safer Build Fresh guard copy (`replace the current workspace` + `Cancel keeps your current work`) instead of the stale older dialog phrase.
+- Process correction: future Project-surface productization must run `ide:gate:project-command-center` with `ide:gate:gannon-pilot-student-flow`, `ide:gate:build-fresh-after-import-replacement`, and `ide:gate:build-fresh-replacement-integrity` before sync/release claims.
+
+**Evidence:** Local diagnostic artifacts under `.redbyte/round-13a-fix/` captured the failing `1366x768` geometry before the fix (`commandCenter.bottom=1069.5`, `gannonPack.bottom=1056.5`, `labGallery.y=1131`) and after the fix (`commandCenter.bottom=642.9`, `labGallery.y=686.4`, `gannonPack.y=1010.4`). The Gannon lab pack remains visible and reachable through `Start a Lab`, but it no longer makes the first-launch command center fail the viewport contract.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-project-command-center.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:project-command-center`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, focused Vitest `projectSurface.continuity.test.tsx` + `examplesCatalog.learningPath.test.ts` (`25` tests), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 and local layout/gate proof only. This does not change simulator semantics, Verify truth, pin mapping, generated export artifacts, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, or production behavior. It does not claim E1, E2, E3, sell-ready status, or live production status.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this hotfix pass.
+
+**Next recommended task:** Commit locally, then push the Round 13A-Fix hotfix only after user approval or an explicit sync checkpoint. After push, wait for GitHub checks, verify production identity/endpoints, and run Round 13A production proof before starting Round 13B.
+
 ## Change Log 2026-07-01 (fix: productize Gannon pilot student flow)
 
 **Subsystem:** Gannon Pilot student start flow, lab-pack cards, all-surface next-step guidance, student submission copy, instructor pilot boundary, focused browser gate, and pilot readiness docs.

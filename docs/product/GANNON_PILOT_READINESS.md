@@ -42,6 +42,17 @@ Round 13A is intended to prove pilot navigation and browser-E0 package submissio
 - students can understand what to submit
 - instructors can see that Vivado and board proof remain external checkpoints
 
+## Round 13A-Fix Release Gate
+
+Round 13A cannot be treated as release-ready when `ide:gate:project-command-center` is failing. The Round 13A-Fix path keeps the Gannon Pilot lab pack reachable from `Start a Lab`, but the full lab pack must sit outside the measured Project first-launch command center so the command center and all-lab starter gallery remain usable in the `1366x768` first viewport.
+
+For Project-surface Gannon work, run these gates together before sync or production claims:
+
+- `ide:gate:project-command-center`
+- `ide:gate:gannon-pilot-student-flow`
+- `ide:gate:build-fresh-after-import-replacement`
+- `ide:gate:build-fresh-replacement-integrity`
+
 ## What This Does Not Prove
 
 Round 13A does not prove:

@@ -2829,7 +2829,7 @@
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-actions {
   order: 1;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin: 0;
   padding-top: 0;
@@ -2933,7 +2933,9 @@
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch + .ide-project-lab-gallery-disclosure[open] {
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 0;
+  padding-top: 4px;
 }
 
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded {

@@ -79,6 +79,7 @@ Supporting truths:
 
 - Import is a utility entry point, not the main student spine.
 - The Gannon pilot path is a supervised browser-E0 lab flow, not a hosted grading or commercial classroom platform.
+- The Round 13A Gannon pilot flow must not be treated as release-ready unless `ide:gate:project-command-center` passes alongside `ide:gate:gannon-pilot-student-flow`, `ide:gate:build-fresh-after-import-replacement`, and `ide:gate:build-fresh-replacement-integrity`; Project first-launch density is part of the required classroom truth, not a cosmetic check.
 - Trusted/E0-ready Export requires current Compare PASS, current mapping, and current export state for the same project state.
 - Draft Export is allowed when the project is structurally exportable but trusted proof is missing or stale.
 - Vivado build, board programming, and board observation remain external proof tiers.

@@ -1274,70 +1274,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   </div>
                 </div>
               </div>
-              <section
-                className="ide-project-gannon-lab-pack"
-                data-testid="ide-project-gannon-lab-pack"
-                tabIndex={-1}
-                aria-label="Gannon Pilot lab pack"
-              >
-                <header className="ide-project-gannon-lab-pack-header">
-                  <div>
-                    <p className="ide-surface-block-label">Start a Lab</p>
-                    <h3>Gannon Pilot lab pack</h3>
-                    <p>
-                      Five browser-first Basys3 labs for the pilot path. Students submit the generated ZIP;
-                      Vivado build, bitstream, and board observation stay external unless the instructor assigns them.
-                    </p>
-                  </div>
-                  <IdeStatusPill tone="warn">Browser E0</IdeStatusPill>
-                </header>
-                <div className="ide-project-gannon-lab-grid">
-                  {GANNON_PILOT_LABS.map((lab) => {
-                    const expanded = expandedGannonLabId === lab.id;
-                    return (
-                      <article
-                        key={lab.id}
-                        className={`ide-project-gannon-lab-card${expanded ? ' is-expanded' : ''}`}
-                        data-testid={`ide-project-gannon-lab-card-${lab.id}`}
-                        data-expanded={expanded ? 'true' : 'false'}
-                      >
-                        <button
-                          type="button"
-                          className="ide-project-gannon-lab-card-header"
-                          onClick={() => setExpandedGannonLabId(expanded ? '' : lab.id)}
-                          data-testid={`ide-project-gannon-lab-details-${lab.id}`}
-                          aria-expanded={expanded}
-                        >
-                          <span>Lab {lab.labNumber}</span>
-                          <strong>{lab.title}</strong>
-                          <small>{lab.difficulty}</small>
-                        </button>
-                        <div className="ide-project-gannon-lab-card-body" hidden={!expanded}>
-                          <p><strong>Build:</strong> {lab.build}</p>
-                          <p><strong>Submit:</strong> {lab.submit}</p>
-                          <p><strong>Scope:</strong> {formatGannonPilotProofScope(lab.proofScope)}</p>
-                          <IdeButton
-                            tone="primary"
-                            onClick={() => onOpenExample(lab.exampleId)}
-                            testId={`ide-project-gannon-lab-start-${lab.id}`}
-                          >
-                            {lab.startLabel}
-                          </IdeButton>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </div>
-                <details className="ide-project-instructor-note" data-testid="ide-instructor-note">
-                  <summary>For instructors</summary>
-                  <p>
-                    RedByte currently proves browser-E0 project package generation for these labs. Vivado build
-                    evidence, bitstream generation, programming success, and observed board behavior are external
-                    pilot checkpoints. Recommended pilot scope: Labs 1-5 as browser workflows, with separate
-                    instructor-run Vivado or board checks when needed.
-                  </p>
-                </details>
-              </section>
             </section>
             </div>
 
@@ -1373,6 +1309,70 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 ))}
               </div>
             </details>
+            <section
+              className="ide-project-gannon-lab-pack"
+              data-testid="ide-project-gannon-lab-pack"
+              tabIndex={-1}
+              aria-label="Gannon Pilot lab pack"
+            >
+              <header className="ide-project-gannon-lab-pack-header">
+                <div>
+                  <p className="ide-surface-block-label">Start a Lab</p>
+                  <h3>Gannon Pilot lab pack</h3>
+                  <p>
+                    Five browser-first Basys3 labs for the pilot path. Students submit the generated ZIP;
+                    Vivado build, bitstream, and board observation stay external unless the instructor assigns them.
+                  </p>
+                </div>
+                <IdeStatusPill tone="warn">Browser E0</IdeStatusPill>
+              </header>
+              <div className="ide-project-gannon-lab-grid">
+                {GANNON_PILOT_LABS.map((lab) => {
+                  const expanded = expandedGannonLabId === lab.id;
+                  return (
+                    <article
+                      key={lab.id}
+                      className={`ide-project-gannon-lab-card${expanded ? ' is-expanded' : ''}`}
+                      data-testid={`ide-project-gannon-lab-card-${lab.id}`}
+                      data-expanded={expanded ? 'true' : 'false'}
+                    >
+                      <button
+                        type="button"
+                        className="ide-project-gannon-lab-card-header"
+                        onClick={() => setExpandedGannonLabId(expanded ? '' : lab.id)}
+                        data-testid={`ide-project-gannon-lab-details-${lab.id}`}
+                        aria-expanded={expanded}
+                      >
+                        <span>Lab {lab.labNumber}</span>
+                        <strong>{lab.title}</strong>
+                        <small>{lab.difficulty}</small>
+                      </button>
+                      <div className="ide-project-gannon-lab-card-body" hidden={!expanded}>
+                        <p><strong>Build:</strong> {lab.build}</p>
+                        <p><strong>Submit:</strong> {lab.submit}</p>
+                        <p><strong>Scope:</strong> {formatGannonPilotProofScope(lab.proofScope)}</p>
+                        <IdeButton
+                          tone="primary"
+                          onClick={() => onOpenExample(lab.exampleId)}
+                          testId={`ide-project-gannon-lab-start-${lab.id}`}
+                        >
+                          {lab.startLabel}
+                        </IdeButton>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              <details className="ide-project-instructor-note" data-testid="ide-instructor-note">
+                <summary>For instructors</summary>
+                <p>
+                  RedByte currently proves browser-E0 project package generation for these labs. Vivado build
+                  evidence, bitstream generation, programming success, and observed board behavior are external
+                  pilot checkpoints. Recommended pilot scope: Labs 1-5 as browser workflows, with separate
+                  instructor-run Vivado or board checks when needed.
+                </p>
+              </details>
+            </section>
           </div>
         ) : (
           <>

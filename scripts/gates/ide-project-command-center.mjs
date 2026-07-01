@@ -165,7 +165,7 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
   await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
   await page.waitForTimeout(250);
   assert(
-    /start a fresh blank project/i.test(dialogMessage),
+    /replace the current workspace/i.test(dialogMessage) && /cancel keeps your current work/i.test(dialogMessage),
     `Loaded Project Build Fresh must be guarded, got dialog "${dialogMessage}"`
   );
   assert(
