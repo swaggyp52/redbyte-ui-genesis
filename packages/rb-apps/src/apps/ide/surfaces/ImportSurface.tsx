@@ -1356,7 +1356,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmApplyProject = () => {
     if (!pendingApplyProject) return;
-    if (!window.confirm('Replace your current project with this import? Unsaved changes will be lost.')) return;
+    if (!window.confirm('Replace your current project with this import? Cancel keeps your current work. Confirm means replace current work with the reviewed import.')) return;
     onImportCommitted?.({
       fidelity:
         zipInspection?.importMode === 'manifest'
@@ -1386,7 +1386,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmAndVerify = () => {
     if (!pendingApplyProject) return;
-    if (!window.confirm('Replace your current project with this import? Unsaved changes will be lost.')) return;
+    if (!window.confirm('Replace your current project with this import? Cancel keeps your current work. Confirm means replace current work with the reviewed import.')) return;
     onImportCommitted?.({
       fidelity:
         zipInspection?.importMode === 'manifest'
@@ -2156,7 +2156,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         </IdeButton>
       </div>
       <p className="ide-import-source-review-v1__boundary">
-        Current project is unchanged until Review Import and confirmed replace.
+        Import review does not replace current work. Cancel keeps your current project; Confirm Replace Project applies the reviewed import.
       </p>
     </aside>
   );
@@ -3167,7 +3167,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-hdl">
                     <span className="ide-import-start-guidance-eyebrow">Safe recovery</span>
                     <strong>Nothing is overwritten yet</strong>
-                    <p>Your current project stays intact until Review Import and Confirm Replace Project. Failed imports do not change files.</p>
+                    <p>Your current project stays intact until Review Import and Confirm Replace Project. Cancel keeps current work, and failed imports do not change files.</p>
                   </article>
                 </div>
                 <div className="ide-import-safety-boundary-v1" data-testid="ide-import-safety-boundary-v1">
@@ -3264,9 +3264,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 )}
               </IdeCallout>
             ) : null}
+            <IdeCallout tone="warn" title="Review before replace" testId="ide-import-review-before-replace">
+              Cancel keeps your current work. Confirm Replace Project means replace current work with this reviewed import.
+            </IdeCallout>
             <div className="ide-inline-actions ide-import-commit-actions" ref={applySectionRef}>
               <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
-                Cancel
+                Cancel - keep current work
               </IdeButton>
               <IdeButton tone="secondary" onClick={confirmApplyProject} disabled={hasImportBlocker} testId="ide-import-apply-confirm">
                 Confirm Replace Project

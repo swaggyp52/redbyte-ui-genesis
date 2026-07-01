@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-20
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-06-20
+**Last Updated:** 2026-07-01
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -65,6 +65,8 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [product/GANNON_PILOT_READINESS.md](./product/GANNON_PILOT_READINESS.md) | Gannon pilot readiness boundary: browser-E0 pilot target vs not-sell-ready claims |
+| [product/GANNON_PILOT_GAP_MAP.md](./product/GANNON_PILOT_GAP_MAP.md) | Gannon pilot adoption gaps across student flow, stability, hardware proof, instructor operations, and commercial posture |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |
 | [architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md](./architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md) | Canonical state owners, mirrors, invalidation, persistence, and proof |

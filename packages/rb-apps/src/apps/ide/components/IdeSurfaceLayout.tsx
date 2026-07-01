@@ -10,6 +10,16 @@ import {
   type WorkbenchSurfaceFrame,
 } from './IdeWorkbenchShell';
 
+const NEXT_STEP_GUIDE_BY_MODE: Record<IdeSurfaceMode, string> = {
+  project:
+    'Choose Start a Lab for a Gannon pilot assignment, Build fresh for an empty design, Open Starter for guided examples, or Import / Recover to review a ZIP before replacing work.',
+  design: 'Place components, wire ports, and label signals, then open Verify when the circuit matches the assignment.',
+  verify: 'Run Observe, edit expected outputs, then Compare until saved checks pass.',
+  hardware: 'Map required pins and resolve conflicts before treating Export as a credible package.',
+  export: 'Download the RedByte/Vivado ZIP for browser-E0 handoff; Vivado build, bitstream, and board observation are external.',
+  import: 'Review the import before replacing work; Cancel keeps the current project and Confirm Replace Project applies the import.',
+};
+
 export interface IdeSurfaceLayoutProps {
   mode: IdeSurfaceMode;
   children: React.ReactNode;
@@ -48,10 +58,24 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   surfaceFrame,
   layoutIntent,
 }) => {
+  const workspace = (
+    <>
+      <aside
+        className="ide-student-next-step-rail"
+        data-testid={`ide-next-step-guide-${mode}`}
+        aria-label={`${mode} next step guide`}
+      >
+        <strong>What do I do next?</strong>
+        <span>{NEXT_STEP_GUIDE_BY_MODE[mode]}</span>
+      </aside>
+      {children}
+    </>
+  );
+
   return (
     <IdeWorkbenchShell
       mode={mode}
-      workspace={children}
+      workspace={workspace}
       leftDock={dock}
       rightDock={inspector}
       console={console}

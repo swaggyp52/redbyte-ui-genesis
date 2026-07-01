@@ -237,6 +237,47 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-start-column').textContent).not.toContain('Other starting points');
   });
 
+  it('renders the Gannon Pilot lab pack with expandable cards and explicit start paths', () => {
+    const onOpenExample = vi.fn();
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            readiness: {
+              hasCircuit: false,
+              hasIoMapping: false,
+              hasVectors: false,
+              verifyPass: false,
+              missingRequiredCount: 0,
+            },
+            health: {
+              lastVerify: undefined,
+              lastExport: undefined,
+              dirtySinceVerify: false,
+              dirtySinceExport: false,
+              blockingIssues: [],
+            },
+            onOpenExample,
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-start-a-lab-primary').textContent).toContain('Start a Lab');
+    expect(getByTestId('ide-project-gannon-lab-pack').textContent).toContain('Gannon Pilot lab pack');
+    expect(getByTestId('ide-project-gannon-lab-card-logic-gates').textContent).toContain('Logic Gates');
+    expect(getByTestId('ide-project-gannon-lab-card-half-adder').textContent).toContain('Half Adder');
+    expect(getByTestId('ide-project-gannon-lab-card-full-adder').textContent).toContain('Full Adder');
+    expect(getByTestId('ide-project-gannon-lab-card-four-bit-adder').textContent).toContain('4-Bit Adder');
+    expect(getByTestId('ide-project-gannon-lab-card-counter-sequential').textContent).toContain('2-Bit Counter');
+    expect(getByTestId('ide-instructor-note').textContent).toContain('For instructors');
+
+    fireEvent.click(getByTestId('ide-project-gannon-lab-details-four-bit-adder'));
+    expect(getByTestId('ide-project-gannon-lab-card-four-bit-adder').textContent).toContain('ripple-carry');
+    fireEvent.click(getByTestId('ide-project-gannon-lab-start-four-bit-adder'));
+    expect(onOpenExample).toHaveBeenCalledWith('four-bit-adder');
+  });
+
   it('renders blocker and mapping actions without mojibake suffixes', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-30
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Build Fresh After Import Replacement (local browser E0 proof)
+**Latest product/control slice:** Gannon Pilot Student Flow (Round 13A local browser-E0 productization)
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -28,7 +28,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 ## Top Priorities
 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
-2. **Build Fresh After Import Replacement is closed locally.** `ide:gate:build-fresh-after-import-replacement` now proves an applied RedByte import can be canceled non-destructively from Project Build Fresh, then confirmed into a genuinely empty Basys3 blank project with stale imported graph, I/O rows, mapping entries, import metadata, import URL state, Verify/export state, and old identity cleared. This remains browser E0 proof only; no production, Vivado, bitstream, or board-observation proof was run or claimed.
+2. **Gannon Pilot Student Flow is the current local slice.** Round 13A adds the supervised browser-E0 pilot path: Project `Start a Lab`, `Build fresh`, `Open Starter`, and `Import / Recover`; Gannon Pilot Labs 1-5; compact `What do I do next?` guide rails; Export ZIP submission guidance; and explicit cancel/confirm replacement language. This is pilot productization only and does not make RedByte sell-ready or prove Vivado E1, bitstream E2, or board observation E3.
 3. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 4. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
 5. **Side Dock Affordance v1 is closed locally.** `ide:gate:side-dock-affordance` now proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails use compact horizontal `+ / Show / Lib|Sig|Info` restore controls, stay within a `48px` slot, reopen readable content, close back to restored workbench space, keep focal work objects visible at `1366x768` and `1440x900`, and produce no root overflow or console/page errors.

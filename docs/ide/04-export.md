@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-29
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -27,10 +27,12 @@ Act as the compiler-like Export handoff station for Basys3 Vivado artifacts whil
 - Exactly one visible Export handoff station owns Draft / Needs Review, Ready to Build, and Trusted package state.
 - The station shows the consequence sentence, one primary repair/build/download action, compact mapping/provenance facts, and visible package handoff content.
 - Trusted post-download state stays download-oriented; it must not make hardware programming the primary Export action.
+- Compact `What do I do next?` guide rail tells students to download the browser-E0 ZIP while keeping Vivado build, bitstream, and board observation external.
 
 2. Main center
 - Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
 - Compact Vivado evidence diagnostics that separate E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior.
+- Student submission guidance: download the RedByte/Vivado ZIP, submit the ZIP to the instructor, and treat Vivado or board proof as separate if assigned.
 
 3. Right inspector
 - Pin table.
@@ -75,6 +77,8 @@ Export must also keep downstream Vivado/bench evidence separated:
 4. **E3** - Physical board behavior was observed and recorded.
 
 E2 programming success must never imply E3 behavior proof. When no bench classifier output is attached to the browser session, Export should say so plainly and keep E1/E2/E3 as external/manual evidence.
+
+For pilot labs, Export must state that the RedByte/Vivado ZIP proves browser-E0 package generation only. It must not imply that ZIP submission proves Vivado build success, bitstream generation, programming success, or physical board behavior.
 
 `ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, generated previews must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
 

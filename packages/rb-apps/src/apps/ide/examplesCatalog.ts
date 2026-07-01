@@ -1,6 +1,7 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole, TestVector } from '@redbyte/rb-utils';
 import { LAB_STARTERS } from './labStarters';
+import fourBitAdderRaw from '../../examples/09_4bit-adder.json';
 
 /** Map Pins / hardwareMappingV2 entry classification (mirrors V2 entry kinds). */
 export type ProjectIoMappingKind = 'scalar' | 'bit' | 'slice' | 'bus' | 'group';
@@ -53,6 +54,45 @@ export interface IdeExampleDefinition {
 }
 
 export const IDE_DEFAULT_EXAMPLE_ID = 'signal-tour';
+
+const FOUR_BIT_ADDER_NODE_LABELS = new Map<string, string>([
+  ['a0', 'A0 (SW0)'],
+  ['b0', 'B0 (SW1)'],
+  ['a1', 'A1 (SW2)'],
+  ['b1', 'B1 (SW3)'],
+  ['a2', 'A2 (SW4)'],
+  ['b2', 'B2 (SW5)'],
+  ['a3', 'A3 (SW6)'],
+  ['b3', 'B3 (SW7)'],
+  ['sum0', 'LD0 (SUM0)'],
+  ['sum1', 'LD1 (SUM1)'],
+  ['sum2', 'LD2 (SUM2)'],
+  ['sum3', 'LD3 (SUM3)'],
+  ['carry-out', 'LD4 (CARRY)'],
+]);
+
+const FOUR_BIT_ADDER_CIRCUIT: Circuit = {
+  nodes: (fourBitAdderRaw.nodes as Array<{ id: string; type: string; x?: number; y?: number; position?: { x: number; y: number } }>).map(
+    (node) => ({
+      id: node.id,
+      type: node.type,
+      x: node.x ?? node.position?.x ?? 0,
+      y: node.y ?? node.position?.y ?? 0,
+      label: FOUR_BIT_ADDER_NODE_LABELS.get(node.id) ?? node.type,
+      config: {},
+      state: {},
+    })
+  ),
+  connections: (fourBitAdderRaw.connections as Array<{ id?: string; from: string; to: string; fromPort?: string; toPort?: string }>).map(
+    (connection, index) => ({
+      id: connection.id ?? `four-bit-adder-${index}`,
+      from: { nodeId: connection.from, portName: connection.fromPort ?? 'out' },
+      to: { nodeId: connection.to, portName: connection.toPort ?? 'in' },
+      fromPort: connection.fromPort ?? 'out',
+      toPort: connection.toPort ?? 'in',
+    })
+  ),
+};
 
 export const IDE_EXAMPLES: IdeExampleDefinition[] = [
   {
@@ -473,6 +513,67 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
         { from: { nodeId: 'or_node',   portName: 'out' }, to: { nodeId: 'ld0_node',  portName: 'in' } },
       ],
     },
+  },
+  {
+    id: 'four-bit-adder',
+    category: 'showcase' as const,
+    name: '4-Bit Ripple Carry Adder',
+    summary: 'Four chained full-adder stages add A[3:0] and B[3:0], with LD4 showing carry-out.',
+    course: 'Gannon Pilot',
+    lab: 'Lab 4',
+    concept: 'Combinational Arithmetic',
+    tags: ['arithmetic', 'combinational', 'adder', 'gannon-pilot'],
+    expectedBehavior:
+      'SW0/SW2/SW4/SW6 are A0-A3 and SW1/SW3/SW5/SW7 are B0-B3. LD0-LD3 show the 4-bit sum; LD4 shows carry-out.',
+    goals: [
+      'Trace carry propagation from bit 0 through bit 3',
+      'Run Verify with sample additions and one carry-out case',
+      'Map SW0-SW7 and LD0-LD4 before Export',
+      'Export the browser-E0 Vivado project ZIP for instructor review',
+    ],
+    ioRows: [
+      { id: 'a0', nodeId: 'a0', port: 'out', label: 'A0 (SW0)', direction: 'in', pin: 'V17', required: true },
+      { id: 'b0', nodeId: 'b0', port: 'out', label: 'B0 (SW1)', direction: 'in', pin: 'V16', required: true },
+      { id: 'a1', nodeId: 'a1', port: 'out', label: 'A1 (SW2)', direction: 'in', pin: 'W16', required: true },
+      { id: 'b1', nodeId: 'b1', port: 'out', label: 'B1 (SW3)', direction: 'in', pin: 'W17', required: true },
+      { id: 'a2', nodeId: 'a2', port: 'out', label: 'A2 (SW4)', direction: 'in', pin: 'W15', required: true },
+      { id: 'b2', nodeId: 'b2', port: 'out', label: 'B2 (SW5)', direction: 'in', pin: 'V15', required: true },
+      { id: 'a3', nodeId: 'a3', port: 'out', label: 'A3 (SW6)', direction: 'in', pin: 'W14', required: true },
+      { id: 'b3', nodeId: 'b3', port: 'out', label: 'B3 (SW7)', direction: 'in', pin: 'W13', required: true },
+      { id: 'sum0', nodeId: 'sum0', port: 'in', label: 'LD0 (SUM0)', direction: 'out', pin: 'U16', required: true },
+      { id: 'sum1', nodeId: 'sum1', port: 'in', label: 'LD1 (SUM1)', direction: 'out', pin: 'E19', required: true },
+      { id: 'sum2', nodeId: 'sum2', port: 'in', label: 'LD2 (SUM2)', direction: 'out', pin: 'U19', required: true },
+      { id: 'sum3', nodeId: 'sum3', port: 'in', label: 'LD3 (SUM3)', direction: 'out', pin: 'V19', required: true },
+      { id: 'carry', nodeId: 'carry-out', port: 'in', label: 'LD4 (CARRY)', direction: 'out', pin: 'W18', required: true },
+    ],
+    vectors: [
+      {
+        tick: 0,
+        inputs: { a0: 0, b0: 0, a1: 0, b1: 0, a2: 0, b2: 0, a3: 0, b3: 0 },
+        expected: { sum0: 0, sum1: 0, sum2: 0, sum3: 0, 'carry-out': 0 },
+      },
+      {
+        tick: 1,
+        inputs: { a0: 1, b0: 1, a1: 0, b1: 0, a2: 0, b2: 0, a3: 0, b3: 0 },
+        expected: { sum0: 0, sum1: 1, sum2: 0, sum3: 0, 'carry-out': 0 },
+      },
+      {
+        tick: 2,
+        inputs: { a0: 1, b0: 1, a1: 1, b1: 0, a2: 0, b2: 1, a3: 0, b3: 0 },
+        expected: { sum0: 0, sum1: 0, sum2: 0, sum3: 1, 'carry-out': 0 },
+      },
+      {
+        tick: 3,
+        inputs: { a0: 1, b0: 1, a1: 1, b1: 0, a2: 1, b2: 0, a3: 1, b3: 0 },
+        expected: { sum0: 0, sum1: 0, sum2: 0, sum3: 0, 'carry-out': 1 },
+      },
+    ],
+    probes: [
+      { nodeId: 'sum0', portName: 'in', label: 'SUM0', color: '#00ffff' },
+      { nodeId: 'sum3', portName: 'in', label: 'SUM3', color: '#ffff00' },
+      { nodeId: 'carry-out', portName: 'in', label: 'CARRY', color: '#ff00ff' },
+    ],
+    circuit: FOUR_BIT_ADDER_CIRCUIT,
   },
   ...LAB_STARTERS.map((s) => s.example),
 ];

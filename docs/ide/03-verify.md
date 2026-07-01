@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-30
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -22,6 +22,8 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 3. Inspect failure diffs, signal traces, and deterministic hashes.
 
 ## Layout
+
+0. **Guide rail**: Compact `What do I do next?` copy tells students to run Observe, edit expected outputs, and then Compare until saved checks pass.
 
 1. **Command deck** (`VerifyCommandBar`): two rows — **Run** plus a **Stimulus / Checks** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), explicit **Observe only** vs **Compare checks** selector with inline explainer (`ide-vcb-mode-explainer`), then utilities (**Tools**, **Details**, **Open in Design**); second row is **session** summary (status, meta, evidence). See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 

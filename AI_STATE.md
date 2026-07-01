@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-01 (fix: productize Gannon pilot student flow)
+
+**Subsystem:** Gannon Pilot student start flow, lab-pack cards, all-surface next-step guidance, student submission copy, instructor pilot boundary, focused browser gate, and pilot readiness docs.
+
+**Changes:**
+- Added `docs/product/GANNON_PILOT_READINESS.md` and `docs/product/GANNON_PILOT_GAP_MAP.md` to separate supervised browser-E0 pilot readiness from sell-ready, Vivado, bitstream, board, LMS, auth, and grading claims.
+- Added a Gannon Pilot lab pack on Project with five visible lab starts: Logic Gates, Half Adder, Full Adder, 4-Bit Adder, and 2-Bit Counter / Sequential.
+- Split Project entry paths into `Start a Lab`, `Build Fresh`, `Open Starter`, and `Import / Recover`, with clearer destructive replacement copy: cancel keeps current work, confirm replaces current work.
+- Added persistent "What do I do next?" guide rails across Project, Design, Verify, Hardware, Export, and Import.
+- Added student Export submission guidance that tells students to download and submit the RedByte/Vivado ZIP while explicitly limiting that proof to browser-E0 package generation unless the instructor separately asks for Vivado or board proof.
+- Added Import review-before-replace copy so review remains non-destructive until Confirm Replace Project is applied.
+- Registered `ide:gate:gannon-pilot-student-flow` and added a focused Project surface regression for the Gannon Pilot cards and start path.
+
+**Evidence:** The focused Gannon gate exercises the public student flow at `1366x768` and `1440x900`: Project primary paths, Gannon lab cards, starter launches, Build Fresh cancel/confirm copy, all surface guide rails, Export student-submission wording, Import review-before-replace wording, root overflow checks, and browser console/page-error checks. The gate is assertion-only and did not write a new Gannon proof-artifact directory.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `node --check scripts/gates/ide-gannon-pilot-student-flow.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, focused Vitest `projectSurface.continuity.test.tsx` + `examplesCatalog.learningPath.test.ts` (`25` tests), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 and local documentation/UI proof only. This does not add accounts, backend services, grading database, LMS integration, auth, Vivado execution, bitstream generation, Basys3 programming, or physical board observation, and it does not claim production behavior, E1, E2, E3, or sell-ready status.
+
+**Remote sync:** Local-only by user instruction: no push, no deploy, no PR, and no production setting change were performed in this slice.
+
+**Next recommended task:** Commit locally, then wait for user approval before pushing/deploying. After sync, run a production smoke for the Gannon pilot flow before deciding whether to start Vivado E1 proof or broader stale-test cleanup.
+
 ## Change Log 2026-06-30 (fix: prove Build Fresh after Import replacement)
 
 **Subsystem:** Project Build Fresh after applied Import, imported-state replacement, import URL cleanup, focused browser gate, and runtime regression tests.

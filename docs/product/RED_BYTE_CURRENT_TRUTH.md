@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-30
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -27,6 +27,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Release-candidate decision | `docs/product/RED_BYTE_RELEASE_CANDIDATE_DECISION.md` | Current E0 browser release-candidate posture, Node 20 status, final-SHA discipline, and not-shippable items. |
 | Browser E0 release proof | `docs/product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md` | Current pinned-runtime proof status, browser E0 flows proven, final-SHA rules, and no-hardware proof boundary. |
 | Browser E0 packaging checklist | `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md` | Browser E0 package/demo checklist, release/deploy SHA rules, blockers, and exact no-overclaim language. |
+| Gannon pilot readiness | `docs/product/GANNON_PILOT_READINESS.md`, `docs/product/GANNON_PILOT_GAP_MAP.md` | Current supervised pilot boundary: Labs 1-5 browser-E0 student flow, submission copy, adoption gaps, and not-sell-ready constraints. |
 | Gate ownership | `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md` | How to choose and wire Vitest, Playwright, classroom, golden, manual, and hardware proof. |
 | Normal-use breakage audit | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md` | Current normal-use audit and deferred findings. |
 | V1 research and audit | `docs/research/RED_BYTE_COMPETITIVE_AND_WORKFLOW_RESEARCH.md`, `docs/audits/2026-06-13-redbyte-v1-contract-reset-visual-audit.md` | Why the V1 reset exists and what the current UI evidence shows. |
@@ -77,6 +78,7 @@ Project -> Design -> Verify -> Map Pins / Hardware -> Export
 Supporting truths:
 
 - Import is a utility entry point, not the main student spine.
+- The Gannon pilot path is a supervised browser-E0 lab flow, not a hosted grading or commercial classroom platform.
 - Trusted/E0-ready Export requires current Compare PASS, current mapping, and current export state for the same project state.
 - Draft Export is allowed when the project is structurally exportable but trusted proof is missing or stale.
 - Vivado build, board programming, and board observation remain external proof tiers.

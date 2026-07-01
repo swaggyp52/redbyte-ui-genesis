@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: Project surface spec
@@ -13,13 +13,13 @@ Mode ID: `project`
 
 ## Purpose
 
-Provide the Project command center: one current project state, one primary next action, and visible paths for blank work, course starters, saved/recent work, and Import/recovery before Design, Verify, Map Pins / Hardware, and Export.
+Provide the Project command center: one current project state, one primary next action, and visible paths for Start a Lab, blank work, starter examples, saved/recent work, and Import/recovery before Design, Verify, Map Pins / Hardware, and Export.
 
 ## Primary Actions (max 3)
 
 1. Edit project metadata (name, description).
 2. Review the dashboard truth (identity/header, next action, metrics, mapping/export status).
-3. Continue current work, start fresh, open saved work, open a starter example, or enter Import/recovery with explicit replacement confirmation where existing work would be replaced.
+3. Continue current work, start a Gannon Pilot lab, start fresh, open saved work, open a starter example, or enter Import/recovery with explicit replacement confirmation where existing work would be replaced.
 
 ## Layout
 
@@ -27,12 +27,14 @@ Provide the Project command center: one current project state, one primary next 
 - Project identity/header.
 - Next-action command strip whose status frame, headline, and primary CTA all point at the same required next step.
 - Metrics / readiness snapshot.
-- Peer entry paths for Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent once a project is loaded.
+- Peer entry paths for Continue, Start a Lab, Build Fresh, Open Starter, Import / Recover, and Open Recent once a project is loaded.
+- Compact `What do I do next?` guide rail that names the current Project options.
 - Read-only mapping summary and export alignment truth.
 - Collapsed **Project bridge & determinism** disclosure for low-level internals.
 
 2. Secondary content
 - Open-existing / recent-work recovery.
+- Gannon Pilot Labs 1-5 on Project Home with visible build, difficulty, submission, proof-scope, and start controls.
 - Starter examples and build-fresh lanes on Project Home, with starter browsing collapsed by default once a project is loaded.
 - Mapping summaries are read-only and label-first: board/resource labels appear before package pins, with Map Pins as the editing authority.
 
@@ -42,8 +44,8 @@ Provide the Project command center: one current project state, one primary next 
 ## Empty State
 
 Headline: `Project command center`
-Primary path: `Build Fresh`
-Peer paths: `Course starters`, `Open Saved Project`, `Import / Recover`
+Primary path: `Start a Lab`
+Peer paths: `Build fresh`, `Open Starter`, `Open Saved Project`, `Import / Recover`
 Neutral state: no circuit loaded; no mapping/export failure copy before a circuit exists.
 
 ## Error State
@@ -56,7 +58,7 @@ Show blocking issues as callouts with direct destination action:
 Destructive action guard:
 
 1. Opening a starter example while unsaved work exists must require explicit confirmation.
-2. Starting a fresh blank project from a loaded project must require explicit confirmation.
+2. Starting a fresh blank project from a loaded project must require explicit confirmation with copy that says Cancel keeps current work and Confirm means replace current work.
 3. If the loaded project is already blank/custom, canceling the confirmation must preserve the current work; confirming must create a new empty Basys3 blank project rather than continuing the existing blank/custom state.
 4. If the loaded project is an applied import, canceling the confirmation must preserve the imported graph, I/O rows, mapping, and name; confirming must create a new empty Basys3 blank project and clear stale import metadata, import URL state, Verify/export state, and old imported identity.
 

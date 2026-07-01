@@ -150,10 +150,11 @@ These rules apply across all surfaces:
 1. The next correct action must be obvious.
 2. No surface may imply readiness that does not exist.
 3. Status, CTA language, and stage ownership must agree across surfaces.
-4. Visual cleanup without proof does not count as hardening.
-5. Historical shell / OS narratives are not current product truth.
-6. Batch 1 product-state vocabulary is canonical across surfaces: draft design, simulated, testbench configured, Compare passed, pins mapped, draft export, trusted export, Vivado built, board programmed, board observed.
-7. Observe runs may explain behavior, but only current Compare PASS can complete the Verify proof stage for trusted Export/Hardware handoff.
+4. Project, Design, Verify, Hardware, Export, and Import must expose compact `What do I do next?` guide copy that names the next student action without claiming unproven readiness.
+5. Visual cleanup without proof does not count as hardening.
+6. Historical shell / OS narratives are not current product truth.
+7. Batch 1 product-state vocabulary is canonical across surfaces: draft design, simulated, testbench configured, Compare passed, pins mapped, draft export, trusted export, Vivado built, board programmed, board observed.
+8. Observe runs may explain behavior, but only current Compare PASS can complete the Verify proof stage for trusted Export/Hardware handoff.
 
 ---
 

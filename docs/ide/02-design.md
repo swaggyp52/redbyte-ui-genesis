@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-29
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -24,6 +24,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 ## Workspace Structure
 
 1. Workbench header
+- Compact `What do I do next?` guide rail tells students to place components, wire ports, label signals, then move to Verify.
 - `ide-design-workspace-header` is the only persistent top owner.
 - It carries the surface identity, the current workspace mode (`Canvas`, `Code`, `Split`, replay-linked variants), and the existing `Open Verify` / `Project` actions.
 - The old standalone Design command strip is retired.

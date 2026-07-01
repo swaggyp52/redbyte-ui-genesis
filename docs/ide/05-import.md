@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-07-01
 owner: Connor Angiel
 used_by_claude: true
 role: Import surface spec
@@ -29,6 +29,7 @@ Import RedByte export ZIPs, Vivado ZIPs, HDL, and XDC safely with explicit fidel
 - HDL input tab.
 - XDC input tab.
 - ZIP tab for RedByte export ZIPs and Vivado project ZIPs.
+- Compact `What do I do next?` guide rail tells students to review imports before replacement.
 
 2. Main center
 - Parsed ports table.
@@ -61,7 +62,7 @@ Show deterministic diagnostics:
 1. Parsed module summary.
 2. Mapping completeness percent.
 3. Fidelity label: full RedByte manifest restore, reconstructed, or partial.
-4. Apply action enabled only through review and explicit confirmation.
+4. Apply action enabled only through review and explicit confirmation, with visible copy that Cancel keeps current work and Confirm Replace Project applies the reviewed import.
 
 ## Batch 1 Product Audit Notes (2026-04-30)
 
@@ -76,6 +77,7 @@ Show deterministic diagnostics:
 - Full-fidelity restore means a RedByte export ZIP containing `project.rbproj.json`; the embedded manifest is the source of truth, and loose HDL/XDC files are reference-only.
 - Vivado ZIP / VHDL without a RedByte manifest is fidelity-limited reconstruction. Supported structural sources can rebuild gates and connections; behavioral or unsupported sources can be ports-only or blocked.
 - Failed ZIP import does not replace the active project. The visible error state points to RedByte export ZIP, Vivado re-export, or Paste HDL recovery paths.
+- Import review does not replace the active project. Replacement happens only after Confirm Replace Project.
 - Successful import routes to editable project state, and imported Verify PASS is not automatically treated as current trusted proof.
 - After a successful import is applied, Project Build Fresh keeps the same explicit replacement guard as other loaded work: cancel preserves the imported project, and confirm replaces it with a new empty Basys3 blank project so stale imported graph, I/O rows, mapping, import metadata, import URL state, Verify/export state, and identity do not survive.
 - Browser proof: `ide:gate:import-recovery-contract`, wired into `classroom:gate` and `verify:gates:classroom`.
