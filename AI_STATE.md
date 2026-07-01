@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-07-01 (test: align loaded project Build Fresh guard copy)
+
+**Subsystem:** Loaded Project first-viewport gate, shared Build Fresh replacement dialog assertions, and Round 13A-Fix release-green recovery.
+
+**Changes:**
+- Reproduced the remote `Classroom Truth Gates` failure locally with `corepack pnpm -s ide:gate:project-loaded-paths-first-viewport`: `1366x768: Build Fresh from loaded Project must be guarded` while the dialog showed the current safer replacement copy.
+- Classified the failure as a stale gate assertion, not a product copy or layout regression. The product copy already says Build Fresh replaces the current workspace with a fresh blank project, Cancel keeps current work, Confirm replaces current work, the current project will be replaced, and local saved projects stay available.
+- Added `assertBuildFreshReplacementDialog()` to `scripts/gates/_gateHarness.mjs` so Project/Gannon/Build Fresh gates assert the same replacement semantics instead of duplicating brittle wording checks.
+- Updated `ide:gate:project-loaded-paths-first-viewport`, `ide:gate:project-command-center`, `ide:gate:gannon-pilot-student-flow`, `ide:gate:build-fresh-after-import-replacement`, and `ide:gate:build-fresh-replacement-integrity` to use the shared semantic assertion.
+
+**Evidence:** The original remote Round 13A-Fix failure in `Classroom Truth Gates` was not the first-viewport command-center gate anymore: `ide:gate:project-command-center` passed remotely, then `ide:gate:project-loaded-paths-first-viewport` failed on the stale Build Fresh dialog-copy assertion. After the local repair, the same loaded-project gate passed.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check` on the touched gate files, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:project-loaded-paths-first-viewport`, `corepack pnpm -s ide:gate:project-command-center`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Test/gate-only repair. No product UI, runtime behavior, simulator semantics, Verify truth, pin mapping, generated artifacts, import/export behavior, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, production behavior, or proof-tier claim changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for this Fix2 commit.
+
+**Next recommended task:** Commit locally, then push the small gate-repair commit only in a sync checkpoint. After push, wait for `Classroom Truth Gates`, deploy, and Cloudflare Pages to be green, then verify production SHA/build identity and run the Round 13A production spot proof before starting Round 13B.
+
 ## Change Log 2026-07-01 (fix: restore Project first viewport after Gannon flow)
 
 **Subsystem:** Project first-launch command center, Gannon Pilot lab-pack placement, all-lab starter density, Build Fresh guard assertion, and Round 13A release-check process correction.

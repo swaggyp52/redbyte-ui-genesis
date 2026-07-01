@@ -2,6 +2,7 @@
 
 import {
   assert,
+  assertBuildFreshReplacementDialog,
   runIdeGate,
   visible,
 } from './_gateHarness.mjs';
@@ -136,8 +137,7 @@ async function assertReplacementCancelCopy(page, viewport) {
   assert(await visible(buildFresh), `${viewport.label}: Build Fresh destructive action missing`);
   await buildFresh.click();
   await page.waitForTimeout(200);
-  assert(/Cancel keeps your current work/i.test(dialogMessage), `${viewport.label}: Build Fresh dialog missing Cancel preservation copy: ${dialogMessage}`);
-  assert(/Confirm means replace current work/i.test(dialogMessage), `${viewport.label}: Build Fresh dialog missing Confirm replacement copy: ${dialogMessage}`);
+  assertBuildFreshReplacementDialog(dialogMessage, `${viewport.label}: Gannon Pilot Build Fresh`);
 
   const activeExampleId = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__?.getState?.()?.activeExampleId ?? null);
   assert(activeExampleId === 'logic-gates', `${viewport.label}: canceled Build Fresh changed active example to ${activeExampleId ?? 'none'}`);

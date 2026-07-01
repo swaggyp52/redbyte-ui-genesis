@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementDialog, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
@@ -164,10 +164,7 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
   });
   await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
   await page.waitForTimeout(250);
-  assert(
-    /replace the current workspace/i.test(dialogMessage) && /cancel keeps your current work/i.test(dialogMessage),
-    `Loaded Project Build Fresh must be guarded, got dialog "${dialogMessage}"`
-  );
+  assertBuildFreshReplacementDialog(dialogMessage, 'Loaded Project Build Fresh');
   assert(
     await visible(page.locator('[data-testid="ide-mode-project"]').first()),
     'Dismissing the Build Fresh guard must leave the student on Project'

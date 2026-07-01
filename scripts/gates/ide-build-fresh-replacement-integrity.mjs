@@ -2,7 +2,7 @@
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementDialog, runIdeGate, visible } from './_gateHarness.mjs';
 import {
   CLASSROOM_VIEWPORTS,
   assertBuildHash,
@@ -78,12 +78,14 @@ async function runViewportScenario(page, baseUrl, viewport) {
   await capture(page, viewport, 'source-design-with-work');
 
   await openMode(page, baseUrl, 'project', `build-fresh-replacement-integrity-${viewport.label}-cancel`);
+  let cancelDialogMessage = '';
   await page.once('dialog', async (dialog) => {
-    assert(/fresh blank project|replaced/i.test(dialog.message()), `${viewport.label}: cancel dialog copy must describe replacement`);
+    cancelDialogMessage = dialog.message();
     await dialog.dismiss();
   });
   await clickBuildFresh(page, viewport, 'cancel Build Fresh');
   await page.waitForTimeout(300);
+  assertBuildFreshReplacementDialog(cancelDialogMessage, `${viewport.label}: cancel Build Fresh`);
   const afterCancel = await readRuntimeSignature(page);
   assertSameProject(source, afterCancel, `${viewport.label}: cancel must preserve old work`);
   await waitForPersistedRuntime(page, afterCancel, `${viewport.label}: cancel persisted before reload`);
@@ -97,12 +99,14 @@ async function runViewportScenario(page, baseUrl, viewport) {
   });
   await capture(page, viewport, 'cancel-preserved-source');
 
+  let confirmDialogMessage = '';
   await page.once('dialog', async (dialog) => {
-    assert(/fresh blank project|replaced/i.test(dialog.message()), `${viewport.label}: confirm dialog copy must describe replacement`);
+    confirmDialogMessage = dialog.message();
     await dialog.accept();
   });
   await clickBuildFresh(page, viewport, 'confirm Build Fresh');
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+  assertBuildFreshReplacementDialog(confirmDialogMessage, `${viewport.label}: confirm Build Fresh`);
   await renameProject(page, 'RB Build Fresh Replacement Target', viewport);
   const targetEmpty = await readRuntimeSignature(page);
   assertFreshEmptyTarget(targetEmpty, source, `${viewport.label}: confirmed Build Fresh`);

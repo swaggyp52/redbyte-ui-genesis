@@ -3,7 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementDialog, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -83,10 +83,7 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
     });
     await page.locator('[data-testid="ide-project-path-build-fresh"]').first().click();
     await page.waitForTimeout(200);
-    assert(
-      /start a fresh blank project/i.test(dialogMessage),
-      `${viewport.label}: Build Fresh from loaded Project must be guarded, got "${dialogMessage}"`
-    );
+    assertBuildFreshReplacementDialog(dialogMessage, `${viewport.label}: Build Fresh from loaded Project`);
     assert(
       await visible(page.locator('[data-testid="ide-mode-project"]').first()),
       `${viewport.label}: dismissing Build Fresh guard must leave Project mode active`

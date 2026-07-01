@@ -17,6 +17,15 @@ export async function visible(locator) {
   return locator.first().isVisible().catch(() => false);
 }
 
+export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh replacement dialog') {
+  assert(/build fresh/i.test(message), `${label} must name Build Fresh, got "${message}"`);
+  assert(/fresh blank project/i.test(message), `${label} must describe a fresh blank project, got "${message}"`);
+  assert(/cancel keeps your current work/i.test(message), `${label} must say Cancel keeps current work, got "${message}"`);
+  assert(/confirm means replace current work/i.test(message), `${label} must say Confirm replaces current work, got "${message}"`);
+  assert(/current project will be replaced/i.test(message), `${label} must say the current project will be replaced, got "${message}"`);
+  assert(/local saved projects stay available/i.test(message), `${label} must say local saved projects stay available, got "${message}"`);
+}
+
 export async function loadStarterProject(page, options = {}) {
   const { preferredLabStarterTestId, exactExampleId } = options;
 

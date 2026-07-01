@@ -3,7 +3,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assert, assertBuildFreshReplacementDialog, runIdeGate, visible } from './_gateHarness.mjs';
 import {
   CLASSROOM_VIEWPORTS,
   assertBuildHash,
@@ -101,12 +101,14 @@ async function runViewportScenario(page, baseUrl, viewport, fixtures) {
   await capture(page, viewport, 'applied-import-design');
 
   await openMode(page, baseUrl, 'project', `build-fresh-after-import-replacement-${viewport.label}-cancel`);
+  let cancelDialogMessage = '';
   await page.once('dialog', async (dialog) => {
-    assert(/fresh blank project|replaced/i.test(dialog.message()), `${viewport.label}: cancel dialog copy must describe replacement`);
+    cancelDialogMessage = dialog.message();
     await dialog.dismiss();
   });
   await clickBuildFresh(page, viewport, 'cancel Build Fresh');
   await page.waitForTimeout(300);
+  assertBuildFreshReplacementDialog(cancelDialogMessage, `${viewport.label}: cancel Build Fresh`);
   const afterCancel = await readRuntimeSignature(page);
   assertSameProject(imported, afterCancel, `${viewport.label}: cancel must preserve imported work`);
   await waitForPersistedRuntime(page, afterCancel, `${viewport.label}: cancel persisted before reload`);
@@ -118,12 +120,14 @@ async function runViewportScenario(page, baseUrl, viewport, fixtures) {
   });
   await capture(page, viewport, 'cancel-preserved-import');
 
+  let confirmDialogMessage = '';
   await page.once('dialog', async (dialog) => {
-    assert(/fresh blank project|replaced/i.test(dialog.message()), `${viewport.label}: confirm dialog copy must describe replacement`);
+    confirmDialogMessage = dialog.message();
     await dialog.accept();
   });
   await clickBuildFresh(page, viewport, 'confirm Build Fresh');
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+  assertBuildFreshReplacementDialog(confirmDialogMessage, `${viewport.label}: confirm Build Fresh`);
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   const targetEmpty = await readRuntimeSignature(page);
   assertFreshEmptyTarget(targetEmpty, imported, `${viewport.label}: confirmed Build Fresh`);
