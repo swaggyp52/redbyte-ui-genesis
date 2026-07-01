@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-01 (fix: restore task workbench first-viewport dominance)
+
+**Subsystem:** Round 13A-Fix4 release-green recovery, shared next-step guide rail placement, Design/Verify/Hardware/Export first-viewport contracts, and local Classroom Truth Gates proof discipline.
+
+**Changes:**
+- Reproduced the remote `Classroom Truth Gates` failure locally with `corepack pnpm -s ide:gate:design-workbench-v1`: `blank/fresh: live canvas starts too low (264.8px > 261.1px)`.
+- Diagnosed the immediate Design failure as real vertical pressure from the Round 13A shared `What do I do next?` guide rail sitting above Design's own command/header stack. The failure affected blank/fresh and loaded Design states; Project/Gannon was not the cause.
+- Compactly repositioned the shared next-step guide after the primary workbench panel for task modes (Design, Verify, Hardware, Export, Import) while leaving Project's launch guidance in place.
+- Repaired the downstream first-viewport failures that the full local classroom loop exposed before push: Export package inspector/file browser, Hardware Map Pins board/table/binding chain, and `workbench-reconstruction-v1`.
+- Updated stale HardwareSurface unit expectations so normal Map Pins states assert the current next-step/stage/readiness surfaces instead of the hidden `ide-hardware-command-strip`, which is intentionally absent for Map Pins with boundary rows.
+
+**Evidence:** Before repair, Design blank/fresh measured `liveCanvas.top=264.8px` against the `261.1px` threshold. After repair, Design blank/fresh measured `liveCanvas.top=250.4px` for `ide:gate:design-workbench-v1`, and the stricter reconstruction gate passed after the guide rail moved below the primary panel. Before/after screenshots are under `.redbyte/round-13a-fix4/before/`, `.redbyte/round-13a-fix4/after/`, `.redbyte/round-13a-fix4/hardware-before/`, and `.redbyte/round-13a-fix4/hardware-after/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:design-workbench-v1`, `corepack pnpm -s ide:gate:export-package-inspector`, `corepack pnpm -s ide:gate:hardware-first-viewport`, `corepack pnpm -s ide:gate:workbench-reconstruction-v1`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, focused Vitest `ideWorkbenchShell.test.tsx` + `designSurface.workstation.test.tsx` + `exportSurface.workstation.test.tsx` + `hardwareSurface.readiness.test.tsx` (`87` tests), and the full GitHub classroom-loop equivalent `corepack pnpm -s classroom:gate` (`PASS all steps`, `668304ms`).
+
+**Process correction:** Round 13A release recovery must run the exact local equivalent of GitHub `Classroom Truth Gates` before any push. Running only the last failed gate and a hand-picked subset is not sufficient; successive remote/local failures appeared in `project-command-center`, `project-loaded-paths-first-viewport`, `project-loaded-command-surface`, `design-workbench-v1`, `export-package-inspector`, `hardware-first-viewport`, and `workbench-reconstruction-v1`.
+
+**Safety:** Browser E0 layout and stale-test alignment only. This does not change simulator semantics, Verify comparison semantics, pin mapping semantics, generated export artifacts, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, production behavior, or proof-tier claims.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for Fix4.
+
+**Next recommended task:** Push Fix4, wait for GitHub checks, verify production identity, and run the Round 13A production spot proof. Only after release-green status is confirmed should work move to Round 14: scratch-build and testbench-repair UX.
+
 ## Change Log 2026-07-01 (fix: restore loaded Project command surface fit)
 
 **Subsystem:** Loaded Project command-surface first-viewport fit, loaded identity-strip density, and Round 13A-Fix3 release-green recovery.

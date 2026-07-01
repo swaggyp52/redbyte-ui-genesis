@@ -2622,6 +2622,52 @@
   min-width: 0;
 }
 
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-student-next-step-rail {
+  order: 2;
+  gap: 7px;
+  margin: 4px 0 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.18;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-student-next-step-rail strong {
+  font-size: 10.5px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-student-next-step-rail {
+  order: 2;
+  gap: 7px;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] .ide-student-next-step-rail strong {
+  font-size: 10.5px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-student-next-step-rail,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='hardware'] .ide-student-next-step-rail,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='import'] .ide-student-next-step-rail {
+  order: 2;
+  gap: 7px;
+  margin: 4px 0 0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-student-next-step-rail strong,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='hardware'] .ide-student-next-step-rail strong,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='import'] .ide-student-next-step-rail strong {
+  font-size: 10.5px;
+}
+
 .ide-root [data-ide-mode-marker='project'] .ide-project-gannon-lab-pack {
   display: grid;
   gap: 10px;
@@ -4668,7 +4714,7 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-panel-body {
-  padding-top: 6px !important;
+  padding-top: 4px !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-surface-command-stack {
@@ -4677,7 +4723,7 @@
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace {
   order: 1 !important;
-  margin-top: -12px !important;
+  margin-top: -18px !important;
   min-height: clamp(430px, calc(100vh - 210px), 740px) !important;
   border-radius: 10px !important;
   box-shadow: none !important;
@@ -4688,8 +4734,10 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map .ide-hw-board-planner-summary {
+  order: 3 !important;
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   gap: 4px !important;
+  margin-top: 6px !important;
   padding: 0 6px !important;
   min-height: 0 !important;
 }
@@ -4732,6 +4780,16 @@
   padding: 5px 10px !important;
   font-size: 11px !important;
   line-height: 1.25 !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hardware-basys3-binding-chain {
+  order: 1 !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-canvas {
+  order: 2 !important;
+  margin-top: -2px !important;
+  padding-top: 0 !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-mode {
@@ -4786,6 +4844,7 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1 {
+  order: 3;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
@@ -4801,6 +4860,14 @@
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header p {
   display: none;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {
+  order: 2;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-student-submission-guidance {
+  order: 4;
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-handoff-checklist-v1__item {

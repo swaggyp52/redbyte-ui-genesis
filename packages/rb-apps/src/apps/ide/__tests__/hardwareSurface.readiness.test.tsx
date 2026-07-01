@@ -139,7 +139,8 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Hardware');
+    expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('Map required pins');
+    expect(getByTestId('ide-hw-stage-rail').textContent).toContain('pin binding is the main hardware job');
     expect(getByTestId('ide-hw-workflow-ribbon')).toBeTruthy();
     expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
@@ -856,11 +857,11 @@ describe('HardwareSurface readiness', () => {
       </BoardSignalProvider>
     );
 
-    const commandText = getAllByTestId('ide-hardware-command-strip').at(-1)?.textContent ?? '';
-    expect(commandText).toContain('Map project signals to Basys3 controls');
-    expect(commandText).toContain('MAPPING COMPLETE');
-    expect(commandText).not.toContain('Build the current bundle');
-    expect(commandText).not.toContain('BLOCKED');
+    const hardwareText = getAllByTestId('ide-mode-hardware').at(-1)?.textContent ?? '';
+    expect(hardwareText).toContain('Map required pins');
+    expect(hardwareText).toContain('pin binding is the main hardware job');
+    expect(hardwareText).not.toContain('Build the current bundle');
+    expect(hardwareText).not.toContain('BLOCKED');
     expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
       'Run Verify before relying on this handoff'
     );
