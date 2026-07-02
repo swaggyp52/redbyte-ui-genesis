@@ -2374,6 +2374,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     onGoToDesign?.();
   }, [buildDebugSignalsAtTick, lastRun, onDebugTickSelected, onGoToDesign, onGoToDesignWithInputs, selectedDebugContext, selectedTick, syncSelectedSignalForHandoff]);
+  const handleInspectFailureInDesign = useCallback(
+    (target: VerifyFailureTarget | VerifyRow | null) => {
+      if (target) {
+        applyFailureSelection(target);
+        openFailureInDesign(target);
+      }
+      handleGoToDesignFromVerify();
+    },
+    [applyFailureSelection, handleGoToDesignFromVerify, openFailureInDesign]
+  );
   const handleThreePanelFailureSelect = useCallback(
     (failureKey: string) => {
       const target = failingRows.find(
@@ -3830,7 +3840,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
-          label: 'Keep saved checks — run checked',
+          label: 'Rerun Compare with saved checks',
           onClick: handleKeepOlderReference,
           tone: 'primary',
           testId: 'ide-verify-stale-keep-reference',
@@ -3838,7 +3848,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ];
       if (canResetToStimulusOnly) {
         actions.push({
-          label: 'Clear checks — observe only',
+          label: 'Clear checks - observe only',
           onClick: handleResetToStimulusOnly,
           tone: 'secondary',
           testId: 'ide-verify-stale-reset-stimulus',
@@ -3852,9 +3862,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       });
       return {
         tone: 'warn',
-        title: 'Older authored reference vs current circuit',
+        title: 'Design changed - rerun Compare',
         message:
-          'Older authored reference available — compare or recapture before trusting the next run.',
+          'The circuit changed since these saved checks were authored. Rerun Compare with the saved expected values, or recapture if the expected values should change.',
         actions,
       };
     }
@@ -4242,10 +4252,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             Compare failed
           </span>
-          <strong>Fix saved check or inspect circuit.</strong>
+          <strong>Fix expected value or inspect design.</strong>
           <p data-testid="ide-verify-repair-next-action">
-            Start with the selected mismatch below. Update the expected value if the
-            testbench is wrong, or open Design if the wiring should be different.
+            If the expected value is correct, this may be a circuit issue. Check the
+            gate or wire driving the failed output, then rerun Compare.
           </p>
         </div>
         <IdeStatusPill tone="error" data-testid="ide-verify-repair-status">
@@ -4302,41 +4312,51 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       </div>
 
       <div className="ide-verify-repair-panel__actions">
-        <IdeButton
-          tone="secondary"
-          onClick={handleEditExpectedOutputs}
-          testId="ide-verify-repair-edit-expected"
-        >
-          Edit expected
-        </IdeButton>
-        <IdeButton
-          tone="primary"
-          onClick={() => handleFailureAcceptObserved(selectedFailureExplanationCase)}
-          disabled={
-            selectedFailureExplanationCase.actual !== '0' &&
-            selectedFailureExplanationCase.actual !== '1'
-          }
-          testId="ide-verify-repair-use-observed"
-        >
-          Use observed
-        </IdeButton>
-        {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
-          <IdeButton
-            tone="secondary"
-            onClick={handleGoToDesignFromVerify}
-            testId="ide-verify-repair-open-design"
-          >
-            Inspect Design
-          </IdeButton>
-        ) : null}
-        <IdeButton
-          tone="primary"
-          onClick={() => handleRunWithPreflight(true)}
-          disabled={runState === 'running'}
-          testId="ide-verify-repair-rerun"
-        >
-          Rerun Compare
-        </IdeButton>
+        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-repair-testbench-path">
+          <span className="ide-verify-repair-panel__path-label">Expected/testbench repair</span>
+          <div className="ide-verify-repair-panel__path-actions">
+            <IdeButton
+              tone="secondary"
+              onClick={handleEditExpectedOutputs}
+              testId="ide-verify-repair-edit-expected"
+            >
+              Edit expected
+            </IdeButton>
+            <IdeButton
+              tone="primary"
+              onClick={() => handleFailureAcceptObserved(selectedFailureExplanationCase)}
+              disabled={
+                selectedFailureExplanationCase.actual !== '0' &&
+                selectedFailureExplanationCase.actual !== '1'
+              }
+              testId="ide-verify-repair-use-observed"
+            >
+              Use observed
+            </IdeButton>
+          </div>
+        </div>
+        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-repair-design-path">
+          <span className="ide-verify-repair-panel__path-label">Design repair</span>
+          <div className="ide-verify-repair-panel__path-actions">
+            {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
+              <IdeButton
+                tone="secondary"
+                onClick={() => handleInspectFailureInDesign(selectedFailureExplanationCase)}
+                testId="ide-verify-repair-open-design"
+              >
+                Inspect Design
+              </IdeButton>
+            ) : null}
+            <IdeButton
+              tone="primary"
+              onClick={() => handleRunWithPreflight(true)}
+              disabled={runState === 'running'}
+              testId="ide-verify-repair-rerun"
+            >
+              Rerun Compare
+            </IdeButton>
+          </div>
+        </div>
       </div>
     </section>
   ) : null;

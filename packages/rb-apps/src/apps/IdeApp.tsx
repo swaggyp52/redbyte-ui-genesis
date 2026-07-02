@@ -125,6 +125,42 @@ interface IdeFpgaConfig {
 type IdeImportCommitMeta = IdeImportMeta;
 type IdeImportFidelity = IdeImportMeta['fidelity'];
 
+type IdeCircuitConnection = Circuit['connections'][number];
+
+function resolveConnectionRef(
+  connection: IdeCircuitConnection,
+  side: 'from' | 'to'
+): { nodeId: string; portName: string } {
+  const raw = connection[side];
+  if (typeof raw === 'string') {
+    const pinKey = side === 'from' ? 'fromPin' : 'toPin';
+    const portKey = side === 'from' ? 'fromPort' : 'toPort';
+    const portName =
+      (connection as Record<string, unknown>)[pinKey] ??
+      (connection as Record<string, unknown>)[portKey] ??
+      (side === 'from' ? 'out' : 'in');
+    return {
+      nodeId: raw,
+      portName:
+        typeof portName === 'string' && portName.length > 0
+          ? portName
+          : side === 'from'
+            ? 'out'
+            : 'in',
+    };
+  }
+  return {
+    nodeId: raw.nodeId,
+    portName: raw.portName ?? raw.port ?? (side === 'from' ? 'out' : 'in'),
+  };
+}
+
+function toDesignWireId(connection: IdeCircuitConnection): string {
+  const from = resolveConnectionRef(connection, 'from');
+  const to = resolveConnectionRef(connection, 'to');
+  return `${from.nodeId}.${from.portName}-${to.nodeId}.${to.portName}`;
+}
+
 export const IdeApp: React.FC = () => {
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const activeMode = useMemo(() => normalizeIdeMode(currentMode), [currentMode]);
@@ -1468,10 +1504,13 @@ export const IdeApp: React.FC = () => {
 
       const targetWire = targetNode
         ? exportProject.circuit.connections.find((connection) => {
-            const fromNodeId =
-              typeof connection.from === 'string' ? connection.from : connection.from.nodeId;
-            const toNodeId = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
-            return fromNodeId === targetNode.id || toNodeId === targetNode.id;
+            const to = resolveConnectionRef(connection, 'to');
+            return to.nodeId === targetNode.id;
+          }) ??
+          exportProject.circuit.connections.find((connection) => {
+            const from = resolveConnectionRef(connection, 'from');
+            const to = resolveConnectionRef(connection, 'to');
+            return from.nodeId === targetNode.id || to.nodeId === targetNode.id;
           })
         : undefined;
 
@@ -1481,7 +1520,7 @@ export const IdeApp: React.FC = () => {
         diagnosticId: `verify-fix-${desiredSignal}-${target.tick}`,
         requestId: (previous?.requestId ?? 0) + 1,
         nodeId: targetNode?.id,
-        wireId: targetWire?.id,
+        wireId: targetWire ? toDesignWireId(targetWire) : undefined,
         portName: mappingTarget?.port ?? target.signal,
         mappingKey: mappingTarget?.id,
         signal: target.signal,

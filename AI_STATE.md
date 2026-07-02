@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-07-02 (fix: prove wrong-build diagnosis repair flow)
+
+**Subsystem:** Round 14B wrong-circuit diagnosis, Verify failure repair lanes, Verify -> Design mismatch handoff, Design direct-driver context, stale Compare rerun copy, focused browser gate, and current-doc routing.
+
+**Changes:**
+- Added `docs/product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md` to translate the product complaint into wrong gate, miswire, disconnected output, design repair, stale Verify, and Export trust gaps.
+- Added `ide:gate:wrong-build-diagnosis-repair-flow`, a real-browser gate that builds an XOR-intended scratch circuit incorrectly with an OR gate, authors correct XOR expected outputs, proves Compare FAIL, opens Design from the design-repair lane, focuses the direct OR driver, repairs OR -> XOR through the Design inspector, reruns stale Compare to PASS, and checks Export E0 trust boundaries.
+- Split the Verify repair strip into expected/testbench repair and design repair lanes. The copy now tells students that if the expected value is correct, the failure may be a circuit issue, and `Inspect Design` now also routes the selected failure into the Design diagnostic path.
+- Fixed Verify -> Design diagnostic wire selection so it uses the canvas endpoint-based wire id instead of an optional connection `id`.
+- Added a Design failure-context banner that shows failed output, expected/observed bits, case/tick, input vector, direct driver label/type, incoming/outgoing wire counts, and a Focus driver action when the graph can trace the direct driver. If no direct driver can be traced, Design says so instead of inventing root cause.
+- Clarified stale authored-reference copy after design edits: Verify now says `Design changed - rerun Compare` and the primary action reads `Rerun Compare with saved checks`, preserving the saved expected values while making the repair loop obvious.
+- Compact-adjusted the embedded Verify failure strip after `ide:gate:verify-postrun-workbench-usability` caught waveform evidence pushed below the existing classroom threshold.
+- Updated current RedByte docs and surface specs to route Round 14B truth through the wrong-build gap map, Verify spec, Design spec, system map, active cockpit, current truth, work queue, and doc index.
+
+**Evidence:** The required red gate first failed on the missing design-repair guidance: `repair panel must tell students when to inspect the circuit`. After implementation, the same gate found two real follow-on defects before passing: direct-driver tracing initially resolved no driver for the output, and Verify's post-design-edit stale state used indirect `Older authored reference` copy. The final `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow` passed with screenshots and JSON proof under `.redbyte/product-immersion/wrong-build-diagnosis-repair-flow/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-wrong-build-diagnosis-repair-flow.mjs`, `corepack pnpm --filter @redbyte/playground build`, focused Vitest `verifySurface.workstation.test.tsx` + `verifySurface-fail-state.test.tsx` + `designSurface.gateSwap.test.tsx` (`57` tests), `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow`, `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:student-task-completion-flow`, `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 wrong-build diagnosis and guided design repair only. This does not add a formal debugger, arbitrary root-cause analysis, backend/auth/grading, LMS/instructor workflow, Vivado execution, bitstream generation, Basys3 programming, physical board observation, generated artifact semantic changes, import parser changes, project format changes, or E1/E2/E3 proof claims.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed.
+
+**Next recommended task:** Review and, if accepted, run a sync checkpoint to push/deploy Round 14B. After sync, production proof should verify `/os/version.json`, visible build identity, the wrong-build browser smoke, and the existing Round 14A/Round 13 regressions before any new product slice.
+
 ## Change Log 2026-07-01 (fix: improve scratch testbench repair flow)
 
 **Subsystem:** Round 14A scratch-build/testbench repair UX, Verify first-mismatch repair strip, expected-output stale detection, focused browser gate, and local classroom-loop proof.

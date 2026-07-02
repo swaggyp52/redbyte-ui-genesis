@@ -3748,6 +3748,74 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     activeInspectorSignalSnapshot,
     isReplayMode,
   ]);
+  const activeDebugRepairContext = useMemo(() => {
+    if (!activeDebugContext || !debugLinkedSignalKey) return null;
+    const normalizedDebugSignal = normalizeSignalLookup(activeDebugContext.signal);
+    const matchedDebugRow =
+      ioRows.find((row) => normalizeSignalLookup(row.id) === normalizedDebugSignal) ??
+      ioRows.find((row) => normalizeSignalLookup(row.label) === normalizedDebugSignal);
+    const debugRepairSignalKey = matchedDebugRow
+      ? `${matchedDebugRow.nodeId}.${matchedDebugRow.port}`
+      : debugLinkedSignalKey;
+    const dotIndex = debugRepairSignalKey.indexOf('.');
+    if (dotIndex === -1) return null;
+    const nodeId = debugRepairSignalKey.slice(0, dotIndex);
+    const portName = debugRepairSignalKey.slice(dotIndex + 1);
+    if (!nodeId || !portName) return null;
+
+    const targetNode = editorCircuit.nodes.find((entry) => entry.id === nodeId);
+    const targetLabel = describeEndpointLabel(nodeId, targetNode, ioRowByNodeId.get(nodeId));
+    const exactIncoming = editorCircuit.connections.find((connection) => {
+      const to = resolveConnectionEndpoint(connection.to);
+      return to.nodeId === nodeId && to.portName === portName;
+    });
+    const anyIncoming = editorCircuit.connections.find((connection) => {
+      const to = resolveConnectionEndpoint(connection.to);
+      return to.nodeId === nodeId;
+    });
+    const directConnection =
+      matchedDebugRow?.direction === 'out'
+        ? anyIncoming ?? exactIncoming
+        : exactIncoming ?? anyIncoming;
+
+    if (!directConnection) {
+      return {
+        signalKey: debugRepairSignalKey,
+        targetLabel,
+        targetType: targetNode ? nodeTypeLabel(targetNode.type) : 'Signal',
+        driverLabel: null,
+        driverType: null,
+        driverNodeId: null,
+        incomingWires: 0,
+        outgoingWires: 0,
+        wireId: null,
+      };
+    }
+
+    const from = resolveConnectionEndpoint(directConnection.from);
+    const directTo = resolveConnectionEndpoint(directConnection.to);
+    const driverNode = editorCircuit.nodes.find((entry) => entry.id === from.nodeId);
+    const incomingWires = editorCircuit.connections.filter((connection) => {
+      const to = resolveConnectionEndpoint(connection.to);
+      return to.nodeId === from.nodeId;
+    }).length;
+    const outgoingWires = editorCircuit.connections.filter((connection) => {
+      const connectionFrom = resolveConnectionEndpoint(connection.from);
+      return connectionFrom.nodeId === from.nodeId;
+    }).length;
+
+    return {
+      signalKey: debugRepairSignalKey,
+      targetLabel,
+      targetType: targetNode ? nodeTypeLabel(targetNode.type) : 'Signal',
+      driverLabel: describeEndpointLabel(from.nodeId, driverNode, ioRowByNodeId.get(from.nodeId)),
+      driverType: driverNode ? nodeTypeLabel(driverNode.type) : 'Unknown node',
+      driverNodeId: from.nodeId,
+      incomingWires,
+      outgoingWires,
+      wireId: `${from.nodeId}.${from.portName}-${directTo.nodeId}.${directTo.portName}`,
+    };
+  }, [activeDebugContext, debugLinkedSignalKey, editorCircuit, ioRowByNodeId, ioRows, resolveConnectionEndpoint]);
   const focusActiveInspectorSignalNode = useCallback(() => {
     if (!activeInspectorSignalLandingTarget) return;
     setToolMode('select');
@@ -6801,6 +6869,86 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </IdeCallout>
                     </div>
                   )}
+                  {activeDebugContext ? (
+                    <div
+                      className="ide-design-debug-context-banner"
+                      data-testid="ide-design-debug-context-banner"
+                      data-blocks-canvas-placement="1"
+                      data-blocks-macro-placement="1"
+                      role="status"
+                    >
+                      <div className="ide-design-debug-context-main">
+                        <span className="ide-design-debug-context-eyebrow">Compare failed</span>
+                        <strong>
+                          Inspecting {getVerifyDebugDisplaySignal(activeDebugContext)}
+                        </strong>
+                        <span>
+                          Expected <code>{activeDebugContext.expected}</code>, observed{' '}
+                          <code>{activeDebugContext.actual}</code>
+                          {activeDebugContext.caseIndex != null
+                            ? ` on case ${activeDebugContext.caseIndex + 1}`
+                            : ` at tick ${activeDebugContext.tick}`}
+                          .
+                        </span>
+                        {activeDebugContext.inputSnapshot.length > 0 ? (
+                          <span>
+                            Inputs: <code>{formatVerifyDebugInputSnapshot(activeDebugContext.inputSnapshot)}</code>
+                          </span>
+                        ) : null}
+                        <span>Check the gate or wire driving this output.</span>
+                      </div>
+                      <div className="ide-design-debug-context-facts">
+                        <span data-testid="ide-design-debug-context-target">
+                          Output <strong>{activeDebugRepairContext?.targetLabel ?? getVerifyDebugDisplaySignal(activeDebugContext)}</strong>
+                        </span>
+                        {activeDebugRepairContext?.driverLabel ? (
+                          <>
+                            <span data-testid="ide-design-debug-context-driver">
+                              Driver <strong>{activeDebugRepairContext.driverLabel}</strong>
+                            </span>
+                            <span data-testid="ide-design-debug-context-driver-type">
+                              Type <strong>{activeDebugRepairContext.driverType}</strong>
+                            </span>
+                            <span data-testid="ide-design-debug-context-wire-count">
+                              Incoming wires <strong>{activeDebugRepairContext.incomingWires}</strong> / Outgoing wires{' '}
+                              <strong>{activeDebugRepairContext.outgoingWires}</strong>
+                            </span>
+                          </>
+                        ) : (
+                          <span data-testid="ide-design-debug-context-driver">
+                            No direct driver found for this output.
+                          </span>
+                        )}
+                        {activeDebugRepairContext?.wireId ? (
+                          <code data-testid="ide-design-debug-context-wire">{activeDebugRepairContext.wireId}</code>
+                        ) : null}
+                      </div>
+                      <div className="ide-design-debug-context-actions">
+                        {activeDebugRepairContext?.driverNodeId ? (
+                          <IdeButton
+                            tone="secondary"
+                            onClick={() => {
+                              setToolMode('select');
+                              selectMultipleNodes([activeDebugRepairContext.driverNodeId!], false);
+                              focusNodeOnCanvas(activeDebugRepairContext.driverNodeId!);
+                            }}
+                            testId="ide-design-debug-context-focus-driver"
+                          >
+                            Focus driver
+                          </IdeButton>
+                        ) : null}
+                        {onGoToVerify ? (
+                          <IdeButton
+                            tone="secondary"
+                            onClick={onGoToVerify}
+                            testId="ide-design-debug-context-return"
+                          >
+                            Return to Verify
+                          </IdeButton>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                   <div
                     className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''

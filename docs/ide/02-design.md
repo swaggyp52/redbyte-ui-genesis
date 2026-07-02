@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-02
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -44,7 +44,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - The Design status summary is allowed to overlay the canvas as a compact secondary cue, but it should not consume a standalone vertical band above the graph.
 - The compact authoring card is the readiness owner for design issues.
 - The simulation strip is contextual and appears only when replay, stale replay, verify-linked focus, active simulation, or another real simulation story exists.
-- When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect.
+- When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect. If the graph can trace the failed output's direct driver, Design shows the driver label/type, incoming/outgoing wire counts, and a Focus driver action; if not, it says no direct driver was found instead of inventing root cause.
 
 4. Right inspector
 - Owns selection, focused-asset, mapping, and signal context.
@@ -65,6 +65,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - It proves blank/fresh Design, Logic Gates starter, Half Adder, selected node, selected wire, wire start/cancel, moved node, delete/undo restore, split/code, and zoom/fit/center states at `1366x768` and `1440x900`.
 - `ide:gate:blank-adder-authoring-depth` is the focused blank-canvas depth gate. It proves manual SW/LD placement, signal labeling, primitive full-adder XOR/AND/OR wiring, invalid/cancel/delete/undo/move wire handling, four-`FullAdder` carry-chain authoring, and low-zoom chip port hit targets at `1366x768` and `1440x900`.
 - `ide:gate:custom-clock-sequential-truth` guards clock authoring truth: `CLK100MHZ` is the supported visible board clock, the Sim Clock palette path stays hidden, and imported sim-only Clock projects are migration-only.
+- `ide:gate:wrong-build-diagnosis-repair-flow` guards failed-Compare design repair: Inspect Design preserves mismatch context, exposes direct driver facts when available, focuses the driver, supports OR -> XOR repair, and returns to stale Verify evidence until Compare passes again.
 - `ide:gate:design-workbench-v1` must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by that gate.
 - Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-02
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -13,7 +13,7 @@ imported_by: CLAUDE.md
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Audited base commit for this reset:** `d235823a`
-**Latest product/control slice:** Scratch Testbench Repair and Failure Recovery UX (Round 14A local browser-E0 repair)
+**Latest product/control slice:** Wrong-Build Diagnosis and Guided Design Repair (Round 14B local browser-E0 repair)
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -28,7 +28,7 @@ Import is a utility. Vivado build, board programming, and board observation are 
 ## Top Priorities
 
 1. **Use the under-the-hood docs before stateful product work.** The current source/state/proof control layer is `docs/architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md`, `docs/architecture/RED_BYTE_STATE_AUTHORITY_MATRIX.md`, `docs/architecture/RED_BYTE_INVARIANT_MATRIX.md`, and `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`.
-2. **Round 14A is the current local product repair.** `ide:gate:scratch-testbench-repair-flow` now proves a scratch FullAdder plus extra logic path through Build Fresh, Design authoring, Verify Observe/save, Compare PASS, intentional wrong expected-output FAIL, visible repair strip, `Use observed`, repaired PASS, stale expected-output edit detection, and Export E0 trust boundary. The repair strip replaces the normal fail summary in Verify so first mismatch, expected/observed bits, input vector, edit/use-observed/inspect/rerun actions, waveform evidence, and editable checks remain usable at classroom viewports. Full `corepack pnpm -s classroom:gate` passed locally (`PASS all steps`, `662790ms`) after the layout regression was corrected. This is local browser-E0 proof only: no push, deploy, production proof, Vivado E1, bitstream E2, or board E3 claim is included.
+2. **Round 14B is the current local product repair.** `ide:gate:wrong-build-diagnosis-repair-flow` now proves a scratch XOR-intended design built incorrectly with an OR gate, correct XOR expected outputs, Compare FAIL, explicit expected/testbench vs design-repair lanes, Inspect Design handoff, failed-output context with expected/observed/input vector, direct OR driver facts, Focus driver, OR -> XOR repair through the Design inspector, design-stale Verify rerun, repaired Compare PASS, and Export E0 trust boundary. Round 14A remains the expected-output repair baseline through `ide:gate:scratch-testbench-repair-flow`. This is local browser-E0 proof only: no push, deploy, production proof, Vivado E1, bitstream E2, or board E3 claim is included.
 3. **Hardware / Basys3 Workbench is closed locally.** `ide:gate:hardware-basys3-workbench` now proves the selected signal -> Basys3 board resource -> package pin -> XDC consequence chain at `1366x768` and `1440x900`, plus the ready-state E0 wording that keeps Vivado build, bitstream programming, and board observation external.
 4. **Export Handoff Station is closed locally.** `ide:gate:export-handoff-station` now proves one visible station for Draft, Ready-to-build, and Trusted post-download states, visible package handoff, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no E1/E2/E3 overclaim, and no root overflow or key-region overlap.
 5. **Side Dock Affordance v1 is closed locally.** `ide:gate:side-dock-affordance` now proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails use compact horizontal `+ / Show / Lib|Sig|Info` restore controls, stay within a `48px` slot, reopen readable content, close back to restored workbench space, keep focal work objects visible at `1366x768` and `1440x900`, and produce no root overflow or console/page errors.

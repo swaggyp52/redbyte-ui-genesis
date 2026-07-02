@@ -11898,9 +11898,34 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-repair-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ide-verify-repair-panel__action-path {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--rb-radius-1);
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.ide-verify-repair-panel__path-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 225, 225, 0.76);
+}
+
+.ide-verify-repair-panel__path-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .ide-verify-instrument-deck > .ide-verify-repair-panel {
@@ -12009,9 +12034,8 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions {
   grid-area: actions;
-  align-items: center;
-  justify-content: flex-start;
-  flex-wrap: nowrap;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions .ide-button {
@@ -12021,6 +12045,28 @@ details[open].ide-export-evidence-details > summary::before {
   font-size: 11px;
   line-height: 1.15;
   white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__action-path {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__path-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__path-actions {
+  flex-wrap: nowrap;
+  gap: 4px;
 }
 
 @media (max-width: 1100px) {
@@ -14266,6 +14312,61 @@ details[open].ide-export-evidence-details > summary::before {
 .ide-design-debug-banner-hint {
   color: rgba(160, 180, 210, 0.7);
   font-size: 11px;
+}
+
+.ide-design-debug-context-banner {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  z-index: 52;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(210px, 0.85fr) auto;
+  gap: 10px;
+  align-items: start;
+  width: min(940px, calc(100% - 32px));
+  padding: 10px 12px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 7px;
+  background: rgba(28, 19, 28, 0.94);
+  box-shadow: 0 18px 36px rgba(5, 10, 18, 0.32);
+  color: rgba(246, 248, 255, 0.94);
+  pointer-events: auto;
+}
+
+.ide-design-debug-context-main,
+.ide-design-debug-context-facts,
+.ide-design-debug-context-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.ide-design-debug-context-actions {
+  gap: 6px;
+  align-items: stretch;
+}
+
+.ide-design-debug-context-main strong,
+.ide-design-debug-context-facts strong {
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.ide-design-debug-context-eyebrow {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(252, 165, 165, 0.88);
+}
+
+.ide-design-debug-context-banner code {
+  font-family: var(--rb-font-mono);
+  color: rgba(255, 235, 235, 0.96);
+  overflow-wrap: anywhere;
 }
 
 .ide-design-debug-overlay-banner {

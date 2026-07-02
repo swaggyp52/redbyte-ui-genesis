@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-02
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -33,7 +33,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
-5. **Analysis / failure**: A failing Compare replaces the normal result summary with a compact repair strip that keeps the first failed case, failed signal, expected bit, observed bit, input vector, and direct repair actions visible beside waveform evidence. The strip supports editing the expected value, using the observed bit as the expected value, opening Design to inspect wiring, rerunning Compare, and selecting the first mismatch. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
+5. **Analysis / failure**: A failing Compare replaces the normal result summary with a compact repair strip that keeps the first failed case, failed signal, expected bit, observed bit, input vector, and direct repair actions visible beside waveform evidence. The strip separates expected/testbench repair from design repair: students can edit expected values or use observed values when the testbench is wrong, or open Design when the expected value is correct and the circuit may be wrong. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
 
 6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed before the first run. After a run, that summary is demoted so PASS/FAIL state, first mismatch, expected/observed values, and waveform evidence are the first-order objects.
 
@@ -69,6 +69,8 @@ The Verify evidence signature is tied to the same normalized current-project has
 `ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
 `ide:gate:scratch-testbench-repair-flow` guards the scratch-build failure-recovery path for a FullAdder plus extra OR logic design. It requires Observe -> save observed outputs -> Compare PASS, intentional wrong expected-output FAIL, visible first-mismatch repair strip, `Use observed`, repaired PASS, stale expected-output edit detection after PASS, and Export E0 trust boundary at `1366x768` and `1440x900`.
+
+`ide:gate:wrong-build-diagnosis-repair-flow` guards the wrong-circuit repair path. It requires a scratch XOR-intended design built incorrectly with OR, correct expected outputs, Compare FAIL, design-repair lane visibility, Inspect Design context with expected/observed/input vector and direct OR driver facts, Focus driver, OR -> XOR repair through the Design inspector, stale Verify rerun, repaired Compare PASS, and Export E0 trust boundary.
 
 `ide:gate:custom-clock-sequential-truth` guards the current clock policy boundary: `CLK100MHZ` board clocks auto-run, manual switch/button clocks stay manual-pulses, imported sim-only Clock components stay import-only/manual, and a non-starter board-clock sequential fixture reaches Verify/Export browser E0 proof.
 

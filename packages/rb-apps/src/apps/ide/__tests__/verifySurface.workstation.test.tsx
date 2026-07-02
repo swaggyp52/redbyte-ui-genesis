@@ -1301,7 +1301,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId } = view;
 
     await waitFor(() => {
-      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Older authored reference available');
+      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Design changed - rerun Compare');
     });
     expect(getByTestId('ide-vcb-status').textContent).toContain('Needs update');
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
