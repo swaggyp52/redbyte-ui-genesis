@@ -8,7 +8,7 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 
 # RedByte Work Queue
 
-This is the ordered near-term queue after the V1 product contract reset and the later browser-first hardening slices. Round 14B wrong-build repair is pushed/deployed at `9826a77a77c008bc8f5a963051300ac57bc58a5c`. The current local Product Reality Sprint adds complex-build signal-trace debugging: `ide:gate:complex-build-signal-trace-debugging` proves a scratch two-stage wrong sum path opens Design with bounded upstream trace rows and per-node Focus actions at `1366x768` and `1440x900`. This new slice is local-only until a sync checkpoint. The next product slice after local validation should be testbench editor simplification unless the user explicitly chooses Vivado/Basys3 proof restoration, which remains board/tool gated.
+This is the ordered near-term queue after the V1 product contract reset and the later browser-first hardening slices. Summer Rescue / Testbench Editor Simplification + Export Confidence is production-current at `d515b812aae1625439aa5fd2205af4f8226ee3a7`. `docs/product/REDBYTE_VIVADO_GRADE_EXPORT_REALITY_AUDIT.md` records the live production browser-E0 ZIP audit for Logic Gates, Half Adder, Full Adder, 4-Bit Ripple Carry Adder, and 2-Bit Up Counter. The next proof slice should be Vivado E1 export certification on a Vivado 2024.2 machine; if Vivado remains unavailable, the next browser-only product slice should target wrong/disconnected-build diagnosis for from-scratch designs.
 
 ## Queue
 

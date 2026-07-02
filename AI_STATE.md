@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-07-02 (docs: audit Vivado-grade export reality)
+
+**Subsystem:** Production release-reality proof, Summer Rescue live verification, Vivado-grade export package audit, and E1 boundary documentation.
+
+**Changes:**
+- Added `docs/product/REDBYTE_VIVADO_GRADE_EXPORT_REALITY_AUDIT.md` as the current tracked audit for live production export packages.
+- Updated current routing docs so future RedByte work separates production browser-E0 export package credibility from real Vivado E1 certification.
+
+**Evidence:** Local `HEAD` and `origin/main` were both `d515b812aae1625439aa5fd2205af4f8226ee3a7` at the start of this checkpoint, with GitHub deploy and Classroom Truth Gates successful for that commit. Live production endpoints reported `/os/version.json` SHA `d515b812aae1625439aa5fd2205af4f8226ee3a7` and `/os/build.json` SHA `d515b81`. The production Summer Rescue proof passed against `https://redbyteapps.dev/os`, including Verify testbench labels, scoped single-cell/row/all-failed `Use observed` repair, stale testbench detection, Export stale/draft confidence, Export current E0 confidence, Hardware load, Import load, visible build identity, and zero console/page errors. The live export audit generated and inspected production ZIPs for Logic Gates, Half Adder, Full Adder, 4-Bit Ripple Carry Adder, and 2-Bit Up Counter; every package had the expected Vivado folder structure, manifest, README, import Tcl, XPR, top VHDL, XDC, testbench, expected I/O, constrained ports, no duplicate package pins, and E0-only README boundaries.
+
+**Validation:** Portable Node `v20.19.0` ran `.redbyte/product-immersion/summer-rescue-production/production-summer-rescue-proof.mjs` and `.redbyte/product-immersion/vivado-grade-export-audit/vivado-grade-export-audit.mjs`; both passed. Vivado E1 was attempted only as an availability check: `vivado -version`, `where.exe vivado`, `Get-Command vivado`, `C:\Xilinx`, and common Vivado install paths all failed/missing, so no synth/impl/bitstream run occurred.
+
+**Safety:** Documentation and proof checkpoint only. No product source, simulator semantics, Verify comparison semantics, pin mapping, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, import behavior, Vivado execution, bitstream generation, Basys3 programming, board observation, accounts, LMS, or grading behavior changed.
+
+**Remote sync:** This documentation checkpoint is local-only unless explicitly pushed later. Production remains at `d515b812aae1625439aa5fd2205af4f8226ee3a7`; any local audit-doc commit after that is not deployed.
+
+**Next recommended task:** Run Vivado E1 certification on a machine with Vivado 2024.2 for Logic Gates, Full Adder, 4-Bit Ripple Carry Adder, and 2-Bit Up Counter. If Vivado remains unavailable, target wrong/disconnected-build diagnosis for from-scratch designs as the next browser-only product slice.
+
 ## Change Log 2026-07-02 (fix: simplify testbench repair and export confidence)
 
 **Subsystem:** Summer Rescue Sprint, Verify testbench authoring/repair, Export confidence station, classroom release guard, product friction audit, and current-doc routing.
