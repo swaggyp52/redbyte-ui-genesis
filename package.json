@@ -63,6 +63,7 @@
         "ide:gate:gannon-pilot-student-flow": "node ./scripts/gates/ide-gannon-pilot-student-flow.mjs",
         "ide:gate:export-import-roundtrip-integrity": "node ./scripts/gates/ide-export-import-roundtrip-integrity.mjs",
         "ide:gate:custom-clock-sequential-truth": "node ./scripts/gates/ide-custom-clock-sequential-truth.mjs",
+        "ide:gate:scratch-testbench-repair-flow": "node ./scripts/gates/ide-scratch-testbench-repair-flow.mjs",
         "ide:gate:verify-counter-repeat-compare-stability": "node ./scripts/gates/ide-verify-counter-repeat-compare-stability.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",

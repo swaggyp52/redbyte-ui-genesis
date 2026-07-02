@@ -11780,6 +11780,255 @@ details[open].ide-export-evidence-details > summary::before {
   color: rgba(255, 220, 220, 0.95);
 }
 
+.ide-verify-repair-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.34);
+  border-radius: var(--rb-radius-2);
+  background: linear-gradient(180deg, rgba(47, 16, 24, 0.9), rgba(17, 24, 39, 0.92));
+  box-shadow: 0 12px 32px rgba(10, 14, 24, 0.28);
+}
+
+.ide-verify-repair-panel[data-stale='true'] {
+  border-color: rgba(251, 191, 36, 0.36);
+  background: linear-gradient(180deg, rgba(45, 30, 12, 0.9), rgba(17, 24, 39, 0.92));
+}
+
+.ide-verify-repair-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ide-verify-repair-panel__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ide-verify-repair-panel__eyebrow,
+.ide-verify-repair-panel__inputs > span,
+.ide-verify-repair-panel__fact > span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 190, 190, 0.78);
+}
+
+.ide-verify-repair-panel__copy strong {
+  color: rgba(255, 245, 245, 0.98);
+  font-size: 15px;
+}
+
+.ide-verify-repair-panel__copy p {
+  margin: 0;
+  color: rgba(229, 231, 235, 0.82);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ide-verify-repair-panel__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ide-verify-repair-panel__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--rb-radius-1);
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.ide-verify-repair-panel__fact-button {
+  appearance: none;
+  margin: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-verify-repair-panel__fact-button:hover {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(30, 41, 59, 0.82);
+}
+
+.ide-verify-repair-panel__fact strong,
+.ide-verify-repair-panel__fact code {
+  overflow-wrap: anywhere;
+}
+
+.ide-verify-repair-panel__fact strong {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 13px;
+}
+
+.ide-verify-repair-panel__fact code,
+.ide-verify-repair-panel__chips code {
+  font-family: var(--rb-font-mono);
+  color: rgba(255, 231, 231, 0.96);
+}
+
+.ide-verify-repair-panel__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ide-verify-repair-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ide-verify-repair-panel__chips code {
+  padding: 4px 7px;
+  border: 1px solid rgba(248, 113, 113, 0.24);
+  border-radius: var(--rb-radius-1);
+  background: rgba(127, 29, 29, 0.18);
+  font-size: 11px;
+}
+
+.ide-verify-repair-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel {
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--rb-radius-1);
+  box-shadow: none;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__header {
+  align-items: center;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__copy {
+  gap: 2px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__copy strong {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__copy p {
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__facts {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact {
+  gap: 2px;
+  padding: 6px 8px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact strong {
+  font-size: 12px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__inputs {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions {
+  gap: 6px;
+}
+
+.ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions .ide-button {
+  min-height: 30px;
+  padding-block: 5px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel {
+  display: grid;
+  grid-template-columns: minmax(145px, 0.7fr) minmax(0, 1.3fr);
+  grid-template-areas:
+    "header facts"
+    "inputs actions";
+  align-items: stretch;
+  gap: 6px 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__header {
+  grid-area: header;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__copy p,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel [data-testid='ide-verify-repair-status'] {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__facts {
+  grid-area: facts;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact {
+  padding: 4px 6px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact > span {
+  font-size: 9px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact strong,
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__fact code {
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__inputs {
+  grid-area: inputs;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__chips {
+  gap: 4px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__chips code {
+  padding: 3px 5px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions {
+  grid-area: actions;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions .ide-button {
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 7px;
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .ide-verify-repair-panel__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 1200px) {
   .ide-verify-failure-explainer__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -35086,4 +35335,23 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-signal-entry {
   grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+/* Round 14A: keep fail-state repair visible without pushing waveform evidence below 1366x768. */
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] {
+  gap: 2px !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-waveform-frame {
+  margin-top: 0 !important;
+  transform: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-waveform-bar {
+  max-height: 80px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  row-gap: 2px !important;
 }

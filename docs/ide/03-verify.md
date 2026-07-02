@@ -33,7 +33,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
-5. **Analysis / failure**: Lower result region and drawer for diagnosis when runs fail. A selected failed case produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
+5. **Analysis / failure**: A failing Compare replaces the normal result summary with a compact repair strip that keeps the first failed case, failed signal, expected bit, observed bit, input vector, and direct repair actions visible beside waveform evidence. The strip supports editing the expected value, using the observed bit as the expected value, opening Design to inspect wiring, rerunning Compare, and selecting the first mismatch. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint.
 
 6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed before the first run. After a run, that summary is demoted so PASS/FAIL state, first mismatch, expected/observed values, and waveform evidence are the first-order objects.
 
@@ -68,6 +68,8 @@ The Verify evidence signature is tied to the same normalized current-project has
 
 `ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
+`ide:gate:scratch-testbench-repair-flow` guards the scratch-build failure-recovery path for a FullAdder plus extra OR logic design. It requires Observe -> save observed outputs -> Compare PASS, intentional wrong expected-output FAIL, visible first-mismatch repair strip, `Use observed`, repaired PASS, stale expected-output edit detection after PASS, and Export E0 trust boundary at `1366x768` and `1440x900`.
+
 `ide:gate:custom-clock-sequential-truth` guards the current clock policy boundary: `CLK100MHZ` board clocks auto-run, manual switch/button clocks stay manual-pulses, imported sim-only Clock components stay import-only/manual, and a non-starter board-clock sequential fixture reaches Verify/Export browser E0 proof.
 
 `ide:gate:verify-counter-repeat-compare-stability` guards repeated Verify run completion for the `2-Bit Up Counter (Basys3)` path. It requires Observe, repeated Compare PASS using the same deterministic report hash with fresh run timestamps, intentional expected-output FAIL, repair PASS, and post-repair repeated PASS without leaving the command deck, waveform run state, or run button visibly stuck in `RUNNING`.
@@ -75,7 +77,7 @@ The Verify evidence signature is tied to the same normalized current-project has
 When a current run becomes stale, the copy must say why:
 
 1. `Design changed - rerun Compare`
-2. `Testbench changed - rerun Compare`
+2. `Testbench changed - rerun Compare` (including expected-output edits after a Compare PASS)
 3. Mapping-driven downstream review in Export / Hardware when bindings changed
 
 For sequential circuits, current proof still requires useful timing stimulus, but Basys3 board clocks now provide that stimulus automatically by default. Imported or legacy explicit `role:"sim"` Clock components are import-only in this release: Verify must not describe them as `CLK100MHZ` / `W5` board clocks, and students should replace them with the `CLK100MHZ` board resource before trusting auto Verify or Export. Manual clock rows remain an override/debug path and are explicitly labeled for switch/button-clocked hardware designs. Latch-control designs use the same panel but describe the control signal instead of a generic clock.

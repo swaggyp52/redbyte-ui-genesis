@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-01 (fix: improve scratch testbench repair flow)
+
+**Subsystem:** Round 14A scratch-build/testbench repair UX, Verify first-mismatch repair strip, expected-output stale detection, focused browser gate, and local classroom-loop proof.
+
+**Changes:**
+- Added `docs/product/SCRATCH_BUILD_TESTBENCH_REPAIR_GAP_MAP.md` to translate the product complaint into scratch design creation, testbench creation, failure diagnosis, repair workflow, and Export confidence gaps.
+- Added `ide:gate:scratch-testbench-repair-flow`, a real-browser gate for `1366x768` and `1440x900` that builds a scratch FullAdder plus extra OR logic path, authors saved expected outputs, forces a wrong expected-output failure, repairs with `Use observed`, verifies stale expected-output edits after PASS, and checks Export E0 trust boundaries.
+- Added a compact Verify repair strip for failing Compare runs. It exposes the failed case, failed signal, expected value, observed value, input vector, first-mismatch action, Edit expected, Use observed, Inspect Design, and Rerun Compare without pushing waveform evidence below the classroom viewport contract.
+- Added expected-output reference stale detection so editing saved expected values after a PASS shows `Testbench changed - rerun Compare` even when the scratch path has no active scenario object.
+- Added focused Verify surface regressions for the direct repair path and expected-output stale detection.
+
+**Evidence:** The intentional red browser run first failed waiting for `ide-verify-repair-panel`; after the repair strip was added, the gate caught the separate stale expected-output gap by waiting for `ide-verify-primary-status-rerun`. After reference-signature stale detection and the compact repair-strip layout fix, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow` passed. Local browser artifacts are under `.redbyte/product-immersion/scratch-testbench-repair-flow/`; intermediate layout debug artifacts are under `.redbyte/product-immersion/round14-debug*/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow`, focused Vitest `verifySurface.workstation.test.tsx` + `verifySurface-fail-state.test.tsx` + `VerifyFailureExplanationPanel.test.tsx` (`53` tests), `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, `corepack pnpm -s ide:gate:verify-evidence-workbench-integrity`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:project-command-center`, `corepack pnpm -s ide:gate:project-loaded-command-surface`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:build-fresh-after-import-replacement`, `corepack pnpm -s ide:gate:build-fresh-replacement-integrity`, and the full `corepack pnpm -s classroom:gate` (`PASS all steps`, `662790ms`).
+
+**Safety:** Browser E0 scratch/testbench repair UX only. This does not change simulator logic semantics, pin mapping semantics, generated export artifacts, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, production behavior, or proof-tier claims. The repair proves a FullAdder plus extra logic scratch path, not broad complicated-design diagnosis or true long-session stability.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed.
+
+**Next recommended task:** Wrong-build diagnosis and guided repair should be the next product slice: use the same scratch authoring path, but make incorrect circuit wiring explainable and repairable rather than only repairing wrong expected-output values.
+
 ## Change Log 2026-07-01 (fix: restore task workbench first-viewport dominance)
 
 **Subsystem:** Round 13A-Fix4 release-green recovery, shared next-step guide rail placement, Design/Verify/Hardware/Export first-viewport contracts, and local Classroom Truth Gates proof discipline.

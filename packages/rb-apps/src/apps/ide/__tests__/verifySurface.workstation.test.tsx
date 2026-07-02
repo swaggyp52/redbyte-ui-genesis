@@ -232,6 +232,83 @@ function makeSparseSequentialRun(): RuntimeVerifyRun {
 describe('VerifySurface workstation controls', () => {
   afterEach(() => { cleanup(); });
 
+  it('surfaces a direct repair path when Compare fails on a saved expected value', () => {
+    const onVectorsChange = vi.fn();
+    const onRunVerification = vi.fn();
+    const onGoToDesign = vi.fn();
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+        ]}
+        lastRun={makeFailRun()}
+        onVectorsChange={onVectorsChange}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+        onGoToDesign={onGoToDesign}
+      />
+    );
+
+    const { getByTestId } = view;
+    expect(getByTestId('ide-verify-repair-title').textContent).toContain('Compare failed');
+    expect(getByTestId('ide-verify-repair-case').textContent).toContain('Case 2');
+    expect(getByTestId('ide-verify-repair-signal').textContent).toContain('LD0');
+    expect(getByTestId('ide-verify-repair-expected').textContent).toContain('1');
+    expect(getByTestId('ide-verify-repair-observed').textContent).toContain('0');
+    expect(getByTestId('ide-verify-repair-inputs').textContent).toContain('SW0=1');
+
+    fireEvent.click(getByTestId('ide-verify-repair-open-design'));
+    expect(onGoToDesign).toHaveBeenCalled();
+
+    fireEvent.click(getByTestId('ide-verify-repair-use-observed'));
+    expect(onVectorsChange).toHaveBeenCalledWith([
+      { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+      { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+    ]);
+
+    fireEvent.click(getByTestId('ide-verify-repair-rerun'));
+    expect(onRunVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assertionMode: true,
+        runKind: 'verify',
+      })
+    );
+  });
+
+  it('marks a saved-check edit stale after PASS even without an active scenario object', () => {
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 0 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', label: 'SW0', direction: 'in' },
+          { id: 'ld0', label: 'LD0', direction: 'out' },
+        ]}
+        lastRun={makePassRun()}
+        onOpenProjectVectors={vi.fn()}
+        onRunVerification={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-verify-primary-status-callout').textContent).toContain(
+      'Testbench changed - rerun Compare'
+    );
+    expect(view.getByTestId('ide-verify-primary-status-rerun')).toBeTruthy();
+  });
+
   it('focuses first-run compare guidance on the current vectors instead of generator tooling', () => {
     const view = render(
       <VerifySurface

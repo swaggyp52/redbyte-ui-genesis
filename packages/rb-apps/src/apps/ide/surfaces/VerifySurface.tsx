@@ -2409,6 +2409,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? `Fail ${currentFailIndex + 1} / ${failTicksSorted.length}`
         : `${failTicksSorted.length} fail tick${failTicksSorted.length !== 1 ? 's' : ''}`
       : null;
+  const selectedFailureRepairCaseLabel =
+    selectedFailureExplanationCase?.caseIndex !== undefined &&
+    selectedFailureExplanationCase.caseIndex !== null
+      ? `Case ${selectedFailureExplanationCase.caseIndex + 1}`
+      : selectedFailureExplanationCase
+        ? `Tick ${selectedFailureExplanationCase.tick}`
+        : null;
 
   const goToPrevFail = () => {
     if (failTicksSorted.length === 0) return;
@@ -2711,6 +2718,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : typeof lastRun.scenarioStimulusHash === 'string' && lastRun.scenarioStimulusHash.trim().length > 0
             ? lastRun.scenarioStimulusHash.trim()
           : null;
+  const currentVectorReferenceSignature = useMemo(
+    () => buildVectorReferenceSignature([...authoredVectors, ...customVectors]),
+    [authoredVectors, customVectors]
+  );
+  const lastRunVectorReferenceSignature = useMemo(() => {
+    if (!lastRun) return null;
+    const lastRunVectors = lastRun.report.vectors ?? [];
+    const currentVectorCount = authoredVectors.length + customVectors.length;
+    if (lastRunVectors.length !== currentVectorCount) return null;
+    return buildVectorReferenceSignature(lastRunVectors);
+  }, [authoredVectors.length, customVectors.length, lastRun]);
 
   // Scenario-stale detection: same scenario, vectors edited since last run.
   // Condition: activeScenario hash differs from what was hashed at run time.
@@ -2729,6 +2747,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     activeScenario !== undefined &&
     activeScenario !== null &&
     lastRun.scenarioId !== activeScenario.id;
+  const isTestbenchStale =
+    lastRun !== undefined &&
+    (isScenarioStale ||
+      (lastRunVectorReferenceSignature !== null &&
+        currentVectorReferenceSignature !== lastRunVectorReferenceSignature)) &&
+    !isWrongScenario;
 
   // "Switch back" CTA: only if the scenario that produced the run still exists in the library.
   // Constraint: never show a broken switch-back button for a deleted scenario.
@@ -3858,7 +3882,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
 
-    if (isScenarioStale && !isRunStale) {
+    if (isTestbenchStale && !isRunStale) {
       return {
         tone: 'info',
         title: 'Testbench changed - rerun Compare',
@@ -3906,7 +3930,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     hasStaleAuthoredReference,
     isNoCircuitTaskFirst,
     isRunStale,
-    isScenarioStale,
+    isTestbenchStale,
     isWrongScenario,
     lastRun?.qualification,
     lastRunScenarioId,
@@ -4203,6 +4227,119 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return 'Custom pattern mode uses the clock lane so you can paint the exact timing sequence.';
   }, [boardClockBinding, effectiveClockPolicy, isSequentialRun]);
+
+  const repairPanel = hasSessionFailureEvidence && selectedFailureExplanationCase ? (
+    <section
+      className="ide-verify-repair-panel"
+      data-testid="ide-verify-repair-panel"
+      data-stale={isRunStale || isTestbenchStale ? 'true' : 'false'}
+    >
+      <header className="ide-verify-repair-panel__header">
+        <div className="ide-verify-repair-panel__copy">
+          <span
+            className="ide-verify-repair-panel__eyebrow"
+            data-testid="ide-verify-repair-title"
+          >
+            Compare failed
+          </span>
+          <strong>Fix saved check or inspect circuit.</strong>
+          <p data-testid="ide-verify-repair-next-action">
+            Start with the selected mismatch below. Update the expected value if the
+            testbench is wrong, or open Design if the wiring should be different.
+          </p>
+        </div>
+        <IdeStatusPill tone="error" data-testid="ide-verify-repair-status">
+          Needs repair
+        </IdeStatusPill>
+      </header>
+
+      <div className="ide-verify-repair-panel__facts">
+        <button
+          type="button"
+          className="ide-verify-repair-panel__fact ide-verify-repair-panel__fact-button"
+          onClick={handleJumpToFirstFailure}
+          data-testid="ide-verify-results-summary-open-fail"
+        >
+          <span>Failed case</span>
+          <strong data-testid="ide-verify-repair-case">
+            {selectedFailureRepairCaseLabel ?? 'Selected case'}
+          </strong>
+          <code>t{selectedFailureExplanationCase.tick}</code>
+        </button>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Failed signal</span>
+          <strong data-testid="ide-verify-repair-signal">
+            {selectedFailureDisplayLabel ?? selectedFailureExplanationCase.signal}
+          </strong>
+        </div>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Expected</span>
+          <strong data-testid="ide-verify-repair-expected">
+            {selectedFailureExplanationCase.expected}
+          </strong>
+        </div>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Observed</span>
+          <strong data-testid="ide-verify-repair-observed">
+            {selectedFailureExplanationCase.actual}
+          </strong>
+        </div>
+      </div>
+
+      <div className="ide-verify-repair-panel__inputs" data-testid="ide-verify-repair-inputs">
+        <span>Input vector</span>
+        {selectedFailureInputs && selectedFailureInputs.length > 0 ? (
+          <div className="ide-verify-repair-panel__chips">
+            {selectedFailureInputs.map((entry, index) => (
+              <code key={`${entry.label || 'input'}-${index}`}>
+                {entry.label}={entry.value}
+              </code>
+            ))}
+          </div>
+        ) : (
+          <code>no input snapshot available</code>
+        )}
+      </div>
+
+      <div className="ide-verify-repair-panel__actions">
+        <IdeButton
+          tone="secondary"
+          onClick={handleEditExpectedOutputs}
+          testId="ide-verify-repair-edit-expected"
+        >
+          Edit expected
+        </IdeButton>
+        <IdeButton
+          tone="primary"
+          onClick={() => handleFailureAcceptObserved(selectedFailureExplanationCase)}
+          disabled={
+            selectedFailureExplanationCase.actual !== '0' &&
+            selectedFailureExplanationCase.actual !== '1'
+          }
+          testId="ide-verify-repair-use-observed"
+        >
+          Use observed
+        </IdeButton>
+        {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
+          <IdeButton
+            tone="secondary"
+            onClick={handleGoToDesignFromVerify}
+            testId="ide-verify-repair-open-design"
+          >
+            Inspect Design
+          </IdeButton>
+        ) : null}
+        <IdeButton
+          tone="primary"
+          onClick={() => handleRunWithPreflight(true)}
+          disabled={runState === 'running'}
+          testId="ide-verify-repair-rerun"
+        >
+          Rerun Compare
+        </IdeButton>
+      </div>
+    </section>
+  ) : null;
 
   return (
     <IdeSurfaceLayout
@@ -5057,7 +5194,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
             {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
-            {lastRun ? (
+            {lastRun && !(hasSessionFailureEvidence && selectedFailureExplanationCase) ? (
               <VerifyResultsSummary
                 kind={
                   isRunStale
@@ -5139,6 +5276,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 }
               />
             ) : null}
+            {repairPanel}
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
@@ -6122,6 +6260,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     </IdeSurfaceLayout>
   );
 };
+
+function buildVectorReferenceSignature(
+  vectors: ReadonlyArray<{
+    tick?: number;
+    inputs?: Record<string, unknown>;
+    expected?: Record<string, unknown>;
+  }>
+): string {
+  return JSON.stringify(
+    vectors.map((vector, index) => ({
+      tick: Number.isFinite(Number(vector.tick))
+        ? Math.max(0, Math.floor(Number(vector.tick)))
+        : index,
+      inputs: normalizeReferenceRecord(vector.inputs ?? {}),
+      expected: normalizeReferenceRecord(vector.expected ?? {}),
+    }))
+  );
+}
+
+function normalizeReferenceRecord(record: Record<string, unknown>): Array<[string, string]> {
+  return Object.entries(record)
+    .map(([key, value]) => [normalizeFieldId(key), String(value)] as [string, string])
+    .sort(([left], [right]) => left.localeCompare(right));
+}
 
 function normalizeVectors(
   vectors: VerifySurfaceProps['vectors'],
