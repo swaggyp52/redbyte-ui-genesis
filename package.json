@@ -65,6 +65,7 @@
         "ide:gate:custom-clock-sequential-truth": "node ./scripts/gates/ide-custom-clock-sequential-truth.mjs",
         "ide:gate:scratch-testbench-repair-flow": "node ./scripts/gates/ide-scratch-testbench-repair-flow.mjs",
         "ide:gate:wrong-build-diagnosis-repair-flow": "node ./scripts/gates/ide-wrong-build-diagnosis-repair-flow.mjs",
+        "ide:gate:complex-build-signal-trace-debugging": "node ./scripts/gates/ide-complex-build-signal-trace-debugging.mjs",
         "ide:gate:verify-counter-repeat-compare-stability": "node ./scripts/gates/ide-verify-counter-repeat-compare-stability.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",

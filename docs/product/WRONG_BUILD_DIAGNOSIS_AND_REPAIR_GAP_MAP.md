@@ -50,6 +50,18 @@ Required behavior:
 - The next visible action must be Rerun Compare.
 - Export must not present stale Verify evidence as trusted current evidence.
 
+## Gap 5: Multi-Stage Signal Trace
+
+Scenario: the student builds a larger scratch circuit, such as a full-adder-style sum path, and the failed output is driven through more than one gate.
+
+Required behavior:
+- Design should keep the direct-driver facts from Round 14B.
+- Design should also show the bounded upstream path feeding the failed output so the student can inspect the intermediate gate and input sources.
+- The trace must be worded as graph connectivity, not automatic root-cause proof.
+- Students should be able to focus each traced node from the failure context.
+
+Current local proof: `ide:gate:complex-build-signal-trace-debugging` proves this for a two-stage wrong sum path at `1366x768` and `1440x900`. It is browser-E0/local proof only until pushed and deployed.
+
 ## Round 14B Slice Boundary
 
 This slice proves a browser-E0 wrong-gate repair path:
@@ -64,3 +76,5 @@ This slice proves a browser-E0 wrong-gate repair path:
 8. Open Export and keep the E0 trust boundary visible.
 
 This does not prove a formal debugger, arbitrary large-design root-cause analysis, Vivado E1, bitstream E2, board observation E3, instructor grading, LMS, auth, or production behavior for Round 14B.
+
+The follow-up Product Reality Sprint signal-trace slice extends this map for one multi-stage browser-E0 case, but it still does not prove arbitrary debugging coverage, Vivado E1, bitstream E2, board observation E3, instructor grading, LMS, auth, or production behavior.

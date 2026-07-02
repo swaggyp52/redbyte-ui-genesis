@@ -19,7 +19,7 @@ import {
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
-import { getFaninCone, getFanoutCone } from '../pathTrace';
+import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -3816,6 +3816,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       wireId: `${from.nodeId}.${from.portName}-${directTo.nodeId}.${directTo.portName}`,
     };
   }, [activeDebugContext, debugLinkedSignalKey, editorCircuit, ioRowByNodeId, ioRows, resolveConnectionEndpoint]);
+  const activeDebugSignalTrace = useMemo(() => {
+    if (!activeDebugRepairContext?.signalKey) return null;
+    return buildDesignDebugSignalTrace(editorCircuit, {
+      targetSignalKey: activeDebugRepairContext.signalKey,
+      maxDepth: 4,
+      resolveNodeLabel: (node, nodeId) => describeEndpointLabel(nodeId, node, ioRowByNodeId.get(nodeId)),
+      resolveNodeTypeLabel: (node) => (node ? nodeTypeLabel(node.type) : 'Signal'),
+    });
+  }, [activeDebugRepairContext?.signalKey, editorCircuit, ioRowByNodeId]);
   const focusActiveInspectorSignalNode = useCallback(() => {
     if (!activeInspectorSignalLandingTarget) return;
     setToolMode('select');
@@ -6923,6 +6932,63 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <code data-testid="ide-design-debug-context-wire">{activeDebugRepairContext.wireId}</code>
                         ) : null}
                       </div>
+                      {activeDebugSignalTrace ? (
+                        <div className="ide-design-debug-trace-panel" data-testid="ide-design-debug-trace-panel">
+                          <div className="ide-design-debug-trace-header">
+                            <span className="ide-design-debug-context-eyebrow">Signal trace</span>
+                            <strong>Follow the highlighted upstream path before changing expected values.</strong>
+                            <span>
+                              This is not automatic root-cause proof; it shows what feeds{' '}
+                              <code>{activeDebugSignalTrace.targetLabel}</code> so the next gate or wire is inspectable.
+                            </span>
+                          </div>
+                          <ol className="ide-design-debug-trace-list">
+                            {activeDebugSignalTrace.nodes.map((traceNode) => (
+                              <li
+                                key={traceNode.nodeId}
+                                className={`ide-design-debug-trace-row${
+                                  traceNode.depth === 0 ? ' is-target' : ''
+                                }${traceNode.openInputPorts.length > 0 ? ' has-open-inputs' : ''}`}
+                                data-testid={`ide-design-debug-trace-node-${traceNode.nodeId}`}
+                              >
+                                <span className="ide-design-debug-trace-depth">
+                                  {traceNode.depth === 0 ? 'failed output' : `upstream ${traceNode.depth}`}
+                                </span>
+                                <span className="ide-design-debug-trace-identity">
+                                  <strong>{traceNode.label}</strong>
+                                  <small>{traceNode.typeLabel}</small>
+                                </span>
+                                <span className="ide-design-debug-trace-feed">
+                                  {traceNode.upstreamLabels.length > 0 ? (
+                                    <>
+                                      upstream:{' '}
+                                      <code>{traceNode.upstreamLabels.join(', ')}</code>
+                                    </>
+                                  ) : (
+                                    'source or un-driven endpoint'
+                                  )}
+                                </span>
+                                {traceNode.openInputPorts.length > 0 ? (
+                                  <span className="ide-design-debug-trace-open-inputs">
+                                    open input: <code>{traceNode.openInputPorts.join(', ')}</code>
+                                  </span>
+                                ) : null}
+                                <IdeButton
+                                  tone="ghost"
+                                  onClick={() => {
+                                    setToolMode('select');
+                                    selectMultipleNodes([traceNode.nodeId], false);
+                                    focusNodeOnCanvas(traceNode.nodeId);
+                                  }}
+                                  testId={`ide-design-debug-trace-focus-${traceNode.nodeId}`}
+                                >
+                                  Focus
+                                </IdeButton>
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
                       <div className="ide-design-debug-context-actions">
                         {activeDebugRepairContext?.driverNodeId ? (
                           <IdeButton

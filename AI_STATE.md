@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-02 (fix: prove complex build signal trace debugging)
+
+**Subsystem:** Product Reality Sprint, student friction audit, Verify -> Design failed-Compare handoff, bounded upstream signal tracing, Design debug trace panel, focused browser gate, and current-doc release-reality correction.
+
+**Changes:**
+- Added `docs/product/REDBYTE_PRODUCT_REALITY_SPRINT.md` to translate the product complaint into one product-reality sprint, record the hardening ticket, choose Option A, and keep E0/E1/E2/E3 boundaries explicit.
+- Added `docs/product/REDBYTE_STUDENT_FRICTION_AUDIT.md` to rank current student friction across Project, Design, Verify, Hardware, Export, and Import.
+- Added `buildDesignDebugSignalTrace()` in `pathTrace.ts` plus a focused Vitest regression proving a two-stage failed output trace walks from `SUM_OUT` through the wrong direct driver, intermediate XOR, carry-in, and source inputs.
+- Added a compact Design `Signal trace` panel inside the failed-Compare debug context. It shows bounded upstream rows, upstream labels, open input clues when available, and per-node Focus actions without claiming formal root cause.
+- Added `ide:gate:complex-build-signal-trace-debugging`, a real-browser gate that builds a scratch two-stage full-adder-style sum path with a wrong final `OR`, authors correct expected outputs, fails Compare, opens Design, and proves the signal-trace panel at `1366x768` and `1440x900`.
+- Updated current docs and surface specs to route this slice through the product reality sprint docs, current-truth cockpit, work queue, system map, Design spec, Verify spec, test/gate ownership, doc index, and wrong-build gap map.
+- Corrected current-truth wording that still described Round 14B as local-only; Round 14B was already production/deployed at `9826a77a77c008bc8f5a963051300ac57bc58a5c` before this local slice.
+
+**Evidence:** The required red focused test first failed because `buildDesignDebugSignalTrace` did not exist. After implementation, the same trace test passed. The new browser gate then passed and wrote local proof under `.redbyte/product-immersion/complex-build-signal-trace-debugging/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-complex-build-signal-trace-debugging.mjs`, `corepack pnpm --filter @redbyte/playground build`, focused Vitest `pathTrace.debugTrace.test.ts` + `pathTrace.fanout.test.ts` (`7` tests), `corepack pnpm -s ide:gate:complex-build-signal-trace-debugging`, `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow`, `corepack pnpm -s ide:gate:student-task-completion-flow`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser E0 complex-build debugging affordance only. This does not change simulator semantics, Verify comparison semantics, pin mapping, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts/LMS/grading, or proof-tier claims. It does not prove arbitrary automatic root-cause localization.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the Product Reality Sprint slice.
+
+**Next recommended task:** If this local slice is accepted, run a sync checkpoint before starting more product work. After sync, the next product slice should be Testbench Editor Simplification unless the user explicitly prioritizes Vivado/Basys3 E1/E2/E3 proof restoration.
+
 ## Change Log 2026-07-02 (fix: prove wrong-build diagnosis repair flow)
 
 **Subsystem:** Round 14B wrong-circuit diagnosis, Verify failure repair lanes, Verify -> Design mismatch handoff, Design direct-driver context, stale Compare rerun copy, focused browser gate, and current-doc routing.

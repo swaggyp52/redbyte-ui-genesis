@@ -50,7 +50,7 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 
 - **Workbench header**: `ide-design-workspace-header` is the top owner. It carries the `Design` label, mode headline (Canvas / Code / Split / replay-linked variants), and the existing primary / secondary CTAs. The old standalone Design command strip does not exist anymore.
 - **Control bar**: one tools row plus compact status ownership. The expanded tool cluster (`ide-design-toolbar-expanded`) is an anchored popup, not a stacked band. Verify-linked sessions still surface `Verify focus …` via `data-testid="ide-design-verify-focus"` in the simulation strip when that story is active.
-- **Verify mismatch brief and repair context**: when Verify opens Design on a failed comparison, `VerifyDebugContext` carries the signal key, student label, expected/observed bits, tick/case context, input snapshot, and next-inspection hint. Design renders that as a student-facing brief and, when graph tracing is available, a direct failed-output driver context with driver type, wire counts, and a Focus driver action. It must not claim formal root cause when the graph cannot trace a direct driver.
+- **Verify mismatch brief and repair context**: when Verify opens Design on a failed comparison, `VerifyDebugContext` carries the signal key, student label, expected/observed bits, tick/case context, input snapshot, and next-inspection hint. Design renders that as a student-facing brief and, when graph tracing is available, a direct failed-output driver context with driver type, wire counts, and a Focus driver action. Design also renders a bounded upstream signal-trace panel for multi-stage failures, with per-node Focus actions and open-input clues when available. It must not claim formal root cause when the graph cannot trace a direct driver or when a trace only proves connectivity.
 - **Workbench**: support rails are narrower, and code / split default both rails to collapsed overlay handles so the workspace keeps its full width. The left palette order is `Board -> IO -> Logic -> Sequential -> Reusable`; `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately available. The idle inspector stays secondary, but its default state is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts plus an empty-canvas branch.
 
 ### Hardware chrome (layout system)
@@ -87,7 +87,7 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 - **Auto-clock runtime policy**: `projectRuntime.ts` materializes board-clock cycles before deterministic verify executes, so sequential runs keep one authority chain: authored data inputs, explicit clock policy, deterministic runtime vectors, report, then waveform. Auto board clock runs do not require authored `CLK100MHZ` pulse rows.
 - **Verify evidence freshness**: `projectRuntime.ts::runVerification()` records the same normalized current-project hash that `buildCurrentVerifyProjectHash()` derives for workflow authority. The signature covers circuit, project vectors, custom vectors, and project I/O mapping while ignoring vector UI IDs, so helper-generated clock rows settle to current evidence after the run instead of immediately going stale.
 - **Specific stale reasons**: Verify no longer falls back to a generic rerun prompt when the authority already knows the drift source. The student-facing stale states distinguish **Design changed - rerun Compare**, **Testbench changed - rerun Compare**, and mapping-driven downstream review.
-- **Wrong-build repair lane**: a failed Compare must separate expected/testbench repair from design repair. The design lane opens Design with mismatch context, lets the student focus the directly traced driver when available, and returns to Verify where current evidence is stale until Compare passes again.
+- **Wrong-build repair lane**: a failed Compare must separate expected/testbench repair from design repair. The design lane opens Design with mismatch context, lets the student focus the directly traced driver when available, shows a bounded upstream trace for multi-stage paths, and returns to Verify where current evidence is stale until Compare passes again.
 
 ---
 
@@ -229,6 +229,7 @@ User picks file
 | `ide-design-io-panel-contract.mjs` | Live inputs panel renders and toggles |
 | `ide-design-live-sim-contract.mjs` | Simulation ticks advance and pause |
 | `ide-design-no-bridge-required.mjs` | Design loads the Logic Gates starter without bridge fatal copy or any local bridge request before Hardware mode |
+| `ide-complex-build-signal-trace-debugging.mjs` | Multi-stage scratch wrong-build Compare failure opens Design with bounded upstream signal trace and focus actions |
 | `ide-export-generates-hdl.mjs` | Export produces VHDL with entity/architecture |
 | `ide-export-ready-contract.mjs` | Export shows correct blocked/ready state |
 | `ide-export-trust-integrity.mjs` | Export trust gate proves visible previews, ZIP entries, README/provenance, and E0/E1/E2/E3 wording agree |

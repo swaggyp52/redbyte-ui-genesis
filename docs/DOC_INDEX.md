@@ -67,6 +67,8 @@ When docs conflict:
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
 | [product/GANNON_PILOT_READINESS.md](./product/GANNON_PILOT_READINESS.md) | Gannon pilot readiness boundary: browser-E0 pilot target vs not-sell-ready claims |
 | [product/GANNON_PILOT_GAP_MAP.md](./product/GANNON_PILOT_GAP_MAP.md) | Gannon pilot adoption gaps across student flow, stability, hardware proof, instructor operations, and commercial posture |
+| [product/REDBYTE_PRODUCT_REALITY_SPRINT.md](./product/REDBYTE_PRODUCT_REALITY_SPRINT.md) | Current student-usable Vivado-grade builder sprint record and selected complex-build debugging slice |
+| [product/REDBYTE_STUDENT_FRICTION_AUDIT.md](./product/REDBYTE_STUDENT_FRICTION_AUDIT.md) | Ranked student friction audit across Project, Design, Verify, Hardware, Export, and Import |
 | [product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md](./product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md) | Wrong-circuit diagnosis and guided repair map for failed Compare -> Design driver context -> repair -> rerun Compare |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |
@@ -238,6 +240,7 @@ The primary package under active development is `packages/rb-apps`. Other packag
 - The 2026-06-13 V1 product contract reset remains the active near-term product route. Use `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`, the V1 visual audit, and the V1 execution program before starting new product code.
 - The normal-use breakage audit found Export artifact preview visibility and Import utility-access ambiguity; both are now closed by `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, and `ide:gate:import-recovery-contract`.
 - The 2026-06-12 whole-app product immersion audit remains historical baseline input, and the 2026-06-13 V1 visual audit is the current screenshot-backed reset evidence.
+- The 2026-07-02 Product Reality Sprint is the current student-friction audit layer. Its local code slice proves browser-E0 upstream signal-trace debugging for a two-stage wrong sum path; it does not prove Vivado E1, bitstream E2, board observation E3, or long-session stability.
 - The 2026-06-12 general lab workbench audit is the current gate-truth and platform-generalization baseline. It proves only E0 browser/runtime behavior for a small blank AND workflow, not Vivado or hardware behavior.
 - The user explicitly reprioritized visual stewardship on 2026-06-12; keep visual work scoped to the ordered V1 queue rather than broad polish.
 - Verify fail-edit-repair is covered by `ide:gate:verify-fail-edit-repair`, Verify Evidence Workbench is covered by `ide:gate:verify-evidence-workbench-integrity`, the first lab-profile/course-pack seam is covered by `lab:profile-contract`, and current student/instructor/TA quickstarts live under `docs/course/`. The next implementation slice is Vivado/Basys3 Proof Restoration.
