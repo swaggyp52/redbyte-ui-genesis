@@ -1455,6 +1455,108 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       detail: 'Toggle the expected controls and record physical LED/output behavior before making any behavior-certified claim.',
     },
   ];
+  const exportConfidenceReady =
+    exportTrusted ||
+    handoffTruth.condition === 'export-missing' ||
+    handoffTruth.condition === 'ready';
+  const exportConfidencePill = exportTrusted
+    ? 'Trusted E0'
+    : handoffTruth.condition === 'export-missing'
+      ? 'Ready E0'
+      : exportBlocked
+        ? 'Blocked'
+        : 'Draft';
+  const exportConfidenceRows = useMemo(() => {
+    const verifyTone =
+      hasVerifyPass
+        ? ('ok' as const)
+        : verifyResult?.status === 'fail'
+          ? ('error' as const)
+          : ('warn' as const);
+    const verifyStatus = hasVerifyPass
+      ? 'Current Compare PASS'
+      : isVerifyStale
+        ? 'Stale - rerun Compare'
+        : isTraceOnly
+          ? 'Observe only - no Compare proof'
+          : verifyResult?.status === 'fail'
+            ? 'Compare FAIL'
+            : 'Not run';
+    const verifyDetail = hasVerifyPass
+      ? 'Saved expected outputs matched observed outputs for this current design hash.'
+      : isVerifyStale
+        ? 'The design, testbench, or mapping changed after the last trusted run.'
+        : verifyResult?.status === 'fail'
+          ? 'Fix expected outputs or the design before treating this package as trusted.'
+          : verifyPlain;
+    const mappingReady = requiredCount === 0 || requiredMappedCount === requiredCount;
+    const packageStatus = exportTrusted
+      ? 'Trusted E0 package'
+      : handoffTruth.condition === 'export-missing'
+        ? 'Ready to build E0 package'
+        : exportBlocked
+        ? 'Blocked draft'
+        : isDraftExport
+          ? 'Draft package - not trusted'
+          : 'Needs rebuild';
+    const packageDetail = exportTrusted
+      ? 'The current browser-E0 bundle matches Verify and mapping; Vivado build, bitstream, and board behavior remain external.'
+      : handoffTruth.condition === 'export-missing'
+        ? 'Verify and mapping are current enough to build the browser-E0 ZIP; the ZIP is not Vivado or board proof.'
+      : 'Files may be inspectable, but this is not a current trusted handoff yet.';
+
+    return [
+      {
+        id: 'verify',
+        label: 'Verify evidence',
+        status: verifyStatus,
+        detail: verifyDetail,
+        tone: verifyTone,
+      },
+      {
+        id: 'mapping',
+        label: 'Pin mapping',
+        status: mappingReady ? 'Mapping current' : 'Mapping missing',
+        detail: mappingPlain,
+        tone: mappingReady ? ('ok' as const) : ('error' as const),
+      },
+      {
+        id: 'package',
+        label: 'Package trust',
+        status: packageStatus,
+        detail: packageDetail,
+        tone: exportConfidenceReady ? ('ok' as const) : exportBlocked ? ('error' as const) : ('warn' as const),
+      },
+      {
+        id: 'vivado',
+        label: 'Vivado build',
+        status: 'Not run in RedByte',
+        detail: 'Run synthesis, implementation, and bitstream generation outside RedByte before claiming E1.',
+        tone: 'warn' as const,
+      },
+      {
+        id: 'board',
+        label: 'Board behavior',
+        status: 'Not observed',
+        detail: 'Physical Basys3 behavior still requires manual board observation before claiming E3.',
+        tone: 'warn' as const,
+      },
+    ];
+  }, [
+    exportBlocked,
+    exportConfidenceReady,
+    exportTrusted,
+    hasVerifyPass,
+    handoffTruth.condition,
+    isDraftExport,
+    isTraceOnly,
+    isVerifyStale,
+    mappingPlain,
+    requiredCount,
+    requiredMappedCount,
+    verifyPlain,
+    verifyResult?.status,
+  ]);
   const vivadoWarningClasses = [
     'expected/no-clock/combinational',
     'needs RedByte explanation',
@@ -1727,6 +1829,34 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.
                 </p>
               </div>
+              <section
+                className="ide-export-confidence-station"
+                data-testid="ide-export-confidence-station"
+                aria-label="Export confidence station"
+              >
+                <header className="ide-export-confidence-station__header">
+                  <div>
+                    <p className="ide-surface-block-label">Confidence station</p>
+                    <h3>What this handoff proves</h3>
+                  </div>
+                  <IdeStatusPill tone={exportConfidenceReady ? 'ok' : exportBlocked ? 'error' : 'warn'}>
+                    {exportConfidencePill}
+                  </IdeStatusPill>
+                </header>
+                <div className="ide-export-confidence-grid">
+                  {exportConfidenceRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className={`ide-export-confidence-row ide-export-confidence-row--${row.tone}`}
+                      data-testid={`ide-export-confidence-${row.id}`}
+                    >
+                      <span>{row.label}</span>
+                      <strong>{row.status}</strong>
+                      <p>{row.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
               <div className="ide-export-package-inspector-v1__actions">
                 <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
                 <IdeButton
@@ -2133,7 +2263,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                           <div className="ide-export-artifact-preview ide-export-artifact-preview-v2">
                             <div className="ide-export-artifact-preview-header">
                               <div className="ide-export-artifact-preview-title">
-                                <span data-testid="ide-export-preview-path">{selectedArtifact.path}</span>
+                                <span data-testid="ide-export-generated-preview-path">{selectedArtifact.path}</span>
                                 <span>{selectedArtifact.note}</span>
                               </div>
                               <div style={{ display: 'flex', gap: 'var(--ide-space-1)' }}>
@@ -2162,7 +2292,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                               {selectedArtifact.preview.trim().length > 0 ? (
                                 <pre
                                   className="ide-export-artifact-code"
-                                  data-testid="ide-export-preview-code"
+                                  data-testid="ide-export-generated-preview-code"
                                   dangerouslySetInnerHTML={{
                                     __html: syntaxHighlight(
                                       selectedArtifact.preview ?? '',

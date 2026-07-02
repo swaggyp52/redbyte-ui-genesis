@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-02 (fix: simplify testbench repair and export confidence)
+
+**Subsystem:** Summer Rescue Sprint, Verify testbench authoring/repair, Export confidence station, classroom release guard, product friction audit, and current-doc routing.
+
+**Changes:**
+- Added `docs/product/REDBYTE_SUMMER_RESCUE_AUDIT.md` to record the hard product truth, ranked friction audit, chosen small fix package, and remaining RedByte product gaps while preserving Connor Angiel attribution.
+- Added a first-run Verify concept strip that names the testbench loop as `Inputs to try`, `Expected outputs`, `Observed outputs`, and `Status` without changing simulator semantics.
+- Added scoped `Use observed` repair controls for the selected failed cell, selected row, and all failed outputs, plus a compact scope summary so students can recover from wrong expected values without rebuilding the testbench.
+- Added an Export confidence station inside the package inspector header. It separates current Verify evidence, pin mapping, package E0 readiness/trust, Vivado not run, and board not observed.
+- Corrected Export confidence copy so a not-yet-downloaded current package says `Ready E0`, while `Trusted E0` is reserved for the current generated bundle.
+- Added `ide:gate:testbench-editor-and-export-confidence-flow` and wired it into `classroom:gate` and `verify:gates:classroom`.
+- Updated Verify, Export, test/gate ownership, active-work, current-truth, and doc-index docs for the new local browser-E0 proof boundary.
+
+**Evidence:** The new browser gate proves a nontrivial starter design can author four testbench cases, observe expected/observed evidence, intentionally create two wrong expected outputs, repair one cell, repair a row, repair all failed outputs, detect stale testbench edits, and return Export to current E0 confidence without claiming Vivado/bitstream/board proof. Proof artifacts are local under `.redbyte/product-immersion/testbench-editor-and-export-confidence-flow/`. The full classroom aggregate also caught layout/testability regressions during development: post-run waveform compression, Export package inspector vertical pressure, and duplicate `ide-export-preview-code` test ids. Those were fixed before closeout.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-testbench-editor-and-export-confidence-flow.mjs`, `node --check scripts/classroom-gate.mjs`, `node --check scripts/verify-gates-classroom.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:export-package-inspector`, focused Verify Vitest (`5` files, `73` tests), focused Export Vitest (`5` files, `54` tests), full `corepack pnpm -s classroom:gate` (`PASS all steps`, `782337ms`), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser-E0 usability and proof-surface work only. No simulator truth-table semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, pin mapping semantics, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the Summer Rescue Sprint slice.
+
+**Next recommended task:** If this local slice is accepted, run a sync/release checkpoint and production reproof before starting more product work. The next product slices should target wrong-wire/disconnected-output diagnosis, graph readability for complicated builds, professor ZIP review, and true Vivado/bitstream/board proof.
+
 ## Change Log 2026-07-02 (test: add complex signal trace to classroom gate)
 
 **Subsystem:** Product Reality Sprint validation correction, classroom release guard ownership, broad classroom verifier ownership, and sync-readiness proof for complex-build signal tracing.

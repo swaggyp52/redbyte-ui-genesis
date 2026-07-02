@@ -183,6 +183,33 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   const firstRunPlanCopy = showsAssertedExpectedCells
     ? 'Current stimulus and checks are ready. Run Verify for evidence, or open the editor if the cases need changes.'
     : 'Current stimulus is ready. Run Verify for evidence, or open the editor if the cases need changes.';
+  const testbenchStatusCopy = showsAssertedExpectedCells
+    ? 'Status appears after Compare: PASS means every filled expected output matched; FAIL names the rows to repair.'
+    : 'Status appears after Observe or Compare. Empty expected cells are not checks yet.';
+  const testbenchConceptStrip = (
+    <div className="ide-testbench-concept-strip" data-testid="ide-testbench-editor-map">
+      <div className="ide-testbench-concept" data-testid="ide-testbench-section-inputs">
+        <span>Inputs to try</span>
+        <strong>Drive switches, buttons, and clock rows.</strong>
+        <p>Each case is one column. Click cells to set the stimulus the circuit should see.</p>
+      </div>
+      <div className="ide-testbench-concept" data-testid="ide-testbench-section-expected">
+        <span>Expected outputs</span>
+        <strong>Fill only the outputs you want Compare to check.</strong>
+        <p>Expected cells are your answer key. A blank cell stays Observe-only.</p>
+      </div>
+      <div className="ide-testbench-concept" data-testid="ide-testbench-section-observed">
+        <span>Observed outputs</span>
+        <strong>Shown in the waveform after Observe or Compare.</strong>
+        <p>Use observed values when the design is right and the expected answer is wrong.</p>
+      </div>
+      <div className="ide-testbench-concept" data-testid="ide-testbench-section-status">
+        <span>Status</span>
+        <strong>{showsAssertedExpectedCells ? 'Compare checks are active.' : 'No saved checks yet.'}</strong>
+        <p>{testbenchStatusCopy}</p>
+      </div>
+    </div>
+  );
 
   const renderStimulusHeader = (isWorkbench: boolean) => (
     <div
@@ -408,6 +435,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           <div className="ide-verify-stimulus-assist-slot">{stimulusAssist}</div>
         ) : null}
         {runSummary ? <div className="ide-verify-run-summary-slot">{runSummary}</div> : null}
+        {testbenchConceptStrip}
 
         {isUsingFallbackSignals ? (
           <div className="ide-verify-sync-warning" data-testid="ide-verify-sync-warning">
@@ -658,6 +686,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
               {runSummary}
             </div>
           ) : null}
+          {testbenchConceptStrip}
           {stimulusCanvas}
         </div>
       ) : null}

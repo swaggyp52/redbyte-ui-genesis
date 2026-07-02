@@ -162,6 +162,10 @@ function buildFailureCaseKey(
   ].join(':');
 }
 
+function isRepairableObservedFailure(failure: VerifyFailureExplanationCase): boolean {
+  return failure.actual === '0' || failure.actual === '1';
+}
+
 interface VerifyMappedSignal {
   id: string;
   label?: string;
@@ -2074,6 +2078,40 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       caseIndex: selectedFailureCase.caseIndex,
     };
   }, [selectedFailureCase, studentSelectedFailure?.signalLabel]);
+  const selectedFailurePeerExplanationCases = useMemo<VerifyFailureExplanationCase[]>(
+    () =>
+      selectedFailurePeers.map((row) => ({
+        tick: row.tick,
+        signal: row.signal,
+        signalLabel: getFailureSignalLabel(row),
+        expected: row.expected,
+        actual: row.actual,
+        vectorId: row.vectorId,
+        caseIndex: row.caseIndex,
+      })),
+    [getFailureSignalLabel, selectedFailurePeers]
+  );
+  const selectedFailureRowRepairTargets = useMemo<VerifyFailureExplanationCase[]>(() => {
+    if (!selectedFailureExplanationCase) return [];
+    return [selectedFailureExplanationCase, ...selectedFailurePeerExplanationCases].filter(
+      isRepairableObservedFailure
+    );
+  }, [selectedFailureExplanationCase, selectedFailurePeerExplanationCases]);
+  const allFailedRepairTargets = useMemo<VerifyFailureExplanationCase[]>(
+    () =>
+      failingRows
+        .map((row) => ({
+          tick: row.tick,
+          signal: row.signal,
+          signalLabel: getFailureSignalLabel(row),
+          expected: row.expected,
+          actual: row.actual,
+          vectorId: row.vectorId,
+          caseIndex: row.caseIndex,
+        }))
+        .filter(isRepairableObservedFailure),
+    [failingRows, getFailureSignalLabel]
+  );
   const selectedFailureClassification = useMemo(() => {
     if (!selectedFailureCase) return null;
     return classifyVerifyFailure({
@@ -3321,6 +3359,37 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, commitVectorCollections, customVectors]
   );
 
+  const applyObservedFailures = useCallback(
+    (failures: VerifyFailureExplanationCase[]): boolean => {
+      let nextProjectVectors = authoredVectors;
+      let nextCustomVectors = customVectors;
+      let changed = false;
+
+      for (const failure of failures) {
+        if (!isRepairableObservedFailure(failure)) continue;
+        const result = updateExpectedCellInVectorSets({
+          projectVectors: nextProjectVectors,
+          customVectors: nextCustomVectors,
+          tick: failure.tick,
+          signal: failure.signal,
+          vectorId: failure.vectorId,
+          nextValue: failure.actual === '1' ? 1 : 0,
+        });
+        nextProjectVectors = result.projectVectors;
+        nextCustomVectors = result.customVectors;
+        changed = changed || result.changed;
+      }
+
+      if (!changed) return false;
+      onVectorsChange?.(nextProjectVectors);
+      onCustomVectorsChange?.(nextCustomVectors);
+      setNextRunUsesAssertions(true);
+      setOracleApplied(false);
+      return true;
+    },
+    [authoredVectors, customVectors, onCustomVectorsChange, onVectorsChange]
+  );
+
   const queueScopedCapture = useCallback(
     (scope: CaptureScope) => {
       if ((lastRun?.waveform?.length ?? 0) === 0) return;
@@ -3352,15 +3421,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const handleFailureAcceptObserved = useCallback(
     (failure: VerifyFailureExplanationCase) => {
-      if (failure.actual !== '0' && failure.actual !== '1') return;
-      applyExpectedCellValue({
-        tick: failure.tick,
-        signal: failure.signal,
-        vectorId: failure.vectorId,
-        nextValue: failure.actual === '1' ? 1 : 0,
-      });
+      applyObservedFailures([failure]);
     },
-    [applyExpectedCellValue]
+    [applyObservedFailures]
+  );
+
+  const handleFailureAcceptObservedRow = useCallback(() => {
+    applyObservedFailures(selectedFailureRowRepairTargets);
+  }, [applyObservedFailures, selectedFailureRowRepairTargets]);
+
+  const handleFailureAcceptObservedAll = useCallback(() => {
+    applyObservedFailures(allFailedRepairTargets);
+  }, [allFailedRepairTargets, applyObservedFailures]
   );
 
   const handleFailureCaptureRow = useCallback(
@@ -4309,6 +4381,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : (
           <code>no input snapshot available</code>
         )}
+        <div className="ide-verify-repair-panel__scope" data-testid="ide-verify-repair-scope-summary">
+          <span>Repair scope</span>
+          <strong>
+            {selectedFailureRowRepairTargets.length} failed output{selectedFailureRowRepairTargets.length === 1 ? '' : 's'} in this row,
+            {' '}{allFailedRepairTargets.length} failed output{allFailedRepairTargets.length === 1 ? '' : 's'} total.
+          </strong>
+          <p>Use observed only when the circuit behavior is correct and the expected answer is the mistake.</p>
+        </div>
       </div>
 
       <div className="ide-verify-repair-panel__actions">
@@ -4319,8 +4399,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               tone="secondary"
               onClick={handleEditExpectedOutputs}
               testId="ide-verify-repair-edit-expected"
+              title="Edit the expected outputs in the testbench."
             >
-              Edit expected
+              Edit
             </IdeButton>
             <IdeButton
               tone="primary"
@@ -4330,8 +4411,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 selectedFailureExplanationCase.actual !== '1'
               }
               testId="ide-verify-repair-use-observed"
+              title="Use the observed value for this failed expected-output cell."
             >
-              Use observed
+              Cell
+            </IdeButton>
+            <IdeButton
+              tone="secondary"
+              onClick={handleFailureAcceptObservedRow}
+              disabled={selectedFailureRowRepairTargets.length <= 1}
+              testId="ide-verify-repair-use-observed-row"
+              title="Use observed values for all failed outputs in the selected row."
+            >
+              Row
+            </IdeButton>
+            <IdeButton
+              tone="secondary"
+              onClick={handleFailureAcceptObservedAll}
+              disabled={allFailedRepairTargets.length <= 1}
+              testId="ide-verify-repair-use-observed-all"
+              title="Use observed values for all failed outputs in this run."
+            >
+              All
             </IdeButton>
           </div>
         </div>
@@ -4343,8 +4443,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 tone="secondary"
                 onClick={() => handleInspectFailureInDesign(selectedFailureExplanationCase)}
                 testId="ide-verify-repair-open-design"
+                title="Inspect this failed output in Design."
               >
-                Inspect Design
+                Design
               </IdeButton>
             ) : null}
             <IdeButton
@@ -4352,8 +4453,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               onClick={() => handleRunWithPreflight(true)}
               disabled={runState === 'running'}
               testId="ide-verify-repair-rerun"
+              title="Rerun Compare with the current checks."
             >
-              Rerun Compare
+              Rerun
             </IdeButton>
           </div>
         </div>

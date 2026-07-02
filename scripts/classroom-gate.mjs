@@ -170,6 +170,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:complex-build-signal-trace-debugging'],
   },
   {
+    name: 'ide:gate:testbench-editor-and-export-confidence-flow',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:testbench-editor-and-export-confidence-flow'],
+  },
+  {
     name: 'ide:gate:export-download-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-download-contract'],

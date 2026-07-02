@@ -28,6 +28,7 @@ Act as the compiler-like Export handoff station for Basys3 Vivado artifacts whil
 - The station shows the consequence sentence, one primary repair/build/download action, compact mapping/provenance facts, and visible package handoff content.
 - Trusted post-download state stays download-oriented; it must not make hardware programming the primary Export action.
 - Compact `What do I do next?` guide rail tells students to download the browser-E0 ZIP while keeping Vivado build, bitstream, and board observation external.
+- A compact confidence station must say whether Verify evidence is current/stale/failed, whether pin mapping is current/missing, whether the browser-E0 package is trusted or draft, and that Vivado build and board behavior are not proven inside RedByte.
 
 2. Main center
 - Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
@@ -81,6 +82,8 @@ E2 programming success must never imply E3 behavior proof. When no bench classif
 For pilot labs, Export must state that the RedByte/Vivado ZIP proves browser-E0 package generation only. It must not imply that ZIP submission proves Vivado build success, bitstream generation, programming success, or physical board behavior.
 
 `ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, generated previews must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
+
+`ide:gate:testbench-editor-and-export-confidence-flow` guards the Verify-to-Export confidence path: stale Verify/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
 
 Verify freshness is based on the normalized Verify evidence signature shared with workflow authority. Helper-generated clock/testbench vector IDs do not make a passing run stale; actual stimulus, circuit, or mapping changes do.
 When Verify evidence is stale, Export copy should name the real drift source at the student level: **design, testbench, or mapping changed since the last Compare run**. The repair path is **Open Verify**, not a generic refresh label.

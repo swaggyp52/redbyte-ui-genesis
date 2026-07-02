@@ -69,6 +69,7 @@ When docs conflict:
 | [product/GANNON_PILOT_GAP_MAP.md](./product/GANNON_PILOT_GAP_MAP.md) | Gannon pilot adoption gaps across student flow, stability, hardware proof, instructor operations, and commercial posture |
 | [product/REDBYTE_PRODUCT_REALITY_SPRINT.md](./product/REDBYTE_PRODUCT_REALITY_SPRINT.md) | Current student-usable Vivado-grade builder sprint record and selected complex-build debugging slice |
 | [product/REDBYTE_STUDENT_FRICTION_AUDIT.md](./product/REDBYTE_STUDENT_FRICTION_AUDIT.md) | Ranked student friction audit across Project, Design, Verify, Hardware, Export, and Import |
+| [product/REDBYTE_SUMMER_RESCUE_AUDIT.md](./product/REDBYTE_SUMMER_RESCUE_AUDIT.md) | Current summer rescue sprint audit and chosen Testbench Editor + Export Confidence fix package |
 | [product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md](./product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md) | Wrong-circuit diagnosis and guided repair map for failed Compare -> Design driver context -> repair -> rerun Compare |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |

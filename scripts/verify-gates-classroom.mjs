@@ -111,6 +111,11 @@ function main() {
       'pnpm -s ide:gate:complex-build-signal-trace-debugging',
       true
     ),
+    runGate(
+      'ide:testbench-editor-and-export-confidence-flow',
+      'pnpm -s ide:gate:testbench-editor-and-export-confidence-flow',
+      true
+    ),
     runGate('ide:verify-workbench-contract', 'pnpm -s ide:gate:verify-workbench-contract', true),
     runGate('ide:verify-summary-contract', 'pnpm -s ide:gate:verify-summary-contract', true),
     runGate('ide:evidence-capsule-contract', 'pnpm -s ide:gate:evidence-capsule-contract', true),
