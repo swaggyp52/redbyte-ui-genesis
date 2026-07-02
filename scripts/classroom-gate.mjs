@@ -165,6 +165,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],
   },
   {
+    name: 'ide:gate:complex-build-signal-trace-debugging',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:complex-build-signal-trace-debugging'],
+  },
+  {
     name: 'ide:gate:export-download-contract',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:export-download-contract'],

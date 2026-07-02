@@ -1,5 +1,24 @@
 # AI State
 
+## Change Log 2026-07-02 (test: add complex signal trace to classroom gate)
+
+**Subsystem:** Product Reality Sprint validation correction, classroom release guard ownership, broad classroom verifier ownership, and sync-readiness proof for complex-build signal tracing.
+
+**Changes:**
+- Added `ide:gate:complex-build-signal-trace-debugging` to `classroom:gate` immediately after the existing Verify evidence workbench integrity gate, making the failed Compare -> Inspect Design signal-trace path part of the release-blocking local and GitHub Classroom Truth Gates loop.
+- Added the same gate to `verify:gates:classroom` so the broad classroom verifier does not drift away from the release guard.
+- Updated `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/ACTIVE_WORK.md` to state that complex-build signal tracing is release-guarded browser-E0 proof and still requires live endpoint proof before production-current claims.
+
+**Evidence:** Preflight matched the handoff exactly: local HEAD `cf82a766da34dc52864efbf7f0a60dc7931a1216`, `origin/main` `9826a77a77c008bc8f5a963051300ac57bc58a5c`, ahead/behind `1/0`, clean tracked tree, and only `.redbyte/` untracked. The new gate was previously only a standalone pnpm script; after this correction it is in both classroom aggregate runners.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/classroom-gate.mjs`, `node --check scripts/verify-gates-classroom.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:complex-build-signal-trace-debugging`, `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:custom-clock-sequential-truth`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, full `corepack pnpm -s classroom:gate` with the new signal-trace step included (`PASS all steps`, `742816ms`), focused Vitest for pathTrace / Design / Verify repair-adjacent files (`7` files, `89` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Gate/docs ownership correction only. No product behavior, simulator semantics, Verify comparison semantics, pin mapping, export bytes, import parsing, project format, Vivado execution, bitstream, board observation, accounts, LMS, or grading behavior changed.
+
+**Remote sync:** This entry prepares the Product Reality Sprint commit for push/deploy verification. Do not claim production current until GitHub checks pass and live `/os/version.json`, `/os/build.json`, visible build badge, and production browser proof match the final pushed SHA.
+
+**Next recommended task:** Push the validated sync commit, wait for GitHub Classroom Truth Gates and deploy checks, verify production identity, then run the focused production complex-build signal-trace proof before starting Testbench Editor Simplification.
+
 ## Change Log 2026-07-02 (fix: prove complex build signal trace debugging)
 
 **Subsystem:** Product Reality Sprint, student friction audit, Verify -> Design failed-Compare handoff, bounded upstream signal tracing, Design debug trace panel, focused browser gate, and current-doc release-reality correction.

@@ -86,6 +86,7 @@ The following under-the-hood invariant gates are required in both `classroom:gat
 - `ide:gate:verify-saved-checks-default`
 - `ide:gate:verify-testbench-usable-layout`
 - `ide:gate:verify-workbench-layout-reset`
+- `ide:gate:complex-build-signal-trace-debugging`
 
 Why:
 
@@ -148,6 +149,7 @@ Why:
 - Workbench space utilization proves persistent support rails do not squeeze the focal object below useful size, Design and Verify support rails start collapsed/restorable, Project/Export/Import actions remain visible, and cross-surface geometry has no root overflow at classroom/desktop/wide sizes.
 - Workbench visual finish proves Import first-look composition has one restore hierarchy, visible recovery alternatives, first-viewport guidance fit, neighboring surface captures, and no root overflow at classroom/desktop/wide sizes.
 - Verify evidence workbench integrity proves visible first-run expected-output editing, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
+- Complex build signal trace debugging protects the failed Compare -> Inspect Design repair path for a two-stage wrong-build graph, including output context, direct driver facts, bounded upstream trace rows, node Focus actions, no root overflow, and console/page cleanliness.
 - Verify saved-checks default proves starters with saved expected outputs arm Compare before the first run, label the primary action as Compare-oriented, reach Compare PASS without a manual mode switch, and preserve explicit Observe/Compare switching.
 - Verify testbench usable layout proves pre-run Verify gives the stimulus/testbench editor the dominant work surface, keeps empty waveform readiness secondary, exposes all starter expected-output cells/case headers, and rejects horizontal testbench overflow at classroom and desktop viewports.
 - Verify workbench layout reset proves Compare PASS, intentional FAIL, repair, and final PASS do not collapse the testbench into a horizontally scrolling slot or hide the evidence workflow.
@@ -270,6 +272,8 @@ Why:
 `ide:gate:verify-workbench-layout-reset` proves the same layout contract survives the normal evidence loop at `1366x768`: pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS.
 
 `ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, waveform evidence minimum width, waveform evidence top offset, viewport-visible chart height, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
+
+`ide:gate:complex-build-signal-trace-debugging` proves the failed Compare -> Inspect Design handoff for a scratch two-stage wrong-build graph: failed output, expected/observed values, input vector, direct driver, upstream trace, Focus node behavior, build-hash verification, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 
 ## State Authority Rules
 

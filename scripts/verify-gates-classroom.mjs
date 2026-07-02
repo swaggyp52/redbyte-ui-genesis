@@ -106,6 +106,11 @@ function main() {
     runGate('ide:import-guided-recovery-wizard', 'pnpm -s ide:gate:import-guided-recovery-wizard', true),
     runGate('ide:bringup-contract', 'pnpm -s ide:gate:bringup-contract', true),
     runGate('ide:verify-evidence-workbench-integrity', 'pnpm -s ide:gate:verify-evidence-workbench-integrity', true),
+    runGate(
+      'ide:complex-build-signal-trace-debugging',
+      'pnpm -s ide:gate:complex-build-signal-trace-debugging',
+      true
+    ),
     runGate('ide:verify-workbench-contract', 'pnpm -s ide:gate:verify-workbench-contract', true),
     runGate('ide:verify-summary-contract', 'pnpm -s ide:gate:verify-summary-contract', true),
     runGate('ide:evidence-capsule-contract', 'pnpm -s ide:gate:evidence-capsule-contract', true),
