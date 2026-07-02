@@ -71,6 +71,8 @@ When docs conflict:
 | [product/REDBYTE_STUDENT_FRICTION_AUDIT.md](./product/REDBYTE_STUDENT_FRICTION_AUDIT.md) | Ranked student friction audit across Project, Design, Verify, Hardware, Export, and Import |
 | [product/REDBYTE_SUMMER_RESCUE_AUDIT.md](./product/REDBYTE_SUMMER_RESCUE_AUDIT.md) | Current summer rescue sprint audit and chosen Testbench Editor + Export Confidence fix package |
 | [product/REDBYTE_VIVADO_GRADE_EXPORT_REALITY_AUDIT.md](./product/REDBYTE_VIVADO_GRADE_EXPORT_REALITY_AUDIT.md) | Live production browser-E0 ZIP audit for critical starters and explicit Vivado E1 blocked/not-proven boundary |
+| [product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md](./product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md) | Tracked Vivado E1 certification harness protocol for import, compile, testbench, and synthesis proof |
+| [product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md](./product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md) | Standard result template and classification language for Vivado E1 runs |
 | [product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md](./product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md) | Wrong-circuit diagnosis and guided repair map for failed Compare -> Design driver context -> repair -> rerun Compare |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 product contract reset and work order |
 | [architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md](./architecture/RED_BYTE_UNDER_THE_HOOD_MAP.md) | Source-level subsystem, state, proof, and risk map |
@@ -112,6 +114,8 @@ When docs conflict:
 | [RC1_STUDENT_RELEASE_FREEZE.md](./RC1_STUDENT_RELEASE_FREEZE.md) | RC1 honest posture and TA checklist |
 | [product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md](./product/RED_BYTE_BROWSER_E0_RELEASE_PROOF.md) | Current browser E0 proof package, pinned Node status, final-SHA rules, and no-hardware boundary |
 | [product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md](./product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md) | Browser E0 package/demo checklist, release/deploy SHA rules, blockers, and no-overclaim language |
+| [product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md](./product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md) | Current E1 proof protocol and harness commands; does not claim E2/E3 |
+| [product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md](./product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md) | E1 result template for Vivado-machine closeout |
 | [release/clock-custom-sequential-hardening-2026-06-27.md](./release/clock-custom-sequential-hardening-2026-06-27.md) | Clock/custom sequential P1 hardening report, partial sim-clock honesty repair, and remaining explicit Clock tickets |
 | [release/vivado-basys3-certification-matrix.md](./release/vivado-basys3-certification-matrix.md) | Certification matrix and dated proof links |
 | [release/course-edition/08-validation-log.md](./release/course-edition/08-validation-log.md) | Course-edition validation log with visible failures and later pass records |

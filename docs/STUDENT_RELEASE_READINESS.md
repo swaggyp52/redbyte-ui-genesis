@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-02
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,10 +8,10 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-07-01
+**Last updated:** 2026-07-02
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
-**Pairing docs:** `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, `docs/course/TA_TROUBLESHOOTING_GUIDE.md`, `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
+**Pairing docs:** `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, `docs/course/TA_TROUBLESHOOTING_GUIDE.md`, `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` (current E1 harness), `docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md` (E1 closeout template), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
 
 This document is the **single place** to learn what students can **actually** rely on today: certified vs export-only vs fenced, and how that was proven.
 
@@ -28,6 +28,8 @@ This document is the **single place** to learn what students can **actually** re
 | **E3** | Behavior-certified | Documented observation matches an agreed procedure (switches/LEDs/clock). |
 
 **Student-safe claim for hardware labs requires at least E1 + E2 + E3** for the specific project class you assign. **E0 alone is never enough.**
+
+**Current harness note (2026-07-02):** `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` defines the current E1 sprint harness as import/open project, VHDL compile readiness, behavioral simulation/testbench when present, and synthesis, with optional route-only implementation dry run. It deliberately does not claim bitstream generation or board observation. Older rows in this document may contain stronger legacy full-build evidence; do not use the new harness to upgrade any row without a real Vivado run.
 
 ---
 

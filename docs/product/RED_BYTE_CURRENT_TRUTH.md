@@ -31,6 +31,7 @@ Use this doc to stop source drift before work starts. It is a control layer, not
 | Product reality sprint | `docs/product/REDBYTE_PRODUCT_REALITY_SPRINT.md`, `docs/product/REDBYTE_STUDENT_FRICTION_AUDIT.md` | Current student-friction ranking and the selected complex-build signal-trace debugging slice. |
 | Summer rescue audit | `docs/product/REDBYTE_SUMMER_RESCUE_AUDIT.md` | Current ranked normal-use friction audit and chosen Testbench Editor Simplification + Export Confidence fix package. |
 | Vivado-grade export reality audit | `docs/product/REDBYTE_VIVADO_GRADE_EXPORT_REALITY_AUDIT.md` | Current live-production browser-E0 ZIP audit for critical starters and explicit Vivado E1 blocked/not-proven boundary. |
+| Vivado E1 certification protocol | `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md`, `docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md` | Current tracked harness and result language for real Vivado import/compile/testbench/synthesis proof without bitstream or board overclaim. |
 | Wrong-build diagnosis | `docs/product/WRONG_BUILD_DIAGNOSIS_AND_REPAIR_GAP_MAP.md` | Current wrong-circuit repair map: failed Compare -> Inspect Design -> direct driver facts / bounded upstream signal trace -> repair -> rerun Compare -> Export E0 boundary. |
 | Gate ownership | `docs/development/RED_BYTE_TEST_AND_GATE_OWNERSHIP.md` | How to choose and wire Vitest, Playwright, classroom, golden, manual, and hardware proof. |
 | Normal-use breakage audit | `docs/audits/2026-06-13-redbyte-normal-use-breakage-audit.md` | Current normal-use audit and deferred findings. |
@@ -87,6 +88,7 @@ Supporting truths:
 - Trusted/E0-ready Export requires current Compare PASS, current mapping, and current export state for the same project state.
 - Draft Export is allowed when the project is structurally exportable but trusted proof is missing or stale.
 - Vivado build, board programming, and board observation remain external proof tiers.
+- The current E1 harness is `scripts/vivado/redbyte-e1-certify.ps1` plus `scripts/vivado/redbyte-e1-certify.tcl`; it can record `BLOCKED_NO_VIVADO` locally, but only a real Vivado run can produce `PASS_E1`.
 
 ## 4. Current Known Risks
 

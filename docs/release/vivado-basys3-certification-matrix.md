@@ -52,6 +52,16 @@ vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_imp
 pnpm exec tsx scripts/vivado-cert-export-open-project.ts
 ```
 
+**Current E1 harness (no bitstream/board claim):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode EnvCheck
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode DryRun
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify
+```
+
+See `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` and `docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md`. This harness records E1 import/compile/testbench/synthesis proof or a blocker such as `BLOCKED_NO_VIVADO`; it does not certify bitstream generation, programming, or observed board behavior.
+
 **Blank-shaped from-scratch fixtures (certification, not gallery examples):**
 
 ```powershell

@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-02 (test: add Vivado E1 certification harness)
+
+**Subsystem:** Vivado E1 certification harness, export package proof boundary, RedByte current-doc routing, and release-reality discipline.
+
+**Changes:**
+- Added `scripts/vivado/redbyte-e1-certify.ps1` as the tracked E1 orchestrator for `EnvCheck`, `DryRun`, and `Certify` modes.
+- Added `scripts/vivado/redbyte-e1-certify.tcl` for real Vivado E1 import/open-project, compile-order, behavioral simulation/testbench when present, synthesis, and optional route-only implementation dry run.
+- Added `scripts/vivado/redbyte-e1-collect.ps1` for existing ZIP collection, local generated package collection, and production-collection bookkeeping.
+- Added `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` and `docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md`.
+- Updated active work, current truth, work queue, doc index, student release readiness, and the Vivado certification matrix so the next proof action routes through real Vivado E1 instead of more browser-E0 UI work.
+
+**Evidence:** The previous docs-audit commit `25ad79fd8be5675563c0986387b17cfdb9938ea0` was pushed to `origin/main`; GitHub `Deploy to Cloudflare Pages` and replacement `Classroom Truth Gates` both succeeded for that SHA, and production `/os/version.json` reported the same full SHA while `/os/build.json` and `/build.json` reported `25ad79f`. Local Vivado discovery still found no `vivado` command, no `where.exe vivado` match, no `Get-Command vivado` match, and no `C:\Xilinx` directory. The new E1 harness wrote local proof under `.redbyte/vivado-e1/`; `EnvCheck` returned `BLOCKED_NO_VIVADO`, and `DryRun` inspected the five existing production ZIPs for Logic Gates, Half Adder, Full Adder, 4-Bit Ripple Carry Adder, and 2-Bit Up Counter. Static package audit found present packages, parseable top entities, Basys3 part `xc7a35tcpg236-1`, testbench assertions, no recorded issues/warnings, and `create_clock` only for the 2-Bit Counter.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, full `corepack pnpm -s classroom:gate` (`PASS all steps`), `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode EnvCheck`, `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode DryRun`, `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Harness/docs/routing change only. No product UI, simulator semantics, Verify comparison semantics, pin mapping, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution result, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, or grading behavior changed. The local host still cannot prove E1 because Vivado is not installed or discoverable.
+
+**Remote sync:** The prior docs-audit commit is pushed/deployed at `25ad79fd8be5675563c0986387b17cfdb9938ea0`. This E1 harness change is local-only unless explicitly pushed later; production does not include it yet.
+
+**Next recommended task:** Run the new E1 harness on a Vivado 2024.2 machine against the five critical starter ZIPs, then use the result template to decide whether to fix generated package defects, proceed to bitstream proof, or stay browser-E0 only.
+
 ## Change Log 2026-07-02 (docs: audit Vivado-grade export reality)
 
 **Subsystem:** Production release-reality proof, Summer Rescue live verification, Vivado-grade export package audit, and E1 boundary documentation.
