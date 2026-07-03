@@ -45,6 +45,7 @@ Tracked entry points:
 - `scripts/vivado/redbyte-e1-certify.ps1`
 - `scripts/vivado/redbyte-e1-certify.tcl`
 - `scripts/vivado/redbyte-e1-collect.ps1`
+- `scripts/vivado/redbyte-e1-pack-runner.ps1`
 
 Default proof output:
 
@@ -68,8 +69,11 @@ Mode A, existing ZIP directory:
 powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 `
   -Mode Certify `
   -PackageSource ExistingZipDir `
-  -ZipDir C:\path\to\downloaded-zips
+  -PackageDir C:\path\to\downloaded-zips `
+  -OutDir .redbyte/vivado-e1/<timestamp>
 ```
+
+`-PackageDir` is an alias for the older `-ZipDir` parameter. `-OutDir` writes to that exact run folder; if omitted, the harness creates `.redbyte/vivado-e1/<timestamp>/`.
 
 Mode B, production browser ZIPs:
 
@@ -93,12 +97,15 @@ Local-generated packages are useful for harness rehearsal. Production certificat
 | `FAIL_IMPORT` | Package shape, `.xpr`, or Vivado import failed |
 | `FAIL_COMPILE` | Vivado compile order/elaboration readiness failed |
 | `FAIL_TESTBENCH` | Behavioral simulation/testbench failed |
-| `FAIL_SYNTH` | Synthesis or optional route dry run failed |
+| `FAIL_SYNTH` | Synthesis failed |
+| `FAIL_IMPL_DRY_RUN` | Optional route-only implementation dry run failed |
 | `BLOCKED_NO_VIVADO` | Vivado is not installed/discoverable on the machine |
 | `BLOCKED_PACKAGE_MISSING` | No ZIP package was available for the design |
 | `BLOCKED_UNSUPPORTED_CONSTRUCT` | Static package audit found a construct that should not be sent to Vivado as certified |
 
 `READY_FOR_E1_RUN` can appear in dry-run output when packages are structurally ready and Vivado is discoverable, but it is not an E1 pass.
+
+`BLOCKED_TOOLCHAIN` and `BLOCKED_PACKAGE` are acceptable report-level umbrella labels. In harness output, the concrete equivalents are `BLOCKED_NO_VIVADO` and `BLOCKED_PACKAGE_MISSING`.
 
 ## Required Commands
 
@@ -117,13 +124,19 @@ powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -
 Real E1:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -PackageDir <folder-with-redbyte-zips> -OutDir .redbyte/vivado-e1/<timestamp>
 ```
 
 Optional route-only implementation dry run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode Certify -IncludeImplementation
+```
+
+Portable run kit:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-pack-runner.ps1
 ```
 
 Do not use this protocol to claim E2 or E3.

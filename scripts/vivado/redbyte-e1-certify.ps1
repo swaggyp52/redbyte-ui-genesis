@@ -18,8 +18,10 @@ param(
   [ValidateSet('ExistingZipDir', 'LocalGenerated', 'Production')]
   [string]$PackageSource = 'ExistingZipDir',
 
+  [Alias('PackageDir')]
   [string]$ZipDir = '.redbyte/product-immersion/vivado-grade-export-audit/downloads',
   [string]$OutputRoot = '.redbyte/vivado-e1',
+  [string]$OutDir = '',
   [string[]]$DesignIds = @('logic-gates', 'half-adder', 'full-adder', 'four-bit-adder', 'two-bit-counter'),
   [string]$VivadoPath = '',
   [int]$Jobs = 4,
@@ -444,7 +446,11 @@ function Write-ResultsMarkdown($Manifest, [string]$Path) {
   Set-Content -LiteralPath $Path -Value $lines -Encoding UTF8
 }
 
-$RunRoot = Join-Path (Resolve-RepoPath $OutputRoot) $Timestamp
+if ($OutDir.Trim().Length -gt 0) {
+  $RunRoot = Resolve-RepoPath $OutDir
+} else {
+  $RunRoot = Join-Path (Resolve-RepoPath $OutputRoot) $Timestamp
+}
 $LogsRoot = Join-Path $RunRoot 'logs'
 New-Directory $RunRoot
 New-Directory $LogsRoot
@@ -473,6 +479,7 @@ $environment = [ordered]@{
   inputs = [ordered]@{
     packageSource = $PackageSource
     zipDir = $ZipDir
+    outDir = $OutDir
     designIds = $DesignIds
     jobs = $Jobs
     includeImplementation = [bool]$IncludeImplementation

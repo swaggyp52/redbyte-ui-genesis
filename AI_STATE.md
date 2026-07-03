@@ -110,6 +110,29 @@
 
 **Next recommended task:** After local review or sync, take the next product slice into the from-scratch wrong-build/testbench correction loop: make it possible to repair wrong expected outputs and wrong circuit structure from a blank build without trapping the student in an unrecoverable Verify state.
 
+## Change Log 2026-07-02 (test: add Vivado E1 run kit generator)
+
+**Subsystem:** Vivado E1 lab-machine handoff, portable run kit generation, Gannon E1 runbook/checklist, harness command compatibility, and release-reality discipline.
+
+**Changes:**
+- Pushed the existing E1 harness commit `2d6754ae1416f3e809bafb1614299c29a313dec5` to `origin/main` after pre-push state matched the expected one-commit delta.
+- Added `scripts/vivado/redbyte-e1-pack-runner.ps1` to create ignored `.redbyte/vivado-e1-run-kit/<timestamp>/` folders and ZIPs containing harness scripts, E1 docs, package inventory, metadata, README instructions, and any available starter ZIPs.
+- Added exact-command compatibility for lab use: `redbyte-e1-certify.ps1` accepts `-PackageDir` as an alias for `-ZipDir` and `-OutDir` as an exact run folder; `redbyte-e1-collect.ps1` accepts `-OutDir` as an alias for `-OutputZipDir`.
+- Separated optional implementation dry-run failures into `FAIL_IMPL_DRY_RUN` instead of folding them into synthesis.
+- Added `docs/product/RED_BYTE_VIVADO_E1_RUNBOOK_FOR_GANNON.md` and `docs/product/RED_BYTE_E1_LAB_MACHINE_CHECKLIST.md`, and routed them through the E1 protocol/result docs, doc index, and active cockpit.
+
+**Evidence:** GitHub `origin/main` now equals `2d6754ae1416f3e809bafb1614299c29a313dec5`; the pushed harness files are present on remote main. GitHub `Deploy to Cloudflare Pages` passed for that SHA and production reported `/os/version.json` SHA `2d6754ae1416f3e809bafb1614299c29a313dec5` plus `/os/build.json` SHA `2d6754a`. GitHub `Classroom Truth Gates` passed for the same SHA in `12m29s`. The push output reported a branch-protection bypass because the required `Classroom Truth Gates` check was expected at push time; the check did run and pass afterward, but required-check enforcement remains release-process debt to keep visible.
+
+**Vivado search:** This host still has no discoverable Vivado. `where.exe vivado`, `Get-Command vivado`, common `C:\Xilinx` / `C:\Program Files\Xilinx` / `D:\Xilinx` roots, Start Menu shortcuts, environment variables, uninstall registry entries, winget package listings, Chocolatey, WSL, mounted non-C drives, and user-file search did not reveal a local Vivado install. Repo docs still identify the historical lab-host path `C:\Xilinx\Vivado\2024.2\bin\vivado.bat`, but that path is absent here.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `739266ms`), `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode EnvCheck`, `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode DryRun -PackageDir .redbyte/product-immersion/vivado-grade-export-audit/downloads -OutDir .redbyte/vivado-e1/dryrun-alias-validation`, `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-pack-runner.ps1` (created ignored kit `20260703T001506724Z` with five copied ZIPs), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `EnvCheck` and `DryRun` passed as harness commands but correctly classified this host as `BLOCKED_NO_VIVADO`; no E1 pass was claimed.
+
+**Safety:** Harness/runbook/docs/tooling change only. No product UI, simulator semantics, Verify comparison semantics, pin mapping, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution result, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, or grading behavior changed. The local host still cannot prove E1 because Vivado is not installed or discoverable.
+
+**Remote sync:** E1 harness commit `2d6754ae1416f3e809bafb1614299c29a313dec5` is pushed, remote-green, and deployed. This run-kit generator/runbook change remains local-only until pushed later; production does not include it yet.
+
+**Next recommended task:** Commit the run-kit generator/runbook slice locally after validation, then run E1 on a real Vivado 2024.2 machine using the generated kit or lab-machine runbook.
+
 ## Change Log 2026-07-02 (test: add Vivado E1 certification harness)
 
 **Subsystem:** Vivado E1 certification harness, export package proof boundary, RedByte current-doc routing, and release-reality discipline.

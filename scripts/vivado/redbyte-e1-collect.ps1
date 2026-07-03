@@ -11,6 +11,7 @@ param(
   [string]$Mode = 'ExistingZipDir',
 
   [string]$InputZipDir = '.redbyte/product-immersion/vivado-grade-export-audit/downloads',
+  [Alias('OutDir')]
   [string]$OutputZipDir = '.redbyte/vivado-e1-inputs',
   [string[]]$DesignIds = @('logic-gates', 'half-adder', 'full-adder', 'four-bit-adder', 'two-bit-counter'),
   [string]$ProductionUrl = 'https://redbyteapps.dev/os'

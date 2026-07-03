@@ -143,7 +143,7 @@ if {$include_impl} {
     wait_on_run impl_1
   } err]} {
     puts "ERROR: impl_1 route dry run failed: $err"
-    write_result $out_dir "FAIL_SYNTH" "E1e-implementation-dry-run" $err
+    write_result $out_dir "FAIL_IMPL_DRY_RUN" "E1e-implementation-dry-run" $err
     close_project
     exit 6
   }
@@ -154,7 +154,7 @@ if {$include_impl} {
   if {![string match "*Complete!" $impl_status]} {
     set msg "impl_1 route dry run did not complete successfully: $impl_status"
     puts "ERROR: $msg"
-    write_result $out_dir "FAIL_SYNTH" "E1e-implementation-dry-run" $msg
+    write_result $out_dir "FAIL_IMPL_DRY_RUN" "E1e-implementation-dry-run" $msg
     close_project
     exit 6
   }
