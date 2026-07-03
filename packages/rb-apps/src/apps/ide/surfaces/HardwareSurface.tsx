@@ -2322,6 +2322,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       rightDockMode="collapsed"
       rightDockCanCollapse
       consoleMode="hidden"
+      productSpine={{
+        statusLabel: failureTruth.statusLabel,
+        statusTone: failureTruth.severity === 'ready'
+          ? 'ok'
+          : failureTruth.severity === 'blocked'
+            ? 'error'
+            : 'warn',
+        detail: showBlockedHero ? failureTruth.message : nextActionHero.body,
+        primaryLabel: showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel,
+        onPrimary: showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction,
+        recoveryLabel: hardwareCommandSecondaryLabel ?? undefined,
+        onRecovery: hardwareCommandSecondaryAction ?? undefined,
+        doneLabel: mappingReady
+          ? 'Required signals are mapped to Basys3 resources and package pins.'
+          : 'Every required signal has a non-conflicting board resource and package pin.',
+        blockedLabel: !hasRequiredMappingRows
+          ? 'No required project IO boundary is available from Design.'
+          : mappingReady
+            ? failureTruth.message
+            : `${unresolvedRequiredCount} required mapping${unresolvedRequiredCount === 1 ? '' : 's'} still need attention.`,
+      }}
       dock={activeDock}
       inspector={
         <>

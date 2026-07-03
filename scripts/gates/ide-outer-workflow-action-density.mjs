@@ -24,7 +24,14 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       await openLogicGatesStarter(page, baseUrl, `outer-workflow-action-density-${viewport.label}`);
       await openMode(page, baseUrl, 'project', `outer-workflow-action-density-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
-      await assertActionCluster(page, viewport, 'project', '[data-testid="ide-project-command-board-v1"]', 9);
+      await assertVisibleRect(page, ['[data-testid="ide-product-spine-project"]'], `${viewport.label}/project product spine action surface`, {
+        maxTop: 120,
+        minWidth: Math.round(viewport.width * 0.55),
+        minHeight: 90,
+      });
+      await assertActionCluster(page, viewport, 'project command board', '[data-testid="ide-project-command-board-v1"]', 9, {
+        maxTop: 300,
+      });
 
       await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=outer-workflow-action-density-${viewport.label}-import`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
@@ -48,9 +55,9 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
   assert(failures.length === 0, `Outer workflow density failures:\n${failures.join('\n')}`);
 });
 
-async function assertActionCluster(page, viewport, surface, selector, minActions) {
+async function assertActionCluster(page, viewport, surface, selector, minActions, options = {}) {
   await assertVisibleRect(page, [selector], `${viewport.label}/${surface} action surface`, {
-    maxTop: viewport.height === 768 ? 220 : 250,
+    maxTop: options.maxTop ?? (viewport.height === 768 ? 220 : 250),
     minWidth: Math.round(viewport.width * 0.55),
     minHeight: 160,
   });

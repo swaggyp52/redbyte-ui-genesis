@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-03 (fix: define six-page product spine)
+
+**Subsystem:** Six-page IDE product spine, workbench action hierarchy, classroom viewport guards, and browser-E0 release proof.
+
+**Changes:**
+- Added `productDefinition.ts` as the canonical six-page Project, Design, Verify, Hardware / Map Pins, Export, and Import definition source.
+- Added `PageProductHeader` and wired `productSpine` state through `IdeSurfaceLayout` and all six IDE surfaces so each page answers what the student does next, done/blocked/recovery states, and proof boundary.
+- Added compact non-Project product spine treatment so the task cue stays visible without pushing Design, Verify, Hardware, Export, or Import work objects below the classroom first viewport.
+- Added / updated focused gates for six-page spine flow, Project loaded command surface, and outer workflow action density so browser proof follows the new product spine instead of stale command-board-only assumptions.
+- Repaired compact Project and Export action target sizing so classroom-height layouts keep current action, Build Fresh, Import Recover, and Export build CTAs at usable hit targets.
+
+**Evidence:** The six-page browser gate proves all six surfaces expose the shared product spine, live page status, next action, done/blocked/recovery/boundary copy, and usable primary/recovery affordances across classroom viewports. The full classroom gate later caught and drove fixes for Design reconstruction, side-dock overlay interception, Project action target height, Export CTA target size, and stale outer-workflow density assumptions before closeout.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-six-page-product-spine-flow.mjs`, `node --check scripts/gates/ide-outer-workflow-action-density.mjs`, `node --check scripts/gates/ide-project-loaded-command-surface.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:six-page-product-spine-flow`, `corepack pnpm -s ide:gate:workbench-reconstruction-v1`, `corepack pnpm -s ide:gate:side-dock-affordance`, `corepack pnpm -s ide:gate:action-first-entry-surfaces`, `corepack pnpm -s ide:gate:project-loaded-command-surface`, `corepack pnpm -s ide:gate:export-package-inspector`, `corepack pnpm -s ide:gate:outer-workflow-action-density`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `738493ms`), focused Vitest for the six spine-adjacent surface files (`10` files, `144` tests), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser-E0 product architecture and UI/gate alignment only. No simulator truth semantics, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the six-page product spine slice.
+
+**Next recommended task:** After local review or sync, take the next product slice into the from-scratch wrong-build/testbench correction loop: make it possible to repair wrong expected outputs and wrong circuit structure from a blank build without trapping the student in an unrecoverable Verify state.
+
 ## Change Log 2026-07-02 (test: add Vivado E1 certification harness)
 
 **Subsystem:** Vivado E1 certification harness, export package proof boundary, RedByte current-doc routing, and release-reality discipline.

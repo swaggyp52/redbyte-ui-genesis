@@ -2668,6 +2668,39 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
       rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
       consoleMode="hidden"
+      productSpine={{
+        statusLabel: canImport
+          ? 'Ready to review'
+          : detectedBehavioralConstructs.length > 0
+            ? 'Blocked'
+            : hasParsedHdl
+              ? 'Needs mapping'
+              : 'Intake',
+        statusTone: canImport
+          ? 'ok'
+          : blockingErrors.length > 0 || detectedBehavioralConstructs.length > 0
+            ? 'error'
+            : hasParsedHdl
+              ? 'warn'
+              : 'idle',
+        detail: importEntryAction?.body ?? statusMessage,
+        primaryLabel: importEntryAction?.primaryLabel ?? 'Review Import',
+        onPrimary: importEntryAction ? runImportPrimaryAction : undefined,
+        recoveryLabel: pendingApplyProject
+          ? 'Cancel apply'
+          : onGoToDesign
+            ? 'Start fresh in Design'
+            : 'Cancel keeps current project',
+        onRecovery: pendingApplyProject ? cancelApplyProject : onGoToDesign,
+        doneLabel: canImport
+          ? 'Candidate is parsed and ready for explicit review before replacement.'
+          : 'Upload or paste source, parse it, map ports, and review before applying.',
+        blockedLabel: detectedBehavioralConstructs.length > 0
+          ? 'Unsupported behavioral HDL needs manual rebuild or a fresh Design path.'
+          : blockingErrors[0]?.message ?? (unmappedPorts.length > 0
+            ? `${unmappedPorts.length} port${unmappedPorts.length === 1 ? '' : 's'} still need pin review.`
+            : 'No import blocker selected.'),
+      }}
       dock={
         leftDockContent ?? (
         <section className="ide-workbench-placeholder" data-testid="ide-import-dock">

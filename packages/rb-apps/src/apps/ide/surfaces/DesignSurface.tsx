@@ -5671,6 +5671,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
+        productSpine={{
+          statusLabel: authoringStatusLabel,
+          statusTone: designCommandTone,
+          detail: designCommandDescription,
+          primaryLabel: activeVerifySignal || effectiveExternalDebugTick != null
+            ? 'Return to Verify waveform'
+            : 'Open Verify',
+          onPrimary: onGoToVerify,
+          recoveryLabel: onGoToProject ? 'Project' : undefined,
+          onRecovery: onGoToProject,
+          doneLabel: editorCircuit.nodes.length > 0
+            ? `${editorCircuit.nodes.length} part${editorCircuit.nodes.length === 1 ? '' : 's'} on the canvas; verify when the graph matches the assignment.`
+            : 'Add at least one input, output, and logic part to create a verifiable circuit.',
+          blockedLabel: showBlankStateCard
+            ? 'Canvas is empty.'
+            : totalAuthoringErrors > 0
+              ? `${totalAuthoringErrors} blocking circuit issue${totalAuthoringErrors === 1 ? '' : 's'}.`
+              : totalAuthoringWarnings > 0
+                ? `${totalAuthoringWarnings} circuit warning${totalAuthoringWarnings === 1 ? '' : 's'} to review.`
+                : dirtySinceVerify
+                  ? 'Verify evidence is stale after design edits.'
+                  : 'No design blocker visible.',
+        }}
         dock={
         <>
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">

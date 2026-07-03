@@ -975,6 +975,27 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
       consoleMode="hidden"
       inspector={null}
       hideRightDock
+      productSpine={{
+        statusLabel: readiness.hasCircuit ? heroStatusLabel : 'No circuit',
+        statusTone: readiness.hasCircuit
+          ? heroStatusTone === 'ok'
+            ? 'ok'
+            : heroStatusTone === 'warn'
+              ? 'warn'
+              : 'idle'
+          : 'idle',
+        detail: readiness.hasCircuit
+          ? nextStepReason
+          : 'Choose Start a Lab, Build fresh, Open Starter, Import / Recover, or Open Recent.',
+        primaryLabel: readiness.hasCircuit ? `Continue to ${activePrimaryCtaLabel}` : 'Build fresh',
+        onPrimary: readiness.hasCircuit ? onPrimaryCta : handleStartBlankProject,
+        recoveryLabel: readiness.hasCircuit ? heroAssistAction.label : 'Import / Recover',
+        onRecovery: readiness.hasCircuit ? heroAssistAction.onClick : onOpenImport,
+        doneLabel: readiness.hasCircuit
+          ? 'Current project is loaded and the next surface is selected.'
+          : 'A starter, blank design, saved project, or import is loaded.',
+        blockedLabel: readiness.hasCircuit ? heroStatusMessage : 'No circuit loaded yet.',
+      }}
       dock={
         <section className="ide-workbench-placeholder" data-testid="ide-project-start-dock">
           {/* Quick surface navigation */}

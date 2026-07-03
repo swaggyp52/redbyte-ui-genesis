@@ -27649,6 +27649,10 @@ button:disabled,
   max-height: none !important;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-stimulus-header {
+  pointer-events: none;
+}
+
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-body {
   display: flex;
   flex-direction: column;
@@ -27677,11 +27681,13 @@ button:disabled,
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  scroll-padding-top: 82px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-stimulus-value-cell-button {
   position: relative;
   z-index: 5;
+  scroll-margin-top: 82px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-workbench-actions {
@@ -27770,6 +27776,10 @@ button:disabled,
     overflow: hidden !important;
     border: 0 !important;
     padding: 0 !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--result:not(:has([data-testid='ide-verify-repair-panel'])) {
+    pointer-events: none !important;
   }
 
   .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']) .ide-verify-region--inspector {
@@ -28163,6 +28173,322 @@ button:disabled,
 /* ============================================================
    RedByte Product Surface System - shared page architecture
    ============================================================ */
+
+.ide-product-spine {
+  display: block;
+  min-width: 0;
+  margin: 0 0 10px;
+}
+
+.ide-product-spine-card {
+  display: grid;
+  grid-template-columns: minmax(118px, 160px) minmax(260px, 1.15fr) minmax(260px, 1fr) max-content;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(96, 140, 182, 0.34);
+  border-radius: 8px;
+  background: rgba(7, 16, 28, 0.86);
+  box-shadow: inset 0 1px 0 rgba(214, 232, 255, 0.05);
+}
+
+.ide-product-spine__stage,
+.ide-product-spine__main,
+.ide-product-spine__facts,
+.ide-product-spine__actions {
+  min-width: 0;
+}
+
+.ide-product-spine__stage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(226, 236, 248, 0.9);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ide-product-spine__progress {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  min-width: 38px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(46, 196, 182, 0.36);
+  color: rgba(141, 246, 229, 0.94);
+  background: rgba(10, 38, 43, 0.62);
+  font-size: 11px;
+}
+
+.ide-product-spine__label,
+.ide-product-spine__prompt,
+.ide-product-spine__job,
+.ide-product-spine__detail,
+.ide-product-spine__facts dd,
+.ide-product-spine__action-copy,
+.ide-product-spine__recovery-copy {
+  overflow-wrap: anywhere;
+}
+
+.ide-product-spine__main {
+  display: grid;
+  gap: 3px;
+}
+
+.ide-product-spine__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.ide-product-spine__prompt {
+  color: rgba(245, 250, 255, 0.98);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.ide-product-spine__job,
+.ide-product-spine__detail {
+  margin: 0;
+  color: rgba(186, 207, 228, 0.82);
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.ide-product-spine__detail {
+  color: rgba(222, 234, 247, 0.92);
+}
+
+.ide-product-spine__facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.ide-product-spine__facts div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ide-product-spine__facts dt {
+  color: rgba(131, 168, 203, 0.82);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ide-product-spine__facts dd {
+  margin: 0;
+  color: rgba(224, 235, 248, 0.86);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.ide-product-spine__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ide-product-spine__actions .ide-button {
+  min-height: 32px;
+  padding: 7px 10px;
+  white-space: normal;
+  text-align: center;
+}
+
+.ide-product-spine__action-copy,
+.ide-product-spine__recovery-copy {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  min-height: 28px;
+  color: rgba(222, 234, 247, 0.86);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+@media (max-width: 1500px) {
+  .ide-product-spine-card {
+    grid-template-columns: minmax(92px, 120px) minmax(240px, 1fr) minmax(380px, 0.95fr) minmax(128px, auto);
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .ide-product-spine__stage {
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .ide-product-spine__progress {
+    width: 34px;
+    min-width: 34px;
+    height: 22px;
+    font-size: 10px;
+  }
+
+  .ide-product-spine__main {
+    gap: 2px;
+  }
+
+  .ide-product-spine__prompt {
+    font-size: 12px;
+  }
+
+  .ide-product-spine__job,
+  .ide-product-spine__detail {
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .ide-product-spine__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 8px;
+  }
+
+  .ide-product-spine__facts dt {
+    font-size: 9px;
+  }
+
+  .ide-product-spine__facts dd {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .ide-product-spine__actions {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 5px;
+  }
+
+  .ide-product-spine__actions .ide-button {
+    min-height: 28px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .ide-product-spine__action-copy,
+  .ide-product-spine__recovery-copy {
+    max-width: 168px;
+    min-height: 0;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 1100px) {
+  .ide-product-spine-card {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .ide-product-spine__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ide-product-spine__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-workbench-workspace {
+  position: relative;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine {
+  position: absolute;
+  z-index: 24;
+  top: 3px;
+  left: var(--ide-workbench-edge-gutter, 12px);
+  right: var(--ide-workbench-edge-gutter, 12px);
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine-card {
+  grid-template-columns: minmax(92px, 116px) minmax(0, 1fr) max-content;
+  gap: 8px;
+  min-height: 0;
+  padding: 3px 8px;
+  border-color: rgba(96, 140, 182, 0.24);
+  background: rgba(7, 16, 28, 0.72);
+  pointer-events: auto;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__stage {
+  gap: 5px;
+  font-size: 10.5px;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__progress {
+  width: 32px;
+  min-width: 32px;
+  height: 18px;
+  font-size: 9.5px;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__main {
+  gap: 1px;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__title-row {
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__prompt {
+  font-size: 11px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__job,
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__detail,
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__facts {
+  display: none;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__actions {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__actions .ide-button {
+  min-height: 22px;
+  padding: 2px 7px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__action-copy,
+.ide-workbench-shell:not([data-ide-mode-marker='project']) .ide-product-spine__recovery-copy {
+  max-width: 180px;
+  min-height: 0;
+  font-size: 10px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .ide-surface-command-stack {
   display: grid;
@@ -30303,7 +30629,7 @@ button:disabled,
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-stimulus-layout='collapsed'] {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(318px, 4fr) minmax(56px, 0.7fr);
 }
 
 [data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-stimulus-layout='collapsed'] .ide-verify-region--stimulus {
@@ -34267,6 +34593,34 @@ button:disabled,
   min-height: 260px !important;
 }
 
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept-strip {
+  gap: 5px;
+  margin: 4px 0;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept {
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept span {
+  margin-bottom: 1px;
+  font-size: 8.5px;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept strong {
+  font-size: 10.5px;
+  line-height: 1.16;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept p {
+  display: none;
+}
+
+[data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-stimulus-grid-scroll {
+  min-height: 150px !important;
+}
+
 @media (max-width: 1180px) {
   [data-ide-mode-marker='verify'] .ide-verify-lab-grid {
     grid-template-columns: minmax(0, 1fr) !important;
@@ -35408,8 +35762,15 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions .ide-button {
-  min-height: 32px;
+  min-width: 140px;
+  min-height: 36px;
   padding: 5px 9px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-package-build-v1'],
+.ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-rebuild-btn'] {
+  min-width: 140px !important;
+  min-height: 36px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {

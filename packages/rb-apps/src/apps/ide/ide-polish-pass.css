@@ -2984,6 +2984,89 @@
   padding-top: 4px;
 }
 
+@media (min-width: 1200px) and (max-height: 820px) {
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-hub {
+    gap: 5px !important;
+    padding: 7px 9px 8px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-header {
+    gap: 2px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-surface-block-label,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-sub,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-summary,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-column-head {
+    display: none !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-title {
+    font-size: 18px !important;
+    line-height: 1.05 !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action {
+    min-height: 40px !important;
+    padding: 5px 7px !important;
+    gap: 1px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action-label {
+    font-size: 12px !important;
+    line-height: 1.12 !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-primary-action-sub {
+    display: none !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 4px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-start-column[data-hierarchy-role='primary'] {
+    padding: 5px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-options {
+    gap: 5px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option {
+    min-height: 50px !important;
+    padding: 5px 7px !important;
+    gap: 1px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-eyebrow,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-sub,
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-learn {
+    display: none !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-title {
+    font-size: 12px !important;
+    line-height: 1.12 !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch .ide-project-landing-option-cta {
+    padding-top: 1px !important;
+    font-size: 10px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch + .ide-project-lab-gallery-disclosure[open] {
+    gap: 3px !important;
+    padding: 4px 8px 8px !important;
+  }
+}
+
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded {
   margin-bottom: 14px;
 }
@@ -3212,6 +3295,132 @@
 .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded .ide-project-entry-path {
   min-height: 48px;
   padding: 6px 8px;
+}
+
+@media (min-width: 1200px) and (min-height: 821px) and (max-height: 920px) {
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded {
+    margin-bottom: 10px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 {
+    gap: 4px 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 [data-testid='ide-project-command-strip'] {
+    padding: 9px 12px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next {
+    gap: 5px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-title {
+    font-size: 16px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-subline,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-reason {
+    line-height: 1.25 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths-header {
+    margin-bottom: 2px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-path-grid {
+    gap: 5px !important;
+  }
+}
+
+@media (min-width: 1200px) and (max-height: 820px) {
+  .ide-root [data-ide-mode-marker='project'] .ide-project-command-center--loaded {
+    margin-bottom: 8px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 {
+    grid-template-areas:
+      "identity next"
+      "modes modes"
+      "starts starts" !important;
+    gap: 5px 8px !important;
+    padding: 8px 10px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-identity {
+    padding: 2px 0 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 [data-testid='ide-project-command-strip'] {
+    padding: 7px 9px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-title {
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-subline,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-projectx-next-reason {
+    display: none !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-actions {
+    gap: 4px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-action {
+    min-height: 48px !important;
+    padding: 4px 7px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-action strong,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-action span {
+    font-size: 10.5px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-evidence-strip-v1 {
+    display: none !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths {
+    gap: 5px !important;
+    padding-top: 0 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths-header {
+    margin-bottom: 2px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths-copy,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths-header .ide-surface-block-label {
+    display: none !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-paths-title {
+    font-size: 12px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-path-grid {
+    gap: 4px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-path {
+    min-height: 48px !important;
+    padding: 4px 7px !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-path-label {
+    font-size: 10.5px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-board-v1 .ide-project-entry-path-sub {
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+  }
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-verify-lab-frame[data-no-circuit-hidden='true'] {
@@ -3773,7 +3982,7 @@
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-action-buttons {
   display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(2, minmax(140px, 1fr)) !important;
   gap: 6px !important;
   padding: 2px 0 !important;
 }
@@ -3788,7 +3997,7 @@
 }
 
 .ide-root [data-ide-mode-marker='export'] .ide-export-action-buttons .ide-button {
-  min-height: 32px !important;
+  min-height: 36px !important;
   padding: 5px 8px !important;
   font-size: 11px !important;
   white-space: normal !important;
@@ -4866,6 +5075,38 @@
   order: 2;
 }
 
+@media (min-width: 1200px) and (max-height: 820px) {
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1 {
+    gap: 4px !important;
+    padding: 7px 9px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header {
+    gap: 5px !important;
+    align-items: center !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__header h3 {
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.1 !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions {
+    gap: 3px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions .ide-button {
+    min-height: 24px !important;
+    padding: 2px 7px !important;
+    font-size: 10.5px !important;
+  }
+
+  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {
+    gap: 7px !important;
+  }
+}
+
 .ide-root [data-ide-mode-marker='export'] .ide-export-student-submission-guidance {
   order: 4;
 }
@@ -5415,6 +5656,301 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel {
+  display: grid !important;
+  grid-template-columns: minmax(112px, 0.5fr) minmax(260px, 1fr) minmax(178px, 0.62fr) !important;
+  grid-template-areas:
+    "header facts actions"
+    "inputs facts actions" !important;
+  align-items: stretch !important;
+  gap: 4px 6px !important;
+  max-height: 96px !important;
+  padding: 4px 6px !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__header {
+  grid-area: header !important;
+  align-items: center !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__copy {
+  gap: 1px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__copy
+  strong {
+  font-size: 11px !important;
+  line-height: 1.1 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__copy
+  p,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  [data-testid='ide-verify-repair-status'] {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__facts {
+  grid-area: facts !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__fact {
+  gap: 1px !important;
+  padding: 3px 5px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__fact
+  > span {
+  font-size: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__fact
+  strong,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__fact
+  code {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__inputs {
+  grid-area: inputs !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__inputs
+  > span {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__chips {
+  gap: 3px !important;
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__chips
+  code {
+  padding: 2px 4px !important;
+  font-size: 9px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__scope {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  padding: 2px 4px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__scope
+  span {
+  font-size: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__scope
+  strong {
+  font-size: 9px !important;
+  line-height: 1.05 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__scope
+  p {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__actions {
+  grid-area: actions !important;
+  display: grid !important;
+  grid-template-rows: repeat(2, minmax(0, auto)) !important;
+  align-content: center !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__action-path {
+  gap: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__path-label {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__path-actions {
+  flex-wrap: nowrap !important;
+  justify-content: flex-end !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-repair-panel__actions
+  .ide-button {
+  min-height: 21px !important;
+  padding: 1px 5px !important;
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
+}
+
+/* Six-page product spine follow-up:
+   while a student is editing expected-output cells, stale-run guidance must not
+   move the workbench out from under the next click. Keep the warning visible
+   as command-bar chrome and hide the old run-proof row until Compare reruns. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-callout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 0 !important;
+  padding: 4px 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-callout-title {
+  min-width: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-callout-body {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-copy {
+  max-width: min(460px, 40vw) !important;
+  margin: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-inline-actions {
+  flex: 0 0 auto !important;
+  margin-top: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-primary-status-rerun'])
+  .ide-verify-primary-status--embedded
+  .ide-inline-actions
+  .ide-button {
+  min-height: 26px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has([data-testid='ide-verify-primary-status-rerun']):not(:has([data-testid='ide-verify-repair-panel']))
+  .ide-verify-panel
+  > .ide-panel-body {
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 0) auto !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has([data-testid='ide-verify-primary-status-rerun']):not(:has([data-testid='ide-verify-repair-panel']))
+  .ide-verify-region--result:has(.ide-verify-run-proof) {
+  min-height: 0 !important;
+  max-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
   .ide-verify-wfbar-left {
   flex: 0 1 auto !important;
 }
@@ -5438,4 +5974,13 @@
   [data-testid='ide-verify-waveform-preview'] {
   min-height: clamp(322px, calc(100vh - 446px), 560px) !important;
   height: clamp(322px, calc(100vh - 446px), 560px) !important;
+}
+
+/* Six-page product spine closeout: action-first gates still require
+   usable Export build CTAs after classroom-height compaction. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-package-build-v1'],
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-rebuild-btn'],
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-primary-handoff-cta'] .ide-button {
+  min-width: 140px !important;
+  min-height: 36px !important;
 }

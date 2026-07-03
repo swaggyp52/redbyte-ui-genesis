@@ -4475,6 +4475,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       consoleMode={verifyLayoutPolicy.consoleMode}
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
+      productSpine={{
+        statusLabel: isNoCircuitTaskFirst ? 'No circuit' : sessionStatusBadgeLabel,
+        statusTone: isNoCircuitTaskFirst ? 'warn' : sessionStatusTone,
+        detail: isNoCircuitTaskFirst
+          ? 'Open Design, load a starter, or import a project before authoring test cases.'
+          : verifySession.summary,
+        primaryLabel: isNoCircuitTaskFirst ? 'Open Design' : verifySession.runLabel,
+        onPrimary: isNoCircuitTaskFirst ? onGoToDesign : runVerification,
+        primaryDisabled: !isNoCircuitTaskFirst && runState === 'running',
+        recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
+        onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
+        doneLabel: sessionShowsAssertionMatch
+          ? 'Compare PASS is current for the saved checks.'
+          : 'Current expected outputs are authored and compared against observed outputs.',
+        blockedLabel: isNoCircuitTaskFirst
+          ? 'No circuit boundary is available to verify.'
+          : sessionSignalsAssertionFailure
+            ? `${failingRows.length} failing output check${failingRows.length === 1 ? '' : 's'} need repair.`
+            : sessionStatus === 'stale'
+              ? 'Evidence is stale after project or testbench changes.'
+              : totalVectorCount === 0
+                ? 'No stimulus cases authored yet.'
+                : 'No blocking Verify failure selected.',
+      }}
       dock={
         <section
           className="ide-verify-left-dock"

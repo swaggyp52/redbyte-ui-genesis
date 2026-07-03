@@ -1579,6 +1579,22 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       rightDockMode="collapsed"
       rightDockCanCollapse
       consoleMode="collapsed"
+      productSpine={{
+        statusLabel: handoffTruth.statusLabel,
+        statusTone: handoffTone,
+        detail: surfaceStatusDetail,
+        primaryLabel: primaryExportCtaLabel,
+        onPrimary: handlePrimaryHandoff,
+        primaryDisabled: primaryHandoffDisabled,
+        recoveryLabel: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? 'Map Pins' : onGoToProject ? 'Project' : undefined,
+        onRecovery: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? onGoToHardware : onGoToProject,
+        doneLabel: exportTrusted
+          ? 'Current generated package is browser E0 ready and inspectable.'
+          : 'Generated artifacts are current enough to inspect before download.',
+        blockedLabel: exportBlocked
+          ? handoffTruth.message
+          : 'No browser blocker selected; downstream Vivado and board proof remain external.',
+      }}
       inspector={
         <>
           {/* Testbench Source — always shown when scenario provenance is available.
