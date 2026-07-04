@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-04 (docs: reconcile RedByte mainline sync state)
+
+**Subsystem:** Git timeline truth, cockpit/current-truth routing, Vivado E1 run-kit sync checkpoint, Design wiring simplification sync checkpoint, and release-process proof boundaries.
+
+**Changes:**
+- Ran the requested read-only Git/GitHub timeline audit before further product work and proved `origin/main` was `b9dc0511bb65882726914bc6b2a76246d22f4c81`, not stale `9a639a43`.
+- Verified the disputed commits `d235823a`, `fdd1abd9`, and `fdf17b77` exist locally and on GitHub as ancestors of current `origin/main`; the pasted `b6c32cd7` / `9a639a43` closeout was stale context, not a remote regression.
+- Reconciled cockpit docs so they no longer describe the Vivado E1 run kit / Gannon runbook and Design wiring simplification as untracked loose context without a current sync checkpoint.
+- Updated `docs/ACTIVE_WORK.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_WORK_QUEUE.md`, and `docs/plans/2026-06-12-redbyte-product-issue-index.md` to record the post-rebase stack: remote `origin/main` owns `27c61b0b8` (Design wiring simplification), while local `main` adds rebased `cd6bb9f13` (E1 run kit) plus this docs checkpoint.
+- Kept proof language explicit: E1 run kit packaging is lab-machine handoff only on this desktop, `BLOCKED_NO_VIVADO` remains the valid local classification, and Design wiring simplification remains browser-E0 usability proof only.
+
+**Evidence:** The read-only audit first showed remote `b9dc0511b` green and local `main` ahead by `ce4de91e5` plus `0f3bf312c`. While validation was running, `origin/main` advanced to `27c61b0b8 fix: simplify Design wiring feedback`; GitHub deploy passed for that SHA, but `Classroom Truth Gates` failed in `ide:gate:authoring-depth-release-safety` at `1440x900` waiting for `ide-mode-design`. A normal `git rebase origin/main` then skipped the duplicate local Design patch and left local `main` ahead by `cd6bb9f13 test: add Vivado E1 run kit generator` plus this docs checkpoint. The older stale commits `b6c32cd7` and `9a639a43` are ancestors of current main rather than remote heads.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm exec vitest run packages/rb-logic-view/src/__tests__/wireGuidance.test.ts packages/rb-logic-view/src/__tests__/wireValidation.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx` (`20` tests), `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-certify.ps1 -Mode EnvCheck` (`BLOCKED_NO_VIVADO`), `powershell -ExecutionPolicy Bypass -File scripts/vivado/redbyte-e1-pack-runner.ps1` (`5` packages copied), full `corepack pnpm -s classroom:gate` (`PASS all steps`, `924642ms`), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. After rebasing onto remote `27c61b0b8`, rebuilding the current playground and rerunning the exact failed GitHub gate `corepack pnpm -s ide:gate:authoring-depth-release-safety` also passed.
+
+**Safety:** Docs/control reconciliation only. No new product runtime behavior, simulator truth semantics, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution result, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 pass claim changed in this docs checkpoint.
+
+**Remote sync:** This entry prepares the validated local stack for normal `git push origin main` and GitHub check-watch. Do not claim the sync delivered or live until the push succeeds and the new `Classroom Truth Gates` plus deploy runs pass.
+
+**Next recommended task:** Push the validated stack, wait for GitHub checks/deploy, then inspect the live app before choosing the next browser-first product slice. If a Vivado 2024.2 host is available, run the E1 kit there before making any new E1/E2/E3 claim.
+
 ## Change Log 2026-07-04 (fix: simplify Design wiring feedback)
 
 **Subsystem:** Design canvas wiring affordances, FullAdder from-scratch wiring recovery, selected-wire repair actions, focused browser-E0 proof, and classroom gate regression coverage.
