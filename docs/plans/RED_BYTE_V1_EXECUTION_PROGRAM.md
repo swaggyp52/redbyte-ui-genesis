@@ -137,7 +137,7 @@ Proof:
 - `ide:gate:release-solidification-v2`
 - `ide:gate:interaction-affordance`
 - `ide:gate:verify-postrun-workbench-usability`
-- `ide:gate:verify-evidence-workbench-integrity`
+- `ide:gate:verify-evidence-workbench`
 - `ide:gate:release-solidification-v1`
 - Affected Project/Export/student-task gates, `classroom:gate`, and `build:unified`
 - Before/after screenshots under `.redbyte/product-immersion/release-solidification-2/2026-06-19/`.
@@ -436,7 +436,7 @@ Rollback:
 
 ## Phase 3 - Verify Evidence Workbench
 
-Status: Closed 2026-06-13 by `ide:gate:verify-evidence-workbench-integrity`. This phase landed before the shell reset because the preceding control checkpoint selected Verify as the trust-critical next slice.
+Status: Closed 2026-06-13 by `ide:gate:verify-evidence-workbench-integrity`, then gate-truth hardened 2026-07-04 under the named `ide:gate:verify-evidence-workbench` entry. This phase landed before the shell reset because the preceding control checkpoint selected Verify as the trust-critical next slice.
 
 Goal: Rebuild Verify around stimulus, expected output, observed output, mismatch/pass, waveform, and repair action.
 
@@ -451,7 +451,7 @@ Implementation slices:
 
 Proof:
 
-- `ide:gate:verify-evidence-workbench-integrity`.
+- `ide:gate:verify-evidence-workbench`.
 - `ide:gate:verify-fail-edit-repair`.
 - Verify workbench and contract gates.
 - PASS and FAIL screenshots at `1366x768`, `1440x900`, `1920x1080`.

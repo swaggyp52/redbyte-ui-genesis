@@ -160,9 +160,9 @@ const STEPS = [
     args: ['-s', 'ide:gate:verify-postrun-workbench-usability'],
   },
   {
-    name: 'ide:gate:verify-evidence-workbench-integrity',
+    name: 'ide:gate:verify-evidence-workbench',
     cmd: 'pnpm',
-    args: ['-s', 'ide:gate:verify-evidence-workbench-integrity'],
+    args: ['-s', 'ide:gate:verify-evidence-workbench'],
   },
   {
     name: 'ide:gate:complex-build-signal-trace-debugging',

@@ -10,7 +10,7 @@ import {
   runIdeGate,
   setVerifyRunMode,
 } from './_gateHarness.mjs';
-import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
+import { isVerifyFail, isVerifyPass, isVerifyTrace, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const screenshotDir = process.env.RB_VERIFY_EVIDENCE_WORKBENCH_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_EVIDENCE_WORKBENCH_SCREENSHOTS_DIR)
@@ -268,13 +268,35 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await assertWorkbenchGeometry(page, 'pre-run');
   await capture(page, '01-first-run-editor-visible.png');
 
-  assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must be selectable for the starter checks');
+  assert(await setVerifyRunMode(page, 'observe'), 'Observe-only mode must be selectable before Compare proof');
   let status = await clickRunAndWaitForNewResult(page);
+  assert(isVerifyTrace(status), `Observe-only run should end as trace evidence, got "${status}"`);
+  assert(!isVerifyPass(status), `Observe-only run must not present as trusted PASS, got "${status}"`);
+  assert(!isVerifyFail(status), `Observe-only run must not present as trusted FAIL, got "${status}"`);
+  await requireVisible(page, '[data-testid="ide-verify-waveform-svg"]', 'Observe-only waveform lanes');
+  assert(
+    !(await isVisible(page, '[data-testid="ide-verify-pass-hero"]')),
+    'Observe-only run must not expose the trusted Compare PASS hero'
+  );
+  assert(
+    !(await isVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]')),
+    'Observe-only run must not expose Compare failure repair as proof'
+  );
+  const observeModeCopy = await text(page.locator('[data-testid="ide-vcb-mode-explainer"]'));
+  assert(
+    /observed outputs|no comparison/i.test(observeModeCopy),
+    `Observe-only mode copy must say this records observations without comparison, got "${observeModeCopy}"`
+  );
+  await assertWorkbenchGeometry(page, 'observe-only');
+  await capture(page, '02-observe-only-not-proof.png');
+
+  assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must be selectable for the starter checks');
+  status = await clickRunAndWaitForNewResult(page);
   assert(isVerifyPass(status), `initial Compare should PASS, got "${status}"`);
   await requireVisible(page, '[data-testid="ide-verify-pass-hero"]', 'Compare PASS hero');
   await requireVisible(page, '[data-testid="ide-verify-waveform-svg"]', 'post-run waveform lanes');
   await assertWorkbenchGeometry(page, 'compare-pass');
-  await capture(page, '02-compare-pass-evidence-workbench.png');
+  await capture(page, '03-compare-pass-evidence-workbench.png');
 
   const target = await pickRenderedExpectedTarget(page);
   const wrongValue = target.value === 0 ? 1 : 0;
@@ -292,7 +314,7 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
   assert(/expected/i.test(failNav) && /got/i.test(failNav), `first mismatch summary must show expected and observed values, got "${failNav}"`);
   await assertWorkbenchGeometry(page, 'compare-fail');
-  await capture(page, '03-compare-fail-first-mismatch.png');
+  await capture(page, '04-compare-fail-first-mismatch.png');
 
   await clickExpectedCellToValue(page, target, target.value);
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected-output repair');
@@ -300,5 +322,5 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   assert(isVerifyPass(status), `repaired expected output should PASS Compare, got "${status}"`);
   await requireVisible(page, '[data-testid="ide-verify-pass-hero"]', 'repaired Compare PASS hero');
   await assertWorkbenchGeometry(page, 'repair-pass');
-  await capture(page, '04-repaired-compare-pass-evidence-workbench.png');
+  await capture(page, '05-repaired-compare-pass-evidence-workbench.png');
 });

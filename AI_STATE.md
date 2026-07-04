@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-07-04 (test/docs: harden Verify evidence workbench gate truth)
+
+**Subsystem:** Verify Evidence Workbench gate ownership, Observe-only versus Compare proof boundary, classroom gate wiring, and cockpit/current-truth documentation.
+
+**Changes:**
+- Added the named `ide:gate:verify-evidence-workbench` script entry and routed `ide:gate:verify-evidence-clarity-final`, `classroom:gate`, and `verify:gates:classroom` through that named gate.
+- Strengthened the existing Verify evidence workbench scenario so it now runs Observe-only before Compare, asserts Observe-only is trace evidence rather than trusted PASS/FAIL proof, requires waveform evidence to remain visible, rejects Compare PASS/failure repair affordances in Observe-only, then continues through Compare PASS, intentional expected-output FAIL, first mismatch evidence, and repair PASS.
+- Ran fresh browser before-state proof under `.redbyte/product-immersion/verify-evidence-workbench/before/`; the current Verify layout was already materially strong, so this slice avoided cosmetic layout churn and focused on gate/source-truth hardening.
+- Updated cockpit/current-truth/work-queue/invariant/gate-ownership/Verify/system-map/issue/execution docs to use the named gate and record the Observe-only non-proof contract.
+
+**Evidence:** Starting base was the remote-green cockpit repair `c6f42d2cfa6d84486b5b2d5c9ac8a7a9215fb55d`. Before-state proof passed `ide:gate:verify-evidence-workbench-integrity`, `ide:gate:verify-postrun-workbench-usability`, and `ide:gate:verify-workbench-layout-reset`; representative screenshots were inspected under `.redbyte/product-immersion/verify-evidence-workbench/before/`. After proof passed `ide:gate:verify-evidence-workbench` with screenshots under `.redbyte/product-immersion/verify-evidence-workbench/after/named-gate/`, including `02-observe-only-not-proof.png`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `node --check` on the modified gate/aggregator scripts, `corepack pnpm -s ide:gate:verify-evidence-workbench`, `corepack pnpm -s ide:gate:verify-fail-edit-repair`, `corepack pnpm -s ide:gate:verify-workbench-contract`, `corepack pnpm -s ide:gate:verify-summary-contract`, `corepack pnpm -s ide:gate:shell-layout-integrity`, `corepack pnpm -s ide:gate:export-trust-integrity`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, including the new named Verify gate step), explicit `corepack pnpm -s build:unified`, `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser gate and documentation slice only. No simulation algorithm, Verify compare semantics, expected-output semantics, mapping semantics, export generation, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project format, Vivado execution, Basys3 programming, physical board observation, account/LMS/grading, golden fixture, or proof-tier behavior changed.
+
+**Remote sync:** Commit and push this gate-truth slice normally, then watch GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages for the pushed SHA before claiming remote-green or live/deployed impact.
+
+**Next recommended task:** If no push/check blocker appears, proceed to the next slice only after fresh live inspection; Vivado/Basys3 E1/E2/E3 proof remains board/tool-gated and was not attempted here.
+
 ## Change Log 2026-07-04 (docs: reconcile RedByte cockpit head after Git audit)
 
 **Subsystem:** Git timeline truth, cockpit source-truth routing, GitHub green-state documentation, and product-work gating.
