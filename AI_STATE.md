@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-07-04 (docs: record RedByte push rule debt)
+
+**Subsystem:** GitHub main push closeout, required-check enforcement debt, and remote proof discipline.
+
+**Changes:**
+- Recorded that the normal `git push origin main` delivering the E1 run kit plus sync-state docs succeeded but GitHub again reported a bypassed required status check expectation for `Classroom Truth Gates`.
+- Kept the distinction explicit: source delivery to GitHub is not the same as remote-green or live/student proof until the new GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages check-runs pass for the final pushed SHA.
+
+**Evidence:** Push output for `27c61b0b8..cb548e3a0 main -> main` included `Bypassed rule violations for refs/heads/main` and `Required status check "Classroom Truth Gates" is expected.` This is recurring release-process debt until branch protection/rulesets enforce the required check without allowing silent bypass at push time.
+
+**Validation:** This is an AI_STATE-only release-process note. Docs validation, encoding check, and diff check must pass before pushing this note.
+
+**Safety:** Documentation only. No product runtime, simulator, Verify, pin mapping, generated artifact, import, project format, Vivado, bitstream, Basys3, account, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** Push this note normally, then watch GitHub checks for the final SHA. Do not claim main is restored until those checks pass.
+
+**Next recommended task:** Wait for final `Classroom Truth Gates` and deploy proof, then inspect the live app before choosing the next browser-first product slice.
+
 ## Change Log 2026-07-04 (docs: reconcile RedByte mainline sync state)
 
 **Subsystem:** Git timeline truth, cockpit/current-truth routing, Vivado E1 run-kit sync checkpoint, Design wiring simplification sync checkpoint, and release-process proof boundaries.
