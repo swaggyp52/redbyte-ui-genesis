@@ -36,6 +36,7 @@ import {
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { IdeChromeContract } from '../chromeContract';
+import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'import',
@@ -63,6 +64,7 @@ export interface ImportSurfaceProps {
   onGoToDesign?: () => void;
   onGoToVerify?: () => void;
   onGoToExport?: () => void;
+  activeGuidedLabTask?: GuidedLabTaskDefinition | null;
 }
 
 function ImportZipAuthorityCallout({ zi }: { zi: ZipImportInspection }) {
@@ -394,6 +396,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onGoToDesign,
   onGoToVerify,
   onGoToExport,
+  activeGuidedLabTask,
 }) => {
   const [tab, setTab] = useState<ImportTab>(() => readImportUiState().tab ?? 'hdl');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
@@ -2018,6 +2021,14 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 <span>Already pinned</span>
                 <IdeStatusPill tone="idle">{suggestions.filter((s) => s.locked).length}</IdeStatusPill>
               </div>
+              {activeGuidedLabTask && pendingApplyProject?.meta?.labId === activeGuidedLabTask.id ? (
+                <div className="ide-import-commitPreview-row" data-testid="ide-import-guided-full-adder-review">
+                  <span className="ide-import-commitPreview-key">LAB</span>
+                  <span className="ide-import-commitPreview-val">
+                    {activeGuidedLabTask.title} ({activeGuidedLabTask.id})
+                  </span>
+                </div>
+              ) : null}
             </div>
             <div className="ide-import-suggestion-list">
               {suggestions.slice(0, 8).map((s) => (

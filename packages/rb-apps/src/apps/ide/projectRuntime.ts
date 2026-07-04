@@ -58,6 +58,7 @@ import {
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
+import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
   buildBlockedRuntimeSnapshotFromModel,
   DEFAULT_SIM_SPEED_HZ,
@@ -296,6 +297,7 @@ export interface ProjectRuntimeState {
    */
   importMeta: IdeImportMeta | null;
   activeExampleId: string | null;
+  activeLabTaskId: string | null;
   /** Canonical hardware mapping — Map Pins applies pins via V2 entries, not only flat rows. */
   hardwareMappingV2: HardwareMappingDocumentV2;
   projectIoRows: ProjectIoRow[];
@@ -316,6 +318,7 @@ export interface ProjectRuntimeState {
   loadExample: (exampleId: string) => void;
   loadFromProject: (project: RBProject) => void;
   setMappingPin: (rowId: string, pin: string) => void;
+  setMappingPins: (updates: Record<string, string>) => void;
   applyHardwareMappingEdit: (operation: HardwareMappingV2EditOperation) => void;
   autoSuggestMapping: () => void;
   setVectors: (vectors: TestVector[]) => void;
@@ -367,6 +370,7 @@ export interface ProjectRuntimeState {
     markDirty?: boolean;
   }) => void;
   setImportMeta: (meta: IdeImportMeta | null) => void;
+  setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
   replaceWithBlankProject: () => void;
   setLastSavedAt: (label: string) => void;
@@ -398,6 +402,7 @@ interface PersistedRuntimeState {
   scenarioAuthority?: ScenarioAuthority;
   importMeta?: IdeImportMeta | null;
   activeExampleId: string | null;
+  activeLabTaskId?: string | null;
   hardwareMappingV2?: HardwareMappingDocumentV2;
   projectIoRows: ProjectIoRow[];
   projectVectors: TestVector[];
@@ -663,6 +668,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ? 'custom'
             : persistedProjectKind;
         const activeExampleId = projectKind === 'example' ? sourceExampleId : null;
+        const activeLabTaskId = normalizeGuidedLabTaskId(project.meta?.labId);
         const sourceProjectVectors = normalizeVectorsForLiveIo(
           rekeyVectorsForLiveIo(cloneVectors(project.vectors ?? []), legacyProjectIoRows, projectIoRows),
           projectIoRows
@@ -726,6 +732,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           scenarioAuthority,
           importMeta: null,
           activeExampleId,
+          activeLabTaskId,
           hardwareMappingV2,
           projectIoRows,
           projectVectors,
@@ -754,6 +761,34 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             rowId,
             pin
           );
+          const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
+            state.circuit,
+            nextDoc
+          );
+          return {
+            hardwareMappingV2,
+            projectIoRows,
+            scenarioAuthority:
+              state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+            projectHealthCore: {
+              ...state.projectHealthCore,
+              dirtySinceVerify: true,
+              dirtySinceExport: true,
+            },
+          };
+        });
+      },
+      setMappingPins: (updates) => {
+        set((state) => {
+          const updateEntries = Object.entries(updates)
+            .map(([rowId, pin]) => [rowId.trim(), pin.trim()] as const)
+            .filter(([rowId]) => rowId.length > 0);
+          if (updateEntries.length === 0) return {};
+          const updateById = new Map(updateEntries);
+          const nextRows = cloneIoRows(state.projectIoRows).map((row) =>
+            updateById.has(row.id) ? { ...row, pin: updateById.get(row.id) ?? '' } : row
+          );
+          const nextDoc = buildHardwareMappingV2FromProjectIoRows(nextRows);
           const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
             state.circuit,
             nextDoc
@@ -1749,6 +1784,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             scenarioAuthority: state.projectVectors.length > 0 ? 'draft' : 'none',
             importMeta: null,
             activeExampleId: null,
+            activeLabTaskId: null,
             projectName:
               state.projectName.trim().length > 0 &&
               state.projectName !== DEFAULT_EXAMPLE.name
@@ -1778,6 +1814,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setImportMeta: (meta) => {
         set({ importMeta: cloneImportMeta(meta) });
+      },
+      setActiveLabTaskId: (labTaskId) => {
+        set((state) => ({
+          activeLabTaskId: normalizeGuidedLabTaskId(labTaskId),
+          projectHealthCore: {
+            ...state.projectHealthCore,
+            dirtySinceExport: true,
+          },
+        }));
       },
       resetToActiveExample: () => {
         set((state) => {
@@ -1894,6 +1939,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         scenarioAuthority: state.scenarioAuthority,
         importMeta: cloneImportMeta(state.importMeta),
         activeExampleId: state.activeExampleId,
+        activeLabTaskId: state.activeLabTaskId,
         hardwareMappingV2: structuredClone(state.hardwareMappingV2),
         projectIoRows: cloneIoRows(state.projectIoRows),
         projectVectors: cloneVectors(state.projectVectors),
@@ -1982,6 +2028,7 @@ export function mergePersistedRuntimeState(
           typeof candidate.projectId === 'string' && candidate.projectId.trim().length > 0
             ? candidate.projectId
             : currentState.projectId,
+        labId: normalizeGuidedLabTaskId(candidate.activeLabTaskId) ?? undefined,
       },
     });
   } catch {
@@ -2185,6 +2232,7 @@ export function mergePersistedRuntimeState(
         ? normalizePersistedImportMeta(candidate.importMeta)
         : null,
     activeExampleId: restoredProjectKind === 'example' ? persistedSourceExampleId : null,
+    activeLabTaskId: normalizeGuidedLabTaskId(candidate.activeLabTaskId ?? normalizedProject.meta?.labId),
     hardwareMappingV2,
     projectIoRows,
     projectVectors: detachedProjectVectors,
@@ -2335,6 +2383,7 @@ function createEmptyProjectState(
     scenarioAuthority: 'none',
     importMeta: null,
     activeExampleId: null,
+    activeLabTaskId: null,
     hardwareMappingV2,
     projectIoRows,
     projectVectors,
@@ -2384,6 +2433,7 @@ function stateFromExample(
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
     importMeta: null,
     activeExampleId: example.id,
+    activeLabTaskId: null,
     hardwareMappingV2,
     projectIoRows,
     projectVectors: cloneVectors(example.vectors),

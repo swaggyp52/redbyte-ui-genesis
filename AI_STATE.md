@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: guide full adder lab from project to export)
+
+**Subsystem:** Guided Full Adder scratch lab, Project-to-Export student flow, runtime lab metadata, Verify truth-table seeding, Hardware suggested pin mapping, Import lab review metadata, and browser-E0 proof.
+
+**Changes:**
+- Added `labTaskDefinition.ts` as the canonical model for the `full-adder-scratch-lab`, including A/B/Cin inputs, Sum/Cout outputs, eight truth-table rows, suggested Basys3 aliases, and browser-E0 evidence boundary.
+- Added a Project Full Adder scratch-lab entry with the same guarded replacement behavior as Build Fresh, then carried active lab metadata through runtime persistence and exported `.rbproject` metadata.
+- Added Design, Verify, Hardware, Export, and Import lab affordances: real checklist state from circuit/runtime rows, buttons for missing lab I/O and FullAdder block, guarded eight-case truth-table replacement, suggested pin mapping, lab submission summary, and import-review lab metadata.
+- Added `setMappingPins` so guided pin mapping can seed a canonical V2 hardware mapping document from generated boundary rows instead of no-op single-row updates against an empty V2 document.
+- Added `ide:gate:guided-full-adder-lab-flow` to prove the full Project -> Design -> Verify -> Hardware -> Export path at 1366x768 and 1440x900 classroom viewports.
+- Repaired a Project first-viewport density regression by making the Full Adder Project entry a compact visible launch-header action instead of a tall card before the starter grid.
+
+**Evidence:** The new browser gate proves a student can start the Full Adder scratch lab, place A/B/Cin/Sum/Cout and a FullAdder block through product controls, wire the real canvas ports, seed all eight Verify cases, pass Compare, apply the suggested SW0/SW1/SW2/LD0/LD1 mapping, and see the Export lab submission summary without changing the E0 proof boundary. Proof artifacts are local under `.redbyte/product-immersion/guided-full-adder-lab-flow/`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:six-page-product-spine-flow`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:complex-build-signal-trace-debugging`, `corepack pnpm -s ide:gate:gannon-pilot-student-flow`, `corepack pnpm -s ide:gate:export-import-roundtrip-integrity`, direct `corepack pnpm -s ide:gate:project-command-center`, direct `corepack pnpm -s ide:gate:outer-workflow-action-density`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `794959ms`), focused Vitest `packages/rb-apps/src/apps/ide/__tests__/labTaskDefinition.test.ts` (`7` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser-E0 guided-lab product flow only. No generated VHDL/XDC/testbench/Tcl/ZIP byte contract, simulator truth semantics beyond existing FullAdder behavior, import parser semantics, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the guided Full Adder lab slice.
+
+**Next recommended task:** Continue product usability work with a guided wrong-build recovery loop for from-scratch designs: make bad Full Adder wiring and bad expected-output rows repairable through explicit Verify/Design handoffs without trapping the student in a stale or unrecoverable testbench state.
+
 ## Change Log 2026-07-03 (fix: define six-page product spine)
 
 **Subsystem:** Six-page IDE product spine, workbench action hierarchy, classroom viewport guards, and browser-E0 release proof.

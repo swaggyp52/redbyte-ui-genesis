@@ -24,6 +24,10 @@ import {
   type ProjectWorkflowAuthority,
 } from '../projectWorkflowAuthority';
 import { createClockTimingGuidance, deriveTimingGuidanceFromRun, type TimingGuidance } from '../timingGuidance';
+import type {
+  FullAdderLabHardwareChecklist,
+  GuidedLabTaskDefinition,
+} from '../labTaskDefinition';
 import {
   EXPORT_STAGE_LABEL,
   PROGRAM_STAGE_LABEL,
@@ -207,6 +211,9 @@ export interface HardwareSurfaceProps {
   topLevelVhdlText?: string;
   /** Jump to Design / Export / etc. from an export diagnostic action. */
   onRepairExportDiagnostic?: (diagnostic: ExportDiagnosticView) => void;
+  guidedLabTask?: GuidedLabTaskDefinition | null;
+  guidedLabHardwareChecklist?: FullAdderLabHardwareChecklist | null;
+  onApplyGuidedLabMapping?: () => void;
 }
 
 /** Convert a raw signal key like "ld[5]" or "sw3" into a human label like "LED LD5" / "Switch SW3". */
@@ -417,6 +424,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   designTopEntityName,
   topLevelVhdlText,
   onRepairExportDiagnostic,
+  guidedLabTask,
+  guidedLabHardwareChecklist,
+  onApplyGuidedLabMapping,
 }) => {
   const { activeBoardSignal, hoverBoardSignal, setActiveBoardSignal, setHoverBoardSignal } = useBoardSignal();
   const [hwMode, setHwMode] = useState<HwMode>(() =>
@@ -2674,6 +2684,49 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Mapping orientation: header + 3-step guide — visible before the work area ── */}
+        {hwMode === 'map' && guidedLabTask && guidedLabHardwareChecklist ? (
+          <section className="ide-guided-lab-card" data-testid="ide-hardware-guided-full-adder-mapping">
+            <div>
+              <p className="ide-surface-block-label">Active lab</p>
+              <h3>{guidedLabTask.shortTitle} pin map</h3>
+              <p>
+                Use the suggested Basys3 map for the submission path. Conflicts still need manual review
+                in the table below.
+              </p>
+              <div className="ide-guided-lab-checklist">
+                {guidedLabHardwareChecklist.items.map((item) => (
+                  <span
+                    key={item.id}
+                    className={`ide-guided-lab-check ${item.complete ? 'is-complete' : 'is-missing'}`}
+                    data-testid={`ide-hardware-guided-full-adder-item-${item.id}`}
+                  >
+                    <strong>{item.complete ? 'OK' : 'TODO'}</strong>
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="ide-guided-lab-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={onApplyGuidedLabMapping}
+                disabled={!onApplyGuidedLabMapping}
+                testId="ide-hardware-guided-full-adder-map-missing"
+              >
+                Map missing pins
+              </IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={onOpenExport}
+                disabled={!guidedLabHardwareChecklist.readyForExport}
+                testId="ide-hardware-guided-full-adder-continue-export"
+              >
+                Continue to Export
+              </IdeButton>
+            </div>
+          </section>
+        ) : null}
+
         {hwMode === 'map' && (
           <>
             <HardwareMappingHeader

@@ -53,6 +53,10 @@ import {
   type VerifyScenario,
 } from '../verifyScenario';
 import type { VerifyMode } from '../verifyMode';
+import type {
+  FullAdderLabDesignChecklist,
+  GuidedLabTaskDefinition,
+} from '../labTaskDefinition';
 import type { ProjectKind, ScenarioAuthority } from '../projectIdentity';
 import {
   createClockTimingGuidance,
@@ -251,6 +255,9 @@ export interface VerifySurfaceProps {
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
+  guidedLabTask?: GuidedLabTaskDefinition | null;
+  guidedLabDesignChecklist?: FullAdderLabDesignChecklist | null;
+  onCreateGuidedLabTruthTable?: () => void;
   unsupportedFeedbackDiagnostic?: {
     title: string;
     message: string;
@@ -369,6 +376,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   projectKind = 'blank',
   sourceExampleId = null,
   scenarioAuthority = 'none',
+  guidedLabTask,
+  guidedLabDesignChecklist,
+  onCreateGuidedLabTruthTable,
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
 }) => {
@@ -4798,6 +4808,44 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
         </div>
         </VerifyHeaderRegion>
+
+        {guidedLabTask ? (
+          <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
+            <div>
+              <p className="ide-surface-block-label">Active lab</p>
+              <h3>{guidedLabTask.shortTitle} truth table</h3>
+              <p>
+                Create the eight A/B/Cin cases with saved Sum and Cout expectations. This replaces only
+                the authored Verify case list after confirmation.
+              </p>
+              <div className="ide-guided-lab-checklist">
+                <span className={`ide-guided-lab-check ${guidedLabDesignChecklist?.readyForVerify ? 'is-complete' : 'is-missing'}`}>
+                  <strong>{guidedLabDesignChecklist?.readyForVerify ? 'OK' : 'TODO'}</strong>
+                  Design checklist
+                </span>
+                <span className={`ide-guided-lab-check ${totalVectorCount >= 8 ? 'is-complete' : 'is-missing'}`}>
+                  <strong>{totalVectorCount >= 8 ? 'OK' : 'TODO'}</strong>
+                  {totalVectorCount} Verify case{totalVectorCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+            <div className="ide-guided-lab-actions">
+              {onGoToDesign ? (
+                <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-verify-guided-full-adder-open-design">
+                  Open Design
+                </IdeButton>
+              ) : null}
+              <IdeButton
+                tone="primary"
+                onClick={onCreateGuidedLabTruthTable}
+                disabled={!guidedLabDesignChecklist?.readyForVerify || !onCreateGuidedLabTruthTable}
+                testId="ide-verify-create-full-adder-truth-table"
+              >
+                Create Full Adder truth table
+              </IdeButton>
+            </div>
+          </section>
+        ) : null}
 
         <VerifyResultRegion>
         {/* ── Result / failure context panels ────────────────────────────── */}

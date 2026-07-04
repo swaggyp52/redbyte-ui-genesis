@@ -33,6 +33,10 @@ import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../p
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { TimingGuidance } from '../timingGuidance';
+import type {
+  FullAdderLabDesignChecklist,
+  GuidedLabTaskDefinition,
+} from '../labTaskDefinition';
 import {
   formatVerifyDebugInputSnapshot,
   formatVerifyMismatchBrief,
@@ -225,6 +229,11 @@ export interface DesignSurfaceProps {
   // A2: Verify → Design signal linkage
   activeVerifySignal?: string | null;
   timingGuidance?: TimingGuidance;
+  guidedLabTask?: GuidedLabTaskDefinition | null;
+  guidedLabDesignChecklist?: FullAdderLabDesignChecklist | null;
+  onAddGuidedLabInput?: (label: string) => void;
+  onAddGuidedLabOutput?: (label: string) => void;
+  onAddGuidedLabFullAdder?: () => void;
 }
 
 export interface DesignCompilerStatus {
@@ -1001,6 +1010,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   debugTickCount,
   activeVerifySignal,
   timingGuidance,
+  guidedLabTask,
+  guidedLabDesignChecklist,
+  onAddGuidedLabInput,
+  onAddGuidedLabOutput,
+  onAddGuidedLabFullAdder,
 }) => {
   const circuit = useCircuitStore((state) => state.circuit);
   const addNode = useCircuitStore((state) => state.addNode);
@@ -6331,6 +6345,66 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 ) : null}
               </div>
             </div>
+            {guidedLabTask && guidedLabDesignChecklist ? (
+              <section className="ide-guided-lab-card" data-testid="ide-design-guided-full-adder-checklist">
+                <div>
+                  <p className="ide-surface-block-label">Active lab</p>
+                  <h3>{guidedLabTask.shortTitle}</h3>
+                  <p>{guidedLabTask.buildGoal}</p>
+                  <div className="ide-guided-lab-checklist">
+                    {guidedLabDesignChecklist.items.map((item) => (
+                      <span
+                        key={item.id}
+                        className={`ide-guided-lab-check ${item.complete ? 'is-complete' : 'is-missing'}`}
+                        data-testid={`ide-design-guided-full-adder-item-${item.id}`}
+                      >
+                        <strong>{item.complete ? 'OK' : 'TODO'}</strong>
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="ide-guided-lab-actions">
+                  {guidedLabDesignChecklist.missingInputs.map((label) => (
+                    <IdeButton
+                      key={label}
+                      tone="secondary"
+                      onClick={() => onAddGuidedLabInput?.(label)}
+                      testId={`ide-design-guided-full-adder-add-input-${label.toLowerCase()}`}
+                    >
+                      Add {label}
+                    </IdeButton>
+                  ))}
+                  {guidedLabDesignChecklist.missingOutputs.map((label) => (
+                    <IdeButton
+                      key={label}
+                      tone="secondary"
+                      onClick={() => onAddGuidedLabOutput?.(label)}
+                      testId={`ide-design-guided-full-adder-add-output-${label.toLowerCase()}`}
+                    >
+                      Add {label}
+                    </IdeButton>
+                  ))}
+                  {!guidedLabDesignChecklist.hasFullAdderBlock ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={onAddGuidedLabFullAdder}
+                      testId="ide-design-guided-full-adder-add-block"
+                    >
+                      Add FullAdder
+                    </IdeButton>
+                  ) : null}
+                  <IdeButton tone="ghost" onClick={() => setPaletteQuery('full adder')} testId="ide-design-guided-full-adder-open-library">
+                    Open Library
+                  </IdeButton>
+                  {onGoToVerify ? (
+                    <IdeButton tone="primary" onClick={onGoToVerify} testId="ide-design-guided-full-adder-open-verify">
+                      Open Verify
+                    </IdeButton>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
               {isCodeWorkspace ? (

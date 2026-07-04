@@ -50,6 +50,7 @@ import { ProjectOverviewPanel } from '../components/ProjectOverviewPanel';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import type { ProjectOutlineSummary } from '../projectOutline';
 import type { RuntimeSimState } from '../projectRuntime';
+import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 import { useIoBus } from '../ioBus';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel } from '../ioLabels';
@@ -133,6 +134,8 @@ export interface ProjectSurfaceProps {
   onOpenExport: () => void;
   onOpenHardware: () => void;
   onOpenImport: () => void;
+  guidedLabTask?: GuidedLabTaskDefinition | null;
+  onStartGuidedLab?: (labId: string) => void;
   onStartBlankProject?: () => void;
   recentProjects?: Array<{
     projectId: string;
@@ -214,6 +217,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenExport,
   onOpenHardware,
   onOpenImport,
+  guidedLabTask,
+  onStartGuidedLab,
   onStartBlankProject,
   recentProjects = [],
   onOpenSavedProjects,
@@ -1105,6 +1110,20 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                   Pick the current job for this Basys3 project: build fresh, load a course starter,
                   reopen local work, or import and recover an existing design.
                 </p>
+                {guidedLabTask && onStartGuidedLab ? (
+                  <button
+                    type="button"
+                    className="ide-project-guided-lab-inline"
+                    onClick={() => onStartGuidedLab(guidedLabTask.id)}
+                    data-testid="ide-project-guided-full-adder-lab"
+                    title={guidedLabTask.assignment}
+                  >
+                    <span data-testid="ide-project-guided-full-adder-start">
+                      {guidedLabTask.shortTitle} scratch lab
+                    </span>
+                    <small>A/B/Cin -&gt; Sum/Cout</small>
+                  </button>
+                ) : null}
                 {/* Primary launch actions */}
                 <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
                   <button
@@ -1490,6 +1509,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <strong>{exportPackageCurrent ? 'Current package' : exportAvailable ? 'Draft ready' : 'Build files'}</strong>
             </button>
           </section>
+          {guidedLabTask && onStartGuidedLab ? (
+            <section className="ide-guided-lab-card ide-guided-lab-card--loaded" data-testid="ide-project-guided-full-adder-lab-loaded">
+              <div>
+                <p className="ide-surface-block-label">Scratch lab</p>
+                <h3>{guidedLabTask.title}</h3>
+                <p>{guidedLabTask.assignment}</p>
+              </div>
+              <IdeButton
+                tone="secondary"
+                onClick={() => onStartGuidedLab(guidedLabTask.id)}
+                testId="ide-project-guided-full-adder-restart"
+              >
+                Start from fresh lab
+              </IdeButton>
+            </section>
+          ) : null}
           <div className="ide-project-evidence-strip-v1" data-testid="ide-project-evidence-strip-v1">
           <ProjectMetricsRow
             metrics={[
