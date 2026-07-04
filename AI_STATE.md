@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: improve RedByte manual browser UX)
+
+**Subsystem:** Manual browser product stewardship, Verify expected-output editor, Verify FAIL repair actions, Design debug escape, classroom gate runner stability, and browser-E0 regression proof.
+
+**Changes:**
+- Used the in-app browser against production and local preview before coding, recorded manual findings under `.redbyte/product-immersion/manual-browser-product-steward/`, and kept the artifact untracked.
+- Made Verify expected-output cells visibly show `0` / `1` values so a student can see and edit the testbench instead of staring at blank toggles.
+- Reworded stale Verify messages so changed checks are not blamed only on Design changes, and relabeled repair actions from terse debug labels to `Use observed cell`, `Use observed row`, `Use all observed`, `Inspect Design`, and `Rerun`.
+- Changed Design `Resume editing` / `Exit debug view` to clear Verify focus, selected failing tick/signal, trace state, and replay styling so returning from a failed Compare is a normal editing state.
+- Added `ide:gate:manual-browser-product-steward` to protect the manually found fixes across visible expected cells, stale copy, repair labels, and Design debug escape.
+- Added a short settle delay between `classroom:gate` steps so Windows/Playwright/Vite preview cleanup finishes before the next browser gate starts; the runner still fails immediately on real gate failures and does not retry.
+
+**Evidence:** Manual production and local screenshots cover start, Project first launch/loaded, Design selected node/wiring attempt, Verify PASS/FAIL, Hardware mapped, Export draft/ready, and Import first look. Local retest screenshots show visible expected-output values, clearer Verify repair actions, corrected stale copy, and Design resumed without `Compare failed`, `Verify focus`, `Verify-linked`, or replay debug state.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `node --check scripts/gates/ide-manual-browser-product-steward.mjs`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:student-task-completion-flow`, focused Vitest for the touched Design/Verify files (`5` files, `114` tests), `corepack pnpm -s build:unified`, and full `corepack pnpm -s classroom:gate` (`PASS all steps`, `874371ms`). Docs validation, encoding check, and diff check are part of closeout.
+
+**Safety:** Browser-E0 UX and validation-runner stability only. No simulator truth semantics, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** The previous guided Full Adder and live-eyed UX commits were pushed/deployed before this slice, with production verified at `67313e91ab090244728f4371624fc94eb2a402ef`. This manual browser UX slice is local-only by user instruction: no push, no deploy, no PR, and no production proof were performed for the new commit.
+
+**Next recommended task:** Take the Design wiring simplification slice: make port-to-port connection targets clearer, make wrong-wire recovery direct, and connect Verify failure evidence to the exact Design connection a student should inspect.
+
 ## Change Log 2026-07-04 (fix: polish live-eyed six page UX)
 
 **Subsystem:** Six-page IDE task spine, Project/Design/Verify/Hardware/Export/Import first-viewport polish, Verify repair evidence density, Hardware next-step routing, and browser-E0 visual proof.

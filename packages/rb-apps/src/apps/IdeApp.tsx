@@ -2127,6 +2127,10 @@ export const IdeApp: React.FC = () => {
               externalDebugContext={debugState?.context ?? null}
               replaySession={verifyLastRun ?? null}
               onClearExternalDebug={handleClearDebugState}
+              onClearVerifyFocus={() => {
+                setVerifySelectedSignal(null);
+                setVerifySelectedTick(null);
+              }}
               onPrevDebugTick={handlePrevDebugTick}
               onNextDebugTick={handleNextDebugTick}
               onSelectDebugTickIndex={handleSelectDebugTickIndex}

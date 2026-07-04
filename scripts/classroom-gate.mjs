@@ -396,6 +396,12 @@ function runStep(step) {
   };
 }
 
+function waitBetweenSteps() {
+  const settleMs = Number.parseInt(process.env.RB_CLASSROOM_GATE_SETTLE_MS ?? '750', 10);
+  if (!Number.isFinite(settleMs) || settleMs <= 0) return;
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, settleMs);
+}
+
 function main() {
   const totalStart = performance.now();
   for (const step of STEPS) {
@@ -406,6 +412,7 @@ function main() {
       process.exit(1);
     }
     console.log(`[classroom:gate] PASS ${step.name} (${result.elapsedMs}ms)`);
+    waitBetweenSteps();
   }
   console.log(`[classroom:gate] PASS all steps (${Math.round(performance.now() - totalStart)}ms)`);
 }

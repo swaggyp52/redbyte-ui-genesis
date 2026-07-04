@@ -3944,9 +3944,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       });
       return {
         tone: 'warn',
-        title: 'Design changed - rerun Compare',
+        title: 'Circuit or checks changed - rerun Compare',
         message:
-          'The circuit changed since these saved checks were authored. Rerun Compare with the saved expected values, or recapture if the expected values should change.',
+          'The circuit, stimulus, or expected-output checks changed since this reference was authored. Rerun Compare with the saved expected values, or recapture if the expected values should change.',
         actions,
       };
     }
@@ -3976,10 +3976,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     if (isTestbenchStale && !isRunStale) {
       return {
-        tone: 'info',
-        title: 'Testbench changed - rerun Compare',
-        message: 'Stimulus or saved checks changed since the last run. Rerun Compare to update the waveform and evidence.',
-        actions: [{ label: 'Run Compare', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
+        tone: 'warn',
+        title: 'Checks changed - rerun before trusting PASS',
+        message: 'Stimulus or expected-output checks changed since the last run. The old PASS/FAIL result is stale until Compare runs again.',
+        actions: [{ label: 'Rerun Compare now', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
       };
     }
 
@@ -4423,7 +4423,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-repair-use-observed"
               title="Use the observed value for this failed expected-output cell."
             >
-              Cell
+              Use observed cell
             </IdeButton>
             <IdeButton
               tone="secondary"
@@ -4432,7 +4432,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-repair-use-observed-row"
               title="Use observed values for all failed outputs in the selected row."
             >
-              Row
+              Use observed row
             </IdeButton>
             <IdeButton
               tone="secondary"
@@ -4441,7 +4441,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-repair-use-observed-all"
               title="Use observed values for all failed outputs in this run."
             >
-              All
+              Use all observed
             </IdeButton>
           </div>
         </div>
@@ -4455,7 +4455,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 testId="ide-verify-repair-open-design"
                 title="Inspect this failed output in Design."
               >
-                Design
+                Inspect Design
               </IdeButton>
             ) : null}
             <IdeButton

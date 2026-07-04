@@ -384,7 +384,7 @@ describe('DesignSurface replay invalidation', () => {
     expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('t3');
     expect(view.getByTestId('ide-design-replay-stale-banner').textContent).toContain('phase_driver');
     expect(view.queryByTestId('ide-design-sim-run')).toBeNull();
-    expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Paused');
+    expect(view.getByTestId('ide-design-sim-story-strip').textContent).toContain('Replay stale');
   });
 });
 

@@ -12100,6 +12100,13 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 6px;
 }
 
+.ide-verify-repair-panel__path-actions .ide-button {
+  min-height: 24px;
+  padding-inline: 8px;
+  font-size: 11px;
+  white-space: normal;
+}
+
 .ide-verify-instrument-deck > .ide-verify-repair-panel {
   gap: 8px;
   padding: 8px 10px;
@@ -21002,6 +21009,27 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 .ide-stimulus-row button:hover > .ide-stimulus-cell--hi {
   opacity: 0.82;
+}
+
+.ide-stimulus-cell--expected {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--rb-font-mono);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.ide-stimulus-cell--expected .ide-stimulus-cell__value {
+  min-width: 1ch;
+  color: rgba(246, 252, 255, 0.96);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.72);
+}
+
+.ide-stimulus-cell--expected.ide-stimulus-cell--lo .ide-stimulus-cell__value {
+  color: rgba(205, 223, 238, 0.95);
+  text-shadow: none;
 }
 
 .ide-stimulus-row--header {

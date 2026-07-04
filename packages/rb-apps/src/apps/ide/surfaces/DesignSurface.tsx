@@ -220,6 +220,7 @@ export interface DesignSurfaceProps {
   externalDebugContext?: VerifyDebugContext | null;
   replaySession?: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
   onClearExternalDebug?: () => void;
+  onClearVerifyFocus?: () => void;
   // C-5b: Tick navigation within the debug waveform
   onPrevDebugTick?: () => void;
   onNextDebugTick?: () => void;
@@ -1003,6 +1004,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   externalDebugContext,
   replaySession,
   onClearExternalDebug,
+  onClearVerifyFocus,
   onPrevDebugTick,
   onNextDebugTick,
   onSelectDebugTickIndex,
@@ -1380,6 +1382,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [
     markReplayStale,
     onCircuitMutated,
+  ]);
+  const handleResumeLiveEditing = useCallback(() => {
+    setToolMode('select');
+    clearTrace();
+    onRuntimeSimSetSelectedSignal?.(null);
+    onClearVerifyFocus?.();
+    onClearExternalDebug?.();
+  }, [
+    clearTrace,
+    onClearExternalDebug,
+    onClearVerifyFocus,
+    onRuntimeSimSetSelectedSignal,
+    setToolMode,
   ]);
   const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
     if (node) {
@@ -7087,6 +7102,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ) : null}
                       <div className="ide-design-debug-context-actions">
+                        {onClearExternalDebug ? (
+                          <IdeButton
+                            tone="primary"
+                            onClick={handleResumeLiveEditing}
+                            testId="ide-design-debug-context-resume-editing"
+                          >
+                            Resume editing
+                          </IdeButton>
+                        ) : null}
                         {activeDebugRepairContext?.driverNodeId ? (
                           <IdeButton
                             tone="secondary"
@@ -7343,7 +7367,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           </div>
                         )}
                         {onClearExternalDebug && (
-                          <IdeButton tone="ghost" onClick={onClearExternalDebug} testId="ide-design-debug-clear">
+                          <IdeButton tone="ghost" onClick={handleResumeLiveEditing} testId="ide-design-debug-clear">
                             Exit debug view
                           </IdeButton>
                         )}

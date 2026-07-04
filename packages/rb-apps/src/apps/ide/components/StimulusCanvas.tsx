@@ -790,6 +790,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 {ticks.map((tick) => {
                   const value = getExpectedValue(authoredVectors, tick, field.id);
                   const expectedCellTestId = `ide-stimulus-expected-${field.id}-t${tick}`;
+                  const expectedCellClassName =
+                    value == null
+                      ? ''
+                      : `ide-stimulus-cell ide-stimulus-cell--expected${
+                          value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'
+                        }`;
                   return (
                     <button key={tick} ref={field.id === outputFields[0]?.id && tick === ticks[0] ? firstExpectedCellRef : undefined} type="button" className="ide-stimulus-value-cell-button ide-stimulus-value-cell-button--expected" onPointerDown={() => { markDirectCellActivation(expectedCellTestId); handleExpectedPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(expectedCellTestId)) return; handleExpectedPointerDown(tick, field.id); }} onPointerEnter={(event) => {
                       if (!paintSession || paintSession.kind !== 'expected' || (event.buttons & 1) === 0) return;
@@ -797,7 +803,21 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                       setSelectedLaneKey(`expected:${field.id}`);
                       commitVectors((vectors) => setExpectedValue(vectors, inputFields, tick, field.id, paintSession.value));
                     }} data-testid={expectedCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value != null ? value : 'not set'} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowH, borderTop: 'none', borderRight: 'none', borderBottom: 'none', borderLeft: '1px solid var(--rb-border)', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0, position: 'relative', zIndex: 2 }}>
-                      {value != null ? <div style={{ width: tickW - 8, height: rowH - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} /> : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
+                      {value != null ? (
+                        <div
+                          className={expectedCellClassName}
+                          data-value={value}
+                          style={{
+                            width: tickW - 8,
+                            height: rowH - 10,
+                            borderRadius: 3,
+                            background: value === 1 ? 'var(--rb-accent)' : 'transparent',
+                            border: value === 0 ? '1px solid var(--rb-border)' : 'none',
+                          }}
+                        >
+                          <span className="ide-stimulus-cell__value">{value}</span>
+                        </div>
+                      ) : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
                     </button>
                   );
                 })}
