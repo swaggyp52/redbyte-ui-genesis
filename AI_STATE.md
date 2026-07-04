@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-07-04 (docs: restore RedByte cockpit source truth)
+
+**Subsystem:** Cockpit source-truth routing, GitHub green-state documentation, and release-process boundary control.
+
+**Changes:**
+- Rechecked the canonical worktree before further product work: `C:\Users\conno\redbyte-ui-genesis-main` is on `main`, `HEAD` equals `origin/main` at `5d151e395bb25c378f36aca59e45d3b71ba60b4a`, and the tracked tree is clean with only ignored/untracked `.redbyte/` proof/scratch output present.
+- Verified GitHub check-runs for `5d151e395` are green: `Classroom Truth Gates`, `Deploy to Cloudflare Pages`, and `Cloudflare Pages` / `Build unified site and deploy to CF Pages` all completed successfully.
+- Repaired stale cockpit/current-truth/work-queue wording that still described `27c61b0b8` as the remote head, local `main` as ahead by `cd6bb9f13` plus docs, and remote proof as still needing restoration.
+- Kept the next-work split explicit: browser-first product ownership must start from fresh live inspection, while Vivado/Basys3 proof restoration still requires a real Vivado 2024.2 and Basys3 environment.
+
+**Evidence:** `git fetch origin` completed cleanly; `git log --oneline HEAD..origin/main` and `git log --oneline origin/main..HEAD` were empty; `gh api repos/swaggyp52/redbyte-ui-genesis/commits/main/check-runs` reported success for the current `5d151e395` SHA. The earlier `27c61b0b8` Classroom failure was superseded by the later pushed and green `5d151e395` source state.
+
+**Validation:** Docs/control slice only. Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed only existing line-ending normalization warnings for touched markdown files and reported no whitespace errors.
+
+**Safety:** Documentation only. No product runtime, simulator, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution result, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** Push this cockpit-truth repair normally after validation, then watch GitHub `Classroom Truth Gates` and deploy checks for the new SHA. Do not claim this docs repair is remote-green until those checks pass.
+
+**Next recommended task:** Inspect the current live/local app before choosing the next browser-first product slice. Verify Evidence Workbench remains the strategic candidate only if the fresh inspection still shows evidence density, repair clarity, or Observe/Compare trust as the highest-impact normal-use defect.
+
 ## Change Log 2026-07-04 (docs: record RedByte push rule debt)
 
 **Subsystem:** GitHub main push closeout, required-check enforcement debt, and remote proof discipline.
