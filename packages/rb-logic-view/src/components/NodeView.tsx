@@ -5,6 +5,7 @@
 import React from 'react';
 import type { Node, PortRef } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
+import { wirePortState } from '../tools/wireGuidance';
 
 type NodeLodBand = 'full' | 'compact' | 'minimal';
 
@@ -521,6 +522,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isTraceHighlight = isTraceHighlighted(input.id);
           const issueSeverity = getIssuePortSeverity(input.id);
           const issueColor = getIssueColor(issueSeverity);
+          const portWireState = wirePortState(wireStartPort, node.id, input.id, validWireTargets);
 
           return (
             <g key={`input-${input.id}`}>
@@ -616,6 +618,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 height={chipPortHitSize}
                 fill="transparent"
                 data-port-id={input.id}
+                data-wire-port-state={portWireState}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -736,6 +739,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           const isTraceHighlight = isTraceHighlighted(output.id);
           const issueSeverity = getIssuePortSeverity(output.id);
           const issueColor = getIssueColor(issueSeverity);
+          const portWireState = wirePortState(wireStartPort, node.id, output.id, validWireTargets);
 
           return (
             <g key={`output-${output.id}`}>
@@ -820,6 +824,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 rx={chipPortHitHalf}
                 fill="transparent"
                 data-port-id={output.id}
+                data-wire-port-state={portWireState}
                 style={{ cursor: 'crosshair' }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1158,6 +1163,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isTraceHighlight = isTraceHighlighted('in');
         const issueSeverity = getIssuePortSeverity('in');
         const issueColor = getIssueColor(issueSeverity);
+        const portWireState = wirePortState(wireStartPort, node.id, 'in', validWireTargets);
 
         return (
           <g>
@@ -1216,6 +1222,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.in`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.in`) ? 2.5 : isHovered ? 2.5 : 1.5}
               data-port-id="in"
+              data-wire-port-state={portWireState}
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1233,8 +1240,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 const label = `${node.type} in`;
                 onProbeToggle?.(node.id, 'in', label);
               }}
-              onMouseEnter={() => setHoveredPort('in')}
-              onMouseLeave={() => setHoveredPort(null)}
+              onMouseEnter={() => {
+                setHoveredPort('in');
+                if (wireStartPort) {
+                  onPortHover?.('in');
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredPort(null);
+                if (wireStartPort) {
+                  onPortLeave?.();
+                }
+              }}
             />
             {/* Cyan glow for probed port */}
             {probedPorts?.has(`${node.id}.in`) && (
@@ -1295,6 +1312,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         const isTraceHighlight = isTraceHighlighted('out');
         const issueSeverity = getIssuePortSeverity('out');
         const issueColor = getIssueColor(issueSeverity);
+        const portWireState = wirePortState(wireStartPort, node.id, 'out', validWireTargets);
 
         return (
           <g>
@@ -1353,6 +1371,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               stroke={isValidTarget ? "#22c55e" : probedPorts?.has(`${node.id}.out`) ? "#00ffff" : "#fff"}
               strokeWidth={probedPorts?.has(`${node.id}.out`) ? 2.5 : isHovered ? 2.5 : 1.5}
               data-port-id="out"
+              data-wire-port-state={portWireState}
               style={{ cursor: 'crosshair' }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1370,8 +1389,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
                 const label = `${node.type} out`;
                 onProbeToggle?.(node.id, 'out', label);
               }}
-              onMouseEnter={() => setHoveredPort('out')}
-              onMouseLeave={() => setHoveredPort(null)}
+              onMouseEnter={() => {
+                setHoveredPort('out');
+                if (wireStartPort) {
+                  onPortHover?.('out');
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredPort(null);
+                if (wireStartPort) {
+                  onPortLeave?.();
+                }
+              }}
             />
             {/* Cyan glow for probed port */}
             {probedPorts?.has(`${node.id}.out`) && (

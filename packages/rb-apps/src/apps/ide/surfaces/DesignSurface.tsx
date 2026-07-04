@@ -3,8 +3,12 @@ import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { getComponentSupport, isNodeTypeSupportedFor, TickEngine } from '@redbyte/rb-logic-core';
 import {
   LogicCanvas,
+  describePortRefForStudents,
+  describeWireRejectionForStudents,
+  describeWireSourceCue,
   findSmartSpawnPosition,
   useLogicViewStore,
+  wireRejectionMessage,
   type ChipMetadata,
   type NodeIoPresentation,
 } from '@redbyte/rb-logic-view';
@@ -127,11 +131,7 @@ function nodeTypeLabel(nodeType: string): string {
 
 /** Map raw wire validation reasons to student-readable messages. */
 export function connectionRejectedMessage(reason: string): string {
-  if (reason === 'Cannot connect node to itself') return 'A gate cannot connect to itself.';
-  if (reason === 'Connection already exists') return 'That wire already exists.';
-  if (reason === 'Cannot connect input to input') return 'Inputs cannot be wired directly to each other.';
-  if (reason === 'Cannot connect output to output') return 'Outputs cannot be wired directly to each other.';
-  return 'That connection is not allowed here.';
+  return wireRejectionMessage(reason);
 }
 
 export interface DesignSurfaceProps {
@@ -1384,17 +1384,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onCircuitMutated,
   ]);
   const handleResumeLiveEditing = useCallback(() => {
-    setToolMode('select');
+    endWire();
+    setWireFeedback(null);
     clearTrace();
     onRuntimeSimSetSelectedSignal?.(null);
     onClearVerifyFocus?.();
     onClearExternalDebug?.();
   }, [
     clearTrace,
+    endWire,
     onClearExternalDebug,
     onClearVerifyFocus,
     onRuntimeSimSetSelectedSignal,
-    setToolMode,
   ]);
   const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
     if (node) {
@@ -3074,6 +3075,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const showBlankStateCard = editorCircuit.nodes.length === 0 && !isPlacementMode;
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
+  const wireSourceLabel = wireStartPort
+    ? describePortRefForStudents(editorCircuit, wireStartPort, getChipMetadata)
+    : null;
+  const wireCueText = describeWireSourceCue(editorCircuit, wireStartPort, getChipMetadata);
   const interactionLabel =
     effectiveInteractionMode === 'boxSelecting'
       ? 'Marquee Select'
@@ -3096,6 +3101,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ? 'Valid targets glow green — click one to connect. Esc cancels.'
           : 'Click any port to start a wire.'
         : 'Click a node to inspect · click a port to wire · drag to move';
+  const cancelActiveWire = useCallback(() => {
+    endWire();
+    setWireFeedback(null);
+  }, [endWire]);
+
   const handleNodeDiagnosticBadgeClick = useCallback(
     (nodeId: string) => {
       setToolMode('select');
@@ -5028,6 +5038,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <IdeButton tone="ghost" onClick={clearTrace} disabled={!traceState} testId="ide-design-context-clear-trace">
                 Clear trace
               </IdeButton>
+              <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete-wire">
+                Delete wire
+              </IdeButton>
             </div>
           </div>
         </div>
@@ -6939,9 +6952,24 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span className="ide-design-tool-hud-label">{activeModeLabel}</span>
                     <span className="ide-design-tool-hud-hint">{toolHint}</span>
                     {toolMode === 'wire' && !isPlacementMode ? (
-                      <span className="ide-design-tool-hud-wire" data-testid="ide-design-wire-cue">
-                        {wireStartPort ? 'Source selected — click the destination port.' : 'Click any port to start a wire.'}
-                      </span>
+                      <div
+                        className="ide-design-tool-hud-wire"
+                        data-testid="ide-design-wire-cue"
+                        data-wire-source-label={wireSourceLabel ?? ''}
+                        data-wire-active={wireStartPort ? '1' : '0'}
+                      >
+                        <span>{wireCueText}</span>
+                        {wireStartPort ? (
+                          <button
+                            type="button"
+                            className="ide-design-tool-hud-action"
+                            onClick={cancelActiveWire}
+                            data-testid="ide-design-wire-cancel"
+                          >
+                            Cancel wire
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                     {wireFeedback ? (
                       <div className="ide-design-tool-hud-feedback is-error" data-testid="ide-design-wire-feedback">
@@ -7144,6 +7172,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}
+                    data-wire-active={wireStartPort ? '1' : '0'}
+                    data-wire-source-label={wireSourceLabel ?? ''}
                     data-placement-active={isPlacementMode ? '1' : '0'}
                     data-presentation-zoom={presentationZoom}
                     data-macro-placement-active={activeInsertionMacro ? '1' : '0'}
@@ -7405,9 +7435,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       onUndo={handleUndo}
                       onRedo={handleRedo}
                       onPortClick={handlePortClick}
-                      onConnectionRejected={(reason) => {
-                        suppressNextToolModeWireFeedbackClearRef.current = true;
-                        setWireFeedback(connectionRejectedMessage(reason));
+                      onConnectionRejected={(reason, context) => {
+                        suppressNextToolModeWireFeedbackClearRef.current = false;
+                        setWireFeedback(
+                          context
+                            ? describeWireRejectionForStudents(
+                                editorCircuit,
+                                reason,
+                                context.from,
+                                context.to,
+                                getChipMetadata
+                              )
+                            : connectionRejectedMessage(reason)
+                        );
                       }}
                       onNodeDoubleClick={(nodeId) => {
                         const node = editorCircuit.nodes.find((n) => n.id === nodeId);

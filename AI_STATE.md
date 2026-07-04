@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: simplify Design wiring feedback)
+
+**Subsystem:** Design canvas wiring affordances, FullAdder from-scratch wiring recovery, selected-wire repair actions, focused browser-E0 proof, and classroom gate regression coverage.
+
+**Changes:**
+- Added manual findings under `.redbyte/product-immersion/design-wiring-simplification/manual-findings.json` before source edits; the findings record that production build `b9dc051` was visible but in-app browser automation was blocked by a Build Fresh confirmation dialog and later browser control was not exposed again in tool discovery.
+- Added student-facing wire guidance helpers so active wire mode can name the selected source port, describe FullAdder ports with metadata, classify source/valid/invalid target states, and explain invalid targets without forcing a restart.
+- Changed invalid wire attempts to keep the original source armed instead of calling `endWire()`, so an output-to-output or input-to-input mistake leaves the student in recovery mode with green valid targets still available.
+- Made the Design wire HUD show the named source cue plus a direct `Cancel wire` action, added per-port `data-wire-port-state` attributes, and made standard node ports report hover state while wiring.
+- Added a selected-wire `Delete wire` inspector action so wrong connections can be removed without discovering keyboard Delete or the toolbar.
+- Updated the older blank-adder authoring-depth gate to require source-preserving invalid-target recovery instead of the previous cancel-and-restart behavior.
+- Added `ide:gate:design-wiring-simplification-flow`, which builds a fresh FullAdder circuit from blank canvas, proves invalid-target recovery, selected-wire delete, five intended wires, and moving the connected FullAdder block without losing connections.
+
+**Evidence:** The new browser gate proves the target FullAdder wiring path `A -> FullAdder A`, `B -> FullAdder B`, `Cin -> FullAdder Cin`, `FullAdder Sum -> Sum`, and `FullAdder Cout -> Cout` on a real browser at `1366x768`. The manual in-app browser pass was attempted against production first but remained blocked by tooling/dialog state; this slice does not claim completed inline-browser proof.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm exec vitest run packages/rb-logic-view/src/__tests__/wireGuidance.test.ts packages/rb-logic-view/src/__tests__/wireValidation.test.ts packages/rb-apps/src/apps/ide/__tests__/designSurface.authoringIssues.test.tsx` (`20` tests), `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:blank-adder-authoring-depth`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `912262ms`), `corepack pnpm -s rb:doc:validate`, `corepack pnpm -s rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser-E0 Design wiring usability only. No simulator truth semantics, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the Design wiring simplification slice.
+
+**Next recommended task:** Review the local Design wiring behavior in the browser, then run a sync/release checkpoint before taking the next product-friction slice.
+
 ## Change Log 2026-07-04 (fix: improve RedByte manual browser UX)
 
 **Subsystem:** Manual browser product stewardship, Verify expected-output editor, Verify FAIL repair actions, Design debug escape, classroom gate runner stability, and browser-E0 regression proof.

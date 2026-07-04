@@ -2232,6 +2232,27 @@
   font-size: var(--rb-font-size-1);
   color: #bffaf2;
   background: rgba(46, 196, 182, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-design-tool-hud-action {
+  border: 1px solid rgba(191, 250, 242, 0.36);
+  border-radius: 999px;
+  background: rgba(5, 15, 25, 0.48);
+  color: #e6fffb;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 2px 7px;
+}
+
+.ide-design-tool-hud-action:hover,
+.ide-design-tool-hud-action:focus-visible {
+  border-color: rgba(191, 250, 242, 0.68);
+  background: rgba(46, 196, 182, 0.2);
+  outline: none;
 }
 
 .ide-design-overlay-empty {

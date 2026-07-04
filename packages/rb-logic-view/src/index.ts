@@ -29,3 +29,10 @@ export type { ToolbarProps } from './components/Toolbar';
 export { renderGrid } from './tools/grid';
 export type { GridConfig } from './tools/grid';
 export { findSmartSpawnPosition } from './tools/placement';
+export {
+  describePortRefForStudents,
+  describeWireRejectionForStudents,
+  describeWireSourceCue,
+  wirePortState,
+  wireRejectionMessage,
+} from './tools/wireGuidance';

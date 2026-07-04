@@ -94,6 +94,19 @@ function installResizeObserver(width = 1320, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
+function installPointerCaptureShim() {
+  const prototype = Element.prototype as Element & {
+    setPointerCapture?: (pointerId: number) => void;
+    releasePointerCapture?: (pointerId: number) => void;
+  };
+  if (!prototype.setPointerCapture) {
+    prototype.setPointerCapture = vi.fn();
+  }
+  if (!prototype.releasePointerCapture) {
+    prototype.releasePointerCapture = vi.fn();
+  }
+}
+
 function renderSurface(overrides: Partial<React.ComponentProps<typeof DesignSurface>> = {}) {
   const onRuntimeSimSetSelectedSignal = vi.fn();
 
@@ -120,6 +133,7 @@ function renderSurface(overrides: Partial<React.ComponentProps<typeof DesignSurf
 beforeEach(() => {
   vi.restoreAllMocks();
   installResizeObserver();
+  installPointerCaptureShim();
   useCircuitStore.getState().reset();
   useCircuitStore.setState({ circuit: structuredClone(ISSUE_CIRCUIT), isDirty: false, past: [], future: [] });
   useLayoutStore.getState().resetLayout();
@@ -185,7 +199,7 @@ describe('DesignSurface authoring issues', () => {
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps invalid wire feedback sticky until escape clears it', async () => {
+  it('keeps invalid wire feedback sticky and source armed until escape clears it', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
@@ -203,13 +217,20 @@ describe('DesignSurface authoring issues', () => {
     expect(sourcePort).toBeTruthy();
     expect(invalidTargetPort).toBeTruthy();
 
+    fireEvent.pointerDown(view.getByTestId('logic-canvas-svg'));
     fireEvent.click(sourcePort!);
     fireEvent.click(invalidTargetPort!);
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-wire-feedback').textContent).toContain(
-        'Outputs cannot be wired directly to each other.'
+        'Outputs cannot be wired directly to each other. Source kept: SW0 out.'
       );
+    });
+    expect(view.getByTestId('ide-design-wire-cue').textContent).toContain('Source: SW0 out');
+    expect(view.getByTestId('ide-design-wire-cancel')).toBeTruthy();
+    expect(useLogicViewStore.getState().editingState.wireStartPort).toEqual({
+      nodeId: 'sw0_node',
+      portName: 'out',
     });
 
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -217,5 +238,6 @@ describe('DesignSurface authoring issues', () => {
     await waitFor(() => {
       expect(view.queryByTestId('ide-design-wire-feedback')).toBeNull();
     });
+    expect(useLogicViewStore.getState().editingState.wireStartPort).toBeUndefined();
   });
 });

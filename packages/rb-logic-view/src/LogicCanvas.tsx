@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { TickEngine, Node, Connection, Circuit } from '@redbyte/rb-logic-core';
+import type { TickEngine, Node, Connection, Circuit, PortRef } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
 import { NodeView, type ChipMetadata, type NodeIoPresentation } from './components/NodeView';
 import { WireView } from './components/WireView';
@@ -12,6 +12,7 @@ import { Minimap } from './components/Minimap';
 import { Toolbar } from './components/Toolbar';
 import { renderGrid } from './tools/grid';
 import { isValidConnection, normalizeConnection, isInputPort } from './tools/wireValidation';
+import { describePortRefForStudents } from './tools/wireGuidance';
 import { computeWireNetIds } from './tools/netHighlight';
 import { findSmartSpawnPosition } from './tools/placement';
 import { computeAlignmentGuides } from './tools/alignmentGuides';
@@ -61,7 +62,7 @@ export interface LogicCanvasProps {
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
   onPortClick?: (nodeId: string, portName: string) => void;
   /** Fired when a wire attempt is rejected due to an invalid connection. The reason is the raw validation reason. */
-  onConnectionRejected?: (reason: string) => void;
+  onConnectionRejected?: (reason: string, context?: { from: PortRef; to: PortRef }) => void;
   /** Fired when Escape or right-click cancels explicit placement mode. */
   onPlacementCancel?: () => void;
   onWireContextMenu?: (input: {
@@ -747,6 +748,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       : 'invalid';
   }, [editingState.wireStartPort, hoveredPort, validWireTargetKeys]);
 
+  const wireSourceLabel = React.useMemo(
+    () =>
+      editingState.wireStartPort
+        ? describePortRefForStudents(circuit, editingState.wireStartPort, getChipMetadata)
+        : null,
+    [circuit, editingState.wireStartPort, getChipMetadata]
+  );
+
   const handlePortClick = React.useCallback((nodeId: string, portName: string) => {
     if (isReplayMode) return;
     const liveState = useLogicViewStore.getState();
@@ -763,8 +772,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
       const validation = isValidConnection(from, to, circuitForValidation, getChipMetadata);
 
       if (!validation.valid) {
-        onConnectionRejected?.(validation.reason ?? 'Connection not allowed');
-        endWire();
+        onConnectionRejected?.(validation.reason ?? 'Connection not allowed', { from, to });
         return;
       }
 
@@ -1369,6 +1377,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         data-interaction-mode={interactionMode}
         data-tool-mode={toolMode}
         data-wire-preview-active={editingState.wireStartPort ? '1' : '0'}
+        data-wire-source-label={wireSourceLabel ?? undefined}
+        data-wire-hover-target-state={hoveredWireTargetState ?? 'none'}
         width={width}
         height={height}
         style={{

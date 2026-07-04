@@ -192,7 +192,15 @@ async function proveInvalidCancelDeleteUndoAndMove(page, nodes, viewport) {
     afterInvalid.connectionCount === beforeInvalid.connectionCount,
     `${viewport.label}: invalid target mutated circuit ${beforeInvalid.connectionCount} -> ${afterInvalid.connectionCount}`
   );
-  assert(!activeAfterInvalid.active, `${viewport.label}: invalid target must cancel the in-progress wire ${JSON.stringify(activeAfterInvalid)}`);
+  assert(activeAfterInvalid.active, `${viewport.label}: invalid target must keep the source armed for recovery ${JSON.stringify(activeAfterInvalid)}`);
+  assert(
+    activeAfterInvalid.wireStartPort?.nodeId === nodes.A && activeAfterInvalid.wireStartPort?.portName === 'out',
+    `${viewport.label}: invalid target must preserve the original source ${JSON.stringify(activeAfterInvalid)}`
+  );
+  const invalidFeedback = await page.locator('[data-testid="ide-design-wire-feedback"]').first().textContent().catch(() => '');
+  assert(/Source kept|green target|Esc/i.test(invalidFeedback ?? ''), `${viewport.label}: invalid wire feedback must explain recovery, got "${invalidFeedback}"`);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.editingState?.wireStartPort, { timeout: 5000 });
 
   await clickPort(page, nodes.A, 'out');
   assert(await activeWireStart(page), `${viewport.label}: valid source click must start a wire preview`);
