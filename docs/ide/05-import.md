@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-04
 owner: Connor Angiel
 used_by_claude: true
 role: Import surface spec
@@ -54,6 +54,7 @@ Show deterministic diagnostics:
 3. Unsupported directives.
 4. Safe failure message that says no files were changed.
 5. Recovery next action: RedByte export ZIP, Vivado re-export, or Paste HDL.
+6. Source-specific failure copy: archive-level failures name the ZIP/archive problem and must not show HDL/XDC port-reconstruction guidance unless the ZIP was actually readable and reconstruction reached the HDL/XDC layer.
 
 ## Success State
 
@@ -77,6 +78,7 @@ Show deterministic diagnostics:
 - Full-fidelity restore means a RedByte export ZIP containing `project.rbproj.json`; the embedded manifest is the source of truth, and loose HDL/XDC files are reference-only.
 - Vivado ZIP / VHDL without a RedByte manifest is fidelity-limited reconstruction. Supported structural sources can rebuild gates and connections; behavioral or unsupported sources can be ports-only or blocked.
 - Failed ZIP import does not replace the active project. The visible error state points to RedByte export ZIP, Vivado re-export, or Paste HDL recovery paths.
+- Non-ZIP and unreadable/corrupt archive failures are archive-level errors: they say no files were changed, require a readable `.zip` archive, and do not tell students to fix HDL ports or XDC LOC/PACKAGE_PIN constraints before an archive has actually opened far enough for reconstruction.
 - Import review does not replace the active project. Replacement happens only after Confirm Replace Project.
 - Successful import routes to editable project state, and imported Verify PASS is not automatically treated as current trusted proof.
 - After a successful import is applied, Project Build Fresh keeps the same explicit replacement guard as other loaded work: cancel preserves the imported project, and confirm replaces it with a new empty Basys3 blank project so stale imported graph, I/O rows, mapping, import metadata, import URL state, Verify/export state, and identity do not survive.

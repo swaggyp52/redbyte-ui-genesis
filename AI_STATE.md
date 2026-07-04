@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: clarify Import invalid ZIP recovery)
+
+**Subsystem:** Import / Recovery visible error classification, archive-level recovery copy, non-destructive Import contract, focused browser gate coverage, and cockpit/current-truth documentation.
+
+**Changes:**
+- Fixed the ZIP Import visible error classifier so non-ZIP and unreadable/corrupt archive failures say the active project was not changed, name the archive-level requirement, and route students to a RedByte/Vivado ZIP re-export or Paste HDL.
+- Removed the accidental substring match where `import` / `export` could be classified as `port`, which made archive-level failures show HDL/XDC port-reconstruction guidance.
+- Strengthened `ide:gate:import-recovery-contract` with a non-ZIP upload fixture and explicit assertions that non-ZIP and corrupt manifest failures do not show `No port definitions`, `valid LOC`, `HDL declares`, or generic `XDC file` guidance.
+- Tightened `importSurface.submission.test.tsx` so the non-ZIP unit path also rejects misleading HDL/XDC guidance before the parser is called.
+- Updated Import/current-truth/gate ownership docs to record the source-specific failure-copy contract.
+
+**Evidence:** Starting base was synced local/remote `main` at `1d1c4438c5ab7323e45037b68836615745b3efa0` (`fix: improve Verify evidence workbench gate truth`), with GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages check-runs green. The focused gate previously reproduced the defect with visible text `Could not open ZIPNo port definitions found...ZIP import requires a .zip archive...`; after the fix, `ide:gate:import-recovery-contract` passes and asserts archive-level failures do not show HDL/XDC guidance.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for focused Import Vitest `packages/rb-apps/src/apps/ide/__tests__/importSurface.submission.test.tsx` (`4` tests), `node --check scripts/gates/ide-import-recovery-contract.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:import-recovery-contract`, `corepack pnpm -s ide:gate:import-guided-recovery-workflow`, `corepack pnpm -s ide:gate:import-guided-recovery-wizard`, and `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`. Full classroom/build/docs closeout remains required before commit/push.
+
+**Safety:** Browser-E0 Import recovery-copy and gate hardening only. No import parser/apply semantics, project format, simulator truth, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** This entry is written before final closeout. Final commit, push, and GitHub `Classroom Truth Gates` plus deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** Finish full local validation, commit and push this narrow Import recovery-copy repair, watch GitHub checks, then return to browser-first product ownership. Verify Evidence Workbench is already gate-truth hardened; the next major browser-first slice should be chosen from fresh live inspection, with Vivado/Basys3 proof still board/tool-gated.
+
 ## Change Log 2026-07-04 (test/docs: harden Verify evidence workbench gate truth)
 
 **Subsystem:** Verify Evidence Workbench gate ownership, Observe-only versus Compare proof boundary, classroom gate wiring, and cockpit/current-truth documentation.

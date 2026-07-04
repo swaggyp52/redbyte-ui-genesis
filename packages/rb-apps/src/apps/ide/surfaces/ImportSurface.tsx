@@ -83,6 +83,29 @@ function ImportZipAuthorityCallout({ zi }: { zi: ZipImportInspection }) {
   );
 }
 
+function formatZipImportErrorMessage(error: string): string {
+  const message = error.trim();
+  if (/requires a \.zip archive/i.test(message)) {
+    return 'No files were changed. ZIP import requires a .zip archive. Choose a RedByte or Vivado ZIP, re-export from Vivado, or use Paste HDL for source-only recovery.';
+  }
+  if (/central directory|not a zip|zip is empty|could not read|failed to read|corrupted or unsupported/i.test(message)) {
+    return 'No files were changed. The archive could not be read as a RedByte or Vivado ZIP. Try a fresh RedByte export ZIP, re-export from Vivado, or use Paste HDL for source-only recovery.';
+  }
+  if (/contains no readable project files/i.test(message)) {
+    return 'No files were changed. This ZIP does not contain a RedByte project manifest or readable HDL/XDC sources. Try another export ZIP or use Paste HDL for source-only recovery.';
+  }
+  if (/no .*(hdl|vhd|verilog|\.v\b)|No HDL source found/i.test(message)) {
+    return 'No VHDL or Verilog file was found in this ZIP. Make sure your Vivado export includes a top-level .vhd or .v source.';
+  }
+  if (/entity/i.test(message)) {
+    return 'Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list.';
+  }
+  if (/\b(port|ports)\b|xdc|package_pin|loc constraint/i.test(message)) {
+    return 'The ZIP opened, but RedByte could not pair HDL ports with XDC constraints. Check that the XDC uses valid LOC/PACKAGE_PIN constraints and that the HDL declares matching top-level ports.';
+  }
+  return 'No files were changed. The ZIP could not be read. Try a RedByte export ZIP with project.rbproj.json, re-export from Vivado, or use Paste HDL for source-only recovery.';
+}
+
 const BASYS3_QUICK_PINS = [
   'SW0', 'SW1', 'SW2', 'SW3', 'SW4', 'SW5', 'SW6', 'SW7',
   'LD0', 'LD1', 'LD2', 'LD3', 'LD4', 'LD5', 'LD6', 'LD7',
@@ -2242,13 +2265,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
           {zipImportError ? (
             <IdeCallout tone="error" title="Could not open ZIP" testId="ide-import-zip-error">
               <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
-                {/no .*(hdl|vhd|verilog|\.v\b)/i.test(zipImportError)
-                  ? 'No VHDL or Verilog file was found in this ZIP. Make sure your Vivado export includes a top-level .vhd or .v source.'
-                  : /entity/i.test(zipImportError)
-                    ? "Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list."
-                    : /port|xdc/i.test(zipImportError)
-                      ? 'No port definitions found. Check that your XDC file has valid LOC constraints and your HDL declares all ports.'
-                      : 'The ZIP could not be read. Try re-exporting from Vivado, or use Paste HDL to bring in your source directly.'}
+                {formatZipImportErrorMessage(zipImportError)}
               </p>
               <details>
                 <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
@@ -3902,13 +3919,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 {zipImportError && (
                   <IdeCallout tone="error" title="Could not open ZIP" testId="ide-import-zip-error">
                     <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
-                      {/no .*(hdl|vhd|verilog|\.v\b)/i.test(zipImportError)
-                        ? 'No VHDL or Verilog file was found in this ZIP. Make sure your Vivado export includes a top-level .vhd or .v source.'
-                        : /entity/i.test(zipImportError)
-                          ? "Could not find a top-level entity in your HDL. Verify your file defines an entity block with a port list."
-                          : /port|xdc/i.test(zipImportError)
-                            ? 'No port definitions found. Check that your XDC file has valid LOC constraints and your HDL declares all ports.'
-                            : 'No files were changed. Try a RedByte export ZIP with project.rbproj.json, re-export from Vivado, or use Paste HDL for source-only recovery.'}
+                      {formatZipImportErrorMessage(zipImportError)}
                     </p>
                     <details>
                       <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>

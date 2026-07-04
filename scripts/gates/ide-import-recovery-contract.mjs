@@ -195,6 +195,13 @@ async function buildCorruptManifestZip() {
   return filePath;
 }
 
+async function buildNonZipUploadFixture() {
+  await mkdir(FIXTURE_DIR, { recursive: true });
+  const filePath = path.join(FIXTURE_DIR, 'import-recovery-not-a-zip.txt');
+  await writeFile(filePath, 'This is not a ZIP archive.\n');
+  return filePath;
+}
+
 function assertNoHardwareOverclaim(surfaceText) {
   const forbidden = [
     /observed physical board/i,
@@ -216,6 +223,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
 
   const validZip = await buildManifestZip();
   const corruptZip = await buildCorruptManifestZip();
+  const nonZipUpload = await buildNonZipUploadFixture();
 
   await openProject(page, baseUrl);
   const projectLanding = page.locator('[data-testid="ide-project-command-center"]').first();
@@ -260,6 +268,19 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
 
   await openImportFromProject(page);
   await ensureUploadStage(page);
+  await page.locator('[data-testid="ide-import-zip-input"]').setInputFiles(nonZipUpload);
+  const nonZipError = page.locator('[data-testid="ide-import-zip-error"]').first();
+  await nonZipError.waitFor({ state: 'visible', timeout: 30000 });
+  const nonZipErrorText = await text(nonZipError);
+  assert(/\.zip archive/i.test(nonZipErrorText), `Non-ZIP upload must name the ZIP archive requirement; got "${nonZipErrorText}"`);
+  assert(/no files were changed/i.test(nonZipErrorText), `Non-ZIP upload must say the active project was not changed; got "${nonZipErrorText}"`);
+  assert(
+    !/No port definitions|valid LOC|HDL declares|XDC file/i.test(nonZipErrorText),
+    `Non-ZIP upload must not show HDL/XDC port-reconstruction guidance; got "${nonZipErrorText}"`
+  );
+  await screenshotIfRequested(page, 'import-non-zip-failure-1366x768');
+
+  await ensureUploadStage(page);
   await page.locator('[data-testid="ide-import-zip-input"]').setInputFiles(corruptZip);
   const zipError = page.locator('[data-testid="ide-import-zip-error"]').first();
   await zipError.waitFor({ state: 'visible', timeout: 30000 });
@@ -268,6 +289,10 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   assert(
     /no files were changed|paste hdl|re-export/i.test(zipErrorText),
     `Corrupt ZIP failure must provide safe recovery next action; got "${zipErrorText}"`
+  );
+  assert(
+    !/No port definitions|valid LOC|HDL declares|XDC file/i.test(zipErrorText),
+    `Corrupt manifest ZIP failure must not show generic HDL/XDC port-reconstruction guidance; got "${zipErrorText}"`
   );
   await screenshotIfRequested(page, 'import-corrupt-failure-1366x768');
 

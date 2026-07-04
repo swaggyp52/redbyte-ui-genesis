@@ -62,6 +62,9 @@ describe('ImportSurface submission ZIP handling', () => {
     });
     expect(getByTestId('ide-import-zip-error').textContent).toContain('.zip archive');
     expect(getByTestId('ide-import-zip-error').textContent).toContain('No files were changed');
+    expect(getByTestId('ide-import-zip-error').textContent).not.toContain('No port definitions');
+    expect(getByTestId('ide-import-zip-error').textContent).not.toContain('XDC file has valid LOC');
+    expect(getByTestId('ide-import-zip-error').textContent).not.toContain('HDL declares all ports');
     expect(mockedParseIdeSubmissionZip).not.toHaveBeenCalled();
   });
 
