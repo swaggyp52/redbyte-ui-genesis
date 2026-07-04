@@ -13,6 +13,9 @@ import {
   runComparePass,
 } from './_workbenchReconstructionHarness.mjs';
 
+// Import now keeps its page task bar in normal flow so recovery actions cannot sit under it.
+const IMPORT_NORMAL_FLOW_TASK_BAR_ALLOWANCE = 38;
+
 await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
   await installCleanStudentContext(page);
@@ -60,12 +63,12 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
       });
       await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
       await assertVisibleRect(page, ['[data-testid="ide-import-start-primary"]'], `${viewport.label}/Import primary chooser`, {
-        maxTop: viewport.height === 768 ? 260 : 310,
+        maxTop: (viewport.height === 768 ? 260 : 310) + IMPORT_NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: 240,
         minHeight: 40,
       });
       await assertVisibleRect(page, ['[data-testid="ide-import-start-secondary"]', '[data-testid="ide-import-load-sample-and-gate"]'], `${viewport.label}/Import alternate actions`, {
-        maxTop: viewport.height === 768 ? 350 : 400,
+        maxTop: (viewport.height === 768 ? 350 : 400) + IMPORT_NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: 220,
         minHeight: 36,
       });

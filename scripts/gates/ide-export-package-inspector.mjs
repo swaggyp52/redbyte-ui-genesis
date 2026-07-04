@@ -29,17 +29,17 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
       await assertBuildHash(page, viewport.label);
 
       await assertVisibleRect(page, ['[data-testid="ide-export-package-inspector-v1"]'], `${viewport.label}/Export inspector`, {
-        maxTop: viewport.height === 768 ? 185 : 210,
+        maxTop: viewport.height === 768 ? 190 : 210,
         minWidth: Math.round(viewport.width * 0.68),
         minHeight: viewport.height === 768 ? 410 : 500,
       });
       await assertVisibleRect(page, ['[data-testid="ide-export-file-browser-v1"]'], `${viewport.label}/Export file browser`, {
-        maxTop: viewport.height === 768 ? 320 : 350,
+        maxTop: viewport.height === 768 ? 325 : 350,
         minWidth: 220,
         minHeight: 180,
       });
       await assertVisibleRect(page, ['[data-testid="ide-export-selected-preview-v1"]'], `${viewport.label}/Export selected preview`, {
-        maxTop: viewport.height === 768 ? 320 : 350,
+        maxTop: viewport.height === 768 ? 325 : 350,
         minWidth: Math.round(viewport.width * 0.36),
         minHeight: viewport.height === 768 ? 240 : 330,
       });

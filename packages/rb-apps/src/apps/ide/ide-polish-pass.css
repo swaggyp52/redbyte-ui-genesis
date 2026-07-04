@@ -5659,14 +5659,13 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel {
   display: grid !important;
-  grid-template-columns: minmax(112px, 0.5fr) minmax(260px, 1fr) minmax(178px, 0.62fr) !important;
-  grid-template-areas:
-    "header facts actions"
-    "inputs facts actions" !important;
-  align-items: stretch !important;
-  gap: 4px 6px !important;
+  grid-template-columns: minmax(118px, 0.44fr) minmax(190px, 0.76fr) minmax(232px, 0.8fr) !important;
+  grid-template-areas: "header facts actions" !important;
+  align-items: center !important;
+  gap: 5px 8px !important;
+  min-height: 88px !important;
   max-height: 96px !important;
-  padding: 4px 6px !important;
+  padding: 5px 8px !important;
   overflow: hidden !important;
 }
 
@@ -5676,6 +5675,7 @@
   .ide-verify-repair-panel__header {
   grid-area: header !important;
   align-items: center !important;
+  min-height: 0 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5690,8 +5690,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__copy
   strong {
-  font-size: 11px !important;
-  line-height: 1.1 !important;
+  font-size: 11.5px !important;
+  line-height: 1.08 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5713,14 +5713,19 @@
   grid-area: facts !important;
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   gap: 4px !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
   .ide-verify-region--waveform
   .ide-verify-repair-panel__fact {
+  justify-content: center !important;
   gap: 1px !important;
+  min-height: 52px !important;
   padding: 3px 5px !important;
+  overflow: hidden !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5728,7 +5733,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__fact
   > span {
-  font-size: 8px !important;
+  font-size: 7.5px !important;
+  line-height: 1 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5741,8 +5747,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__fact
   code {
-  font-size: 10px !important;
-  line-height: 1.1 !important;
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5750,11 +5756,7 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__inputs {
   grid-area: inputs !important;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  gap: 4px !important;
-  min-width: 0 !important;
+  display: none !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5769,9 +5771,9 @@
   .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
   .ide-verify-region--waveform
   .ide-verify-repair-panel__chips {
-  gap: 3px !important;
-  flex-wrap: nowrap !important;
-  overflow: hidden !important;
+  gap: 4px !important;
+  flex-wrap: wrap !important;
+  overflow: visible !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5779,8 +5781,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__chips
   code {
-  padding: 2px 4px !important;
-  font-size: 9px !important;
+  padding: 2px 5px !important;
+  font-size: 9.5px !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5789,9 +5791,9 @@
   .ide-verify-repair-panel__scope {
   display: flex !important;
   align-items: center !important;
-  gap: 3px !important;
+  gap: 4px !important;
   min-width: 0 !important;
-  padding: 2px 4px !important;
+  padding: 3px 5px !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5799,7 +5801,7 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__scope
   span {
-  font-size: 8px !important;
+  font-size: 8.5px !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5807,8 +5809,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__scope
   strong {
-  font-size: 9px !important;
-  line-height: 1.05 !important;
+  font-size: 9.5px !important;
+  line-height: 1.1 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5824,11 +5826,13 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__actions {
   grid-area: actions !important;
-  display: grid !important;
-  grid-template-rows: repeat(2, minmax(0, auto)) !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
   align-content: center !important;
-  gap: 3px !important;
+  justify-content: flex-end !important;
+  gap: 3px 4px !important;
   min-width: 0 !important;
+  overflow: hidden !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -5836,6 +5840,8 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__action-path {
   gap: 0 !important;
+  display: contents !important;
+  min-width: 0 !important;
   padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
@@ -5852,7 +5858,8 @@
   .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
   .ide-verify-region--waveform
   .ide-verify-repair-panel__path-actions {
-  flex-wrap: nowrap !important;
+  display: contents !important;
+  flex-wrap: wrap !important;
   justify-content: flex-end !important;
   gap: 3px !important;
   min-width: 0 !important;
@@ -5863,10 +5870,18 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__actions
   .ide-button {
-  min-height: 21px !important;
-  padding: 1px 5px !important;
-  font-size: 9.5px !important;
-  line-height: 1.05 !important;
+  min-height: 24px !important;
+  padding: 2px 6px !important;
+  font-size: 10px !important;
+  line-height: 1.08 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-oscilloscope-stage[data-state='fail']
+  .ide-verify-waveform-bar {
+  max-height: 44px !important;
+  min-height: 0 !important;
 }
 
 /* Six-page product spine follow-up:
@@ -5972,8 +5987,8 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
   [data-testid='ide-verify-waveform-preview'] {
-  min-height: clamp(322px, calc(100vh - 446px), 560px) !important;
-  height: clamp(322px, calc(100vh - 446px), 560px) !important;
+  min-height: clamp(292px, calc(100vh - 438px), 560px) !important;
+  height: clamp(292px, calc(100vh - 438px), 560px) !important;
 }
 
 /* Six-page product spine closeout: action-first gates still require

@@ -1357,8 +1357,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: 'Open Board Check',
         primaryAction: () => setHwMode('bringup'),
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Pre-flight',
-        secondaryAction: () => setHwMode('proof'),
+        secondaryLabel: 'Open Export',
+        secondaryAction: onOpenExport,
       };
     }
 
@@ -1384,6 +1384,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     mappingReady,
     onGenerateBringUpVectors,
     onGoToDesign,
+    onOpenExport,
     onOpenVerify,
     onSwitchScenario,
     scenarioDrifted,

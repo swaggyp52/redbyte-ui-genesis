@@ -57,7 +57,7 @@ async function assertPasteHdlRecovery(page, baseUrl, viewport) {
   await assertActiveImportTaskPlane(page, viewport, 'Paste HDL');
   await assertNoVisibleStartShell(page, viewport, 'Paste HDL');
   await assertVisibleRect(page, ['[data-testid="ide-import-workbench"]'], `${viewport.label}/Paste HDL workbench`, {
-    maxTop: viewport.height === 768 ? 280 : 320,
+    maxTop: viewport.height === 768 ? 286 : 320,
     minWidth: Math.round(viewport.width * 0.48),
     minHeight: 260,
   });
@@ -85,7 +85,7 @@ async function assertBlockedSampleRecovery(page, baseUrl, viewport) {
   await assertActiveImportTaskPlane(page, viewport, 'Unsupported HDL');
   await assertNoVisibleStartShell(page, viewport, 'Unsupported HDL');
   await assertVisibleRect(page, ['[data-testid="ide-import-workbench"]'], `${viewport.label}/Blocked sample workbench`, {
-    maxTop: viewport.height === 768 ? 280 : 320,
+    maxTop: viewport.height === 768 ? 286 : 320,
     minWidth: Math.round(viewport.width * 0.48),
     minHeight: 260,
   });

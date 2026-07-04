@@ -13,6 +13,9 @@ import {
   runComparePass,
 } from './_workbenchReconstructionHarness.mjs';
 
+// Product spine task bars now occupy normal flow so they cannot cover work objects.
+const NORMAL_FLOW_TASK_BAR_ALLOWANCE = 38;
+
 await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
   await installCleanStudentContext(page);
@@ -26,7 +29,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
 
       await assertShellChrome(page, viewport, 'design-loaded');
       await assertVisibleRect(page, ['[data-testid="ide-design-live-canvas"]'], `${viewport.label}/design canvas`, {
-        maxTop: 226,
+        maxTop: 226 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.78),
         minHeight: Math.round(viewport.height * 0.50),
       });
@@ -34,13 +37,13 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await openMode(page, baseUrl, 'verify', `workbench-reconstruction-v1-${viewport.label}`);
       await assertShellChrome(page, viewport, 'verify-pre');
       await assertVisibleRect(page, ['[data-testid="ide-verify-region-stimulus"]'], `${viewport.label}/verify stimulus`, {
-        maxTop: 214,
+        maxTop: 214 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.62),
         minHeight: Math.round(viewport.height * 0.34),
       });
       await runComparePass(page);
       await assertVisibleRect(page, ['[data-testid="ide-verify-region-waveform"]'], `${viewport.label}/verify evidence`, {
-        maxTop: 238,
+        maxTop: 238 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.45),
         minHeight: Math.round(viewport.height * 0.40),
       });
@@ -48,7 +51,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await openMode(page, baseUrl, 'hardware', `workbench-reconstruction-v1-${viewport.label}`);
       await assertShellChrome(page, viewport, 'hardware');
       await assertVisibleRect(page, ['[data-testid="ide-hw-board-workspace"]'], `${viewport.label}/hardware board workspace`, {
-        maxTop: 178,
+        maxTop: 178 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.80),
         minHeight: Math.round(viewport.height * 0.48),
       });
@@ -56,7 +59,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await openMode(page, baseUrl, 'export', `workbench-reconstruction-v1-${viewport.label}`);
       await assertShellChrome(page, viewport, 'export');
       await assertVisibleRect(page, ['[data-testid="ide-export-package-inspector-v1"]'], `${viewport.label}/export package inspector`, {
-        maxTop: 176,
+        maxTop: 176 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.70),
         minHeight: 220,
       });
@@ -67,7 +70,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
       await assertShellChrome(page, viewport, 'import');
       await assertVisibleRect(page, ['[data-testid="ide-import-start-shell"]', '[data-testid="ide-import-workspace"]'], `${viewport.label}/import recovery`, {
-        maxTop: 178,
+        maxTop: 178 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
         minWidth: Math.round(viewport.width * 0.65),
         minHeight: 220,
       });

@@ -69,6 +69,7 @@
         "ide:gate:complex-build-signal-trace-debugging": "node ./scripts/gates/ide-complex-build-signal-trace-debugging.mjs",
         "ide:gate:six-page-product-spine-flow": "node ./scripts/gates/ide-six-page-product-spine-flow.mjs",
         "ide:gate:guided-full-adder-lab-flow": "node ./scripts/gates/ide-guided-full-adder-lab-flow.mjs",
+        "ide:gate:live-eyes-visual-polish-flow": "node ./scripts/gates/ide-live-eyes-visual-polish-flow.mjs",
         "ide:gate:verify-counter-repeat-compare-stability": "node ./scripts/gates/ide-verify-counter-repeat-compare-stability.mjs",
         "lint": "pnpm lint:product && pnpm lint:packages",
         "lint:product": "pnpm --filter @redbyte/manual-site run lint && pnpm --filter @redbyte/playground run lint",

@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: polish live-eyed six page UX)
+
+**Subsystem:** Six-page IDE task spine, Project/Design/Verify/Hardware/Export/Import first-viewport polish, Verify repair evidence density, Hardware next-step routing, and browser-E0 visual proof.
+
+**Changes:**
+- Changed non-Project product spine cards from overlay-style chrome into compact normal-flow task bars so Design, Verify, Hardware, Export, and Import no longer sit under an absolute positioned task prompt.
+- Collapsed task-page product-spine details by default while keeping Project details open, preserving done/blocked/recovery/boundary facts behind an explicit Details control.
+- Reworked the Verify FAIL repair strip into a compact, hit-testable review/action band that keeps single-cell, row, all-failed, Design, and rerun actions reachable while restoring visible waveform evidence height.
+- Changed mapped Hardware's secondary next action from pre-flight to Open Export so mapped work naturally continues toward handoff from the first viewport.
+- Added `ide:gate:live-eyes-visual-polish-flow` plus screenshot/proof output under `.redbyte/product-immersion/live-eyes-product-steward/` to exercise Project, Design, Verify FAIL repair, Hardware, Export, and Import at `1366x768` and `1440x900`.
+- Updated older workbench/action/release geometry gates with explicit normal-flow task-bar allowances where their previous pixel budgets assumed overlay task chrome.
+
+**Evidence:** Browser proof now shows the public start page, Project command center, Design canvas, Verify testbench/repair/waveform, Hardware map table/board, Export confidence/files, and Import recovery entry as first-viewport work surfaces instead of task copy overlapping the work object. The new live-eyes gate generated screenshots for both classroom viewports and rejects root overflow, page/console errors, obstructed repair actions, task-spine/work-surface overlap, and browser E1/E2/E3 overclaim.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, `corepack pnpm -s ide:gate:six-page-product-spine-flow`, `corepack pnpm -s ide:gate:project-command-center`, `corepack pnpm -s ide:gate:hardware-first-viewport`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:import-guided-recovery-workflow`, `corepack pnpm -s ide:gate:export-package-inspector`, `corepack pnpm -s ide:gate:design-workbench-v1`, `corepack pnpm -s ide:gate:workbench-reconstruction-v1`, `corepack pnpm -s ide:gate:action-first-entry-surfaces`, `corepack pnpm -s ide:gate:release-solidification-v2`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `899952ms`), and focused Vitest for `pageProductHeader.test.tsx` plus `hardwareSurface.readiness.test.tsx` (`2` files, `28` tests). Docs validation, encoding check, and diff check are part of closeout.
+
+**Safety:** Browser-E0 UX and validation alignment only. No simulator truth semantics, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or E1/E2/E3 proof claims changed.
+
+**Remote sync:** Local-only by user instruction for this pass: no push, no deploy, no PR, and no production proof were performed for the live-eyed visual polish slice.
+
+**Next recommended task:** Take the Design wiring simplification slice: reduce from-scratch build friction with clearer port-to-port wiring affordances, better wrong-wire recovery, and direct repair paths from Verify back to the exact failing Design connection.
+
 ## Change Log 2026-07-04 (fix: guide full adder lab from project to export)
 
 **Subsystem:** Guided Full Adder scratch lab, Project-to-Export student flow, runtime lab metadata, Verify truth-table seeding, Hardware suggested pin mapping, Import lab review metadata, and browser-E0 proof.

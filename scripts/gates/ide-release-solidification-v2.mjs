@@ -22,6 +22,9 @@ import {
 import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+// The compact product spine is normal-flow now, so it spends a few pixels that
+// the older overlay-style fail evidence budget assumed were part of the grid.
+const NORMAL_FLOW_FAIL_EVIDENCE_ALLOWANCE = 8;
 
 await runIdeGate('IDE release solidification v2 satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
@@ -200,7 +203,7 @@ async function assertVerifyActionBand(page, viewport, label) {
   if (label === 'FAIL') {
     assert(metrics.firstFail?.visibleHeight >= 24, `${viewport.label}/${label}: first failing-check action must stay visible ${JSON.stringify(metrics.firstFail)}`);
     assert(
-      metrics.labGrid?.visibleHeight >= viewport.height - 340,
+      metrics.labGrid?.visibleHeight >= viewport.height - 340 - NORMAL_FLOW_FAIL_EVIDENCE_ALLOWANCE,
       `${viewport.label}/${label}: fail evidence workspace left too much unused lower viewport ${JSON.stringify(metrics.labGrid)}`
     );
   }

@@ -59,24 +59,31 @@ export const PageProductHeader: React.FC<PageProductHeaderProps> = ({ mode, stat
           </p>
         </div>
 
-        <dl className="ide-product-spine__facts" aria-label={`${definition.label} done and recovery conditions`}>
-          <div>
-            <dt>Done</dt>
-            <dd data-testid={`ide-product-spine-done-${mode}`}>{doneLabel}</dd>
-          </div>
-          <div>
-            <dt>Blocked</dt>
-            <dd data-testid={`ide-product-spine-blocked-${mode}`}>{blockedLabel}</dd>
-          </div>
-          <div>
-            <dt>Recover</dt>
-            <dd data-testid={`ide-product-spine-recover-${mode}`}>{definition.recovery}</dd>
-          </div>
-          <div>
-            <dt>Boundary</dt>
-            <dd data-testid={`ide-product-spine-boundary-${mode}`}>{definition.proofBoundary}</dd>
-          </div>
-        </dl>
+        <details
+          className="ide-product-spine__details"
+          data-testid={`ide-product-spine-details-${mode}`}
+          open={mode === 'project'}
+        >
+          <summary>Details</summary>
+          <dl className="ide-product-spine__facts" aria-label={`${definition.label} done and recovery conditions`}>
+            <div>
+              <dt>Done</dt>
+              <dd data-testid={`ide-product-spine-done-${mode}`}>{doneLabel}</dd>
+            </div>
+            <div>
+              <dt>Blocked</dt>
+              <dd data-testid={`ide-product-spine-blocked-${mode}`}>{blockedLabel}</dd>
+            </div>
+            <div>
+              <dt>Recover</dt>
+              <dd data-testid={`ide-product-spine-recover-${mode}`}>{definition.recovery}</dd>
+            </div>
+            <div>
+              <dt>Boundary</dt>
+              <dd data-testid={`ide-product-spine-boundary-${mode}`}>{definition.proofBoundary}</dd>
+            </div>
+          </dl>
+        </details>
 
         <div className="ide-product-spine__actions">
           {state?.onPrimary ? (

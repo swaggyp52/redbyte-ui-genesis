@@ -29,6 +29,10 @@ describe('PageProductHeader', () => {
     expect(getByTestId('ide-product-spine-next-hardware').textContent).toContain('Map SW0 and LD0');
     expect(getByTestId('ide-product-spine-boundary-hardware').textContent).toContain('E1');
     expect(getByTestId('ide-product-spine-recover-hardware').textContent).toContain('Select a row');
+    expect((getByTestId('ide-product-spine-details-hardware') as HTMLDetailsElement).open).toBe(false);
+
+    fireEvent.click(getByTestId('ide-product-spine-details-hardware').querySelector('summary')!);
+    expect((getByTestId('ide-product-spine-details-hardware') as HTMLDetailsElement).open).toBe(true);
   });
 
   it('routes primary and recovery actions without creating a second state authority', () => {
@@ -56,5 +60,20 @@ describe('PageProductHeader', () => {
     expect(onRecovery).toHaveBeenCalledTimes(1);
     expect(getByTestId('ide-product-spine-blocked-verify').textContent).toContain('failed output');
     expect(getByTestId('ide-product-spine-recover-verify').textContent).toContain('Use observed values');
+  });
+
+  it('keeps the Project spine expanded because Project is the orientation surface', () => {
+    const { getByTestId } = render(
+      <PageProductHeader
+        mode="project"
+        state={{
+          statusLabel: 'No circuit',
+          statusTone: 'idle',
+          detail: 'Choose Start a Lab or Build fresh.',
+        }}
+      />
+    );
+
+    expect((getByTestId('ide-product-spine-details-project') as HTMLDetailsElement).open).toBe(true);
   });
 });
