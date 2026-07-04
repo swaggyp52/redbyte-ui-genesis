@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-04 (docs: reconcile RedByte cockpit head after Git audit)
+
+**Subsystem:** Git timeline truth, cockpit source-truth routing, GitHub green-state documentation, and product-work gating.
+
+**Changes:**
+- Ran the requested read-only Git/GitHub timeline audit before any further product work and confirmed the latest pasted `b6c32cd7` / `9a639a43` closeout was stale context, not current remote truth.
+- Verified the canonical worktree `C:\Users\conno\redbyte-ui-genesis-main` is on `main`, local `HEAD` equals `origin/main` at `017cb95642a78a6ac0529bf81da17197c481705b`, and the tracked tree is clean with only untracked `.redbyte/` proof/scratch output present.
+- Confirmed the disputed commits `d235823a`, `fdd1abd9`, and `fdf17b77` exist locally and on GitHub and are ancestors of current `main`.
+- Verified GitHub check-runs for `017cb9564` are green: `Classroom Truth Gates`, `Deploy to Cloudflare Pages`, and `Cloudflare Pages` / `Build unified site and deploy to CF Pages` all completed successfully.
+- Repaired cockpit/current-truth/work-queue wording that still described `5d151e395` as the current synced and remote-green head.
+
+**Evidence:** `git fetch --all --prune` completed cleanly; `git log --oneline HEAD..origin/main` and `git log --oneline origin/main..HEAD` were empty; `git branch -a --contains d235823a`, `git branch -a --contains fdd1abd`, and `git branch -a --contains fdf17b7` all included local `main` and `remotes/origin/main`; GitHub commit lookups resolved all three disputed full SHAs; `gh api repos/swaggyp52/redbyte-ui-genesis/commits/main --jq '.sha,.commit.message'` returned `017cb95642a78a6ac0529bf81da17197c481705b` / `docs: record cockpit push rule warning`; GitHub check-runs for current `main` returned success for the required classroom/deploy checks.
+
+**Validation:** Docs/control slice only. Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed only existing line-ending normalization warnings for touched markdown files and reported no whitespace errors.
+
+**Safety:** Documentation only. No product runtime, simulator, Verify comparison semantics, pin mapping semantics, generated VHDL/XDC/testbench/Tcl/ZIP bytes, import parser behavior, project format, Vivado execution result, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** Push this cockpit-head repair normally after validation, then watch GitHub `Classroom Truth Gates` and deploy checks for the new SHA. Do not claim this docs repair is remote-green until those checks pass.
+
+**Next recommended task:** After this cockpit-head repair is committed, pushed, and remote-green, inspect the current live/local app before choosing the next browser-first product slice. Verify Evidence Workbench remains the strategic candidate only if fresh inspection still shows evidence density, repair clarity, or Observe/Compare trust as the highest-impact normal-use defect.
+
 ## Change Log 2026-07-04 (docs: restore RedByte cockpit source truth)
 
 **Subsystem:** Cockpit source-truth routing, GitHub green-state documentation, and release-process boundary control.
