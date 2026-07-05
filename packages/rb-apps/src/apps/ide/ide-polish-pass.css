@@ -3805,17 +3805,17 @@
 
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-toggle {
   flex: 0 0 auto !important;
-  min-inline-size: 240px !important;
+  min-inline-size: 264px !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn {
   flex: 0 0 auto !important;
-  min-inline-size: 104px !important;
+  min-inline-size: 112px !important;
   white-space: nowrap !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn[data-testid='ide-vcb-use-saved-checks'] {
-  min-inline-size: 128px !important;
+  min-inline-size: 144px !important;
 }
 
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-truth-strip {
@@ -3886,9 +3886,9 @@
 
   .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-toggle {
     display: grid !important;
-    grid-template-columns: minmax(104px, 1fr) minmax(128px, 1fr) !important;
+    grid-template-columns: minmax(112px, 1fr) minmax(144px, 1fr) !important;
     width: auto !important;
-    min-inline-size: 240px !important;
+    min-inline-size: 264px !important;
   }
 
   .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn {

@@ -1,5 +1,23 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: widen Verify command deck for GitHub font metrics)
+
+**Subsystem:** Verify post-run command deck layout, Observe/Compare mode controls, GitHub `Classroom Truth Gates`, and cockpit closeout truth.
+
+**Changes:**
+- Widened the Verify Observe/Compare segmented controls beyond the previous local-only fit so GitHub Linux runner font metrics cannot make `Compare checks` fail the strengthened readable-label gate.
+- Kept `ide:gate:verify-postrun-workbench-usability` strict; the fix is CSS capacity, not a weaker assertion.
+
+**Evidence:** Commit `18d2dd940a4e130086c4607c725f00640004c5ff` (`fix: keep Verify command deck readable`) pushed to `main`; Cloudflare Pages succeeded, but GitHub `Classroom Truth Gates` run `28724643498` failed in `ide:gate:verify-postrun-workbench-usability` because `Compare checks` measured `128px < 133px` at `1440x900/PASS` on the runner. This follow-up widens the base Compare segment to `144px`, the Observe segment to `112px`, and the tighter desktop toggle floor to `264px`.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `corepack pnpm --filter @redbyte/playground build`, focused `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, including the post-run usability gate directly and again through `ide:gate:verify-task-plane-usability`), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed an LF-to-CRLF working-copy normalization warning for the touched CSS file only.
+
+**Safety:** Browser-E0 Verify CSS capacity only. No gate weakening, simulator algorithm, Verify Compare/Observe semantics, expected-output data semantics, project format, mapping semantics, export generation, generated VHDL/XDC/testbench/Tcl/ZIP bytes, goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** This entry is written after the remote failure and before the follow-up commit. Commit, push, and GitHub `Classroom Truth Gates` plus deploy results for the final pushed SHA must be verified from live evidence in the session closeout.
+
+**Next recommended task:** Push the follow-up CSS capacity fix, watch GitHub `Classroom Truth Gates` and deploy checks, then choose any next browser-first slice only from fresh live inspection. Vivado/Basys3 E1/E2/E3 proof remains board/tool-gated and was not attempted here.
+
 ## Change Log 2026-07-04 (fix: keep Verify command deck labels readable)
 
 **Subsystem:** Verify post-run command deck layout, Observe/Compare mode controls, focused browser gate coverage, and cockpit/current-truth documentation.
