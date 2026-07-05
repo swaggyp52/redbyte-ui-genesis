@@ -53,6 +53,7 @@ import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
 import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
+import { SIGNAL_LANGUAGE } from '../productLanguage';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import {
   getDesignChipMetadataForNode,
@@ -4450,6 +4451,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       const boardSummary = selectedNodeIoRow
         ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
         : 'No board mapping';
+      const selectedLogicalDirection = selectedNodeIoRow
+        ? selectedNodeIoRow.direction === 'in'
+          ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
+          : `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
+        : selectedNode.type === 'INPUT'
+          ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
+          : selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp'
+            ? `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
+            : 'Internal part or signal path';
+      const selectedBoardResource = selectedNodeIoRow?.label?.trim()
+        ? selectedNodeIoRow.label.trim()
+        : selectedNodeIoRow
+          ? 'Unassigned board resource'
+          : 'Not mapped to a board resource';
+      const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
+        ? selectedNodeIoRow.pin.trim()
+        : 'No package pin yet';
+      const showSelectedSignalModel = Boolean(
+        selectedNodeIoRow ||
+        selectedNode.type === 'INPUT' ||
+        selectedNode.type === 'Switch' ||
+        selectedNode.type === 'OUTPUT' ||
+        selectedNode.type === 'Lamp'
+      );
       const defaultNextStep = primarySelectionIssue?.hint
         ?? (selectedNodeIoRow
           ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
@@ -4505,6 +4530,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </p>
             {renderSelectionGuidance()}
             <div className="ide-design-inspector-facts ide-kv-list">
+              {showSelectedSignalModel ? (
+                <div
+                  className="ide-design-inspector-signal-model"
+                  data-testid="ide-design-selected-signal-model"
+                >
+                  <div>
+                    <span>Label</span>
+                    <strong>{displayName}</strong>
+                  </div>
+                  <div>
+                    <span>Logical direction</span>
+                    <strong>{selectedLogicalDirection}</strong>
+                  </div>
+                  <div>
+                    <span>Board resource</span>
+                    <strong>{selectedBoardResource}</strong>
+                  </div>
+                  <div>
+                    <span>Package pin</span>
+                    <strong>{selectedPackagePin}</strong>
+                  </div>
+                </div>
+              ) : null}
               <div className="ide-kv-row">
                 <span>Reference</span>
                 <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
@@ -4766,6 +4814,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           </div>
           <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
             Selection state, mapping, and signal context land here.
+          </p>
+          <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
+            {SIGNAL_LANGUAGE.designLogicalIo} A label is the name shown in RedByte; mapping binds that signal to a board resource and package pin.
           </p>
         </div>
         {!showBlankStateCard ? (
@@ -6346,6 +6397,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {designCommandTitle}
                   </span>
                   {designCommandMeta}
+                  <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
+                    {SIGNAL_LANGUAGE.designLogicalIo} Labels name RedByte signals; Map Pins binds them to board resources and package pins.
+                  </p>
                 </div>
               </div>
               <div className="ide-inline-actions ide-design-workspace-actions" data-testid="ide-design-workspace-actions">
@@ -7506,7 +7560,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-empty-eyebrow">Start on canvas</span>
                         <h3>Pick a part, place it, then wire it.</h3>
                         <p className="ide-design-empty-summary">
-                          Use the library on the left for gates and registers. Add boundary I/O first if you want switches, LEDs, or Basys3 mapping.
+                          Use the library on the left for gates and registers. {SIGNAL_LANGUAGE.designLogicalIo}
+                        </p>
+                        <p
+                          className="ide-design-logical-io-note"
+                          data-testid="ide-design-logical-io-explainer"
+                        >
+                          Labels name logical signals in RedByte. Mapping later binds those signals to a board resource and package pin.
                         </p>
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
                           <li>
@@ -7543,6 +7603,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <div className="ide-design-authoring-quickstrip-copy">
                           <span className="ide-design-authoring-quickstrip-label">Next on canvas</span>
                           <strong>Drop a gate, wire ports, then run Verify.</strong>
+                          <p data-testid="ide-design-logical-io-explainer">
+                            {SIGNAL_LANGUAGE.designLogicalIo}
+                          </p>
                         </div>
                         <div className="ide-design-authoring-quickstrip-actions">
                           <IdeButton tone="secondary" onClick={addAndGateOnly} testId="ide-design-quick-add-and">

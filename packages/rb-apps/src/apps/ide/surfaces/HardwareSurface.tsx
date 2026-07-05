@@ -17,6 +17,7 @@ import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
+import { SIGNAL_LANGUAGE } from '../productLanguage';
 import type { IoSignalRole } from '../ioSignalRoles';
 import {
   deriveHardwareExportFailureTruth,
@@ -2035,7 +2036,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               Select a signal row in the mapping table, then click a matching Basys3 control.
             </p>
             <p className="ide-copy ide-copy--flush">
-              The inspector will show signal status, board control, package pin, and the next action.
+              {SIGNAL_LANGUAGE.mappingBoundary}
             </p>
           </div>
         ) : selectedMappingRow ? (
@@ -2800,6 +2801,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 <em>CA-CG, DP, AN0-AN3</em>
               </div>
             </div>
+            <p
+              className="ide-hw-map-boundary-note"
+              data-testid="ide-hardware-signal-resource-pin-model"
+            >
+              {SIGNAL_LANGUAGE.mappingBoundary}
+            </p>
             {selectedMappingRow ? (
               <div
                 className="ide-hardware-basys3-binding-chain"

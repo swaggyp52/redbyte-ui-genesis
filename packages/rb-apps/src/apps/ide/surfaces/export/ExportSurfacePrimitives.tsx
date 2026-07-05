@@ -9,6 +9,7 @@ import {
   IdeStatusPill,
   IdeSpinner,
 } from '../../components/IdePrimitives';
+import { PROOF_LANGUAGE, SIGNAL_LANGUAGE } from '../../productLanguage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared types
@@ -261,7 +262,9 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-mapping">
             <span className="ide-export-handoff-summary-label">Pin mapping</span>
             <span className="ide-export-handoff-summary-value">{mappingPlain}</span>
-            <span className="ide-export-handoff-summary-detail">Board controls bound to package pins</span>
+            <span className="ide-export-handoff-summary-detail">
+              {SIGNAL_LANGUAGE.exportPinSummary}
+            </span>
           </div>
           <div className="ide-export-handoff-summary-row" data-testid="ide-export-handoff-summary-verify">
             <span className="ide-export-handoff-summary-label">Verification</span>
@@ -278,7 +281,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             <span className="ide-export-handoff-summary-value">{handoffStatusLabel}</span>
             <span className="ide-export-handoff-summary-detail">
               {trustCondition === 'trusted'
-                ? 'Trusted package available for Vivado handoff'
+                ? `Trusted E0 package available. ${PROOF_LANGUAGE.vivado}`
                 : isDraftExport
                   ? 'Draft package available; trusted evidence still pending'
                   : 'Resolve blockers before treating package as handoff-ready'}
@@ -486,6 +489,9 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
       <ExportSummaryStat label="Mapped Pins" value={mappedPinsLabel} />
       <ExportSummaryStat label="Artifacts" value={artifactsLabel} />
     </div>
+    <p className="ide-export-pin-chain-note" data-testid="ide-export-signal-resource-pin-summary">
+      {SIGNAL_LANGUAGE.exportPinSummary}. Mapping names the logical signal, the Basys3 resource, and the package pin written to constraints.
+    </p>
 
     {/* Package handoff (collapsed) */}
     <div className="ide-export-summary-support">

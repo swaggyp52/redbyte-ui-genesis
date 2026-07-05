@@ -183,10 +183,10 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
     expect(hint.textContent).toMatch(/evidence/i);
   });
 
-  it('RED TEST: command strip names Verify evidence when mapping is complete but no Verify evidence exists', () => {
-    // The top-level Hardware card still shows NEEDS REVIEW in this state, so
-    // its copy must explain that Verify evidence is the missing step rather
-    // than repeating generic pin-binding instructions.
+  it('RED TEST: top-level status stays NEEDS REVIEW and the visible hint names Verify evidence', () => {
+    // The current compact workbench can hide the command strip, so the visible
+    // product spine and mapping header together must still explain that Verify
+    // evidence is the missing step rather than repeating pin-binding guidance.
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -205,10 +205,12 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
       </BoardSignalProvider>
     );
 
-    const commandStrip = getByTestId('ide-hardware-command-strip');
-    expect(commandStrip.textContent).toMatch(/verify/i);
-    expect(commandStrip.textContent).toMatch(/evidence/i);
-    expect(commandStrip.textContent).not.toMatch(/select a signal row/i);
+    expect(getByTestId('ide-product-spine-status-hardware').textContent).toMatch(/needs review/i);
+
+    const hint = getByTestId('ide-hw-mapping-header-hint');
+    expect(hint.textContent).toMatch(/verify/i);
+    expect(hint.textContent).toMatch(/evidence/i);
+    expect(hint.textContent).not.toMatch(/select a signal row/i);
   });
 
   it('RED TEST: next-action hint names specific Verify action when mapping is complete but Verify evidence is stale', () => {

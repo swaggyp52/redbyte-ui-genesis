@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { IdeButton } from '../../components/IdePrimitives';
+import { TESTBENCH_LANGUAGE } from '../../productLanguage';
 
 function experimentCaseEmphasisClass(label: string): string {
   return /no case/i.test(label) ? ' is-idle' : ' is-locus';
@@ -344,8 +345,8 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
               data-testid="ide-vcb-mode-explainer"
             >
               {observeModeActive
-                ? 'Run the stimulus and record observed outputs. No comparison.'
-                : 'Compare the run against saved expected outputs.'}
+                ? `Observe: ${TESTBENCH_LANGUAGE.observe} No expected outputs are checked.`
+                : `Compare: ${TESTBENCH_LANGUAGE.compare}`}
             </span>
           </div>
         )}

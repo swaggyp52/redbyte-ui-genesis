@@ -1128,9 +1128,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                 <div className="ide-project-primary-actions" data-testid="ide-project-primary-actions">
                   <button
                     type="button"
-                    className="ide-project-primary-action ide-project-primary-action--lab"
+                    className="ide-project-primary-action ide-project-primary-action--lab is-primary"
                     onClick={handleOpenGannonLabPack}
                     data-testid="ide-project-start-a-lab-primary"
+                    data-product-priority="primary"
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">LAB</span>
                     <span className="ide-project-primary-action-label">Start a Lab</span>
@@ -1141,6 +1142,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     className="ide-project-primary-action ide-project-primary-action--build"
                     onClick={handleStartBlankProject}
                     data-testid="ide-project-build-fresh-primary"
+                    data-product-priority="secondary"
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">+</span>
                     <span className="ide-project-primary-action-label">Build fresh</span>
@@ -1151,6 +1153,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                     className="ide-project-primary-action ide-project-primary-action--starter"
                     onClick={handleOpenStarterPath}
                     data-testid="ide-project-open-starter-primary"
+                    data-product-priority="secondary"
                   >
                     <span className="ide-project-primary-action-icon" aria-hidden="true">OPEN</span>
                     <span className="ide-project-primary-action-label">Open Starter</span>
@@ -1162,6 +1165,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       className="ide-project-primary-action ide-project-primary-action--import"
                       onClick={onOpenImport}
                       data-testid="ide-project-import-primary"
+                      data-product-priority="secondary"
                     >
                       <span className="ide-project-primary-action-icon" aria-hidden="true">IN</span>
                       <span className="ide-project-primary-action-label">Import / Recover</span>
@@ -1174,6 +1178,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                       className="ide-project-primary-action ide-project-primary-action--open"
                       onClick={onOpenSavedProjects}
                       data-testid="ide-project-open-existing-primary"
+                      data-product-priority="secondary"
                     >
                       <span className="ide-project-primary-action-icon" aria-hidden="true">OPEN</span>
                       <span className="ide-project-primary-action-label">Open Saved Project</span>
@@ -1190,9 +1195,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               >
                 <span className="ide-project-start-summary-chip">No circuit loaded</span>
                 <span className="ide-project-start-summary-chip">Course starters available</span>
-                <span className="ide-project-start-summary-chip">Gannon Pilot Labs 1-5</span>
-                <span className="ide-project-start-summary-chip">Next up: Design</span>
-                <span className="ide-project-start-summary-chip">Workflow: Design -&gt; Verify -&gt; Map Pins -&gt; Export</span>
+                <span className="ide-project-start-summary-chip">Next: Design</span>
+                <span className="ide-project-start-summary-chip">Design -&gt; Verify -&gt; Map Pins -&gt; Export</span>
               </div>
               {/* Primary launch actions */}
               <div className="ide-project-primary-actions ide-project-primary-actions--legacy" hidden>

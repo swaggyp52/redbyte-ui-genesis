@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-05 (fix: improve RedByte trust and clarity)
+
+**Subsystem:** Six-page IDE product language, Project command hierarchy, Design logical I/O clarity, Verify testbench explanation, Hardware mapping boundary, Export pin-summary clarity, Import preservation copy, and browser-E0 trust/clarity gate coverage.
+
+**Changes:**
+- Added a small source-level IDE product language module for signal, testbench, and proof-boundary wording, then used it in the active student surfaces instead of adding another broad guide rail.
+- Reduced Project first-launch command competition by making `Start a Lab` the only primary command and demoting Build Fresh, Open Starter, Import/Recover, and Open Saved Project to secondary choices.
+- Clarified Design logical inputs/outputs versus labels, board resources, and package pins, including selected boundary-signal model copy in the inspector.
+- Clarified Verify custom testbench setup with visible case, expected-output, observed-output, Observe, Compare, and stale-result language; preserved the existing Observe-only non-proof boundary.
+- Clarified Hardware mapping as logical signal -> Basys3 control/resource -> package pin/XDC constraints, without claiming board behavior.
+- Clarified Export signal/resource/pin summary and Import cancel-preserves-current-work copy.
+- Added `ide:gate:trust-clarity-flow` across Project, Design, Verify, Hardware, Export, and Import at classroom viewports.
+
+**Evidence:** Manual production review findings were recorded under ignored `.redbyte/product-immersion/trust-clarity/` artifacts. The new gate records browser proof under `.redbyte/product-immersion/trust-clarity-flow/`. During validation, `classroom:gate` caught and drove two local repairs: Verify Observe copy now explicitly records observations without comparison, and the Hardware mapping explanation is a non-layout-affecting visible footnote so it does not push the Basys3 board/table below first-viewport thresholds.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:trust-clarity-flow`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, full `corepack pnpm -s classroom:gate` (`PASS all steps`), focused Vitest for touched Project/Design/Verify/Hardware/Export/Import files (`10` files, `66` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 product language, hierarchy, CSS, and gate/test coverage only. No simulator algorithm, testbench truth semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This slice is local-only until committed and explicitly pushed. Do not claim production or GitHub includes this trust/clarity sprint until a later sync checkpoint proves it.
+
+**Next recommended task:** After local commit and a separate sync checkpoint, continue with Verify repair UX v2 so wrong-build and wrong-testbench correction becomes easier for students without broadening proof tiers.
+
 ## Change Log 2026-07-04 (fix: widen Verify command deck for GitHub font metrics)
 
 **Subsystem:** Verify post-run command deck layout, Observe/Compare mode controls, GitHub `Classroom Truth Gates`, and cockpit closeout truth.

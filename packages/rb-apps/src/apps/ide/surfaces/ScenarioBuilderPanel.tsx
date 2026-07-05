@@ -4,6 +4,7 @@ import {
   StimulusCanvas,
   type StimulusClockLaneConfig,
 } from '../components/StimulusCanvas';
+import { TESTBENCH_LANGUAGE } from '../productLanguage';
 
 export interface VerifyVectorDraftInput {
   id: string;
@@ -188,19 +189,27 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
     : 'Status appears after Observe or Compare. Empty expected cells are not checks yet.';
   const testbenchConceptStrip = (
     <div className="ide-testbench-concept-strip" data-testid="ide-testbench-editor-map">
+      <div className="ide-testbench-flow-steps" data-testid="ide-testbench-custom-flow-steps">
+        <span>Custom testbench</span>
+        <ol>
+          {TESTBENCH_LANGUAGE.createSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </div>
       <div className="ide-testbench-concept" data-testid="ide-testbench-section-inputs">
-        <span>Inputs to try</span>
-        <strong>Drive switches, buttons, and clock rows.</strong>
-        <p>Each case is one column. Click cells to set the stimulus the circuit should see.</p>
+        <span>Cases</span>
+        <strong>{TESTBENCH_LANGUAGE.case}</strong>
+        <p>Drive input signals in each column. Click cells to set the 0 or 1 value the circuit should see.</p>
       </div>
       <div className="ide-testbench-concept" data-testid="ide-testbench-section-expected">
         <span>Expected outputs</span>
-        <strong>Fill only the outputs you want Compare to check.</strong>
-        <p>Expected cells are your answer key. A blank cell stays Observe-only.</p>
+        <strong>{TESTBENCH_LANGUAGE.expectedOutput}</strong>
+        <p>Fill only the outputs you want Compare to check. A blank expected cell stays Observe-only.</p>
       </div>
       <div className="ide-testbench-concept" data-testid="ide-testbench-section-observed">
         <span>Observed outputs</span>
-        <strong>Shown in the waveform after Observe or Compare.</strong>
+        <strong>{TESTBENCH_LANGUAGE.observedOutput}</strong>
         <p>Use observed values when the design is right and the expected answer is wrong.</p>
       </div>
       <div className="ide-testbench-concept" data-testid="ide-testbench-section-status">

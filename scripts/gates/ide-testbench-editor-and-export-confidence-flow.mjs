@@ -153,7 +153,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 
 async function assertTestbenchSections(page, label) {
   const expectations = [
-    ['ide-testbench-section-inputs', /Inputs to try/i],
+    ['ide-testbench-section-inputs', /Cases|One input combination to try|Inputs to try/i],
     ['ide-testbench-section-expected', /Expected outputs/i],
     ['ide-testbench-section-observed', /Observed outputs/i],
     ['ide-testbench-section-status', /Status/i],

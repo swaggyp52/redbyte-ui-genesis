@@ -3228,7 +3228,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                   <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-hdl">
                     <span className="ide-import-start-guidance-eyebrow">Safe recovery</span>
                     <strong>Nothing is overwritten yet</strong>
-                    <p>Your current project stays intact until Review Import and Confirm Replace Project. Cancel keeps current work, and failed imports do not change files.</p>
+                    <p data-testid="ide-import-cancel-preserves-copy">
+                      Your current project stays intact until Review Import and Confirm Replace Project. Cancel keeps current work, and failed imports do not change files.
+                    </p>
                   </article>
                 </div>
                 <div className="ide-import-safety-boundary-v1" data-testid="ide-import-safety-boundary-v1">

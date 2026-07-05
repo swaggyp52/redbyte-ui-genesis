@@ -40,7 +40,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Run the stimulus and record observed outputs. No comparison.'
+      'Observe: See what the circuit currently does and record observed outputs without comparison. No expected outputs are checked.'
     );
     expect(getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('true');
     expect(getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('false');
@@ -61,7 +61,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Run the stimulus and record observed outputs. No comparison.'
+      'Observe: See what the circuit currently does and record observed outputs without comparison. No expected outputs are checked.'
     );
 
     view.rerender(
@@ -72,7 +72,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Compare the run against saved expected outputs.'
+      'Compare: Compare the run against expected outputs and observed outputs.'
     );
     expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
     expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');
