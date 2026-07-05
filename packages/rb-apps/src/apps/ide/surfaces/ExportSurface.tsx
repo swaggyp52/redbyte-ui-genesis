@@ -57,6 +57,7 @@ import {
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip } from '../components/SurfaceLayoutPrimitives';
 import type { IdeChromeContract } from '../chromeContract';
+import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import {
   ExportReadinessHero,
   ExportVivadoInstructions,
@@ -1593,6 +1594,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         detail: surfaceStatusDetail,
         primaryLabel: primaryExportCtaLabel,
         onPrimary: handlePrimaryHandoff,
+        primaryTone: exportBlocked ? 'secondary' : 'primary',
         primaryDisabled: primaryHandoffDisabled,
         recoveryLabel: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? 'Map Pins' : onGoToProject ? 'Project' : undefined,
         onRecovery: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? onGoToHardware : onGoToProject,
@@ -1785,7 +1787,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         description={
           downloadDone
             ? 'Your ZIP is ready. Open it in Vivado to continue.'
-            : 'Review the handoff state, then inspect the files below.'
+            : exportBlocked
+              ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody
+              : 'Review the handoff state, then inspect the files below.'
         }
         right={
           downloadDone ? (
@@ -1841,16 +1845,25 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </div>
 
           <section
-            className="ide-export-package-inspector-v1"
+            className={`ide-export-package-inspector-v1${exportBlocked ? ' ide-export-package-inspector-v1--blocked' : ''}`}
             data-testid="ide-export-package-inspector-v1"
+            data-export-package-state={exportBlocked ? 'blocked' : exportTrusted ? 'ready' : 'draft'}
             aria-label="Export package inspector"
           >
             <header className="ide-export-package-inspector-v1__header">
               <div>
                 <p className="ide-surface-block-label">Package inspector</p>
-                <h3>{selectedArtifact ? selectedArtifact.path : 'Generated package files'}</h3>
+                <h3>
+                  {selectedArtifact
+                    ? selectedArtifact.path
+                    : exportBlocked
+                      ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle
+                      : 'Generated package files'}
+                </h3>
                 <p>
-                  Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.
+                  {exportBlocked
+                    ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody
+                    : 'Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.'}
                 </p>
               </div>
               <section
@@ -1884,7 +1897,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-package-inspector-v1__actions">
                 <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
                 <IdeButton
-                  tone="primary"
+                  tone={exportBlocked ? 'secondary' : 'primary'}
                   onClick={handlePrimaryHandoff}
                   disabled={primaryHandoffDisabled}
                   testId="ide-export-package-build-v1"
@@ -2006,6 +2019,32 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </p>
               </details>
             </section>
+            {exportBlocked ? (
+              <div className="ide-export-blocked-empty-state" data-testid="ide-export-blocked-empty-state">
+                <strong>{PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle}</strong>
+                <p>{PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody}</p>
+                <div className="ide-inline-actions">
+                  {handoffTruth.primaryCtaIntent === 'verify' && onOpenVerify ? (
+                    <IdeButton tone="primary" onClick={onOpenVerify} testId="ide-export-blocked-open-verify">
+                      Open Verify
+                    </IdeButton>
+                  ) : onGoToHardware ? (
+                    <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-blocked-open-map-pins">
+                      Open Map Pins
+                    </IdeButton>
+                  ) : onGoToDesign ? (
+                    <IdeButton tone="primary" onClick={onGoToDesign} testId="ide-export-blocked-open-design">
+                      Open Design
+                    </IdeButton>
+                  ) : null}
+                  {onGoToProject ? (
+                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-blocked-open-project">
+                      Project
+                    </IdeButton>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
             <div className="ide-export-package-inspector-v1__body">
               <nav className="ide-export-file-browser-v1" data-testid="ide-export-file-browser-v1" aria-label="Generated files">
                 {viewModel.artifacts.length > 0 ? (
@@ -2074,6 +2113,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </div>
               </section>
             </div>
+            )}
           </section>
 
           <ExportReadinessHero

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-07-05 (fix: make RedByte classroom UI professional)
+
+**Subsystem:** Six-page IDE classroom UI tone, action hierarchy, Design workbench debug chrome, Verify testbench copy, Hardware empty/mapping states, Export blocked package state, Import utility spacing, and browser-E0 professional classroom gate coverage.
+
+**Changes:**
+- Added a small source-level `productUiStandards` model for professional classroom tone and shared empty/action copy instead of adding another tutorial rail.
+- Reduced Project first-launch command competition, kept `Start a Lab` as the obvious primary path, and demoted lower-priority lab/start cards.
+- Hid the IDE Design canvas HUD/debug overlay while preserving existing LogicCanvas defaults outside the IDE and kept workspace debug detail collapsed.
+- Clarified Verify Compare copy as expected-output versus observed-output comparison without changing simulator truth or expected-output semantics.
+- Reworked Hardware no-signal state so students see a real empty-state work object, not an inactive board/table; mapped Hardware still shows signal -> Basys3 resource -> package pin.
+- Reworked blocked Export so the fake package browser/download path is absent until the blocker is resolved, while preserving browser-E0 proof boundaries.
+- Clarified Import as recovery/restore utility work and tightened first-look spacing so the primary chooser remains action-first at classroom viewport size.
+- Added `ide:gate:professional-classroom-ui-flow` across Project, Design, Verify, Hardware, Export, and Import at 1366x768 and 1440x900.
+
+**Evidence:** Manual production before findings and screenshots were recorded under ignored `.redbyte/product-immersion/professional-classroom-ui-reset/` artifacts. The new professional classroom gate records after-state screenshots under ignored `.redbyte/product-immersion/professional-classroom-ui-flow/`. During validation, `classroom:gate` caught and drove three local repairs: Compare copy now explicitly says "Compare the run", Hardware no-signal keeps a visible primary work object while hiding only inactive board/table internals, and Import first-look spacing keeps the primary chooser within the action-first threshold.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:professional-classroom-ui-flow`, `corepack pnpm -s ide:gate:trust-clarity-flow`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, full `corepack pnpm -s classroom:gate` (`PASS all steps`), focused Vitest for touched UI contracts (`5` files, `37` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` may print LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 product UI, copy, CSS, and gate/test coverage only. No simulator algorithm, testbench truth semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This slice is local-only until committed and explicitly pushed. Do not claim GitHub or production includes the professional classroom UI reset until a later sync checkpoint proves it from remote checks and live endpoints.
+
+**Next recommended task:** After local commit and a separate sync checkpoint, choose Wrong-build recovery and correction so students can recover from incorrect circuit/testbench work without leaving the browser-E0 lane.
+
 ## Change Log 2026-07-05 (fix: improve RedByte trust and clarity)
 
 **Subsystem:** Six-page IDE product language, Project command hierarchy, Design logical I/O clarity, Verify testbench explanation, Hardware mapping boundary, Export pin-summary clarity, Import preservation copy, and browser-E0 trust/clarity gate coverage.

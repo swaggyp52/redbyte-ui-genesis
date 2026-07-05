@@ -36,6 +36,7 @@ import {
 } from '../components/IdePrimitives';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { IdeChromeContract } from '../chromeContract';
+import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 
 export const CHROME_CONTRACT = {
@@ -3052,7 +3053,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         title="Import / Recover"
         description={
           showImportHeaderAction
-            ? 'Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths, and nothing replaces your current project until you review the import.'
+            ? `${PROFESSIONAL_CLASSROOM_COPY.importUtility} Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths.`
             : undefined
         }
         right={
@@ -3151,6 +3152,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                 <strong className="ide-import-start-hero__title">{importEntryAction.title}</strong>
                 <p className="ide-copy" style={{ margin: 0 }}>
                   {importEntryAction.body}
+                </p>
+                <p className="ide-copy ide-import-utility-copy" data-testid="ide-import-utility-copy">
+                  {PROFESSIONAL_CLASSROOM_COPY.importUtility}
                 </p>
               </div>
               <div className="ide-import-start-hero__actions" data-testid="ide-import-source-step">

@@ -18,6 +18,7 @@ import { Basys3BoardView } from '../components/Basys3BoardView';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
+import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { IoSignalRole } from '../ioSignalRoles';
 import {
   deriveHardwareExportFailureTruth,
@@ -1264,7 +1265,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (hasNoBoundaryRows) {
       return {
         title: 'Add boundary I/O in Design first',
-        body: 'Map Pins only works after Design has explicit inputs and outputs. Add boundary I/O in Design, then return here to assign Basys3 pins.',
+        body: PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals,
         primaryLabel: 'Open Design',
         primaryAction: onGoToDesign ?? (() => {}),
         primaryTestId: 'ide-hardware-next-primary',
@@ -2189,7 +2190,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hardwareCommandDescription =
     hwMode === 'map'
       ? hasNoBoundaryRows
-        ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
+        ? PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals
         : mappingReady
           ? mappingReadyFollowUp.commandStrip
           : selectedMappingRow
@@ -2380,6 +2381,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeStatusPill>
         }
         testId="ide-hardware-panel"
+        className={hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
       >
         <div className="ide-surface-command-stack">
           {showHardwareCommandStrip ? (
@@ -2475,7 +2477,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               <h3>Bind project signals to the Basys3 board</h3>
               <p data-testid="ide-hw-stage-caption">
                 {hasNoBoundaryRows
-                  ? 'Add inputs and outputs in Design first. Hardware will list those signals here for board binding.'
+                  ? PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals
                     : selectedMappingRow
                     ? `${formatProjectSignalName(selectedMappingRow)} is selected. Click the matching board control to save its pin.`
                     : unresolvedRequiredCount > 0

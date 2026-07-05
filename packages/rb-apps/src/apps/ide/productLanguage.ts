@@ -16,7 +16,7 @@ export const TESTBENCH_LANGUAGE = {
   expectedOutput: 'What your circuit should produce.',
   observedOutput: 'What RedByte simulated.',
   observe: 'See what the circuit currently does and record observed outputs without comparison.',
-  compare: 'Compare the run against expected outputs and observed outputs.',
+  compare: 'Compare the run by checking expected outputs against observed outputs.',
   staleResult: 'Checks changed. Rerun Compare before trusting the result.',
   createSteps: [
     'Add or select input cases.',

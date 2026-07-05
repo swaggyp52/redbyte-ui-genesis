@@ -68,6 +68,7 @@ import {
 import type { ProjectIoMappingKind } from '../examplesCatalog';
 import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
+import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'project',
@@ -991,9 +992,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           : 'idle',
         detail: readiness.hasCircuit
           ? nextStepReason
-          : 'Choose Start a Lab, Build fresh, Open Starter, Import / Recover, or Open Recent.',
-        primaryLabel: readiness.hasCircuit ? `Continue to ${activePrimaryCtaLabel}` : 'Build fresh',
-        onPrimary: readiness.hasCircuit ? onPrimaryCta : handleStartBlankProject,
+          : PROFESSIONAL_CLASSROOM_COPY.projectFirstLaunchDetail,
+        primaryLabel: readiness.hasCircuit ? `Continue to ${activePrimaryCtaLabel}` : 'Start a Lab',
+        onPrimary: readiness.hasCircuit ? onPrimaryCta : undefined,
         recoveryLabel: readiness.hasCircuit ? heroAssistAction.label : 'Import / Recover',
         onRecovery: readiness.hasCircuit ? heroAssistAction.onClick : onOpenImport,
         doneLabel: readiness.hasCircuit
@@ -1399,7 +1400,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
                         <p><strong>Submit:</strong> {lab.submit}</p>
                         <p><strong>Scope:</strong> {formatGannonPilotProofScope(lab.proofScope)}</p>
                         <IdeButton
-                          tone="primary"
+                          tone="secondary"
                           onClick={() => onOpenExample(lab.exampleId)}
                           testId={`ide-project-gannon-lab-start-${lab.id}`}
                         >

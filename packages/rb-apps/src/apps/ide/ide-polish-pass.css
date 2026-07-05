@@ -6170,3 +6170,266 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Professional Classroom UI Reset: calmer workbench hierarchy without changing workflow truth. */
+.ide-root .ide-product-spine-card,
+.ide-root .ide-surface-command-region,
+.ide-root .ide-panel,
+.ide-root .ide-project-command-center,
+.ide-root .ide-export-package-inspector-v1,
+.ide-root .ide-hw-board-workspace,
+.ide-root .ide-import-workbench {
+  box-shadow: none;
+}
+
+.ide-root .ide-status-pill,
+.ide-root .ide-surface-command-chip,
+.ide-root .ide-project-start-summary-chip,
+.ide-root .ide-guided-lab-check,
+.ide-root .ide-export-handoff-checklist-v1__item span,
+.ide-root .ide-hw-board-chrome-pill {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ide-root .ide-surface-command-chip,
+.ide-root .ide-project-start-summary-chip,
+.ide-root .ide-hw-board-chrome-pill {
+  border-color: rgba(112, 140, 168, 0.22);
+  background: rgba(8, 18, 31, 0.34);
+  color: rgba(188, 206, 224, 0.76);
+}
+
+.ide-root .ide-product-spine-card {
+  border-color: rgba(83, 112, 145, 0.28);
+  background: rgba(6, 15, 25, 0.78);
+}
+
+.ide-root .ide-product-spine__action-copy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(91, 120, 150, 0.24);
+  border-radius: 8px;
+  color: rgba(181, 200, 219, 0.76);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ide-root .ide-button[data-hierarchy-role='secondary'],
+.ide-root [data-product-priority='secondary'] {
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-command-center--launch {
+  border-color: rgba(83, 112, 145, 0.3);
+  background:
+    linear-gradient(180deg, rgba(12, 29, 42, 0.76), rgba(7, 17, 29, 0.82)),
+    rgba(7, 17, 29, 0.82);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-primary-action[data-product-priority='primary'] {
+  border-color: rgba(70, 196, 186, 0.52);
+  background: rgba(12, 47, 51, 0.78);
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-primary-action[data-product-priority='secondary'] {
+  background: rgba(7, 17, 29, 0.56);
+}
+
+.ide-root [data-ide-mode-marker='project'] .ide-project-start-summary {
+  gap: 5px;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-workspace-status-bar {
+  min-height: 30px;
+  padding: 4px 8px;
+  border-color: rgba(83, 112, 145, 0.2);
+  background: rgba(6, 15, 25, 0.58);
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-workspace-health-count,
+.ide-root [data-ide-mode-marker='design'] .ide-design-workspace-health-status {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-sim-story-strip:not(.is-replay-mode) {
+  max-width: min(360px, 36vw);
+  border-color: rgba(83, 112, 145, 0.22);
+  background: rgba(6, 15, 25, 0.48);
+  color: rgba(181, 200, 219, 0.72);
+  opacity: 0.76;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-sim-story-strip:not(.is-replay-mode) .ide-design-sim-story-pill {
+  border-color: rgba(93, 124, 154, 0.22);
+  background: rgba(8, 18, 31, 0.42);
+  color: rgba(188, 206, 224, 0.74);
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-overlay-empty,
+.ide-root [data-ide-mode-marker='design'] .ide-design-empty-state {
+  border-color: rgba(83, 112, 145, 0.28);
+  background: rgba(7, 17, 29, 0.7);
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-workspace-debug {
+  border-top: 1px solid rgba(83, 112, 145, 0.2);
+  padding-top: 8px;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-inspector-debug-summary {
+  cursor: pointer;
+  color: rgba(181, 200, 219, 0.78);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-testbench-concept-strip,
+.ide-root [data-ide-mode-marker='verify'] .ide-vcb-toolbar,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-run-proof {
+  border-color: rgba(83, 112, 145, 0.24);
+  background: rgba(7, 17, 29, 0.58);
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-testbench-concept,
+.ide-root [data-ide-mode-marker='verify'] .ide-testbench-flow-steps {
+  border-color: rgba(83, 112, 145, 0.22);
+  background: rgba(8, 18, 31, 0.46);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel {
+  border-color: rgba(215, 93, 93, 0.48);
+  background:
+    linear-gradient(180deg, rgba(44, 16, 20, 0.8), rgba(14, 17, 27, 0.86)),
+    rgba(14, 17, 27, 0.86);
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__fact,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__scope,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__action-path {
+  border-color: rgba(215, 93, 93, 0.24);
+  background: rgba(9, 18, 30, 0.58);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__eyebrow {
+  color: rgba(255, 166, 166, 0.9);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-canvas,
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-map-table {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-workspace {
+  min-height: 170px;
+  border-color: rgba(83, 112, 145, 0.28);
+  background: rgba(7, 17, 29, 0.64);
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-planner-summary {
+  opacity: 0.72;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-task-copy {
+  max-width: 640px;
+  font-size: 0.98rem;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-surface-command-region {
+  margin-bottom: 0;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hw-map-boundary-note,
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-signal-resource-pin-model {
+  box-shadow: none;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked {
+  gap: 12px !important;
+  border-color: rgba(83, 112, 145, 0.3);
+  background: rgba(7, 17, 29, 0.72);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked .ide-export-confidence-station,
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked .ide-export-handoff-checklist-v1,
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked .ide-export-student-submission-guidance,
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked [data-testid='ide-export-package-download-v1'],
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked [data-testid='ide-export-package-copy-v1'] {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked .ide-export-package-inspector-v1__header {
+  align-items: flex-start;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--blocked .ide-export-package-inspector-v1__header p {
+  display: block;
+  max-width: 760px;
+  color: rgba(181, 200, 219, 0.76);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-blocked-empty-state {
+  display: grid;
+  gap: 10px;
+  max-width: 720px;
+  padding: 16px;
+  border: 1px solid rgba(83, 112, 145, 0.3);
+  border-radius: 10px;
+  background: rgba(6, 15, 25, 0.64);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-blocked-empty-state strong {
+  color: rgba(232, 242, 252, 0.94);
+  font-size: 15px;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-blocked-empty-state p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(181, 200, 219, 0.78);
+  line-height: 1.45;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-utility-copy,
+.ide-root [data-ide-mode-marker='import'] .ide-import-cancel-preserves-copy {
+  color: rgba(181, 200, 219, 0.78);
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-shell,
+.ide-root [data-ide-mode-marker='import'] .ide-import-guided-wizard-v1 {
+  gap: 6px;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-wizard-track li {
+  padding: 4px 7px;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-hero {
+  padding: 10px 16px 12px !important;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-hero__copy {
+  gap: 5px;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-utility-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.36;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-first-look,
+.ide-root [data-ide-mode-marker='import'] .ide-import-wizard-track,
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-guidance {
+  border-color: rgba(83, 112, 145, 0.26);
+  background: rgba(7, 17, 29, 0.58);
+  box-shadow: none;
+}

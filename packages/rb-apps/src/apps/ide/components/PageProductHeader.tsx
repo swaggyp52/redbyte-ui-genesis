@@ -7,6 +7,7 @@ export interface PageProductHeaderState {
   statusTone?: 'idle' | 'ok' | 'warn' | 'error';
   detail?: string;
   primaryLabel?: string;
+  primaryTone?: 'primary' | 'secondary' | 'ghost';
   onPrimary?: () => void;
   primaryDisabled?: boolean;
   recoveryLabel?: string;
@@ -27,6 +28,7 @@ export const PageProductHeader: React.FC<PageProductHeaderProps> = ({ mode, stat
   const statusLabel = state?.statusLabel ?? definition.shortLabel;
   const detail = state?.detail ?? definition.nextAction;
   const primaryLabel = state?.primaryLabel ?? definition.nextAction.replace(/^What do I do next\?\s*/u, '');
+  const primaryTone = state?.primaryTone ?? 'primary';
   const recoveryLabel = state?.recoveryLabel ?? 'Recovery';
   const doneLabel = state?.doneLabel ?? definition.doneCondition;
   const blockedLabel = state?.blockedLabel ?? definition.blockedState;
@@ -88,10 +90,12 @@ export const PageProductHeader: React.FC<PageProductHeaderProps> = ({ mode, stat
         <div className="ide-product-spine__actions">
           {state?.onPrimary ? (
             <IdeButton
-              tone="primary"
+              tone={primaryTone}
               onClick={state.onPrimary}
               disabled={state.primaryDisabled}
               testId={`ide-product-spine-primary-${mode}`}
+              hierarchySurface={mode}
+              hierarchyRole={primaryTone === 'primary' ? 'next' : 'secondary'}
             >
               {primaryLabel}
             </IdeButton>

@@ -212,6 +212,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
     className="ide-export-summary-hero"
     data-layout-mode={layoutMode}
     data-testid="ide-export-readiness-hero"
+    data-export-trust-condition={trustCondition}
     data-hierarchy-surface="export"
     data-hierarchy-role="primary"
     data-hierarchy-focal="e0-handoff"
@@ -288,7 +289,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             </span>
           </div>
         </div>
-        {artifactPreviewItems.length > 0 && (
+        {trustCondition !== 'blocked' && artifactPreviewItems.length > 0 && (
           <section
             className="ide-export-handoff-artifact-strip"
             data-testid="ide-export-handoff-artifact-strip"
@@ -346,12 +347,12 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           <span data-testid="ide-export-primary-handoff-cta">
             <span data-testid="ide-primary-cta">
               <IdeButton
-                tone="primary"
+                tone={trustCondition === 'blocked' ? 'secondary' : 'primary'}
                 onClick={onPrimaryHandoff}
                 disabled={primaryHandoffDisabled}
                 testId="ide-export-rebuild-btn"
                 hierarchySurface="export"
-                hierarchyRole="next"
+                hierarchyRole={trustCondition === 'blocked' ? 'context' : 'next'}
               >
                 {showPrimaryDownloadSpinner ? (
                   <><IdeSpinner size="sm" testId="ide-export-rebuild-spinner" /> Building...</>

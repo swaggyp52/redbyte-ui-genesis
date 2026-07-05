@@ -72,7 +72,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Compare: Compare the run against expected outputs and observed outputs.'
+      'Compare: Compare the run by checking expected outputs against observed outputs.'
     );
     expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
     expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');

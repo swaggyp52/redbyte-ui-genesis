@@ -54,6 +54,7 @@ import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bun
 import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
 import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
+import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import { getDesignChipMetadata } from '../designChipMetadata';
 import {
   getDesignChipMetadataForNode,
@@ -5719,8 +5720,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <strong>Selected wires:</strong> {selectedWireIdsAll.length}
         </div>
       ) : null}
-      <div>
-        <span className="ide-design-inspector-group-label">Workspace</span>
+      <details
+        className="ide-design-inspector-workspace-debug"
+        data-testid="ide-design-inspector-workspace-debug"
+      >
+        <summary className="ide-design-inspector-debug-summary">Workspace details</summary>
         <div className="ide-kv-list">
           <div className="ide-kv-row">
             <span>Nodes / Wires</span>
@@ -5747,7 +5751,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <span>{effectiveDesignView === 'stacked' ? 'Split stacked' : effectiveDesignView}</span>
           </div>
         </div>
-      </div>
+      </details>
     </div>
   );
   return (
@@ -5776,7 +5780,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           onRecovery: onGoToProject,
           doneLabel: editorCircuit.nodes.length > 0
             ? `${editorCircuit.nodes.length} part${editorCircuit.nodes.length === 1 ? '' : 's'} on the canvas; verify when the graph matches the assignment.`
-            : 'Add at least one input, output, and logic part to create a verifiable circuit.',
+            : PROFESSIONAL_CLASSROOM_COPY.designBlankAction,
           blockedLabel: showBlankStateCard
             ? 'Canvas is empty.'
             : totalAuthoringErrors > 0
@@ -7463,6 +7467,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       width={canvasSize.width}
                       height={canvasSize.height}
                       showToolbar={false}
+                      showHud={false}
                       getChipMetadata={getChipMetadata}
                       onCircuitChange={handleCircuitChange}
                       onDeleteFeedback={setActionToast}
@@ -7558,9 +7563,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     {showBlankStateCard && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
                         <span className="ide-design-empty-eyebrow">Start on canvas</span>
-                        <h3>Pick a part, place it, then wire it.</h3>
+                        <h3>{PROFESSIONAL_CLASSROOM_COPY.designBlankAction}</h3>
                         <p className="ide-design-empty-summary">
-                          Use the library on the left for gates and registers. {SIGNAL_LANGUAGE.designLogicalIo}
+                          Use the library for gates and registers. {SIGNAL_LANGUAGE.designLogicalIo}
                         </p>
                         <p
                           className="ide-design-logical-io-note"
@@ -7570,13 +7575,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </p>
                         <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
                           <li>
-                            <span>1. Pick a part</span>
+                            <span>1. Add logical inputs and outputs</span>
                           </li>
                           <li>
-                            <span>2. Click the canvas to place it</span>
+                            <span>2. Place a gate or register</span>
                           </li>
                           <li>
-                            <span>3. Click a port on one gate, then a port on another to wire them</span>
+                            <span>3. Wire source ports to destination ports</span>
                           </li>
                         </ol>
                         <div className="ide-design-empty-actions">

@@ -32,6 +32,7 @@ export interface LogicCanvasProps {
   onDeleteFeedback?: (message: string) => void; // Toast feedback on keyboard delete
   onSignalsUpdated?: (signals: Map<string, 0 | 1>, reason: 'input' | 'tick') => void; // Signal update notification
   showHints?: boolean;
+  showHud?: boolean;
   onDismissHints?: () => void;
   // Milestone D: Determinism recording (optional, dev-only)
   onInputToggled?: (nodeId: string, portName: string, newValue: 0 | 1) => void;
@@ -157,6 +158,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onCircuitChange,
   onSignalsUpdated,
   showHints = true,
+  showHud: showHudOverlay = true,
   onDismissHints,
   onInputToggled,
   onProbeToggle,
@@ -290,7 +292,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   selectMultipleNodesRef.current = selectMultipleNodes;
   const focusNodeRef = React.useRef<((nodeId: string) => void) | null>(null);
   const [highlightedNodeId, setHighlightedNodeId] = React.useState<string | null>(null);
-  const [showHud, setShowHud] = React.useState(true);
+  const [showHud, setShowHud] = React.useState(showHudOverlay);
   const hudTimerRef = React.useRef<number | null>(null);
   const wheelMomentumRef = React.useRef(0);
   const wheelRafRef = React.useRef<number | null>(null);
@@ -307,6 +309,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     [width, height, setCamera]
   );
   const bumpHud = React.useCallback(() => {
+    if (!showHudOverlay) {
+      setShowHud(false);
+      return;
+    }
     setShowHud(true);
     if (hudTimerRef.current) {
       window.clearTimeout(hudTimerRef.current);
@@ -314,7 +320,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     hudTimerRef.current = window.setTimeout(() => {
       setShowHud(false);
     }, 2400);
-  }, []);
+  }, [showHudOverlay]);
+
+  React.useEffect(() => {
+    if (showHudOverlay) return;
+    setShowHud(false);
+  }, [showHudOverlay]);
 
   const stopWheelMomentum = React.useCallback(() => {
     if (wheelRafRef.current !== null) {
@@ -1268,7 +1279,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         />
       )}
 
-      {!showToolbar && showHud && (
+      {!showToolbar && showHudOverlay && showHud && (
         <div
           className="absolute top-3 right-3 z-20 bg-gray-900/80 border border-gray-700 rounded px-2.5 py-2 text-[10px] text-gray-300 space-y-1 pointer-events-none"
           data-testid="circuit-hud"
