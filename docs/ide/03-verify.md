@@ -66,6 +66,8 @@ The Verify evidence signature is tied to the same normalized current-project has
 
 `ide:gate:verify-evidence-workbench` guards the classroom Verify evidence path: visible first-run expected-output editing, Observe-only waveform evidence that is not trusted proof, Compare PASS, intentional expected-output edit to FAIL, first mismatch expected/observed evidence, waveform controls, repair back to PASS, and no meaningful overlap between stimulus and waveform evidence regions. The underlying script remains `scripts/gates/ide-verify-evidence-workbench-integrity.mjs`.
 
+`ide:gate:verify-postrun-workbench-usability` also guards the post-run command deck: visible `Observe only` and `Compare checks` labels must remain readable through Compare PASS, induced FAIL, repair PASS, and the workbench toggle path at `1366x768` and `1440x900`.
+
 `ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
 `ide:gate:scratch-testbench-repair-flow` guards the scratch-build failure-recovery path for a FullAdder plus extra OR logic design. It requires Observe -> save observed outputs -> Compare PASS, intentional wrong expected-output FAIL, visible first-mismatch repair strip, `Use observed`, repaired PASS, stale expected-output edit detection after PASS, and Export E0 trust boundary at `1366x768` and `1440x900`.

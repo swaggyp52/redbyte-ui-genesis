@@ -3803,6 +3803,21 @@
   gap: 6px !important;
 }
 
+.ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-toggle {
+  flex: 0 0 auto !important;
+  min-inline-size: 240px !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn {
+  flex: 0 0 auto !important;
+  min-inline-size: 104px !important;
+  white-space: nowrap !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn[data-testid='ide-vcb-use-saved-checks'] {
+  min-inline-size: 128px !important;
+}
+
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-truth-strip {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
@@ -3871,14 +3886,20 @@
 
   .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-toggle {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
-    width: 100% !important;
+    grid-template-columns: minmax(104px, 1fr) minmax(128px, 1fr) !important;
+    width: auto !important;
+    min-inline-size: 240px !important;
   }
 
   .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-btn {
-    min-width: 0 !important;
     padding-inline: 8px !important;
-    white-space: normal !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 1500px) {
+  .ide-root [data-ide-mode-marker='verify'] .ide-vcb-mode-explainer {
+    display: none !important;
   }
 }
 

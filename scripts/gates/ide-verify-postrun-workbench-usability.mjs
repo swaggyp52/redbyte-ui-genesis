@@ -160,6 +160,35 @@ async function assertPostRunWorkbench(page, viewport, label) {
         : null,
       expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
       runVisible: Boolean(document.querySelector('[data-testid="ide-vcb-run"]')),
+      modeLabels: ['ide-vcb-observe-only', 'ide-vcb-use-saved-checks'].flatMap((testId) =>
+        Array.from(document.querySelectorAll(`[data-testid="${testId}"]`)).map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          const text = element.textContent?.trim() ?? '';
+          if (context) {
+            context.font = style.font;
+          }
+          const textWidth = context ? context.measureText(text).width : element.scrollWidth;
+          const inlinePadding = parseFloat(style.paddingLeft || '0') + parseFloat(style.paddingRight || '0');
+          return {
+            testId,
+            text,
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth,
+            requiredReadableWidth: Math.ceil(textWidth + inlinePadding + 8),
+            visible:
+              rect.width > 0 &&
+              rect.height > 0 &&
+              style.display !== 'none' &&
+              style.visibility !== 'hidden' &&
+              Number(style.opacity || 1) > 0,
+          };
+        })
+      ),
       firstFailingVisible: Boolean(document.querySelector('[data-testid="ide-verify-results-summary-open-fail"]')),
       statusText,
     };
@@ -185,6 +214,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
   assert(metrics.gridScroll?.extraX <= 8, `${viewport.label}/${label}: post-run testbench should not create a horizontal mini-scroll trap ${JSON.stringify(metrics.gridScroll)}`);
   assert(metrics.expectedCells >= 12, `${viewport.label}/${label}: expected starter checks to remain visible/editable (${metrics.expectedCells})`);
   assert(metrics.runVisible, `${viewport.label}/${label}: Run/Update Compare action must remain visible`);
+  assertModeLabelsFit(metrics.modeLabels, viewport, label);
   assert(metrics.waveformPreview, `${viewport.label}/${label}: missing waveform evidence preview ${JSON.stringify(metrics)}`);
   assert(
     metrics.waveformPreviewTopOffset <= viewport.maxWaveformPreviewTopOffset,
@@ -196,6 +226,32 @@ async function assertPostRunWorkbench(page, viewport, label) {
   );
   if (/need/i.test(metrics.statusText)) {
     assert(metrics.firstFailingVisible, `${viewport.label}/${label}: FAIL state should expose Open first failing check`);
+  }
+}
+
+function assertModeLabelsFit(modeLabels, viewport, label) {
+  const expectedLabels = new Map([
+    ['ide-vcb-observe-only', { text: 'Observe only' }],
+    ['ide-vcb-use-saved-checks', { text: 'Compare checks' }],
+  ]);
+  for (const [testId, expected] of expectedLabels) {
+    const metrics = modeLabels.filter((candidate) => candidate.testId === testId && candidate.visible);
+    assert(metrics.length > 0, `${viewport.label}/${label}: missing visible Verify command deck label ${testId}`);
+    for (const metric of metrics) {
+      assert(metric.text === expected.text, `${viewport.label}/${label}: Verify command deck label ${testId} changed to "${metric.text}"`);
+      assert(
+        metric.width >= metric.requiredReadableWidth,
+        `${viewport.label}/${label}: Verify command deck label "${expected.text}" is too narrow to read (${metric.width}px < ${metric.requiredReadableWidth}px) ${JSON.stringify(metric)}`
+      );
+      assert(
+        metric.scrollWidth <= metric.clientWidth + 1,
+        `${viewport.label}/${label}: Verify command deck label "${expected.text}" is clipped ${JSON.stringify(metric)}`
+      );
+      assert(
+        metric.height <= 34,
+        `${viewport.label}/${label}: Verify command deck label "${expected.text}" wrapped taller than the command deck control ${JSON.stringify(metric)}`
+      );
+    }
   }
 }
 

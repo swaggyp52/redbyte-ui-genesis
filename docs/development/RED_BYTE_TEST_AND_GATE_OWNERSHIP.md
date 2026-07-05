@@ -126,7 +126,7 @@ Why:
 - Nested scroll regression protects Verify and Hardware from small internal scroll traps in the normal Logic Gates path while allowing normal page-level workbench scroll where appropriate.
 - Verify no-circuit task-first protects fresh direct Verify entry from showing waveform/testbench or mapping apparatus before a circuit exists; it requires actionable Open Design, Load starter, and Import / Recover paths.
 - Project loaded paths first viewport protects loaded Project from pushing Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent below metrics/support content.
-- Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence, and from placing the waveform evidence too low or too short in the first viewport.
+- Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence, from placing the waveform evidence too low or too short in the first viewport, and from clipping visible `Observe only` / `Compare checks` command labels in the post-run command deck.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Student task completion flow protects the real classroom loop from returning to a non-functional Design inspector: Project starter, selected-node direct edits, Verify PASS/FAIL/repair/PASS, Hardware mapping, and Export E0 handoff must all remain usable at classroom and desktop viewports.
 - Design no-bridge required protects the product boundary that Design must load and remain editable without a local bridge agent, even if a prior Hardware visit persisted hardware mode as on.
@@ -273,7 +273,7 @@ Why:
 
 `ide:gate:verify-workbench-layout-reset` proves the same layout contract survives the normal evidence loop at `1366x768`: pre-run, Compare PASS, intentional expected-output FAIL, repair, and final PASS.
 
-`ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, waveform evidence minimum width, waveform evidence top offset, viewport-visible chart height, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
+`ide:gate:verify-postrun-workbench-usability` proves the post-run evidence loop at `1366x768` and `1440x900`: Compare PASS, induced expected-output FAIL, repair PASS, usable editable checks width/share, visible failure action, readable visible `Observe only` / `Compare checks` command labels, waveform evidence minimum width, waveform evidence top offset, viewport-visible chart height, no meaningful stimulus-grid mini-scroll, no root overflow, and no console/page errors.
 
 `ide:gate:complex-build-signal-trace-debugging` proves the failed Compare -> Inspect Design handoff for a scratch two-stage wrong-build graph: failed output, expected/observed values, input vector, direct driver, upstream trace, Focus node behavior, build-hash verification, no root overflow, and no console/page errors at `1366x768` and `1440x900`.
 

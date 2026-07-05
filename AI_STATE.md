@@ -1,5 +1,25 @@
 # AI State
 
+## Change Log 2026-07-04 (fix: keep Verify command deck labels readable)
+
+**Subsystem:** Verify post-run command deck layout, Observe/Compare mode controls, focused browser gate coverage, and cockpit/current-truth documentation.
+
+**Changes:**
+- Fixed the Verify command deck so the visible `Observe only` and `Compare checks` segmented controls keep readable label width in normal post-run PASS, FAIL, and repair states at classroom and desktop viewports.
+- Hid the lower-priority inline mode explainer at tighter desktop widths so it cannot crowd the primary run-mode controls; the explainer text remains in the DOM for the existing Observe/Compare contract.
+- Strengthened `ide:gate:verify-postrun-workbench-usability` to measure every visible Observe/Compare control with browser font metrics and fail if a rendered label is too narrow, clipped, wrapped, or missing.
+- Updated current product/gate docs to record the command-deck readability invariant as part of Verify post-run usability.
+
+**Evidence:** Starting base was synced local/remote `main` at `95161ca5496ba98521dc33fca5e0a433d9461c31` (`fix: clarify Import invalid ZIP recovery`), with GitHub `Classroom Truth Gates`, deploy, and Cloudflare Pages check-runs green. Fresh before proof under `.redbyte/product-immersion/verify-command-readability/current/` showed the 1440x900 FAIL command row visually truncating `Compare checks`; after the gate was strengthened and the app rebuilt, the pre-fix gate failed at `1440x900/PASS` because `Observe only` measured `94px < 102px`. After the CSS repair, the fresh after screenshot under `.redbyte/product-immersion/verify-command-readability/after/verify-postrun-workbench-02-compare-fail-1440x900.png` shows both labels readable.
+
+**Validation:** Local validation under portable Node `v20.19.0` / pnpm `10.24.0` passed for `node --check scripts/gates/ide-verify-postrun-workbench-usability.mjs`, `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, `corepack pnpm -s ide:gate:verify-evidence-workbench`, `corepack pnpm -s ide:gate:verify-fail-edit-repair`, `corepack pnpm -s ide:gate:verify-workbench-contract`, `corepack pnpm -s ide:gate:verify-summary-contract`, `corepack pnpm -s ide:gate:shell-layout-integrity`, `corepack pnpm -s ide:gate:export-trust-integrity`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, including the strengthened post-run gate), explicit `corepack pnpm -s build:unified`, `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 Verify layout and gate hardening only. No simulator algorithm, Verify Compare/Observe semantics, expected-output data semantics, project format, mapping semantics, export generation, generated VHDL/XDC/testbench/Tcl/ZIP bytes, goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, accounts, LMS, grading, or proof-tier behavior changed.
+
+**Remote sync:** This entry is written before final closeout. Final commit, push, and GitHub `Classroom Truth Gates` plus deploy results must be verified from live evidence in the session closeout.
+
+**Next recommended task:** Finish full local validation, commit and push this narrow Verify command-deck readability repair, watch GitHub checks, then choose any next browser-first slice only from fresh live inspection. Vivado/Basys3 E1/E2/E3 proof remains board/tool-gated and was not attempted here.
+
 ## Change Log 2026-07-04 (fix: clarify Import invalid ZIP recovery)
 
 **Subsystem:** Import / Recovery visible error classification, archive-level recovery copy, non-destructive Import contract, focused browser gate coverage, and cockpit/current-truth documentation.

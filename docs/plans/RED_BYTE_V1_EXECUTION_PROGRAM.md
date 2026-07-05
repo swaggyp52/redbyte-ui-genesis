@@ -310,6 +310,27 @@ Acceptance:
 - The after flow covers Design edit return, Verify PASS/FAIL/repair, Hardware, Export, Import, reload, and Back/Forward continuity with visible build-hash proof, no root overflow, and no console/page errors.
 - No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
 
+## Phase 12ao - Verify Command Deck Readability
+
+Status: Closed locally 2026-07-04 by strengthened `ide:gate:verify-postrun-workbench-usability`; final commit, push, GitHub green, and deploy proof remain required for closeout.
+
+Goal: Keep the post-run Verify command deck trustworthy by ensuring the visible `Observe only` and `Compare checks` controls remain readable during the normal evidence repair loop.
+
+Why: Fresh 1440x900 browser proof showed the `Compare checks` segmented-control label visually clipped in the normal FAIL/repair state even though Verify semantics and evidence were correct. That kind of visual truncation weakens professor/student trust at the exact moment the user needs to repair proof.
+
+Proof:
+
+- Before/current screenshots under `.redbyte/product-immersion/verify-command-readability/current/`.
+- After screenshots under `.redbyte/product-immersion/verify-command-readability/after/`.
+- `ide:gate:verify-postrun-workbench-usability` now measures visible command labels against rendered font metrics.
+- `ide:gate:verify-evidence-workbench` remains green after the layout change.
+
+Acceptance:
+
+- Visible `Observe only` and `Compare checks` labels fit through Compare PASS, induced expected-output FAIL, repair PASS, and the workbench toggle path at `1366x768` and `1440x900`.
+- The inline mode explainer can be hidden at tighter desktop widths, but the DOM copy remains available to the existing Observe/Compare contract.
+- No simulation, Verify result, Compare rule, expected-output meaning, pin mapping, import parser/apply behavior, generated artifact, project format, goldens, Vivado proof, or Basys3 physical-proof semantics change.
+
 ## Phase 1 - V1 Contract Reset
 
 Goal: Establish current research, visual audit, target contract, delete/demote/rebuild inventory, and execution order.
