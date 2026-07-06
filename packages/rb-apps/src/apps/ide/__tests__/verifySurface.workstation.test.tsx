@@ -143,6 +143,72 @@ function makeFailRun(): RuntimeVerifyRun {
   };
 }
 
+function makeDisconnectedOutputFailRun(): RuntimeVerifyRun {
+  return {
+    scenarioId: 'disconnected-output',
+    scenarioName: 'Disconnected Output',
+    status: 'fail',
+    deterministicHash: 'abc123',
+    reportHash: 'rep-disconnected',
+    generatedAtIso: '2026-07-06T00:00:00.000Z',
+    schedule: 'combinational',
+    meta: {
+      circuitKind: 'combinational',
+      clockingProtocol: null,
+      samplePoint: 'steady-state',
+      tick0Meaning: null,
+      clockSignalName: null,
+    },
+    report: {
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { out: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { out: 1 }, caseIndex: 1 },
+      ],
+      inputsAtTick: {
+        0: { sw0: 0 },
+        1: { sw0: 1 },
+      },
+      inputsByVectorId: {
+        'vec-01': { sw0: 0 },
+        'vec-02': { sw0: 1 },
+      },
+      signalRoles: { sw0: 'input', out: 'output' },
+      rows: [],
+    } as RuntimeVerifyRun['report'],
+    waveform: [],
+    evidence: {
+      circuitHash: 'circuit-hash',
+      ioRows: [
+        { id: 'sw0', label: 'A', direction: 'in', nodeId: 'sw0_node' },
+        { id: 'out', label: 'OUT', direction: 'out', nodeId: 'out_node' },
+      ],
+      vectors: [
+        { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { out: 0 }, caseIndex: 0 },
+        { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { out: 1 }, caseIndex: 1 },
+      ],
+      normalizationMap: [
+        { role: 'expected', rawKey: 'out', normalizedKey: 'out', matchedSignal: 'out' },
+        { role: 'output', rawKey: 'out', normalizedKey: 'out', matchedSignal: null },
+      ],
+      preflight: [
+        {
+          kind: 'missing-output-sample',
+          severity: 'error',
+          blocking: true,
+          signal: 'OUT',
+          message: 'No sampled output matched this expected signal.',
+          tick: 1,
+          vectorId: 'vec-02',
+          caseIndex: 1,
+          nodeId: 'out_node',
+          port: 'in',
+        },
+      ],
+      failures: [],
+    },
+  };
+}
+
 function makeWaveformOnlyRun(): RuntimeVerifyRun {
   return {
     scenarioId: 'waveform-only-run',
@@ -2380,5 +2446,36 @@ describe('VerifySurface workstation controls', () => {
     expect(staleDesign.getByTestId('ide-verify-primary-status').textContent).toContain(
       'Design changed - rerun Compare'
     );
+  });
+
+  it('shows disconnected-output recovery when Compare fails without row mismatches', () => {
+    const openDesign = vi.fn();
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={makeDisconnectedOutputFailRun()}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { out: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { out: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'A' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'A' },
+          { id: 'out', direction: 'out', label: 'OUT' },
+        ]}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+        onGoToDesign={openDesign}
+      />
+    );
+
+    const panel = view.getByTestId('ide-verify-structural-recovery-panel');
+    expect(panel.textContent).toContain('OUT');
+    expect(panel.textContent).toContain('connect a driver');
+    expect(panel.textContent).toContain('Open Design');
+
+    fireEvent.click(view.getByTestId('ide-verify-structural-open-design'));
+    expect(openDesign).toHaveBeenCalledTimes(1);
   });
 });

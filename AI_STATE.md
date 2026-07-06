@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-06 (fix: guide wrong build recovery and correction)
+
+**Subsystem:** Verify Compare failure diagnosis, wrong expected-output recovery, wrong-gate/wire handoff to Design, disconnected-output recovery, and focused browser-E0 gate coverage.
+
+**Changes:**
+- Added a small `verifyFailureDiagnosis` model that classifies stale results, disconnected/no-sampled-output failures, expected-value repair cases, and likely design-output mismatches without changing simulator truth.
+- Updated Verify FAIL handling so the existing repair panel uses diagnosis-driven copy and action priority: `Inspect Design` is primary for likely circuit repair, while `Use observed` stays available but explicitly guarded as safe only when the circuit is correct.
+- Added a structural recovery panel for Compare failures that produce no normal mismatch rows, so disconnected outputs now tell the student to open Design and connect a driver instead of showing only `0 checks failed`.
+- Tightened the no-row failure summary so Verify says `Compare could not check an output` and routes the primary recovery action to Design.
+- Added focused unit coverage for the diagnosis model and disconnected-output Verify render path.
+- Added `ide:gate:wrong-build-recovery-correction-flow` across 1366x768 and 1440x900. The gate proves wrong expected-output repair, wrong OR-vs-XOR Design handoff, and disconnected-output recovery.
+
+**Evidence:** Manual production findings and screenshots were recorded under ignored `.redbyte/product-immersion/wrong-build-recovery/` artifacts before source edits. The new local browser gate records after-state screenshots under ignored `.redbyte/product-immersion/wrong-build-recovery-correction-flow/`. During gate hardening, a real compact repair-panel hit-test regression was found and fixed by folding diagnosis copy into the existing repair panel instead of adding a new block.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:wrong-build-recovery-correction-flow`, `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:complex-build-signal-trace-debugging`, `corepack pnpm -s ide:gate:scratch-testbench-repair-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:professional-classroom-ui-flow`, focused Vitest for `verifyFailureDiagnosis.test.ts` and `verifySurface.workstation.test.tsx` (`50` tests), final full `corepack pnpm -s classroom:gate` rerun (`PASS all steps`, `935646ms`), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 Verify UI, diagnosis copy, recovery routing, and gate/test coverage only. No simulator algorithm, expected-output truth semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This slice is local-only until committed and explicitly pushed. Do not claim GitHub or production includes wrong-build recovery correction until a later sync checkpoint proves it from remote checks and live endpoints.
+
+**Next recommended task:** After local commit and a separate sync checkpoint, choose Verify repair UX v2 only if fresh live inspection still shows students struggle to decide between expected-output repair and circuit repair. Vivado/Basys3 E1/E2/E3 proof remains external and was not attempted here.
+
 ## Change Log 2026-07-05 (fix: make RedByte classroom UI professional)
 
 **Subsystem:** Six-page IDE classroom UI tone, action hierarchy, Design workbench debug chrome, Verify testbench copy, Hardware empty/mapping states, Export blocked package state, Import utility spacing, and browser-E0 professional classroom gate coverage.

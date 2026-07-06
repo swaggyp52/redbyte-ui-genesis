@@ -123,6 +123,7 @@ import type { ScenarioStepDraft } from '../verifyScenarioSteps';
 import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
+import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
@@ -4320,11 +4321,121 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     return 'Custom pattern mode uses the clock lane so you can paint the exact timing sequence.';
   }, [boardClockBinding, effectiveClockPolicy, isSequentialRun]);
 
+  const selectedRepairDiagnosis = useMemo(() => {
+    if (!selectedFailureExplanationCase) return null;
+    return diagnoseVerifyFailure({
+      status: lastRun?.status ?? status,
+      staleReason: isRunStale ? (isTestbenchStale ? 'testbench' : 'design') : null,
+      runRowsCount: runRows.length,
+      outputLabels: outputSignalOrder,
+      preflightIssues: verifyPreflightIssues,
+      failure: {
+        signalLabel:
+          selectedFailureDisplayLabel ??
+          selectedFailureExplanationCase.signalLabel ??
+          selectedFailureExplanationCase.signal,
+        signal: selectedFailureExplanationCase.signal,
+        expected: selectedFailureExplanationCase.expected,
+        observed: selectedFailureExplanationCase.actual,
+        inputSnapshot: selectedFailureInputs ?? undefined,
+      },
+    });
+  }, [
+    isRunStale,
+    isTestbenchStale,
+    lastRun?.status,
+    outputSignalOrder,
+    runRows.length,
+    selectedFailureDisplayLabel,
+    selectedFailureExplanationCase,
+    selectedFailureInputs,
+    status,
+    verifyPreflightIssues,
+  ]);
+  const expectedRepairIsPrimary = selectedRepairDiagnosis?.primaryLane === 'expected';
+  const designRepairIsPrimary = selectedRepairDiagnosis?.primaryLane === 'design';
+  const rerunRepairIsPrimary = selectedRepairDiagnosis?.primaryLane === 'rerun';
+
+  const structuralRecoveryDiagnosis = useMemo(() => {
+    if (!lastRun || lastRun.status !== 'fail' || failingRows.length > 0) return null;
+    const diagnosis = diagnoseVerifyFailure({
+      status: lastRun.status,
+      runRowsCount: runRows.length,
+      outputLabels: outputSignalOrder,
+      preflightIssues: verifyPreflightIssues,
+    });
+    return diagnosis.category === 'disconnected-output' ? diagnosis : null;
+  }, [failingRows.length, lastRun, outputSignalOrder, runRows.length, verifyPreflightIssues]);
+
+  const structuralRecoveryPanel = structuralRecoveryDiagnosis ? (
+    <section
+      className="ide-verify-repair-panel ide-verify-repair-panel--structural"
+      data-testid="ide-verify-structural-recovery-panel"
+      data-category={structuralRecoveryDiagnosis.category}
+    >
+      <header className="ide-verify-repair-panel__header">
+        <div className="ide-verify-repair-panel__copy">
+          <span className="ide-verify-repair-panel__eyebrow">Compare could not check an output</span>
+          <strong>{structuralRecoveryDiagnosis.message}</strong>
+          <p data-testid="ide-verify-structural-recovery-next-action">
+            {structuralRecoveryDiagnosis.recommendedAction}
+          </p>
+        </div>
+        <IdeStatusPill tone="error">Design repair</IdeStatusPill>
+      </header>
+      <div className="ide-verify-repair-panel__facts">
+        <div className="ide-verify-repair-panel__fact">
+          <span>Likely issue</span>
+          <strong>Output not sampled</strong>
+        </div>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Signal</span>
+          <strong>{outputSignalOrder[0] ?? 'output'}</strong>
+        </div>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Expected rows</span>
+          <strong>{totalExpectedCaseCount}</strong>
+        </div>
+        <div className="ide-verify-repair-panel__fact">
+          <span>Generated checks</span>
+          <strong>{runRows.length}</strong>
+        </div>
+      </div>
+      <div className="ide-verify-repair-panel__actions">
+        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-structural-design-path">
+          <span className="ide-verify-repair-panel__path-label">Design repair</span>
+          <div className="ide-verify-repair-panel__path-actions">
+            {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
+              <IdeButton
+                tone="primary"
+                onClick={handleGoToDesignFromVerify}
+                testId="ide-verify-structural-open-design"
+                title="Open Design and connect a driver to the missing output."
+              >
+                Open Design
+              </IdeButton>
+            ) : null}
+            <IdeButton
+              tone="secondary"
+              onClick={() => handleRunWithPreflight(true)}
+              disabled={runState === 'running'}
+              testId="ide-verify-structural-rerun"
+              title="Rerun Compare after reconnecting the output."
+            >
+              Rerun Compare
+            </IdeButton>
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : null;
+
   const repairPanel = hasSessionFailureEvidence && selectedFailureExplanationCase ? (
     <section
       className="ide-verify-repair-panel"
       data-testid="ide-verify-repair-panel"
       data-stale={isRunStale || isTestbenchStale ? 'true' : 'false'}
+      data-category={selectedRepairDiagnosis?.category ?? 'unknown'}
     >
       <header className="ide-verify-repair-panel__header">
         <div className="ide-verify-repair-panel__copy">
@@ -4334,10 +4445,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           >
             Compare failed
           </span>
-          <strong>Fix expected value or inspect design.</strong>
+          <strong>{selectedRepairDiagnosis?.message ?? 'Fix expected value or inspect design.'}</strong>
           <p data-testid="ide-verify-repair-next-action">
-            If the expected value is correct, this may be a circuit issue. Check the
-            gate or wire driving the failed output, then rerun Compare.
+            {selectedRepairDiagnosis?.recommendedAction ??
+              'If the expected value is correct, this may be a circuit issue. Check the gate or wire driving the failed output, then rerun Compare.'}
           </p>
         </div>
         <IdeStatusPill tone="error" data-testid="ide-verify-repair-status">
@@ -4414,7 +4525,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               Edit
             </IdeButton>
             <IdeButton
-              tone="primary"
+              tone={expectedRepairIsPrimary ? 'primary' : 'secondary'}
               onClick={() => handleFailureAcceptObserved(selectedFailureExplanationCase)}
               disabled={
                 selectedFailureExplanationCase.actual !== '0' &&
@@ -4450,7 +4561,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <div className="ide-verify-repair-panel__path-actions">
             {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
               <IdeButton
-                tone="secondary"
+                tone={designRepairIsPrimary ? 'primary' : 'secondary'}
                 onClick={() => handleInspectFailureInDesign(selectedFailureExplanationCase)}
                 testId="ide-verify-repair-open-design"
                 title="Inspect this failed output in Design."
@@ -4459,7 +4570,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </IdeButton>
             ) : null}
             <IdeButton
-              tone="primary"
+              tone={rerunRepairIsPrimary ? 'primary' : 'secondary'}
               onClick={() => handleRunWithPreflight(true)}
               disabled={runState === 'running'}
               testId="ide-verify-repair-rerun"
@@ -5409,11 +5520,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         ? 'Checks aligned (mapping incomplete).'
                         : 'All checks aligned with the observed run.'
                       : sessionSignalsAssertionFailure
-                        ? failingRows.length === 1
-                          ? '1 check failed in the last run.'
-                          : `${failingRows.length} checks failed in the last run.`
+                        ? structuralRecoveryDiagnosis
+                          ? 'Compare could not check an output.'
+                          : failingRows.length === 1
+                            ? '1 check failed in the last run.'
+                            : `${failingRows.length} checks failed in the last run.`
                         : sessionShowsTraceEvidence
-                          ? 'Observed outputs recorded — no expected checks compared.'
+                          ? 'Observed outputs recorded - no expected checks compared.'
                           : 'Run recorded.'
                 }
                 subline={
@@ -5451,25 +5564,32 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   isRunStale
                     ? 'Re-run Verify'
                     : sessionSignalsAssertionFailure
-                      ? 'Open first failing check'
+                      ? structuralRecoveryDiagnosis
+                        ? 'Open Design'
+                        : 'Open first failing check'
                       : undefined
                 }
                 onPrimaryAction={
                   isRunStale
                     ? () => handleRunWithPreflight()
                     : sessionSignalsAssertionFailure
-                      ? handleJumpToFirstFailure
+                      ? structuralRecoveryDiagnosis
+                        ? handleGoToDesignFromVerify
+                        : handleJumpToFirstFailure
                       : undefined
                 }
                 primaryActionTestId={
                   isRunStale
                     ? 'ide-verify-results-summary-rerun'
                     : sessionSignalsAssertionFailure
-                      ? 'ide-verify-results-summary-open-fail'
+                      ? structuralRecoveryDiagnosis
+                        ? 'ide-verify-results-summary-open-design'
+                        : 'ide-verify-results-summary-open-fail'
                       : undefined
                 }
               />
             ) : null}
+            {structuralRecoveryPanel}
             {repairPanel}
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
