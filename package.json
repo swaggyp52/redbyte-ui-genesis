@@ -68,6 +68,7 @@
         "ide:gate:wrong-build-diagnosis-repair-flow": "node ./scripts/gates/ide-wrong-build-diagnosis-repair-flow.mjs",
         "ide:gate:wrong-build-recovery-correction-flow": "node ./scripts/gates/ide-wrong-build-recovery-correction-flow.mjs",
         "ide:gate:complex-build-signal-trace-debugging": "node ./scripts/gates/ide-complex-build-signal-trace-debugging.mjs",
+        "ide:gate:verify-repair-ux-v2-flow": "node ./scripts/gates/ide-verify-repair-ux-v2-flow.mjs",
         "ide:gate:six-page-product-spine-flow": "node ./scripts/gates/ide-six-page-product-spine-flow.mjs",
         "ide:gate:guided-full-adder-lab-flow": "node ./scripts/gates/ide-guided-full-adder-lab-flow.mjs",
         "ide:gate:design-wiring-simplification-flow": "node ./scripts/gates/ide-design-wiring-simplification-flow.mjs",

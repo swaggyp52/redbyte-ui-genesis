@@ -1,5 +1,26 @@
 # AI State
 
+## Change Log 2026-07-07 (fix: simplify Verify repair decisions)
+
+**Subsystem:** Verify Compare failure repair UX, expected-output correction affordances, disconnected-output recovery wording, compact post-run repair panel layout, and focused browser-E0 Verify repair gate coverage.
+
+**Changes:**
+- Added `ide:gate:verify-repair-ux-v2-flow` across 1366x768 and 1440x900 to prove PASS authority, stale expected-output edits, wrong expected-output repair, wrong-circuit Design handoff, and disconnected-output recovery.
+- Made Verify FAIL repair copy ask the student to choose between an expected-output mistake and a circuit/design mistake instead of presenting all repair actions as equally safe.
+- Kept `Use observed` available for expected-output repair, but shortened compact action labels so the repair controls remain hit-testable in the post-run first viewport.
+- Tightened disconnected-output recovery so structural failures say the output is not driven, avoid `0/0 match` as the leading story, and route students to Design before treating the issue as a normal mismatch.
+- Adjusted the compact right-side repair panel CSS so repair buttons remain clickable while waveform evidence still starts inside the existing post-run usability budget.
+
+**Evidence:** Manual findings and screenshots were recorded under ignored `.redbyte/product-immersion/verify-repair-ux-v2/` artifacts before source edits. The new gate records browser proof under ignored `.redbyte/product-immersion/verify-repair-ux-v2-flow/`. During validation, `ide:gate:wrong-build-recovery-correction-flow` caught a real compact-panel hit-test regression where the Verify command stack intercepted `Use observed`; the final CSS/button-label pass fixes that without weakening the gate.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:verify-repair-ux-v2-flow`, `corepack pnpm -s ide:gate:wrong-build-recovery-correction-flow`, `corepack pnpm -s ide:gate:wrong-build-diagnosis-repair-flow`, `corepack pnpm -s ide:gate:verify-postrun-workbench-usability`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, `corepack pnpm -s ide:gate:professional-ui-burndown-v2-flow`, `corepack pnpm -s ide:gate:professional-classroom-ui-flow`, `corepack pnpm -s ide:gate:complex-build-signal-trace-debugging`, focused Vitest for `verifyFailureDiagnosis.test.ts` and `verifySurface.workstation.test.tsx` (`50` tests), full `corepack pnpm -s classroom:gate` (`PASS all steps`, `948906ms`), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 Verify UI, repair copy, CSS, and gate/test coverage only. No simulator algorithm, Compare truth, expected-output data semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This Verify Repair UX v2 slice is local-only until explicitly pushed. Production currently remains at `581046ab9e1d0b83b968d759aa4bd9be675a1a31`; do not claim GitHub or production includes this slice until a later sync checkpoint proves it from remote checks and live endpoints.
+
+**Next recommended task:** After local commit and a separate sync checkpoint, choose `Guided 4-bit adder lab` as the next product slice so students get a deeper supported lab path after wrong-build/testbench repair is easier to recover from. Vivado/Basys3 E1/E2/E3 proof remains external and was not attempted here.
+
 ## Change Log 2026-07-07 (fix: continue RedByte professional UI burn-down)
 
 **Subsystem:** Verify stale result hierarchy, Hardware failed-Compare next action, Export draft file trust labels, Design logical-I/O explainer readability, and focused browser-E0 professional UI burn-down v2 coverage.

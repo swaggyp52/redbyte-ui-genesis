@@ -330,6 +330,15 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-repair-expected').textContent).toContain('1');
     expect(getByTestId('ide-verify-repair-observed').textContent).toContain('0');
     expect(getByTestId('ide-verify-repair-inputs').textContent).toContain('SW0=1');
+    expect(getByTestId('ide-verify-repair-decision').textContent).toContain(
+      'expected output wrong'
+    );
+    expect(getByTestId('ide-verify-repair-expected-lane-copy').textContent).toContain(
+      'expected value you typed is wrong'
+    );
+    expect(getByTestId('ide-verify-repair-design-lane-copy').textContent).toContain(
+      'disconnected or missing driver'
+    );
 
     fireEvent.click(getByTestId('ide-verify-repair-open-design'));
     expect(onGoToDesign).toHaveBeenCalled();
@@ -2472,6 +2481,12 @@ describe('VerifySurface workstation controls', () => {
 
     const panel = view.getByTestId('ide-verify-structural-recovery-panel');
     expect(panel.textContent).toContain('OUT');
+    expect(view.getByTestId('ide-verify-structural-primary-message').textContent).toContain(
+      'not driven'
+    );
+    expect(view.getByTestId('ide-verify-structural-decision').textContent).toContain(
+      'not an expected-output mismatch'
+    );
     expect(panel.textContent).toContain('connect a driver');
     expect(panel.textContent).toContain('Open Design');
 

@@ -85,8 +85,8 @@ export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): Verif
       category: 'disconnected-output',
       primaryLane: 'design',
       confidence: 'high',
-      message: `${signal} did not produce a sampled output for Compare.`,
-      recommendedAction: `Open Design and connect a driver to ${signal}, then rerun Compare.`,
+      message: `${signal} is not driven, so Compare could not produce observed values.`,
+      recommendedAction: `Open Design, connect a driver to ${signal}, then rerun Compare.`,
     };
   }
 
@@ -95,8 +95,8 @@ export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): Verif
       category: 'expected-value-check-needed',
       primaryLane: 'expected',
       confidence: 'medium',
-      message: `Use observed only if the circuit is correct and the expected value is the mistake.`,
-      recommendedAction: `Use observed for ${signal}, or edit the expected output by hand, then rerun Compare.`,
+      message: `This is an expected-output repair only if the circuit is correct.`,
+      recommendedAction: `Edit the expected value. Use observed for ${signal} only after confirming the circuit is right.`,
     };
   }
 
@@ -107,8 +107,8 @@ export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): Verif
       category: 'possible-wrong-gate-or-wire',
       primaryLane: 'design',
       confidence: 'medium',
-      message: `${signal} disagrees with the expected value. Start by checking ${driverLabel}${driverType}.`,
-      recommendedAction: `Inspect Design to trace the gate or wire driving ${signal} before using observed values.`,
+      message: `${signal} does not match the expected value. Check ${driverLabel}${driverType} before editing expected outputs.`,
+      recommendedAction: `Inspect Design for the failed output, focus the driver if available, then rerun Compare.`,
     };
   }
 
@@ -118,7 +118,7 @@ export function diagnoseVerifyFailure(input: VerifyFailureDiagnosisInput): Verif
       primaryLane: 'design',
       confidence: 'low',
       message: `${signal} produced ${input.failure.observed ?? 'a different value'} when ${input.failure.expected ?? 'another value'} was expected.`,
-      recommendedAction: `Inspect Design if your expected output is correct. Use observed only after you confirm the circuit is correct.`,
+      recommendedAction: `Decide first: fix the expected output if it is wrong, or inspect Design if the circuit is wrong.`,
     };
   }
 

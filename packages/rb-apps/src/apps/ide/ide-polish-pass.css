@@ -5892,10 +5892,10 @@
   .ide-verify-repair-panel__actions
   .ide-button {
   min-width: 34px !important;
-  min-height: 34px !important;
-  padding: 6px 8px !important;
-  font-size: 10px !important;
-  line-height: 1.08 !important;
+  min-height: 28px !important;
+  padding: 4px 7px !important;
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -6324,6 +6324,16 @@
   text-transform: none;
 }
 
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__decision,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__path-copy {
+  color: rgba(188, 203, 220, 0.82);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__action-path.is-primary {
+  border-color: rgba(45, 212, 191, 0.44);
+  background: rgba(20, 83, 76, 0.18);
+}
+
 .ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-canvas,
 .ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-map-table {
   display: none !important;
@@ -6576,8 +6586,159 @@
   .ide-verify-repair-panel__path-actions
   .ide-button {
   min-width: 34px;
-  min-height: 34px !important;
-  padding: 6px 8px;
+  min-height: 28px !important;
+  padding: 4px 7px;
+}
+
+/* Verify Repair UX v2 keeps the decision language in the panel contract, but the
+   right-side instrument deck must stay waveform-first in the first viewport. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel {
+  display: grid !important;
+  grid-template-columns: minmax(112px, 0.42fr) minmax(176px, 0.64fr) minmax(258px, 0.94fr) !important;
+  grid-template-areas: "header facts actions" !important;
+  align-items: center !important;
+  gap: 5px 8px !important;
+  min-height: 108px !important;
+  max-height: 124px !important;
+  padding: 5px 8px !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__decision,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__path-copy,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__scope
+  p,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  [data-testid='ide-verify-repair-status'] {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__header {
+  grid-area: header !important;
+  align-items: center !important;
+  min-height: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__copy {
+  gap: 1px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__copy
+  strong {
+  font-size: 11.5px !important;
+  line-height: 1.08 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__facts {
+  grid-area: facts !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 4px !important;
+  min-height: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__fact {
+  justify-content: center !important;
+  gap: 1px !important;
+  min-height: 52px !important;
+  padding: 3px 5px !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__fact
+  > span {
+  font-size: 7.5px !important;
+  line-height: 1 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__fact
+  strong,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__fact
+  code {
+  font-size: 9.5px !important;
+  line-height: 1.05 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__inputs {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__actions {
+  grid-area: actions !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-content: center !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__action-path {
+  display: contents !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__path-label {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__path-actions {
+  display: contents !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-planner-summary {

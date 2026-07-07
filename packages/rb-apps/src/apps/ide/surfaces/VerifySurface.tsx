@@ -3736,16 +3736,29 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ? 'Observe current circuit'
         : 'Compare current circuit'
     : sessionStatusBadgeLabel;
+  const hasStructuralOutputRecovery =
+    lastRun?.status === 'fail' &&
+    failingRows.length === 0 &&
+    (
+      (runRows.length === 0 && outputSignalOrder.length > 0) ||
+      verifyPreflightIssues.some((issue) =>
+        issue.kind === 'missing-output-sample' ||
+        issue.kind === 'missing-output-node' ||
+        issue.kind === 'missing-output-row'
+      )
+    );
   const commandBarEvidenceLabel =
     lastRun && sessionShowsCompareEvidence
-      ? failingRows.length > 0
+      ? hasStructuralOutputRecovery
+        ? 'Output not driven'
+        : failingRows.length > 0
         ? `${failingRows.length} mismatch${failingRows.length === 1 ? '' : 'es'}${typeof firstFailureTick === 'number' ? ` · t${firstFailureTick}` : ''}`
         : `${runRows.length}/${runRows.length} match`
       : lastRun && sessionShowsTraceEvidence
         ? `${runVectorCount} observed row${runVectorCount === 1 ? '' : 's'}`
         : undefined;
   const commandBarCoverageLabel =
-    lastRun && runRows.length > 0 && inputCoverage
+    lastRun && runRows.length > 0 && inputCoverage && !hasStructuralOutputRecovery
       ? `${inputCoverage.pct}% coverage`
       : undefined;
   const labSequencerSteps = useMemo(() => {
@@ -4382,18 +4395,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     >
       <header className="ide-verify-repair-panel__header">
         <div className="ide-verify-repair-panel__copy">
-          <span className="ide-verify-repair-panel__eyebrow">Compare could not check an output</span>
-          <strong>{structuralRecoveryDiagnosis.message}</strong>
+          <span className="ide-verify-repair-panel__eyebrow">Output not driven</span>
+          <strong data-testid="ide-verify-structural-primary-message">
+            {structuralRecoveryDiagnosis.message}
+          </strong>
           <p data-testid="ide-verify-structural-recovery-next-action">
             {structuralRecoveryDiagnosis.recommendedAction}
           </p>
         </div>
         <IdeStatusPill tone="error">Design repair</IdeStatusPill>
       </header>
+      <div className="ide-verify-repair-panel__decision" data-testid="ide-verify-structural-decision">
+        <span>Repair decision</span>
+        <strong>Fix the circuit connection first.</strong>
+        <p>This is not an expected-output mismatch yet. RedByte needs a driven output before Compare can check behavior.</p>
+      </div>
       <div className="ide-verify-repair-panel__facts">
         <div className="ide-verify-repair-panel__fact">
           <span>Likely issue</span>
-          <strong>Output not sampled</strong>
+          <strong>Missing driver</strong>
         </div>
         <div className="ide-verify-repair-panel__fact">
           <span>Signal</span>
@@ -4404,13 +4424,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <strong>{totalExpectedCaseCount}</strong>
         </div>
         <div className="ide-verify-repair-panel__fact">
-          <span>Generated checks</span>
+          <span>Observed rows</span>
           <strong>{runRows.length}</strong>
         </div>
       </div>
       <div className="ide-verify-repair-panel__actions">
-        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-structural-design-path">
-          <span className="ide-verify-repair-panel__path-label">Design repair</span>
+        <div className="ide-verify-repair-panel__action-path is-primary" data-testid="ide-verify-structural-design-path">
+          <span className="ide-verify-repair-panel__path-label">Fix circuit or design</span>
+          <p className="ide-verify-repair-panel__path-copy">
+            Open Design, connect a driver to the output, then rerun Compare.
+          </p>
           <div className="ide-verify-repair-panel__path-actions">
             {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
               <IdeButton
@@ -4443,6 +4466,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       data-testid="ide-verify-repair-panel"
       data-stale={isRunStale || isTestbenchStale ? 'true' : 'false'}
       data-category={selectedRepairDiagnosis?.category ?? 'unknown'}
+      data-repair-primary-lane={selectedRepairDiagnosis?.primaryLane ?? 'none'}
     >
       <header className="ide-verify-repair-panel__header">
         <div className="ide-verify-repair-panel__copy">
@@ -4462,6 +4486,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           Needs repair
         </IdeStatusPill>
       </header>
+
+      <div className="ide-verify-repair-panel__decision" data-testid="ide-verify-repair-decision">
+        <span>Repair decision</span>
+        <strong>Is the expected output wrong, or is the circuit wrong?</strong>
+        <p>
+          Use the expected-output lane only when the design behavior is correct. Use the circuit/design lane
+          when the expected value looks right or the driver needs inspection.
+        </p>
+      </div>
 
       <div className="ide-verify-repair-panel__facts">
         <button
@@ -4515,13 +4548,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {selectedFailureRowRepairTargets.length} failed output{selectedFailureRowRepairTargets.length === 1 ? '' : 's'} in this row,
             {' '}{allFailedRepairTargets.length} failed output{allFailedRepairTargets.length === 1 ? '' : 's'} total.
           </strong>
-          <p>Use observed only when the circuit behavior is correct and the expected answer is the mistake.</p>
+          <p>Pick the lane that matches the mistake. Do not use observed values to hide a circuit problem.</p>
         </div>
       </div>
 
       <div className="ide-verify-repair-panel__actions">
-        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-repair-testbench-path">
-          <span className="ide-verify-repair-panel__path-label">Expected/testbench repair</span>
+        <div
+          className={`ide-verify-repair-panel__action-path${expectedRepairIsPrimary ? ' is-primary' : ''}`}
+          data-testid="ide-verify-repair-testbench-path"
+        >
+          <span className="ide-verify-repair-panel__path-label">Fix expected output</span>
+          <p className="ide-verify-repair-panel__path-copy" data-testid="ide-verify-repair-expected-lane-copy">
+            Use observed only when the circuit behavior is correct and the expected value you typed is wrong.
+          </p>
           <div className="ide-verify-repair-panel__path-actions">
             <IdeButton
               tone="secondary"
@@ -4529,7 +4568,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               testId="ide-verify-repair-edit-expected"
               title="Edit the expected outputs in the testbench."
             >
-              Edit
+              Edit expected
             </IdeButton>
             <IdeButton
               tone={expectedRepairIsPrimary ? 'primary' : 'secondary'}
@@ -4563,8 +4602,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </IdeButton>
           </div>
         </div>
-        <div className="ide-verify-repair-panel__action-path" data-testid="ide-verify-repair-design-path">
-          <span className="ide-verify-repair-panel__path-label">Design repair</span>
+        <div
+          className={`ide-verify-repair-panel__action-path${designRepairIsPrimary ? ' is-primary' : ''}`}
+          data-testid="ide-verify-repair-design-path"
+        >
+          <span className="ide-verify-repair-panel__path-label">Fix circuit or design</span>
+          <p className="ide-verify-repair-panel__path-copy" data-testid="ide-verify-repair-design-lane-copy">
+            Use this when the expected output is correct or you suspect a circuit issue. Inspect Design for the failed output, focus the driver if one exists, and check for a disconnected or missing driver.
+          </p>
           <div className="ide-verify-repair-panel__path-actions">
             {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) ? (
               <IdeButton
@@ -4572,7 +4617,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 onClick={() => handleInspectFailureInDesign(selectedFailureExplanationCase)}
                 testId="ide-verify-repair-open-design"
                 title="Inspect this failed output in Design."
-              >
+            >
                 Inspect Design
               </IdeButton>
             ) : null}
