@@ -6402,7 +6402,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </span>
                   {designCommandMeta}
                   <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
-                    {SIGNAL_LANGUAGE.designLogicalIo} Labels name RedByte signals; Map Pins binds them to board resources and package pins.
+                    Add logical I/O for your circuit. Labels name RedByte signals; Map Pins binds them to Basys3 resources and package pins.
                   </p>
                 </div>
               </div>

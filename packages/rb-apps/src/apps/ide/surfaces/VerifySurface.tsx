@@ -3868,8 +3868,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       waveformTicks.length,
     ]
   );
+  const runProofIsStale = Boolean(
+    lastRun && sessionShowsAssertionMatch && (isRunStale || isTestbenchStale || hasStaleAuthoredReference)
+  );
   const runProofTitle =
-    sessionShowsAssertionMatch
+    runProofIsStale
+      ? 'Checks changed - rerun Compare'
+      : sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
         ? 'Checks passed — finish pin mapping'
         : `Checks passed · ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
@@ -3881,7 +3886,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? 'Simulation only (no checks)'
             : verifySession.title;
   const runProofSummary =
-    sessionShowsAssertionMatch
+    runProofIsStale
+      ? 'The previous run matched before the circuit or saved checks changed. Rerun Compare before trusting PASS/FAIL.'
+      : sessionShowsAssertionMatch
       ? lastRun?.qualification === 'incomplete-mapping'
         ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Open Project, then the Map Pins stage, and finish pin names there — Export and Hardware read that same table.`
         : 'Every saved check matched the observed outputs.'
@@ -4795,7 +4802,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ? 'Blocked'
                   : isNoCircuitTaskFirst
                     ? 'No circuit'
-                  : isRunStale
+                  : runProofIsStale
                     ? 'Stale'
                     : sessionShowsAssertionMatch
                       ? 'Pass'
@@ -4810,7 +4817,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             stateTone={
               runState === 'running'
                 ? 'running'
-                : isRunStale
+                : runProofIsStale
                   ? 'stale'
                   : isNoCircuitTaskFirst
                     ? 'attention'
@@ -4834,10 +4841,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ? 'Open Design, load a course starter, or recover/import HDL before running Verify.'
                   : sessionSignalsAssertionFailure
                     ? 'Open the first failing check, then update Design or expected outputs.'
-                    : sessionShowsAssertionMatch
-                      ? 'Trusted comparison evidence. Continue to Map Pins or Export when ready.'
-                      : isRunStale
-                        ? 'This result is stale because the design changed. Re-run Verify.'
+                    : runProofIsStale
+                      ? 'Checks changed. Rerun Compare before trusting PASS/FAIL.'
+                      : sessionShowsAssertionMatch
+                        ? 'Trusted comparison evidence. Continue to Map Pins or Export when ready.'
                         : isDraftSession && totalVectorCount === 0
                           ? 'Add stimulus rows or seed a starter set, then Run Verify.'
                           : 'Press Run to record observed outputs for the current stimulus.'
@@ -5005,10 +5012,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
         {!isFirstRunState && lastRun && sessionShowsAssertionMatch && (
           <section
-            className={`ide-verify-run-proof ide-verify-run-proof--pass ide-verify-pass-hero${
+            className={`ide-verify-run-proof ${
+              runProofIsStale ? 'ide-verify-run-proof--stale' : 'ide-verify-run-proof--pass'
+            } ide-verify-pass-hero${
               lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
             }`}
             data-testid="ide-verify-pass-hero"
+            data-stale={runProofIsStale ? 'true' : 'false'}
           >
             <div className="ide-verify-run-proof-main">
               <div className="ide-verify-run-proof-copy">
@@ -5027,8 +5037,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </p>
                 <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
                   <strong>What this means:</strong>{' '}
-                  {isRunStale
-                    ? `The waveform and checks here belong to an older build (${shortenHash(lastRun.deterministicHash)}) than your current circuit (${shortenHash(deterministicHash)}). Re-run Verify when you are ready.`
+                  {runProofIsStale
+                    ? isRunStale
+                      ? `The waveform and checks here belong to an older build (${shortenHash(lastRun.deterministicHash)}) than your current circuit (${shortenHash(deterministicHash)}). Rerun Compare before trusting PASS/FAIL.`
+                      : 'The saved checks changed after this run. Rerun Compare before trusting PASS/FAIL.'
                     : lastRun.qualification === 'incomplete-mapping'
                       ? 'Pass or fail reflects this Verify run: your saved test vectors were compared to the simulation. Change the design in Design, or finish board pins on Project — then return here to re-check.'
                       : 'Your saved checks matched this run. Change the circuit or board pins if you need different behavior, then re-run Verify when you are ready.'}
@@ -5502,7 +5514,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {lastRun && !(hasSessionFailureEvidence && selectedFailureExplanationCase) ? (
               <VerifyResultsSummary
                 kind={
-                  isRunStale
+                  runProofIsStale
                     ? 'stale'
                     : sessionShowsAssertionMatch
                       ? 'pass'
@@ -5513,8 +5525,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           : 'not-run'
                 }
                 headline={
-                  isRunStale
-                    ? 'This result is stale because the design changed.'
+                  runProofIsStale
+                    ? 'Checks changed - rerun Compare before trusting PASS/FAIL.'
                     : sessionShowsAssertionMatch
                       ? lastRun.qualification === 'incomplete-mapping'
                         ? 'Checks aligned (mapping incomplete).'
@@ -5561,8 +5573,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   return list;
                 })()}
                 primaryActionLabel={
-                  isRunStale
-                    ? 'Re-run Verify'
+                  runProofIsStale
+                    ? 'Rerun Compare'
                     : sessionSignalsAssertionFailure
                       ? structuralRecoveryDiagnosis
                         ? 'Open Design'
@@ -5570,8 +5582,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       : undefined
                 }
                 onPrimaryAction={
-                  isRunStale
-                    ? () => handleRunWithPreflight()
+                  runProofIsStale
+                    ? () => handleRunWithPreflight(true)
                     : sessionSignalsAssertionFailure
                       ? structuralRecoveryDiagnosis
                         ? handleGoToDesignFromVerify
@@ -5579,7 +5591,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       : undefined
                 }
                 primaryActionTestId={
-                  isRunStale
+                  runProofIsStale
                     ? 'ide-verify-results-summary-rerun'
                     : sessionSignalsAssertionFailure
                       ? structuralRecoveryDiagnosis
@@ -5591,7 +5603,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ) : null}
             {structuralRecoveryPanel}
             {repairPanel}
-            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
+            <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">
                 <div className="ide-verify-scope-copy">

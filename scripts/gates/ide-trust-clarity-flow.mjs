@@ -118,8 +118,8 @@ async function assertDesignClarity(page, viewport) {
   const explainer = page.getByTestId('ide-design-logical-io-explainer').first();
   await explainer.waitFor({ state: 'visible', timeout: 10000 });
   const explainerText = await text(explainer);
-  assert(/logical inputs and outputs/i.test(explainerText), `${viewport.label}/Design must explain logical I/O, got "${explainerText}"`);
-  assert(/Basys3 switches and LEDs later|board resource and package pin/i.test(explainerText), `${viewport.label}/Design must distinguish mapping from labels, got "${explainerText}"`);
+  assert(/logical (I\/O|inputs and outputs)/i.test(explainerText), `${viewport.label}/Design must explain logical I/O, got "${explainerText}"`);
+  assert(/Basys3 (switches and LEDs later|resources and package pins)|board resource and package pin/i.test(explainerText), `${viewport.label}/Design must distinguish mapping from labels, got "${explainerText}"`);
 
   const inputNodeId = await firstNodeId(page, ['INPUT', 'Switch']);
   assert(inputNodeId, `${viewport.label}/Design starter needs an input node to inspect`);

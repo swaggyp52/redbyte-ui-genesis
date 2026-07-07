@@ -33852,6 +33852,62 @@ button:disabled,
   border: 1px solid rgba(251, 113, 133, 0.38);
 }
 
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-badge {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 650;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-badge::before {
+  content: 'Status: ';
+  color: rgba(166, 190, 214, 0.64);
+  font-weight: 520;
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row-action {
+  border: 1px solid rgba(92, 128, 158, 0.22);
+  background: rgba(8, 18, 30, 0.28);
+  color: rgba(190, 211, 230, 0.82);
+}
+
+[data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-package-inspector-v1--draft .ide-export-artifact-tab .ide-status-pill {
+  border-color: rgba(211, 186, 118, 0.26);
+  background: rgba(68, 52, 20, 0.22);
+  color: rgba(226, 211, 164, 0.86);
+  box-shadow: none;
+}
+
+[data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-package-inspector-v1--draft .ide-export-file-browser-v1__file .ide-status-pill {
+  border-color: rgba(211, 186, 118, 0.26);
+  background: rgba(68, 52, 20, 0.22);
+  color: rgba(226, 211, 164, 0.86);
+  box-shadow: none;
+}
+
+[data-ide-mode-marker='export'][data-layout-intent='workbench'] .ide-export-package-inspector-v1--draft .ide-export-artifact-tab.is-active {
+  border-color: rgba(211, 186, 118, 0.36);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof--stale {
+  border-color: rgba(214, 184, 96, 0.36) !important;
+  background: linear-gradient(180deg, rgba(42, 34, 16, 0.76), rgba(13, 18, 26, 0.92)) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof--stale .ide-verify-run-proof-title {
+  color: rgba(244, 218, 142, 0.96) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--result .ide-verify-run-proof--stale .ide-button-primary {
+  background: rgba(218, 190, 104, 0.16) !important;
+  border-color: rgba(218, 190, 104, 0.36) !important;
+  color: rgba(244, 226, 172, 0.95) !important;
+}
+
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-loop-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);

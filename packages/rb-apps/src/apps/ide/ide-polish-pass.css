@@ -6055,18 +6055,18 @@
 }
 
 .ide-root [data-ide-mode-marker='design'] .ide-design-workspace-heading-main {
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
 }
 
 .ide-root [data-ide-mode-marker='design'] .ide-design-workspace-heading-main > .ide-design-logical-io-note {
-  flex: 1 1 auto;
-  min-width: 160px;
-  max-width: min(540px, 44vw);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 11px;
-  line-height: 1;
+  flex: 1 1 360px;
+  min-width: min(100%, 280px);
+  max-width: min(680px, 62vw);
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 11.5px;
+  line-height: 1.25;
 }
 
 .ide-root [data-ide-mode-marker='design'] .ide-design-inspector-signal-model {

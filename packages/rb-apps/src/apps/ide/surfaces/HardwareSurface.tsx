@@ -1320,6 +1320,18 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       };
     }
 
+    if (failureTruth.primaryCtaIntent === 'verify' || compareDiffers) {
+      return {
+        title: failureTruth.title,
+        body: failureTruth.message,
+        primaryLabel: failureTruth.primaryCtaLabel || 'Open Verify',
+        primaryAction: onOpenVerify,
+        primaryTestId: 'ide-hardware-next-primary',
+        secondaryLabel: hwMode !== 'bringup' && vectorsCount > 0 ? 'Board Check' : null,
+        secondaryAction: hwMode !== 'bringup' && vectorsCount > 0 ? () => setHwMode('bringup') : null,
+      };
+    }
+
     if (scenarioDrifted) {
       return {
         title: isDifferentScenario ? 'Re-run Verify for the active scenario' : 'Re-run Verify after the scenario edit',
@@ -1375,6 +1387,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     };
   }, [
     blockedHero,
+    compareDiffers,
     dominantPrimaryAction,
     failureTruth.message,
     failureTruth.primaryCtaIntent,

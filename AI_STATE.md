@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-07 (fix: continue RedByte professional UI burn-down)
+
+**Subsystem:** Verify stale result hierarchy, Hardware failed-Compare next action, Export draft file trust labels, Design logical-I/O explainer readability, and focused browser-E0 professional UI burn-down v2 coverage.
+
+**Changes:**
+- Made stale Verify results stop presenting as current PASS evidence: the run proof, results summary, and waveform state now show `Checks changed - rerun Compare` / `STALE` instead of the old pass headline.
+- Kept Verify repair actions available while preserving the observed-value warning and ensuring row/all observed repairs remain secondary actions.
+- Changed Hardware / Map Pins follow-up behavior so a mapped board with failed Compare promotes `Open Verify` as the primary recovery action instead of `Open Board Check`.
+- Changed Export draft visible file statuses from green `Ready` to `Generated draft`, keeping generated files inspectable without making a failed-Compare package look trusted.
+- Replaced the clipped Design logical-I/O explainer with wrapping copy that distinguishes RedByte labels from Basys3 resources and package pins.
+- Added `ide:gate:professional-ui-burndown-v2-flow` across 1366x768 and 1440x900, and updated older classroom/trust assertions for the clearer Design wording.
+
+**Evidence:** Before findings and screenshots were recorded under ignored `.redbyte/product-immersion/professional-ui-burndown-v2/` artifacts. The new gate records after-state screenshots under ignored `.redbyte/product-immersion/professional-ui-burndown-v2-flow/`, including stale Verify, failed-Compare Hardware, and draft Export.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:professional-ui-burndown-v2-flow`, `corepack pnpm -s ide:gate:professional-ui-burndown-flow`, `corepack pnpm -s ide:gate:professional-classroom-ui-flow`, `corepack pnpm -s ide:gate:wrong-build-recovery-correction-flow`, `corepack pnpm -s ide:gate:trust-clarity-flow`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `1025237ms`), focused Vitest for touched Verify/Export/Hardware/Design files (`7` files, `111` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`. `git diff --check` printed LF-to-CRLF working-copy normalization warnings only.
+
+**Safety:** Browser-E0 UI hierarchy, copy, CSS, and gate coverage only. No simulator algorithm, Compare truth, expected-output semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This professional UI burn-down v2 slice is local-only until explicitly pushed. Production currently includes the synced professional UI burn-down at `aa2c96e6cb1f005c0615d1d0ff4522738b2442aa`, not this local v2 commit.
+
+**Next recommended task:** After a separate sync checkpoint for this local commit, choose `Verify repair UX v2` or a broader student-flow simplification slice from fresh live inspection. Vivado/Basys3 E1/E2/E3 proof remains external and was not attempted here.
+
 ## Change Log 2026-07-07 (fix: reduce RedByte classroom UI clutter)
 
 **Subsystem:** Six-page IDE action hierarchy, Design first-viewport workbench density, Verify stale/repair clarity, Hardware no-signal empty state, Export draft trust hierarchy, Import utility spacing, and focused browser-E0 professional UI burn-down coverage.

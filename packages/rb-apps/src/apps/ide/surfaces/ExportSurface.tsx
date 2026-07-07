@@ -2068,15 +2068,27 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <span>{artifact.path}</span>
                       <small>{artifact.note}</small>
                       <IdeStatusPill
+                        testId={`ide-export-file-status-${artifact.path
+                          .toLowerCase()
+                          .replace(/[^a-z0-9]+/g, '-')
+                          .replace(/^-+|-+$/g, '')}`}
                         tone={
-                          artifact.status === 'ready'
+                          isDraftExport && artifact.status === 'ready'
+                            ? 'warn'
+                            : artifact.status === 'ready'
                             ? 'ok'
                             : artifact.status === 'blocked'
                               ? 'error'
                               : 'warn'
                         }
                       >
-                        {artifact.status === 'ready' ? 'Ready' : artifact.status === 'blocked' ? 'Blocked' : 'Pending'}
+                        {artifact.status === 'ready'
+                          ? isDraftExport
+                            ? 'Generated draft'
+                            : 'Ready'
+                          : artifact.status === 'blocked'
+                            ? 'Blocked'
+                            : 'Pending'}
                       </IdeStatusPill>
                     </button>
                   ))
@@ -2344,8 +2356,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                   <span className="ide-export-artifact-tab-note">{artifact.note}</span>
                                   <span className="ide-export-artifact-tab-action">Preview</span>
                                   <IdeStatusPill
+                                    testId={`ide-export-artifact-status-${artifact.path
+                                      .toLowerCase()
+                                      .replace(/[^a-z0-9]+/g, '-')
+                                      .replace(/^-+|-+$/g, '')}`}
                                     tone={
-                                      artifact.status === 'ready'
+                                      isDraftExport && artifact.status === 'ready'
+                                        ? 'warn'
+                                        : artifact.status === 'ready'
                                         ? 'ok'
                                         : artifact.status === 'blocked'
                                           ? 'error'
@@ -2353,7 +2371,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                     }
                                   >
                                     {artifact.status === 'ready'
-                                      ? 'Ready'
+                                      ? isDraftExport
+                                        ? 'Generated draft'
+                                        : 'Ready'
                                       : artifact.status === 'blocked'
                                         ? 'Blocked'
                                         : 'Pending'}
