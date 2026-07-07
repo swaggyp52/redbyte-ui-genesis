@@ -1594,7 +1594,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         detail: surfaceStatusDetail,
         primaryLabel: primaryExportCtaLabel,
         onPrimary: handlePrimaryHandoff,
-        primaryTone: exportBlocked ? 'secondary' : 'primary',
+        primaryTone: 'secondary',
         primaryDisabled: primaryHandoffDisabled,
         recoveryLabel: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? 'Map Pins' : onGoToProject ? 'Project' : undefined,
         onRecovery: onGoToHardware && handoffTruth.primaryCtaIntent !== 'map-pins' ? onGoToHardware : onGoToProject,
@@ -1845,7 +1845,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           </div>
 
           <section
-            className={`ide-export-package-inspector-v1${exportBlocked ? ' ide-export-package-inspector-v1--blocked' : ''}`}
+            className={`ide-export-package-inspector-v1${exportBlocked ? ' ide-export-package-inspector-v1--blocked' : ''}${isDraftExport ? ' ide-export-package-inspector-v1--draft' : ''}`}
             data-testid="ide-export-package-inspector-v1"
             data-export-package-state={exportBlocked ? 'blocked' : exportTrusted ? 'ready' : 'draft'}
             aria-label="Export package inspector"
@@ -1854,16 +1854,20 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div>
                 <p className="ide-surface-block-label">Package inspector</p>
                 <h3>
-                  {selectedArtifact
-                    ? selectedArtifact.path
-                    : exportBlocked
-                      ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle
-                      : 'Generated package files'}
+                  {exportBlocked
+                    ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle
+                    : isDraftExport
+                      ? 'Draft handoff files'
+                      : selectedArtifact
+                        ? selectedArtifact.path
+                        : 'Generated package files'}
                 </h3>
                 <p>
                   {exportBlocked
                     ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody
-                    : 'Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.'}
+                    : isDraftExport
+                      ? 'Files are inspectable, but this is not a trusted submission until Verify and mapping evidence are current.'
+                      : 'Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.'}
                 </p>
               </div>
               <section
@@ -1897,7 +1901,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <div className="ide-export-package-inspector-v1__actions">
                 <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
                 <IdeButton
-                  tone={exportBlocked ? 'secondary' : 'primary'}
+                  tone={exportTrusted || exportBlocked || handoffTruth.primaryCtaIntent === 'verify' ? 'secondary' : 'primary'}
                   onClick={handlePrimaryHandoff}
                   disabled={primaryHandoffDisabled}
                   testId="ide-export-package-build-v1"
@@ -1905,7 +1909,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   {primaryExportCtaLabel}
                 </IdeButton>
                 <IdeButton
-                  tone="secondary"
+                  tone={exportTrusted ? 'primary' : 'secondary'}
                   onClick={() => void handleDownloadExport('project')}
                   disabled={downloadDisabled}
                   testId="ide-export-package-download-v1"

@@ -1,5 +1,28 @@
 # AI State
 
+## Change Log 2026-07-07 (fix: reduce RedByte classroom UI clutter)
+
+**Subsystem:** Six-page IDE action hierarchy, Design first-viewport workbench density, Verify stale/repair clarity, Hardware no-signal empty state, Export draft trust hierarchy, Import utility spacing, and focused browser-E0 professional UI burn-down coverage.
+
+**Changes:**
+- Reduced duplicate Project loaded-state primary actions by making the product spine contextual, keeping the command strip as the current-action authority, and demoting the loaded-state secondary path row.
+- Demoted duplicate Design `Open Verify` paths while preserving navigation and keeping the canvas first-viewport contract under `ide:gate:design-workbench-v1`.
+- Tightened Verify stale copy to `Checks changed - rerun Compare`, compacted the stale action row, and made expected-output repair buttons meet classroom-size hit targets.
+- Hid inactive Hardware board/resource internals in the no-signal state so the empty-state task routes students back to Design instead of showing premature board work.
+- Made Export draft handoffs visibly draft-first, demoted draft Download/package actions when Verify is failing, and kept the confidence station inside the existing visual width contract.
+- Tightened Import first-look spacing without changing the cancel-preserves-work boundary.
+- Added `ide:gate:professional-ui-burndown-flow` across 1366x768 and 1440x900 to prove reduced primary-action clutter, clearer draft/export hierarchy, Verify repair hit targets, and Import utility copy.
+
+**Evidence:** Stage 1 wrong-build sync was pushed to `main` and production before this local branch: `5ffa055ad4cb048b7f9b2792087eacf1c7fc5a03`, with GitHub checks green and production `/os/version.json` matching that SHA. For this Stage 2 slice, manual findings and before/after browser screenshots were recorded under ignored `.redbyte/product-immersion/professional-ui-burndown/` and `.redbyte/product-immersion/professional-ui-burndown-flow/` artifacts. The findings artifact classifies fixed, partial, and deferred product UI debt.
+
+**Validation:** Local validation under portable Node `v20.19.0` passed for `corepack pnpm --filter @redbyte/playground build`, `corepack pnpm -s ide:gate:professional-ui-burndown-flow`, `corepack pnpm -s ide:gate:professional-classroom-ui-flow`, `corepack pnpm -s ide:gate:wrong-build-recovery-correction-flow`, `corepack pnpm -s ide:gate:trust-clarity-flow`, `corepack pnpm -s ide:gate:design-wiring-simplification-flow`, `corepack pnpm -s ide:gate:manual-browser-product-steward`, `corepack pnpm -s ide:gate:live-eyes-visual-polish-flow`, `corepack pnpm -s ide:gate:guided-full-adder-lab-flow`, `corepack pnpm -s ide:gate:testbench-editor-and-export-confidence-flow`, direct `corepack pnpm -s ide:gate:design-workbench-v1`, full `corepack pnpm -s classroom:gate` (`PASS all steps`, `939128ms`), focused Vitest for `verifySurface.workstation.test.tsx` (`46` tests), `corepack pnpm rb:doc:validate`, `corepack pnpm rb:encoding:check`, and `git diff --check`.
+
+**Safety:** Browser-E0 product UI, copy, CSS, and gate/test coverage only. No simulator algorithm, Compare truth, expected-output semantics, project format, mapping semantics, generated export bytes, VHDL/XDC/testbench/Tcl/ZIP goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Remote sync:** This professional UI burn-down slice is local-only until committed and explicitly pushed. Do not claim GitHub or production includes it until a later sync checkpoint proves remote checks and live endpoints. Production currently includes the earlier wrong-build recovery sync at `5ffa055ad4cb048b7f9b2792087eacf1c7fc5a03`, not this local UI burn-down commit.
+
+**Next recommended task:** After local commit and a separate sync checkpoint, choose `Verify repair UX v2` so wrong-build and wrong-testbench correction becomes easier without changing simulator truth or widening into Vivado/E1/E2/E3.
+
 ## Change Log 2026-07-06 (fix: guide wrong build recovery and correction)
 
 **Subsystem:** Verify Compare failure diagnosis, wrong expected-output recovery, wrong-gate/wire handoff to Design, disconnected-output recovery, and focused browser-E0 gate coverage.

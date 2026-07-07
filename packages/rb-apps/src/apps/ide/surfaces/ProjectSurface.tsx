@@ -993,8 +993,8 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
         detail: readiness.hasCircuit
           ? nextStepReason
           : PROFESSIONAL_CLASSROOM_COPY.projectFirstLaunchDetail,
-        primaryLabel: readiness.hasCircuit ? `Continue to ${activePrimaryCtaLabel}` : 'Start a Lab',
-        onPrimary: readiness.hasCircuit ? onPrimaryCta : undefined,
+        primaryLabel: readiness.hasCircuit ? `Next: ${activePrimaryCtaLabel}` : 'Start a Lab',
+        onPrimary: undefined,
         recoveryLabel: readiness.hasCircuit ? heroAssistAction.label : 'Import / Recover',
         onRecovery: readiness.hasCircuit ? heroAssistAction.onClick : onOpenImport,
         doneLabel: readiness.hasCircuit
@@ -1599,17 +1599,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           >
             <header className="ide-project-entry-paths-header">
               <div>
-                <p className="ide-surface-block-label">More paths</p>
-                <h3 className="ide-project-entry-paths-title">Continue, starter, recover, or reopen</h3>
+                <p className="ide-surface-block-label">Secondary paths</p>
+                <h3 className="ide-project-entry-paths-title">Starter, recovery, or saved work</h3>
               </div>
               <p className="ide-project-entry-paths-copy">
-                Current project stays active.
+                Use these when changing how the current project is opened.
               </p>
             </header>
             <div className="ide-project-entry-path-grid">
               <button
                 type="button"
-                className="ide-project-entry-path is-primary"
+                className="ide-project-entry-path"
                 onClick={onPrimaryCta}
                 data-testid="ide-project-path-continue"
               >

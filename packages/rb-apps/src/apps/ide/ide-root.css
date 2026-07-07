@@ -12122,8 +12122,9 @@ details[open].ide-export-evidence-details > summary::before {
 }
 
 .ide-verify-repair-panel__path-actions .ide-button {
-  min-height: 24px;
-  padding-inline: 8px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px 8px;
   font-size: 11px;
   white-space: normal;
 }
@@ -12241,8 +12242,9 @@ details[open].ide-export-evidence-details > summary::before {
 
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck > .ide-verify-repair-panel .ide-verify-repair-panel__actions .ide-button {
   justify-content: center;
-  min-height: 28px;
-  padding: 4px 7px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px 8px;
   font-size: 11px;
   line-height: 1.15;
   white-space: nowrap;

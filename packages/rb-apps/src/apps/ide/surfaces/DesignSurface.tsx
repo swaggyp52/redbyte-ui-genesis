@@ -6409,7 +6409,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-inline-actions ide-design-workspace-actions" data-testid="ide-design-workspace-actions">
                 {onGoToVerify ? (
                   <IdeButton
-                    tone="primary"
+                    tone="secondary"
                     onClick={onGoToVerify}
                     testId="ide-design-command-strip-primary-cta"
                     hierarchySurface="design"
@@ -6484,7 +6484,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     Open Library
                   </IdeButton>
                   {onGoToVerify ? (
-                    <IdeButton tone="primary" onClick={onGoToVerify} testId="ide-design-guided-full-adder-open-verify">
+                    <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-guided-full-adder-open-verify">
                       Open Verify
                     </IdeButton>
                   ) : null}
@@ -6690,7 +6690,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </p>
                   <div className="ide-design-starter-banner-actions">
                     {onGoToVerify ? (
-                      <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-starter-go-to-verify">
+                      <IdeButton tone="ghost" onClick={onGoToVerify} testId="ide-design-starter-go-to-verify">
                         Open Verify
                       </IdeButton>
                     ) : null}

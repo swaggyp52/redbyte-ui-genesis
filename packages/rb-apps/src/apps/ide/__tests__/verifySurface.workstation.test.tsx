@@ -370,7 +370,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(view.getByTestId('ide-verify-primary-status-callout').textContent).toContain(
-      'Checks changed - rerun before trusting PASS'
+      'Checks changed - rerun Compare'
     );
     expect(view.getByTestId('ide-verify-primary-status-rerun')).toBeTruthy();
   });
@@ -1367,7 +1367,7 @@ describe('VerifySurface workstation controls', () => {
     const { getByTestId, queryByTestId } = view;
 
     await waitFor(() => {
-      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Circuit or checks changed - rerun Compare');
+      expect(getByTestId('ide-verify-primary-status').textContent).toContain('Checks changed - rerun Compare');
     });
     expect(getByTestId('ide-vcb-status').textContent).toContain('Needs update');
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
@@ -2416,7 +2416,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(staleTestbench.getByTestId('ide-verify-primary-status').textContent).toContain(
-      'Checks changed - rerun before trusting PASS'
+      'Checks changed - rerun Compare'
     );
     staleTestbench.unmount();
 

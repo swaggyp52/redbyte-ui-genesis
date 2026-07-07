@@ -5891,8 +5891,9 @@
   .ide-verify-region--waveform
   .ide-verify-repair-panel__actions
   .ide-button {
-  min-height: 24px !important;
-  padding: 2px 6px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 6px 8px !important;
   font-size: 10px !important;
   line-height: 1.08 !important;
 }
@@ -6432,4 +6433,207 @@
   border-color: rgba(83, 112, 145, 0.26);
   background: rgba(7, 17, 29, 0.58);
   box-shadow: none;
+}
+
+/* Professional UI burn-down: keep student work surfaces primary and make
+   alternate paths quiet. This is visual hierarchy only; simulator, mapping,
+   and export artifact semantics stay unchanged. */
+.ide-root [data-ide-mode-marker='project'] .ide-product-spine__action-copy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid rgba(83, 112, 145, 0.28);
+  border-radius: 8px;
+  color: rgba(196, 216, 234, 0.84);
+  background: rgba(7, 17, 29, 0.48);
+  font-weight: 700;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] .ide-project-command-mode-action.is-next {
+  border-color: rgba(83, 112, 145, 0.32) !important;
+  background: rgba(7, 18, 31, 0.58) !important;
+  box-shadow: inset 3px 0 0 rgba(46, 196, 182, 0.52);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] [data-testid='ide-project-path-continue'] {
+  border-color: rgba(83, 112, 145, 0.24) !important;
+  background: rgba(7, 16, 27, 0.36) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='project'] [data-testid='ide-project-path-continue'] .ide-project-entry-path-label::after {
+  content: ' (same as current action)';
+  color: rgba(152, 184, 211, 0.66);
+  font-weight: 600;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-workspace-actions .ide-button-secondary,
+.ide-root [data-ide-mode-marker='design'] .ide-design-starter-banner-actions .ide-button-secondary,
+.ide-root [data-ide-mode-marker='design'] .ide-design-starter-banner-actions .ide-button-ghost {
+  min-height: 28px !important;
+  box-shadow: none !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-workspace-header {
+  gap: 6px 10px !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-canvas {
+  padding-top: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-starter-banner {
+  border-color: rgba(83, 112, 145, 0.22);
+  background: rgba(7, 17, 29, 0.52);
+}
+
+.ide-root [data-ide-mode-marker='design'] .ide-design-starter-banner-next {
+  border-color: rgba(83, 112, 145, 0.18);
+  background: rgba(5, 12, 20, 0.42);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept-strip {
+  grid-template-columns: minmax(230px, 0.8fr) repeat(4, minmax(128px, 1fr));
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept,
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-flow-steps {
+  padding: 6px 8px;
+  border-color: rgba(83, 112, 145, 0.18);
+  background: rgba(7, 16, 27, 0.38);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-scenario-builder-details--first-run .ide-testbench-concept p {
+  font-size: 10px;
+  line-height: 1.22;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-stale-keep-reference'])
+  .ide-verify-primary-status--embedded
+  .ide-callout {
+  padding: 8px 10px !important;
+  border-color: rgba(246, 213, 124, 0.34) !important;
+  background: rgba(33, 29, 14, 0.74) !important;
+  box-shadow: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-stale-keep-reference'])
+  .ide-verify-primary-status--embedded
+  .ide-callout-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-stale-keep-reference'])
+  .ide-verify-primary-status--embedded
+  .ide-callout-body
+  > p {
+  flex: 1 1 360px;
+  font-size: 12px;
+  line-height: 1.32;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has([data-testid='ide-verify-stale-keep-reference'])
+  .ide-verify-primary-status--embedded
+  .ide-inline-actions {
+  flex: 0 1 auto;
+  margin-top: 0 !important;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel {
+  gap: 8px;
+  border-color: rgba(215, 93, 93, 0.34);
+  background:
+    linear-gradient(180deg, rgba(34, 17, 20, 0.72), rgba(9, 15, 24, 0.84)),
+    rgba(9, 15, 24, 0.84);
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__copy p {
+  max-width: 68ch;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__actions {
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, 0.75fr);
+  gap: 8px;
+}
+
+.ide-root [data-ide-mode-marker='verify'] .ide-verify-repair-panel__path-actions .ide-button {
+  min-height: 34px;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-instrument-deck
+  > .ide-verify-repair-panel
+  .ide-verify-repair-panel__path-actions
+  .ide-button {
+  min-width: 34px;
+  min-height: 34px !important;
+  padding: 6px 8px;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-planner-summary {
+  display: none !important;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-workspace {
+  display: grid;
+  align-items: center;
+  min-height: 150px;
+  padding: 18px 22px;
+}
+
+.ide-root [data-ide-mode-marker='hardware'] .ide-hardware-panel--no-signals .ide-hw-board-task-copy {
+  max-width: 58ch;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft {
+  border-color: rgba(246, 213, 124, 0.28);
+  background: linear-gradient(180deg, rgba(14, 18, 18, 0.95), rgba(4, 10, 18, 0.98));
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft .ide-export-package-inspector-v1__header {
+  grid-template-columns: minmax(280px, 1fr) minmax(432px, 0.48fr) minmax(220px, auto);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft .ide-export-confidence-station {
+  opacity: 0.86;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft [data-testid='ide-export-package-download-v1'] {
+  border-color: rgba(83, 112, 145, 0.34) !important;
+  background: rgba(7, 16, 27, 0.56) !important;
+  box-shadow: none !important;
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft .ide-export-package-inspector-v1__body {
+  min-height: clamp(230px, 32vh, 390px);
+}
+
+.ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1--draft .ide-export-file-browser-v1__file {
+  padding: 6px 8px;
+  border-color: rgba(83, 112, 145, 0.24);
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-guided-wizard-v1 .ide-import-start-hero {
+  grid-template-columns: minmax(280px, 0.36fr) minmax(0, 1fr) !important;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-guidance-grid {
+  gap: 6px;
+}
+
+.ide-root [data-ide-mode-marker='import'] .ide-import-start-guidance-item p {
+  font-size: 10.5px;
+  line-height: 1.28;
 }

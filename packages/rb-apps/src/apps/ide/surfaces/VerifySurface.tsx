@@ -3923,7 +3923,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
-          label: 'Rerun Compare with saved checks',
+          label: 'Rerun saved checks',
           onClick: handleKeepOlderReference,
           tone: 'primary',
           testId: 'ide-verify-stale-keep-reference',
@@ -3931,23 +3931,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ];
       if (canResetToStimulusOnly) {
         actions.push({
-          label: 'Clear checks - observe only',
+          label: 'Observe only',
           onClick: handleResetToStimulusOnly,
           tone: 'secondary',
           testId: 'ide-verify-stale-reset-stimulus',
         });
       }
       actions.push({
-        label: 'Re-capture from current circuit',
+        label: 'Recapture expected outputs',
         onClick: handleStaleRecapture,
         tone: 'secondary',
         testId: 'ide-verify-stale-recapture-reauthor',
       });
       return {
         tone: 'warn',
-        title: 'Circuit or checks changed - rerun Compare',
+        title: 'Checks changed - rerun Compare',
         message:
-          'The circuit, stimulus, or expected-output checks changed since this reference was authored. Rerun Compare with the saved expected values, or recapture if the expected values should change.',
+          'Rerun Compare before trusting the old PASS/FAIL. Recapture only when the expected answers should change.',
         actions,
       };
     }
@@ -3978,9 +3978,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (isTestbenchStale && !isRunStale) {
       return {
         tone: 'warn',
-        title: 'Checks changed - rerun before trusting PASS',
-        message: 'Stimulus or expected-output checks changed since the last run. The old PASS/FAIL result is stale until Compare runs again.',
-        actions: [{ label: 'Rerun Compare now', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
+        title: 'Checks changed - rerun Compare',
+        message: 'Rerun Compare before trusting the old PASS/FAIL. Update expected outputs only when the expected answers should change.',
+        actions: [{ label: 'Rerun Compare', onClick: runVerification, tone: 'primary', testId: 'ide-verify-primary-status-rerun' }],
       };
     }
 
