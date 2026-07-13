@@ -15,6 +15,8 @@ import { digestValue } from '../utils/digest';
 import { stableSerialize } from '../utils/stableSerialize';
 import './ide/ide-root.css';
 import './ide/ide-polish-pass.css';
+import './ide/theme/redbyte-theme.css';
+import './ide/theme/redbyte-primitives.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';

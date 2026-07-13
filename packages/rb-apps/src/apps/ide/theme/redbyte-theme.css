@@ -1,0 +1,160 @@
+/*
+ * RedByte professional engineering-lab theme.
+ *
+ * This is the canonical color, type, spacing, radius, elevation, motion, and
+ * control-size authority for the IDE. Legacy sheets may consume these aliases,
+ * but must not introduce a competing palette.
+ */
+
+:root[data-redbyte-mode='ide'] {
+  color-scheme: dark;
+
+  --rb-canvas: #0f141a;
+  --rb-shell: #151b23;
+  --rb-surface: #1a222c;
+  --rb-surface-raised: #202a35;
+  --rb-surface-overlay: #27323e;
+
+  --rb-border-subtle: #2a3440;
+  --rb-border-default: #394554;
+  --rb-border-strong: #526172;
+
+  --rb-text-primary: #f4f6f8;
+  --rb-text-secondary: #c7d0d9;
+  --rb-text-muted: #98a6b5;
+
+  --rb-action: #356fa8;
+  --rb-action-hover: #3b73a8;
+  --rb-action-pressed: #2b5f92;
+  --rb-focus: #79ade1;
+  --rb-brand-red: #c75a63;
+
+  --rb-state-success: #5eb889;
+  --rb-state-warning: #e1a74b;
+  --rb-state-danger: #e2777d;
+  --rb-state-info: #78aee2;
+
+  --rb-state-success-bg: #173129;
+  --rb-state-warning-bg: #352b19;
+  --rb-state-danger-bg: #392126;
+  --rb-state-info-bg: #1a2b3b;
+
+  --rb-font-ui: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --rb-font-mono: 'Cascadia Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --rb-type-metadata: 11px;
+  --rb-type-label: 12px;
+  --rb-type-secondary: 13px;
+  --rb-type-body: 14px;
+  --rb-type-control: 14px;
+  --rb-type-work-heading: 16px;
+  --rb-type-page-heading: 20px;
+
+  --rb-space-0: 0;
+  --rb-space-1: 4px;
+  --rb-space-2: 8px;
+  --rb-space-3: 12px;
+  --rb-space-4: 16px;
+  --rb-space-5: 20px;
+  --rb-space-6: 24px;
+  --rb-space-7: 32px;
+  --rb-space-8: 40px;
+  --rb-space-9: 48px;
+
+  --rb-radius-inline: 4px;
+  --rb-radius-control: 6px;
+  --rb-radius-panel: 8px;
+  --rb-radius-overlay: 10px;
+
+  --rb-control-h: 36px;
+  --rb-control-h-sm: 36px;
+  --rb-control-h-lg: 40px;
+  --rb-table-row-h: 40px;
+
+  --rb-motion-micro: 100ms;
+  --rb-motion-fast: 120ms;
+  --rb-motion-normal: 160ms;
+  --rb-motion-slow: 180ms;
+  --rb-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  --rb-shadow-dock: none;
+  --rb-shadow-panel: none;
+  --rb-shadow-node: 0 2px 8px rgba(0, 0, 0, 0.34);
+  --rb-shadow-float: 0 12px 28px rgba(0, 0, 0, 0.34);
+  --rb-elevation-0: none;
+  --rb-elevation-1: none;
+  --rb-elevation-2: 0 12px 28px rgba(0, 0, 0, 0.28);
+
+  /* Compatibility aliases consumed by the existing IDE. */
+  --rb-elevation-workspace: var(--rb-canvas);
+  --rb-elevation-dock: var(--rb-shell);
+  --rb-elevation-float: var(--rb-surface-raised);
+  --rb-elevation-topbar: var(--rb-shell);
+  --rb-surface-bg: var(--rb-canvas);
+  --rb-panel-bg: var(--rb-surface);
+  --rb-panel-bg-raised: var(--rb-surface-raised);
+  --rb-border: var(--rb-border-default);
+  --rb-text-1: var(--rb-text-primary);
+  --rb-text-2: var(--rb-text-secondary);
+  --rb-text-3: var(--rb-text-muted);
+  --rb-accent: var(--rb-action);
+  --rb-accent-contrast: #ffffff;
+  --rb-success: var(--rb-state-success);
+  --rb-warning: var(--rb-state-warning);
+  --rb-error: var(--rb-state-danger);
+  --rb-info: var(--rb-state-info);
+  --rb-success-bg: var(--rb-state-success-bg);
+  --rb-warning-bg: var(--rb-state-warning-bg);
+  --rb-error-bg: var(--rb-state-danger-bg);
+  --rb-info-bg: var(--rb-state-info-bg);
+  --rb-success-border: #326c52;
+  --rb-warning-border: #806126;
+  --rb-error-border: #87434b;
+  --rb-info-border: #3f6588;
+  --rb-focus-ring: var(--rb-focus);
+  --rb-focus-ring-offset: var(--rb-canvas);
+  --rb-radius-1: var(--rb-radius-control);
+  --rb-radius-2: var(--rb-radius-panel);
+  --rb-radius-3: var(--rb-radius-overlay);
+  --rb-font-size-1: var(--rb-type-label);
+  --rb-font-size-2: var(--rb-type-body);
+  --rb-font-size-3: 15px;
+  --rb-font-size-4: var(--rb-type-work-heading);
+  --rb-font-size-5: var(--rb-type-page-heading);
+  --rb-font-size-6: 24px;
+
+  --ide-bg: var(--rb-canvas);
+  --ide-surface-1: var(--rb-surface);
+  --ide-surface-2: var(--rb-surface-raised);
+  --ide-surface-3: var(--rb-surface-overlay);
+  --ide-border: var(--rb-border-default);
+  --ide-border-strong: var(--rb-border-strong);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-muted: var(--rb-text-secondary);
+  --ide-text-soft: var(--rb-text-muted);
+  --ide-accent: var(--rb-action);
+  --ide-accent-2: var(--rb-state-warning);
+  --ide-success: var(--rb-state-success);
+  --ide-warning: var(--rb-state-warning);
+  --ide-danger: var(--rb-state-danger);
+  --ide-shadow: var(--rb-elevation-2);
+  --ide-font-ui: var(--rb-font-ui);
+  --ide-font-mono: var(--rb-font-mono);
+  --ide-font-sm: var(--rb-type-label);
+  --ide-font-md: var(--rb-type-body);
+  --ide-font-lg: var(--rb-type-work-heading);
+  --ide-radius-s: var(--rb-radius-control);
+  --ide-radius-m: var(--rb-radius-panel);
+  --ide-radius: var(--rb-radius-control);
+
+  --rbp-focus-ring: 0 0 0 2px var(--rb-canvas), 0 0 0 4px var(--rb-focus);
+  --rbp-state-success-bg: var(--rb-state-success-bg);
+  --rbp-state-warning-bg: var(--rb-state-warning-bg);
+  --rbp-state-error-bg: var(--rb-state-danger-bg);
+  --rbp-state-info-bg: var(--rb-state-info-bg);
+  --rbp-state-neutral-bg: var(--rb-surface-raised);
+  --rbp-surface-card: var(--rb-surface);
+  --rbp-surface-card-hi: var(--rb-surface-raised);
+  --rbp-surface-elev-1: none;
+  --rbp-surface-elev-2: var(--rb-elevation-2);
+}

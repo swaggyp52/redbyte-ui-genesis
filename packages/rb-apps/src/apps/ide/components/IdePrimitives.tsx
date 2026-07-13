@@ -229,6 +229,29 @@ export const IdeEmptyState: React.FC<{
   );
 };
 
+export const IdeBlockedState: React.FC<{
+  title: string;
+  body: string;
+  owner: string;
+  primaryAction: React.ReactNode;
+  secondaryAction?: React.ReactNode;
+  detail?: React.ReactNode;
+  testId?: string;
+}> = ({ title, body, owner, primaryAction, secondaryAction, detail, testId }) => (
+  <section className="ide-blocked-state" data-testid={testId} aria-labelledby={testId ? `${testId}-title` : undefined}>
+    <div className="ide-blocked-state__copy">
+      <span className="ide-blocked-state__owner">Resolve in {owner}</span>
+      <h3 id={testId ? `${testId}-title` : undefined}>{title}</h3>
+      <p>{body}</p>
+      {detail ? <div className="ide-blocked-state__detail">{detail}</div> : null}
+    </div>
+    <div className="ide-blocked-state__actions">
+      {primaryAction}
+      {secondaryAction}
+    </div>
+  </section>
+);
+
 export const IdeInspectorSection: React.FC<{
   title: string;
   children: React.ReactNode;

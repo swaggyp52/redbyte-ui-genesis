@@ -27,9 +27,16 @@ export const TESTBENCH_LANGUAGE = {
 } as const;
 
 export const PROOF_LANGUAGE = {
-  browserE0: 'Proved inside RedByte.',
+  browserE0: 'Browser E0',
+  browserE0Detail: 'Current RedByte/browser/package evidence.',
   vivado: 'External toolchain step.',
   board: 'Physical hardware observation.',
   exportBoundary:
     'RedByte can create a browser-E0 handoff package. Vivado build, bitstream, and board observation stay external until you run them.',
+} as const;
+
+export const WORKFLOW_LANGUAGE = {
+  stages: ['Project', 'Design', 'Verify', 'Map Pins', 'Export'],
+  importUtility: 'Import / Recovery',
+  importBoundary: 'Import is a review-gated utility, not a required workflow stage.',
 } as const;

@@ -1,0 +1,279 @@
+/*
+ * Canonical professional primitives. These rules intentionally normalize the
+ * winning legacy cascade in one bounded file; surface-specific composition
+ * belongs with each surface, not here.
+ */
+
+:root[data-redbyte-mode='ide'] body,
+.ide-root {
+  background: var(--rb-canvas);
+  color: var(--rb-text-primary);
+  font-family: var(--rb-font-ui);
+  font-size: var(--rb-type-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.ide-root :is(p, li, dd, td, .ide-copy, .ide-callout-body, .ide-panel-description) {
+  font-size: max(var(--rb-type-body), 1em);
+  line-height: 1.5;
+}
+
+.ide-root :is(.ide-copy-muted, .ide-panel-meta, .ide-section-header-meta) {
+  color: var(--rb-text-muted);
+  font-size: var(--rb-type-secondary);
+  line-height: 1.4;
+}
+
+.ide-root :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--rb-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.ide-root .ide-button {
+  min-height: var(--rb-control-h);
+  padding: 7px 14px;
+  border-radius: var(--rb-radius-control);
+  font-family: var(--rb-font-ui);
+  font-size: var(--rb-type-control);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
+  transition: background var(--rb-motion-fast) var(--rb-ease-standard), border-color var(--rb-motion-fast) var(--rb-ease-standard), color var(--rb-motion-fast) var(--rb-ease-standard);
+}
+
+.ide-root .ide-button.ide-button-primary {
+  min-height: var(--rb-control-h-lg);
+  color: #ffffff;
+  background: var(--rb-action);
+  border: 1px solid var(--rb-action-hover);
+  transform: none;
+}
+
+.ide-root .ide-button.ide-button-primary:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--rb-action-hover);
+  border-color: var(--rb-focus);
+  box-shadow: none;
+  transform: none;
+}
+
+.ide-root .ide-button.ide-button-primary:active:not(:disabled) {
+  background: var(--rb-action-pressed);
+  transform: none;
+}
+
+.ide-root .ide-button.ide-button-secondary {
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-raised);
+  border: 1px solid var(--rb-border-default);
+  transform: none;
+}
+
+.ide-root .ide-button.ide-button-secondary:hover:not(:disabled) {
+  color: #ffffff;
+  background: var(--rb-surface-overlay);
+  border-color: var(--rb-border-strong);
+  transform: none;
+}
+
+.ide-root .ide-button.ide-button-ghost {
+  color: var(--rb-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.ide-root .ide-button.ide-button-danger {
+  color: #ffdadd;
+  background: var(--rb-state-danger-bg);
+  border: 1px solid var(--rb-error-border);
+}
+
+.ide-root .ide-button:disabled {
+  color: #84909c;
+  background: #202731;
+  border-color: #333d49;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.ide-root .ide-status-pill {
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: var(--rb-radius-inline);
+  font-family: var(--rb-font-ui);
+  font-size: var(--rb-type-label);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 16px;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.ide-root .ide-status-pill.ide-status-idle {
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-raised);
+  border-color: var(--rb-border-default);
+}
+
+.ide-root .ide-status-pill.ide-status-ok {
+  color: #aee0c8;
+  background: var(--rb-state-success-bg);
+  border-color: var(--rb-success-border);
+}
+
+.ide-root .ide-status-pill.ide-status-warn {
+  color: #f0ca83;
+  background: var(--rb-state-warning-bg);
+  border-color: var(--rb-warning-border);
+}
+
+.ide-root .ide-status-pill.ide-status-error {
+  color: #f2afb5;
+  background: var(--rb-state-danger-bg);
+  border-color: var(--rb-error-border);
+}
+
+.ide-root :is(.ide-panel, .ide-card, .ide-surface-panel) {
+  border-color: var(--rb-border-subtle);
+  border-radius: var(--rb-radius-panel);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.ide-root .ide-surface-command-strip {
+  min-height: 64px;
+  padding: var(--rb-space-3) var(--rb-space-4);
+  border: 0;
+  border-bottom: 1px solid var(--rb-border-subtle);
+  border-radius: 0;
+  background: var(--rb-shell);
+  box-shadow: none;
+}
+
+.ide-root .ide-surface-command-strip-title {
+  color: var(--rb-text-primary);
+  font-size: var(--rb-type-page-heading);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+.ide-root .ide-surface-command-strip-label {
+  color: var(--rb-text-muted);
+  font-size: var(--rb-type-label);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ide-root .ide-surface-command-strip-description {
+  color: var(--rb-text-secondary);
+  font-size: var(--rb-type-secondary);
+  line-height: 1.4;
+}
+
+.ide-root .ide-callout {
+  border-radius: var(--rb-radius-panel);
+  box-shadow: none;
+}
+
+.ide-root .ide-callout-info {
+  background: var(--rb-state-info-bg);
+  border-color: var(--rb-info-border);
+}
+
+.ide-root .ide-callout-success {
+  background: var(--rb-state-success-bg);
+  border-color: var(--rb-success-border);
+}
+
+.ide-root .ide-callout-warn {
+  background: var(--rb-state-warning-bg);
+  border-color: var(--rb-warning-border);
+}
+
+.ide-root .ide-callout-error {
+  background: var(--rb-state-danger-bg);
+  border-color: var(--rb-error-border);
+}
+
+.ide-root .ide-empty-state,
+.ide-root .ide-blocked-state {
+  width: min(100%, 720px);
+  margin: auto;
+  padding: var(--rb-space-7);
+  border: 1px solid var(--rb-border-default);
+  border-radius: var(--rb-radius-panel);
+  background: var(--rb-surface);
+  box-shadow: none;
+}
+
+.ide-root .ide-blocked-state {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--rb-space-6);
+}
+
+.ide-root .ide-blocked-state__owner {
+  color: var(--rb-state-warning);
+  font-size: var(--rb-type-secondary);
+  font-weight: 600;
+}
+
+.ide-root .ide-blocked-state h3 {
+  margin: var(--rb-space-2) 0;
+  color: var(--rb-text-primary);
+  font-size: var(--rb-type-page-heading);
+}
+
+.ide-root .ide-blocked-state p {
+  margin: 0;
+  color: var(--rb-text-secondary);
+}
+
+.ide-root .ide-blocked-state__detail {
+  margin-top: var(--rb-space-3);
+  color: var(--rb-text-muted);
+  font-size: var(--rb-type-secondary);
+}
+
+.ide-root .ide-blocked-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--rb-space-2);
+}
+
+.ide-root :is(.is-pulsing, .ide-save-dot--saving, .ide-mapping-highlight, .ide-active-cta) {
+  animation: none;
+}
+
+.ide-root :is(.ide-panel, .ide-workbench-main > .ide-panel, .ide-workbench-dock-left > .ide-panel, .ide-workbench-dock-right > .ide-panel) {
+  animation: none;
+}
+
+@media (max-width: 900px) {
+  .ide-root .ide-blocked-state {
+    grid-template-columns: 1fr;
+  }
+
+  .ide-root .ide-blocked-state__actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root *,
+  .ide-root *::before,
+  .ide-root *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
+  }
+}
+
+
