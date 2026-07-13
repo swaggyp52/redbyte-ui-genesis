@@ -1114,6 +1114,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
   const [toolsExpanded, setToolsExpanded] = useState(false);
+  const [libraryCollapsedByStudent, setLibraryCollapsedByStudent] = useState(false);
   const [showEvalOrder, setShowEvalOrder] = useState(false);
   const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
   const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
@@ -3317,13 +3318,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
         ? 'warn'
         : 'ok';
-  const designCommandTitle = useMemo(() => {
-    if (effectiveExternalDebugTick != null) return 'Inspect replay';
-    const view =
-      designView === 'hdl' ? 'Code' : designView === 'split' ? 'Split' : 'Canvas';
-    if (activeVerifySignal) return `${view} / Verify-linked`;
-    return view;
-  }, [activeVerifySignal, designView, effectiveExternalDebugTick]);
   const designCommandDescription = effectiveExternalDebugTick != null
     ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
     : activeVerifySignal
@@ -3333,21 +3327,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : designView === 'split'
           ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
           : 'Build the circuit and inspect live propagation before moving into Verify.';
-  /** Status + instrument chips only — counts live in the authoring strip / diagnostics. */
-  const designCommandMeta = (
-    <>
-      <IdeStatusPill tone={designCommandTone}>{authoringStatusLabel}</IdeStatusPill>
-      {effectiveExternalDebugTick != null ? (
-        <span className="ide-surface-command-chip ide-surface-command-chip--instrument">Replay</span>
-      ) : null}
-      <span
-        className={`ide-surface-command-chip${dirtySinceVerify ? ' is-attention' : ' is-ok'}`}
-        data-testid="ide-design-verify-sync-chip"
-      >
-        {dirtySinceVerify ? 'Verify: stale' : 'Verify: aligned'}
-      </span>
-    </>
-  );
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -3547,8 +3526,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasVisibleDiagnosticsConsole =
     compilerErrorCount > 0 || compilerWarningCount > 0 || diagnosticsDrawerRows.length > 0;
   const designConsoleMode = hasVisibleDiagnosticsConsole ? workspacePreset.consoleMode : 'hidden';
-  const showFullAuthoringStatus = workspacePreset.showFullAuthoringStatus;
-  const showCompactAuthoringStatus = workspacePreset.showCompactAuthoringStatus;
   const isCanvasWorkspace = workspacePreset.mode === 'canvas';
   const isCodeWorkspace = workspacePreset.mode === 'hdl';
   const isSplitWorkspace = workspacePreset.mode === 'split';
@@ -3560,12 +3537,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const showRuntimeStatus =
     hasMeaningfulSimulationStory || traceState != null || (isSplitWorkspace && !showSimulationStrip);
   const showWorkspaceStatusBar =
-    (!isCodeWorkspace && (showFullAuthoringStatus || showCompactAuthoringStatus || workspacePreset.showCanvasTools)) ||
     totalAuthoringErrors > 0 ||
     totalAuthoringWarnings > 0 ||
     authoringIssueCounts.draftCount > 0 ||
     liveHdlResult.error != null ||
     showRuntimeStatus;
+  const designLeftDockMode = isCanvasWorkspace
+    ? libraryCollapsedByStudent
+      ? 'collapsed'
+      : workspacePreset.leftDockMode
+    : workspacePreset.leftDockMode;
   const designStatusNote =
     liveHdlResult.error != null
       ? `HDL generation failed: ${liveHdlResult.error}`
@@ -4928,10 +4909,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             <div className="ide-design-inspector-action-group" data-testid="ide-design-sequential-action-group">
               <span className="ide-design-inspector-group-label">Sequential next step</span>
               <div className="ide-design-inspector-action-grid">
-                {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
+                  {selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort ? (
+                    <IdeButton
+                      tone="secondary"
+                      onClick={() => handlePortClick(selectedNode.id, selectedSequentialInspector.actionPort)}
                     testId="ide-design-context-sequential-action"
                   >
                     {selectedSequentialInspector.actionLabel}
@@ -5761,9 +5742,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         layoutIntent="workbench"
         consoleHasBlocking={compilerErrorCount > 0}
         consoleHasEntries={diagnosticsDrawerRows.length > 0}
-        leftDockMode={workspacePreset.leftDockMode}
+        leftDockMode={designLeftDockMode}
         rightDockMode={designRightDockMode}
-        rightDockCanCollapse={false}
+        rightDockCanCollapse
         rightDockRevealKey={designRightDockRevealKey}
         consoleMode={designConsoleMode}
         shellDensity={workspacePreset.shellDensity}
@@ -5798,6 +5779,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div>
                 <h3>Build Library</h3>
               </div>
+              {!libraryCollapsedByStudent ? (
+                <button
+                  type="button"
+                  className="ide-palette-section-toggle"
+                  onClick={() => setLibraryCollapsedByStudent(true)}
+                  data-testid="ide-design-library-collapse"
+                >
+                  Hide
+                </button>
+              ) : null}
             </header>
             <div className="ide-design-palette-toolbar">
               <input
@@ -6398,18 +6389,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <span className="ide-design-workspace-label">Design</span>
                 <div className="ide-design-workspace-heading-main">
                   <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
-                    {designCommandTitle}
+                    {isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
                   </span>
-                  {designCommandMeta}
-                  <p className="ide-design-logical-io-note" data-testid="ide-design-logical-io-explainer">
-                    Add logical I/O for your circuit. Labels name RedByte signals; Map Pins binds them to Basys3 resources and package pins.
+                  <p className="ide-design-workspace-summary">
+                    Build the circuit graph here, then use Verify to check its behavior.
                   </p>
                 </div>
               </div>
               <div className="ide-inline-actions ide-design-workspace-actions" data-testid="ide-design-workspace-actions">
                 {onGoToVerify ? (
                   <IdeButton
-                    tone="secondary"
+                    tone="primary"
                     onClick={onGoToVerify}
                     testId="ide-design-command-strip-primary-cta"
                     hierarchySurface="design"
@@ -6420,18 +6410,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       : 'Open Verify'}
                   </IdeButton>
                 ) : null}
-                {onGoToProject ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={onGoToProject}
-                    testId="ide-design-command-strip-secondary-cta"
-                  >
-                    Project
-                  </IdeButton>
-                ) : null}
               </div>
             </div>
             {guidedLabTask && guidedLabDesignChecklist ? (
+              <details
+                className="ide-design-context-disclosure"
+                data-testid="ide-design-guided-lab-disclosure"
+              >
+                <summary>Lab checklist: {guidedLabTask.shortTitle}</summary>
               <section className="ide-guided-lab-card" data-testid="ide-design-guided-full-adder-checklist">
                 <div>
                   <p className="ide-surface-block-label">Active lab</p>
@@ -6483,13 +6469,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <IdeButton tone="ghost" onClick={() => setPaletteQuery('full adder')} testId="ide-design-guided-full-adder-open-library">
                     Open Library
                   </IdeButton>
-                  {onGoToVerify ? (
-                    <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-guided-full-adder-open-verify">
-                      Open Verify
-                    </IdeButton>
-                  ) : null}
                 </div>
               </section>
+              </details>
             ) : null}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
@@ -6553,9 +6535,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
                   {/* Group 2: Edit operations */}
                   <div className="ide-toolbar-group is-edit">
-                    <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
-                      Snap {snapToGrid ? 'On' : 'Off'}
-                    </IdeButton>
                     <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
                       Undo
                     </IdeButton>
@@ -6565,15 +6544,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-primary">
                       Fit
                     </IdeButton>
-                    <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
-                      Delete
-                    </IdeButton>
                   </div>
                 </>
               ) : null}
 
               {/* Group 3: Utilities — floated right */}
               <div className="ide-toolbar-group is-utils">
+                {showSplitCompareToolbar ? (
+                  <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
+                    {(['canvas', 'hdl', 'split'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        className={`ide-design-view-btn${designView === v ? ' is-active' : ''}`}
+                        onClick={() => setDesignView(v)}
+                        data-testid={`ide-design-view-${v}`}
+                      >
+                        {v === 'canvas' ? 'Canvas' : v === 'hdl' ? 'Code' : 'Split'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="ide-toolbar-toggle"
+                    aria-expanded={toolsExpanded}
+                    onClick={() => setToolsExpanded((v) => !v)}
+                    data-testid="ide-design-tools-toggle"
+                  >
+                    {toolsExpanded ? 'Close More' : 'More'}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* ── Expanded secondary toolbar ── */}
+            {toolsExpanded && !showSplitCompareToolbar && (
+              <div className="ide-design-toolbarExpanded" data-testid="ide-design-toolbar-expanded">
                 <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
                   {(['canvas', 'hdl', 'split'] as const).map((v) => (
                     <button
@@ -6587,23 +6594,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </button>
                   ))}
                 </div>
-                {!showSplitCompareToolbar ? (
-                  <button
-                    type="button"
-                    className="ide-toolbar-toggle"
-                    aria-expanded={toolsExpanded}
-                    onClick={() => setToolsExpanded((v) => !v)}
-                    data-testid="ide-design-tools-toggle"
-                  >
-                    {toolsExpanded ? 'Hide tools ▲' : 'Tools ▼'}
-                  </button>
-                ) : null}
-              </div>
-            </div>
-
-            {/* ── Expanded secondary toolbar ── */}
-            {toolsExpanded && !showSplitCompareToolbar && (
-              <div className="ide-design-toolbarExpanded" data-testid="ide-design-toolbar-expanded">
+                <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
+                  Snap {snapToGrid ? 'On' : 'Off'}
+                </IdeButton>
+                <IdeButton tone="danger" onClick={deleteSelection} disabled={!hasSelection} testId="ide-design-tool-delete">
+                  Delete
+                </IdeButton>
                 <span className="ide-design-depth-pill" data-testid="ide-design-undo-depth">
                   Undo {undoDepth}
                 </span>
@@ -6641,6 +6637,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
             {/* ── Stacked-view notice — shown only when split auto-collapsed to column ── */}
             {starterContext ? (
+              <details
+                className="ide-design-context-disclosure"
+                data-testid="ide-design-starter-disclosure"
+              >
+                <summary>Starter: {starterContext.name}</summary>
               <section className="ide-design-starter-banner" data-testid="ide-design-starter-banner">
                 <div className="ide-design-starter-banner-main">
                   <div className="ide-design-starter-banner-head">
@@ -6688,20 +6689,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   >
                     {starterNextAction}
                   </p>
-                  <div className="ide-design-starter-banner-actions">
-                    {onGoToVerify ? (
-                      <IdeButton tone="ghost" onClick={onGoToVerify} testId="ide-design-starter-go-to-verify">
-                        Open Verify
-                      </IdeButton>
-                    ) : null}
-                    {onGoToProject ? (
-                      <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-starter-back-to-project">
-                        Back to Project
-                      </IdeButton>
-                    ) : null}
-                  </div>
                 </div>
               </section>
+              </details>
             ) : null}
 
             {showWorkspaceStatusBar ? (
@@ -7619,11 +7609,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <IdeButton tone="ghost" onClick={setWireMode} testId="ide-design-quick-wire">
                             Wire
                           </IdeButton>
-                          {onGoToVerify ? (
-                            <IdeButton tone="ghost" onClick={onGoToVerify} testId="ide-design-quick-open-verify">
-                              Open Verify
-                            </IdeButton>
-                          ) : null}
                         </div>
                       </div>
                     ) : null}

@@ -108,7 +108,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue to Map Pins');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue Design');
     // Reconciliation R2: ProjectWarningsPanel is the single blocker authority.
     const warningsLists = getAllByTestId('ide-project-warnings-list');
     expect(warningsLists[warningsLists.length - 1].textContent).toContain('Finish mapping before relying on hardware behavior');
@@ -152,7 +152,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     // Reconciliation R2: the session narrative owns the example name + summary.
-    // The command strip owns the "Continue to X" and next-step reason.
+    // The command strip stays a stable launch point while warnings own blockers.
     // The Bridge owns the project-kind label.
     // NB: the Project surface renders twice in some test contexts (panel + shadow);
     // we read the last (live) instance to match existing test patterns.
@@ -161,9 +161,9 @@ describe('ProjectSurface workspace panels', () => {
     expect(narrative.textContent).toContain('Signal Tour: Switches -> LEDs');
     expect(narrative.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue to Verify');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue Design');
     const nextSteps = getAllByTestId('ide-project-command-strip-next-step-copy');
-    expect(nextSteps[nextSteps.length - 1].textContent).toContain('Refresh Verify');
+    expect(nextSteps[nextSteps.length - 1].textContent).toContain('Open the circuit canvas');
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-context')).toBeNull();
     const bridgeSubtitles = getAllByTestId('ide-project-bridge-subtitle');
@@ -240,8 +240,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
-    expect(getByTestId('ide-project-import-primary').textContent).toContain('Import / Recover');
-    expect(getByTestId('ide-project-import-primary').textContent).toContain('inspect HDL safely');
+    expect(getByTestId('ide-project-import-primary').textContent).toContain('Import Project');
     expect(getByTestId('ide-project-landing-example-teacher-template').textContent).toContain('Teacher Template');
     expect(queryByTestId('ide-project-landing-import')).toBeNull();
   });
@@ -400,7 +399,7 @@ describe('ProjectSurface workspace panels', () => {
     expect(onOpenHardware).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps export available on Project even when Verify has not been trusted yet', () => {
+  it('keeps the stable Project launch actions when Verify has not been trusted yet', () => {
     const { getAllByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -432,7 +431,9 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Continue to Verify');
+    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Continue Design');
+    const verifyCtas = getAllByTestId('ide-project-command-strip-secondary-cta');
+    expect(verifyCtas[verifyCtas.length - 1]?.textContent).toContain('Open Verify');
   });
 
   it('displays up to top 3 blocking issues with readable messages', () => {

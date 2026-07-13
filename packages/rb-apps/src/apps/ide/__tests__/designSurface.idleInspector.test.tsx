@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -160,6 +160,8 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
     expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
@@ -183,6 +185,8 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Empty canvas.');

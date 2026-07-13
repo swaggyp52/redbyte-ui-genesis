@@ -63,16 +63,17 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface bridge disclosure contract', () => {
-  it('keeps the dashboard primary while tucking bridge internals behind a closed disclosure', () => {
-    const { getByTestId } = render(
+  it('keeps the launch point primary while tucking bridge internals behind a closed disclosure', () => {
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps({ projectKind: 'custom' })} />
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-projectx-identity').textContent).toContain('Test Project');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-projectx-metrics')).toBeTruthy();
+    expect(getByTestId('ide-project-identity-strip-title').textContent).toContain('Test Project');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue Design');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Open Verify');
+    expect(queryByTestId('ide-projectx-metrics')).toBeNull();
 
     const disclosure = getByTestId('ide-project-bridge-disclosure') as HTMLDetailsElement;
     expect(disclosure).toBeTruthy();

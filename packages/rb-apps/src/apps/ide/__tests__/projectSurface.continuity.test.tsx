@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
+import { FULL_ADDER_SCRATCH_LAB } from '../labTaskDefinition';
 
 afterEach(() => {
   cleanup();
@@ -96,21 +97,22 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
-  it('uses the shared project command strip so the next move is authoritative above the hero card', () => {
+  it('uses one loaded-project launch group with Continue Design as the primary action', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Current action: Verify');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue building Test Project');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-project-change-project').textContent).toContain('Change Project');
     expect(queryByTestId('ide-project-context')).toBeNull();
     expect(queryByTestId('ide-project-utility-region')).toBeNull();
   });
 
-  it('renders project status copy with plain ASCII separators instead of mojibake', () => {
+  it('keeps engineering details collapsed while preserving their status copy', () => {
     const { getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
@@ -118,9 +120,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     const commandStrip = getByTestId('ide-project-command-strip');
-    expect(commandStrip.textContent).toContain(
-      'No successful export bundle yet. Open Export and use Build Current Bundle when Verify and Map Pins are satisfied.'
-    );
+    expect(commandStrip.textContent).toContain('Open the circuit canvas to keep building');
+    expect((getByTestId('ide-project-supporting-details') as HTMLDetailsElement).open).toBe(false);
     expect(getByTestId('ide-project-map-export-alignment').textContent).toContain(
       'No successful bundle in this project yet.'
     );
@@ -128,7 +129,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
   });
 
   it('renders landing and recovery affordances with plain ASCII CTA copy', () => {
-    const { container, getByTestId } = render(
+    const { container, getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -166,6 +167,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
                 projectHash: 'saved-hash',
               },
             ],
+            guidedLabTask: FULL_ADDER_SCRATCH_LAB,
+            onStartGuidedLab: vi.fn(),
           })}
         />
       </BoardSignalProvider>
@@ -173,7 +176,11 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
     expect(getByTestId('ide-project-landing-example-signal-tour').textContent).toContain('Load & Design ->');
-    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build fresh');
+    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build Fresh');
+    expect(queryByTestId('ide-project-identity-strip')).toBeNull();
+    const starterCatalog = getByTestId('ide-project-starter-catalog') as HTMLDetailsElement;
+    expect(starterCatalog.open).toBe(false);
+    expect(starterCatalog.contains(getByTestId('ide-project-guided-full-adder-lab'))).toBe(true);
     expect(container.querySelector('[data-testid^="ide-project-lab-card-"]')?.textContent).toContain('Start ->');
     expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
   });
@@ -226,7 +233,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     // Primary actions strip always present
     expect(getByTestId('ide-project-primary-actions')).toBeTruthy();
-    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build fresh');
+    expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build Fresh');
     // ECE141 course-specific featured panel is gone
     expect(queryByTestId('ide-project-recommended-security-lock')).toBeNull();
     expect(queryByTestId('ide-project-featured-security-lock')).toBeNull();
@@ -457,7 +464,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
-  it('keeps Verify as the single dominant next step when compare evidence is missing', () => {
+  it('keeps the loaded Project page a launch point even when Verify evidence is missing', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -485,18 +492,13 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-quick-stats')).toBeNull();
-    // Reconciliation R2: the command strip is the single authority for the primary
-    // CTA label, next-step reason, and "Continue to X" narrative.
-    expect(getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
-    expect(getByTestId('ide-project-hero-status').textContent).toBe(
-      'Mapping complete - add vectors in Verify before you rely on Export or hardware.'
-    );
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-command-strip-next-step-copy').textContent).toContain('trusted comparison evidence');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-projectx-next-status').textContent).toBe('Project loaded');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(queryByTestId('ide-project-command-mode-actions')).toBeNull();
   });
 
-  it('keeps export advisory states routed through the hero CTA instead of a duplicate row action', () => {
+  it('does not turn export advisory state into a duplicate Project-page command row', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -522,9 +524,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
-    // Reconciliation R2: command strip is the single authority for "Continue to X".
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue to Verify');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue to Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
   });
 
   it('removes blank-project framing from loaded blank-origin projects', () => {
@@ -585,7 +586,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).not.toContain('signal-tour');
     expect(getByTestId('ide-project-session-narrative').textContent).toContain('Signal Tour: Switches â†’ LEDs');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Design');
+    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
     expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();
   });

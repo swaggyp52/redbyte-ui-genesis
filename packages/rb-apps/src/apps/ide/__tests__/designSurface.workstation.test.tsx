@@ -239,9 +239,9 @@ describe('DesignSurface workstation redesign', () => {
     const view = renderSurface();
 
     expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Design');
-    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Canvas');
+    expect(view.getByTestId('ide-design-workspace-header').textContent).toContain('Circuit canvas');
     expect(view.getByTestId('ide-design-command-strip-primary-cta').textContent).toContain('Open Verify');
-    expect(view.getByTestId('ide-design-command-strip-secondary-cta').textContent).toContain('Project');
+    expect(view.queryByTestId('ide-design-command-strip-secondary-cta')).toBeNull();
   });
 
   it('keeps starter guidance compact while preserving next action and detail access', () => {
@@ -262,7 +262,9 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-starter-banner-next-action').textContent).toContain(
       'In Verify'
     );
-    expect(view.getByTestId('ide-design-starter-go-to-verify').textContent).toContain('Open Verify');
+    expect(view.queryByTestId('ide-design-starter-go-to-verify')).toBeNull();
+    expect((view.getByTestId('ide-design-starter-disclosure') as HTMLDetailsElement).open).toBe(false);
+    expect(view.getByTestId('ide-design-command-strip-primary-cta').textContent).toContain('Open Verify');
 
     const details = view.getByTestId('ide-design-starter-details') as HTMLDetailsElement;
     expect(details.open).toBe(false);
@@ -274,13 +276,13 @@ describe('DesignSurface workstation redesign', () => {
     );
   });
 
-  it('keeps canvas mode support rails collapsed by default while preserving restorable library and inspector context', async () => {
+  it('opens the component library by default while keeping the inspector collapsed until selection', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+      expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     });
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(view.queryByTestId('ide-inspector')).toBeNull();
     expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
 
@@ -296,11 +298,11 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.queryByTestId('ide-design-toolbar-sim-controls')).toBeNull();
-    expect(view.queryByTestId('ide-left-dock')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-design-library-collapse')).toBeTruthy();
   });
 
-  it('keeps the selection inspector pinned open instead of collapsing it behind a restore rail', async () => {
+  it('reveals the selection inspector and still lets the student collapse it', async () => {
     const view = renderSurface();
 
     act(() => {
@@ -311,7 +313,7 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-inspector')).toBeTruthy();
     });
 
-    expect(view.queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
+    expect(view.getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
   });
 
@@ -607,6 +609,7 @@ describe('DesignSurface workstation redesign', () => {
     installResizeObserver(700);
     const view = renderSurface();
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-split'));
 
     await waitFor(() => {
@@ -622,6 +625,7 @@ describe('DesignSurface workstation redesign', () => {
   it('renders a single primary code viewport and opens the secondary artifact drawer on demand', async () => {
     const view = renderSurface();
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-hdl'));
 
     await waitFor(() => {
@@ -661,6 +665,7 @@ describe('DesignSurface workstation redesign', () => {
     const onGoToImport = vi.fn();
     const view = renderSurface({ onGoToImport });
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-hdl'));
 
     await waitFor(() => {
@@ -678,6 +683,7 @@ describe('DesignSurface workstation redesign', () => {
     const view = renderSurface();
     const modeRoot = view.getByTestId('ide-mode-design');
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-hdl'));
 
     await waitFor(() => {
@@ -693,6 +699,9 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.queryByTestId('ide-workbench-dock-collapse-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
 
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-view-split')).toBeTruthy();
+    });
     fireEvent.click(view.getByTestId('ide-design-view-split'));
 
     await waitFor(() => {
@@ -746,6 +755,7 @@ describe('DesignSurface workstation redesign', () => {
   it('renders compact runtime chrome in split mode', async () => {
     const view = renderSurface();
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-split'));
 
     await waitFor(() => {
@@ -767,6 +777,7 @@ describe('DesignSurface workstation redesign', () => {
   it('re-fits the canvas when returning from split back to fullscreen canvas view', async () => {
     const view = renderSurface();
 
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
     fireEvent.click(view.getByTestId('ide-design-view-split'));
 
     await waitFor(() => {

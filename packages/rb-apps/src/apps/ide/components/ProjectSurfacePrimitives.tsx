@@ -184,9 +184,11 @@ export interface ProjectNextActionCardProps {
   primaryLabel: string;
   onPrimary: () => void;
   primaryTestId?: string;
+  primaryInnerTestId?: string;
   secondaryLabel?: string;
   onSecondary?: () => void;
   secondaryTestId?: string;
+  secondaryInnerTestId?: string;
   /** Outer wrapper testid (default: ide-projectx-next-action). */
   rootTestId?: string;
   /** Reason copy testid override (used to preserve legacy contracts). */
@@ -205,9 +207,11 @@ export const ProjectNextActionCard: React.FC<ProjectNextActionCardProps> = ({
   primaryLabel,
   onPrimary,
   primaryTestId,
+  primaryInnerTestId,
   secondaryLabel,
   onSecondary,
   secondaryTestId,
+  secondaryInnerTestId,
   rootTestId,
   reasonTestId,
   subline,
@@ -240,11 +244,13 @@ export const ProjectNextActionCard: React.FC<ProjectNextActionCardProps> = ({
       </p>
       <div className="ide-projectx-next-actions">
         <IdeButton tone="primary" onClick={onPrimary} testId={primaryTestId}>
-          {primaryLabel}
+          {primaryInnerTestId ? <span data-testid={primaryInnerTestId}>{primaryLabel}</span> : primaryLabel}
         </IdeButton>
         {secondaryLabel && onSecondary ? (
           <IdeButton tone="secondary" onClick={onSecondary} testId={secondaryTestId}>
-            {secondaryLabel}
+            {secondaryInnerTestId ? (
+              <span data-testid={secondaryInnerTestId}>{secondaryLabel}</span>
+            ) : secondaryLabel}
           </IdeButton>
         ) : null}
       </div>
