@@ -152,6 +152,14 @@ async function checkSurface(failures, page, viewport, mode, callback) {
 }
 
 async function assertCollapsedRails(page, viewport, mode) {
+  if (mode === 'design') {
+    const openLibrary = page.locator('[data-testid="ide-design-dock-palette"]').first();
+    assert(await openLibrary.isVisible().catch(() => false), `${viewport.label}: Design Library must be open on entry`);
+    const hideLibrary = page.locator('[data-testid="ide-design-library-collapse"]').first();
+    assert(await hideLibrary.isVisible().catch(() => false), `${viewport.label}: open Design Library must expose Hide`);
+    await hideLibrary.click();
+    await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
+  }
   const rails = await readRailState(page);
   for (const rail of rails.filter((candidate) => candidate.visible)) {
     assert(

@@ -68,21 +68,21 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-artifact-preview"]', { timeout: 10000 });
+  await openGeneratedFiles(page, 'Export E2E');
 
   const artifactPaths = (await page
-    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .locator('button[data-testid^="ide-export-file-"]')
     .evaluateAll((elements) =>
       elements.map((element) =>
         (
-          element.querySelector('.ide-export-artifact-tab-name')?.textContent ??
+          element.querySelector('span')?.textContent ??
           element.textContent ??
           ''
         ).trim()
       )
     ))
     .filter((entry) => entry.length > 0);
-  assert(artifactPaths.length > 0, 'export artifact tabs must be present');
+  assert(artifactPaths.length > 0, 'expanded generated-file browser must expose artifacts');
 
   const previewTopPath = requireArtifactPath(artifactPaths, HDL_PATH_PATTERN, 'top HDL preview');
   const previewXdcPath = requireArtifactPath(artifactPaths, XDC_PATH_PATTERN, 'constraints preview');
@@ -103,7 +103,9 @@ await runIdeGate('IDE export e2e contract satisfied', async ({ page, baseUrl }) 
   assert(previewXdc.length > 0, `${previewXdcPath} preview must not be empty`);
   assert(previewTestbench.length > 0, `${previewTestbenchPath} preview must not be empty`);
 
-  const downloadButton = page.locator('[data-testid="ide-export-rebuild-btn"]').first();
+  const downloadButton = page.locator(
+    '[data-testid="ide-export-package-download-v1"], [data-testid="ide-export-package-build-v1"]'
+  ).first();
   assert(await downloadButton.isVisible().catch(() => false), 'download Vivado Kit button must be visible');
   assert(
     !(await downloadButton.isDisabled().catch(() => true)),
@@ -192,7 +194,7 @@ async function text(locator) {
 
 async function readPreviewByPath(page, artifactPath) {
   const tab = page
-    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .locator('button[data-testid^="ide-export-file-"]')
     .filter({ hasText: artifactPath })
     .first();
   assert(await tab.isVisible().catch(() => false), `artifact tab for "${artifactPath}" must be visible`);
@@ -209,6 +211,15 @@ async function readPreviewByPath(page, artifactPath) {
 
   const preview = await page.locator('[data-testid="ide-export-preview-code"]').first().textContent().catch(() => '');
   return normalizeArtifactText(preview);
+}
+
+async function openGeneratedFiles(page, label) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
+  await details.locator('summary').click();
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 function requireArtifactPath(paths, pattern, label) {

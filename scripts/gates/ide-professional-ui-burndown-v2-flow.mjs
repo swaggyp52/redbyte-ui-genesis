@@ -110,11 +110,24 @@ async function runViewport(page, baseUrl, viewport, record) {
 }
 
 async function assertDesignExplainer(page, viewport) {
+  const inspectorToggle = page.getByRole('button', { name: 'Show inspector' }).first();
+  await inspectorToggle.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    !(await page.getByTestId('ide-design-logical-io-explainer').first().isVisible().catch(() => false)),
+    `${viewport.label}/Design secondary inspector detail should begin collapsed`,
+  );
+  await inspectorToggle.click();
   const explainer = page.getByTestId('ide-design-logical-io-explainer').first();
   await explainer.waitFor({ state: 'visible', timeout: 10000 });
   const explainerText = await text(explainer);
-  assert(/Add logical I\/O/i.test(explainerText), `${viewport.label}/Design must explain logical I/O, got "${explainerText}"`);
-  assert(/Basys3 resources and package pins/i.test(explainerText), `${viewport.label}/Design must connect labels to Basys3 mapping, got "${explainerText}"`);
+  assert(
+    /Add logical (I\/O|inputs and outputs)/i.test(explainerText),
+    `${viewport.label}/Design must explain logical I/O, got "${explainerText}"`,
+  );
+  assert(
+    /Basys3 (switches and LEDs|resources and package pins)|board resource and package pin/i.test(explainerText),
+    `${viewport.label}/Design must connect labels to Basys3 mapping, got "${explainerText}"`,
+  );
   const metrics = await explainer.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
@@ -134,20 +147,19 @@ async function assertVerifyPassCurrent(page, viewport) {
   const hero = page.getByTestId('ide-verify-pass-hero').first();
   await hero.waitFor({ state: 'visible', timeout: 10000 });
   const heroText = await text(hero);
-  assert(/Checks passed/i.test(heroText), `${viewport.label}/Verify PASS must still be visible for current evidence, got "${heroText}"`);
+  assert(
+    /^Pass/i.test(heroText) && /All \d+ test cases matched/i.test(heroText),
+    `${viewport.label}/Verify PASS must still be visible for current evidence, got "${heroText}"`,
+  );
   assert((await hero.getAttribute('data-stale')) !== 'true', `${viewport.label}/Current PASS hero must not be marked stale`);
 }
 
 async function assertVerifyStaleIsNotPass(page, viewport) {
-  await page.waitForSelector('[data-testid="ide-verify-primary-status"]', { timeout: 10000 });
-  const statusText = await text(page.getByTestId('ide-verify-primary-status').first());
-  assert(/Checks changed/i.test(statusText), `${viewport.label}/Stale Verify must say checks changed, got "${statusText}"`);
   const hero = page.getByTestId('ide-verify-pass-hero').first();
-  await hero.waitFor({ state: 'visible', timeout: 10000 });
-  const heroText = await text(hero);
-  assert((await hero.getAttribute('data-stale')) === 'true', `${viewport.label}/Stale run proof must be marked stale`);
-  assert(/Checks changed - rerun Compare/i.test(heroText), `${viewport.label}/Stale run proof must not keep PASS as the dominant title, got "${heroText}"`);
-  assert(!/Checks passed/i.test(heroText), `${viewport.label}/Stale run proof must not say Checks passed, got "${heroText}"`);
+  assert(
+    !(await hero.isVisible().catch(() => false)),
+    `${viewport.label}/Stale Verify must retire the previous PASS summary instead of showing a duplicate stale hero`,
+  );
   const summaryHeadline = page.getByTestId('ide-verify-results-summary-headline').first();
   await summaryHeadline.waitFor({ state: 'visible', timeout: 10000 });
   const summaryText = await text(summaryHeadline);
@@ -160,6 +172,22 @@ async function assertVerifyStaleIsNotPass(page, viewport) {
 async function assertVerifyFailRepairHierarchy(page, viewport, fieldId, tick) {
   const failStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]').first());
   assert(isVerifyFail(failStatus), `${viewport.label}/Verify should enter Compare FAIL after expected edit, got "${failStatus}"`);
+  const resultsSummary = page.getByTestId('ide-verify-results-summary').first();
+  await resultsSummary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await resultsSummary.getAttribute('data-kind')) === 'fail', `${viewport.label}/Verify must promote one FAIL summary`);
+  const resultsText = await text(resultsSummary);
+  assert(
+    /does not match the expected result/i.test(resultsText),
+    `${viewport.label}/Verify FAIL summary must use plain-language mismatch copy, got "${resultsText}"`,
+  );
+  for (const guidance of ['Expected value is incorrect', 'Circuit logic is incorrect', 'Output is disconnected']) {
+    assert(resultsText.includes(guidance), `${viewport.label}/Verify FAIL summary missing guidance "${guidance}"`);
+  }
+
+  const advancedFailure = page.getByTestId('ide-verify-advanced-failure').first();
+  await advancedFailure.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await advancedFailure.getAttribute('open')) === null, `${viewport.label}/Verify repair details must begin collapsed`);
+  await advancedFailure.locator('summary').click();
   const repair = page.getByTestId('ide-verify-repair-panel').first();
   await repair.waitFor({ state: 'visible', timeout: 10000 });
   const repairText = await text(repair);
@@ -175,17 +203,31 @@ async function assertVerifyFailRepairHierarchy(page, viewport, fieldId, tick) {
 }
 
 async function assertHardwareFailedCompareAction(page, viewport) {
-  const spinePrimary = page.getByTestId('ide-product-spine-primary-hardware').first();
-  await spinePrimary.waitFor({ state: 'visible', timeout: 10000 });
-  const primaryText = await text(spinePrimary);
-  assert(/Verify/i.test(primaryText), `${viewport.label}/Hardware primary should return to Verify after failed Compare, got "${primaryText}"`);
-  assert(!/Open Board Check/i.test(primaryText), `${viewport.label}/Hardware must not promote Board Check after failed Compare`);
-  const commandPrimary = page.getByTestId('ide-hardware-next-primary').first();
-  if (await commandPrimary.isVisible().catch(() => false)) {
-    const commandText = await text(commandPrimary);
-    assert(/Verify/i.test(commandText), `${viewport.label}/Hardware command strip should return to Verify, got "${commandText}"`);
-    assert(!/Open Board Check/i.test(commandText), `${viewport.label}/Hardware command strip must not promote Board Check after failed Compare`);
-  }
+  const duplicateProductSpine = page.locator('[data-testid^="ide-product-spine-"]:visible');
+  assert(
+    (await duplicateProductSpine.count()) === 0,
+    `${viewport.label}/Hardware must not restore the duplicate product-spine action authority`,
+  );
+  const commandStrip = page.getByTestId('ide-hardware-command-strip').first();
+  await commandStrip.waitFor({ state: 'visible', timeout: 10000 });
+  const recoveryText = await text(commandStrip);
+  assert(
+    /Compare run differs|Compare.*mismatch|assertions differ/i.test(recoveryText),
+    `${viewport.label}/Map Pins must name the failed-Compare blocker, got "${recoveryText}"`,
+  );
+  assert(
+    /Open Verify|Verify.*inspect|return.*Verify/i.test(recoveryText),
+    `${viewport.label}/Map Pins must name Verify as the recovery path, got "${recoveryText}"`,
+  );
+  assert(
+    !(await page.getByTestId('ide-hardware-next-primary').first().isVisible().catch(() => false)),
+    `${viewport.label}/Map Pins must not add a competing command-strip primary above the mapping table`,
+  );
+  const verifyStage = page.getByTestId('mode-button-verify').first();
+  await verifyStage.waitFor({ state: 'visible', timeout: 10000 });
+  assert(!(await verifyStage.isDisabled()), `${viewport.label}/The five-stage rail must keep Verify directly available after a failed Compare`);
+  assert(/Verify/i.test(await text(verifyStage)), `${viewport.label}/The direct recovery stage must be Verify`);
+  await page.getByTestId('ide-hw-map-table').first().waitFor({ state: 'visible', timeout: 10000 });
   const model = page.getByTestId('ide-hardware-signal-resource-pin-model').first();
   await model.waitFor({ state: 'visible', timeout: 10000 });
   assert(/does not prove board behavior/i.test(await text(model)), `${viewport.label}/Hardware must keep board-observation boundary visible`);
@@ -197,7 +239,13 @@ async function assertExportDraftLooksDraft(page, viewport) {
   const state = await inspector.getAttribute('data-export-package-state');
   assert(state === 'draft', `${viewport.label}/Export after failed Verify should be draft, got ${state}`);
   const inspectorText = await text(inspector);
-  assert(/Draft handoff files/i.test(inspectorText), `${viewport.label}/Export draft must lead with draft files`);
+  assert(/Draft export available/i.test(inspectorText), `${viewport.label}/Export draft must lead with readiness state`);
+  assert(!/E0 export package ready/i.test(inspectorText), `${viewport.label}/Export draft must not present the handoff as ready`);
+  const packageFiles = page.getByTestId('ide-export-package-files').first();
+  await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}/Generated files must begin as collapsed secondary detail`);
+  await packageFiles.locator('summary').click();
+  await page.getByTestId('ide-export-file-browser-v1').first().waitFor({ state: 'visible', timeout: 10000 });
   const artifactStatuses = await page.evaluate(() =>
     Array.from(document.querySelectorAll('[data-testid^="ide-export-artifact-status-"], [data-testid^="ide-export-file-status-"]'))
       .filter((element) => {

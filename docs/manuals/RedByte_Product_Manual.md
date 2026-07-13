@@ -69,7 +69,7 @@ Students beginning their first project should read Sections 2 through 6, then fo
 
 Throughout this manual, the following conventions apply:
 
-- **Surface names** are capitalized (Project, Design, Verify, Hardware, Export, Import) and refer to the six primary screens of the RedByte IDE.
+- **Stage names** are capitalized (Project, Design, Verify, Map Pins, Export) and refer to the five RedByte-owned workflow stages. **Import** is a recovery/restore utility, not a sixth progress stage.
 - **Bold terms** on first use indicate entries defined in the Glossary (Section 17).
 - Procedural steps are numbered. Substeps use letters.
 - "Result:" after a procedure indicates what the user should observe upon completion.
@@ -145,7 +145,7 @@ RedByte runs in four application contexts, each suited to a different usage scen
 
 | Context | Purpose | Primary User |
 |---------|---------|-------------|
-| **IdeApp** | Full six-surface IDE for lab assignments | Students |
+| **IdeApp** | Five-stage lab IDE with a separate Import / Recover utility | Students |
 | **SubmissionInspectorApp** | Grading tool with full diagnostic detail | Instructors, TAs |
 
 The IdeApp is the primary context documented in this manual. The SubmissionInspectorApp is an architecturally defined context whose inspector functionality is currently delivered through the IDE's Project surface; it exposes diagnostic information that the student view intentionally hides.
@@ -164,7 +164,7 @@ RedByte organizes work into a product spine that carries a project from browser 
 Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe
 ```
 
-The IDE surfaces cover the RedByte-owned portion of that spine: Project, Design, Verify, Hardware / Map Pins, Export, and Import. Vivado build, board programming, and physical observation happen outside RedByte but are part of the product proof model.
+The five numbered IDE stages cover the RedByte-owned portion of that spine: Project, Design, Verify, Map Pins, and Export. Import / Recover is a separate utility for restoring RedByte work or inspecting external HDL/XDC; it is not a stage-completion requirement. Vivado build, board programming, and physical observation happen outside RedByte but are part of the product proof model.
 
 The workflow proceeds as follows:
 
@@ -294,7 +294,9 @@ The development server starts on `http://localhost:5173` by default.
 
 ### 5.3 First Launch
 
-On first launch, the user sees the **Project** surface with the option to start a new project or open a starter example. Five built-in examples are available:
+At the public Start entry, the user sees a concise RedByte explanation, the five-stage workflow, and one primary action to open the browser workbench. Product readiness, project metrics, and advanced IDE controls do not appear on this entry page.
+
+Inside the IDE, the user arrives at the **Project** surface with one dominant start action plus secondary Build Fresh, Open Starter, Import Project, and Open Existing paths. Built-in examples remain available through the starter browser:
 
 | Example | Description | Circuit Type |
 |---------|-------------|-------------|
@@ -335,15 +337,13 @@ Result: A draft or trusted Vivado-ready project, depending on whether Compare an
 
 ### 6.1 Global Shell
 
-The RedByte IDE shell is present on every surface and consists of four persistent regions:
+The RedByte IDE shell is present on every surface and consists of three persistent regions:
 
-**Top Bar.** Displays the RedByte product mark on the left, the current project name and save state in the center, and contextual action buttons on the right (Run, Export, Help).
+**Top Bar.** Displays the RedByte product mark, editable current-project identity, the Browser E0 boundary, and one Help entry. Run, mapping, and export actions remain inside the surfaces that own them.
 
-**Left Rail.** Contains the primary workflow surfaces: Project, Design, Verify, Hardware, and Export. Import / Recover is a Project utility path, not a primary workflow rail step. An active marker indicates the current surface. A simple progress indicator shows which workflow stages have been completed.
+**Left Rail.** Contains exactly five numbered workflow stages: Project, Design, Verify, Map Pins, and Export. Current, complete, and blocked states summarize workflow progress. Import / Recover appears separately as a utility action and never receives a stage number or completion state.
 
-**Main Content Area.** Occupies the center of the screen and displays the active surface's primary content. This area changes entirely when switching surfaces.
-
-**Status Bar.** A minimal strip at the bottom displaying the application version and the last verification status.
+**Main Content Area.** Occupies the remaining workbench and displays the active surface's primary work object. The shell does not add a proof ribbon, bottom status footer, or injected product-spine header above every surface; readiness and result decisions stay with the surface that owns them.
 
 ### 6.2 Navigation Model
 
@@ -365,21 +365,21 @@ Each surface displays a maximum of three status pills summarizing the current st
 
 **Mode ID:** `project`
 
-**Purpose.** The Project surface provides a project-level overview and acts as the entry point for the workflow. It displays project metadata, readiness status, and provides access to starter examples.
+**Purpose.** The Project surface is the action-first entry point for starting, opening, or continuing circuit work. It keeps project identity and the current next action visible without turning the first viewport into a readiness dashboard.
 
 **When to Use.** At the beginning of a session, when creating a new project, when reviewing project readiness before export, or when changing project metadata.
 
 **Major UI Regions.**
 
-- *Main area:* Summary cards showing project identity (name, description), Basys 3 target confirmation, last verification result, and IO mapping completeness.
-- *Secondary content:* Starter examples panel with pre-built circuits, file manifest panel, vector summary panel.
-- *Right inspector:* Project settings and warnings.
+- *First launch:* `Start your circuit` with one primary lab/start action and secondary Build Fresh, Open Starter, Import Project, and Open Existing paths.
+- *Loaded project:* One primary Continue action plus direct Design/Verify routing appropriate to current authority.
+- *Disclosed support:* starter catalog, recent projects, project details, bridge/determinism, and advanced metadata open only when requested.
 
 **Primary Controls.**
 
 - Edit project name and description.
 - Open a starter example (with overwrite confirmation if unsaved work exists). Loading a starter opens Design immediately after the starter becomes authoritative.
-- Review readiness indicators for IO mapping, test vectors, and export status.
+- Review readiness, mapping, testbench, and export summaries from disclosed project details without treating them as competing first-viewport actions.
 - Use the Project mapping table as the same authoritative pin map consumed by Hardware and Export; if a top-level port is renamed in Design, the renamed port remains the current mapping target instead of creating a second hidden/export-only port identity.
 
 **Typical Workflow.** Create or open a project → review metadata → optionally load a starter example → Design opens with the loaded starter name and next action.
@@ -405,10 +405,10 @@ Each surface displays a maximum of three status pills summarizing the current st
 
 **Major UI Regions.**
 
-- *Main center:* Circuit canvas with a lightweight tool row (select, wire, delete, zoom controls).
-- *Starter handoff:* When Design opens from Project with a starter, a starter-loaded banner identifies the active starter, expected behavior, and next action.
-- *Left panel:* Searchable component palette listing all available gates, I/O elements, and timing components.
-- *Right inspector:* Properties of the selected element, including port details and configuration options for IO nodes.
+- *Main center:* The Circuit canvas, which owns the majority of the workbench.
+- *Core toolbar:* Select, Wire, Undo, Redo, and Fit remain directly reachable; lower-frequency view and edit controls are grouped behind More or selection context.
+- *Left library:* Searchable component library, visible for discovery and collapsible when more canvas space is needed.
+- *Right inspector:* Collapsed until a node, wire, or Verify repair context gives it a concrete editing job.
 
 **Primary Controls.**
 
@@ -467,14 +467,14 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Major UI Regions.**
 
-- *Command deck:* Run controls, Observe-only versus Compare-checks selector, session status, and deterministic run metadata.
+- *Command bar:* One Run action, the Observe-only versus Compare-checks selector, compact session context, and secondary tools/details.
 - *Build testbench panel:* Unified authoring surface for stimulus inputs, expected output checks, clock/timing guidance, and a compact summary of what the next run will do.
 - *Waveform and evidence region:* Observed waveform, mismatch details, and failure analysis after a run.
 - *Signal rail / inspector:* Signal selection plus supporting drill-down when the waveform or a failure is in focus.
 
 **Primary Controls.**
 
-- **Run Observe only / Run Compare checks:** Execute the current testbench against the circuit.
+- **Run:** Execute the current testbench in the selected mode. Observe only records trace evidence but does not prove expected outputs; Compare checks evaluates the authored expected outputs. After an Observe run, selecting Compare remains the active next-run choice.
 - **Jump to failing node:** From a failing row, navigate directly to the Design surface with the relevant gate highlighted and a diagnostic callout.
 - **Inspect failure diffs:** View expected versus actual values for each failing signal.
 - **Edit testbench:** Click directly in the unified grid to change stimulus inputs or expected outputs.
@@ -510,11 +510,10 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Major UI Regions.**
 
-- *Mode toggle bar:* Tabs for Map Pins, Prepare Board, Program Checklist, and Live Details. The mode tabs appear at the top of the surface, above the hero card.
-- *Callout strip:* Displays project status, Compare status, and Export status. Compare and Export status are always visible regardless of the active tab.
-- *Hero card:* Contextual next-action guidance based on the current workflow state.
-- *Main content:* Port-to-pin mapping table (Map Pins tab) with port name, assigned Basys 3 pin, and physical board label.
-- *Provenance strip:* Last Verify evidence details (visible on Prepare Board and Program Checklist tabs).
+- *Mapping table:* The first loaded work object, with project signal, direction, Basys 3 resource, package pin, mapping state, and direct assignment action.
+- *Board reference:* Clickable Basys 3 view after the table for physical context and compatible-resource assignment.
+- *Secondary details:* XDC consequence, selected-resource facts, Board Check, Pre-flight, simulation/live detail, and program handoff remain below the mapping job or behind explicit disclosures.
+- *No-signal state:* One direct Open Design recovery action; inactive board and mapping apparatus are not presented as available work.
 
 **Primary Controls.**
 
@@ -558,10 +557,10 @@ See Appendix B for the complete pin reference table.
 
 **Major UI Regions.**
 
-- *Top readiness strip:* Displays READY, WARNING, or BLOCKED status with a count of blocking issues.
-- *Main center:* Artifact tree with preview panes for `top.vhd`, `top.xdc`, and `testbench.vhd`. Each file is viewable in full and supports copy-to-clipboard.
-- *Right inspector:* Pin table, validation details, and warning list.
-- *"Open in Vivado" panel:* Collapsible step-by-step instructions for using the exported files in Vivado (shown after download).
+- *Readiness decision:* The first and only handoff authority for blocked, draft, ready-to-build, and trusted/current states, with one state-appropriate repair, build, or download action.
+- *Generated files:* An explicit `Inspect generated files` disclosure containing artifact names, previews, and copy actions after readiness is understood.
+- *Secondary details:* Pin summary, diagnostics, Vivado instructions, and advanced E0/E1/E2/E3 proof metadata stay below or disclosed.
+- *Blocked state:* Direct recovery guidance replaces the package browser when prerequisites are missing; no unavailable package is presented as ready.
 
 **Primary Controls.**
 

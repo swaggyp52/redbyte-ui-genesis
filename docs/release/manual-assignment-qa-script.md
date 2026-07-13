@@ -1,4 +1,4 @@
-# Manual Assignment QA Script (Build → Test → Export → Program)
+# Manual Assignment QA Script (Project → Design → Verify → Map Pins → Export)
 
 This script verifies the full student journey end-to-end for RedByte IDE.
 Use it before classroom release candidates and after major UX/workflow changes.
@@ -7,11 +7,19 @@ Use it before classroom release candidates and after major UX/workflow changes.
 
 - Student-facing usability and flow coherence (not just unit pass/fail).
 - Deterministic handoff across IDE surfaces:
+  - Project entry / continue
   - Build (Design)
   - Test (Verify)
-  - Map (Hardware)
+  - Map Pins
   - Export
-  - Import (round-trip confidence)
+  - Import / Recover utility (round-trip confidence; not a numbered stage)
+
+## Product authority boundary
+
+- The numbered RedByte-owned workflow is exactly `Project -> Design -> Verify -> Map Pins -> Export`.
+- Import / Recover is a utility and must not appear as a sixth progress stage.
+- The persistent shell is the compact top bar, five-stage rail, and active workbench. A proof ribbon, bottom status footer, or injected per-page product-spine header is a regression.
+- Browser checks prove E0 product behavior only. Opening/building in Vivado, programming a board, and observing physical behavior require separate E1/E2/E3 evidence.
 
 ## Preconditions
 
@@ -33,7 +41,8 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
    - a visible starter-loaded handoff
    - a visibly changed schematic/canvas
 3. Confirm the workflow is understandable at first glance:
-   - Build → Test → Export → Program sequence is obvious.
+   - Project -> Design -> Verify -> Map Pins -> Export is obvious in one five-stage rail.
+   - Import / Recover is separate from stage progress.
    - Only one primary next action is emphasized.
 4. Confirm developer-only metadata is not distracting in student path.
 
@@ -63,12 +72,12 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
 
 ## Phase 3 — Verify surface (observation + comparison)
 
-1. Open Verify and run simulation.
+1. Open Verify, select Observe only, and use the single Run control.
 2. Confirm simulation status language is neutral and action-oriented.
 3. Step simulation forward three ticks.
 4. Confirm waveform cursor and tick indicator stay in lock-step (t3 after three steps).
 5. Add at least one custom vector in vector editor (example: A=1, B=1, OUT=1).
-6. Re-run Verify and confirm custom vector participates in evaluation.
+6. Select Compare checks, use the same Run control, and confirm the custom vector participates in evaluation. Confirm Compare stays selected after the preceding Observe run.
 7. If mismatch exists, confirm panel shows:
    - expected vs actual
    - failing signal name
@@ -81,11 +90,11 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
 
 ---
 
-## Phase 4 — Hardware mapping (Basys3)
+## Phase 4 — Map Pins (Basys3)
 
-1. Open Hardware surface.
-2. Enter mapping mode.
-3. Select a signal in mapping list and click matching Basys3 pin on board view.
+1. Open Map Pins.
+2. Confirm the mapping table is the first loaded work object and after-mapping tools are secondary.
+3. Select a signal in the mapping table and click the matching Basys3 resource on the board reference.
 4. Repeat for at least one input and one output.
 5. Confirm mapped/unmapped states are visually distinct.
 6. Rename one top-level input or output in Design, return to Project or Hardware, and confirm the renamed port still accepts a new pin assignment that persists into Export without creating a duplicate ghost port row.
@@ -104,11 +113,12 @@ Use a simple two-input combinational circuit first (e.g., AND), then include one
 3. Validate custom-labeled ports propagate into exported naming.
 
 **Pass criteria**
-- Export contains coherent naming and opens in Vivado without manual file edits.
+- At browser E0, readiness state, generated artifact names, previews, and downloaded ZIP contents agree and use coherent naming.
+- Any claim that the package opens/builds in Vivado is recorded separately as E1 evidence; this manual browser pass alone does not prove it.
 
 ---
 
-## Phase 6 — Import round-trip confidence
+## Phase 6 — Import / Recover utility round-trip confidence
 
 1. Import the exported HDL/XDC back into RedByte.
 2. Confirm user-facing fidelity label is clear:
@@ -153,11 +163,12 @@ If any phase or acceptance check fails:
 
 ## QA report template
 
-- Build: PASS/FAIL
+- Project entry: PASS/FAIL
+- Design: PASS/FAIL
 - Verify: PASS/FAIL
-- Hardware mapping: PASS/FAIL
+- Map Pins: PASS/FAIL
 - Export: PASS/FAIL
-- Import: PASS/FAIL
+- Import utility: PASS/FAIL
 - Notes:
   - UX friction observed:
   - Blocking defects:

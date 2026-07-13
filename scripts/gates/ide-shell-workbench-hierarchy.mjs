@@ -56,7 +56,6 @@ const MODES = [
     id: 'import',
     routeOnly: true,
     focalSelectors: [
-      '[data-testid="ide-import-workflow-rail"]',
       '[data-testid="ide-import-workspace"]',
       '[data-testid="ide-mode-import"]',
     ],
@@ -126,55 +125,27 @@ async function assertShellHierarchy(page, viewport, mode) {
     `${viewport.label}/${mode.id}: horizontal root overflow ${state.documentWidth} > ${viewport.width}`
   );
   assert(state.topBar.visible, `${viewport.label}/${mode.id}: top bar missing`);
-  assert(state.proofRibbon.visible, `${viewport.label}/${mode.id}: proof ribbon missing`);
   assert(state.leftRail.visible, `${viewport.label}/${mode.id}: left rail missing`);
-  assert(state.statusBar.visible, `${viewport.label}/${mode.id}: support footer missing`);
   assert(state.layoutShell.visible, `${viewport.label}/${mode.id}: workbench shell missing`);
   assert(state.focal.visible, `${viewport.label}/${mode.id}: focal work object missing ${JSON.stringify(state.focal)}`);
-
+  assert(!state.proofRibbon.visible, `${viewport.label}/${mode.id}: retired proof ribbon is still visible`);
+  assert(!state.statusBar.visible, `${viewport.label}/${mode.id}: retired support footer is still visible`);
+  assert(state.productSpineCount === 0, `${viewport.label}/${mode.id}: duplicate page product spine is visible`);
   assert(
-    state.proofRibbon.height <= 56,
-    `${viewport.label}/${mode.id}: proof ribbon should be compact (<=56px), got ${state.proofRibbon.height}`
+    state.layoutShell.top <= state.topBar.bottom + 2,
+    `${viewport.label}/${mode.id}: workbench shell must begin under the top bar (${JSON.stringify(state.layoutShell)})`
   );
   assert(
-    state.proofRibbon.bottom <= state.topBar.bottom + 58,
-    `${viewport.label}/${mode.id}: proof ribbon consumes too much first-viewport height (${JSON.stringify({
-      topBar: state.topBar,
-      proofRibbon: state.proofRibbon,
-    })})`
-  );
-  assert(
-    state.proofEvidence.visible && state.proofEvidence.height <= 36,
-    `${viewport.label}/${mode.id}: proof evidence should be inline and compact, got ${JSON.stringify(state.proofEvidence)}`
-  );
-  assert(
-    state.proofStepCount === 4,
-    `${viewport.label}/${mode.id}: expected four workflow proof steps, got ${state.proofStepCount}`
-  );
-  assert(
-    state.maxProofStepHeight <= 36,
-    `${viewport.label}/${mode.id}: proof steps should be dense inline controls, max height ${state.maxProofStepHeight}`
-  );
-  assert(
-    state.layoutShell.top <= state.proofRibbon.bottom + 2,
-    `${viewport.label}/${mode.id}: workbench shell detached below proof authority (${JSON.stringify(state.layoutShell)})`
-  );
-  assert(
-    state.layoutShell.top <= 110,
+    state.layoutShell.top <= 58,
     `${viewport.label}/${mode.id}: workbench starts too low in first viewport (${state.layoutShell.top}px)`
   );
   assert(
-    state.statusBar.height <= 22,
-    `${viewport.label}/${mode.id}: support footer should be demoted (<=22px), got ${state.statusBar.height}`
+    JSON.stringify(state.railStepLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    `${viewport.label}/${mode.id}: rail must be the one five-stage authority, got ${JSON.stringify(state.railStepLabels)}`
   );
-  assert(
-    !/Workflow\s+(Ready|Review|Blocked)/i.test(state.statusBar.text),
-    `${viewport.label}/${mode.id}: bottom footer repeats workflow status "${state.statusBar.text}"`
-  );
-  assert(
-    !state.railStepLabels.some((label) => /^OK$/i.test(label)),
-    `${viewport.label}/${mode.id}: rail repeats completion status via OK labels ${JSON.stringify(state.railStepLabels)}`
-  );
+  assert(state.importIsUtility, `${viewport.label}/${mode.id}: Import must be a utility, not step 6`);
+  assert(state.pageCommandHeaderCount <= 1, `${viewport.label}/${mode.id}: duplicate page command headers are visible`);
+  assert(state.primaryActionCount <= 1, `${viewport.label}/${mode.id}: ${state.primaryActionCount} competing primary actions are visible`);
 }
 
 async function readHierarchyState(page, mode, focalSelectors) {
@@ -209,28 +180,35 @@ async function readHierarchyState(page, mode, focalSelectors) {
         }
         return { selector: null, ...rectJson(null) };
       };
-      const text = (selector) => document.querySelector(selector)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-      const proofStepRects = Array.from(document.querySelectorAll('[data-testid^="ide-proof-step-"]'))
-        .map((element) => element.getBoundingClientRect())
-        .filter((rect) => rect.width > 0 && rect.height > 0);
+      const visible = (element) => {
+        if (!(element instanceof HTMLElement)) return false;
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+      };
+      const surface = document.querySelector(`[data-ide-mode-marker="${expectedMode}"]`)
+        ?? document.querySelector(`[data-testid="ide-mode-${expectedMode}"]`);
 
       return {
         currentMode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? expectedMode,
         documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
         topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
         proofRibbon: rectJson(document.querySelector('[data-testid="ide-proof-ribbon"]')?.getBoundingClientRect?.()),
-        proofEvidence: rectJson(document.querySelector('[data-testid="ide-proof-ribbon-evidence"]')?.getBoundingClientRect?.()),
         leftRail: rectJson(document.querySelector('[data-testid="ide-left-rail"]')?.getBoundingClientRect?.()),
-        statusBar: {
-          ...rectJson(document.querySelector('[data-testid="ide-status-bar"]')?.getBoundingClientRect?.()),
-          text: text('[data-testid="ide-status-bar"]'),
-        },
+        statusBar: rectJson(document.querySelector('[data-testid="ide-status-bar"]')?.getBoundingClientRect?.()),
         layoutShell: rectJson(document.querySelector('.ide-layout-shell')?.getBoundingClientRect?.()),
         focal: firstVisibleRect(selectors),
-        proofStepCount: proofStepRects.length,
-        maxProofStepHeight: proofStepRects.reduce((max, rect) => Math.max(max, rect.height), 0),
-        railStepLabels: Array.from(document.querySelectorAll('.ide-mode-button--step .ide-step-num'))
+        productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter(visible).length,
+        railStepLabels: Array.from(document.querySelectorAll('.ide-mode-button--step .ide-mode-label'))
+          .filter(visible)
           .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
+        importIsUtility: Boolean(document.querySelector('[data-testid="mode-button-import"].ide-mode-button--utility')),
+        pageCommandHeaderCount: surface
+          ? Array.from(surface.querySelectorAll('.ide-surface-command-strip, .ide-workbench-page-header')).filter(visible).length
+          : 0,
+        primaryActionCount: surface
+          ? Array.from(new Set(surface.querySelectorAll('.ide-button-primary, [data-product-priority="primary"]'))).filter(visible).length
+          : 0,
       };
     },
     { expectedMode: mode, selectors: focalSelectors }

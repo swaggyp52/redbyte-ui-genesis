@@ -309,6 +309,7 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected-output edit');
   status = await clickRunAndWaitForNewResult(page);
   assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
+  await openFailureDetails(page, 'Compare failure evidence');
   await requireVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]', 'failure primary action');
   await requireVisible(page, '[data-testid="ide-verify-fail-nav-summary"]', 'first mismatch summary');
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
@@ -324,3 +325,12 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await assertWorkbenchGeometry(page, 'repair-pass');
   await capture(page, '05-repaired-compare-pass-evidence-workbench.png');
 });
+
+async function openFailureDetails(page, label) {
+  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
+}

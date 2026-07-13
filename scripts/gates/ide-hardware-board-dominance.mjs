@@ -12,7 +12,7 @@ import {
   openMode,
 } from './_workbenchReconstructionHarness.mjs';
 
-await runIdeGate('IDE Hardware board dominance satisfied', async ({ page, baseUrl }) => {
+await runIdeGate('IDE Hardware table-first hierarchy satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
   await installCleanStudentContext(page);
 
@@ -25,28 +25,37 @@ await runIdeGate('IDE Hardware board dominance satisfied', async ({ page, baseUr
       await openMode(page, baseUrl, 'hardware', `hardware-board-dominance-${viewport.label}`);
       await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
 
-      assert(
-        !(await visible(page.locator('[data-testid="ide-hardware-command-strip"]').first())),
-        `${viewport.label}: default Map Pins should not show a non-action summary card before the board`
-      );
+      const commandStrip = page.locator('[data-testid="ide-hardware-command-strip"]').first();
+      if (await visible(commandStrip)) {
+        const visibleCommandActions = await commandStrip.locator('button:visible, a[href]:visible, [role="button"]:visible').count();
+        assert(
+          visibleCommandActions === 0,
+          `${viewport.label}: default Map Pins summary must not compete with the mapping table through ${visibleCommandActions} command action(s)`
+        );
+      }
 
-      const workspace = await assertVisibleRect(page, ['[data-testid="ide-hw-board-workspace"]'], `${viewport.label}/board workspace`, {
-        maxTop: viewport.height === 768 ? 176 : 184,
-        minWidth: Math.round(viewport.width * 0.80),
-        minHeight: Math.round(viewport.height * 0.50),
-      });
-      const board = await assertVisibleRect(page, ['[data-testid="ide-hw-map-board"]'], `${viewport.label}/Basys3 board`, {
-        maxTop: viewport.height === 768 ? 224 : 232,
-        minWidth: Math.round(viewport.width * 0.52),
-        minHeight: Math.round(viewport.height * 0.30),
+      const workspace = await assertVisibleRect(page, ['[data-testid="ide-hw-board-workspace"]'], `${viewport.label}/Map Pins workspace`, {
+        maxTop: viewport.height === 768 ? 205 : 215,
+        minWidth: Math.round(viewport.width * 0.75),
+        minHeight: Math.round(viewport.height * 0.45),
       });
       const table = await assertVisibleRect(page, ['[data-testid="ide-hw-map-table"]'], `${viewport.label}/mapping table`, {
-        maxTop: viewport.height === 768 ? 224 : 232,
-        minWidth: 320,
-        minHeight: Math.round(viewport.height * 0.36),
+        maxTop: viewport.height === 768 ? 320 : 330,
+        minWidth: Math.round(viewport.width * 0.38),
+        minHeight: Math.round(viewport.height * 0.30),
+      });
+      const board = await assertVisibleRect(page, ['[data-testid="ide-hw-map-board"]'], `${viewport.label}/Basys3 board reference`, {
+        maxTop: viewport.height === 768 ? 320 : 330,
+        minWidth: Math.round(viewport.width * 0.24),
+        minHeight: Math.round(viewport.height * 0.24),
       });
 
-      assert(board.left > table.left + 280, `${viewport.label}: board should sit beside the signal table, got ${JSON.stringify({ board, table })}`);
+      assert(table.left < board.left, `${viewport.label}: mapping table must precede the board reference ${JSON.stringify({ board, table })}`);
+      assert(table.left + table.width <= board.left + 2, `${viewport.label}: mapping table and board reference must not overlap ${JSON.stringify({ board, table })}`);
+      assert(
+        table.visibleWidth >= board.visibleWidth,
+        `${viewport.label}: mapping table must dominate the secondary board reference ${JSON.stringify({ board, table })}`
+      );
       assert(workspace.visibleHeight >= board.visibleHeight, `${viewport.label}: board must fit inside visible workspace`);
       await assertNoRootOverflow(page, `${viewport.label}/hardware`);
     } catch (error) {
@@ -54,6 +63,6 @@ await runIdeGate('IDE Hardware board dominance satisfied', async ({ page, baseUr
     }
   }
 
-  assert(browserProblems.length === 0, `Hardware board dominance browser errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
-  assert(failures.length === 0, `Hardware board dominance failures:\n${failures.join('\n')}`);
+  assert(browserProblems.length === 0, `Hardware table-first hierarchy browser errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
+  assert(failures.length === 0, `Hardware table-first hierarchy failures:\n${failures.join('\n')}`);
 });

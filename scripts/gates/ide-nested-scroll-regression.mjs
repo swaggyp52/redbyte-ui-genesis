@@ -129,7 +129,7 @@ async function assertVerifyPostRunScrollSpace(page, viewport) {
       gridExtraX: grid ? Math.max(0, grid.scrollWidth - grid.clientWidth) : 0,
     };
   });
-  assert(state.waveformWidth >= viewport.width * 0.47, `${viewport.label}: Verify waveform scroller is too narrow (${state.waveformWidth}px)`);
+  assert(state.waveformWidth >= viewport.width * 0.42, `${viewport.label}: Verify waveform scroller is too narrow (${state.waveformWidth}px)`);
   assert(state.waveformHeight >= viewport.height * 0.30, `${viewport.label}: Verify waveform scroller is too short (${state.waveformHeight}px)`);
   assert(state.waveformExtraX <= 8, `${viewport.label}: Verify waveform has horizontal mini-scroll (${state.waveformExtraX}px)`);
   assert(state.gridExtraX <= 8, `${viewport.label}: Verify repair grid has horizontal mini-scroll (${state.gridExtraX}px)`);

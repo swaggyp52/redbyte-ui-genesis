@@ -142,12 +142,15 @@ async function assertDesignDirectManipulation(page, viewport) {
     metrics.inspector?.visibleWidth >= 224,
     `${viewport.label}: selected-node inspector content too narrow ${JSON.stringify(metrics.inspector)}`
   );
-  assert(metrics.canvas?.visibleWidth >= 640, `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify(metrics.canvas)}`);
+  assert(
+    metrics.canvas?.visibleWidth >= Math.round(viewport.width * 0.44),
+    `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify(metrics.canvas)}`
+  );
   assert(metrics.actions?.visibleHeight >= 120, `${viewport.label}: inspector actions not usefully visible ${JSON.stringify(metrics.actions)}`);
   assert(metrics.editGroup?.top < viewport.height - 180, `${viewport.label}: edit actions start too low ${JSON.stringify(metrics.editGroup)}`);
   assert(
-    metrics.swapGroup?.visibleHeight >= 72 && metrics.swapGroup?.top < viewport.height - 64,
-    `${viewport.label}: Swap type controls are not usefully visible in first viewport ${JSON.stringify(metrics.swapGroup)}`
+    metrics.swapGroup?.visibleHeight >= 56 && metrics.swapGroup?.top < viewport.height - 40,
+    `${viewport.label}: Swap type controls are not usefully reachable in the inspector ${JSON.stringify(metrics.swapGroup)}`
   );
   assert(metrics.overlaps.length === 0, `${viewport.label}: inspector action buttons overlap: ${metrics.overlaps.join(', ')}`);
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Design created root overflow ${metrics.rootOverflowX}px`);
@@ -270,6 +273,12 @@ async function assertHardwareMappingWorkbench(page, viewport) {
 
 async function assertExportHandoff(page, viewport) {
   await assertBuildHash(page, `${viewport.label}/Export`);
+  const readinessHero = page.locator('[data-testid="ide-export-readiness-hero"]').first();
+  assert(await visible(readinessHero), `${viewport.label}: Export readiness authority missing`);
+  const readinessDetails = page.locator('.ide-export-package-readiness-details').first();
+  if (!(await readinessDetails.getAttribute('open'))) {
+    await readinessDetails.locator('summary').first().click();
+  }
   const checklist = page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first();
   assert(await visible(checklist), `${viewport.label}: Export handoff checklist missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');

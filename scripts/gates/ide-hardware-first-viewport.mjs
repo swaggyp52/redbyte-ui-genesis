@@ -5,9 +5,10 @@
  *
  * Contract:
  * 1) The visible build badge matches the current Git SHA.
- * 2) Hardware opens the Logic Gates starter in Map Pins at classroom and desktop sizes.
- * 3) The Basys3 board/table and selected signal -> board -> pin -> XDC chain are first-viewport content.
- * 4) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
+ * 2) Hardware opens the Logic Gates starter directly in Map Pins at classroom and desktop sizes.
+ * 3) The mapping table is the primary first-viewport task; the Basys3 board remains a visible secondary reference.
+ * 4) The selected signal -> board -> pin -> XDC chain remains first-viewport content.
+ * 5) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
  */
 
 import { execSync } from 'node:child_process';
@@ -64,26 +65,35 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       await capture(page, viewport.label);
 
       assert(observation.mode === 'hardware', `${viewport.label}: expected Hardware mode, got ${observation.mode}`);
+      assert(observation.mapWorkspaceActive, `${viewport.label}: Hardware must open directly in Map Pins`);
       assert(observation.overflowX <= 1, `${viewport.label}: Hardware must not create root overflow`);
       assert(
-        observation.boardWorkspace.top <= 145,
-        `${viewport.label}: board workspace starts too low (${observation.boardWorkspace.top.toFixed(1)}px)`
+        observation.boardWorkspace.top <= 200,
+        `${viewport.label}: Map Pins workspace starts too low (${observation.boardWorkspace.top.toFixed(1)}px)`
       );
       assert(
-        observation.table.top <= 190,
+        observation.table.top <= 315,
         `${viewport.label}: mapping table starts too low (${observation.table.top.toFixed(1)}px)`
       );
       assert(
-        observation.board.top <= 190,
-        `${viewport.label}: Basys3 board starts too low (${observation.board.top.toFixed(1)}px)`
+        observation.board.top <= 315,
+        `${viewport.label}: Basys3 board reference starts too low (${observation.board.top.toFixed(1)}px)`
       );
       assert(
         observation.table.visibleHeight >= 200,
         `${viewport.label}: mapping table visible height ${observation.table.visibleHeight.toFixed(1)}px < 200px`
       );
       assert(
-        observation.board.visibleHeight >= 200,
-        `${viewport.label}: Basys3 board visible height ${observation.board.visibleHeight.toFixed(1)}px < 200px`
+        observation.board.visibleHeight >= 150,
+        `${viewport.label}: Basys3 board reference visible height ${observation.board.visibleHeight.toFixed(1)}px < 150px`
+      );
+      assert(
+        observation.table.visibleWidth >= observation.board.visibleWidth,
+        `${viewport.label}: mapping table must remain the primary work object ${JSON.stringify({ table: observation.table, board: observation.board })}`
+      );
+      assert(
+        observation.board.visibleWidth >= 250,
+        `${viewport.label}: Basys3 board reference must remain proportionally visible ${JSON.stringify(observation.board)}`
       );
       assert(
         observation.bindingChain.visibleHeight >= 44,
@@ -116,23 +126,14 @@ async function openStarterHardware(page, baseUrl, viewportLabel) {
   await page.locator('[data-testid="mode-button-hardware"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  const mapTab = page.locator('[data-testid="ide-hw-mode-btn-map"]').first();
-  await mapTab.waitFor({ state: 'attached', timeout: 15000 });
-  if ((await mapTab.getAttribute('aria-selected').catch(() => 'false')) !== 'true') {
-    await mapTab.evaluate((element) => {
-      if (!(element instanceof HTMLElement)) {
-        throw new Error('expected Hardware Map Pins tab to be an HTMLElement');
-      }
-      element.click();
-    });
-  }
-  await page.waitForFunction(
-    () =>
-      document.querySelector('[data-testid="ide-hw-mode-btn-map"]')?.getAttribute('aria-selected') === 'true' &&
-      document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-board-workspace--map'),
-    { timeout: 15000 }
+  await page.waitForSelector('[data-testid="ide-hw-board-workspace"].ide-hw-board-workspace--map', {
+    state: 'visible',
+    timeout: 15000,
+  });
+  assert(
+    (await page.locator('[data-testid="ide-hw-stage-rail"]:visible').count()) === 0,
+    `${viewportLabel}: after-mapping stage rail must not replace the default Map Pins workbench`
   );
-  await page.waitForSelector('[data-testid="ide-hw-board-workspace"]', { timeout: 15000 });
   await resetHardwareFirstViewportScroll(page);
 }
 
@@ -160,27 +161,27 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
       const board = document.querySelector('[data-testid="ide-hw-map-board"]');
       const table = document.querySelector('[data-testid="ide-hw-map-table"]');
       const mode = document.querySelector('[data-ide-mode-marker]');
-      const proofRibbonHeight = parseFloat(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue('--ide-proof-ribbon-height')
-          .trim()
-      );
       if (!workspace || !board || !table || !mode) return false;
       if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
       if (!workspace.classList.contains('ide-hw-board-workspace--map')) return false;
-      if (!Number.isFinite(proofRibbonHeight) || proofRibbonHeight > 40) return false;
 
       const workspaceRect = workspace.getBoundingClientRect();
       const boardRect = board.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
-      return workspaceRect.top <= 145 && boardRect.top <= 190 && tableRect.top <= 190;
+      return (
+        workspaceRect.top <= 200 &&
+        boardRect.top <= 315 &&
+        tableRect.top <= 315 &&
+        tableRect.width >= boardRect.width
+      );
     },
     { timeout: 15000 },
   ).catch(async () => {
     const state = await readHardwareFirstViewportState(page);
     throw new Error(
       `${viewportLabel}: Hardware Map Pins layout did not settle into first-viewport contract ` +
-        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, board ${state.board.top.toFixed(1)}px, table ${state.table.top.toFixed(1)}px)`
+        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, board ${state.board.top.toFixed(1)}px/${state.board.width.toFixed(1)}px wide, ` +
+        `table ${state.table.top.toFixed(1)}px/${state.table.width.toFixed(1)}px wide)`
     );
   });
 }
@@ -221,6 +222,13 @@ async function readHardwareFirstViewportState(page) {
 
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
+      mapWorkspaceActive:
+        document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-board-workspace--map') === true &&
+        !Array.from(document.querySelectorAll('[data-testid="ide-hw-stage-rail"]')).some((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 1 && rect.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
+        }),
       viewport: { width: window.innerWidth, height: window.innerHeight },
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       boardWorkspace: rectFor('[data-testid="ide-hw-board-workspace"]'),

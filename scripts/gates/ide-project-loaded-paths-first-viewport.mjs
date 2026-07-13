@@ -39,42 +39,54 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
     await openLoadedProject(page, baseUrl, viewport.label);
     await capture(page, viewport, 'loaded-project-paths');
 
-    const metrics = await readMetrics(page);
+    let metrics = await readMetrics(page);
     assert(metrics.mode === 'project', `${viewport.label}: expected Project mode, got "${metrics.mode}"`);
     assert(metrics.buildText.includes(BUILD_BADGE_HASH), `${viewport.label}: build badge "${metrics.buildText}" must include ${BUILD_BADGE_HASH}`);
     assert(!metrics.hasBoundary, `${viewport.label}: error boundary must not be visible`);
     assert(metrics.rootOverflowX <= 2, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.commandBox, `${viewport.label}: loaded command center must be measurable`);
-    assert(metrics.entryBox, `${viewport.label}: Project paths must be measurable`);
-    assert(metrics.entryBox.y <= 560, `${viewport.label}: Project paths start too low (${metrics.entryBox.y}px)`);
+    assert(!metrics.entryBox, `${viewport.label}: alternate Project paths must begin collapsed`);
+    assert(metrics.changeProjectBox, `${viewport.label}: Change Project disclosure control must be measurable`);
     assert(
-      metrics.entryBox.bottom <= viewport.height - 16,
-      `${viewport.label}: Project paths must fit inside first viewport (bottom=${metrics.entryBox.bottom}, viewport=${viewport.height})`
+      metrics.changeProjectBox.bottom <= viewport.height - 16,
+      `${viewport.label}: Change Project must fit inside the first viewport (bottom=${metrics.changeProjectBox.bottom}, viewport=${viewport.height})`
+    );
+    assert(metrics.continueBox, `${viewport.label}: Continue Design must remain the loaded Project primary`);
+    await revealChangePaths(page);
+    await page.locator('[data-testid="ide-project-entry-paths"]').first().scrollIntoViewIfNeeded();
+    metrics = await readMetrics(page);
+    assert(metrics.entryBox, `${viewport.label}: Change Project must reveal alternate paths`);
+    assert(
+      metrics.visibleEntryPathCount >= 4,
+      `${viewport.label}: all four alternate Project paths must be visible after disclosure, saw ${metrics.visibleEntryPathCount}`
     );
     assert(
-      metrics.visibleEntryPathCount >= 5,
-      `${viewport.label}: all five loaded Project paths must be visible, saw ${metrics.visibleEntryPathCount}`
-    );
-    assert(
-      metrics.entryText.includes('continue') &&
-        metrics.entryText.includes('build fresh') &&
+      metrics.entryText.includes('build fresh') &&
         metrics.entryText.includes('starter') &&
         metrics.entryText.includes('import') &&
         metrics.entryText.includes('open'),
-      `${viewport.label}: Project paths must expose continue/build/starter/import/open options (${metrics.entryText})`
+      `${viewport.label}: alternate Project paths must expose build/starter/import/open options (${metrics.entryText})`
     );
 
-    await page.locator('[data-testid="ide-project-path-continue"]').first().click();
+    await page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first().click();
+    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
+
+    await page.locator('[data-testid="mode-button-project"]').first().click();
+    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+
+    await page.locator('[data-testid="ide-project-command-strip-secondary-cta"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
     await page.locator('[data-testid="mode-button-project"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+    await revealChangePaths(page);
 
     await page.locator('[data-testid="ide-project-path-import-recover"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
 
     await page.locator('[data-testid="mode-button-project"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
+    await revealChangePaths(page);
 
     let dialogMessage = '';
     page.once('dialog', async (dialog) => {
@@ -136,6 +148,8 @@ async function readMetrics(page) {
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
       ),
       commandBox: box('[data-testid="ide-project-command-center"]'),
+      changeProjectBox: box('[data-testid="ide-project-change-project"]'),
+      continueBox: box('[data-testid="ide-project-command-strip-primary-cta"]'),
       entryBox: box('[data-testid="ide-project-entry-paths"]'),
       visibleEntryPathCount: entryButtons.filter((button) => {
         if (!(button instanceof HTMLElement)) return false;
@@ -145,6 +159,15 @@ async function readMetrics(page) {
       entryText: entry?.textContent?.replace(/\s+/g, ' ').trim().toLowerCase() ?? '',
     };
   });
+}
+
+async function revealChangePaths(page) {
+  const entryPaths = page.locator('[data-testid="ide-project-entry-paths"]').first();
+  if (await entryPaths.isVisible().catch(() => false)) return;
+  const trigger = page.locator('[data-testid="ide-project-change-project"]').first();
+  assert(await visible(trigger), 'Loaded Project must expose Change Project');
+  await trigger.click();
+  await entryPaths.waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function capture(page, viewport, name) {

@@ -122,17 +122,29 @@ async function assertProjectFirstLaunch(page, viewport) {
   assert(/Start a Lab/i.test(projectText), `${viewport.label}/Project must expose Start a Lab`);
   assert(/Build fresh/i.test(projectText), `${viewport.label}/Project must keep Build fresh available`);
   assert(/Open Starter/i.test(projectText), `${viewport.label}/Project must keep Open Starter available`);
-  assert(/Import \/ Recover/i.test(projectText), `${viewport.label}/Project must keep Import / Recover available`);
+  assert(/Import Project/i.test(projectText), `${viewport.label}/Project must keep Import Project available`);
+  assert(/Open Existing/i.test(projectText), `${viewport.label}/Project must keep Open Existing available`);
+  const importUtility = page.getByTestId('mode-button-import').first();
+  await importUtility.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    /\bImport\b/i.test((await importUtility.getAttribute('title')) ?? ''),
+    `${viewport.label}/Import must remain available as the rail utility`,
+  );
+  assert(
+    /\bide-mode-button--utility\b/.test((await importUtility.getAttribute('class')) ?? ''),
+    `${viewport.label}/Import must not become a sixth product stage`,
+  );
 
   const projectPrimaryCount = await page.locator('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]').count();
   assert(projectPrimaryCount === 1, `${viewport.label}/Project must have one body primary action, got ${projectPrimaryCount}`);
   const primaryText = await text(page.locator('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]').first());
   assert(/Start a Lab/i.test(primaryText), `${viewport.label}/Project primary must be Start a Lab, got "${primaryText}"`);
 
-  const headerPrimary = page.getByTestId('ide-product-spine-primary-project').first();
-  assert(await headerPrimary.isVisible().catch(() => false), `${viewport.label}/Project task spine next action copy must remain visible`);
-  const headerTag = await headerPrimary.evaluate((element) => element.tagName.toLowerCase());
-  assert(headerTag !== 'button', `${viewport.label}/Project first launch must not repeat Start a Lab as a second primary button`);
+  const duplicateProductSpine = page.locator('[data-testid^="ide-product-spine-"]:visible');
+  assert(
+    (await duplicateProductSpine.count()) === 0,
+    `${viewport.label}/Project must not restore the duplicate product-spine action authority`,
+  );
 
   const summaryChipCount = await page.locator('[data-testid="ide-project-start-summary"] .ide-project-start-summary-chip').count();
   assert(summaryChipCount <= 4, `${viewport.label}/Project start summary has too many chips: ${summaryChipCount}`);
@@ -149,10 +161,10 @@ async function assertBlankDesignProfessional(page, viewport) {
   const emptyText = await text(empty);
   assert(/Add inputs and outputs, place a part, then wire ports/i.test(emptyText), `${viewport.label}/Blank Design must name the authoring steps, got "${emptyText}"`);
 
-  const explainer = page.getByTestId('ide-design-logical-io-explainer').first();
+  const explainer = page.locator('[data-testid="ide-design-logical-io-explainer"]:visible').first();
   await explainer.waitFor({ state: 'visible', timeout: 10000 });
   const explainerText = await text(explainer);
-  assert(/logical (I\/O|inputs and outputs)/i.test(explainerText), `${viewport.label}/Design must explain logical I/O`);
+  assert(/logical (I\/O|inputs and outputs|signals)/i.test(explainerText), `${viewport.label}/Design must explain logical I/O`);
   assert(/Basys3 (switches and LEDs later|resources and package pins)|board resource and package pin/i.test(explainerText), `${viewport.label}/Design must distinguish logical labels from board mapping`);
 
   const healthCountVisible = await page.locator('.ide-design-workspace-health-count').first().isVisible().catch(() => false);
@@ -169,19 +181,32 @@ async function assertHardwareEmptyProfessional(page, viewport) {
   assert(/Add logical inputs and outputs in Design first/i.test(panelText), `${viewport.label}/Hardware empty state must route students to Design, got "${panelText}"`);
   assert(/Map Pins will list those signals here for Basys3 binding/i.test(panelText), `${viewport.label}/Hardware empty state must explain why the table is empty`);
 
+  const recovery = page.locator('[data-testid="ide-hw-map-empty"]:visible').first();
+  await recovery.waitFor({ state: 'visible', timeout: 10000 });
+  assert(/No signals to map yet/i.test(await text(recovery)), `${viewport.label}/Hardware empty state must keep the no-signal recovery work object visible`);
+  const openDesign = page.locator('[data-testid="ide-hardware-next-primary"]:visible').first();
+  await openDesign.waitFor({ state: 'visible', timeout: 10000 });
+  assert(/Open Design/i.test(await text(openDesign)), `${viewport.label}/Hardware empty recovery must offer Open Design`);
+  assert(!(await openDesign.isDisabled()), `${viewport.label}/Hardware empty recovery Open Design action must be enabled`);
+
   const workspaceVisible = await page.getByTestId('ide-hw-board-workspace').first().isVisible().catch(() => false);
   const boardCanvasVisible = await page.locator('.ide-hw-board-canvas').first().isVisible().catch(() => false);
   const mapTableVisible = await page.getByTestId('ide-hw-map-table').first().isVisible().catch(() => false);
-  assert(workspaceVisible, `${viewport.label}/Hardware empty state must keep a primary work object visible`);
-  assert(!boardCanvasVisible && !mapTableVisible, `${viewport.label}/Hardware empty state must not make inactive board/table dominant`);
+  assert(!workspaceVisible && !boardCanvasVisible && !mapTableVisible, `${viewport.label}/Hardware empty state must not make inactive board/table dominant`);
 }
 
 async function assertExportBlockedProfessional(page, viewport) {
   const empty = page.getByTestId('ide-export-blocked-empty-state').first();
   await empty.waitFor({ state: 'visible', timeout: 10000 });
   const emptyText = await text(empty);
-  assert(/No handoff package yet/i.test(emptyText), `${viewport.label}/Export blocked state must avoid fake package language`);
-  assert(/Resolve the blocker first/i.test(emptyText), `${viewport.label}/Export blocked state must name the next work`);
+  assert(/Cannot export yet/i.test(emptyText), `${viewport.label}/Export blocked state must name the readiness blocker`);
+  assert(/Resolve in (Design|Verify|Map Pins)/i.test(emptyText), `${viewport.label}/Export blocked state must name the recovery owner`);
+  assert(
+    !/(handoff|export) package (is )?ready|ready to download/i.test(emptyText),
+    `${viewport.label}/Export blocked state must avoid fake package-ready language`,
+  );
+  const reasonText = await text(empty.locator('p').first());
+  assert(reasonText.length >= 12, `${viewport.label}/Export blocked state must explain why export is blocked`);
 
   const fileBrowserVisible = await page.getByTestId('ide-export-file-browser-v1').first().isVisible().catch(() => false);
   const downloadVisible = await page.getByTestId('ide-export-package-download-v1').first().isVisible().catch(() => false);
@@ -232,6 +257,17 @@ async function assertVerifyProfessional(page, viewport) {
   const failStatus = await text(page.locator('[data-testid="ide-verify-summary-status"]').first());
   assert(isVerifyFail(failStatus), `${viewport.label}/Verify should enter Compare FAIL after expected edit, got "${failStatus}"`);
 
+  const resultsSummary = page.getByTestId('ide-verify-results-summary').first();
+  await resultsSummary.waitFor({ state: 'visible', timeout: 10000 });
+  const resultsText = await text(resultsSummary);
+  for (const guidance of ['Expected value is incorrect', 'Circuit logic is incorrect', 'Output is disconnected']) {
+    assert(resultsText.includes(guidance), `${viewport.label}/Verify FAIL summary missing guidance "${guidance}"`);
+  }
+  const advancedFailure = page.getByTestId('ide-verify-advanced-failure').first();
+  await advancedFailure.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await advancedFailure.getAttribute('open')) === null, `${viewport.label}/Verify advanced repair must begin collapsed`);
+  await advancedFailure.locator('summary').click();
+
   const repairPanel = page.getByTestId('ide-verify-repair-panel').first();
   await repairPanel.waitFor({ state: 'visible', timeout: 10000 });
   const repairText = await text(repairPanel);
@@ -258,12 +294,26 @@ async function assertExportPackageProfessional(page, viewport) {
   const state = await page.getByTestId('ide-export-package-inspector-v1').first().getAttribute('data-export-package-state');
   assert(state !== 'blocked', `${viewport.label}/Export package should no longer be the blank blocked state after starter load`);
 
-  const fileBrowserVisible = await page.getByTestId('ide-export-file-browser-v1').first().isVisible().catch(() => false);
-  assert(fileBrowserVisible, `${viewport.label}/Export non-blocked state must show package files`);
+  const packageFiles = page.getByTestId('ide-export-package-files').first();
+  await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}/Export generated files must begin collapsed`);
+  const fileBrowser = page.getByTestId('ide-export-file-browser-v1').first();
+  assert(!(await fileBrowser.isVisible().catch(() => false)), `${viewport.label}/Export file browser must stay behind its disclosure initially`);
+  await packageFiles.locator('summary').click();
+  await fileBrowser.waitFor({ state: 'visible', timeout: 10000 });
 
-  const pinSummary = page.getByTestId('ide-export-signal-resource-pin-summary').first();
-  await pinSummary.waitFor({ state: 'visible', timeout: 10000 });
-  assert(/Signal\s*->\s*Board resource\s*->\s*Package pin/i.test(await text(pinSummary)), `${viewport.label}/Export must show signal/resource/pin model`);
+  const readinessDetails = page.locator('.ide-export-package-readiness-details').first();
+  await readinessDetails.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await readinessDetails.getAttribute('open')) === null, `${viewport.label}/Export readiness/submission evidence must begin collapsed`);
+  await readinessDetails.locator(':scope > summary').click();
+  const readinessChecklist = page.getByTestId('ide-export-handoff-checklist-v1').first();
+  await readinessChecklist.waitFor({ state: 'visible', timeout: 10000 });
+  const readinessText = await text(readinessChecklist);
+  assert(/Pin mapping/i.test(readinessText), `${viewport.label}/Export readiness evidence must name pin mapping`);
+  assert(/required ports|board I\/O|logical signal/i.test(readinessText), `${viewport.label}/Export readiness evidence must name signal/port context`);
+  assert(/Basys3|board resource/i.test(readinessText), `${viewport.label}/Export readiness evidence must name the board/resource context`);
+  assert(/\bpins?\b|package pin/i.test(readinessText), `${viewport.label}/Export readiness evidence must name pin context`);
+  assert(/E0 boundary/i.test(readinessText) && /External Vivado\/Basys3 proof required/i.test(readinessText), `${viewport.label}/Export readiness evidence must preserve the E0 boundary`);
 
   const bodyText = await page.locator('body').textContent();
   assert(/E0|browser/i.test(bodyText ?? ''), `${viewport.label}/Export must keep browser-E0 proof boundary visible`);

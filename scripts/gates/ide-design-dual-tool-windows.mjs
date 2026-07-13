@@ -26,8 +26,14 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
       await assertBuildHash(page, viewport.label);
       await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
 
+      const library = page.locator('[data-testid="ide-design-dock-palette"]').first();
+      assert(await visible(library), `${viewport.label}: Library must be open by default`);
+      const hideLibrary = page.locator('[data-testid="ide-design-library-collapse"]').first();
+      assert(await visible(hideLibrary), `${viewport.label}: open Library must expose Hide`);
+      await hideLibrary.click();
       const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
       const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
+      await leftToggle.waitFor({ state: 'visible', timeout: 5000 });
       assert(await visible(leftToggle), `${viewport.label}: Library restore rail missing`);
       assert(await visible(rightToggle), `${viewport.label}: Inspector restore rail missing`);
 
@@ -59,11 +65,11 @@ await runIdeGate('IDE Design dual tool windows satisfied', async ({ page, baseUr
       if (viewport.expected === 'dual') {
         assert(state.layoutMode === 'wide', `${viewport.label}: expected wide layout, got ${state.layoutMode}`);
         assert(state.left.visible && state.right.visible, `${viewport.label}: wide Design should allow Library and Inspector together ${JSON.stringify(state)}`);
-        assert(state.canvas.width >= 1200 && state.canvas.height >= 620, `${viewport.label}: dual tools must still leave a large canvas ${JSON.stringify(state)}`);
+        assert(state.canvas.width >= 1080 && state.canvas.height >= 620, `${viewport.label}: dual tools must still leave a large canvas ${JSON.stringify(state)}`);
       } else {
         const visibleDockCount = Number(state.left.visible) + Number(state.right.visible);
         assert(visibleDockCount <= 1, `${viewport.label}: classroom Design should keep support docks exclusive ${JSON.stringify(state)}`);
-        assert(state.canvas.width >= 920 && state.canvas.height >= 380, `${viewport.label}: exclusive tools must preserve canvas ${JSON.stringify(state)}`);
+        assert(state.canvas.width >= 850 && state.canvas.height >= 380, `${viewport.label}: exclusive tools must preserve canvas ${JSON.stringify(state)}`);
       }
 
       await assertNoRootOverflow(page, viewport.label);

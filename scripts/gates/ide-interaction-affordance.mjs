@@ -31,6 +31,17 @@ function assertNoOverlap(first, second, message) {
   );
 }
 
+async function assertTargetCenterUnobstructed(page, target, message) {
+  const box = await target.boundingBox();
+  assert(box, `${message}: target must be measurable`);
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  const usable = await target.evaluate((element, targetPoint) => {
+    const hit = document.elementFromPoint(targetPoint.x, targetPoint.y);
+    return Boolean(hit && (hit === element || element.contains(hit)));
+  }, point);
+  assert(usable, `${message}: center hit target is obstructed at ${JSON.stringify(point)}`);
+}
+
 await runIdeGate('IDE interaction affordance contract satisfied', async ({ page, baseUrl }) => {
   const errors = [];
   page.on('console', (message) => {
@@ -58,35 +69,30 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   );
   const orientationBox = await orientation.boundingBox();
   const launchTargets = [
-    page.locator('[data-testid="ide-project-primary-actions"]').first(),
-    page.locator('[data-testid="ide-project-start-column"]').first(),
-    page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first(),
+    page.locator('[data-testid="ide-project-start-a-lab-primary"]').first(),
+    page.locator('[data-testid="ide-project-build-fresh-primary"]').first(),
+    page.locator('[data-testid="ide-project-open-starter-primary"]').first(),
+    page.locator('[data-testid="ide-project-import-primary"]').first(),
+    page.locator('[data-testid="ide-project-open-existing-primary"]').first(),
   ];
   assert(orientationBox, 'workflow orientation must be measurable');
   for (const target of launchTargets) {
     if (!(await target.isVisible().catch(() => false))) continue;
-    const targetBox = await target.boundingBox();
-    assert(targetBox, 'Project launch target must be measurable');
-    assertNoOverlap(
-      orientationBox,
-      targetBox,
-      'workflow orientation must not cover Project launch actions'
-    );
+    await assertTargetCenterUnobstructed(page, target, 'workflow orientation must not block Project launch actions');
   }
 
   await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
   await orientation.waitFor({ state: 'hidden', timeout: 10000 });
 
-  const orientationReopen = page.locator('[data-testid="ide-topbar-workflow-help-btn"]').first();
-  assert(await visible(orientationReopen), 'dismissed workflow orientation must have a visible reopen affordance');
-  await orientationReopen.click();
-  await page.locator('[data-testid="ide-onboarding-overlay"]').first().waitFor({ state: 'visible', timeout: 10000 });
-  assert(
-    /workflow orientation/i.test(await text(page.locator('[data-testid="ide-onboarding-overlay"]').first())),
-    'reopened orientation must explain the workflow'
-  );
-  await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
-  await orientation.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
+  const helpButton = page.locator('[data-testid="ide-topbar-help-btn"]').first();
+  assert(await visible(helpButton), 'top bar must keep one visible Help affordance');
+  assert((await page.locator('[data-testid="ide-topbar-help-btn"]').count()) === 1, 'top bar must not duplicate Help controls');
+  await helpButton.click();
+  const shortcuts = page.locator('[data-testid="ide-shortcuts-modal"]').first();
+  await shortcuts.waitFor({ state: 'visible', timeout: 10000 });
+  assert(/Keyboard Shortcuts/i.test(await text(shortcuts)), 'Help must open usable keyboard guidance');
+  await page.locator('[data-testid="ide-shortcuts-close"]').first().click();
+  await shortcuts.waitFor({ state: 'hidden', timeout: 10000 });
 
   const renameButton = page.locator('[data-testid="ide-topbar-project-rename"]').first();
   assert(await visible(renameButton), 'top-bar project title must be an obvious rename affordance');
@@ -112,11 +118,10 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await page.waitForFunction(() => document.body.innerText.includes('EE 141 Lab 2'), undefined, { timeout: 10000 });
 
   const topbarText = await text(page.locator('[data-testid="ide-top-bar"]').first());
-  const projectSurfaceText = await text(page.locator('[data-testid="ide-project-identity-strip"]').first());
   assert(topbarText.includes('EE 141 Lab 2'), `renamed title must be visible in top bar, got "${topbarText}"`);
   assert(
-    projectSurfaceText.includes('EE 141 Lab 2'),
-    `renamed title must be visible on Project surface, got "${projectSurfaceText}"`
+    !(await page.locator('[data-testid="ide-project-identity-strip"]').first().isVisible().catch(() => false)),
+    'blank Project must not duplicate the top-bar identity authority'
   );
 
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -130,33 +135,26 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
     'dismissed workflow orientation must stay out of the way after reload'
   );
-  assert(await visible(orientationReopen), 'workflow orientation reopen affordance must survive reload');
+  assert(await visible(helpButton), 'Help affordance must survive reload');
 
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('[data-testid="mode-button-project"]').first().click();
+  await page.locator('[data-testid="ide-project-change-project"]').first().click();
   await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
   assert(
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
     'loaded Project must not inherit the full workflow orientation card by default'
   );
   assert(
-    await visible(orientationReopen),
-    'loaded Project must keep the Flow affordance for on-demand workflow help'
+    await visible(helpButton),
+    'loaded Project must keep the single Help affordance'
   );
-  await orientationReopen.click();
-  const loadedProjectOrientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  await loadedProjectOrientation.waitFor({ state: 'visible', timeout: 10000 });
-  const loadedProjectOrientationBox = await loadedProjectOrientation.boundingBox();
-  const entryPathsBox = await page.locator('[data-testid="ide-project-entry-paths"]').first().boundingBox();
-  assert(loadedProjectOrientationBox && entryPathsBox, 'loaded Project orientation and entry paths must be measurable');
-  assertNoOverlap(
-    loadedProjectOrientationBox,
-    entryPathsBox,
-    'reopened workflow orientation must not cover loaded Project entry paths'
-  );
-  await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
-  await loadedProjectOrientation.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
+  await helpButton.click();
+  await shortcuts.waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('[data-testid="ide-shortcuts-close"]').first().click();
+  await shortcuts.waitFor({ state: 'hidden', timeout: 10000 });
+  assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'closing Help must restore Project path interaction');
 
   await assertNoRuntimeErrors(page, errors);
 });

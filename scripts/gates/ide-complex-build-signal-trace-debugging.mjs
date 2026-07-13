@@ -161,6 +161,7 @@ async function buildFullAdderSumCases(page) {
 }
 
 async function assertWrongBuildRepairPanel(page, options) {
+  await openFailureDetails(page, 'wrong-build repair');
   await page.waitForSelector('[data-testid="ide-verify-repair-panel"]', { timeout: 10000 });
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const panelText = await text(panel);
@@ -173,6 +174,15 @@ async function assertWrongBuildRepairPanel(page, options) {
     assert(panelText.includes(inputTerm), `repair panel must show input ${inputTerm}: "${panelText}"`);
   }
   assert(await page.getByTestId('ide-verify-repair-open-design').isVisible(), 'Inspect Design action must be visible');
+}
+
+async function openFailureDetails(page, label) {
+  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function assertComplexSignalTracePanel(page, nodes) {

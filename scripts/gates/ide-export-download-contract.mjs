@@ -56,33 +56,46 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 10000 });
 
-  const downloadAllVisible = await page
-    .locator('[data-testid="ide-export-rebuild-btn"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(downloadAllVisible, 'evidence capsule action must be visible');
+  const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+  assert(await inspector.isVisible().catch(() => false), 'Export readiness hero must be visible');
+  const packageState = await inspector.getAttribute('data-export-package-state');
+  assert(['draft', 'ready'].includes(packageState ?? ''), `Export must expose a buildable package state, got ${packageState}`);
 
-  const readmePreviewVisible = await page
-    .locator('[data-testid="ide-export-readme-preview"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const blockedHintVisible = await page
-    .locator('[data-testid="ide-export-vivado-command"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(
-    readmePreviewVisible || blockedHintVisible,
-    'Vivado command section (ready or blocked) must be visible'
+  const currentAction = page.locator(
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]'
   );
+  assert((await currentAction.count()) === 1, 'Export must expose exactly one current build/download action');
+  assert(await currentAction.first().isVisible().catch(() => false), 'current build/download action must be visible');
+  assert(!(await currentAction.first().isDisabled().catch(() => true)), 'current build/download action must be enabled');
 
-  const vivadoChecklistVisible = await page
-    .locator('[data-testid="ide-export-vivado-checklist"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(vivadoChecklistVisible, 'Vivado checklist must be visible');
+  const e0Boundary = await page.locator('[data-testid="ide-export-e0-boundary-summary"]').first().textContent();
+  assert(/Browser E0/i.test(e0Boundary ?? ''), 'Export readiness must name Browser E0 package generation');
+  assert(/external/i.test(e0Boundary ?? ''), 'Export readiness must keep Vivado and board proof external');
+
+  const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
+  await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await packageFiles.getAttribute('open')) === null, 'generated files must begin collapsed');
+  await packageFiles.locator('summary').click();
+  assert((await packageFiles.getAttribute('open')) !== null, 'Inspect generated files must expand');
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+
+  const readme = page.locator('[data-testid="ide-export-file-readme-txt"]').first();
+  assert(await readme.isVisible().catch(() => false), 'README.txt must be available in generated files');
+  await readme.click();
+  await page.waitForFunction(
+    () => (document.querySelector('[data-testid="ide-export-preview-path"]')?.textContent ?? '').trim() === 'README.txt',
+    { timeout: 10000 }
+  );
+  const readmePreview = await page.locator('[data-testid="ide-export-preview-code"]').first().textContent();
+  assert(/E0/i.test(readmePreview ?? ''), 'README preview must state the E0 package boundary');
+  assert(/Vivado/i.test(readmePreview ?? ''), 'README preview must retain downstream Vivado guidance');
+
+  const readinessDetails = page.locator('details:has([data-testid="ide-export-handoff-checklist-v1"])').first();
+  if ((await readinessDetails.getAttribute('open')) === null) {
+    await readinessDetails.locator(':scope > summary').first().click();
+  }
+  const checklist = await page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first().textContent();
+  assert(/Pin mapping/i.test(checklist ?? ''), 'readiness details must retain pin-mapping status');
+  assert(/External Vivado\/Basys3 proof required/i.test(checklist ?? ''), 'readiness details must keep external proof explicit');
 });
 

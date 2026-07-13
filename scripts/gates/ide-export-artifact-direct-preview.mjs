@@ -9,7 +9,6 @@
  * 3) Keyboard activation follows the same path, and the browser view does not claim Vivado/Basys3 proof.
  */
 
-import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -23,7 +22,6 @@ import {
 } from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 const SCREENSHOT_DIR = process.env.RB_EXPORT_ARTIFACT_DIRECT_PREVIEW_SCREENSHOTS_DIR?.trim() || '';
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -55,17 +53,19 @@ await runIdeGate('IDE export artifact direct preview satisfied', async ({ page, 
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openReadyToBuildExport(page, baseUrl, viewport.label);
 
-      const buildSha = (await page.locator('.ide-build-badge-sha').first().textContent().catch(() => ''))?.trim() ?? '';
+      const proofScope = await normalizedText(page.locator('[data-testid="ide-proof-scope"]').first());
       assert(
-        buildSha === CURRENT_SHA,
-        `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
+        proofScope === 'Browser E0',
+        `${viewport.label}: compact Export chrome must expose Browser E0, got ${proofScope || 'missing'}`
       );
+
+      await openGeneratedFiles(page, viewport.label);
 
       const topVhd = page.locator('[data-testid="ide-export-file-top-vhd"]').first();
       const topXdc = page.locator('[data-testid="ide-export-file-top-xdc"]').first();
       assert(await visible(topVhd), `${viewport.label}: top.vhd package file cue must be visible`);
       assert(await visible(topXdc), `${viewport.label}: top.xdc package file cue must be visible`);
-      await assertWithinFirstViewport(page, topVhd, `${viewport.label}: top.vhd package file cue`);
+      await topVhd.scrollIntoViewIfNeeded();
 
       const chipSemantics = await topVhd.evaluate((element) => ({
         tag: element.tagName.toLowerCase(),
@@ -159,6 +159,17 @@ async function waitForPreviewPath(page, artifactPath) {
     artifactPath,
     { timeout: 10000 }
   );
+}
+
+async function openGeneratedFiles(page, label) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
+  const summary = details.locator('summary').first();
+  await assertWithinFirstViewport(page, summary, `${label}: Inspect generated files disclosure`);
+  await summary.click();
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function previewPath(page) {

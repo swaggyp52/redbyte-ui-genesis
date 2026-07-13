@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-02
+last_validated: 2026-07-13
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -26,7 +26,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 1. Workbench header
 - Compact `What do I do next?` guide rail tells students to place components, wire ports, label signals, then move to Verify.
 - `ide-design-workspace-header` is the only persistent top owner.
-- It carries the surface identity, the current workspace mode (`Canvas`, `Code`, `Split`, replay-linked variants), and the existing `Open Verify` / `Project` actions.
+- It carries the surface identity, the current workspace mode (`Canvas`, `Code`, `Split`, replay-linked variants), and the current `Open Verify` action. Project remains reachable through the five-stage rail or contextual recovery, not as a competing persistent header action.
 - The old standalone Design command strip is retired.
 
 2. Left library
@@ -47,9 +47,9 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect. If the graph can trace the failed output's direct driver, Design shows the driver label/type, incoming/outgoing wire counts, and a Focus driver action; if not, it says no direct driver was found instead of inventing root cause. For multi-stage failures, Design also shows a compact upstream signal-trace panel with node depth, upstream sources, open input clues when available, and per-node Focus actions. The trace proves graph connectivity, not formal root cause.
 
 4. Right inspector
-- Owns selection, focused-asset, mapping, and signal context.
+- Is selection-driven support: it stays collapsed by default and opens when a selected node, wire, focused asset, mapping, or signal context needs direct controls.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
-- Idle fallback stays secondary, but it is now a compact **Design overview** card inside `ide-design-inspector-canvas-default` with live Inputs / Outputs / Nodes / Wires counts, current I/O values, a Verify-owns-proof boundary, and an empty-canvas branch.
+- When the student explicitly opens the inspector without a selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It is not a persistent default work object.
 - In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.
 
 ## Empty / Idle State

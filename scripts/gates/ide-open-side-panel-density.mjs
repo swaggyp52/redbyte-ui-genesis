@@ -21,8 +21,8 @@ const SURFACES = [
   {
     id: 'export',
     focalSelectors: [
-      '[data-testid="ide-export-handoff-station"]',
-      '[data-testid="ide-export-handoff-summary"]',
+      '[data-testid="ide-export-readiness-hero"]',
+      '[data-testid="ide-export-package-inspector-v1"]',
       '[data-testid="ide-export-panel"]',
     ],
   },
@@ -81,6 +81,9 @@ async function openFreshStarterProject(page, baseUrl, viewport) {
 async function checkSurface(failures, page, viewport, surface) {
   try {
     await openMode(page, viewport, surface.id);
+    if (surface.id === 'export') {
+      await openGeneratedFiles(page, `${viewport.label}/export`);
+    }
     await assertNoHorizontalOverflow(page, viewport, surface.id);
     await assertFocalWorkbenchVisible(page, viewport, surface);
     await capture(page, viewport, surface.id, 'initial');
@@ -131,6 +134,10 @@ async function assertOpenRightDockIsProportional(page, viewport, mode) {
     const dockBounds = dock.getBoundingClientRect();
     const workspaceBounds = workspace.getBoundingClientRect();
     const style = window.getComputedStyle(dock);
+    const workspaceStyle = window.getComputedStyle(workspace);
+    const main = workspace.parentElement;
+    const mainBounds = main?.getBoundingClientRect();
+    const mainStyle = main ? window.getComputedStyle(main) : null;
     const text = (dock.textContent || '').replace(/\s+/g, ' ').trim();
     return {
       visible:
@@ -146,6 +153,15 @@ async function assertOpenRightDockIsProportional(page, viewport, mode) {
       workspaceTop: Math.round(workspaceBounds.top * 10) / 10,
       workspaceWidth: Math.round(workspaceBounds.width * 10) / 10,
       workspaceHeight: Math.round(workspaceBounds.height * 10) / 10,
+      workspaceBoxSizing: workspaceStyle.boxSizing,
+      workspaceComputedWidth: workspaceStyle.width,
+      workspaceTransform: workspaceStyle.transform,
+      workspaceMarginInline: `${workspaceStyle.marginLeft} / ${workspaceStyle.marginRight}`,
+      workspacePaddingInline: `${workspaceStyle.paddingLeft} / ${workspaceStyle.paddingRight}`,
+      workspaceOffsetWidth: workspace.offsetWidth,
+      workspaceClientWidth: workspace.clientWidth,
+      mainWidth: mainBounds ? Math.round(mainBounds.width * 10) / 10 : null,
+      mainGridColumns: mainStyle?.gridTemplateColumns ?? null,
       dockViewportShare: Math.round((dockBounds.width / window.innerWidth) * 1000) / 10,
       dockHeightShare: Math.round((dockBounds.height / window.innerHeight) * 1000) / 10,
       textLength: text.length,
@@ -199,6 +215,16 @@ async function assertFocalWorkbenchVisible(page, viewport, surface) {
     rect.top < viewport.height - 80,
     `${surface.id}: focal object starts below the useful first viewport (${rect.top}px)`
   );
+}
+
+async function openGeneratedFiles(page, label) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function assertNoHorizontalOverflow(page, viewport, label) {

@@ -111,6 +111,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
   await runCompareAndExpect(page, 'all failed outputs repair setup', 'fail');
+  await openFailureDetails(page, 'all failed outputs repair setup');
   await page.getByTestId('ide-verify-repair-use-observed-all').click();
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
@@ -121,10 +122,12 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await capture(page, '05-all-failed-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
-  await page.waitForSelector('[data-testid="ide-verify-primary-status-rerun"]', { timeout: 10000 });
-  const staleText = await text(page.locator('[data-testid="ide-verify-primary-status"]'));
+  const staleSummary = page.getByTestId('ide-verify-results-summary').first();
+  await staleSummary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await staleSummary.getAttribute('data-kind')) === 'stale', 'Verify latest-run authority must be marked stale after an expected-output edit');
+  const staleText = await text(staleSummary);
   assert(
-    /Testbench changed|Stimulus or saved checks changed|Rerun Compare/i.test(staleText),
+    /Checks changed|Rerun Compare/i.test(staleText),
     `Verify must name stale testbench evidence after edit, got "${staleText}"`,
   );
   await capture(page, '06-testbench-edit-stale.png');
@@ -174,7 +177,14 @@ async function assertObservedEvidenceVisible(page) {
 }
 
 async function assertFailureRepairPanel(page, options) {
-  await page.waitForSelector('[data-testid="ide-verify-repair-panel"]', { timeout: 10000 });
+  const summary = page.getByTestId('ide-verify-results-summary').first();
+  await summary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await summary.getAttribute('data-kind')) === 'fail', 'visible result authority must be FAIL');
+  const guidance = await text(page.getByTestId('ide-verify-results-guidance').first());
+  assert(/Expected value is incorrect/i.test(guidance), 'visible FAIL guidance must mention expected values');
+  assert(/Circuit logic is incorrect/i.test(guidance), 'visible FAIL guidance must mention circuit logic');
+  assert(/Output is disconnected/i.test(guidance), 'visible FAIL guidance must mention disconnected outputs');
+  await openFailureDetails(page, 'failed output repair');
   const panelText = await text(page.locator('[data-testid="ide-verify-repair-panel"]').first());
   assert(/Compare failed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
   assert(/Expected|Observed/i.test(panelText), `repair panel must show expected and observed values, got "${panelText}"`);
@@ -187,6 +197,15 @@ async function assertFailureRepairPanel(page, options) {
   }
   const scopeText = await text(page.getByTestId('ide-verify-repair-scope-summary').first());
   assert(/failed output|failed row|all failed/i.test(scopeText), `repair scope summary must be explicit, got "${scopeText}"`);
+}
+
+async function openFailureDetails(page, label) {
+  const details = page.getByTestId('ide-verify-advanced-failure').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function assertExportConfidence(page, { expectedPackage, expectedVerify }) {

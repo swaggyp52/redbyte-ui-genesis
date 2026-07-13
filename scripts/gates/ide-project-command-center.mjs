@@ -47,11 +47,12 @@ async function assertFitsViewport(page, locator, label) {
 }
 
 async function assertLaunchStarterDensity(page, label) {
-  const viewport = page.viewportSize();
-  assert(viewport, `${label} gate requires a viewport`);
-
+  const disclosure = page.locator('[data-testid="ide-project-lab-gallery-disclosure"]').first();
+  assert(await visible(disclosure), `${label} must keep the all-labs starter catalog reachable`);
+  assert((await disclosure.getAttribute('open')) === null, `${label} all-labs starter catalog must begin collapsed`);
+  await disclosure.locator('summary').click();
   const gallery = page.locator('[data-testid="ide-project-lab-gallery"]').first();
-  assert(await visible(gallery), `${label} must expose the all-labs starter grid without another click`);
+  assert(await visible(gallery), `${label} must expose the all-labs starter grid through its disclosure`);
 
   const visibleCards = page.locator('[data-testid^="ide-project-lab-card-"]:visible');
   const visibleCardCount = await visibleCards.count();
@@ -61,11 +62,7 @@ async function assertLaunchStarterDensity(page, label) {
   );
 
   const box = await gallery.boundingBox();
-  assert(box, `${label} starter grid must have a measurable layout box`);
-  assert(
-    box.y < viewport.height - 80,
-    `${label} starter grid must leave at least 80px of starter cards visible in the first viewport: y=${box.y.toFixed(1)} viewport=${viewport.height}`
-  );
+  assert(box && box.width >= 320, `${label} starter grid must have a readable layout box`);
 }
 
 await runIdeGate('IDE project command center contract satisfied', async ({ page, baseUrl }) => {
@@ -97,7 +94,7 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
     await assertNoPrematureDownstreamWarnings(launchCenter, launchLabel);
 
     const launchText = await text(launchCenter);
-    assert(/project command center/i.test(launchText), `Project launch title must be command-center framed, got "${launchText}"`);
+    assert(/start your circuit/i.test(launchText), `Project launch title must name the starting task, got "${launchText}"`);
     assert(/build fresh/i.test(launchText), 'Project command center must expose Build Fresh');
     assert(/course starter|starter/i.test(launchText), 'Project command center must expose a starter path');
     assert(/import|recover/i.test(launchText), 'Project command center must expose import/recovery');
@@ -111,9 +108,13 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
       await visible(page.locator('[data-testid="ide-project-import-primary"]').first()),
       'Project command center must keep Import / recovery as a first-class action'
     );
+    const starterCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+    assert(await visible(starterCatalog), 'Project command center must keep its starter catalog disclosure reachable');
+    assert((await starterCatalog.getAttribute('open')) === null, 'Project starter catalog must begin collapsed');
+    await page.locator('[data-testid="ide-project-open-starter-primary"]').first().click();
     assert(
       await visible(page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first()),
-      'Project command center must keep the Logic Gates starter reachable'
+      'Open Starter must reveal the Logic Gates starter'
     );
     await assertLaunchStarterDensity(page, launchLabel);
   }
@@ -131,12 +132,16 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
     'Loaded Project command center must show one primary next action'
   );
   assert(
-    await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()),
-    'Loaded Project command center must show peer entry paths'
+    !(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first())),
+    'Loaded Project must keep change-project paths collapsed until requested'
   );
 
+  const continueAction = page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first();
+  assert(/continue design/i.test(await text(continueAction)), 'Loaded Project primary must continue to Design');
+  await page.locator('[data-testid="ide-project-change-project"]').first().click();
+  assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'Change Project must reveal peer entry paths');
+
   const requiredPaths = [
-    ['ide-project-path-continue', 'continue'],
     ['ide-project-path-build-fresh', 'build fresh'],
     ['ide-project-path-course-starter', 'starter'],
     ['ide-project-path-import-recover', 'import'],

@@ -159,6 +159,7 @@ async function runDisconnectedOutputFlow(page, baseUrl, viewport) {
   await authorExpectedCases(page, cases);
   await runCompare(page, 'disconnected output', 'fail');
 
+  await openFailureDetails(page, `${viewport.label}/disconnected output`);
   const panel = page.getByTestId('ide-verify-structural-recovery-panel').first();
   await panel.waitFor({ state: 'visible', timeout: 10000 });
   const structuralText = await text(panel);
@@ -189,18 +190,25 @@ async function assertPassAuthority(page, viewport) {
 }
 
 async function assertStaleAuthority(page, viewport) {
-  await page.waitForSelector('[data-testid="ide-verify-primary-status"]', { timeout: 10000 });
-  const primaryText = await text(page.getByTestId('ide-verify-primary-status').first());
-  assert(/Checks changed/i.test(primaryText), `${viewport.label}/stale state must say checks changed, got "${primaryText}"`);
-  const hero = page.getByTestId('ide-verify-pass-hero').first();
-  await hero.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await hero.getAttribute('data-stale')) === 'true', `${viewport.label}/old PASS authority must be marked stale`);
-  const heroText = await text(hero);
-  assert(/Rerun Compare/i.test(heroText), `${viewport.label}/stale authority must ask for Compare rerun, got "${heroText}"`);
-  assert(!/Checks passed/i.test(heroText), `${viewport.label}/stale authority must not keep Checks passed as title, got "${heroText}"`);
+  const summary = page.getByTestId('ide-verify-results-summary').first();
+  await summary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await summary.getAttribute('data-kind')) === 'stale', `${viewport.label}/latest-run authority must be marked stale`);
+  const summaryText = await text(summary);
+  assert(/Checks changed/i.test(summaryText), `${viewport.label}/stale state must say checks changed, got "${summaryText}"`);
+  assert(/Rerun Compare/i.test(summaryText), `${viewport.label}/stale authority must ask for Compare rerun, got "${summaryText}"`);
+  assert(!/Checks passed/i.test(summaryText), `${viewport.label}/stale authority must not keep Checks passed as title, got "${summaryText}"`);
+  assert(await page.getByTestId('ide-verify-pass-hero').count() === 0, `${viewport.label}/stale state must replace the old PASS hero`);
 }
 
 async function assertRepairDecisionPanel(page, viewport, label) {
+  const resultSummary = page.getByTestId('ide-verify-results-summary').first();
+  await resultSummary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await resultSummary.getAttribute('data-kind')) === 'fail', `${viewport.label}/${label}: visible result authority must be FAIL`);
+  const guidanceText = await text(page.getByTestId('ide-verify-results-guidance').first());
+  assert(/Expected value is incorrect/i.test(guidanceText), `${viewport.label}/${label}: visible FAIL guidance must mention expected values`);
+  assert(/Circuit logic is incorrect/i.test(guidanceText), `${viewport.label}/${label}: visible FAIL guidance must mention circuit logic`);
+  assert(/Output is disconnected/i.test(guidanceText), `${viewport.label}/${label}: visible FAIL guidance must mention disconnected outputs`);
+  await openFailureDetails(page, `${viewport.label}/${label}`);
   const panel = page.getByTestId('ide-verify-repair-panel').first();
   await panel.waitFor({ state: 'visible', timeout: 10000 });
   const panelText = await text(panel);
@@ -220,6 +228,15 @@ async function assertRepairDecisionPanel(page, viewport, label) {
   ]) {
     assert(await page.getByTestId(testId).first().isVisible().catch(() => false), `${viewport.label}/${label}: ${testId} must be visible`);
   }
+}
+
+async function openFailureDetails(page, label) {
+  const details = page.getByTestId('ide-verify-advanced-failure').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function startBlankProject(page, baseUrl, gateLabel, projectName) {

@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-07-13 (refactor: recompose the RedByte professional product shell)
+
+**Subsystem:** Public Start entry, IDE shell/navigation authority, Project and Design workspaces, Verify run authority, Hardware / Map Pins hierarchy, Export readiness hierarchy, professional design primitives, and browser-E0 regression proof.
+
+**Changes:**
+- Established the local branch `product/redbyte-professional-rebrand` from the current `origin/main` baseline and completed the professional token, shell, surface, and proof work as a six-commit local stack beginning with `087ba2f36`.
+- Kept the RedByte-owned workflow authority at five stages: `Project -> Design -> Verify -> Map Pins -> Export`. Import remains a separate recovery/restore utility rather than a sixth progress stage.
+- Removed the global proof ribbon, bottom status footer, and injected per-surface product-spine header so the compact top bar, five-stage rail, and active work surface are the only persistent shell hierarchy.
+- Rebuilt the public Start entry and Project first/loaded states around one dominant next action, with starter, recent, bridge, determinism, and advanced paths disclosed only when requested.
+- Rebalanced Design around the circuit canvas, a compact core toolbar, a visible/collapsible library, and a selection-driven inspector instead of persistent explanatory chrome.
+- Consolidated Verify on one Run authority and repaired the Observe-only -> Compare-checks transition so choosing Compare after observation remains reachable without changing deterministic comparison semantics.
+- Reordered Hardware / Map Pins around the signal-to-board mapping table and direct row/board assignment loop, with board reference and after-mapping tools secondary.
+- Reordered Export around the readiness decision and one state-appropriate repair/build/download action; generated-file inspection and advanced proof metadata remain secondary.
+
+**Validation:** Local closeout under portable Node `v20.19.0` / corepack pnpm `10.24.0` passed the full `corepack pnpm -s classroom:gate` aggregate (`72/72` steps in `808035ms`, including the workspace build and final `30/30` determinism/parity tests), focused Vitest (`15` files, `160/160` tests), the public Start-page test, `ide:gate:professional-rebrand-flow` across four viewport conditions, professional burn-down/classroom, Design wiring, guided Full Adder, Verify repair, wrong-build recovery, and testbench-to-Export browser gates. `corepack pnpm -s css:audit:ide` passed with the two documented legacy warnings; final docs (`29/29`), encoding, syntax, and whole-slice diff checks also pass. The browser gates prove E0 only.
+
+**Manual evidence boundary:** Production Start, Project, Design, Verify, Hardware, Export, and Import were manually inspected at the four requested viewport conditions before implementation, and local Start/shell were manually rechecked after. The in-app browser backend became unavailable before a fresh three-loop manual replay of every local surface; the remaining after-state proof is automated Playwright/browser-gate evidence, not a claim that the full manual repetition requirement was completed.
+
+**Safety:** Product hierarchy, browser-E0 UI composition, copy, and interaction wiring only. No simulator algorithm, Compare truth, expected-output semantics, project format, pin-mapping authority, generated VHDL/XDC/testbench/Tcl/ZIP bytes or goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof claim is intentionally changed.
+
+**Remote sync:** Local-only by user instruction. No push, deploy, PR, or production proof has been performed for this branch; production must not be described as containing this recomposition.
+
+**Next recommended task:** Review and sync this single professional-rebrand branch when explicitly approved, then address the remaining Import composition, microtext, logical-signal/resource wording, and fresh all-surface manual repetition debt before selecting another broad visual slice. Vivado/Basys3 E1/E2/E3 proof remains external.
+
 ## Change Log 2026-07-07 (fix: simplify Verify repair decisions)
 
 **Subsystem:** Verify Compare failure repair UX, expected-output correction affordances, disconnected-output recovery wording, compact post-run repair panel layout, and focused browser-E0 Verify repair gate coverage.

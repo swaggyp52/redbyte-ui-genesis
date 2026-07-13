@@ -12,13 +12,14 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 ## Current Stable Truths
 
-- Project is the front-door dashboard for the product spine `Project -> Design -> Verify -> Map Pins / Hardware -> Export`, and that workflow ownership is documented in [docs/IDE_SYSTEM_MAP.md](./IDE_SYSTEM_MAP.md) and the surface specs under `docs/ide/`.
-- Project dashboard / continuity behavior has direct tests, and the low-level bridge no longer owns the top of the home surface.
-- Design idle inspector overview exists and has direct tests; the canvas remains the primary structural-authoring surface.
-- Verify Observe vs Compare language is explicit in the UI, and the stimulus workbench now has a first authoring-clarity pass (`Test stimulus`, mode summary, section guidance, compare-check explainer).
+- The product authority is exactly `Project -> Design -> Verify -> Map Pins -> Export`; Import is a separate utility and not a sixth progress stage.
+- The local professional-rebrand branch removes the proof ribbon, bottom status footer, and injected per-surface product-spine header so the top bar, five-stage rail, and active work surface are the only persistent hierarchy. Focused and full classroom browser validation passes locally.
+- Project is an action-first home rather than a readiness-card dashboard; the low-level bridge, starter catalog, recent work, and advanced metadata remain disclosed support paths.
+- Design is canvas-first with a compact core toolbar, collapsible library, and selection-driven inspector.
+- Verify has one Run authority; Observe remains non-proof trace evidence, Compare remains expected-output proof, and the local slice repairs the Observe -> Compare transition without changing comparison semantics.
 - Basys3 `CLK100MHZ` on `W5` is the authoritative board clock. Verify auto-runs it by default, manual pulses remain an explicit override, and exported `testbench.vhd` owns a free-running `clock_gen` process for the board clock.
 - The board-clock browser proof gate exists in `tests/e2e/board-clock-browser-proof.spec.ts` and was already committed on `origin/main` before this pass.
-- Hardware and Export both received structural passes that improved workflow shape, but neither surface is clean enough to call finished; both still carry density debt.
+- Hardware is locally recomposed table-first and Export readiness-first; both pass the professional-rebrand, focused, and full classroom browser-E0 closeout.
 - `ide-root.css` is still the primary legacy style system, and `ide-polish-pass.css` is still an additive overlay. Neither file should be pruned casually.
 - Screenshot tooling and IDE screenshot baseline tests already exist, but they are optional by default and are not yet strong enough to authorize broad CSS deletion.
 
@@ -39,6 +40,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Status: **Partially resolved (2026-05-03)** — map-mode default is now task-first (concise no-selection inspector, collapsed advanced sections, clearer row action affordances, and explicit board-task copy). Hardware no longer reads like a permanent debug panel. Remaining work: minor visual tuning after Export density pass.
 - Follow-up (2026-05-05): mapped signal rows now separate circuit signal identity, role chips, mapped status, board binding/package pin, and the Edit Mapping action. Browser audit at `1366x768` and `1920x1080` confirmed the rows no longer read as a cramped debug-badge run while the Basys3 board remains the visual anchor.
 
+- Follow-up (local 2026-07-13, browser-E0 validated): Map Pins now begins with the mapping table and direct signal-to-Basys3-resource-to-package-pin action loop. Board reference, XDC explanation, and after-mapping tools are secondary; mapping authority and generated XDC semantics are unchanged. The after-state conflict repair path was not manually replayed after implementation.
+
 ### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
 
 - Severity: High
@@ -57,6 +60,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 - Follow-up (2026-05-06): Export now includes a compact Vivado evidence diagnostics section that separates E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior. Browser audit on the 2-Bit Up Counter at `1366x768` and `1920x1080` confirmed the ladder is visible, E2 explicitly does not prove behavior, E3 remains manual-observation required, warning classes are listed, and no E3 overclaim is shown.
 
+- Follow-up (local 2026-07-13, browser-E0 validated): Export now opens on one readiness decision and one state-appropriate recovery/build/download action. Generated-file browsing, diagnostics, Vivado instructions, and proof metadata are secondary; draft/trusted and E0/E1/E2/E3 boundaries remain intact.
+
 ### RB-DEBT-003 - Verify stimulus authoring is clearer but still structurally heavy
 
 - Severity: Medium
@@ -71,6 +76,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ScenarioBuilderPanel.tsx`, `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx`, `packages/rb-apps/src/apps/ide/surfaces/verify/VerifySurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/board-clock-browser-proof.spec.ts`.
 - Status: **Partially resolved (2026-05-03)** - Verify now presents a clearer two-column workbench (compact stimulus strip, collapsed-by-default guidance + rail, cleaner clock panel grouping, stronger waveform pre-run guidance) with command-row/runtime stability fixes and board-clock/browser/export proof gates rerun green. Clock section further trimmed on 2026-05-03 (second pass): redundant Detected/Mode/Reset detail lines hidden via CSS so full cases grid is visible without scrolling. Remaining debt: small visual polish only, no semantic changes.
 
+- Follow-up (local 2026-07-13, browser-E0 validated): Verify has one command-bar Run authority, compact/disclosed session context, and a repaired Observe-only to Compare-checks transition. Focused repair/wrong-build/testbench gates and the full classroom aggregate pass.
+
 ### RB-DEBT-004 - Design workbench still needs a screenshot-backed polish pass
 
 - Severity: Medium
@@ -83,9 +90,11 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Suggested next pass: Browser-backed Design polish review after screenshot baselines are enforceable, with emphasis on canvas primacy and calm-state hierarchy.
 - Tests/browser proof needed: Enforced Design screenshots at `1366x768` and `1920x1080`; rerun Design workstation suites after any UI pass.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx`, `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: Needs browser proof
+- Status: Partially resolved with multi-viewport browser-E0 proof; minor visual tuning and repeated-use review remain.
 - Follow-up (2026-05-06): starter-loaded guidance now uses a compact default hierarchy. The visible row keeps starter identity, next action, and Verify/Project actions; long summary and expected behavior move behind `Starter brief`. Browser audit at `1366x768` and `1920x1080` confirmed the starter banner no longer collapses the canvas to a 15-49px strip; the 1366 starter canvas is now about 120px. Remaining Design debt: left library density, generic/skinny inspector usefulness, and the existing stacked-inspector layout at 1366px.
 - Follow-up (2026-05-06): idle Design inspector now shows a compact current-I/O readout with input/output labels, package pin aliases, live values, and an explicit Verify-proof boundary. `ide:gate:design-correctness-contract` was reconciled from stale live-state-table selectors to current quick-input + inspector I/O selectors, restoring truth-table coverage for Signal Tour and Logic Gates. Remaining Design debt: left library density and broader screenshot-backed composition review.
+
+- Follow-up (local 2026-07-13, browser-E0 validated): Design now gives the circuit canvas first-order space, keeps only core editing controls direct, allows the library to collapse, and waits for a selection/repair context before opening the inspector. Four-viewport professional proof and the Design-focused/classroom gates pass.
 
 ### RB-DEBT-005 - Project home is improved but still needs a low-risk continuity audit
 
@@ -99,7 +108,9 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Suggested next pass: Keep this as a screenshot-backed continuity check, not a styling sprint.
 - Tests/browser proof needed: Enforced Project screenshots and existing project surface suites.
 - Files likely involved: `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx`, `packages/rb-apps/src/apps/ide/components/ProjectSurfacePrimitives.tsx`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`.
-- Status: Needs browser proof
+- Status: Partially resolved with first/loaded multi-viewport browser-E0 continuity proof.
+
+- Follow-up (local 2026-07-13, browser-E0 validated): Project first launch is rebuilt around `Start your circuit` and one dominant action; loaded state emphasizes Continue with alternate paths disclosed. Professional-rebrand and full classroom continuity gates pass.
 
 ### RB-DEBT-006 - Global CSS remains geological debt (strategy-first)
 
@@ -107,10 +118,12 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Category: CSS debt
 - Surface: Global CSS
 - Current evidence: measured inventory now comes from `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`), not handwritten header notes.
-- `ide-root.css`: `32,875` lines, `5,522` selector entries, `4,086` unique selectors.
-- `ide-polish-pass.css`: `1,715` lines, `286` selector entries, `282` unique selectors.
-- Exact selector overlap between root/polish: `5` selectors (`:root[data-redbyte-mode='ide']`, `.ide-root`, `.ide-hw-workflow-ribbon`, `.ide-export-left-col`, `.ide-export-summary-hero`).
+- Final 2026-07-13 audit snapshot: `ide-root.css` has `36,420` lines, `6,137` selector entries, and `4,556` unique selectors.
+- Final 2026-07-13 audit snapshot: `ide-polish-pass.css` has `6,633` lines, `1,217` selector entries, and `1,039` unique selectors.
+- Exact selector overlap between root/polish is `11`, above the historical warning baseline of `5`; this remains explicit debt rather than a cleanup success claim.
 - Broad substring selectors in root: `2` (`[class*="ide-verify-"][class*="-banner"]`, `[class*="ide-verify-"][class*="-notice"]`).
+- The local recomposition deletes the playground CSS mirror (`apps/playground/src/ide/ide-root.css`) so the app no longer carries a second 825-line shell override source.
+- `theme/redbyte-primitives.css` is the scoped professional primitive layer (`704` lines in the final snapshot) with `0` `!important` declarations, `0` test-id selectors, and `0` broad class-substring selectors. It does not erase the remaining root/polish geological debt.
 - Repeated raw color literals are still high in root (for example `rgba(255,255,255,0.06)` appears `44` times), confirming token drift risk.
 - Guardrail policy now enforced in `pnpm css:audit:ide`:
 - `ide-polish-pass.css` broad substring selectors (for example `[class*='...']`, `[class^='...']`) are **forbidden** and fail the audit (non-zero exit).
@@ -129,6 +142,8 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Tests/browser proof needed: Mandatory screenshot baselines for Project / Design / Verify / Hardware / Export at at least `1366x768` and `1920x1080` before any serious deletion.
 - Files likely involved: `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `scripts/verify-gates-classroom.ts`.
 - Status: In progress (instrumented) — strategy tooling and measurable baseline now exist; deletion-first cleanup remains blocked.
+
+- Local 2026-07-13 status: the playground mirror and a bounded set of obsolete shell overrides are removed, and final CSS/browser/classroom validation passes with the documented warnings. Root/polish size (`43,053` combined lines), `11` exact overlaps, and `4,830` total `!important` declarations across the current root/polish/theme/primitive chain remain substantial. Broad deletion-first cleanup remains blocked.
 
 ### RB-DEBT-007 - Screenshot and browser proof coverage exists, but it is not yet a trusted safety net
 

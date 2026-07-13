@@ -26,7 +26,19 @@ async function openBridgeDisclosure(page) {
 }
 
 async function openExamplesBrowserIfCollapsed(page) {
-  const browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  let browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  if (!(await browser.isVisible().catch(() => false))) {
+    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+    if (await changeProject.isVisible().catch(() => false)) {
+      await changeProject.click();
+    }
+
+    const openStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
+    if (await openStarter.isVisible().catch(() => false)) {
+      await openStarter.click();
+    }
+    browser = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  }
   await browser.waitFor({ state: 'visible', timeout: 10000 });
 
   const expanded = await browser.getAttribute('data-expanded');
@@ -36,6 +48,31 @@ async function openExamplesBrowserIfCollapsed(page) {
   }
 
   await page.waitForSelector('[data-testid^="ide-project-load-start-"]', { timeout: 10000 });
+}
+
+async function openLandingStarterCatalog(page) {
+  const catalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+  await catalog.waitFor({ state: 'visible', timeout: 10000 });
+
+  const isOpen = await catalog.evaluate((element) => {
+    if (!(element instanceof HTMLDetailsElement)) {
+      throw new Error('project starter catalog must be a details element');
+    }
+    return element.open;
+  });
+  if (isOpen) return;
+
+  const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
+  if (await openStarter.isVisible().catch(() => false)) {
+    await openStarter.click();
+  } else {
+    await catalog.locator('summary').first().click();
+  }
+
+  await page.waitForFunction(() => {
+    const element = document.querySelector('[data-testid="ide-project-starter-catalog"]');
+    return element instanceof HTMLDetailsElement && element.open;
+  });
 }
 
 await runIdeGate('IDE examples catalog and guarded open contract satisfied', async ({ page, baseUrl }) => {
@@ -49,6 +86,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   // The project start dock is inside the hidden left dock panel — it is in the DOM
   // but not visible. Instead, confirm we're on the project landing by checking that
   // example cards are rendered in the main workspace.
+  await openLandingStarterCatalog(page);
   await page.waitForSelector('[data-testid^="ide-project-landing-example-"]', { timeout: 10000 });
 
   const landingExamples = page.locator('[data-testid^="ide-project-landing-example-"]');

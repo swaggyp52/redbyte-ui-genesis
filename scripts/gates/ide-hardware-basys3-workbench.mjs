@@ -83,7 +83,14 @@ async function openVerify(page) {
 async function openExport(page) {
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 15000 });
-  await page.waitForSelector('[data-testid="ide-export-handoff-station"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { timeout: 15000 });
+  const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
+  await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await packageFiles.getAttribute('open')) === null) {
+    await packageFiles.locator('summary').click();
+  }
+  assert((await packageFiles.getAttribute('open')) !== null, 'Hardware export setup must expand Inspect generated files');
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function assertMapWorkbench(page, viewportName) {
@@ -140,7 +147,7 @@ async function assertReadyStateBoundary(page, baseUrl) {
   await openExport(page);
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
-    page.locator('[data-testid="ide-export-rebuild-btn"]').first().click(),
+    page.locator('[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]').first().click(),
   ]);
   const downloadFailure = await download.failure();
   assert(!downloadFailure, `current export package download failed: ${downloadFailure}`);

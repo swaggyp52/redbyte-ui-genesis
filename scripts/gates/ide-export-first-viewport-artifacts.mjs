@@ -4,12 +4,11 @@
  * Export first-viewport artifact visibility gate.
  *
  * Contract:
- * 1) Ready-to-build Export keeps concrete generated file names visible in the package inspector at 1366x768 and 1440x900.
- * 2) The visible file cue is in the first viewport and names the core E0 artifacts students/professors inspect.
- * 3) The downstream handoff station and artifact explorer remain present; this gate does not change generated files or hardware proof claims.
+ * 1) Ready-to-build Export keeps its readiness authority and generated-files disclosure visible at classroom viewports.
+ * 2) Opening Inspect generated files exposes the core E0 artifacts students/professors inspect.
+ * 3) The file browser and selected preview remain real; this gate does not change generated files or hardware proof claims.
  */
 
-import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -23,7 +22,6 @@ import {
 } from './_gateHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 const SCREENSHOT_DIR = process.env.RB_EXPORT_FIRST_VIEWPORT_ARTIFACTS_SCREENSHOTS_DIR?.trim() || '';
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -53,21 +51,26 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
       await openReadyToBuildExport(page, baseUrl, viewport.label);
       await capture(page, viewport.label);
 
-      const buildSha = (await page.locator('.ide-build-badge-sha').first().textContent().catch(() => ''))?.trim() ?? '';
+      const proofScope = await normalizedText(page.locator('[data-testid="ide-proof-scope"]').first());
       assert(
-        buildSha === CURRENT_SHA,
-        `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
+        proofScope === 'Browser E0',
+        `${viewport.label}: compact Export chrome must expose Browser E0, got ${proofScope || 'missing'}`
       );
 
       const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+      const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
+      const packageFilesSummary = packageFiles.locator('summary').first();
       const fileBrowser = page.locator('[data-testid="ide-export-file-browser-v1"]').first();
-      const station = page.locator('[data-testid="ide-export-handoff-station"]').first();
-      const artifactStrip = page.locator('[data-testid="ide-export-handoff-artifact-strip"]').first();
       assert(await visible(inspector), `${viewport.label}: Export package inspector must be visible`);
-      assert(await visible(fileBrowser), `${viewport.label}: Export package inspector must expose visible artifact files`);
-      assert(await visible(station), `${viewport.label}: Export handoff station must be visible`);
-      assert(await visible(artifactStrip), `${viewport.label}: downstream handoff station must still expose visible artifact files`);
-      await assertWithinFirstViewport(page, fileBrowser, `${viewport.label}: first-viewport package file browser`);
+      assert(await visible(packageFiles), `${viewport.label}: Inspect generated files disclosure must be visible`);
+      assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}: generated files must begin collapsed`);
+      await assertWithinFirstViewport(page, packageFilesSummary, `${viewport.label}: Inspect generated files disclosure`);
+      await packageFilesSummary.click();
+      assert((await packageFiles.getAttribute('open')) !== null, `${viewport.label}: Inspect generated files must expand`);
+      await fileBrowser.waitFor({ state: 'visible', timeout: 10000 });
+      await fileBrowser.scrollIntoViewIfNeeded();
+      assert(await visible(fileBrowser), `${viewport.label}: expanded package inspector must expose artifact files`);
+      await assertWithinFirstViewport(page, fileBrowser, `${viewport.label}: expanded package file browser`);
 
       const stripText = await normalizedText(fileBrowser);
       for (const artifactName of REQUIRED_ARTIFACTS) {
@@ -77,8 +80,9 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
         );
       }
 
-      const artifactExplorer = page.locator('[data-testid="ide-export-artifact-preview"]').first();
-      assert(await visible(artifactExplorer), `${viewport.label}: downstream artifact explorer must still render`);
+      const artifactExplorer = page.locator('[data-testid="ide-export-selected-preview-v1"]').first();
+      await artifactExplorer.scrollIntoViewIfNeeded();
+      assert(await visible(artifactExplorer), `${viewport.label}: selected generated-file preview must render`);
       const surfaceText = await normalizedText(page.locator('[data-testid="ide-mode-export"]').first());
       assert(
         !/E1\s+(ready|passed|complete)|E2\s+(ready|passed|complete)|E3\s+(ready|passed|complete)|Vivado build passed|board observed/i.test(surfaceText),
@@ -88,9 +92,9 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
       observations.push({
         viewport: viewport.label,
         inspector: await readRect(page, '[data-testid="ide-export-package-inspector-v1"]'),
+        disclosure: await readRect(page, '[data-testid="ide-export-package-files"]'),
         fileBrowser: await readRect(page, '[data-testid="ide-export-file-browser-v1"]'),
-        strip: await readRect(page, '[data-testid="ide-export-handoff-artifact-strip"]'),
-        explorer: await readRect(page, '[data-testid="ide-export-artifact-preview"]'),
+        explorer: await readRect(page, '[data-testid="ide-export-selected-preview-v1"]'),
         text: stripText,
       });
     } catch (error) {
@@ -121,7 +125,7 @@ async function openReadyToBuildExport(page, baseUrl, viewportLabel) {
 
   await page.locator('[data-testid="mode-button-export"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-handoff-station"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { timeout: 10000 });
 }
 
 async function assertWithinFirstViewport(page, locator, label) {

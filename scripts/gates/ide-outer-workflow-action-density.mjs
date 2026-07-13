@@ -24,18 +24,24 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       await openLogicGatesStarter(page, baseUrl, `outer-workflow-action-density-${viewport.label}`);
       await openMode(page, baseUrl, 'project', `outer-workflow-action-density-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
-      await assertVisibleRect(page, ['[data-testid="ide-product-spine-project"]'], `${viewport.label}/project product spine action surface`, {
-        maxTop: 120,
-        minWidth: Math.round(viewport.width * 0.55),
-        minHeight: 90,
-      });
-      await assertActionCluster(page, viewport, 'project command board', '[data-testid="ide-project-command-board-v1"]', 9, {
+      await assertNoProductSpine(page, `${viewport.label}/Project`);
+      const projectDirect = await assertActionCluster(page, viewport, 'project command board', '[data-testid="ide-project-command-board-v1"]', 3, {
         maxTop: 300,
       });
+      assert(/Continue Design/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must keep Continue Design direct`);
+      assert(/Open Verify/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must keep Open Verify direct`);
+      assert(/Change Project/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must expose Change Project`);
+      await page.locator('[data-testid="ide-project-change-project"]').first().click();
+      const projectDisclosed = await assertActionCluster(page, viewport, 'project disclosed alternatives', '[data-testid="ide-project-command-board-v1"]', 7, {
+        maxTop: 300,
+      });
+      assert(/Build Fresh/i.test(projectDisclosed.labels.join(' | ')), `${viewport.label}/Project disclosed alternatives must keep Build Fresh`);
+      assert(/Import Project/i.test(projectDisclosed.labels.join(' | ')), `${viewport.label}/Project disclosed alternatives must keep Import Project`);
 
       await page.goto(`${baseUrl}/?mode=import&e2e=1&gate=outer-workflow-action-density-${viewport.label}-import`, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
       await assertBuildHash(page, `${viewport.label}/import`);
+      await assertNoProductSpine(page, `${viewport.label}/Import`);
       await assertActionCluster(page, viewport, 'import', '[data-testid="ide-import-guided-wizard-v1"]', 4);
 
       await openLogicGatesStarter(page, baseUrl, `outer-workflow-action-density-${viewport.label}-export`);
@@ -43,7 +49,9 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       await runComparePass(page);
       await openMode(page, baseUrl, 'export', `outer-workflow-action-density-${viewport.label}-export`);
       await assertBuildHash(page, `${viewport.label}/export`);
-      await assertActionCluster(page, viewport, 'export', '[data-testid="ide-export-package-inspector-v1"]', 7);
+      await assertNoProductSpine(page, `${viewport.label}/Export`);
+      const exportActions = await assertActionCluster(page, viewport, 'export readiness', '[data-testid="ide-export-package-inspector-v1"]', 3);
+      assert(/Inspect generated files/i.test(exportActions.labels.join(' | ')), `${viewport.label}/Export must expose generated-file inspection without restoring a product spine`);
 
       await assertNoRootOverflow(page, `${viewport.label}/outer workflow density`);
     } catch (error) {
@@ -58,13 +66,13 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
 async function assertActionCluster(page, viewport, surface, selector, minActions, options = {}) {
   await assertVisibleRect(page, [selector], `${viewport.label}/${surface} action surface`, {
     maxTop: options.maxTop ?? (viewport.height === 768 ? 220 : 250),
-    minWidth: Math.round(viewport.width * 0.55),
-    minHeight: 160,
+    minWidth: Math.round(viewport.width * 0.52),
+    minHeight: 110,
   });
   const metrics = await page.evaluate((rootSelector) => {
     const root = document.querySelector(rootSelector);
     if (!root) return { actionCount: 0, labels: [] };
-    const labels = Array.from(root.querySelectorAll('button, [role="button"], a[href], input, select, textarea'))
+    const labels = Array.from(root.querySelectorAll('button, [role="button"], a[href], input, select, textarea, summary'))
       .filter((element) => {
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
@@ -75,4 +83,10 @@ async function assertActionCluster(page, viewport, surface, selector, minActions
     return { actionCount: labels.length, labels };
   }, selector);
   assert(metrics.actionCount >= minActions, `${viewport.label}/${surface}: expected at least ${minActions} visible controls, saw ${metrics.actionCount}: ${metrics.labels.join(' | ')}`);
+  return metrics;
+}
+
+async function assertNoProductSpine(page, label) {
+  const visibleProductSpines = await page.locator('[data-testid^="ide-product-spine-"]:visible').count();
+  assert(visibleProductSpines === 0, `${label}: duplicate product-spine action authority must stay removed`);
 }

@@ -126,63 +126,32 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const exportPanel = page.locator('[data-testid="ide-export-panel"]').first();
   assert(await visible(exportPanel), 'export panel must be visible');
 
-  await page.evaluate(() => {
-    const el = document.querySelector('[data-testid="ide-export-gate-details"]');
-    if (el && 'open' in el) el.open = true;
-  });
-  const gateStack = page.locator('[data-testid="ide-export-gate-stack"]').first();
-  assert(await visible(gateStack), 'export gate stack must be visible');
+  const readinessHero = page.locator('[data-testid="ide-export-readiness-hero"]').first();
+  const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+  assert(await visible(readinessHero), 'Export readiness authority must be visible');
+  assert(await visible(inspector), 'Export package state must be visible');
+  const packageState = await inspector.getAttribute('data-export-package-state');
+  assert(['blocked', 'draft', 'ready'].includes(packageState ?? ''), `Export must expose a truthful package state, got ${packageState}`);
 
-  const hasBlockersCallout = await page
-    .locator('[data-testid="ide-export-blockers-callout"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const hasVivadoReadyCallout = await page
-    .locator('[data-testid="ide-export-vivado-ready-callout"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const hasVivadoUnverifiedCallout = await page
-    .locator('[data-testid="ide-export-vivado-unverified-callout"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const hasVivadoBlockedCallout = await page
-    .locator('[data-testid="ide-export-vivado-blocked-callout"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const primaryHandoff = page.locator('[data-testid="ide-export-primary-handoff-cta"]').first();
-  const secondaryDownload = page.locator('[data-testid="ide-export-dock-download"]').first();
-  const primaryHandoffVisible = await visible(primaryHandoff).catch(() => false);
-  const secondaryDownloadVisible = await visible(secondaryDownload).catch(() => false);
-  assert(
-    hasBlockersCallout ||
-      hasVivadoReadyCallout ||
-      hasVivadoUnverifiedCallout ||
-      hasVivadoBlockedCallout ||
-      primaryHandoffVisible ||
-      secondaryDownloadVisible,
-    'export must show a truthful handoff state: blockers, unverified, blocked, or Vivado-ready',
-  );
+  const readinessLabel = (await inspector.textContent().catch(() => ''))?.replace(/\s+/g, ' ').trim() ?? '';
+  assert(readinessLabel.length > 0, `Export readiness status must have non-empty text, got "${readinessLabel}"`);
+  assert(/Browser E0|Cannot export|Draft|Ready/i.test(readinessLabel), 'Export readiness must name its package state or Browser E0 boundary');
 
-  const readinessLabel = (
-    await page
-      .locator('[data-testid="ide-export-vivado-command"]')
-      .first()
-      .textContent()
-      .catch(() => '')
-  )?.trim() ?? '';
-  assert(
-    readinessLabel.length > 0,
-    `export Vivado command/status must have non-empty text, got "${readinessLabel}"`,
-  );
+  const primaryHandoff = page.locator('[data-testid="ide-export-primary-actions"] button').first();
+  assert(await visible(primaryHandoff), 'Export readiness must expose one owning next action');
 
-  assert(
-    primaryHandoffVisible || secondaryDownloadVisible,
-    'export primary handoff or download action must be visible',
-  );
+  if (packageState !== 'blocked') {
+    const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
+    await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+    if ((await packageFiles.getAttribute('open')) === null) {
+      await packageFiles.locator('summary').click();
+    }
+    assert((await packageFiles.getAttribute('open')) !== null, 'Inspect generated files must expand');
+    await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    const boundary = await page.locator('[data-testid="ide-export-e0-boundary-summary"]').first().textContent();
+    assert(/Browser E0/i.test(boundary ?? ''), 'Export must retain its Browser E0 package boundary');
+    assert(/external/i.test(boundary ?? ''), 'Export must keep Vivado and board proof external');
+  }
 
   // 4. Hardware: panel + mode controls
   await page.locator('[data-testid="mode-button-hardware"]').click();
@@ -190,6 +159,13 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const hardwarePanel = page.locator('[data-testid="ide-hardware-panel"]').first();
   assert(await visible(hardwarePanel), 'hardware panel must be visible');
+
+  const afterMappingTools = page.locator('[data-testid="ide-hw-after-mapping-tools"]').first();
+  await afterMappingTools.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await afterMappingTools.getAttribute('open')) === null) {
+    await afterMappingTools.locator(':scope > summary').first().click();
+  }
+  assert((await afterMappingTools.getAttribute('open')) !== null, 'After mapping tools must expand');
 
   const hardwareModeToggle = page.locator('[data-testid="ide-hw-mode-toggle"]').first();
   assert(

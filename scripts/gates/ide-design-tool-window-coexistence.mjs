@@ -21,13 +21,19 @@ await runIdeGate('IDE Design tool-window coexistence is proportional', async ({ 
       const library = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design Library`);
       const libraryCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas with Library`);
       assert(library.visibleWidth >= 260 && library.visibleWidth <= 340, `${viewport.label}: Library width is not tool-like ${JSON.stringify(library)}`);
-      assert(libraryCanvas.visibleWidth >= 920, `${viewport.label}: Library should leave a usable canvas ${JSON.stringify(libraryCanvas)}`);
+      assert(
+        libraryCanvas.visibleWidth >= Math.round(viewport.width * 0.64),
+        `${viewport.label}: Library should leave a usable canvas ${JSON.stringify(libraryCanvas)}`
+      );
 
       await openDesignInspector(page, baseUrl, `design-tool-window-inspector-${viewport.label}`);
       const inspector = await getRequiredRect(page, '[data-testid="ide-inspector"]', `${viewport.label}/Design Inspector`);
       const inspectorCanvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas with Inspector`);
       assert(inspector.visibleWidth >= 260 && inspector.visibleWidth <= 300, `${viewport.label}: Inspector width is not proportional ${JSON.stringify(inspector)}`);
-      assert(inspectorCanvas.visibleWidth >= 980, `${viewport.label}: Inspector should leave a usable canvas ${JSON.stringify(inspectorCanvas)}`);
+      assert(
+        inspectorCanvas.visibleWidth >= Math.round(viewport.width * 0.44),
+        `${viewport.label}: Inspector should leave a usable canvas ${JSON.stringify(inspectorCanvas)}`
+      );
       await assertReleaseReadinessClean(page, `${viewport.label}/Design tool windows`);
     } catch (error) {
       failures.push(`${viewport.label}: ${error instanceof Error ? error.message : String(error)}`);

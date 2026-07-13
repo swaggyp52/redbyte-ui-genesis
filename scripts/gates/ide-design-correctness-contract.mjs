@@ -7,7 +7,7 @@
  * 3) Inspector I/O state shown to students must match expected truth tables.
  */
 
-import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
 
 const UPDATE_TIMEOUT_MS = 250;
 
@@ -72,32 +72,7 @@ async function verifyLogicGatesTruthTable(page) {
 }
 
 async function loadExampleIntoDesign(page, exampleId) {
-  if (!(await page.locator('[data-testid="ide-mode-project"]').isVisible().catch(() => false))) {
-    await page.locator('[data-testid="mode-button-project"]').click();
-    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-  }
-
-  await openExamplesBrowserIfPresent(page);
-  let clicked = await clickExampleSelector(page, exampleId);
-  if (!clicked) {
-    const landingStarter = page.locator('[data-testid^="ide-project-landing-example-"]').first();
-    if (await landingStarter.isVisible().catch(() => false)) {
-      await clickElement(landingStarter);
-      await confirmExampleReplacementIfNeeded(page);
-      await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
-      await page.locator('[data-testid="mode-button-project"]').click();
-      await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-      await openExamplesBrowserIfPresent(page);
-      clicked = await clickExampleSelector(page, exampleId);
-    }
-  }
-  assert(clicked, `expected project example selector for ${exampleId}`);
-
-  await confirmExampleReplacementIfNeeded(page);
-
-  if (!(await page.locator('[data-testid="ide-mode-design"]').isVisible().catch(() => false))) {
-    await page.locator('[data-testid="mode-button-design"]').click();
-  }
+  await loadStarterProject(page, { exactExampleId: exampleId });
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await revealDesignInspector(page);
   await page.waitForSelector('[data-testid="ide-design-inspector-io-state"]', { timeout: 10000 });

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-13
 owner: Connor Angiel
 used_by_claude: true
 role: Export surface spec
@@ -8,7 +8,7 @@ role: Export surface spec
 
 # Export Mode Spec
 
-Status: Phase 1 v1
+Status: Current professional recomposition
 Mode ID: `export`
 
 ## Purpose
@@ -17,34 +17,35 @@ Act as the compiler-like Export handoff station for Basys3 Vivado artifacts whil
 
 ## Primary Actions (max 3)
 
-1. Validate export readiness and trust tier.
-2. Preview generated artifacts and package handoff facts.
-3. Build or download deterministic artifacts.
+1. Understand the current readiness/trust state and take its direct repair action when blocked.
+2. Build or download the deterministic browser-E0 package when ready.
+3. Open `Inspect generated files` to browse, preview, and copy generated artifacts.
 
 ## Layout
 
 1. Top handoff station
 - Exactly one visible Export handoff station owns Draft / Needs Review, Ready to Build, and Trusted package state.
-- The station shows the consequence sentence, one primary repair/build/download action, compact mapping/provenance facts, and visible package handoff content.
+- The station shows the consequence sentence and one state-appropriate repair/build/download action before artifact detail.
 - Trusted post-download state stays download-oriented; it must not make hardware programming the primary Export action.
-- Compact `What do I do next?` guide rail tells students to download the browser-E0 ZIP while keeping Vivado build, bitstream, and board observation external.
-- A compact confidence station must say whether Verify evidence is current/stale/failed, whether pin mapping is current/missing, whether the browser-E0 package is trusted or draft, and that Vivado build and board behavior are not proven inside RedByte.
+- Compact package-content and E0-boundary copy identifies the browser handoff while keeping Vivado build, bitstream, and board observation external.
+- `Readiness details` discloses whether Verify evidence is current/stale/failed, whether pin mapping is current/missing, whether the browser-E0 package is trusted or draft, and that Vivado build and board behavior are not proven inside RedByte.
 
 2. Main center
-- Artifact tree with preview panes (`top.vhd`, `top.xdc`, README).
-- Compact Vivado evidence diagnostics that separate E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior.
-- Student submission guidance: download the RedByte/Vivado ZIP, submit the ZIP to the instructor, and treat Vivado or board proof as separate if assigned.
+- `Inspect generated files` is an explicit disclosure beneath readiness. Opening it reveals the artifact browser and selected preview for files such as `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`.
+- Direct preview and copy controls operate only after generated-file inspection is opened; the file workspace must not outrank the readiness decision.
+- Submission guidance and compact Vivado evidence diagnostics separate E0 package generation, E1 Vivado build/bitstream, E2 board programming, and E3 observed behavior.
 
 3. Right inspector
 - Pin table.
 - Validation and warning list.
+- Artifact checklist, build/debug context, hashes, and proof metadata remain collapsed support detail by default.
 - Mapping rows are read-only and display board labels before package pins, for example `SW0 (pin V17)`, while generated constraints still use the resolved package pin.
 
 ## Empty State
 
-Headline: `Project is not export-ready`
-Primary CTA: `Open Project - Map Pins`
-Secondary action: `Open validation details`
+Headline: `No handoff package yet`
+Primary CTA: the blocker owner's direct action, such as `Open Design`, `Open Verify`, or `Open Map Pins`
+Secondary disclosure: `Readiness details`
 
 ## Error State
 
@@ -81,7 +82,7 @@ E2 programming success must never imply E3 behavior proof. When no bench classif
 
 For pilot labs, Export must state that the RedByte/Vivado ZIP proves browser-E0 package generation only. It must not imply that ZIP submission proves Vivado build success, bitstream generation, programming success, or physical board behavior.
 
-`ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, generated previews must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
+`ide:gate:blank-adder-authoring-depth` guards the from-scratch 4-bit adder E0 package path: Hardware mapping must agree with Export, opening generated-file inspection must expose `README.txt`, `top.vhd`, `top.xdc`, and `testbench.vhd`, the downloaded ZIP must contain the expected package files, and README copy must preserve the E0-only boundary.
 
 `ide:gate:testbench-editor-and-export-confidence-flow` guards the Verify-to-Export confidence path: stale Verify/testbench evidence must show Draft/not-trusted export confidence, current Compare PASS plus current mapping must show current browser-E0 confidence, and Vivado build / board observation must remain external rather than being claimed by the browser.
 

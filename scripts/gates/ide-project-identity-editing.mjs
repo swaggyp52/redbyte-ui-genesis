@@ -69,6 +69,10 @@ async function waitForProjectSurface(page, label) {
 }
 
 async function loadLogicGatesStarter(page) {
+  const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
+  if (await visible(openStarter)) {
+    await openStarter.click();
+  }
   const selectors = [
     '[data-testid="ide-project-landing-example-logic-gates"]',
     '[data-testid="ide-project-load-start-logic-gates"]',
@@ -115,24 +119,6 @@ async function renameFromTopBar(page, nextName, commitMode) {
   await input.press('Enter');
 }
 
-async function renameFromProjectTitle(page, nextName, commitMode) {
-  const projectTitle = page.locator('[data-testid="ide-projectx-name"]').first();
-  assert(await visible(projectTitle), 'loaded Project title must be visible');
-  await projectTitle.dblclick();
-  const input = page.locator('[data-testid="ide-projectx-name-input"]').first();
-  assert(await visible(input), 'double-clicking the loaded Project title must open inline rename');
-  await input.fill(nextName);
-  if (commitMode === 'escape') {
-    await input.press('Escape');
-    return;
-  }
-  if (commitMode === 'blur') {
-    await page.locator('[data-testid="ide-project-command-strip"]').first().click();
-    return;
-  }
-  await input.press('Enter');
-}
-
 async function renameFromProjectStrip(page, nextName, commitMode) {
   const stripTitle = page.locator('[data-testid="ide-project-identity-strip-title"]').first();
   assert(await visible(stripTitle), 'upper Project identity strip title must be visible');
@@ -157,14 +143,17 @@ async function assertTitleEverywhere(page, expectedName, options = {}) {
     timeout: 10000,
   });
   const topbar = await text(page.locator('[data-testid="ide-top-bar"]').first());
-  const identityStrip = await text(page.locator('[data-testid="ide-project-identity-strip"]').first());
   assert(topbar.includes(expectedName), `top-bar title must show "${expectedName}", got "${topbar}"`);
-  assert(identityStrip.includes(expectedName), `Project identity strip must show "${expectedName}", got "${identityStrip}"`);
   if (loadedProject) {
-    const projectIdentity = await text(page.locator('[data-testid="ide-projectx-identity"]').first());
+    const identityStrip = await text(page.locator('[data-testid="ide-project-identity-strip"]').first());
     assert(
-      projectIdentity.includes(expectedName),
-      `Project identity must show "${expectedName}", got "${projectIdentity}"`
+      identityStrip.includes(expectedName),
+      `loaded Project identity strip must show "${expectedName}", got "${identityStrip}"`
+    );
+  } else {
+    assert(
+      !(await page.locator('[data-testid="ide-project-identity-strip"]').first().isVisible().catch(() => false)),
+      'blank Project must not duplicate the top-bar identity authority',
     );
   }
 }
@@ -198,35 +187,33 @@ async function runViewport(page, baseUrl, viewport) {
   await ensureProjectMode(page);
   await page.waitForSelector('[data-testid="ide-project-command-center"]', { timeout: 10000 });
 
-  const titleBefore = await text(page.locator('[data-testid="ide-projectx-name"]').first());
+  const titleBefore = await text(page.locator('[data-testid="ide-project-identity-strip-title"]').first());
   assert(
     titleBefore.includes('Logic Gates'),
     `loaded starter Project title must be visible before rename, got "${titleBefore}"`
   );
   assert(
-    await visible(page.locator('[data-testid="ide-projectx-name-edit"]').first()),
-    'loaded Project title must also have an adjacent visible Rename affordance'
+    await visible(page.locator('[data-testid="ide-project-identity-strip-title"]').first()),
+    'loaded Project title must remain an obvious inline Rename affordance'
   );
 
   await renameFromProjectStrip(page, 'Should Not Save From Strip', 'escape');
   await assertTitleEverywhere(page, 'Logic Gates: AND / OR / XOR');
 
-  await renameFromProjectTitle(page, 'Should Not Save', 'escape');
-  await assertTitleEverywhere(page, 'Logic Gates: AND / OR / XOR');
-
   const savedName = `EE 141 Logic Gates ${label}`;
-  await renameFromProjectTitle(page, savedName, 'enter');
+  await renameFromProjectStrip(page, savedName, 'enter');
   await assertTitleEverywhere(page, savedName);
 
-  const sourceLabel = page.locator('[data-testid="ide-project-source-label"]').first();
-  assert(await visible(sourceLabel), 'renamed starter project must keep a visible starter/lab source label');
-  const sourceText = await text(sourceLabel);
+  const supportingDetails = page.locator('[data-testid="ide-project-supporting-details"]').first();
+  assert(await visible(supportingDetails), 'renamed starter project must keep supporting details reachable');
+  await supportingDetails.locator(':scope > summary').click();
+  const sourceText = await text(page.locator('[data-testid="ide-project-session"]').first());
   assert(
     sourceText.includes('Logic Gates: AND / OR / XOR') && !sourceText.includes(savedName),
-    `starter source label must stay distinct from renamed project title, got "${sourceText}"`
+    `starter source context must stay distinct from renamed project title, got "${sourceText}"`
   );
 
-  await renameFromProjectTitle(page, `Blur Project ${label}`, 'blur');
+  await renameFromTopBar(page, `Blur Project ${label}`, 'blur');
   await assertTitleEverywhere(page, `Blur Project ${label}`);
 
   await page.locator('[data-testid="mode-button-design"]').first().click();

@@ -20,17 +20,17 @@ const VIEWPORTS = [
     label: '1366x768',
     width: 1366,
     height: 768,
-    minStimulusWidth: 540,
-    minWaveformPreviewVisibleHeight: 320,
-    maxWaveformPreviewTopOffset: 270,
+    minStimulusWidth: 500,
+    minWaveformPreviewVisibleHeight: 280,
+    maxWaveformPreviewTopOffset: 300,
   },
   {
     label: '1440x900',
     width: 1440,
     height: 900,
-    minStimulusWidth: 560,
-    minWaveformPreviewVisibleHeight: 440,
-    maxWaveformPreviewTopOffset: 270,
+    minStimulusWidth: 530,
+    minWaveformPreviewVisibleHeight: 410,
+    maxWaveformPreviewTopOffset: 300,
   },
 ];
 

@@ -705,6 +705,7 @@
 }
 
 .ide-workbench-workspace {
+  box-sizing: border-box;
   grid-column: 2;
   grid-row: 1;
   min-height: 0;
@@ -22296,13 +22297,13 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   padding: 22px 26px !important;
 }
 .rb-onboarding-overlay.rb-onboarding-overlay--integrated {
-  top: 104px !important;
+  top: auto !important;
   right: 20px !important;
-  bottom: auto !important;
+  bottom: 20px !important;
   left: auto !important;
   transform: none !important;
-  width: min(340px, calc(100vw - 112px)) !important;
-  max-height: calc(100vh - 128px) !important;
+  width: min(320px, calc(100vw - 112px)) !important;
+  max-height: calc(100vh - 96px) !important;
   overflow: auto !important;
 }
 .rb-onboarding-overlay--integrated .rb-onboarding-card {
@@ -26498,7 +26499,7 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='import'] .ide-import-start-alternatives .ide-button {
   width: 100%;
-  min-height: 34px;
+  min-height: var(--rb-control-h);
   justify-content: center;
   white-space: normal;
   text-align: center;
@@ -33176,6 +33177,10 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-canvas-view-tools.is-compact {
+  top: 14px !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 14px !important;
   width: max-content !important;
   inline-size: max-content !important;
   max-width: calc(100% - 28px) !important;
@@ -33303,6 +33308,9 @@ button:disabled,
 }
 
 .ide-workbench-shell[data-layout-intent='workbench'] .ide-workbench-workspace {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
   padding: clamp(8px, 0.7vw, 12px) var(--ide-workbench-edge-gutter) clamp(16px, 1vw, 20px);
 }
 

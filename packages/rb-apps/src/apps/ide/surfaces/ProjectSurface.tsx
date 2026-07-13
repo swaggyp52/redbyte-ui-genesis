@@ -1293,7 +1293,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               data-hierarchy-surface="project"
               data-hierarchy-role="advanced"
             >
-              <summary className="ide-project-lab-gallery-summary">All lab starters (8 labs)</summary>
+              <summary className="ide-project-lab-gallery-summary">Browse all lab starters (8 labs)</summary>
               <div className="ide-project-lab-gallery" data-testid="ide-project-lab-gallery">
                 {LAB_STARTERS.map((starter) => (
                   <button
@@ -1797,6 +1797,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           that CI contracts and deep-debug sessions rely on. It is intentionally
           buried under `<details>` so it does not clutter the primary surface.
         */}
+        {readiness.hasCircuit ? (
         <details className="ide-project-diagnostics" data-testid="ide-project-diagnostics">
           <summary>Low-level diagnostics</summary>
           <div className="ide-kv-list">
@@ -1834,6 +1835,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
             </div>
           </div>
         </details>
+        ) : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );

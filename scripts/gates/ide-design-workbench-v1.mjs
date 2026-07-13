@@ -182,16 +182,25 @@ async function assertBlankCanvasStart(page, viewport, label) {
   assert(metrics.emptyState.inCanvas, `${label}: blank canvas start path must live inside the canvas`);
   assert(metrics.emptyAddIo.visible, `${label}: blank canvas must expose Add boundary I/O`);
   assert(metrics.emptyAddAnd.visible, `${label}: blank canvas must expose a starter gate path`);
-  assert(metrics.leftToggle.visible, `${label}: collapsed Library rail must be available`);
+  assert(metrics.palette.visible, `${label}: Library must be visible by default`);
   assert(metrics.rightToggle.visible, `${label}: collapsed Inspector rail must be available`);
   assertWorkbenchHierarchy(metrics, viewport, label, { expectGraph: false });
+  const hideLibrary = page.locator('[data-testid="ide-design-library-collapse"]').first();
+  assert(await hideLibrary.isVisible().catch(() => false), `${label}: open Library must expose Hide`);
+  await hideLibrary.click();
+  await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
+  await revealDesignRail(page, 'left');
 }
 
 async function assertDesignBoundaryActions(page, label) {
   await page.evaluate(() => window.scrollTo(0, 0));
   await revealDesignRail(page, 'left');
   const metrics = await readWorkbenchMetrics(page);
-  assert(metrics.statusAddIo.visible, `${label}: status bar must expose Add boundary I/O`);
+  assert(!metrics.statusAddIo.visible, `${label}: healthy loaded Design must not restore the old status-HUD Add I/O action`);
+  assert(
+    await page.locator('[data-testid="ide-design-command-strip-primary-cta"]').first().isVisible().catch(() => false),
+    `${label}: Design header must keep the Verify continuation visible`,
+  );
   assert(metrics.paletteInput.visible, `${label}: palette input primitive must stay visible`);
   assert(metrics.paletteOutput.visible, `${label}: palette output primitive must stay visible`);
   await collapseDesignRail(page, 'left');
@@ -221,7 +230,9 @@ async function collapseDesignRail(page, side) {
 async function assertGraphWorkbench(page, viewport, label, options = {}) {
   await page.evaluate(() => window.scrollTo(0, 0));
   let metrics = null;
-  for (let attempt = 0; attempt < 24; attempt += 1) {
+  // Split/code transitions can reflow the canvas after the HDL pane mounts.
+  // Keep the full graph contract strict, but allow that layout to settle.
+  for (let attempt = 0; attempt < 50; attempt += 1) {
     metrics = await readWorkbenchMetrics(page);
     if (
       metrics.cameraFinite &&
@@ -255,7 +266,7 @@ async function assertGraphWorkbench(page, viewport, label, options = {}) {
 }
 
 function assertWorkbenchHierarchy(metrics, viewport, label, options) {
-  const topLimit = viewport.height * 0.34;
+  const topLimit = Math.max(viewport.height * 0.34, 272);
   const minCanvasWidth = options.minCanvasWidth ?? 560;
   const minAreaRatio = options.minAreaRatio ?? 0.42;
   const minRailRatio = options.minRailRatio ?? 2.1;
@@ -276,7 +287,7 @@ function assertWorkbenchHierarchy(metrics, viewport, label, options) {
     `${label}: canvas must dominate the middle workspace (ratio=${metrics.liveCanvasAreaRatio.toFixed(3)})`
   );
   assert(
-    metrics.leftDock.width <= 232,
+    metrics.leftDock.width <= 280,
     `${label}: palette rail is too wide (${metrics.leftDock.width.toFixed(1)}px)`
   );
   assert(
@@ -382,7 +393,7 @@ async function cancelWireCreation(page) {
 }
 
 async function proveSplitAndCodeViews(page, viewport) {
-  await page.locator('[data-testid="ide-design-view-split"]').first().click();
+  await clickDesignView(page, 'split');
   await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
   await assertGraphWorkbench(page, viewport, 'split/code split view', {
     minAreaRatio: 0.24,
@@ -393,47 +404,66 @@ async function proveSplitAndCodeViews(page, viewport) {
   const splitMetrics = await readWorkbenchMetrics(page);
   assert(splitMetrics.hdlPane.visible, 'split/code: HDL pane must be visible in Split view');
 
-  await page.locator('[data-testid="ide-design-view-hdl"]').first().click();
+  await clickDesignView(page, 'hdl');
   await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
   const codeMetrics = await readWorkbenchMetrics(page);
   assert(codeMetrics.hdlPane.visible, 'split/code: HDL pane must remain visible in Code view');
   assert(codeMetrics.rootOverflowX <= 2, `Code view has horizontal overflow (${codeMetrics.rootOverflowX}px)`);
 
-  await page.locator('[data-testid="ide-design-view-split"]').first().click();
+  await clickDesignView(page, 'split');
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
 }
 
 async function proveZoomFitCenter(page, viewport) {
-  await page.locator('[data-testid="ide-design-view-canvas"]').first().click();
+  await clickDesignView(page, 'canvas');
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await selectFirstVisibleNode(page);
-  const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
-  if (await toggle.isVisible().catch(() => false)) {
-    const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
-    if (!expanded) {
-      await toggle.click();
-    }
+  const canvasToolsToggle = page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first();
+  assert(await canvasToolsToggle.isVisible().catch(() => false), 'Canvas View tools disclosure must be visible');
+  const canvasToolsExpanded = (await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+  if (!canvasToolsExpanded) {
+    await canvasToolsToggle.click();
   }
-  await page.waitForSelector('[data-testid="ide-design-zoom-preset-50"]', { timeout: 5000 });
-  await page.locator('[data-testid="ide-design-zoom-preset-50"]').first().click();
+  await page.locator('[data-testid="ide-design-zoom-preset-50"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('[data-testid="ide-design-zoom-preset-50"]:visible').first().click();
   await assertGraphWorkbench(page, viewport, '50% zoom');
-  await page.locator('[data-testid="ide-design-zoom-preset-125"]').first().click();
+  await page.locator('[data-testid="ide-design-zoom-preset-125"]:visible').first().click();
   await assertGraphWorkbench(page, viewport, '125% zoom');
-  await page.locator('[data-testid="ide-design-zoom-preset-fit"]').first().click();
+  await page.locator('[data-testid="ide-design-zoom-preset-fit"]:visible').first().click();
   await page.waitForTimeout(250);
-  const center = page.locator('[data-testid="ide-design-center-selection-canvas"]').first();
+  const center = page.locator('[data-testid="ide-design-center-selection-canvas"]:visible').first();
   if (await center.isVisible().catch(() => false)) {
     await center.click();
   }
   await page.waitForTimeout(250);
-  if (await toggle.isVisible().catch(() => false)) {
-    const expanded = (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
+  if ((await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true') {
+    await canvasToolsToggle.click();
+    await page.waitForTimeout(150);
+  }
+  const moreToggle = page.locator('[data-testid="ide-design-tools-toggle"]:visible').first();
+  if (await moreToggle.isVisible().catch(() => false)) {
+    const expanded = (await moreToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
     if (expanded) {
-      await toggle.click();
+      await moreToggle.click();
       await page.waitForTimeout(150);
     }
   }
+}
+
+async function ensureMoreTools(page) {
+  if (await page.locator('[data-testid="ide-design-view-split"]:visible').first().isVisible().catch(() => false)) return;
+  const toggle = page.locator('[data-testid="ide-design-tools-toggle"]:visible').first();
+  assert(await toggle.isVisible().catch(() => false), 'Design More tools must be visible');
+  await toggle.click();
+  await page.locator('[data-testid="ide-design-toolbar-expanded"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function clickDesignView(page, view) {
+  await ensureMoreTools(page);
+  const control = page.locator(`[data-testid="ide-design-view-${view}"]:visible`).first();
+  await control.waitFor({ state: 'visible', timeout: 5000 });
+  await control.click();
 }
 
 async function deleteSelectionAndUndo(page) {

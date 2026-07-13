@@ -62,28 +62,32 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { timeout: 10000 });
 
-  await openDetailsContaining(page, 'ide-export-package-handoff');
-
-  const preBuildStatus = await text(page.locator('[data-testid="ide-export-package-handoff-status"]'));
+  const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+  const preBuildStatus = await inspector.getAttribute('data-export-package-state');
   assert(
-    /READY TO BUILD/i.test(preBuildStatus),
-    `fresh verified export should begin as READY TO BUILD before package download, got "${preBuildStatus}"`
+    preBuildStatus === 'draft',
+    `fresh verified export should begin as a buildable draft before package download, got "${preBuildStatus}"`
   );
+  const buildButton = page.locator('[data-testid="ide-export-package-build-v1"]').first();
   assert(
-    /Build Current Bundle/i.test(await text(page.locator('[data-testid="ide-export-rebuild-btn"]'))),
+    /Build Current Bundle/i.test(await text(buildButton)),
     'fresh verified export should expose Build Current Bundle before a successful package record exists'
   );
 
+  await openDetailsContaining(page, 'ide-export-handoff-checklist-v1');
   const summaryMapping = await text(
-    page.locator('[data-testid="ide-export-handoff-summary-mapping"] .ide-export-handoff-summary-value')
+    page.locator('[data-testid="ide-export-handoff-checklist-v1"] > div').filter({ hasText: 'Pin mapping' }).first()
   );
-  const factMapping = await text(page.locator('[data-testid="ide-export-handoff-mapping"]'));
-  assert(summaryMapping.length > 0, 'handoff summary must include mapping completeness');
+  await openDetailsElement(page, 'ide-export-confidence-station', 'readiness details');
+  const factMapping = await text(page.locator('[data-testid="ide-export-confidence-mapping"]'));
+  assert(summaryMapping.length > 0, 'readiness checklist must include mapping completeness');
+  assert(factMapping.length > 0, 'readiness details must include mapping completeness');
   assert(
-    summaryMapping === factMapping,
-    `mapping summary and handoff facts must agree, got "${summaryMapping}" vs "${factMapping}"`
+    extractMappedCount(summaryMapping) === extractMappedCount(factMapping),
+    `mapping checklist and readiness details must agree, got "${summaryMapping}" vs "${factMapping}"`
   );
 
+  await openDetailsElement(page, 'ide-export-evidence-boundary', 'external evidence boundary');
   const evidenceRows = await text(page.locator('[data-testid="ide-export-vivado-evidence-rows"]'));
   for (const tier of ['E0', 'E1', 'E2', 'E3']) {
     assert(evidenceRows.includes(tier), `Vivado evidence rows must include ${tier}`);
@@ -94,13 +98,13 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   assert(!/E2\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E2 success');
   assert(!/E3\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E3 success');
 
-  await page.waitForSelector('[data-testid="ide-export-artifact-tabs"]', { timeout: 10000 });
+  await openGeneratedFiles(page, 'trust integrity', { expectCollapsed: true });
   const topPreview = await readVisiblePreviewByPath(page, 'top.vhd');
   assert(topPreview.length > 0, 'top.vhd preview must be visible and non-empty');
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
-    page.locator('[data-testid="ide-export-rebuild-btn"]').click(),
+    buildButton.click(),
   ]);
   const downloadFailure = await download.failure();
   assert(!downloadFailure, `download failed: ${downloadFailure}`);
@@ -111,16 +115,18 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   await download.saveAs(zipPath);
 
   await page.waitForSelector('[data-testid="ide-export-download-success"]', { timeout: 10000 });
-  await openDetailsContaining(page, 'ide-export-package-handoff');
   await page.waitForFunction(
-    () => /READY/i.test(document.querySelector('[data-testid="ide-export-package-handoff-status"]')?.textContent ?? ''),
+    () => document.querySelector('[data-testid="ide-export-package-inspector-v1"]')?.getAttribute('data-export-package-state') === 'ready',
     { timeout: 10000 }
   );
-  const trustedStatus = await text(page.locator('[data-testid="ide-export-package-handoff-status"]'));
-  assert(/READY/i.test(trustedStatus), `downloaded current package must move Export to READY, got "${trustedStatus}"`);
-  const trustBanner = await text(page.locator('[data-testid="ide-export-trust-banner"]'));
-  assert(/READY/i.test(trustBanner), 'trusted handoff banner must show READY after current package download');
-  assert(/Verify and export are current/i.test(trustBanner), 'trusted banner must tie READY to current Verify plus current export');
+  const trustedStatus = await inspector.getAttribute('data-export-package-state');
+  assert(trustedStatus === 'ready', `downloaded current package must move Export to ready, got "${trustedStatus}"`);
+  const trustedReadiness = await text(inspector);
+  assert(/ready|downloaded/i.test(trustedReadiness), 'trusted readiness hero must show the current package as ready/downloaded');
+  assert(
+    await page.locator('[data-testid="ide-export-package-download-v1"]').first().isVisible().catch(() => false),
+    'trusted readiness hero must keep Download Package as the primary action'
+  );
 
   const zipBytes = await fs.readFile(zipPath);
   const zip = await JSZip.loadAsync(zipBytes);
@@ -214,7 +220,7 @@ async function openDetailsContaining(page, testId) {
   const isOpen = await details.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
   if (!isOpen) {
     await details.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
-    const summary = details.locator('summary').first();
+    const summary = details.locator(':scope > summary').first();
     if (await summary.isVisible().catch(() => false)) {
       await summary.click();
     } else {
@@ -228,9 +234,34 @@ async function openDetailsContaining(page, testId) {
   await page.locator(`[data-testid="${testId}"]`).first().waitFor({ state: 'attached', timeout: 5000 });
 }
 
+async function openDetailsElement(page, testId, label) {
+  const details = page.locator(`[data-testid="${testId}"]`).first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  const isOpen = await details.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
+  if (!isOpen) {
+    await details.locator(':scope > summary').first().click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label} must expand`);
+}
+
+async function openGeneratedFiles(page, label, options = {}) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  const isOpen = (await details.getAttribute('open')) !== null;
+  if (options.expectCollapsed) {
+    assert(!isOpen, `${label}: generated files must begin collapsed`);
+  }
+  if (!isOpen) {
+    await details.locator(':scope > summary').first().click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
 async function readVisiblePreviewByPath(page, artifactPath) {
+  await openGeneratedFiles(page, `preview ${artifactPath}`);
   const tab = page
-    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .locator('button[data-testid^="ide-export-file-"]')
     .filter({ hasText: artifactPath })
     .first();
   assert(await tab.isVisible().catch(() => false), `artifact tab for "${artifactPath}" must be visible`);

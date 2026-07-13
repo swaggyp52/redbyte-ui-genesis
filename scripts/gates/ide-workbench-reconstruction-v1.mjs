@@ -13,8 +13,8 @@ import {
   runComparePass,
 } from './_workbenchReconstructionHarness.mjs';
 
-// Product spine task bars now occupy normal flow so they cannot cover work objects.
-const NORMAL_FLOW_TASK_BAR_ALLOWANCE = 38;
+// The retired duplicate task bar no longer consumes a second shell row.
+const NORMAL_FLOW_TASK_BAR_ALLOWANCE = 0;
 
 await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
@@ -29,8 +29,8 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
 
       await assertShellChrome(page, viewport, 'design-loaded');
       await assertVisibleRect(page, ['[data-testid="ide-design-live-canvas"]'], `${viewport.label}/design canvas`, {
-        maxTop: 226 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
-        minWidth: Math.round(viewport.width * 0.78),
+        maxTop: 232 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
+        minWidth: Math.round(viewport.width * 0.64),
         minHeight: Math.round(viewport.height * 0.50),
       });
 
@@ -44,7 +44,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await runComparePass(page);
       await assertVisibleRect(page, ['[data-testid="ide-verify-region-waveform"]'], `${viewport.label}/verify evidence`, {
         maxTop: 238 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
-        minWidth: Math.round(viewport.width * 0.45),
+        minWidth: Math.round(viewport.width * 0.44),
         minHeight: Math.round(viewport.height * 0.40),
       });
 
@@ -52,7 +52,7 @@ await runIdeGate('IDE workbench reconstruction v1 shell and task planes satisfie
       await assertShellChrome(page, viewport, 'hardware');
       await assertVisibleRect(page, ['[data-testid="ide-hw-board-workspace"]'], `${viewport.label}/hardware board workspace`, {
         maxTop: 178 + NORMAL_FLOW_TASK_BAR_ALLOWANCE,
-        minWidth: Math.round(viewport.width * 0.80),
+        minWidth: Math.round(viewport.width * 0.78),
         minHeight: Math.round(viewport.height * 0.48),
       });
 
@@ -99,13 +99,17 @@ async function assertShellChrome(page, viewport, label) {
     return {
       topbar: rect('[data-testid="ide-top-bar"]'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
+      footer: rect('[data-testid="ide-status-bar"]'),
       shell: rect('[data-ide-mode-marker]'),
       surfaceColumn: rect('.ide-surface-column'),
+      stageCount: document.querySelectorAll('[data-testid="mode-button-project"], [data-testid="mode-button-design"], [data-testid="mode-button-verify"], [data-testid="mode-button-hardware"], [data-testid="mode-button-export"]').length,
+      importUtilityVisible: Boolean(document.querySelector('[data-testid="mode-button-import"]')),
     };
   });
   await assertNoRootOverflow(page, `${viewport.label}/${label}`);
-  assert(state.topbar.visible && state.topbar.height <= 46, `${viewport.label}/${label}: topbar too tall ${JSON.stringify(state)}`);
-  assert(state.ribbon.visible && state.ribbon.height <= 38, `${viewport.label}/${label}: proof ribbon too tall ${JSON.stringify(state)}`);
-  assert(state.surfaceColumn.top <= 90, `${viewport.label}/${label}: surface column starts too low ${JSON.stringify(state)}`);
-  assert(state.shell.top <= 96, `${viewport.label}/${label}: workbench shell starts too low ${JSON.stringify(state)}`);
+  assert(state.topbar.visible && state.topbar.height <= 60, `${viewport.label}/${label}: compact topbar is too tall ${JSON.stringify(state)}`);
+  assert(!state.ribbon.visible && !state.footer.visible, `${viewport.label}/${label}: retired proof ribbon/footer must stay absent ${JSON.stringify(state)}`);
+  assert(Math.abs(state.shell.top - state.topbar.bottom) <= 2, `${viewport.label}/${label}: workbench must begin directly below topbar ${JSON.stringify(state)}`);
+  assert(state.surfaceColumn.top <= state.topbar.bottom + 44, `${viewport.label}/${label}: surface column starts too low ${JSON.stringify(state)}`);
+  assert(state.stageCount === 5 && state.importUtilityVisible, `${viewport.label}/${label}: shell must expose five stages plus Import utility ${JSON.stringify(state)}`);
 }

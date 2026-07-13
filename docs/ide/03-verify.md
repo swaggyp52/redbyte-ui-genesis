@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-02
+last_validated: 2026-07-13
 owner: Connor Angiel
 used_by_claude: true
 role: Verify surface spec
@@ -19,7 +19,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 1. Execute vector run.
 2. Author clock/stimulus cases for the current design.
-3. Inspect failure diffs, signal traces, and deterministic hashes.
+3. Use the visible failure summary, then open `Failure details` for granular diffs, repair scopes, signal traces, and deterministic hashes.
 
 ## Layout
 
@@ -33,7 +33,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 4. **Side rails**: Signal lanes (left), inspector / console (per `IdeSurfaceLayout`).
 
-5. **Analysis / failure**: A failing Compare replaces the normal result summary with a compact repair strip that keeps the first failed case, failed signal, expected bit, observed bit, input vector, and direct repair actions visible beside waveform evidence. The strip separates expected/testbench repair from design repair: students can edit expected values, use observed for the selected cell, use observed for all failed outputs in the selected row, or use observed for all failed outputs in the run when the testbench is wrong. They can open Design when the expected value is correct and the circuit may be wrong. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint. Design may then show direct-driver facts plus a bounded upstream signal trace; Verify must still require a fresh Compare before treating the repair as current evidence.
+5. **Analysis / failure**: A failing Compare keeps a compact visible result summary beside waveform evidence: FAIL state, passed/failed counts, high-level cause guidance, `Open Design`, and `Review expected outputs`. `Failure details` is an explicit disclosure beneath that summary. Opening it reveals the first failed case, failed signal, expected bit, observed bit, input vector, repair scope, and granular expected/testbench versus design-repair actions. Students may then edit expected values, use observed for one cell / the selected row / all failed outputs, inspect Design, or rerun Compare. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint. Design may then show direct-driver facts plus a bounded upstream signal trace; Verify must still require a fresh Compare before treating the repair as current evidence.
 
 6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed before the first run. After a run, that summary is demoted so PASS/FAIL state, first mismatch, expected/observed values, and waveform evidence are the first-order objects.
 
@@ -64,19 +64,19 @@ Trace-only, stale, failing, or incomplete-mapping runs remain useful evidence, b
 
 The Verify evidence signature is tied to the same normalized current-project hash that workflow authority compares: circuit, project vectors, custom vectors, and project I/O mapping. Vector UI IDs are ignored for trust so helper-generated clock rows do not create a phantom stale loop after the run completes.
 
-`ide:gate:verify-evidence-workbench` guards the classroom Verify evidence path: visible first-run expected-output editing, Observe-only waveform evidence that is not trusted proof, Compare PASS, intentional expected-output edit to FAIL, first mismatch expected/observed evidence, waveform controls, repair back to PASS, and no meaningful overlap between stimulus and waveform evidence regions. The underlying script remains `scripts/gates/ide-verify-evidence-workbench-integrity.mjs`.
+`ide:gate:verify-evidence-workbench` guards the classroom Verify evidence path: visible first-run expected-output editing, Observe-only waveform evidence that is not trusted proof, Compare PASS, intentional expected-output edit to FAIL, visible failure summary, disclosed first-mismatch expected/observed evidence, waveform controls, repair back to PASS, and no meaningful overlap between stimulus and waveform evidence regions. The underlying script remains `scripts/gates/ide-verify-evidence-workbench-integrity.mjs`.
 
 `ide:gate:verify-postrun-workbench-usability` also guards the post-run command deck: visible `Observe only` and `Compare checks` labels must remain readable through Compare PASS, induced FAIL, repair PASS, and the workbench toggle path at `1366x768` and `1440x900`.
 
-`ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with inspectable mismatch, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
+`ide:gate:blank-adder-authoring-depth` guards the blank-canvas custom-vector path for a hand-authored primitive full adder and a four-block 4-bit adder. It requires Observe -> save observed outputs -> Compare PASS, intentional expected-output FAIL with an inspectable mismatch after opening `Failure details`, repair back to PASS, and the specified 4-bit adder sample vectors at `1366x768` and `1440x900`.
 
-`ide:gate:scratch-testbench-repair-flow` guards the scratch-build failure-recovery path for a FullAdder plus extra OR logic design. It requires Observe -> save observed outputs -> Compare PASS, intentional wrong expected-output FAIL, visible first-mismatch repair strip, `Use observed`, repaired PASS, stale expected-output edit detection after PASS, and Export E0 trust boundary at `1366x768` and `1440x900`.
+`ide:gate:scratch-testbench-repair-flow` guards the scratch-build failure-recovery path for a FullAdder plus extra OR logic design. It requires Observe -> save observed outputs -> Compare PASS, intentional wrong expected-output FAIL, a visible failure summary, `Failure details` disclosure, `Use observed`, repaired PASS, stale expected-output edit detection after PASS, and Export E0 trust boundary at `1366x768` and `1440x900`.
 
-`ide:gate:wrong-build-diagnosis-repair-flow` guards the wrong-circuit repair path. It requires a scratch XOR-intended design built incorrectly with OR, correct expected outputs, Compare FAIL, design-repair lane visibility, Inspect Design context with expected/observed/input vector and direct OR driver facts, Focus driver, OR -> XOR repair through the Design inspector, stale Verify rerun, repaired Compare PASS, and Export E0 trust boundary.
+`ide:gate:wrong-build-diagnosis-repair-flow` guards the wrong-circuit repair path. It requires a scratch XOR-intended design built incorrectly with OR, correct expected outputs, Compare FAIL, visible high-level Design recovery, disclosed design-repair lane detail, Inspect Design context with expected/observed/input vector and direct OR driver facts, Focus driver, OR -> XOR repair through the Design inspector, stale Verify rerun, repaired Compare PASS, and Export E0 trust boundary.
 
 `ide:gate:complex-build-signal-trace-debugging` guards the next wrong-build debugging layer. It requires a scratch two-stage full-adder-style sum path built with a wrong final `OR`, correct expected outputs, Compare FAIL, Design handoff, direct driver facts, bounded upstream trace rows, per-node Focus actions, no root overflow, and console/page cleanliness at `1366x768` and `1440x900`.
 
-`ide:gate:testbench-editor-and-export-confidence-flow` guards the current testbench repair and Export confidence path. It requires a nontrivial starter circuit, multiple authored test cases, expected-output labels, Observe evidence, intentional multi-output expected failures, visible failed-row repair scope, single-cell repair, row/all-failed repair, repaired Compare PASS, stale testbench copy after post-PASS edits, Export stale/draft confidence, final current Compare PASS, Export current browser-E0 confidence, and no E1/E2/E3 overclaim.
+`ide:gate:testbench-editor-and-export-confidence-flow` guards the current testbench repair and Export confidence path. It requires a nontrivial starter circuit, multiple authored test cases, expected-output labels, Observe evidence, intentional multi-output expected failures, a visible failure summary, disclosed failed-row repair scope, single-cell repair, row/all-failed repair, repaired Compare PASS, stale testbench copy after post-PASS edits, Export stale/draft confidence, final current Compare PASS, Export current browser-E0 confidence, and no E1/E2/E3 overclaim.
 
 `ide:gate:custom-clock-sequential-truth` guards the current clock policy boundary: `CLK100MHZ` board clocks auto-run, manual switch/button clocks stay manual-pulses, imported sim-only Clock components stay import-only/manual, and a non-starter board-clock sequential fixture reaches Verify/Export browser E0 proof.
 

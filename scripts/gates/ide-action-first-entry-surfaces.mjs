@@ -24,25 +24,30 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
   for (const viewport of CLASSROOM_VIEWPORTS) {
     try {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await openLogicGatesStarter(page, baseUrl, `action-first-entry-surfaces-${viewport.label}`);
+      await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=action-first-entry-surfaces-${viewport.label}`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
       await assertBuildHash(page, viewport.label);
+      await assertVisibleRect(page, ['[data-testid="ide-project-start-hub"]'], `${viewport.label}/Project start surface`, {
+        maxTop: viewport.height === 768 ? 180 : 200,
+        minWidth: 480,
+        minHeight: 140,
+      });
+      await assertVisibleRect(page, ['[data-testid="ide-project-start-a-lab-primary"]'], `${viewport.label}/Project Start a Lab`, {
+        maxTop: viewport.height === 768 ? 340 : 380,
+        minWidth: 120,
+        minHeight: 36,
+      });
+      await assertVisibleRect(page, ['[data-testid="ide-project-import-primary"]'], `${viewport.label}/Project Import Project`, {
+        maxTop: viewport.height === 768 ? 380 : 420,
+        minWidth: 120,
+        minHeight: 36,
+      });
+      const projectPrimaryCount = await page.locator('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]:visible').count();
+      assert(projectPrimaryCount === 1, `${viewport.label}: Project must expose exactly one primary start action, saw ${projectPrimaryCount}`);
 
-      await openMode(page, baseUrl, 'project', `action-first-entry-surfaces-${viewport.label}`);
-      await assertVisibleRect(page, ['[data-testid="ide-project-command-action-verify"]', '[data-testid="ide-project-path-continue"]'], `${viewport.label}/Project current action`, {
-        maxTop: viewport.height === 768 ? 520 : 570,
-        minWidth: 180,
-        minHeight: 48,
-      });
-      await assertVisibleRect(page, ['[data-testid="ide-project-path-build-fresh"]', '[data-testid="ide-project-build-fresh-primary"]'], `${viewport.label}/Project Build Fresh`, {
-        maxTop: viewport.height === 768 ? 640 : 690,
-        minWidth: 180,
-        minHeight: 48,
-      });
-      await assertVisibleRect(page, ['[data-testid="ide-project-path-import-recover"]'], `${viewport.label}/Project Import Recover`, {
-        maxTop: viewport.height === 768 ? 640 : 690,
-        minWidth: 180,
-        minHeight: 48,
-      });
+      await openLogicGatesStarter(page, baseUrl, `action-first-entry-surfaces-${viewport.label}-loaded`);
 
       await openMode(page, baseUrl, 'verify', `action-first-entry-surfaces-${viewport.label}`);
       await runComparePass(page);
@@ -52,8 +57,14 @@ await runIdeGate('IDE action-first entry surfaces satisfied', async ({ page, bas
         minWidth: 140,
         minHeight: 36,
       });
-      await assertVisibleRect(page, ['[data-testid="ide-export-file-top-vhd"]', '[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export artifact preview`, {
-        maxTop: viewport.height === 768 ? 430 : 470,
+      const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
+      await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
+      if ((await packageFiles.getAttribute('open')) === null) {
+        await packageFiles.locator('summary').click();
+      }
+      await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+      await assertVisibleRect(page, ['[data-testid="ide-export-file-top-vhd"]', '[data-testid="ide-export-handoff-artifact-top-vhd"]'], `${viewport.label}/Export disclosed artifact preview`, {
+        maxTop: viewport.height === 768 ? 720 : 850,
         minWidth: 120,
         minHeight: 42,
       });

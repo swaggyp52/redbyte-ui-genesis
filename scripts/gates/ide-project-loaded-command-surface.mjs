@@ -25,52 +25,40 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
       await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
 
-      const spineRect = await assertVisibleRect(
-        page,
-        ['[data-testid="ide-product-spine-project"]', '[data-testid="ide-next-step-guide-project"]'],
-        `${viewport.label}/Project product spine`,
-        {
-          maxTop: 120,
-          minWidth: Math.round(viewport.width * 0.72),
-          minHeight: 90,
-        }
+      assert(
+        (await page.locator('[data-testid^="ide-product-spine-"]:visible').count()) === 0,
+        `${viewport.label}: retired duplicate product spine must stay absent`,
       );
       const commandRect = await assertVisibleRect(page, ['[data-testid="ide-project-command-board-v1"]'], `${viewport.label}/Project command board`, {
-        maxTop: viewport.height === 768 ? 300 : 300,
-        minWidth: Math.round(viewport.width * 0.72),
-        minHeight: 210,
+        maxTop: 240,
+        minWidth: Math.round(viewport.width * 0.52),
+        minHeight: 88,
       });
       assert(
-        commandRect.top > spineRect.top,
-        `${viewport.label}: Project command board must sit below the product spine, got spine=${spineRect.top}, command=${commandRect.top}`
+        commandRect.top >= 56,
+        `${viewport.label}: Project command board must sit below the compact top bar, got top=${commandRect.top}`
       );
-      await assertVisibleRect(page, ['[data-testid="ide-project-command-mode-actions"]'], `${viewport.label}/Project mode actions`, {
-        maxTop: viewport.height === 768 ? 510 : 520,
-        minWidth: Math.round(viewport.width * 0.50),
-        minHeight: viewport.height === 768 ? 40 : 48,
-      });
-      if (viewport.height > 820) {
-        await assertVisibleRect(page, ['[data-testid="ide-project-evidence-strip-v1"]'], `${viewport.label}/Project evidence strip`, {
-          maxTop: 570,
-          minWidth: Math.round(viewport.width * 0.60),
-          minHeight: 30,
-        });
-      }
+      assert(
+        (await page.locator('[data-testid="ide-project-command-strip-primary-cta"]:visible').count()) === 1,
+        `${viewport.label}: loaded Project must expose exactly one body primary action`,
+      );
+      const stageButtons = page.locator('[data-testid="mode-button-project"], [data-testid="mode-button-design"], [data-testid="mode-button-verify"], [data-testid="mode-button-hardware"], [data-testid="mode-button-export"]');
+      assert((await stageButtons.count()) === 5, `${viewport.label}: one five-stage rail must own downstream navigation`);
+      assert(await visible(page.locator('[data-testid="mode-button-import"]').first()), `${viewport.label}: Import utility must remain visible`);
       await assertCommandConsoleNotCards(page, viewport);
 
       const commandText = await normalizedText(page.locator('[data-testid="ide-project-command-board-v1"]').first());
       assert(/current action|next action|continue/i.test(commandText), `${viewport.label}: command board must name the current action`);
       assert(/Design/i.test(commandText), `${viewport.label}: command board must include Design action`);
       assert(/Verify/i.test(commandText), `${viewport.label}: command board must include Verify action`);
-      assert(/Map Pins|Mapping/i.test(commandText), `${viewport.label}: command board must include Map Pins action`);
-      assert(/Export/i.test(commandText), `${viewport.label}: command board must include Export action`);
+      assert(/Continue Design/i.test(commandText), `${viewport.label}: command board must include the dominant Design continuation`);
 
       const requiredActions = [
         ['[data-testid="ide-project-command-action-design"]', 'design'],
         ['[data-testid="ide-project-command-action-verify"]', 'verify'],
-        ['[data-testid="ide-project-command-action-map-pins"]', 'hardware'],
-        ['[data-testid="ide-project-command-action-export"]', 'export'],
-        ['[data-testid="ide-project-path-import-recover"]', 'import'],
+        ['[data-testid="mode-button-hardware"]', 'hardware'],
+        ['[data-testid="mode-button-export"]', 'export'],
+        ['[data-testid="mode-button-import"]', 'import'],
       ];
       for (const [selector, targetMode] of requiredActions) {
         const action = page.locator(selector).first();

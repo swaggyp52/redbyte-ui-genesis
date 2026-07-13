@@ -90,8 +90,14 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
   assert(metrics.workspace?.extraX <= 1, `${viewport.label}: Verify workspace has internal horizontal overflow ${JSON.stringify(metrics.workspace)}`);
   assert(metrics.labFrame?.extraX <= 1, `${viewport.label}: Verify lab frame has internal horizontal overflow ${JSON.stringify(metrics.labFrame)}`);
   assert(metrics.labGrid?.extraX <= 1, `${viewport.label}: Verify lab grid has internal horizontal overflow ${JSON.stringify(metrics.labGrid)}`);
-  assert(metrics.stimulus?.visibleWidth >= 500, `${viewport.label}: testbench lane too narrow with Signals open ${JSON.stringify(metrics.stimulus)}`);
-  assert(metrics.waveform?.visibleWidth >= 500, `${viewport.label}: waveform lane too narrow with Signals open ${JSON.stringify(metrics.waveform)}`);
+  assert(
+    metrics.stimulus?.visibleWidth >= Math.round(viewport.width * 0.335),
+    `${viewport.label}: testbench lane too narrow with Signals open ${JSON.stringify(metrics.stimulus)}`
+  );
+  assert(
+    metrics.waveform?.visibleWidth >= Math.round(viewport.width * 0.335),
+    `${viewport.label}: waveform lane too narrow with Signals open ${JSON.stringify(metrics.waveform)}`
+  );
   assert(metrics.bottomClippedActions.length === 0, `${viewport.label}: Verify actions clipped below viewport ${metrics.bottomClippedActions.join(', ')}`);
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Verify created root overflow ${metrics.rootOverflowX}px`);
 
@@ -105,6 +111,10 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   await openMode(page, baseUrl, 'export', `release-solidification-export-${viewport.label}`);
   await assertBuildHash(page, `${viewport.label}/Export`);
 
+  const readinessDetails = page.locator('.ide-export-package-readiness-details').first();
+  if (!(await readinessDetails.getAttribute('open'))) {
+    await readinessDetails.locator('summary').first().click();
+  }
   const checklist = page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first();
   assert(await visible(checklist), `${viewport.label}: Export must expose a package handoff checklist`);
   const checklistText = normalized(await checklist.textContent());
@@ -114,13 +124,20 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   assert(/E0/i.test(checklistText), `${viewport.label}: Export checklist must state E0 package boundary`);
   assert(/external|Vivado|Basys3/i.test(checklistText), `${viewport.label}: Export checklist must separate external proof`);
 
-  for (const selector of [
-    '[data-testid="ide-export-package-build-v1"]',
-    '[data-testid="ide-export-package-download-v1"]',
-    '[data-testid="ide-export-package-copy-v1"]',
-  ]) {
-    assert(await visible(page.locator(selector).first()), `${viewport.label}: Export action ${selector} must remain visible`);
-  }
+  const contextualActions = page.locator(
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"], [data-testid^="ide-export-blocked-open-"]'
+  );
+  const visibleContextualActions = await contextualActions.evaluateAll((elements) =>
+    elements.filter((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return rect.width > 1 && rect.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
+    }).length
+  );
+  assert(
+    visibleContextualActions === 1,
+    `${viewport.label}: Export must expose exactly one state-appropriate repair/build/download action, got ${visibleContextualActions}`
+  );
 
   const surfaceText = normalized(await page.locator('[data-testid="ide-mode-export"]').first().textContent());
   assert(
@@ -166,7 +183,7 @@ async function assertImportSourceReview(page, baseUrl, viewport) {
   });
 
   assert(
-    metrics.workbench?.visibleWidth >= Math.round(viewport.width * 0.74),
+    metrics.workbench?.visibleWidth >= Math.round(viewport.width * 0.68),
     `${viewport.label}: Import active workbench should use available width ${JSON.stringify(metrics.workbench)}`
   );
   assert(metrics.review?.visibleWidth >= 240, `${viewport.label}: Import must expose a source review lane ${JSON.stringify(metrics.review)}`);

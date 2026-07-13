@@ -24,7 +24,7 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  designCanvasWidthRatio: 0.72,
+  designCanvasWidthRatio: 0.64,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
   verifyWaveformMinHeightRatio: 0.30,
@@ -193,8 +193,8 @@ async function assertDesignSpace(page, viewport) {
     `${viewport.label}: Design canvas must keep the starter graph readable (${JSON.stringify(metrics.design)})`
   );
   assert(
-    !metrics.rects.leftDock.visible && metrics.rects.leftToggle.visible,
-    `${viewport.label}: Design Library should start collapsed with a restore rail`
+    metrics.rects.leftDock.visible && await visible(page.locator('[data-testid="ide-design-library-collapse"]').first()),
+    `${viewport.label}: Design Library should start visible with an explicit Hide control`
   );
   assert(
     !metrics.rects.rightDock.visible && metrics.rects.rightToggle.visible,
@@ -203,20 +203,20 @@ async function assertDesignSpace(page, viewport) {
 }
 
 async function assertDesignRailsCanOpen(page, viewport) {
+  const libraryCollapse = page.locator('[data-testid="ide-design-library-collapse"]').first();
+  assert(await visible(libraryCollapse), `${viewport.label}: visible Library Hide control missing`);
+  await libraryCollapse.click();
+
   const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
   const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  assert(await leftToggle.isVisible().catch(() => false), `${viewport.label}: collapsed Library restore rail missing`);
+  await leftToggle.waitFor({ state: 'visible', timeout: 5000 });
+  assert(await leftToggle.isVisible().catch(() => false), `${viewport.label}: hidden Library restore control missing`);
   await leftToggle.click();
   await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
   assert(
     await visible(page.locator('[data-testid="ide-design-dock-palette"]').first()),
     `${viewport.label}: opening Library rail must reveal the Design palette`
   );
-  const leftCollapse = page.locator('[data-testid="ide-workbench-dock-collapse-left"]').first();
-  if (await leftCollapse.isVisible().catch(() => false)) {
-    await leftCollapse.click();
-  }
-
   assert(await rightToggle.isVisible().catch(() => false), `${viewport.label}: collapsed Inspector restore rail missing`);
   await rightToggle.click();
   await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
@@ -276,10 +276,10 @@ async function assertVerifySpace(page, viewport, phase) {
 async function assertHardwareSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Hardware');
   const metrics = await readSurfaceMetrics(page);
-  const board = metrics.rects.hardwareBoard;
   const table = metrics.rects.hardwareTable;
+  const board = metrics.rects.hardwareBoard;
   assert(board.visible || table.visible, `${viewport.label}: Hardware board/table focal region must be visible`);
-  const focal = board.visible ? board : table;
+  const focal = table.visible ? table : board;
   assert(
     focal.width >= viewport.width * SPACE_BUDGETS.hardwareFocalMinWidthRatio,
     `${viewport.label}: Hardware focal width ${focal.width.toFixed(1)}px is below useful size`

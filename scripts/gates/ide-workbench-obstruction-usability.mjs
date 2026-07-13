@@ -40,6 +40,7 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
     await checkSurface(failures, page, viewport, 'design', async () => {
       await openMode(page, baseUrl, viewport, 'design');
       await assertNoHorizontalOverflow(page, viewport, 'design');
+      await collapseDesignLibraryForRailProof(page, viewport);
       await assertCollapsedRail(page, 'left', { labelPattern: /\b(lib|library)\b/i });
       await assertCollapsedRail(page, 'right', { labelPattern: /\b(info|inspector)\b/i });
       await assertWorkObject(page, viewport, 'design canvas', ['[data-testid="ide-design-live-canvas"]'], {
@@ -183,7 +184,7 @@ async function assertHardwareStartsAsWorkbench(page, viewport) {
   });
   assert(
     !state.leftDockVisible,
-    `${viewport.label}/hardware: Map Pins support dock is open on entry; it must start collapsed so the board is the primary work object`
+    `${viewport.label}/hardware: Map Pins support dock is open on entry; it must start collapsed so the mapping table remains the primary work object`
   );
 }
 
@@ -197,7 +198,7 @@ async function assertHardwareWorkObject(page, viewport, stateLabel) {
   ]);
   const isOpenSupportState = /open/i.test(stateLabel);
   const minWorkspaceWidth = isOpenSupportState
-    ? Math.min(900, viewport.width * 0.66)
+    ? Math.min(880, viewport.width * 0.65)
     : Math.min(1000, viewport.width * 0.72);
 
   assert(workspace.visible, `hardware/${stateLabel}: board workspace is not visible`);
@@ -219,10 +220,22 @@ async function assertHardwareWorkObject(page, viewport, stateLabel) {
     table.visibleWidth >= 300 && table.visibleHeight >= 220,
     `hardware/${stateLabel}: mapping table is not meaningfully visible (${table.visibleWidth}x${table.visibleHeight})`
   );
+  const minBoardWidth = isOpenSupportState
+    ? Math.min(320, viewport.width * 0.23)
+    : Math.min(400, viewport.width * 0.28);
   assert(
-    board.visibleWidth >= Math.min(520, viewport.width * 0.36) && board.visibleHeight >= 250,
-    `hardware/${stateLabel}: board graphic is not meaningfully visible (${board.visibleWidth}x${board.visibleHeight})`
+    board.visibleWidth >= minBoardWidth && board.visibleHeight >= 250,
+    `hardware/${stateLabel}: secondary board reference is not meaningfully visible (${board.visibleWidth}x${board.visibleHeight})`
   );
+}
+
+async function collapseDesignLibraryForRailProof(page, viewport) {
+  const library = page.locator('[data-testid="ide-design-dock-palette"]').first();
+  assert(await library.isVisible().catch(() => false), `${viewport.label}/design: Library must be open on entry`);
+  const hide = page.locator('[data-testid="ide-design-library-collapse"]').first();
+  assert(await hide.isVisible().catch(() => false), `${viewport.label}/design: open Library must expose Hide`);
+  await hide.click();
+  await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function assertCollapsedRail(page, side, options = {}) {

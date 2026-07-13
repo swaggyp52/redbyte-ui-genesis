@@ -74,6 +74,7 @@
         "ide:gate:design-wiring-simplification-flow": "node ./scripts/gates/ide-design-wiring-simplification-flow.mjs",
         "ide:gate:trust-clarity-flow": "node ./scripts/gates/ide-trust-clarity-flow.mjs",
         "ide:gate:professional-classroom-ui-flow": "node ./scripts/gates/ide-professional-classroom-ui-flow.mjs",
+        "ide:gate:professional-rebrand-flow": "node ./scripts/gates/ide-professional-rebrand-flow.mjs",
         "ide:gate:professional-ui-burndown-flow": "node ./scripts/gates/ide-professional-ui-burndown-flow.mjs",
         "ide:gate:professional-ui-burndown-v2-flow": "node ./scripts/gates/ide-professional-ui-burndown-v2-flow.mjs",
         "ide:gate:live-eyes-visual-polish-flow": "node ./scripts/gates/ide-live-eyes-visual-polish-flow.mjs",

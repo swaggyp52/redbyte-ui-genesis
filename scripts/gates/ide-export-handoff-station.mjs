@@ -45,23 +45,20 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
   await openExport(page);
   await assertStationBasics(page, 'draft export');
 
-  const draftStation = page.locator('[data-testid="ide-export-handoff-station"]').first();
+  const draftStation = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
   const draftText = await normalizedText(draftStation);
+  const draftState = await draftStation.getAttribute('data-export-package-state');
   assert(
-    /NEEDS REVIEW|DRAFT/i.test(draftText),
-    `draft station must clearly read as draft/needs review, got "${draftText}"`
-  );
-  const draftPackageStatus = await normalizedText(page.locator('[data-testid="ide-export-package-handoff-status"]'));
-  const draftTrustBanner = await normalizedText(page.locator('[data-testid="ide-export-trust-banner"]'));
-  assert(
-    !/PACKAGE READY/i.test(draftPackageStatus) &&
-      !/\bREADY\b/i.test(draftTrustBanner) &&
-      !/trusted package available/i.test(draftText),
-    'draft station must not look like a trusted/ready export'
+    draftState === 'draft' && /NEEDS REVIEW|DRAFT/i.test(draftText),
+    `draft readiness hero must clearly read as draft/needs review, got state=${draftState} text="${draftText}"`
   );
   assert(
-    /Open Verify|Verify|Compare|repair|review/i.test(await normalizedText(page.locator('[data-testid="ide-export-rebuild-btn"]'))),
-    'draft station primary path must send the student toward repair/review evidence'
+    !/trusted package available|Browser-E0 package ready/i.test(draftText),
+    'draft readiness hero must not look like a trusted/ready export'
+  );
+  assert(
+    /Open Verify|Verify|Compare|repair|review/i.test(await normalizedText(currentExportAction(page))),
+    'draft readiness primary path must send the student toward repair/review evidence'
   );
 
   await page.locator('[data-testid="mode-button-verify"]').click();
@@ -76,10 +73,11 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
   await openExport(page);
   await assertStationBasics(page, 'ready-to-build export');
 
-  const readyToBuildStatus = await normalizedText(page.locator('[data-testid="ide-export-package-handoff-status"]'));
+  const readyInspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+  const readyToBuildStatus = await readyInspector.getAttribute('data-export-package-state');
   assert(
-    /READY TO BUILD/i.test(readyToBuildStatus),
-    `verified export should begin as READY TO BUILD, got "${readyToBuildStatus}"`
+    readyToBuildStatus === 'draft',
+    `verified export should remain a buildable draft before download, got "${readyToBuildStatus}"`
   );
   assertOneVisiblePrimary(page, /Build Current Bundle|Rebuild Current Bundle|Download/i, 'ready-to-build export');
 
@@ -93,17 +91,17 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
 
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
-    page.locator('[data-testid="ide-export-rebuild-btn"]').first().click(),
+    currentExportAction(page).click(),
   ]);
   const downloadFailure = await download.failure();
   assert(!downloadFailure, `current export package download failed: ${downloadFailure}`);
   await page.waitForSelector('[data-testid="ide-export-download-success"]', { timeout: 10000 });
 
   await assertStationBasics(page, 'trusted export');
-  const trustedStatus = await normalizedText(page.locator('[data-testid="ide-export-package-handoff-status"]'));
-  assert(/PACKAGE READY|\bREADY\b/i.test(trustedStatus), `trusted handoff station must show READY, got "${trustedStatus}"`);
+  const trustedStatus = await page.locator('[data-testid="ide-export-package-inspector-v1"]').first().getAttribute('data-export-package-state');
+  assert(trustedStatus === 'ready', `trusted readiness hero must show ready, got "${trustedStatus}"`);
   assertOneVisiblePrimary(page, /Download|Re-download|Build|Bundle|Project ZIP/i, 'trusted export');
-  const trustedPrimary = await normalizedText(page.locator('[data-testid="ide-export-rebuild-btn"]'));
+  const trustedPrimary = await normalizedText(currentExportAction(page));
   assert(
     !/Open Program Handoff/i.test(trustedPrimary),
     'trusted Export station primary action must remain build/download, not hardware program handoff'
@@ -115,30 +113,28 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
 async function openExport(page) {
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { state: 'attached', timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-handoff-station"]', { state: 'visible', timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { state: 'visible', timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-package-inspector-v1"]', { state: 'visible', timeout: 10000 });
 }
 
 async function assertStationBasics(page, label) {
-  const station = page.locator('[data-testid="ide-export-handoff-station"]');
-  assert((await station.count()) === 1, `${label} must render exactly one handoff station`);
-  assert(await visible(station), `${label} handoff station must be visible`);
-  await assertFitsViewport(page, station, `${label} handoff station`);
+  const station = page.locator('[data-testid="ide-export-package-inspector-v1"]');
+  assert((await station.count()) === 1, `${label} must render exactly one readiness authority`);
+  assert(await visible(station), `${label} readiness authority must be visible`);
+  await openGeneratedFiles(page, label);
+  await assertFitsViewport(page, station, `${label} readiness authority`);
 
-  const packageHandoff = page.locator('[data-testid="ide-export-package-handoff"]').first();
-  assert(await visible(packageHandoff), `${label} package handoff must be visible without opening details`);
+  const packageContents = page.locator('[data-testid="ide-export-package-contents"]').first();
+  assert(await visible(packageContents), `${label} package contents summary must be visible`);
+  const e0Boundary = page.locator('[data-testid="ide-export-e0-boundary-summary"]').first();
+  assert(await visible(e0Boundary), `${label} Browser E0 boundary must be visible`);
 
-  const trustBanner = page.locator('[data-testid="ide-export-trust-banner"]').first();
-  assert(await visible(trustBanner), `${label} trust banner must be visible in the station`);
-
-  const primary = page.locator('[data-testid="ide-export-rebuild-btn"]').first();
+  const primary = currentExportAction(page);
   assert(await visible(primary), `${label} primary action must be visible`);
 }
 
 async function assertOneVisiblePrimary(page, expectedLabel, label) {
-  const primaryActions = page.locator(
-    '[data-testid="ide-export-handoff-station"] [data-testid="ide-export-primary-handoff-cta"] button'
-  );
+  const primaryActions = page.locator('[data-testid="ide-export-primary-actions"] button');
   assert((await primaryActions.count()) === 1, `${label} must expose exactly one primary handoff action`);
   const primary = primaryActions.first();
   assert(await visible(primary), `${label} primary handoff action must be visible`);
@@ -150,7 +146,8 @@ async function assertOneVisiblePrimary(page, expectedLabel, label) {
 }
 
 async function assertArtifactWorkspace(page) {
-  const artifactWorkspace = page.locator('[data-testid="ide-export-artifact-preview"]').first();
+  await openGeneratedFiles(page, 'artifact workspace');
+  const artifactWorkspace = page.locator('[data-testid="ide-export-file-browser-v1"]').first();
   await artifactWorkspace.scrollIntoViewIfNeeded();
   assert(await visible(artifactWorkspace), 'artifact workspace must be visible');
   const artifactText = (await normalizedText(artifactWorkspace)).toLowerCase();
@@ -158,8 +155,8 @@ async function assertArtifactWorkspace(page) {
     assert(artifactText.includes(fileName.toLowerCase()), `artifact workspace must include ${fileName}`);
   }
   assert(
-    await visible(page.locator('[data-testid="ide-export-generated-previews"]').first()),
-    'generated artifact preview must be open/discoverable'
+    await visible(page.locator('[data-testid="ide-export-selected-preview-v1"]').first()),
+    'selected generated artifact preview must be visible after disclosure'
   );
   assert(
     await visible(page.locator('[data-testid="ide-export-preview-code"]').first()),
@@ -179,20 +176,23 @@ async function assertReadmeBoundary(page) {
 }
 
 async function assertMappingSummary(page) {
+  await openDetailsContaining(page, 'ide-export-handoff-checklist-v1');
   const compactMapping = await normalizedText(
-    page.locator('[data-testid="ide-export-handoff-summary-mapping"] .ide-export-handoff-summary-value')
+    page.locator('[data-testid="ide-export-handoff-checklist-v1"] > div').filter({ hasText: 'Pin mapping' }).first()
   );
-  const factMapping = await normalizedText(page.locator('[data-testid="ide-export-handoff-mapping"]'));
-  assert(compactMapping.length > 0, 'handoff station must include a mapping summary');
-  assert(factMapping.length > 0, 'handoff facts must include mapping completeness');
+  await openDetailsElement(page, 'ide-export-confidence-station', 'readiness details');
+  const factMapping = await normalizedText(page.locator('[data-testid="ide-export-confidence-mapping"]'));
+  assert(compactMapping.length > 0, 'readiness checklist must include a mapping summary');
+  assert(factMapping.length > 0, 'readiness details must include mapping completeness');
   assert(
-    compactMapping === factMapping,
-    `mapping summary must agree across station rows, got "${compactMapping}" vs "${factMapping}"`
+    mappedCount(compactMapping) === mappedCount(factMapping),
+    `mapping summary must agree across readiness views, got "${compactMapping}" vs "${factMapping}"`
   );
 }
 
 async function assertEvidenceBoundary(page) {
   const boundary = page.locator('[data-testid="ide-export-evidence-boundary"]').first();
+  await openDetailsElement(page, 'ide-export-evidence-boundary', 'external evidence boundary');
   await boundary.scrollIntoViewIfNeeded();
   assert(await visible(boundary), 'evidence boundary section must be visible');
   const boundaryText = await normalizedText(boundary);
@@ -207,11 +207,12 @@ async function assertEvidenceBoundary(page) {
 }
 
 async function assertVivadoNextSteps(page) {
-  const steps = page.locator('[data-testid="ide-export-vivado-ready"]').first();
+  await selectArtifact(page, 'README.txt');
+  const steps = page.locator('[data-testid="ide-export-preview-code"]').first();
   await steps.scrollIntoViewIfNeeded();
-  assert(await visible(steps), 'Vivado next steps must be visible');
+  assert(await visible(steps), 'README Vivado next steps must be visible');
   const stepsText = await normalizedText(steps);
-  assert(/Open in Vivado/i.test(stepsText), 'Vivado next steps must be labeled as downstream Vivado work');
+  assert(/Vivado/i.test(stepsText), 'README next steps must be labeled as downstream Vivado work');
   assert(/synthesis/i.test(stepsText), 'Vivado next steps must mention synthesis');
   assert(/implementation/i.test(stepsText), 'Vivado next steps must mention implementation');
   assert(/bitstream/i.test(stepsText), 'Vivado next steps must mention bitstream');
@@ -219,8 +220,9 @@ async function assertVivadoNextSteps(page) {
 }
 
 async function selectArtifact(page, artifactPath) {
+  await openGeneratedFiles(page, `preview ${artifactPath}`);
   const tab = page
-    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .locator('button[data-testid^="ide-export-file-"]')
     .filter({ hasText: artifactPath })
     .first();
   assert(await tab.isVisible().catch(() => false), `${artifactPath} artifact tab must be visible`);
@@ -247,10 +249,9 @@ async function assertNoRootHorizontalOverflow(page) {
 
 async function assertNoKeyRegionOverlap(page) {
   const selectors = [
-    ['station', '[data-testid="ide-export-handoff-station"]'],
+    ['files', '[data-testid="ide-export-file-browser-v1"]'],
+    ['preview', '[data-testid="ide-export-selected-preview-v1"]'],
     ['evidence', '[data-testid="ide-export-evidence-boundary"]'],
-    ['artifacts', '[data-testid="ide-export-artifact-preview"]'],
-    ['vivado', '[data-testid="ide-export-vivado-ready"]'],
   ];
   const boxes = [];
   for (const [label, selector] of selectors) {
@@ -281,6 +282,47 @@ async function assertFitsViewport(page, locator, label) {
   assert(viewport, `${label} gate requires a viewport`);
   assert(box.x >= -1, `${label} must not overflow left edge: x=${box.x}`);
   assert(box.x + box.width <= viewport.width + 1, `${label} must not overflow right edge`);
+}
+
+function currentExportAction(page) {
+  return page.locator(
+    '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]'
+  ).first();
+}
+
+async function openGeneratedFiles(page, label) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator(':scope > summary').first().click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
+async function openDetailsContaining(page, testId) {
+  const details = page.locator(`details:has([data-testid="${testId}"])`).first();
+  assert((await details.count()) > 0, `details containing ${testId} must exist`);
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator(':scope > summary').first().click();
+  }
+  assert((await details.getAttribute('open')) !== null, `details containing ${testId} must expand`);
+  await page.locator(`[data-testid="${testId}"]`).first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
+async function openDetailsElement(page, testId, label) {
+  const details = page.locator(`[data-testid="${testId}"]`).first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator(':scope > summary').first().click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label} must expand`);
+}
+
+function mappedCount(value) {
+  const match = String(value).match(/(\d+)\s*(?:\/|of)\s*\d+|(\d+)\s+mapped/i);
+  assert(Boolean(match), `mapping summary must expose a count, got "${value}"`);
+  return Number(match[1] ?? match[2]);
 }
 
 function rectOverlapArea(a, b) {

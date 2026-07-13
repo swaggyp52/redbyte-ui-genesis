@@ -333,6 +333,12 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
     aliasNodeId,
     { timeout: 1000 }
   );
+  if (!(await page.locator('[data-testid="ide-design-tool-delete"]').first().isVisible().catch(() => false))) {
+    const more = page.locator('[data-testid="ide-design-tools-toggle"]').first();
+    assert(await more.isVisible().catch(() => false), `${alias} delete must be reachable from More tools`);
+    await more.click();
+    await page.locator('[data-testid="ide-design-toolbar-expanded"]').first().waitFor({ state: 'visible', timeout: 5000 });
+  }
   await page.waitForSelector('[data-testid="ide-design-tool-delete"]:not([disabled])', {
     timeout: 1000,
   });

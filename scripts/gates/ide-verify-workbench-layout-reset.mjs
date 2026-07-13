@@ -67,6 +67,7 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected edit');
   status = await runAndReadStatus(page);
   assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
+  await openFailureDetails(page, 'edited expected output failure');
   await page.waitForSelector('[data-testid="ide-verify-results-summary-open-fail"]', { timeout: 10000 });
   await capture(page, '03-compare-fail');
 
@@ -112,6 +113,15 @@ async function readLayoutState(page) {
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
     };
   });
+}
+
+async function openFailureDetails(page, label) {
+  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function runAndReadStatus(page) {

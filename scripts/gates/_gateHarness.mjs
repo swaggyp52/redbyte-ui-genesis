@@ -48,6 +48,9 @@ export async function loadStarterProject(page, options = {}) {
 async function loadAnyVisibleStarter(page, options = {}) {
   const { preferredLabStarterTestId } = options;
 
+  await openStarterCatalogIfPresent(page);
+  await openExamplesBrowserIfPresent(page);
+
   const starterSelectors = [
     preferredLabStarterTestId ? `[data-testid="${preferredLabStarterTestId}"]` : null,
     '[data-testid="ide-project-load-start-signal-tour"]',
@@ -77,6 +80,7 @@ async function loadAnyVisibleStarter(page, options = {}) {
 }
 
 async function loadExactExample(page, exampleId) {
+  await openStarterCatalogIfPresent(page);
   await openExamplesBrowserIfPresent(page);
 
   const selectors = [
@@ -100,6 +104,38 @@ async function loadExactExample(page, exampleId) {
   }
 
   return false;
+}
+
+async function openStarterCatalogIfPresent(page) {
+  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  const loadedExamples = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  if (
+    (await changeProject.isVisible().catch(() => false)) &&
+    !(await loadedExamples.count().catch(() => 0))
+  ) {
+    await clickLocatorElement(changeProject);
+    const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
+    if (await courseStarter.isVisible().catch(() => false)) {
+      await clickLocatorElement(courseStarter);
+    }
+  }
+
+  const catalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+  if (!(await catalog.count().catch(() => 0))) return;
+
+  const isOpen = await catalog.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
+  if (isOpen) return;
+
+  const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
+  if (await openStarter.isVisible().catch(() => false)) {
+    await clickLocatorElement(openStarter);
+    return;
+  }
+
+  const summary = catalog.locator('summary').first();
+  if (await summary.isVisible().catch(() => false)) {
+    await clickLocatorElement(summary);
+  }
 }
 
 async function openExamplesBrowserIfPresent(page) {

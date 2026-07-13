@@ -71,6 +71,8 @@ async function runWrongExpectedFlow(page, baseUrl, viewportLabel) {
   const outputId = cases[3].outputId;
   await setExpectedCell(page, outputId, 3, 1);
   await runCompare(page, 'wrong expected output', 'fail');
+  await assertVisibleFailureAuthority(page, `${viewportLabel}/A`);
+  await openFailureDetails(page, `${viewportLabel}/A`);
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const panelText = await text(panel);
   assert(/Use observed only when the circuit behavior is correct/i.test(panelText), `${viewportLabel}/A must explain Use observed boundary, got "${panelText}"`);
@@ -98,6 +100,8 @@ async function runWrongCircuitFlow(page, baseUrl, viewportLabel) {
   await authorInputCases(page, cases);
   await authorExpectedCases(page, cases);
   await runCompare(page, 'wrong OR circuit', 'fail');
+  await assertVisibleFailureAuthority(page, `${viewportLabel}/B`);
+  await openFailureDetails(page, `${viewportLabel}/B`);
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
   const panelText = await text(panel);
   const category = await panel.getAttribute('data-category');
@@ -141,6 +145,7 @@ async function runDisconnectedOutputFlow(page, baseUrl, viewportLabel) {
   await authorExpectedCases(page, cases);
   await runCompare(page, 'disconnected output', 'fail');
 
+  await openFailureDetails(page, `${viewportLabel}/C`);
   await page.waitForSelector('[data-testid="ide-verify-structural-recovery-panel"]', { timeout: 10000 });
   const structuralText = await text(page.locator('[data-testid="ide-verify-structural-recovery-panel"]').first());
   assert(/OUT/i.test(structuralText), `${viewportLabel}/C must name missing output OUT, got "${structuralText}"`);
@@ -153,6 +158,25 @@ async function runDisconnectedOutputFlow(page, baseUrl, viewportLabel) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   await capture(page, `${viewportLabel}-c-03-open-design-to-reconnect-output.png`);
   return { path: 'C disconnected output', structuralText };
+}
+
+async function assertVisibleFailureAuthority(page, label) {
+  const summary = page.getByTestId('ide-verify-results-summary').first();
+  await summary.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await summary.getAttribute('data-kind')) === 'fail', `${label}: visible result authority must be FAIL`);
+  const guidance = await text(page.getByTestId('ide-verify-results-guidance').first());
+  assert(/Expected value is incorrect/i.test(guidance), `${label}: visible FAIL guidance must mention expected values`);
+  assert(/Circuit logic is incorrect/i.test(guidance), `${label}: visible FAIL guidance must mention circuit logic`);
+  assert(/Output is disconnected/i.test(guidance), `${label}: visible FAIL guidance must mention disconnected outputs`);
+}
+
+async function openFailureDetails(page, label) {
+  const details = page.getByTestId('ide-verify-advanced-failure').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await details.getAttribute('open')) === null) {
+    await details.locator('summary').click();
+  }
+  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function installCleanStudentContext(page) {

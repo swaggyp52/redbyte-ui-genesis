@@ -42,7 +42,7 @@ await runIdeGate('IDE shell navigation overhaul satisfied', async ({ page, baseU
       await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
       for (const mode of MODES) {
-        await activateMode(page, baseUrl, viewport, mode);
+        await activateMode(page, mode);
         await assertModeReachableAndFocused(page, viewport, mode);
       }
 
@@ -62,14 +62,10 @@ await runIdeGate('IDE shell navigation overhaul satisfied', async ({ page, baseU
   assert(failures.length === 0, `shell navigation overhaul failures:\n${failures.join('\n')}`);
 });
 
-async function activateMode(page, baseUrl, viewport, mode) {
-  if (mode === 'project' || mode === 'import') {
-    await page.goto(`${baseUrl}/?mode=${mode}&e2e=1&gate=shell-navigation-overhaul-${viewport.label}-${mode}`, {
-      waitUntil: 'domcontentloaded',
-    });
-  } else {
-    await page.locator(`[data-testid="mode-button-${mode}"]`).first().click();
-  }
+async function activateMode(page, mode) {
+  const button = page.locator(`[data-testid="mode-button-${mode}"]`).first();
+  assert(await button.isVisible().catch(() => false), `${mode}: navigation button must be visible`);
+  await button.click();
   await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForTimeout(120);
@@ -94,8 +90,18 @@ async function assertShellChrome(page, viewport, label) {
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       topbar: rect('[data-testid="ide-top-bar"]'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
+      statusBar: rect('[data-testid="ide-status-bar"]'),
       leftRail: rect('[data-testid="ide-left-rail"]'),
       surfaceColumn: rect('.ide-surface-column'),
+      stageLabels: Array.from(document.querySelectorAll('.ide-mode-button--step .ide-mode-label'))
+        .filter((label) => label.getBoundingClientRect().width > 1 && label.getBoundingClientRect().height > 1)
+        .map((label) => label.textContent?.trim() ?? ''),
+      importIsUtility: Boolean(
+        document.querySelector('[data-testid="mode-button-import"].ide-mode-button--utility')
+      ),
+      productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]'))
+        .filter((element) => element.getBoundingClientRect().width > 1 && element.getBoundingClientRect().height > 1)
+        .length,
       modeButtons: Array.from(document.querySelectorAll('[data-testid^="mode-button-"]')).map((button) => ({
         testId: button.getAttribute('data-testid'),
         visible: button.getBoundingClientRect().width > 1 && button.getBoundingClientRect().height > 1,
@@ -105,13 +111,24 @@ async function assertShellChrome(page, viewport, label) {
 
   assert(state.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${state.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(state.overflowX <= 1, `${viewport.label}/${label}: root horizontal overflow ${state.overflowX}px`);
-  assert(state.topbar.visible && state.topbar.height <= 48, `${viewport.label}/${label}: top bar too tall/missing ${JSON.stringify(state.topbar)}`);
-  assert(state.ribbon.visible && state.ribbon.height <= 44, `${viewport.label}/${label}: proof ribbon too tall/missing ${JSON.stringify(state.ribbon)}`);
+  assert(state.topbar.visible && state.topbar.height <= 56, `${viewport.label}/${label}: top bar too tall/missing ${JSON.stringify(state.topbar)}`);
+  assert(!state.ribbon.visible, `${viewport.label}/${label}: proof ribbon must be retired ${JSON.stringify(state.ribbon)}`);
+  assert(!state.statusBar.visible, `${viewport.label}/${label}: duplicate support footer must be retired ${JSON.stringify(state.statusBar)}`);
+  assert(state.productSpineCount === 0, `${viewport.label}/${label}: duplicate page product spine is still visible`);
   assert(
-    state.leftRail.visible && state.leftRail.width >= 52 && state.leftRail.width <= 64,
-    `${viewport.label}/${label}: left mode rail must be compact 52..64px, got ${JSON.stringify(state.leftRail)}`
+    state.leftRail.visible && state.leftRail.width >= 72 && state.leftRail.width <= 200,
+    `${viewport.label}/${label}: workflow rail must be readable and bounded (72..200px), got ${JSON.stringify(state.leftRail)}`
   );
-  assert(state.surfaceColumn.top <= 104, `${viewport.label}/${label}: workbench starts too low (${state.surfaceColumn.top}px)`);
+  assert(
+    // Rounded bounding boxes can differ by a few pixels across the two classroom viewports.
+    state.surfaceColumn.top <= state.topbar.bottom + 4,
+    `${viewport.label}/${label}: workbench must begin directly under the top bar (${state.surfaceColumn.top}px)`
+  );
+  assert(
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    `${viewport.label}/${label}: expected one five-stage workflow, got ${JSON.stringify(state.stageLabels)}`
+  );
+  assert(state.importIsUtility, `${viewport.label}/${label}: Import must be a separate utility, not step 6`);
   const visibleButtonIds = new Set(state.modeButtons.filter((button) => button.visible).map((button) => button.testId));
   const missingWorkflowButtons = WORKFLOW_MODES
     .map((mode) => `mode-button-${mode}`)

@@ -71,9 +71,11 @@ async function runViewport(page, baseUrl, viewport, record) {
   await assertBuildHash(page, `${viewport.label}/Project`);
   await assertNoRootOverflow(page, `${viewport.label}/Project`);
 
+  await openDisclosure(page, 'ide-project-starter-catalog', `${viewport.label}: Project starter catalog`);
   await expectVisible(page, 'ide-project-guided-full-adder-lab', `${viewport.label}: Project lab card`);
   await page.getByTestId('ide-project-guided-full-adder-start').click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
+  await openDisclosure(page, 'ide-design-guided-lab-disclosure', `${viewport.label}: Design lab guidance`);
   await expectVisible(page, 'ide-design-guided-full-adder-checklist', `${viewport.label}: Design lab checklist`);
 
   await clickIfVisible(page, 'ide-design-guided-full-adder-add-input-a');
@@ -104,7 +106,8 @@ async function runViewport(page, baseUrl, viewport, record) {
   record.phases.push({ phase: 'design', nodes, connections: 5 });
   await capture(page, viewport, '01-design-full-adder-wired');
 
-  await page.getByTestId('ide-design-guided-full-adder-open-verify').click();
+  await expectVisible(page, 'ide-design-command-strip-primary-cta', `${viewport.label}: Design Open Verify action`);
+  await page.getByTestId('ide-design-command-strip-primary-cta').click();
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
   await expectVisible(page, 'ide-verify-guided-full-adder-truth-table', `${viewport.label}: Verify lab truth table card`);
   await page.getByTestId('ide-verify-create-full-adder-truth-table').click();
@@ -126,6 +129,11 @@ async function runViewport(page, baseUrl, viewport, record) {
 
   await openMode(page, baseUrl, 'export', `guided-full-adder-lab-flow-${viewport.label}`);
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 15000 });
+  await openContainingDisclosure(
+    page,
+    'ide-export-guided-full-adder-summary',
+    `${viewport.label}: Export lab readiness details`,
+  );
   await expectVisible(page, 'ide-export-guided-full-adder-summary', `${viewport.label}: Export lab summary`);
   const exportSummary = await text(page.getByTestId('ide-export-guided-full-adder-summary'));
   assert(/Full Adder/i.test(exportSummary), `${viewport.label}: Export summary must name the lab`);
@@ -133,6 +141,25 @@ async function runViewport(page, baseUrl, viewport, record) {
   record.phases.push({ phase: 'export', summary: exportSummary.slice(0, 240) });
   await assertNoRootOverflow(page, `${viewport.label}/Export`);
   await capture(page, viewport, '04-export-full-adder-summary');
+}
+
+async function openDisclosure(page, testId, label) {
+  const disclosure = page.getByTestId(testId).first();
+  await disclosure.waitFor({ state: 'visible', timeout: 10000 });
+  if ((await disclosure.getAttribute('open')) === null) {
+    await disclosure.locator(':scope > summary').click();
+  }
+  assert((await disclosure.getAttribute('open')) !== null, `${label} must expand`);
+}
+
+async function openContainingDisclosure(page, childTestId, label) {
+  const child = page.getByTestId(childTestId).first();
+  const disclosure = child.locator('xpath=ancestor::details[1]');
+  await disclosure.waitFor({ state: 'attached', timeout: 10000 });
+  if ((await disclosure.getAttribute('open')) === null) {
+    await disclosure.locator(':scope > summary').click();
+  }
+  assert((await disclosure.getAttribute('open')) !== null, `${label} must expand`);
 }
 
 async function expectVisible(page, testId, label) {

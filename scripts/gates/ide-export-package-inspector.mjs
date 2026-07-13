@@ -27,17 +27,20 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
       await runComparePass(page);
       await openMode(page, baseUrl, 'export', `export-package-inspector-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
+      await openGeneratedFiles(page, viewport.label);
 
       await assertVisibleRect(page, ['[data-testid="ide-export-package-inspector-v1"]'], `${viewport.label}/Export inspector`, {
         maxTop: viewport.height === 768 ? 190 : 210,
         minWidth: Math.round(viewport.width * 0.68),
         minHeight: viewport.height === 768 ? 410 : 500,
       });
+      await page.locator('[data-testid="ide-export-file-browser-v1"]').first().scrollIntoViewIfNeeded();
       await assertVisibleRect(page, ['[data-testid="ide-export-file-browser-v1"]'], `${viewport.label}/Export file browser`, {
         maxTop: viewport.height === 768 ? 325 : 350,
         minWidth: 220,
         minHeight: 180,
       });
+      await page.locator('[data-testid="ide-export-selected-preview-v1"]').first().scrollIntoViewIfNeeded();
       await assertVisibleRect(page, ['[data-testid="ide-export-selected-preview-v1"]'], `${viewport.label}/Export selected preview`, {
         maxTop: viewport.height === 768 ? 325 : 350,
         minWidth: Math.round(viewport.width * 0.36),
@@ -48,14 +51,17 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
       assert(previewPath.length > 0, `${viewport.label}: Export must select a default artifact before extra clicks`);
       assert(/README|top\.vhd|top\.xdc|testbench|vivado_import/i.test(previewPath), `${viewport.label}: default preview path must be a generated file, got "${previewPath}"`);
 
-      const requiredActions = [
-        '[data-testid="ide-export-package-build-v1"]',
-        '[data-testid="ide-export-package-download-v1"]',
-        '[data-testid="ide-export-package-copy-v1"]',
-      ];
-      for (const selector of requiredActions) {
-        assert(await visible(page.locator(selector).first()), `${viewport.label}: ${selector} must be visible`);
-      }
+      const primaryActions = page.locator(
+        '[data-testid="ide-export-package-build-v1"], [data-testid="ide-export-package-download-v1"]'
+      );
+      assert((await primaryActions.count()) === 1, `${viewport.label}: Export must expose exactly one build/download action`);
+      assert(await visible(primaryActions.first()), `${viewport.label}: current build/download action must be visible`);
+      assert(
+        /Build|Download/i.test(await normalizedText(primaryActions.first())),
+        `${viewport.label}: current Export action must remain build/download oriented`
+      );
+      const copyAction = page.locator('[data-testid="ide-export-selected-preview-v1"]').getByRole('button', { name: /copy/i }).first();
+      assert(await visible(copyAction), `${viewport.label}: selected generated file must expose Copy`);
 
       const topXdc = page.locator('[data-testid="ide-export-file-top-xdc"]').first();
       assert(await visible(topXdc), `${viewport.label}: top.xdc file row must be visible`);
@@ -80,4 +86,13 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
 
 async function normalizedText(locator) {
   return ((await locator.first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+}
+
+async function openGeneratedFiles(page, label) {
+  const details = page.locator('[data-testid="ide-export-package-files"]').first();
+  await details.waitFor({ state: 'visible', timeout: 10000 });
+  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
+  await details.locator('summary').click();
+  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
+  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }

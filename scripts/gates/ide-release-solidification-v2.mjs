@@ -22,9 +22,8 @@ import {
 import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
-// The compact product spine is normal-flow now, so it spends a few pixels that
-// the older overlay-style fail evidence budget assumed were part of the grid.
-const NORMAL_FLOW_FAIL_EVIDENCE_ALLOWANCE = 8;
+// Keep a small rounding allowance for the compact post-run evidence grid.
+const COMPACT_FAIL_EVIDENCE_ALLOWANCE = 8;
 
 await runIdeGate('IDE release solidification v2 satisfied', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
@@ -95,23 +94,49 @@ async function assertProjectFirstLaunchOrientation(page, baseUrl, viewport) {
 
     const overlay = box('[data-testid="ide-onboarding-overlay"]');
     const targets = [
-      box('[data-testid="ide-project-primary-actions"]'),
-      box('[data-testid="ide-project-start-column"]'),
-      box('[data-testid="ide-project-landing-example-logic-gates"]'),
-    ].filter(Boolean);
+      box('[data-testid="ide-project-start-a-lab-primary"]'),
+      box('[data-testid="ide-project-build-fresh-primary"]'),
+      box('[data-testid="ide-project-open-starter-primary"]'),
+      box('[data-testid="ide-project-import-primary"]'),
+      box('[data-testid="ide-project-open-existing-primary"]'),
+      box('[data-testid="ide-project-starter-catalog"] > summary'),
+    ].filter((target) => target && target.visibleWidth > 1 && target.visibleHeight > 1);
+    const primaryActions = Array.from(
+      document.querySelectorAll('[data-testid="ide-project-primary-actions"] [data-product-priority="primary"]')
+    ).filter((element) => {
+      const rect = element.getBoundingClientRect();
+      return rect.width > 1 && rect.height > 1;
+    });
 
     return {
       overlay,
       targets,
       overlapTargets: targets.filter((target) => overlaps(overlay, target)).map((target) => target.selector),
+      startHub: box('[data-testid="ide-project-start-hub"]'),
+      startPrimary: box('[data-testid="ide-project-start-a-lab-primary"]'),
+      starterDisclosure: box('[data-testid="ide-project-starter-catalog"]'),
+      primaryActionLabels: primaryActions.map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
+      productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 1 && rect.height > 1;
+      }).length,
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
     };
   });
 
   assert(metrics.overlay?.visibleWidth >= 280, `${viewport.label}: orientation must remain readable ${JSON.stringify(metrics.overlay)}`);
+  assert(metrics.startHub?.visibleHeight >= 140, `${viewport.label}: current Project start surface must remain visible ${JSON.stringify(metrics.startHub)}`);
+  assert(metrics.startPrimary?.visibleHeight >= 36, `${viewport.label}: Start a Lab must remain a usable primary action ${JSON.stringify(metrics.startPrimary)}`);
+  assert(metrics.startPrimary.bottom <= viewport.height - 8, `${viewport.label}: Start a Lab falls below the first viewport ${JSON.stringify(metrics.startPrimary)}`);
+  assert(metrics.starterDisclosure?.visibleHeight >= 20, `${viewport.label}: starter/recent disclosure must remain reachable ${JSON.stringify(metrics.starterDisclosure)}`);
+  assert(
+    JSON.stringify(metrics.primaryActionLabels) === JSON.stringify(['Start a Lab']),
+    `${viewport.label}: Project must expose exactly one current primary launch action, got ${JSON.stringify(metrics.primaryActionLabels)}`
+  );
+  assert(metrics.productSpineCount === 0, `${viewport.label}: Project must not restore a duplicate product-spine header`);
   assert(
     metrics.overlapTargets.length === 0,
-    `${viewport.label}: workflow orientation blocks Project launch actions ${metrics.overlapTargets.join(', ')}`
+    `${viewport.label}: workflow orientation blocks Project launch actions ${metrics.overlapTargets.join(', ')} ${JSON.stringify({ overlay: metrics.overlay, targets: metrics.targets })}`
   );
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Project first launch created root overflow ${metrics.rootOverflowX}px`);
 
@@ -166,12 +191,8 @@ async function assertVerifyActionBand(page, viewport, label) {
 
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
     const visibleActions = [
-      '[data-testid="ide-verify-pass-hero-hardware"]',
-      '[data-testid="ide-verify-pass-hero-export"]',
-      '[data-testid="ide-verify-pass-hero-design"]',
-      '[data-testid="ide-verify-run-proof-inspect"]',
-      '[data-testid="ide-verify-run-proof-edit-vectors"]',
-      '[data-testid="ide-verify-run-proof-design"]',
+      '[data-testid="ide-verify-results-summary-open-design"]',
+      '[data-testid="ide-verify-results-summary-review-expected"]',
     ].map((selector) => ({ selector, box: box(selector) })).filter((entry) => entry.box?.visibleHeight > 12);
 
     return {
@@ -179,9 +200,10 @@ async function assertVerifyActionBand(page, viewport, label) {
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
-      result: box('[data-testid="ide-verify-region-result"]'),
+      result: box('[data-testid="ide-verify-results-summary"]'),
       stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
+      failureDetails: box('[data-testid="ide-verify-advanced-failure"] > summary'),
       firstFail: box('[data-testid="ide-verify-results-summary-open-fail"]'),
       actions: visibleActions,
       documentOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
@@ -191,21 +213,25 @@ async function assertVerifyActionBand(page, viewport, label) {
   assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(metrics.phase === 'post-run', `${viewport.label}/${label}: Verify should be post-run, got "${metrics.phase}"`);
   assert(metrics.workspaceMode === 'split', `${viewport.label}/${label}: Verify should remain split, got "${metrics.workspaceMode}"`);
-  if (label !== 'FAIL') {
-    assert(metrics.result?.visibleHeight >= 78, `${viewport.label}/${label}: Verify result/actions band is clipped ${JSON.stringify(metrics.result)}`);
-    assert(metrics.result.bottom <= viewport.height - 8, `${viewport.label}/${label}: Verify result/actions band falls below viewport ${JSON.stringify(metrics.result)}`);
-    assert(metrics.actions.length >= 1, `${viewport.label}/${label}: Verify result/actions band must expose at least one next action ${JSON.stringify(metrics)}`);
-  }
-  assert(metrics.stimulus?.visibleWidth >= 520, `${viewport.label}/${label}: testbench lane became too narrow ${JSON.stringify(metrics.stimulus)}`);
+  assert(metrics.result?.visibleHeight >= 44, `${viewport.label}/${label}: Verify result summary is clipped ${JSON.stringify(metrics.result)}`);
+  assert(metrics.result.bottom <= viewport.height - 8, `${viewport.label}/${label}: Verify result summary falls below viewport ${JSON.stringify(metrics.result)}`);
+  assert(metrics.stimulus?.visibleWidth >= 500, `${viewport.label}/${label}: testbench lane became too narrow ${JSON.stringify(metrics.stimulus)}`);
   assert(metrics.waveform?.visibleWidth >= 500, `${viewport.label}/${label}: waveform lane became too narrow ${JSON.stringify(metrics.waveform)}`);
   assert(metrics.labGrid?.extraX <= 8, `${viewport.label}/${label}: Verify lab grid created a horizontal mini-scroll trap ${JSON.stringify(metrics.labGrid)}`);
   assert(metrics.documentOverflowX <= 1, `${viewport.label}/${label}: Verify created root overflow ${metrics.documentOverflowX}px`);
   if (label === 'FAIL') {
-    assert(metrics.firstFail?.visibleHeight >= 24, `${viewport.label}/${label}: first failing-check action must stay visible ${JSON.stringify(metrics.firstFail)}`);
+    assert(metrics.actions.length >= 1, `${viewport.label}/${label}: visible failure summary must expose a repair action ${JSON.stringify(metrics.actions)}`);
+    assert(metrics.failureDetails?.visibleHeight >= 20, `${viewport.label}/${label}: Failure details disclosure must stay discoverable ${JSON.stringify(metrics.failureDetails)}`);
     assert(
-      metrics.labGrid?.visibleHeight >= viewport.height - 340 - NORMAL_FLOW_FAIL_EVIDENCE_ALLOWANCE,
+      metrics.labGrid?.visibleHeight >= viewport.height - 340 - COMPACT_FAIL_EVIDENCE_ALLOWANCE,
       `${viewport.label}/${label}: fail evidence workspace left too much unused lower viewport ${JSON.stringify(metrics.labGrid)}`
     );
+    const failureDetails = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
+    if ((await failureDetails.getAttribute('open')) === null) {
+      await failureDetails.locator('summary').click();
+    }
+    const firstFail = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
+    assert(await visible(firstFail), `${viewport.label}/${label}: expanded Failure details must expose the first failing check`);
   }
 }
 

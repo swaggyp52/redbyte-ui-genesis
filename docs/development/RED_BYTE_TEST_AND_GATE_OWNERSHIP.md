@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-04
+last_validated: 2026-07-13
 owner: Connor Angiel
 used_by_claude: true
 role: RedByte test and gate ownership guide
@@ -94,8 +94,8 @@ Why:
 - Design zoom integrity protects the exact blank-canvas / non-finite camera failure class.
 - Project loaded command surface protects loaded Project from reverting to a metric-first report page before direct Design / Verify / Map Pins / Export actions.
 - Import guided recovery wizard protects Import first-look from reverting to passive recovery prose instead of a staged recovery tool with a no-overwrite boundary.
-- Export package inspector protects Export ready state from hiding generated-file inspection behind extra interaction.
-- Outer workflow action density protects Project, Import, and Export from losing direct first-viewport commands.
+- Export package inspector protects the explicit generated-file disclosure and the file browser / selected preview / copy interaction revealed by it; readiness must remain the first Export decision.
+- Outer workflow action density protects Project, Import, and Export from losing the dominant next action or utility path before passive chrome; secondary paths may be disclosed when the disclosure is visible and usable.
 - Card chrome regression protects the current reduction in non-interactive card-like chrome on outer workflow surfaces.
 - Verify Signals dock not clipped protects the open Verify Signals rail from returning to the cropped `136px`/`144px` state while adjacent gates keep collapsed Signals compact.
 - Release Solidification v1 protects the current Verify / Export / Import release package: open-Signals Verify no-overflow geometry, Export package-readiness checklist, and Import selected-source editor plus review lane with reload continuity.
@@ -125,7 +125,7 @@ Why:
 - Primary work object dominance protects Design, Verify, Hardware, Export, and Import from being squeezed by simultaneous support docks or shell chrome; focused workbench support docks must be exclusive outside wide layout.
 - Nested scroll regression protects Verify and Hardware from small internal scroll traps in the normal Logic Gates path while allowing normal page-level workbench scroll where appropriate.
 - Verify no-circuit task-first protects fresh direct Verify entry from showing waveform/testbench or mapping apparatus before a circuit exists; it requires actionable Open Design, Load starter, and Import / Recover paths.
-- Project loaded paths first viewport protects loaded Project from pushing Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent below metrics/support content.
+- Project loaded paths first viewport protects loaded Project from losing Continue and the direct Verify route while requiring Change Project to reveal guarded Build Fresh, Course Starter, Import / Recover, and Open Recent paths without restoring a metric-first report.
 - Verify post-run workbench usability protects Compare PASS, induced FAIL, and repair PASS from returning the editable expected-output checks lane to a tiny `460px` slot beside waveform evidence, from placing the waveform evidence too low or too short in the first viewport, and from clipping visible `Observe only` / `Compare checks` command labels in the post-run command deck.
 - Active mode reload recovery protects route/query synchronization after in-app navigation so a visible Design or Verify workspace reloads back to the same workspace.
 - Student task completion flow protects the real classroom loop from returning to a non-functional Design inspector: Project starter, selected-node direct edits, Verify PASS/FAIL/repair/PASS, Hardware mapping, and Export E0 handoff must all remain usable at classroom and desktop viewports.
@@ -137,16 +137,16 @@ Why:
 - Side Dock Affordance proves collapsed Design Library/Inspector, Verify Signals, Hardware Inspector, and Export Inspector rails are compact horizontal restore buttons, not sideways labels; it also proves open/close recovery, focal workbench visibility, no root overflow, and no console/page errors at classroom and desktop viewports.
 - Open Side Panel Density proves compact Hardware and Export right inspectors remain proportional full-height side tools rather than full-width bottom cards; it also proves workspace height, focal-object visibility, close-to-restore behavior, no root overflow, and no console/page errors at classroom and desktop viewports.
 - Workbench Obstruction Usability proves Hardware Map Pins starts with support chrome collapsed away from the board/table, keeps the compact Map restore rail visible, opens left/right support docks proportionally, restores workbench space on close, and rejects root overflow or console/page errors at classroom and desktop viewports.
-- Export first-viewport artifact visibility proves the ready-to-build handoff station exposes the concrete generated files students and professors need to inspect before scrolling.
-- Export artifact direct preview proves those first-viewport generated-file cues are functional preview controls: button/keyboard reachable, selected-state exposed, and wired to reveal the existing artifact workspace for `top.vhd` and `top.xdc`.
+- Export generated-file disclosure proves the ready-to-build handoff exposes an explicit `Inspect generated files` control before the artifact list, then reveals the concrete files students and professors need to inspect.
+- Export artifact direct preview proves the revealed generated-file cues are functional preview controls: button/keyboard reachable, selected-state exposed, and wired to reveal the existing artifact workspace for `top.vhd` and `top.xdc`.
 - Export handoff station proves Draft/Ready/Trusted station hierarchy, one repair/build/download primary action, artifact workspace, README E0 boundary, mapping agreement, Vivado next steps, no overclaim, and no overlap/overflow.
-- Export trust integrity proves visible generated previews, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
+- Export trust integrity proves generated previews after explicit inspection, downloaded ZIP entries, README/provenance, Draft/Trusted labels, and proof-tier language agree for the mapped/verified handoff path.
 - Hardware Basys3 workbench proves selected signal -> board resource -> package pin -> XDC hierarchy at classroom/desktop viewports and keeps ready-state copy E0-only.
 - Hardware first viewport proves the loaded Logic Gates Map Pins board/table and selected SW0 -> board resource -> package pin -> XDC chain stay high enough in the first viewport at classroom and desktop heights without making E1/E2/E3 claims.
 - Import recovery contract proves Project utility discoverability, RedByte manifest restore as highest fidelity, Vivado/VHDL reconstruction limits, corrupt and non-ZIP import safety, source-specific archive failure copy, imported Verify proof invalidation, and no Vivado/hardware overclaim.
-- Project command center proves neutral Project launch copy, peer blank/starter/saved/import paths, loaded-project entry paths, and a guarded loaded Build Fresh action.
+- Project command center proves neutral Project launch copy, one primary start action, reachable blank/starter/saved/import paths, a loaded Continue action, and a guarded Build Fresh action behind the loaded-project alternatives disclosure.
 - Shell layout integrity proves the core Project, Design, Verify, Hardware, and Export surfaces keep a visible work object with no root overflow across classroom/desktop/wide sizes.
-- Shell workbench hierarchy proves the global shell has one compact proof/status authority, a support-only footer, rail navigation without visible completion-status copy, and a visible workbench object across Project, Design, Verify, Hardware, Export, and Import.
+- Shell workbench hierarchy proves the global shell is the compact top bar plus one five-stage rail and active workbench, with no proof ribbon, bottom status footer, or injected product-spine header; Import remains a separate utility and every surface retains a visible focal object.
 - Workbench space utilization proves persistent support rails do not squeeze the focal object below useful size, Design and Verify support rails start collapsed/restorable, Project/Export/Import actions remain visible, and cross-surface geometry has no root overflow at classroom/desktop/wide sizes.
 - Workbench visual finish proves Import first-look composition has one restore hierarchy, visible recovery alternatives, first-viewport guidance fit, neighboring surface captures, and no root overflow at classroom/desktop/wide sizes.
 - Verify evidence workbench proves visible first-run expected-output editing, Observe-only as non-proof trace evidence, Compare PASS, intentional expected-output FAIL, first mismatch expected/observed evidence, waveform controls, repair PASS, and no meaningful evidence-region overlap.
@@ -162,12 +162,12 @@ Why:
 |---|---|
 | Runtime authority, project health, stale/pass/fail, mapping sync | focused Vitest for the authority module plus any existing browser gate affected by the display |
 | Mode route, in-app navigation, browser Back/Forward, reload recovery, or stale lazy-surface recovery | `ide:gate:active-mode-reload-recovery`, `ide:gate:design-workspace-crash-proof`, `ide:gate:workbench-stability-overhaul`, plus the affected route/surface gate; add focused unit coverage when boundary classification or startup-mode parsing changes |
-| Project command-center, start paths, loaded-project entry paths | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates |
+| Project command-center, start paths, loaded-project entry paths or alternatives disclosure | `ide:gate:project-command-center`, `ide:gate:project-loaded-paths-first-viewport`, Project screenshots, and existing Project readiness/overview gates; prove both the dominant direct action and the guarded secondary paths after disclosure |
 | Project identity rename, first-run help, loaded Project `Flow` placement, loaded Project workflow-help auto-collapse, or top-bar interaction affordance | `ide:gate:interaction-affordance`, `ide:gate:project-identity-editing`, `ide:gate:release-solidification-v2` when first-launch orientation could block launch actions, Project before/after screenshots, and persistence gate coverage when saved identity or reload behavior changes |
 | Design gesture, canvas, zoom, selection, visible graph, blank/partial authoring continuation, selected-object direct edits, no-bridge boundary, Library clipping | `ide:gate:design-workbench-v1`, `ide:gate:design-canvas-direct-workbench`, `ide:gate:design-library-not-cropped`, `ide:gate:design-tool-window-coexistence`, `ide:gate:design-dual-tool-windows`, `ide:gate:student-task-completion-flow`, `ide:gate:authoring-depth-release-safety`, `ide:gate:design-no-bridge-required`, plus focused Design browser gates; add Vitest when source state/error semantics change |
 | Verify behavior, run intent, repair loop, testbench layout, scoped expected-output repair, no-circuit entry, Signals rail geometry, Design handoff trace, or post-run next-action visibility | focused runtime tests plus `ide:gate:verify-fail-edit-repair`, `ide:gate:verify-evidence-workbench`, `ide:gate:verify-saved-checks-default`, `ide:gate:verify-no-circuit-task-first`, `ide:gate:verify-testbench-usable-layout`, `ide:gate:verify-workbench-layout-reset`, `ide:gate:verify-postrun-workbench-usability`, `ide:gate:verify-signals-dock-not-clipped`, `ide:gate:wrong-build-diagnosis-repair-flow`, `ide:gate:complex-build-signal-trace-debugging`, `ide:gate:testbench-editor-and-export-confidence-flow`, `ide:gate:release-solidification-v1` when release workbench geometry is involved, `ide:gate:release-solidification-v2` when Project orientation plus Verify next-action visibility are involved, or a narrower new Verify browser gate |
 | Export generation bytes | generator tests, golden/hash proof, export e2e/download gates; screenshots are not enough |
-| Export trust, visible handoff, confidence station, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:testbench-editor-and-export-confidence-flow`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible labels, preview, download, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |
+| Export trust, visible readiness, generated-files disclosure, confidence station, package inspector, handoff checklist, or artifact affordance | export authority tests plus `ide:gate:export-trust-integrity`, `ide:gate:export-handoff-station`, `ide:gate:testbench-editor-and-export-confidence-flow`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, `ide:gate:export-package-inspector`, or `ide:gate:release-solidification-v1` proving visible readiness labels, disclosure reachability, preview/download behavior after inspection, station hierarchy, concrete artifact files, direct preview controls, selected package preview, package/Compare/mapping/E0 checklist, and no overclaim |
 | Hardware/Map Pins layout, board obstruction, resource catalog placement, or E0 proof wording | `ide:gate:hardware-basys3-workbench`, `ide:gate:hardware-first-viewport`, `ide:gate:hardware-board-dominance`, `ide:gate:hardware-board-unblocked`, `ide:gate:hardware-resource-catalog-not-obstructing`, `ide:gate:workbench-obstruction-usability`, hardware browser screenshots, and mapping tests only if map state changes |
 | Import parse/apply behavior | import parser/runtime tests plus `ide:gate:import-recovery-contract` or a narrower zip/import browser gate |
 | Import first-look wizard, active recovery presentation, selected-source persistence, editor/review hierarchy, or visible ZIP recovery copy | `ide:gate:import-guided-recovery-wizard`, `ide:gate:import-guided-recovery-workflow`, `ide:gate:import-recovery-contract`, `ide:gate:release-solidification-v1`, Import before/after screenshots, and focused Import Vitest when selector/action contracts or rendered failure-copy classification change |
@@ -191,13 +191,13 @@ Why:
 
 ## Current Release Readiness Visual Gates
 
-`ide:gate:project-loaded-command-surface` proves loaded Project has a command board with direct mode actions, secondary start/recovery paths, and compact evidence at classroom and desktop viewports; it rejects boxed metric-card stacks inside the loaded command board.
+`ide:gate:project-loaded-command-surface` proves loaded Project has one dominant Continue action, a direct Verify route when appropriate, an explicit Change Project disclosure for secondary start/recovery paths, and compact evidence at classroom and desktop viewports; it rejects boxed metric-card stacks inside the loaded command board.
 
 `ide:gate:browser-e0-packaging-readiness` proves `docs/product/RED_BYTE_BROWSER_E0_PACKAGING_CHECKLIST.md` exists and keeps Browser E0 package/demo readiness separate from Vivado/Basys3 E1-E3, final-SHA, deploy, commercial, paid/licensed, and hardware proof claims.
 
 `ide:gate:import-guided-recovery-wizard` proves Import first-look uses a staged recovery wizard and explicit no-overwrite boundary.
 
-`ide:gate:export-package-inspector` proves Export ready state opens with generated-file browser, selected preview, and direct package actions.
+`ide:gate:export-package-inspector` proves Export ready state opens on the readiness decision, exposes `Inspect generated files`, and reveals the generated-file browser, selected preview, and direct file actions after that disclosure is opened.
 
 `ide:gate:outer-workflow-action-density` and `ide:gate:card-chrome-regression` protect Project, Import, and Export from regressing into passive card/report surfaces.
 
@@ -255,7 +255,7 @@ Why:
 
 ## Current Shell And Navigation Gates
 
-`ide:gate:shell-navigation-overhaul` proves the compact shell/navigation contract at `1366x768` and `1440x900`: visible build hash, workflow rail reachability, Import utility route and reload access, compact proof-ribbon/left-rail geometry, no root overflow, and no console/page errors.
+`ide:gate:shell-navigation-overhaul` proves the compact shell/navigation contract at `1366x768` and `1440x900`: visible build hash, exactly five readable workflow stages, Import utility route and reload access, no proof ribbon/footer/product-spine header, workbench directly under the top bar, no root overflow, and no console/page errors.
 
 `ide:gate:primary-work-object-dominance` proves Design, Verify pre-run, Verify Compare PASS, Hardware, Export, and Import keep the primary work object dominant at classroom and desktop viewports, and that focused workbench support docks are exclusive outside wide layout.
 
@@ -265,7 +265,7 @@ Why:
 
 `ide:gate:verify-no-circuit-task-first` proves fresh direct Verify opens as an actionable no-circuit recovery state at `1366x768` and `1440x900`: task panel visible, Open Design / Load starter / Import Recover actions working, waveform/testbench apparatus hidden, no misleading Hardware/Map Pins/No IO mapping copy, no root overflow, and no console/page errors.
 
-`ide:gate:project-loaded-paths-first-viewport` proves a loaded Project keeps all five action paths in the useful first viewport at `1366x768` and `1440x900`: Continue, Build Fresh, Course Starter, Import / Recover, and Open Recent remain visible; Continue and Import navigate correctly; loaded Build Fresh stays guarded; no root overflow or console/page errors appear.
+`ide:gate:project-loaded-paths-first-viewport` proves a loaded Project keeps Continue and the direct Verify route in the useful first viewport at `1366x768` and `1440x900`, exposes Change Project as the secondary-path affordance, and keeps Build Fresh, Course Starter, Import / Recover, and Open Recent reachable after disclosure; Continue and Import navigation, the loaded Build Fresh guard, no root overflow, and console cleanliness remain required.
 
 ## Current Verify Layout Gates
 

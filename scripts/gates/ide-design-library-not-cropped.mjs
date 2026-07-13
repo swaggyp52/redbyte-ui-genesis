@@ -22,7 +22,10 @@ await runIdeGate('IDE Design library is not cropped', async ({ page, baseUrl }) 
       const leftDock = await getRequiredRect(page, '[data-testid="ide-left-dock"]', `${viewport.label}/Design library`);
       const canvas = await getRequiredRect(page, '[data-testid="ide-design-live-canvas"]', `${viewport.label}/Design canvas`);
       assert(leftDock.visibleWidth >= 260, `${viewport.label}: Design library is too narrow (${leftDock.visibleWidth}px < 260px)`);
-      assert(canvas.visibleWidth >= 920, `${viewport.label}: Design canvas lost too much width (${canvas.visibleWidth}px < 920px)`);
+      assert(
+        canvas.visibleWidth >= Math.round(viewport.width * 0.64),
+        `${viewport.label}: Design canvas lost too much width (${canvas.visibleWidth}px < ${Math.round(viewport.width * 0.64)}px)`
+      );
 
       const clipping = await getDockClipping(page, '[data-testid="ide-left-dock"]', [
         '[data-testid="ide-design-search"]',

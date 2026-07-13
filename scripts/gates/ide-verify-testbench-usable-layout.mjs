@@ -45,8 +45,8 @@ await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ pag
     await capture(page, viewport, 'prerun-testbench-layout');
 
     assert(
-      metrics.buildText && /Build/.test(metrics.buildText),
-      `${viewport.label}: visible build badge must be present (${JSON.stringify(metrics.buildText)})`
+      metrics.proofScopeText === 'Browser E0',
+      `${viewport.label}: compact Verify chrome must expose the Browser E0 scope (${JSON.stringify(metrics.proofScopeText)})`
     );
     assert(metrics.rootOverflowX <= 1, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.expectedCells >= 12, `${viewport.label}: starter checks must expose all expected-output cells (${metrics.expectedCells})`);
@@ -136,7 +136,7 @@ async function readPreRunMetrics(page) {
     const gridScroll = box('.ide-stimulus-grid-scroll');
 
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
+      proofScopeText: document.querySelector('[data-testid="ide-proof-scope"]')?.textContent?.trim() ?? '',
       phase: labGridElement?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGridElement?.getAttribute('data-workspace-mode') ?? '',
       stimulusLayout: labGridElement?.getAttribute('data-stimulus-layout') ?? '',
