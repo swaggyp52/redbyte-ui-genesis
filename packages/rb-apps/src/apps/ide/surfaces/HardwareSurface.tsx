@@ -5,6 +5,7 @@ import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
+  IdeEmptyState,
   IdeInspectorSection,
   IdePanel,
   IdeStatusPill,
@@ -61,12 +62,6 @@ import {
   type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import type { IdeChromeContract } from '../chromeContract';
-import {
-  HardwareMappingHeader,
-  HardwareMappingGuide,
-  type HardwareMappingState,
-  type MappingGuideStep,
-} from './hardware/HardwareSurfacePrimitives';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'hardware',
@@ -717,18 +712,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const selectedBoardResourceXdc = selectedBoardResource
     ? formatBasys3XdcBinding(selectedBoardResource, selectedXdcPortRef)
     : '';
-  const supportedResourceCounts = useMemo(() => {
-    const count = (category: Basys3BoardResource['category']) =>
-      plannerResources.filter((resource) => resource.category === category).length;
-    return {
-      clock: count('clock'),
-      switch: count('switch'),
-      button: count('button'),
-      led: count('led'),
-      sevenSeg: count('seven_seg'),
-    };
-  }, [plannerResources]);
-
   const mapModeGroups = useMemo(() => {
     const groups: Array<{ label: string; rows: HardwareMappingRow[] }> = [
       { label: 'Clock / reset', rows: [] },
@@ -1081,17 +1064,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const mappedRequiredCount = totalRequiredCount - unmappedRequiredPins.length;
   const mappingReady = hasRequiredMappingRows && hasClockMapping && hasOutputMapping && unresolvedRequiredCount === 0;
 
-  const mappingHeaderState: HardwareMappingState = hasNoBoundaryRows
-    ? 'design-first'
-    : mappingReady
-      ? 'complete'
-      : 'incomplete';
-
-  const activeGuideStep: MappingGuideStep = !selectedMappingRow
-    ? 1
-    : !selectedMappingBoardControl
-      ? 2
-      : 3;
   const selectedSignalHasPin = Boolean(selectedMappingRow?.pin.trim().length);
   const selectedSignalConflict = Boolean(
     selectedMappingRow &&
@@ -1206,10 +1178,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
         return () => {
-          if (onGoToProject) {
-            onGoToProject();
-            return;
-          }
           setHwMode('map');
           setSelectedMappingRowId(null);
         };
@@ -1225,7 +1193,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       default:
         return () => {};
     }
-  }, [failureTruth.primaryCtaIntent, onGoToDesign, onGoToProject, onOpenExport, onOpenVerify]);
+  }, [failureTruth.primaryCtaIntent, onGoToDesign, onOpenExport, onOpenVerify]);
   const showBlockedHero = failureTruth.severity === 'blocked';
   const heroSecondaryAction =
     showBlockedHero && failureTruth.primaryCtaIntent !== 'design' && onGoToDesign
@@ -2221,7 +2189,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hardwareCommandSecondaryLabel =
     showBlockedHero ? heroSecondaryLabel : nextActionHero.secondaryLabel;
   const showHardwareCommandActions = hwMode !== 'map';
-  const showHardwareCommandStrip = hwMode !== 'map' || hasNoBoundaryRows;
+  const showHardwareCommandStrip = true;
   const hardwareCommandMeta = hwMode === 'map'
     ? (
       <>
@@ -2340,6 +2308,42 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     </section>
   );
 
+  if (hasNoBoundaryRows) {
+    return (
+      <IdeSurfaceLayout
+        mode="hardware"
+        layoutIntent="workbench"
+        leftDockMode="hidden"
+        rightDockMode="hidden"
+        consoleMode="hidden"
+        inspector={null}
+      >
+        <div
+          className="ide-hardware-panel ide-hardware-panel--no-signals"
+          data-testid="ide-hardware-panel"
+        >
+          <IdeEmptyState
+            title="No signals to map yet"
+            body={PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals}
+            testId="ide-hw-map-empty"
+            primaryAction={(
+              <span data-testid="ide-primary-cta">
+                <IdeButton
+                  tone="primary"
+                  onClick={onGoToDesign ?? (() => {})}
+                  testId="ide-hardware-next-primary"
+                  disabled={!onGoToDesign}
+                >
+                  Open Design
+                </IdeButton>
+              </span>
+            )}
+          />
+        </div>
+      </IdeSurfaceLayout>
+    );
+  }
+
   return (
     <IdeSurfaceLayout
       mode="hardware"
@@ -2386,13 +2390,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }
     >
       <IdePanel
-        title="Hardware"
-        description="Map pins, inspect export constraints, and keep Vivado/board proof external."
-        right={
+        title={hwMode === 'map' ? undefined : 'Hardware'}
+        description={hwMode === 'map' ? undefined : 'Map pins, inspect export constraints, and keep Vivado/board proof external.'}
+        right={hwMode === 'map' ? undefined : (
           <IdeStatusPill tone={failureTruth.severity === 'ready' ? 'ok' : failureTruth.severity === 'blocked' ? 'error' : 'warn'}>
             {failureTruth.statusLabel}
           </IdeStatusPill>
-        }
+        )}
         testId="ide-hardware-panel"
         className={hasNoBoundaryRows ? 'ide-hardware-panel--no-signals' : undefined}
       >
@@ -2463,48 +2467,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
         ) : null}
         {/* ── Connection callout strip ── */}
-        {false && <div className="ide-hw-callout" data-testid="ide-hw-callout">
-          <span className="ide-hw-callout-label">Project:</span>
-          <span className="ide-hw-callout-name">{projectName}</span>
-          <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
-          <span>{mappingRows.length} mapped rows</span>
-          {verifyStatus !== undefined && (
-            <>
-              <span className="ide-hw-callout-sep" aria-hidden="true">·</span>
-              <span className={compareMatches ? 'ide-hw-callout-pass' : compareDiffers ? 'ide-hw-callout-fail' : ''}>
-                Compare: {verifyStatus}
-              </span>
-              <span className="ide-hw-callout-sep" aria-hidden="true">|</span>
-              <span data-testid="ide-hardware-export-status">
-                Export: {exportStatus}
-              </span>
-            </>
-          )}
-        </div>}
-
         {/* ── Stage rail: workflow caption + primary stage tabs ── */}
-        {!mappingReady && (
-          <div className="ide-hw-map-reset-header" data-testid="ide-hw-map-reset-header">
-            <div>
-              <span className="ide-hw-map-reset-kicker" data-testid="ide-hw-board-chrome-stage">Map Pins</span>
-              <h3>Bind project signals to the Basys3 board</h3>
-              <p data-testid="ide-hw-stage-caption">
-                {hasNoBoundaryRows
-                  ? PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals
-                    : selectedMappingRow
-                    ? `${formatProjectSignalName(selectedMappingRow)} is selected. Click the matching board control to save its pin.`
-                    : unresolvedRequiredCount > 0
-                      ? `${unresolvedRequiredCount} required pin${unresolvedRequiredCount === 1 ? '' : 's'} still need board assignments. Select a signal row, then click the matching board control.`
-                      : 'Select a signal, click the matching board control, then confirm the physical package pin shown in the row.'}
-              </p>
-            </div>
-            <div className="ide-hw-map-reset-summary" aria-label="Mapping summary">
-              <span>{mappingRows.length} signal{mappingRows.length === 1 ? '' : 's'}</span>
-              <strong>{unresolvedRequiredCount} missing</strong>
-            </div>
-          </div>
-        )}
-
+        {hwMode !== 'map' ? (
         <div className="ide-hw-stage-rail ide-hw-stage-rail--demoted" data-testid="ide-hw-stage-rail">
           <div className="ide-hw-stage-rail-top">
             <div className="ide-hw-stage-rail-intro">
@@ -2595,6 +2559,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             </button>
           </div>
         </div>
+        ) : null}
 
         {/* ── Scenario provenance strip — hidden on map tab ── */}
         {hwMode !== 'map' && verifyLastRun && (
@@ -2631,7 +2596,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Scenario drift callout ── */}
-        {scenarioDrifted && verifyLastRun && (
+        {hwMode !== 'map' && scenarioDrifted && verifyLastRun && (
           <IdeCallout
             tone="warn"
             title={isDifferentScenario ? 'Different scenario active' : 'Scenario edited since last run'}
@@ -2660,7 +2625,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Starter-seal note — shown when verify is ready but unsealed ── */}
-        {compareCurrent && !scenarioDrifted && vectorsAreAutoGenerated && (
+        {hwMode !== 'map' && compareCurrent && !scenarioDrifted && vectorsAreAutoGenerated && (
           <IdeCallout tone="warn" testId="ide-hardware-starter-seal-note">
             <p className="ide-copy" style={{ margin: 0 }}>
               <strong>Ready — starter scenario only.</strong>{' '}
@@ -2670,7 +2635,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── SSD guidance callout ── */}
-        {hasSsdMapping && (
+        {hwMode !== 'map' && hasSsdMapping && (
           <IdeCallout tone="info" title="7-Segment Display" testId="ide-hw-ssd-callout">
             <p className="ide-copy" style={{ margin: 0 }}>
               Your circuit uses 7-segment display outputs. The Basys3 uses <strong>active-low</strong> segment
@@ -2682,7 +2647,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         )}
 
         {/* ── Debounce guidance callout ── */}
-        {hasButtonMapping && !debounceDismissed && (
+        {hwMode !== 'map' && hasButtonMapping && !debounceDismissed && (
           <IdeCallout tone="warn" title="Physical buttons bounce" testId="ide-hw-debounce-callout">
             <p className="ide-copy" style={{ margin: 0 }}>
               Physical push buttons produce multiple signal transitions when pressed or released. Add
@@ -2700,80 +2665,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* ── Mapping orientation: header + 3-step guide — visible before the work area ── */}
-        {hwMode === 'map' && guidedLabTask && guidedLabHardwareChecklist ? (
-          <section className="ide-guided-lab-card" data-testid="ide-hardware-guided-full-adder-mapping">
-            <div>
-              <p className="ide-surface-block-label">Active lab</p>
-              <h3>{guidedLabTask.shortTitle} pin map</h3>
-              <p>
-                Use the suggested Basys3 map for the submission path. Conflicts still need manual review
-                in the table below.
-              </p>
-              <div className="ide-guided-lab-checklist">
-                {guidedLabHardwareChecklist.items.map((item) => (
-                  <span
-                    key={item.id}
-                    className={`ide-guided-lab-check ${item.complete ? 'is-complete' : 'is-missing'}`}
-                    data-testid={`ide-hardware-guided-full-adder-item-${item.id}`}
-                  >
-                    <strong>{item.complete ? 'OK' : 'TODO'}</strong>
-                    {item.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="ide-guided-lab-actions">
-              <IdeButton
-                tone="secondary"
-                onClick={onApplyGuidedLabMapping}
-                disabled={!onApplyGuidedLabMapping}
-                testId="ide-hardware-guided-full-adder-map-missing"
-              >
-                Map missing pins
-              </IdeButton>
-              <IdeButton
-                tone="primary"
-                onClick={onOpenExport}
-                disabled={!guidedLabHardwareChecklist.readyForExport}
-                testId="ide-hardware-guided-full-adder-continue-export"
-              >
-                Continue to Export
-              </IdeButton>
-            </div>
-          </section>
-        ) : null}
-
-        {hwMode === 'map' && (
-          <>
-            <HardwareMappingHeader
-              board="Basys3"
-              mappedCount={mappedRequiredCount}
-              requiredCount={totalRequiredCount}
-              state={mappingHeaderState}
-              nextActionHint={
-                hasNoBoundaryRows
-                  ? 'Add inputs and outputs in Design first.'
-                  : mappingReady
-                    ? mappingReadyFollowUp.headerHint
-                    : `Map ${unresolvedRequiredCount} remaining required signal${unresolvedRequiredCount === 1 ? '' : 's'}.`
-              }
-            />
-            {!mappingReady && (
-              <div data-testid="ide-hw-map-loop-card">
-                <HardwareMappingGuide
-                  activeStep={activeGuideStep}
-                  signalLabel={selectedMappingLabel}
-                  boardControlLabel={selectedMappingBoardControl}
-                  packagePin={selectedMappingPackagePin}
-                />
-              </div>
-            )}
-          </>
-        )}
-
         {/* ── Board / Map — framed workspace ── */}
         {hwMode === 'map' ? (
+          <>
           <div
             className="ide-hw-board-workspace ide-hw-board-workspace--map"
             data-testid="ide-hw-board-workspace"
@@ -2781,41 +2675,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             data-hierarchy-role="primary"
             data-hierarchy-focal="basys3-board-workbench"
           >
-            <div className="ide-hw-board-planner-summary" data-testid="ide-hw-board-resource-summary">
-              <button
-                type="button"
-                className="ide-hw-resource-summary-card ide-hw-resource-summary-card--clock"
-                data-testid="ide-hw-clock-resource-card"
-                onClick={() => {
-                  setSelectedBoardResourceAlias('CLK100MHZ');
-                  setSelectedMappingRowId(null);
-                }}
-              >
-                <span>System clock</span>
-                <strong>CLK100MHZ</strong>
-                <em>100 MHz oscillator · W5</em>
-              </button>
-              <div className="ide-hw-resource-summary-card">
-                <span>Slide switches</span>
-                <strong>{supportedResourceCounts.switch}</strong>
-                <em>SW0-SW15</em>
+            <header className="ide-hw-mapping-work-header" data-testid="ide-hw-board-resource-summary">
+              <div>
+                <p className="ide-surface-block-label">Signal mapping table</p>
+                <h3>Assign every required signal to a Basys3 resource</h3>
               </div>
-              <div className="ide-hw-resource-summary-card">
-                <span>Pushbuttons</span>
-                <strong>{supportedResourceCounts.button}</strong>
-                <em>BTNC / U / L / R / D</em>
-              </div>
-              <div className="ide-hw-resource-summary-card">
-                <span>LED outputs</span>
-                <strong>{supportedResourceCounts.led}</strong>
-                <em>LD0-LD15</em>
-              </div>
-              <div className="ide-hw-resource-summary-card">
-                <span>7-segment lines</span>
-                <strong>{supportedResourceCounts.sevenSeg}</strong>
-                <em>CA-CG, DP, AN0-AN3</em>
-              </div>
-            </div>
+              <p className="ide-copy ide-copy--flush">
+                Select a row first. The board below is a reference for choosing the physical control.
+              </p>
+            </header>
             <p
               className="ide-hw-map-boundary-note"
               data-testid="ide-hardware-signal-resource-pin-model"
@@ -2851,14 +2719,23 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 {boardWorkspacePrompt}
               </p>
             )}
-            <div className="ide-hw-board-canvas ide-hw-board-canvas--split">
+            <div className="ide-hw-board-canvas ide-hw-board-canvas--mapping-sequence">
           <div className="ide-hw-map-mode" data-testid="ide-hw-map-mode">
             <div
-              className="ide-hw-map-table"
+              className="ide-hw-map-table ide-hw-map-table--primary"
               data-testid="ide-hw-map-table"
               data-hierarchy-surface="hardware"
-              data-hierarchy-role="context"
+              data-hierarchy-role="primary"
+              data-work-priority="primary"
+              data-columns="Signal|Purpose|Board resource|Pin|Status"
             >
+              <div className="ide-hw-map-table-header" role="row" aria-label="Mapping columns">
+                <span role="columnheader">Signal</span>
+                <span role="columnheader">Purpose</span>
+                <span role="columnheader">Board resource</span>
+                <span role="columnheader">Pin</span>
+                <span role="columnheader">Status</span>
+              </div>
               {exportViewStatus === 'blocked' && exportBlockingDiagnostics.length > 0 ? (
                 <IdeCallout
                   tone="warn"
@@ -3445,46 +3322,29 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             }
                           }}
                         >
-                          <span className="ide-hw-map-row-primary">
-                            <span className="ide-hw-map-row-signal" data-testid={`ide-hw-map-row-signal-${row.id}`}>
-                              <span className="ide-hw-map-row-label">{signalLabel}</span>
-                              <span className="ide-hw-map-row-caption">Circuit signal</span>
-                            </span>
-                            <span
-                              className="ide-hw-map-row-v2-chips ide-hw-map-row-role"
-                              data-testid={`ide-hw-map-row-role-${row.id}`}
-                            >
-                              {resourceChip ? (
-                                <span className="ide-hw-map-chip ide-hw-map-chip--resource" title="Board resource">
-                                  {resourceChip}
-                                </span>
-                              ) : null}
-                              {timingChip ? (
-                                <span className="ide-hw-map-chip ide-hw-map-chip--timing" title="Timing role">
-                                  {timingChip}
-                                </span>
-                              ) : null}
-                            </span>
+                          <span className="ide-hw-map-row-signal" data-testid={`ide-hw-map-row-signal-${row.id}`}>
+                            <strong className="ide-hw-map-row-label">{signalLabel}</strong>
                           </span>
-                          <span className="ide-hw-map-row-secondary">
-                            <span className="ide-hw-map-row-status" data-testid={`ide-hw-map-row-status-${row.id}`}>
-                              {row.required ? (
-                                isMissing
-                                  ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">Missing</span>
-                                  : <span className={`ide-hw-map-row-badge ${hasConflict ? 'ide-hw-map-row-badge--conflict' : 'ide-hw-map-row-badge--ok'}`}>{statusLabel}</span>
-                              ) : (
-                                <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">optional</span>
-                              )}
-                            </span>
-                            <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
-                              <span>Board: <strong>{boardControl}</strong> (pin <strong>{packagePin}</strong>)</span>
-                            </span>
+                          <span className="ide-hw-map-row-role" data-testid={`ide-hw-map-row-role-${row.id}`}>
+                            {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}
+                            {timingChip ? ` · ${timingChip}` : resourceChip ? ` · ${resourceChip}` : ''}
+                          </span>
+                          <span className="ide-hw-map-row-binding" data-testid={`ide-hw-map-row-binding-${row.id}`}>
+                            <strong>{boardControl}</strong>
+                          </span>
+                          <span className="ide-hw-map-row-pin">
+                            <strong>{packagePin}</strong>
+                          </span>
+                          <span className="ide-hw-map-row-status" data-testid={`ide-hw-map-row-status-${row.id}`}>
+                            {row.required ? (
+                              isMissing
+                                ? <span className="ide-hw-map-row-badge ide-hw-map-row-badge--missing">Missing</span>
+                                : <span className={`ide-hw-map-row-badge ${hasConflict ? 'ide-hw-map-row-badge--conflict' : 'ide-hw-map-row-badge--ok'}`}>{statusLabel}</span>
+                            ) : (
+                              <span className="ide-hw-map-row-badge ide-hw-map-row-badge--optional">Optional</span>
+                            )}
                             <span className="ide-hw-map-row-action" data-testid={`ide-hw-map-row-action-${row.id}`}>
-                              {isMissing
-                                ? 'Choose control'
-                                : hasConflict
-                                  ? 'Resolve conflict'
-                                  : 'Edit mapping'}
+                              {isMissing ? 'Choose' : hasConflict ? 'Resolve' : 'Edit'}
                             </span>
                           </span>
                         </button>
@@ -3494,7 +3354,17 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 </details>
               ))}
             </div>
-            <div className="ide-hw-map-board" data-testid="ide-hw-map-board">
+            <div
+              className="ide-hw-map-board ide-hw-map-board--reference"
+              data-testid="ide-hw-map-board"
+              data-work-priority="reference"
+            >
+              <header className="ide-hw-map-board-header">
+                <p className="ide-surface-block-label">Board reference</p>
+                <p className="ide-copy ide-copy--flush">
+                  Choose a compatible Basys3 control for the selected signal.
+                </p>
+              </header>
               <Basys3BoardView
                 mappedAliases={mapModeAliases}
                 highlightedAlias={selectedMappingRowPin}
@@ -3556,6 +3426,103 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </div>
             </div>
           </div>
+          {guidedLabTask && guidedLabHardwareChecklist ? (
+            <section className="ide-guided-lab-card" data-testid="ide-hardware-guided-full-adder-mapping">
+              <div>
+                <p className="ide-surface-block-label">Active lab</p>
+                <h3>{guidedLabTask.shortTitle} pin map</h3>
+                <p>Review the suggested Basys3 submission map after working through the signal table above.</p>
+                <div className="ide-guided-lab-checklist">
+                  {guidedLabHardwareChecklist.items.map((item) => (
+                    <span
+                      key={item.id}
+                      className={`ide-guided-lab-check ${item.complete ? 'is-complete' : 'is-missing'}`}
+                      data-testid={`ide-hardware-guided-full-adder-item-${item.id}`}
+                    >
+                      <strong>{item.complete ? 'OK' : 'TODO'}</strong>
+                      {item.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="ide-guided-lab-actions">
+                <IdeButton
+                  tone="secondary"
+                  onClick={onApplyGuidedLabMapping}
+                  disabled={!onApplyGuidedLabMapping}
+                  testId="ide-hardware-guided-full-adder-map-missing"
+                >
+                  Map missing pins
+                </IdeButton>
+                <IdeButton
+                  tone="primary"
+                  onClick={onOpenExport}
+                  disabled={!guidedLabHardwareChecklist.readyForExport}
+                  testId="ide-hardware-guided-full-adder-continue-export"
+                >
+                  Continue to Export
+                </IdeButton>
+              </div>
+            </section>
+          ) : null}
+          <details className="ide-hw-after-mapping-tools" data-testid="ide-hw-after-mapping-tools">
+            <summary>After mapping tools</summary>
+            <div className="ide-hw-stage-rail ide-hw-stage-rail--demoted" data-testid="ide-hw-stage-rail">
+              <p className="ide-hw-stage-caption">
+                Continue to board check, pre-flight, or live simulation after the signal mapping is ready.
+              </p>
+              <div
+                className="ide-hw-mode-toggle"
+                data-testid="ide-hw-mode-toggle"
+                role="tablist"
+                aria-label="Hardware tools after mapping"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  className="ide-hw-mode-segment"
+                  data-testid="ide-hw-mode-btn-bringup"
+                  onClick={() => {
+                    setHwMode('bringup');
+                    setSelectedMappingRowId(null);
+                  }}
+                >
+                  <span className="ide-hw-mode-segment-title">Board Check</span>
+                  <span className="ide-hw-mode-segment-hint">Guided board checks</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  className="ide-hw-mode-segment"
+                  data-testid="ide-hw-mode-btn-proof"
+                  onClick={() => {
+                    setHwMode('proof');
+                    setSelectedMappingRowId(null);
+                  }}
+                >
+                  <span className="ide-hw-mode-segment-title">Pre-flight</span>
+                  <span className="ide-hw-mode-segment-hint">Readiness gate</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected="false"
+                  className="ide-hw-mode-segment"
+                  data-testid="ide-hw-mode-btn-live"
+                  onClick={() => {
+                    setHwMode('live');
+                    setSelectedMappingRowId(null);
+                  }}
+                >
+                  <span className="ide-hw-mode-segment-title">Simulation</span>
+                  <span className="ide-hw-mode-segment-hint">Live sandbox</span>
+                </button>
+              </div>
+            </div>
+          </details>
+          </>
         ) : (
         <div className="ide-hw-board-workspace" data-testid="ide-hw-board-workspace">
           <header className="ide-hw-board-chrome">

@@ -6989,13 +6989,6 @@ details[open] summary .details-arrow {
   padding-right: 0;
 }
 
-/* Edit group buttons: slightly smaller than mode segments */
-.ide-toolbar-group.is-edit .ide-button {
-  font-size: 11px;
-  padding: 4px 9px;
-  min-height: 28px;
-}
-
 /* ── Canvas: vignette overlay + glass edge ── */
 .ide-design-canvas {
   position: relative;
@@ -15801,15 +15794,28 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   background: rgba(3, 12, 30, 0.46);
 }
 .ide-project-lab-gallery-summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   cursor: pointer;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(80, 130, 180, 0.7);
+  font-size: 14px; font-weight: 650;
+  letter-spacing: 0; text-transform: none;
+  color: var(--rb-text-secondary);
   padding: 6px 0;
   list-style: none;
   user-select: none;
 }
 .ide-project-lab-gallery-summary::-webkit-details-marker { display: none; }
+.ide-project-lab-gallery-summary::before {
+  content: '›';
+  color: var(--rb-text-muted);
+  font-size: 17px;
+  line-height: 1;
+  transition: transform var(--rb-motion-fast) var(--rb-ease-standard);
+}
+.ide-project-lab-gallery-disclosure[open] > .ide-project-lab-gallery-summary::before {
+  transform: rotate(90deg);
+}
 .ide-project-lab-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -22065,13 +22071,6 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25) inset, 0 0 12px rgba(56, 189, 248, 0.08) !important;
 }
 
-/* ── Edit group: tighter, supportive ── */
-[data-ide-mode-marker='design'] .ide-toolbar-group.is-edit .ide-button {
-  font-size: 11px !important;
-  padding: 4px 10px !important;
-  min-height: 28px !important;
-}
-
 /* ── View toggle: clear, right-rail ── */
 [data-ide-mode-marker='design'] .ide-design-view-btn {
   font-size: 11px !important;
@@ -24620,7 +24619,6 @@ button:disabled,
 }
 
 /* Design toolbar: bigger click targets */
-.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-circuit-toolbar .ide-button {
   min-height: 32px !important;
   padding: 5px 12px !important;
@@ -25456,12 +25454,6 @@ button:disabled,
   gap: 6px !important;
   align-items: center !important;
 }
-.ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-run-footer .ide-button {
-  padding: 4px 10px !important;
-  font-size: 11px !important;
-  min-height: 28px !important;
-}
-
 /* ─── Old workstation-run-bar: preserve for post-run selector hits (data-testid) ─── */
 /* The run bar is now .ide-verify-run-footer; old class may still appear in post-run */
 
@@ -28132,12 +28124,6 @@ button:disabled,
 
 .ide-verify-region--header .ide-vcb-mode-btn:not(.is-active) {
   padding: 3px 8px;
-}
-
-.ide-verify-region--header .ide-vcb-group--actions .ide-button,
-.ide-verify-region--header .ide-vcb-group--status .ide-button {
-  min-height: 28px !important;
-  padding: 3px 10px !important;
 }
 
 /* ── 3. Left signal dock: instrument-panel dark treatment ────────── */
@@ -32752,12 +32738,6 @@ button:disabled,
   margin-left: auto !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-workspace-actions .ide-button {
-  min-height: 28px !important;
-  padding-top: 4px !important;
-  padding-bottom: 4px !important;
-}
-
 [data-ide-mode-marker='design'] .ide-design-workspace-heading-main .ide-status-pill,
 [data-ide-mode-marker='design'] .ide-design-workspace-heading-main .ide-surface-command-chip {
   display: none !important;
@@ -32767,7 +32747,6 @@ button:disabled,
   gap: 6px !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
 [data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-view-btn,
 [data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-toggle {
   min-height: 28px !important;
@@ -33806,6 +33785,22 @@ button:disabled,
   gap: 6px;
 }
 
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-table-header,
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row {
+  grid-template-columns: minmax(78px, 0.9fr) minmax(86px, 1fr) minmax(86px, 1fr) minmax(44px, 0.55fr) minmax(108px, 1.05fr);
+}
+
+[data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-table-header {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(92, 128, 158, 0.32);
+  color: rgba(184, 209, 228, 0.8);
+  font-size: 11px;
+  font-weight: 700;
+}
+
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-structured-editor {
   order: 20;
   margin-top: 8px;
@@ -33828,7 +33823,7 @@ button:disabled,
 }
 
 [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-row {
-  align-items: stretch;
+  align-items: center;
   gap: 8px;
   min-height: 58px;
 }
@@ -35281,12 +35276,6 @@ button:disabled,
   line-height: 1 !important;
 }
 
-[data-ide-mode-marker='design'] .ide-design-workspace-actions .ide-button {
-  min-height: 26px !important;
-  padding: 3px 9px !important;
-  font-size: 11px !important;
-}
-
 [data-ide-mode-marker='design'] [data-testid='ide-design-command-strip-secondary-cta'] {
   display: none !important;
 }
@@ -35317,7 +35306,6 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-design-tool-segment,
-[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
 [data-ide-mode-marker='design'] .ide-design-toolbar .ide-design-view-btn,
 [data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-toggle {
   min-height: 26px !important;
@@ -36036,14 +36024,11 @@ button:disabled,
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions .ide-button {
   min-width: 140px;
-  min-height: 36px;
-  padding: 5px 9px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-package-build-v1'],
 .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-rebuild-btn'] {
   min-width: 140px !important;
-  min-height: 36px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {

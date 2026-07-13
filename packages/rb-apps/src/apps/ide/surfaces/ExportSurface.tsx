@@ -49,22 +49,19 @@ import {
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
+  IdeBlockedState,
   IdeCallout,
   IdeInspectorSection,
   IdePanel,
   IdeSpinner,
   IdeStatusPill,
 } from '../components/IdePrimitives';
-import { SurfaceCommandStrip } from '../components/SurfaceLayoutPrimitives';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import {
-  ExportReadinessHero,
   ExportVivadoInstructions,
   ExportAdvancedDetails,
-  type ExportTrustCondition,
   type ExportVerifyProvenance,
-  type ExportBuildProvenance,
   type ExportDebugCopyState,
 } from './export/ExportSurfacePrimitives';
 
@@ -743,30 +740,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     () => buildArtifactGroups(viewModel.artifacts),
     [viewModel.artifacts]
   );
-  const firstViewportArtifactItems = useMemo(() => {
-    const seen = new Set<string>();
-    const selected = FIRST_VIEWPORT_ARTIFACT_PATHS
-      .map((artifactPath) => artifactMap.get(artifactPath.toLowerCase()))
-      .filter((artifact): artifact is ExportArtifactView => Boolean(artifact));
-
-    for (const artifact of selected) {
-      seen.add(artifact.path.toLowerCase());
-    }
-
-    for (const artifact of viewModel.artifacts) {
-      if (selected.length >= FIRST_VIEWPORT_ARTIFACT_PATHS.length) break;
-      const key = artifact.path.toLowerCase();
-      if (seen.has(key)) continue;
-      selected.push(artifact);
-      seen.add(key);
-    }
-
-    return selected.map((artifact) => ({
-      path: artifact.path,
-      note: artifact.note,
-      status: artifact.status,
-    }));
-  }, [artifactMap, viewModel.artifacts]);
   const keyArtifacts = useMemo(
     () => ({
       topVhd: artifactMap.get('top.vhd'),
@@ -902,119 +875,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       }
     }, [downloadDone, handoffTruth.condition, handoffTruth.message]);
 
-    /** Summary-state title: explains the package handoff without repeating the command-strip status. */
-    const summaryStateTitle = useMemo(() => {
-      if (downloadDone) return `Vivado project downloaded`;
-
-      switch (handoffTruth.condition) {
-        case 'mapping-incomplete':
-          return 'Pin mapping must be completed before handoff';
-        case 'design-blocked':
-          return 'Export blockers must be resolved before handoff';
-        case 'verify-not-run':
-        case 'verify-stale':
-        case 'assertions-differ':
-        case 'trace-only':
-          return 'Vivado handoff package generated';
-        case 'export-stale':
-          return 'Previous E0 package needs rebuild';
-        case 'export-missing':
-          return 'E0 Vivado package ready to build';
-        case 'mapping-review':
-          return 'E0 Vivado package generated with mapping review pending';
-        case 'ready':
-          return 'E0 Vivado handoff ready';
-        default:
-          return 'Vivado handoff status';
-      }
-    }, [downloadDone, handoffTruth.condition]);
-
-    const summaryStateDetail = useMemo(() => {
-      if (downloadDone) {
-        return 'Open the .xpr in Vivado, then run synthesis, implementation, bitstream, and board programming outside RedByte.';
-      }
-
-      switch (handoffTruth.condition) {
-        case 'mapping-incomplete':
-        case 'mapping-review':
-          return 'Map Pins owns board readiness. Complete the physical bindings, then keep Verify evidence separate from pin assignment.';
-        case 'design-blocked':
-          return 'Resolve the blocking export diagnostic before treating the Vivado files as a credible handoff.';
-        case 'verify-not-run':
-          return 'Draft files are available for inspection or download; run Verify Compare before treating this package as trusted.';
-        case 'verify-stale':
-          return 'Draft files reflect the current design state, but trusted handoff waits on refreshed Verify evidence.';
-        case 'assertions-differ':
-          return 'Draft files can be inspected, but failed Compare evidence prevents a trusted handoff claim.';
-        case 'trace-only':
-          return 'Trace-only evidence is observation, not proof. Run Compare before calling the package trusted.';
-        case 'export-stale':
-          return 'Rebuild the E0 package so the downloadable Vivado project matches the current design. E1/E2/E3 still require external Vivado and board evidence.';
-        case 'export-missing':
-          return 'Build the E0 Vivado project package after checking mapping, timing, and Verify evidence. E1/E2/E3 still require external Vivado and board evidence.';
-        case 'ready':
-          return 'Current Verify evidence, mapping, and generated files agree for an E0 Vivado handoff; Vivado build, programming, and observation remain external.';
-        default:
-          return handoffTruth.message;
-      }
-    }, [downloadDone, handoffTruth.condition, handoffTruth.message]);
-
-    /** Next-action title: names the specific repair/build action (F-E2 fix: distinct from summary-state) */
-    const nextActionTitleDistinct = useMemo(() => {
-      if (downloadDone) return `Open ${projectSlug}.xpr in Vivado to continue your build.`;
-    
-      switch (handoffTruth.condition) {
-        case 'mapping-incomplete':
-          return 'Open Map Pins and finish required signal bindings';
-        case 'design-blocked':
-          return 'Fix blocking design issues in Project or Design';
-        case 'verify-not-run':
-          return 'Open Verify to create trusted export evidence';
-        case 'verify-stale':
-          return 'Rerun Verify to refresh evidence for the current design';
-        case 'assertions-differ':
-          return 'Debug and fix failing assertions in Design';
-        case 'trace-only':
-          return 'Run Compare checks in Verify to generate comparison evidence';
-        case 'export-stale':
-          return 'Rebuild the current E0 bundle';
-        case 'export-missing':
-          return 'Build the first E0 Vivado package';
-        case 'mapping-review':
-          return 'Complete mapping review in Map Pins, then build';
-        case 'ready':
-          return 'Download E0 Vivado package for external build';
-        default:
-          return handoffTruth.title;
-      }
-    }, [downloadDone, handoffTruth.condition, handoffTruth.title, projectSlug]);
-
-    /** Next-action detail: explains how to accomplish the next action */
-    const nextActionDetailDistinct = useMemo(() => {
-      if (downloadDone) return 'Unzip the exported project folder and open the .xpr file. Run Flow → Generate Bitstream to build for Basys3.';
-    
-      switch (handoffTruth.condition) {
-        case 'mapping-incomplete':
-        case 'mapping-review':
-          return 'Assign all required output/input signals to board controls (Switches, LEDs, Buttons, 7-Segment).';
-        case 'design-blocked':
-        case 'export-stale':
-        case 'export-missing':
-          return 'Build or rebuild the E0 export bundle for Vivado synthesis. RedByte does not claim Vivado build, board programming, or observed board behavior.';
-        case 'verify-not-run':
-          return 'Switch to Verify, author or generate test stimulus, and run Compare checks to lock in expected behavior.';
-        case 'verify-stale':
-          return 'Return to Verify and run Compare checks again to validate the design against the current testbench.';
-        case 'assertions-differ':
-          return 'Return to Design and adjust your circuit logic to match the expected behavior you defined in Verify.';
-        case 'trace-only':
-          return 'Return to Verify and execute Compare checks (not Observe only) to generate assertion-based proof.';
-        case 'ready':
-          return 'The E0 export bundle is ready for Vivado synthesis. Download the kit and run synthesis, implementation, bitstream, programming, and observation outside RedByte.';
-        default:
-          return handoffTruth.message;
-      }
-    }, [downloadDone, handoffTruth.condition, handoffTruth.message, projectSlug]);
   const primaryExportActionDownloadsProject =
     handoffTruth.primaryCtaIntent === 'build-current-bundle' ||
     handoffTruth.primaryCtaIntent === 're-export-current-bundle' ||
@@ -1025,28 +885,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       : (handoffTruth.primaryCtaIntent === 'map-pins' && !onGoToHardware) ||
         (handoffTruth.primaryCtaIntent === 'design' && !onGoToDesign) ||
         (handoffTruth.primaryCtaIntent === 'verify' && !onOpenVerify);
-  const showSecondaryProjectDownload =
-    downloadReady &&
-    !primaryExportActionDownloadsProject;
-  const nextActionTitle = downloadDone
-    ? `Project downloaded - open ${projectSlug}.xpr in Vivado to continue.`
-      : nextActionTitleDistinct;
-  const nextActionDetail = downloadDone
-    ? 'Unzip the ZIP, then open the .xpr file in Vivado. Run Flow -> Generate Bitstream, then program your Basys3 board using the Hardware Manager.'
-      : nextActionDetailDistinct;
   const vivadoCommand =
     'vivado -mode batch -source vivado_import.tcl -notrace -nojournal -log vivado_import.log';
-  const projectDownloadLabel = isRebuilding
-    ? 'Building...'
-    : handoffTruth.primaryCtaIntent === 'build-current-bundle'
-      ? 'Build Current Bundle'
-      : handoffTruth.primaryCtaIntent === 're-export-current-bundle'
-        ? 'Rebuild Current Bundle'
-    : downloadDone && lastDownloadKind === 'project'
-      ? 'Re-download'
-      : isDraftExport
-        ? 'Download Draft Vivado Project'
-        : 'Download Vivado Project (Open Project)';
   const projectDownloadCompactLabel = isRebuilding
     ? 'Building...'
     : handoffTruth.primaryCtaIntent === 'build-current-bundle'
@@ -1066,19 +906,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     handoffTruth.primaryCtaIntent === 'program-handoff'
       ? projectDownloadCompactLabel
       : handoffTruth.primaryCtaLabel;
-  const kitDownloadLabel = isRebuilding
-    ? 'Building...'
-    : downloadDone && lastDownloadKind === 'kit'
-      ? 'Re-download'
-      : isDraftExport
-        ? 'Download Draft Vivado Kit'
-        : 'Download Vivado Kit';
-  const dominantActionTitle = downloadDone
-    ? 'Vivado project downloaded'
-      : summaryStateTitle;
-  const dominantActionDetail = downloadDone
-    ? 'Open the .xpr in Vivado, then run synthesis, implementation, bitstream, and board programming outside RedByte.'
-    : summaryStateDetail;
   const gateStackSection = (
     <div className="ide-export-gate-details-panel" data-testid="ide-export-readiness-details">
       <header className="ide-export-section-header">
@@ -1315,11 +1142,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         void handleDownloadExport('project');
         break;
       case 'map-pins':
-        if (onGoToProject) {
-          onGoToProject();
-        } else {
-          onGoToHardware?.();
-        }
+        if (onGoToHardware) onGoToHardware();
+        else onGoToProject?.();
         break;
       case 'design':
         onGoToDesign?.();
@@ -1348,15 +1172,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
-  const handlePreviewArtifactFromHandoff = useCallback((artifactPath: string) => {
-    setSelectedArtifactPath(artifactPath);
-    if (typeof window === 'undefined') return;
-    window.requestAnimationFrame(() => {
-      artifactPreviewSectionRef.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
-      artifactPreviewSectionRef.current?.focus({ preventScroll: true });
-    });
-  }, []);
-
   const copyToClipboard = async (payload: string, targetId: string) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       setCopiedTarget(null);
@@ -1382,13 +1197,7 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
   };
 
-  // ── ExportReadinessHero derived props ────────────────────────────────────────
-  const trustCondition: ExportTrustCondition = exportTrusted
-    ? 'trusted'
-    : handoffTruth.severity === 'advisory'
-      ? 'advisory'
-      : 'blocked';
-
+  // ── Readiness evidence used by the single Export decision header ────────────
   const verifyProvenance: ExportVerifyProvenance = !verifyResult
     ? 'not-run'
     : dirtySinceVerify
@@ -1398,30 +1207,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         : verifyResult.status === 'pass'
           ? 'pass'
           : 'fail';
-
-  const buildProvenance: ExportBuildProvenance = !viewModel.exportHash
-    ? 'not-built'
-    : viewModel.exportHash !== determinismHash
-      ? 'previous'
-      : 'current';
-
-  const heroFirstBlocker = exportBlocked && viewModel.errors.length > 0
-    ? (() => {
-        const err = viewModel.errors[0];
-        return {
-          code: err.code,
-          title: err.title,
-          fix: err.fix,
-          ownerText: formatExportDiagnosticOwner(err.owner),
-          isHardwareIssue: err.code.startsWith('RBEX1'),
-          isDesignIssue: err.code.startsWith('RBEX4'),
-        };
-      })()
-    : undefined;
-
-  const showPrimaryDownloadSpinner =
-    isRebuilding &&
-    primaryExportActionDownloadsProject;
 
   const downloadDisabled = !downloadReady || isRebuilding;
   const vivadoEvidenceRows = [
@@ -1577,6 +1362,32 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const partNumberCopied = copiedTarget === 'part-number';
   const debugReportCopyState: ExportDebugCopyState =
     copiedTarget === 'report' ? 'copied' : copyError ? 'error' : 'idle';
+  const blockedRecovery = (() => {
+    switch (handoffTruth.primaryCtaIntent) {
+      case 'verify':
+        return {
+          owner: 'Verify',
+          label: 'Open Verify',
+          action: onOpenVerify,
+          testId: 'ide-export-blocked-open-verify',
+        };
+      case 'design':
+        return {
+          owner: 'Design',
+          label: 'Open Design',
+          action: onGoToDesign,
+          testId: 'ide-export-blocked-open-design',
+        };
+      case 'map-pins':
+      default:
+        return {
+          owner: 'Map Pins',
+          label: 'Open Mapping',
+          action: onGoToHardware ?? onGoToProject,
+          testId: 'ide-export-blocked-open-map-pins',
+        };
+    }
+  })();
 
   return (
     <IdeSurfaceLayout
@@ -1770,111 +1581,30 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
         </>
       }
     >
-      <IdePanel
-        title={
-          downloadDone
-            ? 'Project Downloaded'
-            : exportBlocked
-              ? 'Export Blocked'
-              : handoffTruth.condition === 'export-missing'
-                ? 'E0 Export Ready to Build'
-                : handoffTruth.condition === 'export-stale'
-                  ? 'E0 Export Stale'
-                  : exportTrusted
-                    ? 'E0 Export Ready'
-                    : 'Export Needs Review'
-        }
-        description={
-          downloadDone
-            ? 'Your ZIP is ready. Open it in Vivado to continue.'
-            : exportBlocked
-              ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody
-              : 'Review the handoff state, then inspect the files below.'
-        }
-        right={
-          downloadDone ? (
-            <IdeStatusPill tone="ok">Downloaded</IdeStatusPill>
-          ) : (
-            <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
-          )
-        }
-        testId="ide-export-panel"
-      >
-          <div className="ide-surface-command-stack">
-            <SurfaceCommandStrip
-              className="ide-export-command-strip"
-              testId="ide-export-command-strip"
-              label="Export"
-              title={surfaceStatusTitle}
-              description={surfaceStatusDetail}
-              meta={(
-                <>
-                  <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel.toUpperCase()}</IdeStatusPill>
-                  <span className="ide-surface-command-chip">Basys3</span>
-                  <span className="ide-surface-command-chip">{topModule}</span>
-                  <span className="ide-surface-command-chip">
-                    {mappedCount}/{viewModel.pinTable.length} mapped
-                  </span>
-                  <span className={`ide-surface-command-chip${readyArtifactCount === viewModel.artifacts.length ? ' is-ok' : ''}`}>
-                    {readyArtifactCount}/{viewModel.artifacts.length} artifacts
-                  </span>
-                </>
-              )}
-              actions={
-                onGoToHardware &&
-                handoffTruth.primaryCtaIntent !== 'map-pins' &&
-                handoffTruth.primaryCtaIntent !== 'program-handoff' ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={onGoToHardware}
-                    testId="ide-export-command-strip-secondary-cta"
-                  >
-                    Map Pins
-                  </IdeButton>
-                ) : onGoToProject ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={onGoToProject}
-                    testId="ide-export-command-strip-secondary-cta"
-                  >
-                    Project
-                  </IdeButton>
-                ) : null
-              }
-            />
-          </div>
-
+      <IdePanel testId="ide-export-panel">
+          <section
+            ref={surfaceRef}
+            className="ide-export-readiness-hero"
+            data-testid="ide-export-readiness-hero"
+            aria-label="Export readiness and next action"
+          >
           <section
             className={`ide-export-package-inspector-v1${exportBlocked ? ' ide-export-package-inspector-v1--blocked' : ''}${isDraftExport ? ' ide-export-package-inspector-v1--draft' : ''}`}
             data-testid="ide-export-package-inspector-v1"
             data-export-package-state={exportBlocked ? 'blocked' : exportTrusted ? 'ready' : 'draft'}
             aria-label="Export package inspector"
           >
-            <header className="ide-export-package-inspector-v1__header">
+            <header className="ide-export-package-inspector-v1__header ide-export-readiness-hero__header">
               <div>
-                <p className="ide-surface-block-label">Package inspector</p>
-                <h3>
-                  {exportBlocked
-                    ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle
-                    : isDraftExport
-                      ? 'Draft handoff files'
-                      : selectedArtifact
-                        ? selectedArtifact.path
-                        : 'Generated package files'}
-                </h3>
-                <p>
-                  {exportBlocked
-                    ? PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody
-                    : isDraftExport
-                      ? 'Files are inspectable, but this is not a trusted submission until Verify and mapping evidence are current.'
-                      : 'Inspect the generated Vivado handoff as files: RTL, constraints, testbench, README, and project scripts.'}
-                </p>
+                <p className="ide-surface-block-label">Export</p>
+                <h2>{surfaceStatusTitle}</h2>
+                <p>{surfaceStatusDetail}</p>
               </div>
-              <section
+              <details
                 className="ide-export-confidence-station"
                 data-testid="ide-export-confidence-station"
-                aria-label="Export confidence station"
               >
+                <summary>Readiness details</summary>
                 <header className="ide-export-confidence-station__header">
                   <div>
                     <p className="ide-surface-block-label">Confidence station</p>
@@ -1897,38 +1627,60 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </div>
                   ))}
                 </div>
-              </section>
-              <div className="ide-export-package-inspector-v1__actions">
-                <IdeStatusPill tone={handoffTone}>{handoffTruth.statusLabel}</IdeStatusPill>
-                <IdeButton
-                  tone={exportTrusted || exportBlocked || handoffTruth.primaryCtaIntent === 'verify' ? 'secondary' : 'primary'}
-                  onClick={handlePrimaryHandoff}
-                  disabled={primaryHandoffDisabled}
-                  testId="ide-export-package-build-v1"
-                >
-                  {primaryExportCtaLabel}
-                </IdeButton>
-                <IdeButton
-                  tone={exportTrusted ? 'primary' : 'secondary'}
-                  onClick={() => void handleDownloadExport('project')}
-                  disabled={downloadDisabled}
-                  testId="ide-export-package-download-v1"
-                >
-                  Download package
-                </IdeButton>
-                <IdeButton
-                  tone="ghost"
-                  onClick={() =>
-                    selectedArtifact &&
-                    void copyToClipboard(selectedArtifact.content, `current:${selectedArtifact.path}`)
-                  }
-                  disabled={!selectedArtifact || selectedArtifact.content.trim().length === 0}
-                  testId="ide-export-package-copy-v1"
-                >
-                  {selectedArtifact && copiedTarget === `current:${selectedArtifact.path}` ? 'Copied!' : 'Copy current file'}
-                </IdeButton>
+              </details>
+              <div className="ide-export-package-inspector-v1__actions" data-testid="ide-export-primary-actions">
+                <IdeStatusPill tone={downloadDone ? 'ok' : handoffTone}>
+                  {downloadDone ? 'Downloaded' : handoffTruth.statusLabel}
+                </IdeStatusPill>
+                {exportBlocked ? (
+                  <IdeButton
+                    tone="primary"
+                    onClick={blockedRecovery.action ?? (() => {})}
+                    disabled={!blockedRecovery.action}
+                    testId={blockedRecovery.testId}
+                  >
+                    {blockedRecovery.label}
+                  </IdeButton>
+                ) : exportTrusted ? (
+                    <IdeButton
+                      tone="primary"
+                      onClick={() => void handleDownloadExport('project')}
+                      disabled={downloadDisabled}
+                      testId="ide-export-package-download-v1"
+                    >
+                      Download Package
+                    </IdeButton>
+                  ) : (
+                    <IdeButton
+                      tone="primary"
+                      onClick={handlePrimaryHandoff}
+                      disabled={primaryHandoffDisabled}
+                      testId="ide-export-package-build-v1"
+                    >
+                      {primaryExportCtaLabel}
+                    </IdeButton>
+                  )}
               </div>
             </header>
+            {!exportBlocked ? (
+              <>
+                <section className="ide-export-package-contents" data-testid="ide-export-package-contents">
+                  <div>
+                    <h3>{exportTrusted ? 'Browser-E0 package ready' : 'Package contents'}</h3>
+                    <p>Generated for the current RedByte project:</p>
+                  </div>
+                  <ul>
+                    <li>VHDL</li>
+                    <li>Constraints</li>
+                    <li>Documentation</li>
+                    <li>Testbench</li>
+                  </ul>
+                  <p className="ide-copy ide-copy--flush" data-testid="ide-export-e0-boundary-summary">
+                    Browser E0 confirms package generation only. Vivado build, programming, and physical board behavior remain external.
+                  </p>
+                </section>
+                <details className="ide-export-package-readiness-details">
+                  <summary>Readiness and submission details</summary>
             <div
               className="ide-export-handoff-checklist-v1"
               data-testid="ide-export-handoff-checklist-v1"
@@ -2023,33 +1775,21 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 </p>
               </details>
             </section>
+                </details>
+              </>
+            ) : null}
             {exportBlocked ? (
-              <div className="ide-export-blocked-empty-state" data-testid="ide-export-blocked-empty-state">
-                <strong>{PROFESSIONAL_CLASSROOM_COPY.exportBlockedTitle}</strong>
-                <p>{PROFESSIONAL_CLASSROOM_COPY.exportBlockedBody}</p>
-                <div className="ide-inline-actions">
-                  {handoffTruth.primaryCtaIntent === 'verify' && onOpenVerify ? (
-                    <IdeButton tone="primary" onClick={onOpenVerify} testId="ide-export-blocked-open-verify">
-                      Open Verify
-                    </IdeButton>
-                  ) : onGoToHardware ? (
-                    <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-export-blocked-open-map-pins">
-                      Open Map Pins
-                    </IdeButton>
-                  ) : onGoToDesign ? (
-                    <IdeButton tone="primary" onClick={onGoToDesign} testId="ide-export-blocked-open-design">
-                      Open Design
-                    </IdeButton>
-                  ) : null}
-                  {onGoToProject ? (
-                    <IdeButton tone="secondary" onClick={onGoToProject} testId="ide-export-blocked-open-project">
-                      Project
-                    </IdeButton>
-                  ) : null}
-                </div>
-              </div>
+              <IdeBlockedState
+                title="Cannot export yet"
+                body={trustReason}
+                owner={blockedRecovery.owner}
+                testId="ide-export-blocked-empty-state"
+                primaryAction={null}
+              />
             ) : (
-            <div className="ide-export-package-inspector-v1__body">
+            <details className="ide-export-package-files" data-testid="ide-export-package-files">
+              <summary>Inspect generated files</summary>
+              <div className="ide-export-package-inspector-v1__body">
               <nav className="ide-export-file-browser-v1" data-testid="ide-export-file-browser-v1" aria-label="Generated files">
                 {viewModel.artifacts.length > 0 ? (
                   viewModel.artifacts.map((artifact) => (
@@ -2128,64 +1868,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   )}
                 </div>
               </section>
-            </div>
+              </div>
+            </details>
             )}
           </section>
-
-          <ExportReadinessHero
-            sectionRef={surfaceRef}
-            layoutMode={layoutMode}
-            dominantActionTitle={dominantActionTitle}
-            dominantActionDetail={dominantActionDetail}
-            firstBlocker={heroFirstBlocker}
-            handoffTone={handoffTone}
-            handoffStatusLabel={handoffTruth.statusLabel}
-            nextActionTitle={nextActionTitle}
-            nextActionDetail={nextActionDetail}
-            verifyProvenance={verifyProvenance}
-            buildProvenance={buildProvenance}
-            determinismHashShort={determinismHash.slice(0, 8)}
-            isRebuilding={isRebuilding}
-            primaryHandoffDisabled={primaryHandoffDisabled}
-            primaryCtaLabel={primaryExportCtaLabel}
-            showPrimaryDownloadSpinner={showPrimaryDownloadSpinner}
-            showSecondaryProjectDownload={showSecondaryProjectDownload}
-            projectDownloadLabel={projectDownloadCompactLabel}
-            kitDownloadLabel={kitDownloadLabel}
-            downloadDisabled={downloadDisabled}
-            rebuildSteps={rebuildSteps}
-            topModule={topModule}
-            mappedPinsLabel={`${mappedCount}/${viewModel.pinTable.length}`}
-            artifactsLabel={`${readyArtifactCount}/${viewModel.artifacts.length}`}
-            packageStatusTone={packageHandoffSummary.status === 'ready' ? 'ok' : packageHandoffSummary.status === 'blocked' ? 'error' : 'warn'}
-            packageStatusLabel={packageHandoffSummary.statusLabel}
-            packageHeadline={packageHandoffSummary.headline}
-            packageSubline={packageHandoffSummary.subline}
-            boardTarget={packageHandoffSummary.boardTarget}
-            timingPlain={packageHandoffSummary.timingPlain}
-            mappingPlain={packageHandoffSummary.mappingPlain}
-            verifyPlain={packageHandoffSummary.verifyPlain}
-            artifactsPlain={packageHandoffSummary.artifactsPlain}
-            artifactPreviewItems={firstViewportArtifactItems}
-            selectedArtifactPath={selectedArtifact?.path ?? ''}
-            trustCondition={trustCondition}
-            trustReason={trustReason}
-            trustConsequence={handoffTruth.message}
-            isDraftExport={isDraftExport}
-            trustPrimaryCtaIsVerify={handoffTruth.primaryCtaIntent === 'verify'}
-            trustPrimaryCtaIsHardware={trustCondition === 'blocked'}
-            designReady={resolvedWorkflowAuthority.designReady}
-            unmappedRequiredCount={unmappedRequiredPorts.length}
-            artifactAgreementRows={artifactAgreementRows}
-            onGoToHardware={onGoToHardware}
-            onGoToProject={onGoToProject}
-            onGoToDesign={onGoToDesign}
-            onOpenVerify={onOpenVerify}
-            onPreviewArtifact={handlePreviewArtifactFromHandoff}
-            onPrimaryHandoff={handlePrimaryHandoff}
-            onDownloadProject={() => void handleDownloadExport('project')}
-            onDownloadKit={() => void handleDownloadExport('kit')}
-          />
+          </section>
 
           {downloadDone && (
             <IdeCallout
@@ -2205,7 +1892,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
             </IdeCallout>
           )}
 
-          <section className="ide-export-evidence-boundary" data-testid="ide-export-evidence-boundary">
+          <details className="ide-export-evidence-boundary" data-testid="ide-export-evidence-boundary">
+            <summary>Advanced proof boundary</summary>
             <section
               className="ide-export-section ide-mt-2"
               data-testid="ide-export-vivado-evidence-diagnostics"
@@ -2248,8 +1936,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               on a machine with bench run artifacts, then keep E1/E2/E3 claims separated.
             </IdeCallout>
             </section>
-          </section>
+          </details>
 
+          {!exportBlocked ? (
+          <details className="ide-export-engineering-details" data-testid="ide-export-engineering-details">
+            <summary>Engineering package details</summary>
           <div className="ide-export-layout">
             <div className="ide-export-left-col">
               <section
@@ -2809,6 +2500,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
 
             </div>
           </div>
+          </details>
+          ) : null}
         </IdePanel>
     </IdeSurfaceLayout>
   );

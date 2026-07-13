@@ -121,7 +121,7 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
     expect(queryByTestId('ide-hw-map-reset-header')).toBeNull();
   });
 
-  it('still shows the 3-step guide when mapping is incomplete', () => {
+  it('keeps the incomplete row and progress status visible without a second guide', () => {
     // One row has no pin — guide should still be visible.
     const health = makeHealthVerifyNotRun();
     const { getByTestId } = render(
@@ -145,7 +145,8 @@ describe('HardwareSurface trust clarity — F-H2 (guide collapses when complete)
     );
 
     // Guide must appear when mapping is incomplete.
-    expect(getByTestId('ide-hw-mapping-guide')).toBeTruthy();
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toContain('1 / 2 REQUIRED MAPPED');
+    expect(getByTestId('ide-hw-map-row-status-ld0').textContent).toContain('Missing');
   });
 });
 
@@ -178,7 +179,7 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
 
     // The mapping header hint must mention both Verify AND evidence (specific, not generic).
     // Current text "Mapping is complete. Run Verify or open Export." does not contain "evidence".
-    const hint = getByTestId('ide-hw-mapping-header-hint');
+    const hint = getByTestId('ide-hardware-command-strip');
     expect(hint.textContent).toMatch(/verify/i);
     expect(hint.textContent).toMatch(/evidence/i);
   });
@@ -205,9 +206,7 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-product-spine-status-hardware').textContent).toMatch(/needs review/i);
-
-    const hint = getByTestId('ide-hw-mapping-header-hint');
+    const hint = getByTestId('ide-hardware-command-strip');
     expect(hint.textContent).toMatch(/verify/i);
     expect(hint.textContent).toMatch(/evidence/i);
     expect(hint.textContent).not.toMatch(/select a signal row/i);
@@ -236,7 +235,7 @@ describe('HardwareSurface trust clarity — F-H3 (NEEDS REVIEW explains fix path
 
     // The mapping header hint must mention Verify AND evidence (condition-specific, not generic).
     // Current text "Mapping is complete. Run Verify or open Export." does not contain "evidence".
-    const hint = getByTestId('ide-hw-mapping-header-hint');
+    const hint = getByTestId('ide-hardware-command-strip');
     expect(hint.textContent).toMatch(/verify/i);
     expect(hint.textContent).toMatch(/evidence/i);
   });

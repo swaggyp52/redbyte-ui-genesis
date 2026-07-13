@@ -6,8 +6,8 @@
  * ExportAdvancedDetails) render correctly via the full ExportSurface pipeline.
  */
 import React from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, render, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
@@ -71,8 +71,9 @@ function makeAuthority(opts: {
   verifyResult?: ProjectHealthVerifyResult;
   dirtySinceVerify?: boolean;
   exportHash?: string;
+  currentExportHash?: string;
 } = {}) {
-  const { verifyResult, dirtySinceVerify = false, exportHash = 'exp-hash' } = opts;
+  const { verifyResult, dirtySinceVerify = false, exportHash = 'exp-hash', currentExportHash = exportHash } = opts;
   const verifyHash = verifyResult?.hash ?? null;
   return deriveProjectWorkflowAuthority({
     projectHealthCore: {
@@ -81,7 +82,7 @@ function makeAuthority(opts: {
         ? { status: 'ok', hash: exportHash, ranAtIso: '2026-03-12T00:10:00.000Z' }
         : undefined,
       dirtySinceVerify,
-      dirtySinceExport: false,
+      dirtySinceExport: Boolean(exportHash && currentExportHash && exportHash !== currentExportHash),
     },
     readiness: {
       hasCircuit: true,
@@ -92,7 +93,7 @@ function makeAuthority(opts: {
     verifyLastRun: verifyResult,
     verifyRunHistory: verifyHash ? [{ projectHash: verifyHash }] : undefined,
     currentVerifyProjectHash: verifyHash,
-    currentExportHash: exportHash ?? undefined,
+    currentExportHash: currentExportHash ?? undefined,
   });
 }
 
@@ -103,7 +104,7 @@ describe('ExportSurface handoff states', () => {
 
   // ── Trusted state ────────────────────────────────────────────────────────────
 
-  it('trusted: trust banner shows READY pill', () => {
+  it('trusted: readiness hero owns the ready status and sole Download Package action', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -113,13 +114,18 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'abc999' })}
       />
     );
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('READY');
+    const hero = getByTestId('ide-export-readiness-hero');
+    expect(hero.textContent).toContain('E0 export package ready');
+    expect(hero.textContent).toContain('READY');
+    const actions = getByTestId('ide-export-primary-actions');
+    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
+    expect(getByTestId('ide-export-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
   });
 
   // ── Advisory state ───────────────────────────────────────────────────────────
 
-  it('advisory: trust banner shows NEEDS REVIEW when verify not run', () => {
+  it('advisory: readiness hero shows a draft when Verify has not run', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -127,23 +133,29 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('NEEDS REVIEW');
+    const hero = getByTestId('ide-export-readiness-hero');
+    expect(hero.textContent).toContain('Draft export available');
+    expect(hero.textContent).toContain('No expected-output comparison');
   });
 
-  it('advisory: ide-export-trust-go-verify button is present when verify not run', () => {
+  it('advisory: the sole readiness action routes to Verify when Verify has not run', () => {
+    const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="h1"
-        onOpenVerify={() => undefined}
+        onOpenVerify={onOpenVerify}
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-trust-go-verify')).toBeTruthy();
+    const actions = getByTestId('ide-export-primary-actions');
+    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    fireEvent.click(getByTestId('ide-export-package-build-v1'));
+    expect(onOpenVerify).toHaveBeenCalledTimes(1);
   });
 
-  it('advisory: trust banner shows NEEDS REVIEW when verify failed', () => {
+  it('advisory: readiness hero names a failed Compare as draft evidence', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -153,13 +165,36 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: failVerify, exportHash: 'abc888' })}
       />
     );
-    const banner = getByTestId('ide-export-trust-banner');
-    expect(banner.textContent).toContain('NEEDS REVIEW');
+    expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Draft export available');
+    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Compare FAIL');
+  });
+
+  it('blocked: hides generated files and offers one truthful Map Pins repair', () => {
+    const project = baseMappedProject();
+    project.ioMapping!.outputs[0] = { ...project.ioMapping!.outputs[0], pin: '' };
+    const onGoToHardware = vi.fn();
+    const { getByTestId, queryByTestId } = render(
+      <ExportSurface
+        project={project}
+        determinismHash="blocked-map"
+        verifyResult={passVerify}
+        workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'blocked-map' })}
+        onGoToHardware={onGoToHardware}
+      />
+    );
+
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('blocked');
+    expect(queryByTestId('ide-export-file-browser-v1')).toBeNull();
+    const actions = getByTestId('ide-export-primary-actions');
+    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Mapping');
+    fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
+    expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
 
   // ── Provenance rows ───────────────────────────────────────────────────────────
 
-  it('provenance-verify shows Not run when verifyResult is absent', () => {
+  it('readiness details show Not run when verifyResult is absent', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -167,10 +202,10 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-provenance-verify').textContent).toContain('Not run');
+    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Not run');
   });
 
-  it('provenance-verify shows Checks match when verify passed and not stale', () => {
+  it('readiness details show current Compare PASS when verify passed and not stale', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -180,20 +215,21 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'abc999' })}
       />
     );
-    expect(getByTestId('ide-export-provenance-verify').textContent).toContain('Checks match');
+    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Current Compare PASS');
   });
 
-  it('provenance-build shows Previous when export hash predates the current design hash', () => {
+  it('shows a truthful rebuild action when export hash predates the current design hash', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
         determinismHash="current-hash"
         verifyResult={passVerify}
         dirtySinceVerify={false}
-        workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'older-hash' })}
+        workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'older-hash', currentExportHash: 'current-hash' })}
       />
     );
-    expect(getByTestId('ide-export-provenance-build').textContent).toContain('Previous');
+    expect(getByTestId('ide-export-readiness-hero').textContent).toMatch(/stale|build/i);
+    expect(getByTestId('ide-export-package-build-v1').textContent).toMatch(/build|rebuild/i);
   });
 
   // ── ExportVivadoInstructions ──────────────────────────────────────────────────

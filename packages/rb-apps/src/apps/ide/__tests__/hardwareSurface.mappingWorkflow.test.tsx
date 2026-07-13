@@ -53,7 +53,7 @@ const BASE_ROWS = [
 ];
 
 describe('HardwareSurface — mapping workflow primitives', () => {
-  it('renders HardwareMappingHeader with board name', () => {
+  it('uses one headerless panel wrapper and one Map Pins command header', () => {
     const health = makeHealth();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -72,8 +72,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-mapping-header')).toBeTruthy();
-    expect(getByTestId('ide-hw-mapping-header-board').textContent).toBe('Basys3');
+    expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Map project signals to Basys3 controls');
+    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Basys3');
   });
 
   it('shows Complete state and full count when all required signals are mapped', () => {
@@ -95,10 +96,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    const stateEl = getByTestId('ide-hw-mapping-header-state');
-    expect(stateEl.getAttribute('data-state')).toBe('complete');
-    expect(stateEl.textContent).toMatch(/complete/i);
-    expect(getByTestId('ide-hw-mapping-header-count').textContent).toMatch(/all 2 required/i);
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(getByTestId('ide-hw-map-table').getAttribute('data-work-priority')).toBe('primary');
   });
 
   it('shows Incomplete state when a required signal has no pin', () => {
@@ -123,13 +122,13 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    const stateEl = getByTestId('ide-hw-mapping-header-state');
-    expect(stateEl.getAttribute('data-state')).toBe('incomplete');
-    expect(getByTestId('ide-hw-mapping-header-count').textContent).toContain('1 / 2');
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toContain('1 / 2 REQUIRED MAPPED');
+    expect(getByTestId('ide-hw-map-row-status-ld0').textContent).toContain('Missing');
   });
 
-  it('shows design-first state when no boundary rows exist', () => {
+  it('shows one task-first Open Design action when no boundary rows exist', () => {
     const health = makeHealth();
+    const onGoToDesign = vi.fn();
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -143,15 +142,20 @@ describe('HardwareSurface — mapping workflow primitives', () => {
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
+          onGoToDesign={onGoToDesign}
         />
       </BoardSignalProvider>
     );
 
-    const stateEl = getByTestId('ide-hw-mapping-header-state');
-    expect(stateEl.getAttribute('data-state')).toBe('design-first');
+    const emptyState = getByTestId('ide-hw-map-empty');
+    expect(emptyState.textContent).toContain('No signals to map yet');
+    expect(emptyState.querySelectorAll('button')).toHaveLength(1);
+    expect(getByTestId('ide-hardware-next-primary').textContent).toBe('Open Design');
+    fireEvent.click(getByTestId('ide-hardware-next-primary'));
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the 3-step mapping guide when mapping is not yet complete', () => {
+  it('makes the semantic mapping table the first work object and demotes later modes', () => {
     // Guide is shown during active mapping work; it collapses once all required signals are bound.
     // Use an incomplete row set (ld0 has no pin yet) to preserve this test after the F-H2 fix.
     const health = makeHealth();
@@ -176,13 +180,17 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-mapping-guide')).toBeTruthy();
-    expect(getByTestId('ide-hw-guide-step-1')).toBeTruthy();
-    expect(getByTestId('ide-hw-guide-step-2')).toBeTruthy();
-    expect(getByTestId('ide-hw-guide-step-3')).toBeTruthy();
+    const table = getByTestId('ide-hw-map-table');
+    expect(table.getAttribute('data-columns')).toBe('Signal|Purpose|Board resource|Pin|Status');
+    expect(table.textContent).toContain('Signal');
+    expect(table.textContent).toContain('Purpose');
+    expect(table.textContent).toContain('Board resource');
+    const afterMapping = getByTestId('ide-hw-after-mapping-tools');
+    expect(afterMapping.hasAttribute('open')).toBe(false);
+    expect(table.compareDocumentPosition(afterMapping) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows step 1 as active and "Select a signal row" placeholder before any selection', () => {
+  it('keeps the board as a secondary reference after the mapping table', () => {
     // Guide renders during active mapping (at least one row unmapped).
     // Use incomplete rows so mappingReady is false and guide is visible.
     const health = makeHealth();
@@ -207,13 +215,14 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-guide-step-1').getAttribute('data-active')).toBe('true');
-    expect(getByTestId('ide-hw-guide-step-value-1').textContent).toBe('Select a signal row');
-    // Loop card testid preserved for existing contract
-    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('Select a signal row');
+    const table = getByTestId('ide-hw-map-table');
+    const board = getByTestId('ide-hw-map-board');
+    expect(board.getAttribute('data-work-priority')).toBe('reference');
+    expect(table.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Select a signal row');
   });
 
-  it('marks step 1 as done and loop card updates after a mapped row is selected', () => {
+  it('updates the visible signal-to-board-to-pin chain after a mapped row is selected', () => {
     // Use incomplete rows so guide renders (guide collapses when all rows are fully mapped).
     // sig-out0 has no pin so mappingReady is false — guide is visible during active mapping.
     const health = makeHealth();
@@ -239,14 +248,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    // Before click: step 1 active, loop card shows placeholder
-    expect(getByTestId('ide-hw-guide-step-1').getAttribute('data-active')).toBe('true');
-    expect(getByTestId('ide-hw-map-loop-card').textContent).toContain('Select a signal row');
-
     fireEvent.click(getByTestId('ide-hw-map-row-sig-in0'));
-
-    // After click: step 1 is no longer active; loop card shows signal label
-    expect(getByTestId('ide-hw-guide-step-1').getAttribute('data-active')).toBe('false');
-    expect(getByTestId('ide-hw-map-loop-card').textContent).not.toContain('Select a signal row');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('SIG-IN0');
+    expect(getByTestId('ide-hardware-chain-board').textContent).toContain('SW0');
+    expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('V17');
   });
 });

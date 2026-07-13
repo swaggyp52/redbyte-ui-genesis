@@ -1829,12 +1829,6 @@
   margin-top: 8px;
 }
 
-[data-ide-mode-marker='verify'] .ide-verify-command-bar .ide-vcb-group--actions .ide-button {
-  min-height: 34px;
-  font-size: 12px;
-  padding-inline: 12px;
-}
-
 [data-ide-mode-marker='verify'] .ide-vcb-group--actions {
   position: relative;
   z-index: 3;
@@ -4862,15 +4856,21 @@
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-mode {
+  display: grid !important;
+  grid-template-columns: minmax(440px, 1.2fr) minmax(300px, 0.8fr) !important;
   gap: 12px !important;
+  align-items: start !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-board-workspace--map .ide-hw-map-table {
-  flex-basis: min(350px, 31vw) !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex-basis: auto !important;
   max-height: calc(100vh - 292px) !important;
 }
 
 .ide-root [data-ide-mode-marker='hardware'][data-layout-intent='workbench'] .ide-hw-map-board {
+  min-width: 0 !important;
   min-height: clamp(350px, calc(100vh - 300px), 640px) !important;
 }
 
@@ -4954,12 +4954,6 @@
 
   .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions {
     gap: 3px !important;
-  }
-
-  .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__actions .ide-button {
-    min-height: 24px !important;
-    padding: 2px 7px !important;
-    font-size: 10.5px !important;
   }
 
   .ide-root [data-ide-mode-marker='export'] .ide-export-package-inspector-v1__body {
@@ -5858,7 +5852,6 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-rebuild-btn'],
 .ide-root .ide-workbench-shell[data-ide-mode-marker='export'] [data-testid='ide-export-primary-handoff-cta'] .ide-button {
   min-width: 140px !important;
-  min-height: 36px !important;
 }
 
 /* Trust + Clarity: calmer student-facing concept language without changing workflow truth. */
