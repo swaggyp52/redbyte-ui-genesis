@@ -48,60 +48,69 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
 }) => {
   return (
     <header
-      className="ide-verify-context-header"
+      className="ide-verify-context-header ide-verify-job-header"
       data-testid="ide-verify-context-header"
     >
-      <div className="ide-verify-context-identity">
-        <span
-          className="ide-verify-context-project"
-          data-testid="ide-verify-context-project"
-          title={projectName}
-        >
-          {projectName}
-        </span>
-        <span className="ide-verify-context-sep" aria-hidden="true">/</span>
-        <span
-          className="ide-verify-context-board"
-          data-testid="ide-verify-context-board"
-        >
-          {board}
-        </span>
-        {scenarioName ? (
-          <>
-            <span className="ide-verify-context-sep" aria-hidden="true">/</span>
-            <span
-              className="ide-verify-context-scenario"
-              data-testid="ide-verify-context-scenario"
-            >
-              {scenarioName}
-            </span>
-          </>
-        ) : null}
+      <div className="ide-verify-job-header-main">
+        <div className="ide-verify-job-copy">
+          <h2>Verify</h2>
+          <p>Does my circuit behave correctly? Define inputs and expected outputs, then run the testbench.</p>
+        </div>
       </div>
-      <div className="ide-verify-context-meta">
-        <span
-          className={`ide-verify-context-state ${STATE_TONE_CLASS[stateTone]}`}
-          data-testid="ide-verify-context-state"
-          data-tone={stateTone}
-        >
-          <span className="ide-verify-context-state-dot" aria-hidden="true" />
-          {stateLabel}
-        </span>
-        <span
-          className="ide-verify-context-mode"
-          data-testid="ide-verify-context-mode"
-        >
-          {modeLabel}
-        </span>
-        {nextActionHint ? (
+      <details className="ide-verify-context-details">
+        <summary>Session details</summary>
+        <div className="ide-verify-context-identity">
           <span
-            className="ide-verify-context-next"
-            data-testid="ide-verify-context-next"
+            className="ide-verify-context-project"
+            data-testid="ide-verify-context-project"
+            title={projectName}
           >
-            {nextActionHint}
+            {projectName}
           </span>
-        ) : null}
-      </div>
+          <span className="ide-verify-context-sep" aria-hidden="true">/</span>
+          <span
+            className="ide-verify-context-board"
+            data-testid="ide-verify-context-board"
+          >
+            {board}
+          </span>
+          {scenarioName ? (
+            <>
+              <span className="ide-verify-context-sep" aria-hidden="true">/</span>
+              <span
+                className="ide-verify-context-scenario"
+                data-testid="ide-verify-context-scenario"
+              >
+                {scenarioName}
+              </span>
+            </>
+          ) : null}
+        </div>
+        <div className="ide-verify-context-meta">
+          <span
+            className={`ide-verify-context-state ${STATE_TONE_CLASS[stateTone]}`}
+            data-testid="ide-verify-context-state"
+            data-tone={stateTone}
+          >
+            <span className="ide-verify-context-state-dot" aria-hidden="true" />
+            {stateLabel}
+          </span>
+          <span
+            className="ide-verify-context-mode"
+            data-testid="ide-verify-context-mode"
+          >
+            {modeLabel}
+          </span>
+          {nextActionHint ? (
+            <span
+              className="ide-verify-context-next"
+              data-testid="ide-verify-context-next"
+            >
+              {nextActionHint}
+            </span>
+          ) : null}
+        </div>
+      </details>
     </header>
   );
 };
@@ -135,6 +144,8 @@ export interface VerifyResultsSummaryProps {
   readonly headline: string;
   /** Additional one-line context (e.g. when the run happened, scenario name). */
   readonly subline?: string;
+  /** Plain-language causes or checks that should remain visible in the normal result state. */
+  readonly guidanceItems?: readonly string[];
   /** Optional metrics row: passed/failed/coverage etc. */
   readonly metrics?: readonly VerifyResultsMetric[];
   /** Optional primary follow-up action ("Open mismatch", "Re-run Verify"). */
@@ -171,6 +182,7 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
   kind,
   headline,
   subline,
+  guidanceItems,
   metrics,
   primaryActionLabel,
   onPrimaryAction,
@@ -180,7 +192,7 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
   secondaryActionTestId,
 }) => {
   const tone = RESULT_KIND_TONE[kind];
-  return (
+  const summary = (
     <section
       className={`ide-verify-results-summary ${STATE_TONE_CLASS[tone]}`}
       data-testid="ide-verify-results-summary"
@@ -198,15 +210,20 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
           className="ide-verify-results-summary-headline"
           data-testid="ide-verify-results-summary-headline"
         >
-          {headline}
+          {kind === 'pass' ? <span data-testid="ide-verify-pass-hero-title">{headline}</span> : headline}
         </span>
         {subline ? (
           <span
             className="ide-verify-results-summary-subline"
             data-testid="ide-verify-results-summary-subline"
           >
-            {subline}
+            {kind === 'pass' ? <span data-testid="ide-verify-pass-hero-meta">{subline}</span> : subline}
           </span>
+        ) : null}
+        {guidanceItems && guidanceItems.length > 0 ? (
+          <ol className="ide-verify-results-guidance" data-testid="ide-verify-results-guidance">
+            {guidanceItems.map((item) => <li key={item}>{item}</li>)}
+          </ol>
         ) : null}
       </div>
       {metrics && metrics.length > 0 ? (
@@ -253,4 +270,10 @@ export const VerifyResultsSummary: React.FC<VerifyResultsSummaryProps> = ({
       ) : null}
     </section>
   );
+
+  return kind === 'pass' ? (
+    <div className="ide-verify-pass-summary-anchor" data-testid="ide-verify-pass-hero">
+      {summary}
+    </div>
+  ) : summary;
 };

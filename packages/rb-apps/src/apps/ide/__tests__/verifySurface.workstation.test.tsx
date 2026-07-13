@@ -1151,6 +1151,44 @@ describe('VerifySurface workstation controls', () => {
     });
   });
 
+  it('switches from an Observe result back to Compare when saved checks are available', async () => {
+    const onRunVerification = vi.fn();
+    const traceRun = makeWaveformOnlyRun();
+    const view = render(
+      <VerifySurface
+        deterministicHash="abc123"
+        hasVectors={true}
+        lastRun={traceRun}
+        vectors={[
+          { id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+          { id: 'vec-02', tick: 1, inputs: { sw0: 1 }, expected: { ld0: 1 } },
+        ]}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        onRunVerification={onRunVerification}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-vcb-observe-only')).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(view.getByTestId('ide-vcb-use-saved-checks'));
+
+    expect(view.getByTestId('ide-vcb-use-saved-checks')).toHaveAttribute('aria-pressed', 'true');
+    expect(view.getByTestId('ide-vcb-run').textContent).toContain('Compare');
+
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
+
+    await waitFor(() => expect(onRunVerification).toHaveBeenCalledTimes(1));
+    expect(onRunVerification.mock.calls[0]?.[0]).toMatchObject({
+      assertionMode: true,
+      runKind: 'verify',
+    });
+  });
+
   it('clears running state for repeated compare runs with the same report hash and a fresh timestamp', async () => {
     const firstRun = makePassRun();
     const secondRun: RuntimeVerifyRun = {
@@ -1381,7 +1419,7 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-vcb-status').textContent).toContain('Needs update');
     expect(queryByTestId('ide-verify-session-title')).toBeNull();
     expect(getByTestId('ide-verify-reference-mode').textContent).toContain('Stale saved checks loaded');
-    expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stimulus-only tracing');
+    expect(getByTestId('ide-verify-stale-reference-mode').textContent).toContain('stays in Observe until you choose Compare');
     expect(queryByTestId('ide-verify-stale-banner')).toBeNull();
     expect(queryByTestId('ide-verify-prerun-inventory')).toBeNull();
     expandVerifyWorkbenchDocks(view);
@@ -1550,7 +1588,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(queryByTestId('ide-truth-table-empty')).toBeNull();
-    expect(getByTestId('ide-verify-authority-note').textContent).toMatch(/What this means|Pass or fail reflects this Verify run/i);
+    expect(getByTestId('ide-verify-results-summary').textContent).toContain('All 2 test cases matched.');
     fireEvent.click(getByTestId('ide-verify-drawer-toggle'));
     fireEvent.click(within(getByTestId('ide-verify-analysis-tab-nav')).getByRole('button', { name: 'Vectors' }));
     expect(getByTestId('ide-verify-run-context')).toBeTruthy();
@@ -2270,7 +2308,7 @@ describe('VerifySurface workstation controls', () => {
     );
 
     const passHero = getByTestId('ide-verify-pass-hero');
-    expect(passHero.textContent).toMatch(/not connected to board pins|not mapped to board pins/i);
+    expect(passHero.textContent).toContain('finish pin mapping before hardware handoff');
   });
 
   it('does NOT show incomplete-mapping preflight or notice on a normal PASS with mappingComplete true', () => {
@@ -2321,12 +2359,9 @@ describe('VerifySurface workstation controls', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('Checks passed · 2 cases');
-    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('Every saved check matched the observed outputs');
-    expect(getByTestId('ide-verify-pass-hero').className).not.toContain('ide-verify-pass-hero--incomplete');
-    expect(getByTestId('ide-verify-pass-hero-hardware').textContent).toContain('Continue to Hardware');
-    expect(getByTestId('ide-verify-pass-hero-export').textContent).toContain('Open Export');
-    expect(getByTestId('ide-verify-cta-continue').textContent).toContain('Continue to Hardware');
+    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('All 2 test cases matched.');
+    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('Pass Scenario');
+    expect(getByTestId('ide-verify-results-summary').textContent).toContain('100% coverage');
   });
 
   it('shows PASS incomplete milestone copy and finish-mapping CTA when qualification is incomplete', () => {
@@ -2357,12 +2392,9 @@ describe('VerifySurface workstation controls', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toContain('Checks aligned (mapping)');
-    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('finish pin mapping');
-    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('not connected to board pins');
-    expect(getByTestId('ide-verify-pass-hero').className).toContain('ide-verify-pass-hero--incomplete');
-    expect(getByTestId('ide-verify-pass-hero-open-project-mappins').textContent).toContain('Open Project');
-    expect(getByTestId('ide-verify-pass-hero-hardware').textContent).toContain('View on Hardware');
-    expect(getByTestId('ide-verify-cta-continue').textContent).toContain('Open Project');
+    expect(getByTestId('ide-verify-pass-hero-title').textContent).toContain('All 2 test cases matched.');
+    expect(getByTestId('ide-verify-pass-hero-meta').textContent).toContain('finish pin mapping before hardware handoff');
+    expect(getByTestId('ide-verify-results-summary').textContent).toContain('100% coverage');
   });
 
   it('keeps a compact testbench summary with driven inputs, checked outputs, and compare mode', () => {

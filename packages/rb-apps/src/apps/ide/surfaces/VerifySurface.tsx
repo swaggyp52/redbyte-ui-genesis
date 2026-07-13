@@ -4905,20 +4905,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
-          leadingPanel={
-            primaryStatus && !compactPrimaryStatusAction ? (
-              <VerifyPrimaryStatusArea
-                {...primaryStatus}
-                density="embedded"
-                footnote={
-                  hasStaleAuthoredReference
-                    ? 'Default next run will use stimulus-only tracing until you choose an action above.'
-                    : undefined
-                }
-                footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
-              />
-            ) : undefined
-          }
           isCompareMode={nextRunIsCompare}
           onSetObserve={handleSetObserveMode}
           onSetCompare={handleSetCompareMode}
@@ -4969,6 +4955,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           experimentTimingHint={lastRun && !sessionSignalsAssertionFailure && isSequentialRun ? sequencerModeLabel : null}
         />
         )}
+        {primaryStatus && !compactPrimaryStatusAction ? (
+          <details className="ide-verify-session-guidance" data-testid="ide-verify-session-guidance">
+            <summary>Session guidance</summary>
+            <VerifyPrimaryStatusArea
+              {...primaryStatus}
+              density="embedded"
+              footnote={
+                hasStaleAuthoredReference
+                  ? 'The next run stays in Observe until you choose Compare.'
+                  : undefined
+              }
+              footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
+            />
+          </details>
+        ) : null}
         </div>
         </VerifyHeaderRegion>
 
@@ -5053,142 +5054,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               Go to Export →
             </IdeButton>
           </div>
-        )}
-
-        {!isFirstRunState && lastRun && sessionShowsAssertionMatch && (
-          <section
-            className={`ide-verify-run-proof ${
-              runProofIsStale ? 'ide-verify-run-proof--stale' : 'ide-verify-run-proof--pass'
-            } ide-verify-pass-hero${
-              lastRun.qualification === 'incomplete-mapping' ? ' ide-verify-pass-hero--incomplete' : ''
-            }`}
-            data-testid="ide-verify-pass-hero"
-            data-stale={runProofIsStale ? 'true' : 'false'}
-          >
-            <div className="ide-verify-run-proof-main">
-              <div className="ide-verify-run-proof-copy">
-                <span className="ide-verify-run-proof-eyebrow">Latest run</span>
-                <strong
-                  className="ide-verify-run-proof-title"
-                  data-testid={sessionShowsAssertionMatch ? 'ide-verify-pass-hero-title' : undefined}
-                >
-                  {runProofTitle}
-                </strong>
-                <p
-                  className="ide-verify-run-proof-summary"
-                  data-testid={sessionShowsAssertionMatch ? 'ide-verify-pass-hero-meta' : undefined}
-                >
-                  {runProofSummary}
-                </p>
-                <p className="ide-verify-run-proof-authority" data-testid="ide-verify-authority-note">
-                  <strong>What this means:</strong>{' '}
-                  {runProofIsStale
-                    ? isRunStale
-                      ? `The waveform and checks here belong to an older build (${shortenHash(lastRun.deterministicHash)}) than your current circuit (${shortenHash(deterministicHash)}). Rerun Compare before trusting PASS/FAIL.`
-                      : 'The saved checks changed after this run. Rerun Compare before trusting PASS/FAIL.'
-                    : lastRun.qualification === 'incomplete-mapping'
-                      ? 'Pass or fail reflects this Verify run: your saved test vectors were compared to the simulation. Change the design in Design, or finish board pins on Project — then return here to re-check.'
-                      : 'Your saved checks matched this run. Change the circuit or board pins if you need different behavior, then re-run Verify when you are ready.'}
-                </p>
-              </div>
-              <div className="ide-verify-run-proof-actions">
-                {sessionShowsAssertionMatch && (
-                  <>
-                    {lastRun.qualification === 'incomplete-mapping' ? (
-                      <>
-                        <span data-testid="ide-verify-cta-continue">
-                          <IdeButton
-                            tone="primary"
-                            onClick={onOpenProjectVectors}
-                            testId="ide-verify-pass-hero-open-project-mappins"
-                          >
-                            Open Project — Map Pins
-                          </IdeButton>
-                        </span>
-                        {onGoToHardware ? (
-                          <IdeButton
-                            tone="secondary"
-                            onClick={onGoToHardware}
-                            testId="ide-verify-pass-hero-hardware"
-                          >
-                            View on Hardware
-                          </IdeButton>
-                        ) : null}
-                      </>
-                    ) : (
-                      <>
-                        {onGoToHardware ? (
-                          <span data-testid="ide-verify-cta-continue">
-                            <IdeButton tone="primary" onClick={onGoToHardware} testId="ide-verify-pass-hero-hardware">
-                              Continue to Hardware
-                            </IdeButton>
-                          </span>
-                        ) : null}
-                        {onGoToExport ? (
-                          <IdeButton tone="secondary" onClick={onGoToExport} testId="ide-verify-pass-hero-export">
-                            Open Export
-                          </IdeButton>
-                        ) : null}
-                      </>
-                    )}
-                    {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
-                      <IdeButton tone="secondary" onClick={handleGoToDesignFromVerify} testId="ide-verify-pass-hero-design">
-                        Back to Design
-                      </IdeButton>
-                    )}
-                  </>
-                )}
-                {hasSessionFailureEvidence && (
-                  <>
-                    <IdeButton tone="primary" onClick={handleJumpToFirstFailure} testId="ide-verify-run-proof-inspect">
-                      Inspect first mismatch
-                    </IdeButton>
-                  <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-run-proof-edit-vectors">
-                      Open checks
-                    </IdeButton>
-                    {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
-                      <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-run-proof-design">
-                        Open in Design
-                      </IdeButton>
-                    )}
-                  </>
-                )}
-                {sessionShowsTraceEvidence && canSetOracle && (
-                  <IdeButton tone="primary" onClick={handleSetOracleExpected} testId="ide-verify-run-proof-oracle">
-                    Save observed outputs
-                  </IdeButton>
-                )}
-              </div>
-            </div>
-            <details className="ide-verify-run-proof-facts" data-testid="ide-verify-run-proof-facts">
-              <summary className="ide-verify-run-proof-facts-summary">Build hashes and scenario (optional detail)</summary>
-              <dl className="ide-verify-run-proof-grid">
-                {runProofFacts.map((fact) => (
-                  <div key={fact.label} className="ide-verify-run-proof-item">
-                    <dt>{fact.label}</dt>
-                    <dd title={fact.fullValue}>
-                      {fact.label.includes('build') || fact.label.includes('hash') ? <code>{fact.value}</code> : fact.value}
-                    </dd>
-                  </div>
-                ))}
-                {lastRun.qualification === 'incomplete-mapping' && unmappedOutputLabels.length > 0 && (
-                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--warning">
-                    <dt>Unmapped outputs</dt>
-                    <dd data-testid="ide-verify-incomplete-output-names">
-                      {unmappedOutputLabels.slice(0, 3).join(', ')}
-                      {unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''}
-                    </dd>
-                  </div>
-                )}
-                {oracleApplied && (
-                  <div className="ide-verify-run-proof-item ide-verify-run-proof-item--accent">
-                    <dt>Expected outputs</dt>
-                    <dd data-testid="ide-verify-oracle-badge">Locked from observed run</dd>
-                  </div>
-                )}
-              </dl>
-            </details>
-          </section>
         )}
 
         {sessionSignalsAssertionFailure && oracleApplied && (
@@ -5281,7 +5146,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
         >
-        <VerifyStimulusRegion data-panel-state={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}>
+        <VerifyStimulusRegion
+          className="ide-verify-testbench-primary"
+          data-panel-state={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}
+          data-work-priority="primary"
+        >
 
         {/* ── BLOCKED mode entry surface ─────────────────────────────────── */}
         {verifyMode === 'blocked' && (
@@ -5514,7 +5383,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               isSequential={isSequentialRun}
               hasVectors={totalVectorCount > 0}
               runLabel={emptyStateRunLabel}
-              onRun={totalVectorCount > 0 || autoClockModeActive ? () => handleRunWithPreflight() : undefined}
+              onRun={undefined}
               runDisabled={runState === 'running'}
               onSeed={
                 totalVectorCount === 0 && (isFirstRunState || totalVectorCount === 0)
@@ -5556,7 +5425,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <div className="ide-verify-console-frame">
             <div className="ide-verify-instrument-deck">
             {/* ── Results summary — at-a-glance "what happened on the last run" ── */}
-            {lastRun && !(hasSessionFailureEvidence && selectedFailureExplanationCase) ? (
+            {lastRun ? (
               <VerifyResultsSummary
                 kind={
                   runProofIsStale
@@ -5573,24 +5442,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   runProofIsStale
                     ? 'Checks changed - rerun Compare before trusting PASS/FAIL.'
                     : sessionShowsAssertionMatch
-                      ? lastRun.qualification === 'incomplete-mapping'
-                        ? 'Checks aligned (mapping incomplete).'
-                        : 'All checks aligned with the observed run.'
+                      ? `All ${totalVectorCount} test case${totalVectorCount === 1 ? '' : 's'} matched.`
                       : sessionSignalsAssertionFailure
-                        ? structuralRecoveryDiagnosis
-                          ? 'Compare could not check an output.'
-                          : failingRows.length === 1
-                            ? '1 check failed in the last run.'
-                            : `${failingRows.length} checks failed in the last run.`
+                        ? 'Your circuit output does not match the expected result.'
                         : sessionShowsTraceEvidence
                           ? 'Observed outputs recorded - no expected checks compared.'
                           : 'Run recorded.'
                 }
                 subline={
-                  lastRun.scenarioName
-                    ? `Scenario: ${lastRun.scenarioName}`
-                    : undefined
+                  sessionSignalsAssertionFailure
+                    ? 'Check the expected value, the circuit logic, or whether the output is disconnected.'
+                    : lastRun.qualification === 'incomplete-mapping'
+                      ? 'The behavior matched; finish pin mapping before hardware handoff.'
+                      : lastRun.scenarioName
+                        ? `Scenario: ${lastRun.scenarioName}`
+                        : undefined
                 }
+                guidanceItems={sessionSignalsAssertionFailure ? [
+                  'Expected value is incorrect.',
+                  'Circuit logic is incorrect.',
+                  'Output is disconnected.',
+                ] : undefined}
                 metrics={(() => {
                   const list: VerifyResultsMetric[] = [];
                   if (sessionShowsCompareEvidence) {
@@ -5618,36 +5490,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   return list;
                 })()}
                 primaryActionLabel={
-                  runProofIsStale
-                    ? 'Rerun Compare'
-                    : sessionSignalsAssertionFailure
-                      ? structuralRecoveryDiagnosis
-                        ? 'Open Design'
-                        : 'Open first failing check'
-                      : undefined
+                  sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
+                    ? 'Open Design'
+                    : undefined
                 }
                 onPrimaryAction={
-                  runProofIsStale
-                    ? () => handleRunWithPreflight(true)
-                    : sessionSignalsAssertionFailure
-                      ? structuralRecoveryDiagnosis
-                        ? handleGoToDesignFromVerify
-                        : handleJumpToFirstFailure
-                      : undefined
+                  sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
+                    ? handleGoToDesignFromVerify
+                    : undefined
                 }
-                primaryActionTestId={
-                  runProofIsStale
-                    ? 'ide-verify-results-summary-rerun'
-                    : sessionSignalsAssertionFailure
-                      ? structuralRecoveryDiagnosis
-                        ? 'ide-verify-results-summary-open-design'
-                        : 'ide-verify-results-summary-open-fail'
-                      : undefined
-                }
+                primaryActionTestId="ide-verify-results-summary-open-design"
+                secondaryActionLabel={sessionSignalsAssertionFailure ? 'Review expected outputs' : undefined}
+                onSecondaryAction={sessionSignalsAssertionFailure ? handleEditExpectedOutputs : undefined}
+                secondaryActionTestId="ide-verify-results-summary-review-expected"
               />
             ) : null}
-            {structuralRecoveryPanel}
-            {repairPanel}
+            {structuralRecoveryPanel || repairPanel ? (
+              <details className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure">
+                <summary>Failure details</summary>
+                {structuralRecoveryPanel}
+                {repairPanel}
+              </details>
+            ) : null}
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
               <div className="ide-verify-scope-header" data-testid="ide-verify-scope-header">

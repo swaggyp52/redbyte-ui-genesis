@@ -284,7 +284,7 @@ describe('buildVerifySessionViewModel', () => {
     expect(model.recommendedNextAction).toBe('capture');
   });
 
-  it('keeps trace-only session meaning even when the next run is armed for compare intent', () => {
+  it('keeps trace-only evidence meaning while allowing the next run to switch back to compare', () => {
     const model = buildVerifySessionViewModel({
       totalVectorCount: 3,
       totalExpectedCaseCount: 1,
@@ -322,9 +322,11 @@ describe('buildVerifySessionViewModel', () => {
       failingRowCount: 0,
     });
 
-    expect(model.mode).toBe('capture');
+    expect(model.mode).toBe('assertion');
     expect(model.status).toBe('stimulus-only');
     expect(model.statusBadge).toBe('Observation only');
+    expect(model.runLabel).toBe('Update run · compare checks');
+    expect(model.recommendedNextAction).toBe('verify');
   });
 
   it('marks outdated compare evidence as stale', () => {

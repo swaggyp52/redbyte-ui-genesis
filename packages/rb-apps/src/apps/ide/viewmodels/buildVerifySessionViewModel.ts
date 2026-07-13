@@ -142,14 +142,14 @@ export function buildVerifySessionViewModel(
 
   // `mode` is the student's current next-run intent / authoring stance.
   // `status` below remains the authoritative meaning of the persisted run/session.
-  const mode: VerifySessionMode = input.lastRun && input.isTraceOnly && input.canSetOracle
+  const mode: VerifySessionMode = input.lastRun && input.isTraceOnly && input.canSetOracle && !input.nextRunUsesAssertions
     ? 'capture'
     : hasAssertions && input.nextRunUsesAssertions
       ? 'assertion'
       : 'simulation';
 
   const recommendedNextAction: VerifySessionViewModel['recommendedNextAction'] =
-    input.lastRun && input.isTraceOnly && input.canSetOracle
+    input.lastRun && input.isTraceOnly && input.canSetOracle && !input.nextRunUsesAssertions
       ? 'capture'
       : mode === 'assertion'
         ? 'verify'
