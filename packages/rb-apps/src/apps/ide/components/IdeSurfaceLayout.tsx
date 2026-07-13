@@ -9,7 +9,7 @@ import {
   type WorkbenchShellDensity,
   type WorkbenchSurfaceFrame,
 } from './IdeWorkbenchShell';
-import { PageProductHeader, type PageProductHeaderState } from './PageProductHeader';
+import type { PageProductHeaderState } from './PageProductHeader';
 
 export interface IdeSurfaceLayoutProps {
   mode: IdeSurfaceMode;
@@ -29,6 +29,7 @@ export interface IdeSurfaceLayoutProps {
   shellDensity?: WorkbenchShellDensity;
   surfaceFrame?: WorkbenchSurfaceFrame;
   layoutIntent?: WorkbenchLayoutIntent;
+  /** @deprecated Pages now own their single command header; retained while callers are migrated. */
   productSpine?: PageProductHeaderState | null;
 }
 
@@ -49,19 +50,11 @@ export const IdeSurfaceLayout: React.FC<IdeSurfaceLayoutProps> = ({
   shellDensity,
   surfaceFrame,
   layoutIntent,
-  productSpine,
 }) => {
-  const workspace = (
-    <>
-      <PageProductHeader mode={mode} state={productSpine} />
-      {children}
-    </>
-  );
-
   return (
     <IdeWorkbenchShell
       mode={mode}
-      workspace={workspace}
+      workspace={children}
       leftDock={dock}
       rightDock={inspector}
       console={console}

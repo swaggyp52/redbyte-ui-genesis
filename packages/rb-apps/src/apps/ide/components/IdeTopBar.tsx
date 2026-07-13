@@ -5,6 +5,7 @@ import { getIdeModeLabel, type IdeMode } from '../workflowStages';
 export interface IdeTopBarProps {
   projectName: string;
   projectId?: string;
+  boardTarget?: string;
   saveState: 'saved' | 'unsaved' | 'autosaving';
   currentMode?: IdeMode;
   buildIdentity?: IdeBuildIdentity;
@@ -20,7 +21,7 @@ export interface IdeTopBarProps {
   onRenameProject?: (nextName: string) => void;
 }
 
-// Geometric logomark — circuit-trace hex
+// Geometric circuit mark. Color is inherited from the professional shell theme.
 const RbLogomark: React.FC = () => (
   <svg
     className="ide-brand-svg"
@@ -31,21 +32,21 @@ const RbLogomark: React.FC = () => (
   >
     <polygon
       points="14,2 24,8 24,20 14,26 4,20 4,8"
-      stroke="rgba(46,196,182,0.65)"
+      stroke="currentColor"
       strokeWidth="1.2"
-      fill="rgba(46,196,182,0.07)"
+      fill="none"
     />
-    <line x1="8" y1="14" x2="20" y2="14" stroke="rgba(46,196,182,0.9)" strokeWidth="1.5" strokeLinecap="round" />
-    <line x1="10" y1="10" x2="10" y2="18" stroke="rgba(46,196,182,0.5)" strokeWidth="1.2" strokeLinecap="round" />
-    <line x1="18" y1="10" x2="18" y2="18" stroke="rgba(46,196,182,0.5)" strokeWidth="1.2" strokeLinecap="round" />
-    <circle cx="10" cy="14" r="1.8" fill="rgba(46,196,182,0.9)" />
-    <circle cx="18" cy="14" r="1.8" fill="rgba(46,196,182,0.5)" />
+    <line x1="8" y1="14" x2="20" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <line x1="10" y1="10" x2="10" y2="18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <line x1="18" y1="10" x2="18" y2="18" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <circle cx="10" cy="14" r="1.8" fill="currentColor" />
+    <circle cx="18" cy="14" r="1.8" fill="currentColor" />
   </svg>
 );
 
 export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   projectName,
-  projectId,
+  boardTarget = 'Basys3',
   saveState,
   currentMode,
   buildIdentity,
@@ -66,6 +67,8 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
 
   const modeLabel = currentMode ? getIdeModeLabel(currentMode) : null;
   const canRenameProject = Boolean(onRenameProject);
+  const handleHelp = onHelp ?? onWorkflowHelp;
+  const boardLabel = boardTarget.toLowerCase() === 'basys3' ? 'Basys3' : boardTarget;
 
   React.useEffect(() => {
     if (!editingName) setNameDraft(projectName);
@@ -106,11 +109,12 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   return (
     <header className="ide-top-bar" data-testid="ide-top-bar" data-save-state={saveState}>
       <div className="ide-top-left">
-        <div className="ide-brand-mark" aria-label="RedByte">
-          <RbLogomark />
+        <div className="ide-brand" aria-label="RedByte">
+          <span className="ide-brand-mark" aria-hidden="true">
+            <RbLogomark />
+          </span>
+          <span className="ide-brand-wordmark">RedByte</span>
         </div>
-
-        <span className="ide-brand-wordmark" aria-hidden="true">RedByte</span>
 
         <span className="ide-breadcrumb-sep" aria-hidden="true">/</span>
 
@@ -153,7 +157,6 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
               projectName
             )}
           </h1>
-          {projectId ? <p className="ide-project-subline">{projectId}</p> : null}
         </div>
 
         {modeLabel && (
@@ -164,20 +167,25 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
             </span>
           </>
         )}
-
-        <span className="ide-board-chip" data-testid="ide-board-chip">Basys3</span>
       </div>
 
       <div className="ide-top-right">
+        <span className="ide-topbar-fact" data-testid="ide-board-chip">
+          <span className="ide-topbar-fact-label">Board</span>
+          <strong>{boardLabel}</strong>
+        </span>
+        <span className="ide-topbar-scope" data-testid="ide-proof-scope">Browser E0</span>
         {buildIdentity && (
           <span
-            className={`ide-build-badge ide-build-badge--${buildIdentity.envLabel}`}
+            className="ide-topbar-build ide-build-badge"
             data-testid="ide-build-badge"
             title={buildIdentity.title}
             aria-label={buildIdentity.title}
           >
-            <span className="ide-build-badge-label">Build</span>
+            <span className="ide-build-badge-label">build</span>
             <code className="ide-build-badge-sha">{buildIdentity.shortSha}</code>
+            <span aria-hidden="true">/</span>
+            <span>{buildIdentity.envLabel}</span>
           </span>
         )}
         <span
@@ -189,26 +197,15 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-save-label" aria-live="polite">
           {saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved'}
         </span>
-        {onWorkflowHelp && (
-          <button
-            className="ide-topbar-workflow-help-btn"
-            onClick={onWorkflowHelp}
-            title="Workflow orientation"
-            aria-label="Workflow orientation"
-            data-testid="ide-topbar-workflow-help-btn"
-          >
-            Flow
-          </button>
-        )}
-        {onHelp && (
+        {handleHelp && (
           <button
             className="ide-topbar-help-btn"
-            onClick={onHelp}
-            title="Keyboard shortcuts (?)"
-            aria-label="Keyboard shortcuts"
+            onClick={handleHelp}
+            title={onWorkflowHelp ? 'Workflow help' : 'Help and keyboard shortcuts'}
+            aria-label={onWorkflowHelp ? 'Workflow help' : 'Help and keyboard shortcuts'}
             data-testid="ide-topbar-help-btn"
           >
-            ?
+            Help
           </button>
         )}
       </div>

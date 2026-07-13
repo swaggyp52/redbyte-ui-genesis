@@ -3,448 +3,508 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Start RedByte</title>
+    <title>RedByte | Digital Logic and FPGA Workbench</title>
     <meta
       name="description"
-      content="RedByte is a proof-backed digital logic and FPGA workbench for designing, verifying, mapping Basys3 pins, and exporting Vivado-ready handoff packages."
+      content="RedByte is a professional browser workbench for designing, verifying, mapping, and exporting Basys3 digital logic projects."
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <style>
       :root {
-        color-scheme: dark;
-        --rb-bg: #061019;
-        --rb-panel: rgba(9, 20, 32, 0.86);
-        --rb-panel-strong: rgba(12, 28, 44, 0.96);
-        --rb-border: rgba(126, 174, 214, 0.22);
-        --rb-text: #eef7ff;
-        --rb-muted: #a9bfd2;
-        --rb-dim: #7591aa;
-        --rb-cyan: #55d6ff;
-        --rb-green: #7de3b1;
-        --rb-amber: #f7c46c;
-        --rb-red: #ff8c8c;
-        --rb-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
-        --rb-sans: "IBM Plex Sans", "Segoe UI", sans-serif;
+        color-scheme: light;
+        --page: #eef1f4;
+        --surface: #ffffff;
+        --surface-muted: #f7f8fa;
+        --shell: #17202a;
+        --text: #1c2732;
+        --text-secondary: #526170;
+        --text-muted: #71808e;
+        --border: #d5dce3;
+        --border-strong: #b8c3cd;
+        --action: #356fa8;
+        --action-hover: #2b5f92;
+        --focus: #1f5f9a;
+        --success: #287453;
+        --warning: #9a6518;
+        --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+        --sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html {
+        background: var(--page);
+      }
+
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: var(--rb-sans);
-        background:
-          radial-gradient(circle at 18% 12%, rgba(85, 214, 255, 0.16), transparent 28rem),
-          radial-gradient(circle at 78% 4%, rgba(125, 227, 177, 0.13), transparent 24rem),
-          linear-gradient(135deg, #03070d 0%, var(--rb-bg) 44%, #0b1722 100%);
-        color: var(--rb-text);
+        background: var(--page);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 16px;
+        line-height: 1.5;
       }
 
       a {
         color: inherit;
       }
 
-      .rb-start {
+      a:focus-visible,
+      summary:focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .start-shell {
         width: min(1180px, calc(100% - 40px));
         margin: 0 auto;
-        padding: 34px 0 56px;
+        padding: 24px 0 40px;
       }
 
-      .rb-topbar,
-      .rb-hero,
-      .rb-card,
-      .rb-command-card {
-        border: 1px solid var(--rb-border);
-        background: var(--rb-panel);
-        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        backdrop-filter: blur(16px);
-      }
-
-      .rb-topbar {
+      .topbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 18px;
-        padding: 12px 14px;
-        border-radius: 22px;
+        min-height: 48px;
+        gap: 24px;
       }
 
-      .rb-mark {
-        display: flex;
+      .brand {
+        display: inline-flex;
         align-items: center;
-        gap: 12px;
-        font-weight: 800;
+        gap: 10px;
+        color: var(--shell);
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .brand-mark {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        border: 1px solid #47596a;
+        border-radius: 6px;
+        background: var(--shell);
+        color: #f4f6f8;
+        font-family: var(--mono);
+        font-size: 12px;
         letter-spacing: 0.04em;
       }
 
-      .rb-mark-badge {
-        display: inline-grid;
-        place-items: center;
-        width: 34px;
-        height: 34px;
-        border: 1px solid rgba(85, 214, 255, 0.32);
-        border-radius: 12px;
-        background: linear-gradient(135deg, rgba(85, 214, 255, 0.22), rgba(125, 227, 177, 0.12));
-        color: var(--rb-cyan);
-        font-family: var(--rb-mono);
-      }
-
-      .rb-top-actions {
+      .top-links {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 10px;
+        align-items: center;
+        gap: 22px;
       }
 
-      .rb-button {
+      .top-links a {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        min-height: 38px;
-        padding: 0 16px;
-        border: 1px solid rgba(85, 214, 255, 0.32);
-        border-radius: 999px;
-        background: rgba(85, 214, 255, 0.1);
-        color: var(--rb-text);
-        font-size: 13px;
-        font-weight: 800;
+        min-height: 36px;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 600;
         text-decoration: none;
+      }
+
+      .top-links a:hover {
+        color: var(--action-hover);
+        text-decoration: underline;
+        text-underline-offset: 4px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+        gap: 48px;
+        align-items: center;
+        margin-top: 24px;
+        padding: 48px;
+        border: 1px solid #263442;
+        border-radius: 10px;
+        background: var(--shell);
+        color: #f4f6f8;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: #aebdca;
+        font-size: 13px;
+        font-weight: 600;
         letter-spacing: 0.02em;
       }
 
-      .rb-button.primary {
-        border-color: rgba(125, 227, 177, 0.58);
-        background: linear-gradient(135deg, rgba(125, 227, 177, 0.24), rgba(85, 214, 255, 0.14));
-      }
-
-      .rb-hero {
-        display: grid;
-        grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
-        gap: 28px;
-        margin-top: 22px;
-        padding: 34px;
-        border-radius: 32px;
-      }
-
-      .rb-kicker,
-      .rb-eyebrow {
-        color: var(--rb-cyan);
-        font-family: var(--rb-mono);
-        font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-      }
-
       h1 {
-        margin: 14px 0 16px;
-        max-width: 880px;
-        font-size: clamp(42px, 7vw, 86px);
-        line-height: 0.92;
-        letter-spacing: -0.06em;
-      }
-
-      .rb-lede {
-        max-width: 720px;
-        color: rgba(238, 247, 255, 0.82);
-        font-size: clamp(18px, 2vw, 24px);
-        line-height: 1.35;
-      }
-
-      .rb-hero-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 24px;
-      }
-
-      .rb-spine {
-        display: grid;
-        gap: 10px;
-        align-content: start;
-      }
-
-      .rb-spine-step {
-        display: grid;
-        grid-template-columns: 42px minmax(0, 1fr);
-        gap: 12px;
-        align-items: center;
-        padding: 12px;
-        border: 1px solid rgba(126, 174, 214, 0.18);
-        border-radius: 16px;
-        background: rgba(3, 8, 14, 0.44);
-      }
-
-      .rb-spine-step span {
-        display: inline-grid;
-        place-items: center;
-        height: 32px;
-        border-radius: 10px;
-        background: rgba(85, 214, 255, 0.12);
-        color: var(--rb-cyan);
-        font-family: var(--rb-mono);
-        font-weight: 800;
-      }
-
-      .rb-spine-step strong {
-        display: block;
-        margin-bottom: 2px;
-      }
-
-      .rb-spine-step p,
-      .rb-card p,
-      .rb-command-card p {
+        max-width: 780px;
         margin: 0;
-        color: var(--rb-muted);
-        line-height: 1.5;
+        font-size: clamp(38px, 5.2vw, 64px);
+        line-height: 1.04;
+        letter-spacing: -0.04em;
       }
 
-      .rb-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 16px;
-        margin-top: 16px;
+      .lede {
+        max-width: 720px;
+        margin: 20px 0 0;
+        color: #cbd4dc;
+        font-size: 18px;
+        line-height: 1.55;
       }
 
-      .rb-card,
-      .rb-command-card {
-        border-radius: 24px;
-        padding: 20px;
+      .primary-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        margin-top: 26px;
+        padding: 0 20px;
+        border: 1px solid #4c83b8;
+        border-radius: 6px;
+        background: var(--action);
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 700;
+        text-decoration: none;
       }
 
-      .rb-card h2,
-      .rb-command-card h2 {
-        margin: 9px 0 10px;
-        font-size: 22px;
+      .primary-action:hover {
+        background: var(--action-hover);
+      }
+
+      .hero-boundary {
+        padding: 22px;
+        border: 1px solid #435363;
+        border-radius: 8px;
+        background: #202b36;
+      }
+
+      .hero-boundary strong {
+        display: block;
+        margin-bottom: 8px;
+        color: #ffffff;
+        font-size: 16px;
+      }
+
+      .hero-boundary p {
+        margin: 0;
+        color: #bac6d0;
+        font-size: 14px;
+      }
+
+      .hero-boundary code {
+        color: #c7dbef;
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      .workflow {
+        margin-top: 18px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+
+      .section-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 18px;
+      }
+
+      .section-heading h2 {
+        margin: 0;
+        font-size: 20px;
         letter-spacing: -0.02em;
       }
 
-      .rb-command-grid {
+      .section-heading p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 14px;
+      }
+
+      .workflow-steps {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 1px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--border);
+      }
+
+      .workflow-step {
+        min-height: 88px;
+        padding: 14px;
+        background: var(--surface-muted);
+      }
+
+      .workflow-step span {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--action-hover);
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .workflow-step strong {
+        display: block;
+        margin-bottom: 3px;
+        font-size: 15px;
+      }
+
+      .workflow-step p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 13px;
+        line-height: 1.35;
+      }
+
+      .details-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-        margin-top: 16px;
+        gap: 18px;
+        margin-top: 18px;
       }
 
-      .rb-command-card {
-        background: var(--rb-panel-strong);
+      .info-panel {
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
       }
 
-      .rb-code {
-        display: block;
-        margin-top: 12px;
-        padding: 12px;
-        overflow-x: auto;
-        border: 1px solid rgba(126, 174, 214, 0.18);
-        border-radius: 14px;
-        background: rgba(2, 6, 10, 0.72);
-        color: #d8f3ff;
-        font-family: var(--rb-mono);
+      .info-panel h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        letter-spacing: -0.02em;
+      }
+
+      .info-panel p {
+        margin: 0;
+        color: var(--text-secondary);
+      }
+
+      .evidence-line {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 12px;
+        align-items: start;
+        margin-top: 18px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+      }
+
+      .evidence-line strong {
+        color: var(--success);
+        font-family: var(--mono);
         font-size: 13px;
-        line-height: 1.55;
+      }
+
+      .evidence-line p {
+        font-size: 14px;
+      }
+
+      details.local-run {
+        margin-top: 18px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+
+      details.local-run summary {
+        min-height: 48px;
+        padding: 13px 18px;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .local-run-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 24px;
+        padding: 0 18px 18px;
+        color: var(--text-secondary);
+        font-size: 14px;
+      }
+
+      .local-run-body p {
+        margin: 0;
+      }
+
+      .local-run-body code {
+        display: block;
+        min-width: 230px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface-muted);
+        color: var(--text);
+        font-family: var(--mono);
         white-space: pre;
       }
 
-      .rb-evidence {
-        display: grid;
-        gap: 10px;
-        margin-top: 12px;
-      }
-
-      .rb-evidence-row {
-        display: grid;
-        grid-template-columns: 52px minmax(0, 1fr);
-        gap: 12px;
-        padding: 10px;
-        border: 1px solid rgba(126, 174, 214, 0.18);
-        border-radius: 14px;
-        background: rgba(2, 6, 10, 0.42);
-      }
-
-      .rb-evidence-row strong {
-        color: var(--rb-green);
-        font-family: var(--rb-mono);
-      }
-
-      .rb-warning {
-        border-color: rgba(247, 196, 108, 0.28);
-        background: rgba(247, 196, 108, 0.08);
-      }
-
-      .rb-warning strong {
-        color: var(--rb-amber);
-      }
-
-      .rb-footer {
-        margin-top: 26px;
-        color: var(--rb-dim);
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        margin-top: 22px;
+        color: var(--text-muted);
         font-size: 13px;
       }
 
-      @media (max-width: 860px) {
-        .rb-start {
+      footer p {
+        margin: 0;
+      }
+
+      @media (max-width: 900px) {
+        .start-shell {
           width: min(100% - 24px, 1180px);
-          padding-top: 16px;
+          padding-top: 14px;
         }
 
-        .rb-topbar,
-        .rb-hero {
+        .hero {
+          grid-template-columns: 1fr;
+          gap: 24px;
+          padding: 30px;
+        }
+
+        .workflow-steps {
           grid-template-columns: 1fr;
         }
 
-        .rb-topbar {
+        .workflow-step {
+          min-height: 0;
+        }
+
+        .details-grid,
+        .local-run-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .topbar,
+        .section-heading,
+        footer {
           align-items: flex-start;
           flex-direction: column;
         }
 
-        .rb-grid,
-        .rb-command-grid {
-          grid-template-columns: 1fr;
+        .top-links {
+          flex-wrap: wrap;
+          gap: 12px 18px;
         }
 
-        .rb-hero {
+        h1 {
+          font-size: 38px;
+        }
+
+        .hero,
+        .workflow,
+        .info-panel {
           padding: 22px;
         }
       }
     </style>
   </head>
   <body>
-    <main class="rb-start" data-testid="redbyte-start-page">
-      <nav class="rb-topbar" aria-label="RedByte start">
-        <div class="rb-mark">
-          <span class="rb-mark-badge">RB</span>
+    <main class="start-shell" data-testid="redbyte-start-page">
+      <header class="topbar">
+        <div class="brand" aria-label="RedByte">
+          <span class="brand-mark" aria-hidden="true">RB</span>
           <span>RedByte</span>
         </div>
-        <div class="rb-top-actions">
-          <a class="rb-button primary" href="/os/" data-testid="redbyte-open-ide">Open IDE</a>
-          <a class="rb-button" href="#run-locally">Run locally</a>
-          <a class="rb-button" href="#vivado">Vivado handoff</a>
-        </div>
-      </nav>
+        <nav class="top-links" aria-label="Start resources">
+          <a href="#run-locally">Run locally</a>
+          <a href="https://github.com/swaggyp52/redbyte-ui-genesis">Repository</a>
+        </nav>
+      </header>
 
-      <section class="rb-hero">
+      <section class="hero" aria-labelledby="redbyte-title">
         <div>
-          <div class="rb-kicker">Proof-backed FPGA workflow</div>
-          <h1>RedByte is a digital logic and FPGA workbench.</h1>
-          <p class="rb-lede">
-            Design a circuit, prove behavior with visible Verify evidence, bind signals to Basys3 pins,
-            and export a Vivado-ready package with an honest trust state.
+          <p class="eyebrow">Digital logic and FPGA coursework</p>
+          <h1 id="redbyte-title">A focused engineering workbench from circuit to handoff.</h1>
+          <p class="lede">
+            RedByte is a digital logic and FPGA workbench. Design a circuit, check its behavior,
+            map Basys3 pins, and prepare a clear Vivado package without hiding the proof boundary.
           </p>
-          <div class="rb-hero-actions">
-            <a class="rb-button primary" href="/os/">Open the RedByte IDE</a>
-            <a class="rb-button" href="https://github.com/swaggyp52/redbyte-ui-genesis">View repository</a>
-          </div>
+          <a class="primary-action" href="/os/" data-testid="redbyte-open-ide">Open IDE</a>
         </div>
-        <div class="rb-spine" aria-label="RedByte workflow spine">
-          <div class="rb-spine-step"><span>01</span><div><strong>Project</strong><p>Orient, load starters, and see readiness truth.</p></div></div>
-          <div class="rb-spine-step"><span>02</span><div><strong>Design</strong><p>Author and inspect the circuit graph.</p></div></div>
-          <div class="rb-spine-step"><span>03</span><div><strong>Verify</strong><p>Run Compare checks and waveform-backed proof.</p></div></div>
-          <div class="rb-spine-step"><span>04</span><div><strong>Map Pins</strong><p>Bind design I/O to real Basys3 resources.</p></div></div>
-          <div class="rb-spine-step"><span>05</span><div><strong>Export</strong><p>Generate the Vivado handoff package.</p></div></div>
+        <aside class="hero-boundary" aria-label="Product boundary">
+          <strong>Browser scope: E0</strong>
+          <p>
+            RedByte prepares and inspects project artifacts. Synthesis, programming, and physical
+            board observation remain external in <code>AMD Vivado 2024.2</code>.
+          </p>
+        </aside>
+      </section>
+
+      <section class="workflow" aria-labelledby="workflow-title">
+        <div class="section-heading">
+          <h2 id="workflow-title">Five-stage workflow</h2>
+          <p>One job at a time, from setup through submission files.</p>
+        </div>
+        <div class="workflow-steps">
+          <article class="workflow-step"><span>01</span><strong>Project</strong><p>Choose a lab, starter, or saved project.</p></article>
+          <article class="workflow-step"><span>02</span><strong>Design</strong><p>Build and inspect the circuit.</p></article>
+          <article class="workflow-step"><span>03</span><strong>Verify</strong><p>Compare expected and observed behavior.</p></article>
+          <article class="workflow-step"><span>04</span><strong>Map Pins</strong><p>Assign design signals to Basys3 resources.</p></article>
+          <article class="workflow-step"><span>05</span><strong>Export</strong><p>Prepare the browser-E0 handoff package.</p></article>
         </div>
       </section>
 
-      <section class="rb-grid" aria-label="Product explanation">
-        <article class="rb-card">
-          <div class="rb-eyebrow">What it is</div>
-          <h2>A serious circuit workbench</h2>
+      <div class="details-grid">
+        <section class="info-panel" aria-labelledby="product-role-title">
+          <h2 id="product-role-title">Built for engineering work</h2>
           <p>
-            RedByte is not a toy simulator and not a Vivado replacement. It is a structured browser IDE
-            for supported digital logic work on the Basys3 path.
+            RedByte is not a toy simulator and not a Vivado replacement. It is the browser workbench
+            for supported digital logic design, verification, mapping, and package preparation.
           </p>
-        </article>
-        <article class="rb-card">
-          <div class="rb-eyebrow">What it proves</div>
-          <h2>Evidence before trust</h2>
-          <p>
-            Trusted Export depends on current Verify evidence and current mapping. Draft Export is allowed,
-            but it is intentionally labeled as draft.
-          </p>
-        </article>
-        <article class="rb-card">
-          <div class="rb-eyebrow">Where Vivado fits</div>
-          <h2>Downstream toolchain</h2>
-          <p>
-            RedByte generates VHDL, XDC, Tcl, README, and project handoff files. Vivado still owns synthesis,
-            implementation, bitstream generation, board programming, and hardware logs.
-          </p>
-        </article>
-      </section>
-
-      <section class="rb-command-grid" id="run-locally" aria-label="Local start commands">
-        <article class="rb-command-card">
-          <div class="rb-eyebrow">Run locally</div>
-          <h2>Start the IDE from this repo</h2>
-          <p>Use pnpm. Do not run npm install in this workspace.</p>
-          <code class="rb-code">pnpm install
-pnpm dev
-
-# production-style preview
-pnpm --filter @redbyte/playground build
-pnpm preview</code>
-        </article>
-        <article class="rb-command-card">
-          <div class="rb-eyebrow">Course lane</div>
-          <h2>Use the IDE workflow</h2>
-          <p>
-            Open the IDE, load a starter or project, run Verify Compare, map Basys3 pins, then use
-            Export for the Vivado handoff package.
-          </p>
-          <code class="rb-code">Project -> Design -> Verify
-Map Pins -> Export -> Vivado</code>
-        </article>
-      </section>
-
-      <section class="rb-grid" id="vivado" aria-label="Vivado and evidence status">
-        <article class="rb-card">
-          <div class="rb-eyebrow">Evidence ladder</div>
-          <h2>E0/E1/E2/E3 stay separate</h2>
-          <div class="rb-evidence">
-            <div class="rb-evidence-row"><strong>E0</strong><p>RedByte generated the export package.</p></div>
-            <div class="rb-evidence-row"><strong>E1</strong><p>Vivado synthesis, implementation, and bitstream completed.</p></div>
-            <div class="rb-evidence-row"><strong>E2</strong><p>The bitstream programmed a Basys3 target.</p></div>
-            <div class="rb-evidence-row rb-warning"><strong>E3</strong><p>Physical board behavior was observed against expected controls and outputs.</p></div>
+          <div class="evidence-line">
+            <strong>E0</strong>
+            <p>RedByte can establish that the package was generated from the current project state.</p>
           </div>
-        </article>
-        <article class="rb-card">
-          <div class="rb-eyebrow">Current readiness</div>
-          <h2>Honest hardware status</h2>
-          <p>
-            Controlled bench work has E1/E2 evidence for selected Basys3 rows. Final E3 closure is still manual-observation gated
-            for open rows, so RedByte must not claim broad board-behavior proof from programming logs alone.
-          </p>
-        </article>
-        <article class="rb-card">
-          <div class="rb-eyebrow">Vivado setup</div>
-          <h2>Full hardware loop requirements</h2>
-          <p>
-            Use AMD Vivado 2024.2 for the Basys3 handoff. A physical Basys3 board is required for E2 programming and E3 observation.
-            Without Vivado or the board, RedByte still runs locally as a design, verify, map, and export workbench.
-          </p>
-        </article>
-      </section>
+        </section>
 
-      <section class="rb-command-grid" aria-label="Next actions">
-        <article class="rb-command-card">
-          <div class="rb-eyebrow">Export to Vivado</div>
-          <h2>Expected handoff path</h2>
-          <p>Inside RedByte: Verify with Compare checks, map pins, open Export, download the Vivado Kit, then open the generated project in Vivado.</p>
-        </article>
-        <article class="rb-command-card">
-          <div class="rb-eyebrow">Limitations</div>
-          <h2>Current boundaries</h2>
+        <section class="info-panel" aria-labelledby="vivado-title">
+          <h2 id="vivado-title">Vivado owns the hardware loop</h2>
           <p>
-            Basys3 is the supported board. Multi-clock, falling-edge, active-low reset, asynchronous sequential logic,
-            and broad board families are outside the current release boundary.
+            E1 synthesis and implementation, E2 programming, and E3 physical observation remain
+            downstream evidence. A physical Basys3 board is required for E2 programming and E3 observation.
           </p>
-        </article>
-      </section>
+          <div class="evidence-line">
+            <strong>Flow</strong>
+            <p><code>Project -&gt; Design -&gt; Verify -&gt; Map Pins -&gt; Export -&gt; Vivado</code></p>
+          </div>
+        </section>
+      </div>
 
-      <p class="rb-footer">
-        RedByte source and maintained course docs are the truth. Local generated outputs are supporting artifacts, not release claims.
-      </p>
+      <details class="local-run" id="run-locally">
+        <summary>Run RedByte locally</summary>
+        <div class="local-run-body">
+          <p>
+            Use the pnpm workspace and the repository-pinned Node runtime. RedByte source and maintained
+            course docs are the truth. Generated outputs support evidence but do not expand release claims.
+          </p>
+          <code>pnpm install
+pnpm dev</code>
+        </div>
+      </details>
+
+      <footer>
+        <p>RedByte Professional Engineering Workbench</p>
+        <p>Basys3 target | Browser E0 | Vivado handoff</p>
+      </footer>
     </main>
   </body>
 </html>

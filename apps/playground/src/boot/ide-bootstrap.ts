@@ -7,7 +7,6 @@ import ReactDOM from 'react-dom/client';
 import { IdeApp, registerAllApps } from '@redbyte/rb-apps';
 import { initializeStoreInstrumentation, installFatalCapture, pushMount } from '@redbyte/rb-utils';
 import '../index.css';
-import '../ide/ide-root.css';
 
 declare const __RB_VITE_CONFIG__: string;
 

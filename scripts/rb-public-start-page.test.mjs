@@ -25,17 +25,21 @@ const normalized = html.replace(/\s+/g, ' ').trim();
 
 const requiredSnippets = [
   'RedByte is a digital logic and FPGA workbench.',
+  'A focused engineering workbench from circuit to handoff.',
+  'Five-stage workflow',
   'Project',
   'Design',
   'Verify',
   'Map Pins',
   'Export',
+  'Browser scope: E0',
   'E0',
   'E1',
   'E2',
   'E3',
-  'Project -> Design -> Verify',
-  'Map Pins -> Export -> Vivado',
+  'Vivado owns the hardware loop',
+  'Run locally',
+  'Repository',
   'pnpm dev',
   'AMD Vivado 2024.2',
   'A physical Basys3 board is required for E2 programming and E3 observation.',
@@ -69,5 +73,9 @@ assert(
 assert(!/^\s*\/\s+\/os\/?\s+30[12]\s*$/m.test(redirects), 'root redirect must not send public visitors directly to /os/');
 assert(/^\s*\/os\s+\/os\/\s+302\s*$/m.test(redirects), '/os normalization redirect must remain');
 assert(/href="\/os\/"/.test(html), 'start page must include Open IDE link to /os/');
+assert((html.match(/href="\/os\/"/g) ?? []).length === 1, 'start page must expose exactly one Open IDE destination');
+assert((html.match(/class="primary-action"/g) ?? []).length === 1, 'start page must expose exactly one primary action');
+assert(!/(?:linear|radial)-gradient\(/i.test(html), 'start page must not use decorative gradients');
+assert(!/text-shadow\s*:/i.test(html), 'start page must not use glowing text');
 
 console.log('[rb-public-start-page:test] ok');

@@ -24,7 +24,6 @@ import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics
 import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
 import { getIdeModeLabel } from './ide/workflowStages';
 import { IdeTopBar } from './ide/components/IdeTopBar';
-import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { deriveProjectOutlineSummary } from './ide/projectOutline';
@@ -1630,7 +1629,6 @@ export const IdeApp: React.FC = () => {
     ]
   );
   const primaryProjectCta = workflowAuthority.primaryCta;
-  const statusBarGateStatus = workflowAuthority.statusBarGateStatus;
   const fullAdderLabVerifyStatus = useMemo<'pass' | 'fail' | 'stale' | 'not-run'>(() => {
     if (projectHealthCore.dirtySinceVerify && projectHealthCore.lastVerify) return 'stale';
     if (projectVerifyState === 'assertions-match') return 'pass';
@@ -1783,113 +1781,6 @@ export const IdeApp: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty: refs provide current values
 
-  const labProofRibbonItems = useMemo<LabProofRibbonItem[]>(() => {
-    const designTone: LabProofRibbonTone = !hasCircuit
-      ? 'draft'
-      : projectHealthCore.dirtySinceVerify
-        ? 'stale'
-        : 'current';
-    const verifyTone: LabProofRibbonTone = projectHealthCore.dirtySinceVerify
-      ? 'stale'
-      : latestVerifyPass
-        ? 'current'
-        : projectHealthCore.lastVerify?.status === 'fail'
-          ? 'attention'
-          : 'draft';
-    const mappingTone: LabProofRibbonTone = effectiveReadiness.hasIoMapping
-      ? 'current'
-      : missingRequiredCount > 0
-        ? 'attention'
-        : 'draft';
-    const exportTone: LabProofRibbonTone = projectHealthCore.lastExport?.status === 'ok'
-      ? projectHealthCore.dirtySinceExport
-        ? 'stale'
-        : 'current'
-      : projectHealthCore.lastExport?.status === 'blocked'
-        ? 'attention'
-        : workflowAuthority.exportAvailable
-          ? 'attention'
-          : 'draft';
-    const exportValue = projectHealthCore.lastExport?.status === 'ok'
-      ? projectHealthCore.dirtySinceExport
-        ? 'Stale E0'
-        : 'E0 ready'
-      : projectHealthCore.lastExport?.status === 'blocked'
-        ? 'Blocked'
-        : workflowAuthority.trustedVerifyCurrent
-          ? 'E0 ready'
-          : workflowAuthority.draftExportAvailable
-            ? 'Draft Export'
-            : workflowAuthority.exportAvailable
-              ? 'Needs Review'
-              : 'Draft';
-
-    return [
-      {
-        id: 'design',
-        label: 'Design',
-        value: !hasCircuit ? 'No circuit' : projectHealthCore.dirtySinceVerify ? 'Changed' : 'Current',
-        detail: !hasCircuit ? 'Start or import a lab' : `${circuit.nodes.length} nodes`,
-        tone: designTone,
-        mode: 'design',
-      },
-      {
-        id: 'verify',
-        label: 'Verify',
-        value: projectHealthCore.dirtySinceVerify
-          ? 'Stale'
-          : latestVerifyPass
-            ? 'Compare PASS'
-            : projectHealthCore.lastVerify?.status === 'fail'
-              ? 'Compare FAIL'
-              : 'Not run',
-        detail: latestVerifyPass
-          ? 'Proof current'
-          : projectHealthCore.dirtySinceVerify
-            ? 'Rerun Compare'
-            : 'Needs evidence',
-        tone: verifyTone,
-        mode: 'verify',
-      },
-      {
-        id: 'mapping',
-        label: 'Mapping',
-        value: effectiveReadiness.hasIoMapping ? 'Mapped' : `${missingRequiredCount} missing`,
-        detail: effectiveReadiness.hasIoMapping ? 'Basys3 bindings' : 'Assign required pins',
-        tone: mappingTone,
-        mode: 'hardware',
-      },
-      {
-        id: 'export',
-        label: 'Export',
-        value: exportValue,
-        detail: 'Vivado package only',
-        tone: exportTone,
-        mode: 'export',
-      },
-      {
-        id: 'evidence',
-        label: 'Evidence',
-        value: 'E0 only',
-        detail: 'E1-E3 external',
-        tone: 'external',
-      },
-    ];
-  }, [
-    circuit.nodes.length,
-    effectiveReadiness.hasIoMapping,
-    hasCircuit,
-    latestVerifyPass,
-    missingRequiredCount,
-    projectHealthCore.dirtySinceExport,
-    projectHealthCore.dirtySinceVerify,
-    projectHealthCore.lastExport?.status,
-    projectHealthCore.lastVerify?.status,
-    workflowAuthority.draftExportAvailable,
-    workflowAuthority.exportAvailable,
-    workflowAuthority.trustedVerifyCurrent,
-  ]);
-
   return (
     <BoardSignalProvider>
     <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
@@ -1903,6 +1794,7 @@ export const IdeApp: React.FC = () => {
       <IdeTopBar
         projectName={projectName}
         projectId={projectId}
+        boardTarget={fpgaConfig.board}
         saveState={saveState}
         currentMode={activeMode}
         buildIdentity={buildIdentity}
@@ -1915,12 +1807,6 @@ export const IdeApp: React.FC = () => {
         onRenameProject={handleRenameProject}
         onWorkflowHelp={activeMode === 'project' ? () => setWorkflowOrientationRequest((previous) => previous + 1) : undefined}
         onHelp={() => setShowShortcuts(true)}
-      />
-
-      <IdeProofRibbon
-        items={labProofRibbonItems}
-        currentMode={activeMode}
-        onModeChange={setCurrentMode}
       />
 
       <OnboardingOverlay
@@ -1936,7 +1822,12 @@ export const IdeApp: React.FC = () => {
         <IdeLeftRail
           currentMode={activeMode}
           onModeChange={setCurrentMode}
-          stepsCompleted={workflowAuthority.stageCompletion}
+          stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
+          stepsBlocked={{
+            verify: !hasCircuit,
+            hardware: !hasCircuit,
+            export: !workflowAuthority.exportAvailable,
+          }}
         />
         <div className="ide-surface-column">
         {activeMode === 'project' ? (
@@ -2417,8 +2308,6 @@ export const IdeApp: React.FC = () => {
           testId="ide-example-confirm-modal"
         />
       ) : null}
-
-      <IdeStatusBar mode={activeMode} determinismHash={determinismHash} gateStatus={statusBarGateStatus} />
     </div>
     </BoardSignalProvider>
   );
@@ -2667,71 +2556,6 @@ export function deriveHasDff(
     verifyLastRunSchedule === 'clocked_macro'
   );
 }
-
-type LabProofRibbonTone = 'current' | 'draft' | 'stale' | 'attention' | 'external';
-
-interface LabProofRibbonItem {
-  id: string;
-  label: string;
-  value: string;
-  detail: string;
-  tone: LabProofRibbonTone;
-  mode?: IdeMode;
-}
-
-const IdeProofRibbon: React.FC<{
-  items: LabProofRibbonItem[];
-  currentMode: IdeMode;
-  onModeChange: (mode: IdeMode) => void;
-}> = ({ items, currentMode, onModeChange }) => (
-  <section
-    className="ide-proof-ribbon"
-    data-testid="ide-proof-ribbon"
-    aria-label="Lab proof and workflow state"
-  >
-    <div className="ide-proof-ribbon__flow" data-testid="ide-lab-flow-map">
-      <span className="ide-proof-ribbon__eyebrow">Workflow state</span>
-      <div className="ide-proof-ribbon__steps" role="list">
-        {items
-          .filter((item) => item.mode)
-          .map((item, index, workflowItems) => {
-            const isActive = item.mode === currentMode;
-            return (
-              <React.Fragment key={item.id}>
-                <button
-                  type="button"
-                  className={`ide-proof-step is-${item.tone}${isActive ? ' is-active' : ''}`}
-                  data-testid={`ide-proof-step-${item.id}`}
-                  aria-current={isActive ? 'step' : undefined}
-                  onClick={() => item.mode && onModeChange(item.mode)}
-                >
-                  <span className="ide-proof-step__index">{index + 1}</span>
-                  <span className="ide-proof-step__copy">
-                    <span className="ide-proof-step__label">{item.label}</span>
-                    <span className="ide-proof-step__value">{item.value}</span>
-                  </span>
-                </button>
-                {index < workflowItems.length - 1 ? (
-                  <span className="ide-proof-ribbon__connector" aria-hidden="true" />
-                ) : null}
-              </React.Fragment>
-            );
-          })}
-      </div>
-    </div>
-    <div className="ide-proof-ribbon__evidence" data-testid="ide-proof-ribbon-evidence">
-      {items
-        .filter((item) => !item.mode)
-        .map((item) => (
-          <div key={item.id} className={`ide-proof-evidence is-${item.tone}`}>
-            <span className="ide-proof-evidence__label">{item.label}</span>
-            <strong>{item.value}</strong>
-            <span>{item.detail}</span>
-          </div>
-        ))}
-    </div>
-  </section>
-);
 
 export { buildCurrentVerifyProjectHash };
 
