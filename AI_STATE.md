@@ -1,5 +1,29 @@
 # AI State
 
+## Change Log 2026-07-13 (fix: keep Verify command labels readable)
+
+**Subsystem:** Verify command-deck cross-platform readability, compact/stress-width layout, and rebrand release recovery.
+
+**Remote failure:** Required `Classroom Truth Gates` run `29301817008` at mainline baseline `63b7f157e963ca2b14b4f6553a6c2d6baaebf2e8` failed `ide:gate:verify-postrun-workbench-usability` at the initial `1440x900` Compare PASS state. The one visible `Compare checks` control measured `144px` against a dynamic `147px` readable-width requirement on Ubuntu 24.04.4 / Chromium 145. The preceding `ide:gate:student-task-completion-flow` passed, and the workflow uploaded no screenshot artifact.
+
+**Root cause:** The active professional-rebrand CSS fixed `Compare checks` at `144px`, including the responsive grid track, leaving no margin for Linux's resolved fallback-font metrics. Local Windows Segoe metrics require only `125px`; a controlled `sans-serif` probe raises the same calculation to `133px`, while the remote fallback required `147px`. Fresh contexts, cleared storage, one visible selector match, and failure on the first PASS state rule out duplicate render branches, leaked gate state, and run ordering.
+
+**Changes:**
+- Consolidated the Verify mode widths as local command-row variables and raised `Compare checks` from `144px` to `152px`, preserving `Observe only` at `112px` and deriving the full toggle floor as `272px`.
+- Reused those same values in the responsive selector so desktop and compact rules cannot drift back to different readability floors.
+- Added a bounded `<=1200px` two-column / two-row reflow for the primary command band after 125%-equivalent inspection exposed the wider toggle overlapping status. Labels, type size, padding, target semantics, and the dynamic readability gate remain unchanged.
+- Added the structured hardening ticket and updated the Verify surface/system-map contract for the compact reflow.
+
+**Geometry and manual evidence:** The remote before-state was `144px < 147px`. The after-state `Compare checks` control is `152px`, an `8px` width increase and `5px` remote-font safety margin. Manual browser replay covered pre-run, Observe, Compare PASS, intentional FAIL, and repair PASS at `1440x900`, `1366x768`, `1920x1080`, and a `1093x614` 125%-equivalent stress viewport. The final stress proof found one control per mode, no command-group overlap, no root/document overflow, and no browser errors; ignored screenshots and geometry are under `.redbyte/product-immersion/rebrand-verify-command-recovery/`.
+
+**Validation:** Portable Node `v20.19.0` / pnpm `10.24.0` passed three consecutive focused `ide:gate:verify-postrun-workbench-usability` runs after the final CSS, nine adjacent Verify/rebrand/layout gates, focused Verify Vitest (`3` files, `57/57` tests), the full `classroom:gate` aggregate (`PASS all steps`, `874485ms`, including the exact post-run gate and final `30/30` determinism/parity tests), explicit unified artifact build/distribution verification, docs validation (`29/29`), encoding, and diff checks.
+
+**Safety:** Browser-E0 Verify layout and documentation only. No simulator algorithm, Compare truth, expected-output semantics, project format, mapping authority, generated VHDL/XDC/testbench/Tcl/ZIP bytes or goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof changed.
+
+**Delivery boundary:** This recovery remains a local candidate until the exact commit is pushed to `origin/main`, all three required GitHub/Cloudflare checks pass, production endpoints report that commit, and production Verify plus the prior Design inspector task are replayed. Local browser-E0 proof is not deployment or hardware proof.
+
+**Next recommended task:** Complete only this recovery's remote-green and exact-production replay. If it passes, resume the bounded Professional Rebrand Completion queue; do not begin guided 4-bit or Vivado/E1-E3 work in this repair.
+
 ## Change Log 2026-07-13 (fix: keep student edit actions in the classroom viewport)
 
 **Subsystem:** Design selected-node inspector hierarchy, first-viewport action geometry, focused student-task gate coverage, and professional-rebrand release recovery.
