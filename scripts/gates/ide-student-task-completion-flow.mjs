@@ -127,9 +127,11 @@ async function assertDesignDirectManipulation(page, viewport) {
     return {
       dock: box('[data-testid="ide-inspector"]'),
       inspector: box('[data-testid="ide-design-selection-inspector"]'),
+      identity: box('[data-testid="ide-design-inspector-identity-card"]'),
       actions: box('[data-testid="ide-design-inspector-actions"]'),
       editGroup: box('[data-testid="ide-design-inspector-edit-group"]'),
       swapGroup: box('[data-testid="ide-design-swap-group"]'),
+      selectionDetails: box('[data-testid="ide-design-inspector-selection-details"]'),
       canvas: box('[data-testid="ide-design-live-canvas"]'),
       actionButtons,
       overlaps,
@@ -146,8 +148,16 @@ async function assertDesignDirectManipulation(page, viewport) {
     metrics.canvas?.visibleWidth >= Math.round(viewport.width * 0.44),
     `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify(metrics.canvas)}`
   );
+  assert(
+    metrics.identity && metrics.actions && metrics.identity.bottom <= metrics.actions.top,
+    `${viewport.label}: primary actions must follow the compact selection identity ${JSON.stringify(metrics)}`
+  );
   assert(metrics.actions?.visibleHeight >= 120, `${viewport.label}: inspector actions not usefully visible ${JSON.stringify(metrics.actions)}`);
   assert(metrics.editGroup?.top < viewport.height - 180, `${viewport.label}: edit actions start too low ${JSON.stringify(metrics.editGroup)}`);
+  assert(
+    metrics.selectionDetails && metrics.actions && metrics.selectionDetails.top >= metrics.actions.bottom,
+    `${viewport.label}: secondary selection details must follow primary actions ${JSON.stringify(metrics)}`
+  );
   assert(
     metrics.swapGroup?.visibleHeight >= 56 && metrics.swapGroup?.top < viewport.height - 40,
     `${viewport.label}: Swap type controls are not usefully reachable in the inspector ${JSON.stringify(metrics.swapGroup)}`

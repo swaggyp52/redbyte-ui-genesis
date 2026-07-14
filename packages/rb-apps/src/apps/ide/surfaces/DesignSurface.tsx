@@ -4425,43 +4425,60 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   };
   const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
     PALETTE_SECTION_ORDER;
+  const selectedNodeInspectorModel = selectedNode
+    ? (() => {
+        const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
+        const typeName = nodeTypeLabel(selectedNode.type);
+        const studentNodeLabel = describeNodeForStudents(selectedNode, selectedNodeIoRow);
+        const boardSummary = selectedNodeIoRow
+          ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
+          : 'No board mapping';
+        const selectedLogicalDirection = selectedNodeIoRow
+          ? selectedNodeIoRow.direction === 'in'
+            ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
+            : `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
+          : selectedNode.type === 'INPUT'
+            ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
+            : selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp'
+              ? `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
+              : 'Internal part or signal path';
+        const selectedBoardResource = selectedNodeIoRow?.label?.trim()
+          ? selectedNodeIoRow.label.trim()
+          : selectedNodeIoRow
+            ? 'Unassigned board resource'
+            : 'Not mapped to a board resource';
+        const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
+          ? selectedNodeIoRow.pin.trim()
+          : 'No package pin yet';
+        const showSelectedSignalModel = Boolean(
+          selectedNodeIoRow ||
+          selectedNode.type === 'INPUT' ||
+          selectedNode.type === 'Switch' ||
+          selectedNode.type === 'OUTPUT' ||
+          selectedNode.type === 'Lamp'
+        );
+        const defaultNextStep = primarySelectionIssue?.hint
+          ?? (selectedNodeIoRow
+            ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
+            : 'Rename it, inspect its pins, or trace the connected net next.');
+        const nextStep = selectedSequentialInspector?.nextStep ?? defaultNextStep;
+
+        return {
+          boardSummary,
+          displayName,
+          nextStep,
+          selectedBoardResource,
+          selectedLogicalDirection,
+          selectedPackagePin,
+          showSelectedSignalModel,
+          studentNodeLabel,
+          typeName,
+        };
+      })()
+    : null;
   const renderSelectionIdentityCard = () => {
-    if (hasSingleSelectedNode && selectedNode) {
-      const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
-      const typeName = nodeTypeLabel(selectedNode.type);
-      const studentNodeLabel = describeNodeForStudents(selectedNode, selectedNodeIoRow);
-      const boardSummary = selectedNodeIoRow
-        ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
-        : 'No board mapping';
-      const selectedLogicalDirection = selectedNodeIoRow
-        ? selectedNodeIoRow.direction === 'in'
-          ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
-          : `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
-        : selectedNode.type === 'INPUT'
-          ? `Input signal - ${SIGNAL_LANGUAGE.inputSignal}`
-          : selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp'
-            ? `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
-            : 'Internal part or signal path';
-      const selectedBoardResource = selectedNodeIoRow?.label?.trim()
-        ? selectedNodeIoRow.label.trim()
-        : selectedNodeIoRow
-          ? 'Unassigned board resource'
-          : 'Not mapped to a board resource';
-      const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
-        ? selectedNodeIoRow.pin.trim()
-        : 'No package pin yet';
-      const showSelectedSignalModel = Boolean(
-        selectedNodeIoRow ||
-        selectedNode.type === 'INPUT' ||
-        selectedNode.type === 'Switch' ||
-        selectedNode.type === 'OUTPUT' ||
-        selectedNode.type === 'Lamp'
-      );
-      const defaultNextStep = primarySelectionIssue?.hint
-        ?? (selectedNodeIoRow
-          ? 'Rename it, inspect its mapped signal, or trace the connected net next.'
-          : 'Rename it, inspect its pins, or trace the connected net next.');
-      const nextStep = selectedSequentialInspector?.nextStep ?? defaultNextStep;
+    if (hasSingleSelectedNode && selectedNode && selectedNodeInspectorModel) {
+      const { displayName, typeName } = selectedNodeInspectorModel;
       return (
         <div className="ide-design-selection-inspector" data-testid="ide-design-selection-inspector">
           <div className="ide-design-inspector-identity-card" data-testid="ide-design-inspector-identity-card">
@@ -4470,12 +4487,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div className="ide-design-inspector-title-block">
                 <div className="ide-design-selection-identity" data-testid="ide-design-selection-identity">
                   <strong data-testid="ide-design-inspector-identity-title">{displayName}</strong>
-                  {selectedNode.label?.trim() ? (
-                    <>
-                      <span className="ide-design-identity-sep"> / </span>
-                      <span>{typeName}</span>
-                    </>
-                  ) : null}
                 </div>
                 <p className="ide-design-inspector-subtitle" data-testid="ide-design-inspector-identity-subtitle">
                   <span data-testid="ide-design-inspector-part-kind">
@@ -4484,80 +4495,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <span className="ide-design-identity-sep"> · </span>
                   <span data-testid="ide-design-selection-type">{typeName}</span>
                 </p>
-                {selectedNodeTeachingProfile ? (
-                  <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
-                    <p
-                      className="ide-design-inspector-what-it-is"
-                      data-testid="ide-design-inspector-what-it-is"
-                    >
-                      {selectedNodeTeachingProfile.whatItIs}
-                    </p>
-                    {selectedNodeTeachingProfile.structureHint ? (
-                      <p
-                        className="ide-design-inspector-structure-hint"
-                        data-testid="ide-design-inspector-structure-hint"
-                      >
-                        {selectedNodeTeachingProfile.structureHint}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
               <span className={`ide-design-inspector-status is-${selectionStatusTone}`}>
                 {selectionStatusLabel}
               </span>
             </div>
-            <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
-              {nextStep}
-            </p>
             {renderSelectionGuidance()}
-            <div className="ide-design-inspector-facts ide-kv-list">
-              {showSelectedSignalModel ? (
-                <div
-                  className="ide-design-inspector-signal-model"
-                  data-testid="ide-design-selected-signal-model"
-                >
-                  <div>
-                    <span>Label</span>
-                    <strong>{displayName}</strong>
-                  </div>
-                  <div>
-                    <span>Logical direction</span>
-                    <strong>{selectedLogicalDirection}</strong>
-                  </div>
-                  <div>
-                    <span>Board resource</span>
-                    <strong>{selectedBoardResource}</strong>
-                  </div>
-                  <div>
-                    <span>Package pin</span>
-                    <strong>{selectedPackagePin}</strong>
-                  </div>
-                </div>
-              ) : null}
-              <div className="ide-kv-row">
-                <span>Reference</span>
-                <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Board mapping</span>
-                <span>{boardSummary}</span>
-              </div>
-              {selectedSequentialInspector ? (
-                <>
-                  <div className="ide-kv-row">
-                    <span>Timing role</span>
-                    <span data-testid="ide-design-sequential-role">{selectedSequentialInspector.roleLabel}</span>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Timing context</span>
-                    <span data-testid="ide-design-sequential-timing-context">
-                      {selectedSequentialInspector.timingContext}
-                    </span>
-                  </div>
-                </>
-              ) : null}
-            </div>
           </div>
         </div>
       );
@@ -4843,6 +4786,95 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       );
     }
     return null;
+  };
+  const renderSelectedNodeDetails = () => {
+    if (!hasSingleSelectedNode || !selectedNode || !selectedNodeInspectorModel) {
+      return null;
+    }
+
+    const {
+      boardSummary,
+      displayName,
+      nextStep,
+      selectedBoardResource,
+      selectedLogicalDirection,
+      selectedPackagePin,
+      showSelectedSignalModel,
+      studentNodeLabel,
+    } = selectedNodeInspectorModel;
+
+    return (
+      <div className="ide-design-inspector-selection-details-content">
+        {selectedNodeTeachingProfile ? (
+          <div className="ide-design-inspector-meaning" data-testid="ide-design-inspector-meaning">
+            <p
+              className="ide-design-inspector-what-it-is"
+              data-testid="ide-design-inspector-what-it-is"
+            >
+              {selectedNodeTeachingProfile.whatItIs}
+            </p>
+            {selectedNodeTeachingProfile.structureHint ? (
+              <p
+                className="ide-design-inspector-structure-hint"
+                data-testid="ide-design-inspector-structure-hint"
+              >
+                {selectedNodeTeachingProfile.structureHint}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <p className="ide-design-inspector-next-step" data-testid="ide-design-inspector-next-step">
+          {nextStep}
+        </p>
+        <div className="ide-design-inspector-facts ide-kv-list">
+          {showSelectedSignalModel ? (
+            <div
+              className="ide-design-inspector-signal-model"
+              data-testid="ide-design-selected-signal-model"
+            >
+              <div>
+                <span>Label</span>
+                <strong>{displayName}</strong>
+              </div>
+              <div>
+                <span>Logical direction</span>
+                <strong>{selectedLogicalDirection}</strong>
+              </div>
+              <div>
+                <span>Board resource</span>
+                <strong>{selectedBoardResource}</strong>
+              </div>
+              <div>
+                <span>Package pin</span>
+                <strong>{selectedPackagePin}</strong>
+              </div>
+            </div>
+          ) : null}
+          <div className="ide-kv-row">
+            <span>Reference</span>
+            <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
+          </div>
+          <div className="ide-kv-row">
+            <span>Board mapping</span>
+            <span>{boardSummary}</span>
+          </div>
+          {selectedSequentialInspector ? (
+            <>
+              <div className="ide-kv-row">
+                <span>Timing role</span>
+                <span data-testid="ide-design-sequential-role">{selectedSequentialInspector.roleLabel}</span>
+              </div>
+              <div className="ide-kv-row">
+                <span>Timing context</span>
+                <span data-testid="ide-design-sequential-timing-context">
+                  {selectedSequentialInspector.timingContext}
+                </span>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
+    );
   };
   const renderSelectionActions = () => {
     if (hasSingleSelectedNode && selectedNode) {
@@ -6129,6 +6161,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeInspectorSection>
             ) : null;
           })()}
+          {hasSingleSelectedNode && selectedNode ? (
+            <IdeInspectorSection
+              title="Selection details"
+              testId="ide-design-inspector-selection-details"
+              collapsible={false}
+            >
+              {renderSelectedNodeDetails()}
+            </IdeInspectorSection>
+          ) : null}
           {hasInspectorSelectionContext ? (
             <React.Fragment key="design-inspector-selection-context">
               <IdeInspectorSection title="Live / Signal State" testId="ide-design-context-inspector" collapsible={false}>

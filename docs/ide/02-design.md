@@ -48,6 +48,7 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 4. Right inspector
 - Is selection-driven support: it stays collapsed by default and opens when a selected node, wire, focused asset, mapping, or signal context needs direct controls.
+- For a selected node, the compact identity and actionable issue guidance come first, primary Actions follow immediately, and teaching/reference/mapping context follows in **Selection details**. Cross-platform font wrapping in secondary context must not push direct edit controls below the `1366x768` classroom first viewport.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
 - When the student explicitly opens the inspector without a selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It is not a persistent default work object.
 - In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.

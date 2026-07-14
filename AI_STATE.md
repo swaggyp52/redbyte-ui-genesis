@@ -1,5 +1,27 @@
 # AI State
 
+## Change Log 2026-07-13 (fix: keep student edit actions in the classroom viewport)
+
+**Subsystem:** Design selected-node inspector hierarchy, first-viewport action geometry, focused student-task gate coverage, and professional-rebrand release recovery.
+
+**Root cause:** The professional recomposition left the full teaching/reference selection card after a fixed `51px` Hide-row cost and before the selected-node `Actions` group, leaving only `21px` of native-Windows threshold margin. In the `197px` inspector column, a controlled experiment that changes only the selected inspector to Verdana wraps the duplicated gate type and Board mapping fact, grows the identity by `40.5px`, and moves the edit group from the native `top=566.531` to `top=607.031`, reproducing the remote `top=607` failure. The exact remote font is inferred because the workflow recorded neither a screenshot nor computed font metrics. Fresh isolated contexts, unique preview origins, cleared storage, mutually exclusive render branches, and single rendered test IDs rule out prior-gate state and selector contamination; no timing trigger is evidenced, and the static no-webfont render plus exact font-isolation reproduction support font-sensitive geometry as the cause.
+
+**Changes:**
+- Kept a compact selected-item identity and issue guidance before `Actions`, removed the duplicated gate type from the title, and moved the complete teaching meaning, next step, reference/board mapping, signal model, and timing facts into a non-collapsible `Selection details` section immediately after the action group.
+- Preserved all existing selected-node actions and their target sizes: copy, duplicate, gate swap, rename, trace, pin/unpin, clear, delete, and undo remain normal direct controls.
+- Strengthened `ide:gate:student-task-completion-flow` so it proves compact identity -> Actions -> Selection details ordering while retaining the original `editGroup.top < viewport.height - 180` threshold.
+- Added focused hierarchy/workstation regression coverage and documented the inspector contract plus the release-blocker ticket.
+
+**Geometry and manual evidence:** At `1366x768`, the after-state edit group is fully visible at `top=302`, `bottom=593`, `height=291`, versus the local before-state `top=567`, `bottom=858`, `height=291`; the remote failure was `top=607`, `bottom=898`, `height=291`, `visibleHeight=161`. The canvas remains `614px` wide with zero root overflow. The same task is fully visible at `1440x900` and a `1094x614` 125%-scale equivalent. A fresh manual replay exercised Copy, Duplicate/Undo, AND -> NAND -> AND swap, Rename, both trace directions, Unpin (revealing Pin), Clear, Delete/Undo, and found no console/page errors or nested-scroll trap. Ignored proof is under `.redbyte/product-immersion/rebrand-release-recovery/`.
+
+**Validation:** Portable Node `v20.19.0` / pnpm `10.24.0` passed the frozen playground build; three consecutive focused student-task gates (`10.415s`, `10.786s`, `10.776s`); professional-rebrand, professional-classroom, primary-work-object, no-cropped-controls, root-overflow, Design Workbench, and Design wiring gates; focused Design Vitest (`4` files, `45/45` tests); and the full `classroom:gate` aggregate (`PASS all steps`, `846706ms`, including final `30/30` determinism/parity tests). Final docs validation passed `29/29`, encoding found no mojibake, and `git diff --check` passed with line-ending notices only.
+
+**Safety:** Browser-E0 Design composition, CSS, tests, gate geometry, and documentation only. No simulator algorithm, Compare truth, expected-output semantics, project format, mapping authority, generated VHDL/XDC/testbench/Tcl/ZIP bytes or goldens, Vivado execution, bitstream generation, Basys3 programming, physical board observation, account/LMS/grading, or E1/E2/E3 proof is changed.
+
+**Delivery boundary:** The recovery is intentionally one commit targeting `origin/main`. The failed mainline baseline is `dd00346c954a61fca3ab722dda362c26b073a634`; GitHub checks and exact production build identity must be confirmed before this recovery is called deployed or live.
+
+**Next recommended task:** Only after this recovery is remote-green and production-proven, resume Professional Rebrand Completion for Import composition, remaining microtext/terminology cleanup, the Map Pins conflict repair, fresh all-surface manual loops, and bounded CSS consolidation. Do not start the guided 4-bit path or Vivado/E1-E3 work as part of this repair.
+
 ## Change Log 2026-07-13 (refactor: recompose the RedByte professional product shell)
 
 **Subsystem:** Public Start entry, IDE shell/navigation authority, Project and Design workspaces, Verify run authority, Hardware / Map Pins hierarchy, Export readiness hierarchy, professional design primitives, and browser-E0 regression proof.

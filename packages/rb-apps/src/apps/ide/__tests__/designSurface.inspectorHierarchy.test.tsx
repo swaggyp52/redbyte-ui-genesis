@@ -226,7 +226,7 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-inspector-advanced')).toBeNull();
   });
 
-  it('anchors selection identity with friendly title, subtitle, and student-safe reference metadata', async () => {
+  it('anchors selection identity before student-safe reference details', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     act(() => {
@@ -240,9 +240,15 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.getByTestId('ide-design-inspector-identity-subtitle').textContent).toContain('Input');
     expect(view.getByTestId('ide-design-selection-type').textContent).toBe('Input');
     expect(view.getByTestId('ide-design-selection-id').textContent).toBe('SW0');
+
+    const identity = view.getByTestId('ide-design-inspector-identity-card');
+    const actions = view.getByTestId('ide-design-inspector-actions');
+    const details = view.getByTestId('ide-design-inspector-selection-details');
+    expect(identity.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(actions.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps identity facts inline and folds replay context into signal/state instead of a standalone inspector section', async () => {
+  it('keeps selection details ahead of signal/state and folds replay context into that state section', async () => {
     const view = renderSurface(BASE_CIRCUIT, {
       activeVerifySignal: 'ld0',
     });
@@ -259,6 +265,9 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-replay-context-inspector')).toBeNull();
     expect(view.container.querySelector('.ide-design-inspector-meta-grid')).toBeNull();
     expect(view.container.querySelectorAll('.ide-design-inspector-meta-card')).toHaveLength(0);
+    const details = view.getByTestId('ide-design-inspector-selection-details');
+    const state = view.getByTestId('ide-design-context-inspector');
+    expect(details.compareDocumentPosition(state) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('Verify focus');
     expect(view.getByTestId('ide-design-context-inspector').textContent).toContain('ld0');
   });

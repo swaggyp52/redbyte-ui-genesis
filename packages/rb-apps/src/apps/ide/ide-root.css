@@ -33138,6 +33138,23 @@ button:disabled,
   border-top: 1px solid rgba(79, 114, 145, 0.18) !important;
 }
 
+/* Release recovery: keep direct edit controls directly after selection identity.
+   Teaching and mapping context remains readable in the following details section. */
+[data-ide-mode-marker='design'] .ide-design-selection-inspector .ide-design-inspector-identity-card {
+  margin-bottom: 4px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+}
+
+[data-ide-mode-marker='design'] .ide-design-inspector-selection-details-content {
+  display: grid;
+  gap: 10px;
+}
+
+[data-ide-mode-marker='design'] .ide-design-inspector-selection-details-content > .ide-design-inspector-next-step {
+  margin: 0 !important;
+}
+
 [data-ide-mode-marker='design'] .ide-design-tool-hud {
   top: 12px !important;
   left: 12px !important;
