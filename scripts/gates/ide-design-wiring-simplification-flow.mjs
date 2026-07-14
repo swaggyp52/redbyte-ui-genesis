@@ -216,9 +216,7 @@ async function clickNode(page, nodeId) {
 async function clickPort(page, nodeId, portName) {
   const port = page.locator(`[data-node-id="${nodeId}"] [data-port-id="${portName}"]`).first();
   await port.waitFor({ state: 'visible', timeout: 8000 });
-  const box = await port.boundingBox();
-  assert(Boolean(box), `port ${nodeId}.${portName} must have a clickable box`);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await port.click();
 }
 
 async function connectPorts(page, fromNodeId, fromPort, toNodeId, toPort) {

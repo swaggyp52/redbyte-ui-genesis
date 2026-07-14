@@ -84,6 +84,12 @@ import {
   resolveDesignWorkspacePreset,
   type DesignArtifact,
 } from './designWorkspaceConfig';
+import {
+  readDesignCanvasViewport,
+  reconcileDesignCanvasCamera,
+  type DesignCanvasGraphAnchor,
+  type DesignCanvasViewport,
+} from './designCanvasCamera';
 import type { IdeChromeContract } from '../chromeContract';
 
 export const CHROME_CONTRACT = {
@@ -716,8 +722,6 @@ function snapFitZoom(rawZoom: number): number {
   );
 }
 
-type DesignCanvasViewport = { width: number; height: number };
-
 function isDesignCanvasViewport(value: unknown): value is DesignCanvasViewport {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<DesignCanvasViewport>;
@@ -1102,6 +1106,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
+  const [canvasHostElement, setCanvasHostElement] = useState<HTMLDivElement | null>(null);
+  const bindCanvasHost = useCallback((element: HTMLDivElement | null) => {
+    canvasHostRef.current = element;
+    setCanvasHostElement((current) => (current === element ? current : element));
+  }, []);
+  const lastMeasuredCanvasViewportRef = useRef<DesignCanvasViewport | null>(null);
+  const canvasObservationGenerationRef = useRef(0);
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [paneRowSize, setPaneRowSize] = useState({ width: 0, height: 0 });
@@ -1435,19 +1446,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   useEffect(() => {
     tickEngine.setCircuit(editorCircuit);
   }, [editorCircuit, tickEngine]);
-
-  useEffect(() => {
-    if (!canvasHostRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      const next = entries[0];
-      if (!next) return;
-      const width = Math.max(640, Math.floor(next.contentRect.width));
-      const height = Math.max(64, Math.floor(next.contentRect.height));
-      setCanvasSize({ width, height });
-    });
-    observer.observe(canvasHostRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     if (!paneRowRef.current) return;
@@ -2340,13 +2338,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const measureCanvasViewport = useCallback(() => {
     if (!canvasHostRef.current) return null;
-    const rect = canvasHostRef.current.getBoundingClientRect();
-    const width = Math.max(640, Math.floor(rect.width));
-    const height = Math.max(64, Math.floor(rect.height));
-    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-      return null;
-    }
-    return { width, height };
+    return readDesignCanvasViewport(canvasHostRef.current.clientWidth, canvasHostRef.current.clientHeight);
   }, []);
 
   const fitToCircuit = useCallback((viewportOverride?: unknown) => {
@@ -2397,8 +2389,90 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const fitToCircuitRef = useRef(fitToCircuit);
   const previousDesignViewRef = useRef(designView);
-  const designViewSettledFitFrameRef = useRef<number | null>(null);
   useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
+
+  const cameraGraphAnchors = useMemo<DesignCanvasGraphAnchor[]>(
+    () => editorCircuit.nodes.map((node) => ({
+      x: node.position?.x ?? node.x ?? 0,
+      y: node.position?.y ?? node.y ?? 0,
+    })),
+    [editorCircuit.nodes]
+  );
+  const cameraGraphAnchorsRef = useRef(cameraGraphAnchors);
+  cameraGraphAnchorsRef.current = cameraGraphAnchors;
+
+  useLayoutEffect(() => {
+    if (!canvasHostElement) return;
+    const generation = canvasObservationGenerationRef.current + 1;
+    canvasObservationGenerationRef.current = generation;
+    let active = true;
+    let pendingFrame: number | null = null;
+    let pendingViewport: DesignCanvasViewport | null = null;
+
+    const commitViewport = (nextViewport: DesignCanvasViewport) => {
+      if (
+        !active ||
+        canvasObservationGenerationRef.current !== generation ||
+        canvasHostRef.current !== canvasHostElement
+      ) {
+        return;
+      }
+      const previousViewport = lastMeasuredCanvasViewportRef.current;
+      if (
+        previousViewport?.width === nextViewport.width &&
+        previousViewport.height === nextViewport.height
+      ) {
+        return;
+      }
+      lastMeasuredCanvasViewportRef.current = nextViewport;
+      setCanvasSize(nextViewport);
+      if (!previousViewport) return;
+
+      const currentCamera = useLogicViewStore.getState().camera;
+      const reconciledCamera = reconcileDesignCanvasCamera(
+        currentCamera,
+        previousViewport,
+        nextViewport,
+        cameraGraphAnchorsRef.current
+      );
+      if (reconciledCamera) {
+        setCamera(reconciledCamera);
+      } else {
+        fitToCircuitRef.current(nextViewport);
+      }
+    };
+
+    const queueViewport = (width: number, height: number) => {
+      const nextViewport = readDesignCanvasViewport(width, height);
+      if (!nextViewport) return;
+      pendingViewport = nextViewport;
+      if (pendingFrame != null) return;
+      pendingFrame = window.requestAnimationFrame(() => {
+        pendingFrame = null;
+        const latestViewport = pendingViewport;
+        pendingViewport = null;
+        if (latestViewport) commitViewport(latestViewport);
+      });
+    };
+
+    const initialViewport = readDesignCanvasViewport(
+      canvasHostElement.clientWidth,
+      canvasHostElement.clientHeight
+    );
+    if (initialViewport) commitViewport(initialViewport);
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries.find((candidate) => candidate.target === canvasHostElement) ?? entries[0];
+      if (!entry) return;
+      queueViewport(entry.contentRect.width, entry.contentRect.height);
+    });
+    observer.observe(canvasHostElement);
+    return () => {
+      active = false;
+      canvasObservationGenerationRef.current += 1;
+      if (pendingFrame != null) window.cancelAnimationFrame(pendingFrame);
+      observer.disconnect();
+    };
+  }, [canvasHostElement, setCamera]);
 
   // Auto-fit on mode entry: whenever Design mounts with an existing circuit,
   // frame it immediately. Runs once per mount; does not fight subsequent user pan/zoom.
@@ -2555,38 +2629,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [viewportSeed]);
 
   useEffect(() => {
-    if (designViewSettledFitFrameRef.current != null) {
-      window.cancelAnimationFrame(designViewSettledFitFrameRef.current);
-      designViewSettledFitFrameRef.current = null;
-    }
     const previousView = previousDesignViewRef.current;
-    const enteredSplit = previousDesignViewRef.current !== 'split' && designView === 'split';
-    const returnedFromSplitToCanvas = previousView === 'split' && designView === 'canvas';
     previousDesignViewRef.current = designView;
-    if (!enteredSplit && !returnedFromSplitToCanvas) return;
-    if (enteredSplit) {
-      setToolsExpanded(false);
-      setSelectMode();
-    }
-    if (editorCircuit.nodes.length === 0) return;
-    const frame = window.requestAnimationFrame(() => {
-      const viewport = measureCanvasViewport();
-      fitToCircuitRef.current(viewport);
-      // Store frame2 ID before any null assignment to avoid cleanup race
-      const frame2 = window.requestAnimationFrame(() => {
-        fitToCircuitRef.current(measureCanvasViewport());
-        designViewSettledFitFrameRef.current = null;
-      });
-      designViewSettledFitFrameRef.current = frame2;
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      if (designViewSettledFitFrameRef.current != null) {
-        window.cancelAnimationFrame(designViewSettledFitFrameRef.current);
-        designViewSettledFitFrameRef.current = null;
-      }
-    };
-  }, [designView, editorCircuit.nodes.length, measureCanvasViewport, setSelectMode, setToolsExpanded]);
+    if (previousView === 'split' || designView !== 'split') return;
+    setToolsExpanded(false);
+    setSelectMode();
+  }, [designView, setSelectMode]);
 
   const handleSignalsUpdated = useCallback(() => {
     // Runtime simulation state is authoritative. Canvas-local ticks are ignored.
@@ -7257,7 +7305,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     className={`ide-design-canvas-live ${toolMode === 'wire' ? 'is-wire-mode' : 'is-select-mode'} ${
                       presentationZoom === 'classroom' ? 'is-presentation-zoom' : ''
                     }`}
-                    ref={canvasHostRef}
+                    ref={bindCanvasHost}
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}

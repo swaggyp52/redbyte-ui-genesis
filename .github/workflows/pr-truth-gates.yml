@@ -59,6 +59,16 @@ jobs:
       - name: Gate - IDE classroom loop
         run: pnpm -s classroom:gate
 
+      - name: Upload Design camera failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: design-camera-failure-${{ github.run_id }}
+          path: .redbyte/ide-design-workbench-v1-failures/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
       - name: Gate - No solution Lab 1
         run: pnpm -s ci:no-solution:lab1
 

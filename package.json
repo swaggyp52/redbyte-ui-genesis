@@ -228,6 +228,7 @@
         "ide:gate:design-canvas-zoom-integrity": "node ./scripts/gates/ide-design-canvas-zoom-integrity.mjs",
         "ide:gate:design-workbench-integrity": "node ./scripts/gates/ide-design-workbench-integrity.mjs",
         "ide:gate:design-workbench-v1": "node ./scripts/gates/ide-design-workbench-v1.mjs",
+        "ide:gate:design-camera-stability": "cross-env RB_DESIGN_WORKBENCH_V1_CAMERA_STRESS_ONLY=1 node ./scripts/gates/ide-design-workbench-v1.mjs",
         "ide:gate:design-canvas-direct-workbench": "node ./scripts/gates/ide-design-canvas-direct-workbench.mjs",
         "ide:gate:design-workspace-crash-proof": "node ./scripts/gates/ide-design-workspace-crash-proof.mjs",
         "ide:gate:workbench-stability-overhaul": "node ./scripts/gates/ide-workbench-stability-overhaul.mjs",

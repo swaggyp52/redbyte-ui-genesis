@@ -774,7 +774,28 @@ describe('DesignSurface workstation redesign', () => {
     expect(view.getByTestId('ide-design-split-stat-mode').textContent).toContain('Paused');
   });
 
-  it('re-fits the canvas when returning from split back to fullscreen canvas view', async () => {
+  it('keeps Split placement active after the student chooses a library macro', async () => {
+    const view = renderSurface({
+      macros: [FIXTURE_MACRO],
+      onInstantiateMacro: vi.fn(),
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
+    fireEvent.click(view.getByTestId('ide-design-view-split'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
+    });
+    await openDesignLibrary(view);
+    fireEvent.click(view.getByTestId('ide-macro-library-card-macro-and-gate'));
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
+      expect(view.getByTestId('ide-macro-insertion-overlay').textContent).toContain('AND Gate');
+    });
+  });
+
+  it('preserves the camera when returning from split until a measured resize reconciles it', async () => {
     const view = renderSurface();
 
     fireEvent.click(view.getByTestId('ide-design-tools-toggle'));
@@ -796,10 +817,10 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('canvas');
     });
 
-    await waitFor(() => {
-      const camera = useLogicViewStore.getState().camera;
-      expect(camera.x).not.toBe(-999);
-      expect(camera.y).not.toBe(-777);
+    expect(useLogicViewStore.getState().camera).toEqual({
+      x: -999,
+      y: -777,
+      zoom: 0.5,
     });
   });
 

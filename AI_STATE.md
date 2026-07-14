@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-07-14 (fix: stabilize Design split view camera)
+
+**Subsystem:** Design Canvas / Code / Split camera geometry, live-canvas host observation, culling proof, and release-recovery diagnostics.
+
+**Remote failure:** Required `Classroom Truth Gates` run `29305203955`, job `86997058794`, failed commit `39b11a6b3a55961d3ea8f16438a4ccc5c613a9be` at `ide:gate:design-workbench-v1` in the `1366x768` Code -> Split replay: the runtime/editor graph was intact, but only `2` nodes remained visibly intersecting the live canvas. The workflow did not upload a failure artifact. A controlled unchanged-parent baseline reproduced the exact failure in `7/10` fresh focused-gate processes.
+
+**Root cause:** `DesignSurface` inflated every measured live-canvas width to at least `640px`, even when the real Split host was narrower; its one-time `ResizeObserver` stayed attached to the detached first host after Code unmounted the canvas; and unconditional double-animation-frame Fits raced later shell, dock, and split-ratio layout commits. The camera therefore culled against virtual or stale geometry. The old viewport seed also included `activeExampleId`, which is cleared on the first starter edit and could trigger a metadata-only refit.
+
+**Changes:**
+- Measure the current host from truthful content-box `clientWidth` / `clientHeight`, observe every mounted host through a callback ref, ignore stale observer generations, and coalesce resize delivery to the latest frame.
+- Preserve zoom and the world point at viewport center across real resizes. If all circuit nodes would be stranded, clamp translation to restore the nearest actual node anchor; invalid geometry falls back to the existing explicit Fit calculation.
+- Remove transition-timed refits while retaining the entered-Split select-mode/tool-collapse behavior behind a transition guard so later Split placement is not cancelled.
+- Seed automatic viewport resets from project identity plus guided-lab structural token, not transient starter metadata.
+- Expand `ide:gate:design-workbench-v1` into a four-viewport camera stress proof with truthful host/SVG geometry, world-center and zoom preservation, exact node move/persistence, selection actions, dock transitions, persisted reload, and failure JSON/screenshots. Add the `ide:gate:design-camera-stability` focused alias.
+- Keep complex and dedicated wiring flows browser-actionable: both use real locator hit-testing. The complex fixture now actually opens View tools and proves its intended `50%` camera before wiring. Classroom failures upload the untracked `.redbyte/ide-design-workbench-v1-failures` diagnostics with hidden files included.
+
+**Geometry and manual evidence:** Local in-app browser replay proved live host and SVG agreement with all required graph visibility and zero overflow at `1366x768` (`486x542`), `1440x900` (`519x701`), `1920x1080` (`730x881`), and `1093x614` (`366x405`). At `125%`, Code -> Split retained the circuit; moving the AND node preserved zoom and position; selected-node actions remained reachable; Library/Inspector collapse and restore remained usable. Verify still exposed `Run · observe only`, `Run Compare`, `Observe only`, and `Compare checks`. Untracked screenshots are under `.redbyte/product-immersion/design-split-camera-recovery/`.
+
+**Validation:** Portable Node `v20.19.0` / pnpm `10.24.0` passed the four-viewport camera stress gate, `10/10` fresh complete Design Workbench processes before the final audit, the final complete Design Workbench gate, `46/46` focused camera/Design/store tests, three consecutive real-hit-test complex signal-trace runs, three real-hit-test Design wiring runs, the affected adjacent Design/Verify/layout gates, and the final full `classroom:gate` aggregate (`PASS all steps`, `871452ms`, including final `30/30` determinism/parity tests). Final docs validation passed `29/29`; encoding, touched-gate syntax, and diff checks passed. Broader `designSurface.continuedEditing` stale default-open-inspector assertions and the missing `SchematicView` import fail identically on unchanged `39b11a6b`; they are recorded baseline debt, not flattened into this recovery.
+
+**Safety:** Browser-E0 Design camera/layout observation, focused tests/gates, CI failure diagnostics, and documentation only. No circuit/simulator algorithm, Verify Compare truth, expected outputs, project format, mapping authority, generated VHDL/XDC/testbench/Tcl/ZIP bytes or goldens, Vivado execution, bitstream, Basys3 programming/observation, account/LMS/grading, Stage 2, Guided 4-bit, or E1/E2/E3 proof changed.
+
+**Delivery boundary:** This is a locally green recovery candidate until the exact commit is pushed normally to `origin/main`, required Classroom/build/Cloudflare checks pass, production endpoints report that commit, and the production Design/Verify replay passes. A green deploy job alone is not release acceptance.
+
+**Next recommended task:** Complete only this recovery's remote-green and exact-production replay. Do not begin Stage 2, Guided 4-bit, Vivado, or physical-board work in this repair.
+
 ## Change Log 2026-07-13 (fix: keep Verify command labels readable)
 
 **Subsystem:** Verify command-deck cross-platform readability, compact/stress-width layout, and rebrand release recovery.

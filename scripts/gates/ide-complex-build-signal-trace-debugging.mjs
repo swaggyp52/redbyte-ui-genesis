@@ -409,9 +409,7 @@ async function clickNode(page, nodeId) {
 async function clickPort(page, nodeId, portName) {
   const port = page.locator(`[data-node-id="${nodeId}"] [data-port-id="${portName}"]`).first();
   await port.waitFor({ state: 'visible', timeout: 8000 });
-  const box = await port.boundingBox();
-  assert(Boolean(box), `port ${nodeId}.${portName} must have a clickable box`);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await port.click();
 }
 
 async function connectPorts(page, fromNodeId, fromPort, toNodeId, toPort) {
@@ -494,10 +492,29 @@ async function clickVisible(page, selector, label) {
 }
 
 async function setDesignZoomPreset(page, preset) {
+  const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
+  if (
+    await toggle.isVisible().catch(() => false) &&
+    (await toggle.getAttribute('aria-expanded').catch(() => 'false')) !== 'true'
+  ) {
+    await toggle.click();
+  }
   const button = page.locator(`[data-testid="ide-design-zoom-preset-${preset}"]`).first();
-  if (await button.isVisible().catch(() => false)) {
-    await button.click();
-    await page.waitForTimeout(120);
+  await button.waitFor({ state: 'visible', timeout: 5000 });
+  await button.click();
+  const expectedZoom = Number(preset) / 100;
+  if (Number.isFinite(expectedZoom)) {
+    await page.waitForFunction(
+      (zoom) => Math.abs((window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera?.zoom ?? 0) - zoom) < 0.001,
+      expectedZoom,
+      { timeout: 5000 },
+    );
+  }
+  if (
+    await toggle.isVisible().catch(() => false) &&
+    (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true'
+  ) {
+    await toggle.click();
   }
 }
 

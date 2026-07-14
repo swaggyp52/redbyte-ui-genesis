@@ -8,14 +8,26 @@ const VIEWPORTS = [
   { width: 1366, height: 768, label: '1366x768' },
   { width: 1440, height: 900, label: '1440x900' },
 ];
+const CAMERA_STRESS_VIEWPORTS = [
+  ...VIEWPORTS,
+  { width: 1920, height: 1080, label: '1920x1080' },
+  { width: 1093, height: 614, label: '1093x614' },
+];
 
 const SCREENSHOT_ROOT = process.env.RB_DESIGN_WORKBENCH_V1_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_DESIGN_WORKBENCH_V1_SCREENSHOTS_DIR)
   : null;
 const CAPTURE_ONLY = process.env.RB_DESIGN_WORKBENCH_V1_CAPTURE_ONLY === '1';
+const CAMERA_STRESS_ONLY = process.env.RB_DESIGN_WORKBENCH_V1_CAMERA_STRESS_ONLY === '1';
+const FAILURE_ROOT = path.resolve(
+  process.env.RB_DESIGN_WORKBENCH_V1_FAILURE_DIR ?? '.redbyte/ide-design-workbench-v1-failures'
+);
+const CAMERA_TRANSITION_TRACE = [];
 
 await runIdeGate('IDE Design Workbench v1 satisfied', async ({ page, baseUrl }) => {
   const consoleFindings = [];
+  let activeViewport = CAMERA_STRESS_VIEWPORTS[0];
+  let activeStage = 'startup';
   page.on('console', (message) => {
     const text = message.text();
     if (message.type() === 'error' || /\b(?:NaN|Infinity|-Infinity)\b/.test(text)) {
@@ -30,15 +42,31 @@ await runIdeGate('IDE Design Workbench v1 satisfied', async ({ page, baseUrl }) 
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
 
-  for (const viewport of VIEWPORTS) {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await proveDesignWorkbenchAtViewport(page, baseUrl, viewport);
-  }
+  try {
+    if (!CAMERA_STRESS_ONLY) {
+      for (const viewport of VIEWPORTS) {
+        activeViewport = viewport;
+        activeStage = `workbench-${viewport.label}`;
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await proveDesignWorkbenchAtViewport(page, baseUrl, viewport);
+      }
+    }
 
-  assert(
-    consoleFindings.length === 0,
-    `Design Workbench v1 emitted console/page errors: ${JSON.stringify(consoleFindings.slice(0, 8))}`
-  );
+    for (const viewport of CAMERA_STRESS_VIEWPORTS) {
+      activeViewport = viewport;
+      activeStage = `camera-stress-${viewport.label}`;
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await proveCameraTransitionsAtViewport(page, baseUrl, viewport);
+    }
+
+    assert(
+      consoleFindings.length === 0,
+      `Design Workbench v1 emitted console/page errors: ${JSON.stringify(consoleFindings.slice(0, 8))}`
+    );
+  } catch (error) {
+    await captureFailure(page, activeViewport, activeStage, error, consoleFindings);
+    throw error;
+  }
 });
 
 async function proveDesignWorkbenchAtViewport(page, baseUrl, viewport) {
@@ -93,6 +121,179 @@ async function proveDesignWorkbenchAtViewport(page, baseUrl, viewport) {
   await checkOrCaptureOnly('zoom fit center controls', () => proveZoomFitCenter(page, viewport));
   await capture(page, viewport, '10-zoom-fit-center');
   await checkOrCaptureOnly('zoom fit center', () => assertGraphWorkbench(page, viewport, 'zoom fit center'));
+}
+
+async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
+  await page.goto(`${baseUrl}/?mode=project&e2e=1&gate=design-camera-storage-reset-${viewport.label}`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await page.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem('rb-onboarding-v1-seen', '1');
+  });
+  await loadStarterDesign(page, baseUrl, 'logic-gates', `camera-stress-${viewport.label}`);
+
+  await setCanvasZoom125(page);
+  const baselineMetrics = await assertCameraTransitionState(page, viewport, '125% Canvas baseline', 'canvas');
+  const worldCenterAnchor = baselineMetrics.worldCenter;
+
+  await clickDesignView(page, 'hdl');
+  await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
+  await clickDesignView(page, 'split');
+  await assertCameraTransitionState(page, viewport, 'Code to Split', 'split', worldCenterAnchor);
+
+  for (let iteration = 1; iteration <= 3; iteration += 1) {
+    await clickDesignView(page, 'canvas');
+    await assertCameraTransitionState(page, viewport, `Split to Canvas ${iteration}`, 'canvas', worldCenterAnchor);
+    await clickDesignView(page, 'split');
+    await assertCameraTransitionState(page, viewport, `Canvas to Split ${iteration}`, 'split', worldCenterAnchor);
+  }
+
+  await clickDesignView(page, 'canvas');
+  const movedNode = await dragFirstVisibleNode(page);
+  await assertCameraTransitionState(page, viewport, 'Canvas after node move', 'canvas', worldCenterAnchor);
+  await assertMovedNodePosition(page, movedNode);
+  await clickDesignView(page, 'hdl');
+  await clickDesignView(page, 'split');
+  await assertCameraTransitionState(page, viewport, 'Moved graph Code to Split', 'split', worldCenterAnchor);
+  await assertMovedNodePosition(page, movedNode);
+
+  await clickDesignView(page, 'canvas');
+  await revealDesignRail(page, 'left');
+  await assertCameraTransitionState(page, viewport, 'Library open', 'canvas', worldCenterAnchor);
+  await collapseDesignRail(page, 'left');
+  await assertCameraTransitionState(page, viewport, 'Library closed', 'canvas', worldCenterAnchor);
+  await selectFirstVisibleNode(page);
+  await revealDesignRail(page, 'right');
+  await assertSelectionState(page, { node: true });
+  await assertCameraTransitionState(page, viewport, 'Inspector open', 'canvas', worldCenterAnchor);
+  await collapseDesignRail(page, 'right');
+  await assertCameraTransitionState(page, viewport, 'Inspector closed', 'canvas', worldCenterAnchor);
+
+  await clickDesignView(page, 'hdl');
+  await clickDesignView(page, 'split');
+  await assertCameraTransitionState(page, viewport, 'Final Code to Split', 'split', worldCenterAnchor);
+  await assertMovedNodePosition(page, movedNode);
+  await assertSelectionState(page, { node: true });
+  const centerSelection = page.locator('[data-testid="ide-design-center-selection-split"]:visible').first();
+  assert(await centerSelection.isEnabled().catch(() => false), 'Split selected-node Center Selection must be enabled');
+  await centerSelection.click();
+  await page
+    .locator('[data-testid="ide-design-action-toast"]')
+    .filter({ hasText: /Centered selected node/i })
+    .waitFor({ state: 'visible', timeout: 5000 });
+  await assertCameraTransitionState(page, viewport, 'Split selected-node action', 'split');
+
+  if (viewport.label === '1440x900') {
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
+    await waitForDesignWorkbench(page);
+    await assertMovedNodePosition(page, movedNode);
+    await setCanvasZoom125(page);
+    const resumedBaseline = await assertCameraTransitionState(page, viewport, 'Persisted Canvas baseline', 'canvas');
+    await clickDesignView(page, 'hdl');
+    await clickDesignView(page, 'split');
+    await assertCameraTransitionState(
+      page,
+      viewport,
+      'Persisted Code to Split',
+      'split',
+      resumedBaseline.worldCenter
+    );
+    await assertMovedNodePosition(page, movedNode);
+  }
+  await capture(page, viewport, '11-camera-transition-stress');
+}
+
+async function setCanvasZoom125(page) {
+  const fit = page.locator('[data-testid^="ide-design-fit-circuit"]:visible').first();
+  await fit.waitFor({ state: 'visible', timeout: 5000 });
+  await fit.click();
+  const canvasToolsToggle = page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first();
+  if ((await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) !== 'true') {
+    await canvasToolsToggle.click();
+  }
+  const zoom125 = page.locator('[data-testid="ide-design-zoom-preset-125"]:visible').first();
+  await zoom125.waitFor({ state: 'visible', timeout: 5000 });
+  await zoom125.click();
+}
+
+async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null) {
+  let metrics = null;
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    metrics = await readWorkbenchMetrics(page);
+    const cameraZoom = typeof metrics.camera?.zoom === 'number' ? metrics.camera.zoom : Number.NaN;
+    if (
+      metrics.designView === expectedView &&
+      metrics.cameraFinite &&
+      Math.abs(cameraZoom - 1.25) < 0.001 &&
+      metrics.runtimeNodes >= 3 &&
+      metrics.editorNodes >= 3 &&
+      metrics.usefullyVisibleNodeCount >= 3 &&
+      metrics.visibleWireCount >= 1 &&
+      metrics.logicCanvasWidthDelta <= 2 &&
+      metrics.logicCanvasHeightDelta <= 2 &&
+      metrics.badAttributes.length === 0
+    ) {
+      break;
+    }
+    await page.waitForTimeout(200);
+  }
+  metrics = metrics ?? (await readWorkbenchMetrics(page));
+  const cameraZoom = typeof metrics.camera?.zoom === 'number' ? metrics.camera.zoom : Number.NaN;
+  assert(metrics.designView === expectedView, `${label}: expected ${expectedView}, got ${metrics.designView}`);
+  assert(metrics.cameraFinite, `${label}: camera must stay finite, got ${JSON.stringify(metrics.camera)}`);
+  assert(Math.abs(cameraZoom - 1.25) < 0.001, `${label}: zoom intent changed (${cameraZoom})`);
+  assert(metrics.runtimeNodes >= 3 && metrics.editorNodes >= 3, `${label}: circuit graph was lost`);
+  assert(
+    metrics.usefullyVisibleNodeCount >= 3,
+    `${label}: fewer than three nodes remain usefully visible (${metrics.usefullyVisibleNodeCount})`
+  );
+  assert(metrics.visibleWireCount >= 1, `${label}: visible wires disappeared (${metrics.visibleWireCount})`);
+  assert(
+    metrics.logicCanvasWidthDelta <= 2,
+    `${label}: rendered canvas width diverged from its host (${metrics.logicCanvasWidthDelta.toFixed(1)}px)`
+  );
+  assert(
+    metrics.logicCanvasHeightDelta <= 2,
+    `${label}: rendered canvas height diverged from its host (${metrics.logicCanvasHeightDelta.toFixed(1)}px)`
+  );
+  if (worldCenterAnchor) {
+    assert(metrics.worldCenter, `${label}: world-center projection is unavailable`);
+    const drift = Math.hypot(
+      metrics.worldCenter.x - worldCenterAnchor.x,
+      metrics.worldCenter.y - worldCenterAnchor.y
+    );
+    assert(drift <= 1, `${label}: world-center anchor drifted (${drift.toFixed(3)} world px)`);
+  }
+  assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
+  assert(metrics.badAttributes.length === 0, `${label}: SVG contains invalid geometry`);
+  assert(
+    metrics.liveCanvas.width >= Math.min(320, viewport.width),
+    `${label}: live canvas is not usable (${metrics.liveCanvas.width.toFixed(1)}px)`
+  );
+  CAMERA_TRANSITION_TRACE.push({
+    viewport: viewport.label,
+    label,
+    designView: metrics.designView,
+    effectiveDesignView: metrics.effectiveDesignView,
+    camera: metrics.camera,
+    worldCenter: metrics.worldCenter,
+    host: {
+      clientWidth: metrics.liveCanvasClientWidth,
+      clientHeight: metrics.liveCanvasClientHeight,
+      rect: metrics.liveCanvas,
+    },
+    logicCanvas: metrics.logicCanvas,
+    visibleNodeIds: metrics.visibleNodeIds,
+    offscreenNodeIds: metrics.offscreenNodeIds,
+    usefullyVisibleNodeCount: metrics.usefullyVisibleNodeCount,
+    visibleWireCount: metrics.visibleWireCount,
+    selection: metrics.selection,
+    rails: { left: metrics.leftDock, right: metrics.rightDock },
+    nodePositions: metrics.nodePositions,
+  });
+  return metrics;
 }
 
 async function checkOrCaptureOnly(label, callback) {
@@ -520,6 +721,35 @@ async function selectFirstVisibleNode(page) {
   return selected;
 }
 
+async function selectFirstVisibleDraggableNode(page) {
+  const selected = await page.evaluate(() => {
+    const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    const canvasRect = canvas?.getBoundingClientRect();
+    if (!canvasRect) return null;
+    const candidates = Array.from(document.querySelectorAll('[data-node-id]'));
+    const isVisible = (candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 4 && rect.height > 4 && intersectsRect(rect, canvasRect);
+    };
+    const node =
+      candidates.find((candidate) => {
+        const type = candidate.getAttribute('data-node-type')?.toUpperCase();
+        return type !== 'INPUT' && type !== 'OUTPUT' && isVisible(candidate);
+      }) ?? candidates.find(isVisible);
+    const nodeId = node?.getAttribute('data-node-id') ?? null;
+    if (nodeId) {
+      window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selectMultipleNodes?.([nodeId], false);
+    }
+    function intersectsRect(a, b) {
+      return a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
+    }
+    return nodeId;
+  });
+  assert(Boolean(selected), 'expected at least one visible draggable node to select');
+  await page.waitForTimeout(150);
+  return selected;
+}
+
 async function selectFirstVisibleWire(page) {
   const selected = await page.evaluate(() => {
     const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
@@ -545,8 +775,9 @@ async function selectFirstVisibleWire(page) {
 }
 
 async function dragFirstVisibleNode(page) {
-  await selectFirstVisibleNode(page);
-  const box = await page.locator('[data-node-id]').first().boundingBox();
+  const selectedNodeId = await selectFirstVisibleDraggableNode(page);
+  const before = await readNodePosition(page, selectedNodeId);
+  const box = await page.locator(`[data-node-id="${selectedNodeId}"]`).first().boundingBox();
   assert(Boolean(box), 'expected a visible node bounding box for drag');
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.mouse.move(start.x, start.y);
@@ -565,6 +796,39 @@ async function dragFirstVisibleNode(page) {
       .filter((node) => !node.finite);
   });
   assert(bad.length === 0, `moved node positions must stay finite: ${JSON.stringify(bad)}`);
+  const after = await readNodePosition(page, selectedNodeId);
+  assert(before && after, `moved node ${selectedNodeId} must remain in runtime and editor state`);
+  assert(
+    Math.hypot(after.runtime.x - before.runtime.x, after.runtime.y - before.runtime.y) >= 8,
+    `moved node ${selectedNodeId} did not change runtime position`
+  );
+  return { id: selectedNodeId, position: after };
+}
+
+async function readNodePosition(page, nodeId) {
+  return page.evaluate((id) => {
+    const runtimeNode = window.__RB_PROJECT_RUNTIME__?.getState?.()?.circuit?.nodes?.find((node) => node.id === id);
+    const editorNode = window.__RB_CIRCUIT_STORE__?.getState?.()?.circuit?.nodes?.find((node) => node.id === id);
+    const point = (node) =>
+      node
+        ? { x: node.position?.x ?? node.x ?? Number.NaN, y: node.position?.y ?? node.y ?? Number.NaN }
+        : null;
+    const runtime = point(runtimeNode);
+    const editor = point(editorNode);
+    return runtime && editor ? { runtime, editor } : null;
+  }, nodeId);
+}
+
+async function assertMovedNodePosition(page, movedNode) {
+  const current = await readNodePosition(page, movedNode.id);
+  assert(current, `moved node ${movedNode.id} disappeared after a view transition`);
+  for (const authority of ['runtime', 'editor']) {
+    assert(
+      Math.abs(current[authority].x - movedNode.position[authority].x) < 0.001 &&
+        Math.abs(current[authority].y - movedNode.position[authority].y) < 0.001,
+      `moved node ${movedNode.id} changed ${authority} position after a view transition`
+    );
+  }
 }
 
 async function firstVisiblePortPoint(page) {
@@ -629,7 +893,9 @@ async function readWorkbenchMetrics(page) {
     const leftDock = getRect('[data-testid="ide-left-dock"]');
     const rightDock = getRect('[data-testid="ide-inspector"]');
     const canvas = getRect('[data-testid="ide-design-canvas"]');
-    const liveCanvas = getRect('[data-testid="ide-design-live-canvas"]');
+    const liveCanvasElement = document.querySelector('[data-testid="ide-design-live-canvas"]');
+    const liveCanvas = liveCanvasElement?.getBoundingClientRect?.() ?? new DOMRect(0, 0, 0, 0);
+    const logicCanvas = getRect('[data-testid="logic-canvas-svg"]');
     const toolbar = getRect('[data-testid="ide-design-toolbar"]');
     const canvasControls = getRect('[data-testid="ide-design-canvas-view-tools"]');
     const palette = getRect('[data-testid="ide-design-dock-palette"]');
@@ -651,10 +917,28 @@ async function readWorkbenchMetrics(page) {
     const camera = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera ?? null;
     const runtimeCircuit = window.__RB_PROJECT_RUNTIME__?.getState?.()?.circuit;
     const editorCircuit = window.__RB_CIRCUIT_STORE__?.getState?.()?.circuit;
-    const visibleNodeCount = nodes.filter((node) => {
+    const clippedAreaRatio = (rect, outer) => {
+      const left = Math.max(rect.left, outer.left, viewport.left);
+      const right = Math.min(rect.right, outer.right, viewport.right);
+      const top = Math.max(rect.top, outer.top, viewport.top);
+      const bottom = Math.min(rect.bottom, outer.bottom, viewport.bottom);
+      const intersectionArea = Math.max(0, right - left) * Math.max(0, bottom - top);
+      const area = Math.max(1, rect.width * rect.height);
+      return intersectionArea / area;
+    };
+    const nodeVisibility = nodes.map((node) => {
       const rect = node.getBoundingClientRect();
-      return rect.width > 4 && rect.height > 4 && intersects(rect, liveCanvas) && intersects(rect, viewport);
-    }).length;
+      const visibleRatio = clippedAreaRatio(rect, liveCanvas);
+      return {
+        id: node.getAttribute('data-node-id'),
+        rect: rectJson(rect),
+        visibleRatio,
+        visible: rect.width > 4 && rect.height > 4 && visibleRatio > 0,
+        usefullyVisible: rect.width > 4 && rect.height > 4 && visibleRatio >= 0.3,
+      };
+    });
+    const visibleNodeCount = nodeVisibility.filter((node) => node.visible).length;
+    const usefullyVisibleNodeCount = nodeVisibility.filter((node) => node.usefullyVisible).length;
     const visibleWireCount = wires.filter((wire) => {
       const rect = wire.getBoundingClientRect();
       return rect.width > 1 && rect.height > 1 && intersects(rect, liveCanvas) && intersects(rect, viewport);
@@ -667,6 +951,12 @@ async function readWorkbenchMetrics(page) {
 
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
+      designView: document.querySelector('.ide-design-frame')?.getAttribute('data-design-view') ?? null,
+      effectiveDesignView: document.querySelector('[data-testid="ide-design-pane-row"]')?.getAttribute('data-design-view') ?? null,
+      browserZoom: {
+        devicePixelRatio: window.devicePixelRatio,
+        visualViewportScale: window.visualViewport?.scale ?? null,
+      },
       rootOverflowX: Math.max(
         0,
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
@@ -684,6 +974,22 @@ async function readWorkbenchMetrics(page) {
       rightDock: rectJson(rightDock),
       canvas: rectJson(canvas),
       liveCanvas: rectJson(liveCanvas),
+      liveCanvasClientWidth: liveCanvasElement instanceof HTMLElement ? liveCanvasElement.clientWidth : 0,
+      liveCanvasClientHeight: liveCanvasElement instanceof HTMLElement ? liveCanvasElement.clientHeight : 0,
+      logicCanvas: rectJson(logicCanvas),
+      logicCanvasWidthDelta: Math.abs(
+        logicCanvas.width - (liveCanvasElement instanceof HTMLElement ? liveCanvasElement.clientWidth : liveCanvas.width)
+      ),
+      logicCanvasHeightDelta: Math.abs(
+        logicCanvas.height - (liveCanvasElement instanceof HTMLElement ? liveCanvasElement.clientHeight : liveCanvas.height)
+      ),
+      worldCenter:
+        camera && finite(camera.zoom) && camera.zoom > 0
+          ? {
+              x: (logicCanvas.width / 2 - camera.x) / camera.zoom,
+              y: (logicCanvas.height / 2 - camera.y) / camera.zoom,
+            }
+          : null,
       toolbar: rectJson(toolbar),
       canvasControls: rectJson(canvasControls),
       palette: rectJson(palette),
@@ -709,10 +1015,81 @@ async function readWorkbenchMetrics(page) {
       editorNodes: editorCircuit?.nodes?.length ?? 0,
       editorConnections: editorCircuit?.connections?.length ?? 0,
       visibleNodeCount,
+      usefullyVisibleNodeCount,
+      visibleNodeIds: nodeVisibility.filter((node) => node.visible).map((node) => node.id),
+      offscreenNodeIds: nodeVisibility.filter((node) => !node.visible).map((node) => node.id),
+      nodeVisibility,
       visibleWireCount,
+      selectorCounts: {
+        nodes: nodes.length,
+        wires: wires.length,
+        liveCanvases: document.querySelectorAll('[data-testid="ide-design-live-canvas"]').length,
+        logicCanvases: document.querySelectorAll('[data-testid="logic-canvas-svg"]').length,
+      },
+      selection: (() => {
+        const selection = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection;
+        return {
+          nodes: selection?.nodes instanceof Set ? Array.from(selection.nodes) : [],
+          wires: selection?.wires instanceof Set ? Array.from(selection.wires) : [],
+        };
+      })(),
+      graphBounds: (() => {
+        const graphNodes = runtimeCircuit?.nodes ?? [];
+        const xs = graphNodes.map((node) => node.position?.x ?? node.x).filter(finite);
+        const ys = graphNodes.map((node) => node.position?.y ?? node.y).filter(finite);
+        return xs.length > 0 && ys.length > 0
+          ? { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) }
+          : null;
+      })(),
+      nodePositions: (runtimeCircuit?.nodes ?? []).map((node) => ({
+        id: node.id,
+        x: node.position?.x ?? node.x ?? null,
+        y: node.position?.y ?? node.y ?? null,
+      })),
       badAttributes,
     };
   });
+}
+
+async function captureFailure(page, viewport, stage, error, consoleFindings) {
+  await fs.mkdir(FAILURE_ROOT, { recursive: true });
+  const safeStage = stage.replace(/[^a-z0-9-]+/gi, '-').toLowerCase();
+  const stem = `${Date.now()}-${safeStage}-${viewport.label}`;
+  const screenshotPath = path.join(FAILURE_ROOT, `${stem}.png`);
+  const metrics = await readWorkbenchMetrics(page).catch((metricsError) => ({
+    captureError: metricsError instanceof Error ? metricsError.message : String(metricsError),
+  }));
+  const browser = page.context().browser();
+  const pageMetadata = await page
+    .evaluate(async () => {
+      const userAgent = navigator.userAgent;
+      const build = await fetch('/os/version.json', { cache: 'no-store' })
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null);
+      return { userAgent, build, href: window.location.href };
+    })
+    .catch(() => ({ userAgent: null, build: null, href: page.url() }));
+  await page.screenshot({ path: screenshotPath, fullPage: false }).catch(() => null);
+  await fs.writeFile(
+    path.join(FAILURE_ROOT, `${stem}.json`),
+    `${JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        stage,
+        viewport,
+        error: error instanceof Error ? { name: error.name, message: error.message, stack: error.stack } : String(error),
+        browserVersion: browser?.version() ?? null,
+        ...pageMetadata,
+        metrics,
+        transitionTrace: CAMERA_TRANSITION_TRACE,
+        consoleFindings,
+        screenshot: path.basename(screenshotPath),
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
 }
 
 async function capture(page, viewport, name) {

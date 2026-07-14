@@ -1997,7 +1997,7 @@ export const IdeApp: React.FC = () => {
               onRuntimeSimSetInput={setRuntimeSimInput}
               onRuntimeSimSetSelectedSignal={setRuntimeSimSelectedSignal}
               onRuntimeSimToggleProbe={toggleRuntimeSimProbe}
-              viewportSeed={`${activeExampleId ?? activeGuidedLabTask?.id ?? 'custom'}:${projectId}:${guidedLabViewportToken}`}
+              viewportSeed={`${projectId}:${guidedLabViewportToken}`}
               starterContext={activeStarterContext ?? undefined}
               ioRows={projectIoRows}
               onGoToHardware={() => setCurrentMode('hardware')}
