@@ -4,13 +4,11 @@ import type { VerifyAuthorVector, VerifyVectorDraftInput } from '../surfaces/Sce
 const LABEL_W = 264;
 const TICK_W = 64;
 const ROW_H = 44;
-const CLOCK_ROW_H = 80;
 const GROUP_H = 26;
 const ADD_COL_W = 40;
 const COMPACT_LABEL_W = 190;
 const COMPACT_TICK_W = 52;
 const COMPACT_ROW_H = 38;
-const COMPACT_CLOCK_ROW_H = 72;
 const COMPACT_GROUP_H = 24;
 const COMPACT_ADD_COL_W = 28;
 
@@ -18,6 +16,8 @@ type LaneKind = 'input' | 'expected';
 type PaintSession = { kind: LaneKind; value: 0 | 1 | null };
 type LaneOption = { key: string; kind: LaneKind; fieldId: string; label: string };
 export type StimulusClockPattern = 'alternating' | 'pulse' | 'hold-low' | 'hold-high';
+export type StimulusPulseBehavior = 'rising' | 'falling' | 'high' | 'low';
+export type StimulusCaseEvidenceState = 'not-run' | 'observed' | 'pass' | 'fail' | 'stale';
 
 export interface StimulusClockLaneConfig {
   fieldId: string;
@@ -26,6 +26,7 @@ export interface StimulusClockLaneConfig {
   count: number;
   onCountChange: (count: number) => void;
   onApplyPattern: (pattern: StimulusClockPattern) => void;
+  onAppendPulseBehavior?: (behavior: StimulusPulseBehavior) => void;
 }
 
 export interface StimulusCanvasProps {
@@ -37,10 +38,16 @@ export interface StimulusCanvasProps {
   hasSavedExpectedOutputs?: boolean;
   clockLane?: StimulusClockLaneConfig;
   secondaryTools?: React.ReactNode;
+  /** Verify v3 keeps the core case grid flat; other consumers may opt into the legacy tools tray. */
+  showAdvancedTools?: boolean;
   initialScrollTarget?: 'top' | 'expected';
   selectedTick?: number;
   onSelectedTickChange?: (tick: number) => void;
   density?: 'normal' | 'compact';
+  /** Read-only projection of the current Verify run. This never mutates authored vectors. */
+  observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
+  /** Current evidence state for each authored case. */
+  caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
 }
 
 function makeId(): string {
@@ -290,10 +297,13 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   onNavigateToMapping,
   clockLane,
   secondaryTools,
+  showAdvancedTools = true,
   initialScrollTarget = 'top',
   selectedTick: controlledSelectedTick,
   onSelectedTickChange,
   density = 'normal',
+  observedValuesByTick,
+  caseEvidenceByTick,
 }) => {
   const latestVectorsRef = useRef(authoredVectors);
   const canvasRootRef = useRef<HTMLDivElement | null>(null);
@@ -301,11 +311,11 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   const expectedGroupRef = useRef<HTMLDivElement | null>(null);
   const firstExpectedCellRef = useRef<HTMLButtonElement | null>(null);
   const lastDirectCellActivationRef = useRef<{ testId: string; at: number } | null>(null);
-  const [hoveredTick, setHoveredTick] = useState<number | null>(null);
   const [internalSelectedTick, setInternalSelectedTick] = useState(0);
   const [selectedLaneKey, setSelectedLaneKey] = useState('');
   const [advancedToolsOpen, setAdvancedToolsOpen] = useState(false);
   const [paintSession, setPaintSession] = useState<PaintSession | null>(null);
+  const [pendingDeleteTick, setPendingDeleteTick] = useState<number | null>(null);
 
   useEffect(() => {
     latestVectorsRef.current = authoredVectors;
@@ -322,7 +332,6 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   const labelW = isCompactDensity ? COMPACT_LABEL_W : LABEL_W;
   const tickW = isCompactDensity ? COMPACT_TICK_W : TICK_W;
   const rowH = isCompactDensity ? COMPACT_ROW_H : ROW_H;
-  const clockRowH = isCompactDensity ? COMPACT_CLOCK_ROW_H : CLOCK_ROW_H;
   const groupH = isCompactDensity ? COMPACT_GROUP_H : GROUP_H;
   const addColW = isCompactDensity ? COMPACT_ADD_COL_W : ADD_COL_W;
   const totalW = labelW + ticks.length * tickW + addColW;
@@ -362,6 +371,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     if (isTickControlled) return;
     setInternalSelectedTick((previous) => (ticks.length === 0 ? 0 : ticks.includes(previous) ? previous : ticks[0]));
   }, [isTickControlled, ticks]);
+
+  useEffect(() => {
+    if (pendingDeleteTick !== null && !ticks.includes(pendingDeleteTick)) {
+      setPendingDeleteTick(null);
+    }
+  }, [pendingDeleteTick, ticks]);
 
   useEffect(() => {
     setSelectedLaneKey((previous) =>
@@ -587,6 +602,26 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     [ticks]
   );
   const selectedCaseLabel = ticks.length > 0 ? describeCase(activeSelectedTick) : 'Case 1 (t0)';
+  const pendingDeleteLabel = pendingDeleteTick == null ? null : describeCase(pendingDeleteTick);
+  const confirmDeleteTick = useCallback(() => {
+    if (pendingDeleteTick == null) return;
+    const remainingTicks = ticks.filter((tick) => tick !== pendingDeleteTick);
+    const currentIndex = ticks.indexOf(pendingDeleteTick);
+    const nextSelectedTick =
+      remainingTicks[Math.min(Math.max(currentIndex, 0), Math.max(remainingTicks.length - 1, 0))] ?? 0;
+    commitVectors((vectors) => removeTick(vectors, pendingDeleteTick));
+    setPendingDeleteTick(null);
+    selectTick(nextSelectedTick);
+  }, [commitVectors, pendingDeleteTick, selectTick, ticks]);
+
+  const caseStateLabel = useCallback((tick: number): string => {
+    const state = caseEvidenceByTick?.[tick] ?? 'not-run';
+    if (state === 'pass') return 'PASS';
+    if (state === 'fail') return 'FAIL';
+    if (state === 'stale') return 'STALE';
+    if (state === 'observed') return 'Observed';
+    return 'Not run';
+  }, [caseEvidenceByTick]);
 
   if (inputFields.length === 0) {
     return (
@@ -606,7 +641,14 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   }
 
   return (
-    <div className="ide-stimulus-canvas" data-testid="ide-stimulus-canvas" style={{ userSelect: 'none' }} ref={canvasRootRef}>
+    <div
+      className="ide-stimulus-canvas ide-testbench-case-grid"
+      data-testid="ide-stimulus-canvas"
+      data-work-object="testbench-cases"
+      aria-label="Testbench cases with stimulus, expected outputs, observed outputs, and case status"
+      style={{ userSelect: 'none' }}
+      ref={canvasRootRef}
+    >
       <div className="ide-stimulus-toolbar" data-testid="ide-stimulus-toolbar">
         <div className="ide-stimulus-toolbar-group" data-testid="ide-stimulus-case-actions">
           <span className="ide-stimulus-toolbar-label">Cases</span>
@@ -617,22 +659,72 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             {(ticks.length > 0 ? ticks : [0]).map((tick) => <option key={tick} value={tick}>{describeCase(tick)}</option>)}
           </select>
           <button type="button" className="ide-stimulus-mini-btn ide-stimulus-mini-btn--primary" onClick={() => commitVectors((vectors) => appendTick(vectors, inputFields))} data-testid="ide-stimulus-add-tick">Add case</button>
-        </div>
-        <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--advanced-toggle" data-testid="ide-stimulus-advanced-tools">
-          <span className="ide-stimulus-toolbar-label">Advanced</span>
           <button
             type="button"
             className="ide-stimulus-mini-btn"
-            aria-expanded={advancedToolsOpen}
-            onClick={() => setAdvancedToolsOpen((value) => !value)}
-            data-testid="ide-stimulus-advanced-tools-toggle"
+            onClick={() => {
+              commitVectors((vectors) => duplicateTick(vectors, inputFields, activeSelectedTick));
+              selectTick(activeSelectedTick + 1);
+            }}
+            data-testid={`ide-stimulus-duplicate-tick-${activeSelectedTick}`}
           >
-            {advancedToolsOpen ? 'Hide advanced tools' : 'Show advanced tools'}
+            Duplicate case
           </button>
-          <span className="ide-stimulus-toolbar-note">Patterns, sweep, clipboard, project vectors</span>
+          <button
+            type="button"
+            className="ide-stimulus-mini-btn ide-stimulus-mini-btn--danger"
+            onClick={() => setPendingDeleteTick(activeSelectedTick)}
+            data-testid={`ide-stimulus-delete-tick-${activeSelectedTick}`}
+          >
+            Delete case
+          </button>
         </div>
+        {showAdvancedTools ? (
+          <div className="ide-stimulus-toolbar-group ide-stimulus-toolbar-group--advanced-toggle" data-testid="ide-stimulus-advanced-tools">
+            <span className="ide-stimulus-toolbar-label">Advanced</span>
+            <button
+              type="button"
+              className="ide-stimulus-mini-btn"
+              aria-expanded={advancedToolsOpen}
+              onClick={() => setAdvancedToolsOpen((value) => !value)}
+              data-testid="ide-stimulus-advanced-tools-toggle"
+            >
+              {advancedToolsOpen ? 'Hide advanced tools' : 'Show advanced tools'}
+            </button>
+            <span className="ide-stimulus-toolbar-note">Patterns, sweep, clipboard, project vectors</span>
+          </div>
+        ) : null}
       </div>
-      {advancedToolsOpen ? (
+      {pendingDeleteTick != null ? (
+        <div
+          className="ide-stimulus-delete-confirmation"
+          data-testid="ide-stimulus-delete-confirmation"
+          role="alert"
+        >
+          <span>
+            Delete <strong>{pendingDeleteLabel}</strong>? This removes its stimulus and expected outputs.
+          </span>
+          <div className="ide-stimulus-delete-confirmation-actions">
+            <button
+              type="button"
+              className="ide-stimulus-mini-btn ide-stimulus-mini-btn--danger"
+              onClick={confirmDeleteTick}
+              data-testid={`ide-stimulus-confirm-delete-tick-${pendingDeleteTick}`}
+            >
+              Delete case
+            </button>
+            <button
+              type="button"
+              className="ide-stimulus-mini-btn"
+              onClick={() => setPendingDeleteTick(null)}
+              data-testid="ide-stimulus-cancel-delete"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {showAdvancedTools && advancedToolsOpen ? (
         <div className="ide-stimulus-advanced-tools-panel" data-testid="ide-stimulus-advanced-tools-panel">
           <div className="ide-stimulus-toolbar-group">
             <span className="ide-stimulus-toolbar-label">Case patterns</span>
@@ -669,35 +761,95 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           {secondaryTools}
         </div>
       ) : null}
+      {clockLane ? (
+        <div className="ide-stimulus-clock-tools" data-testid="ide-stimulus-clock-tools">
+          <div className="ide-stimulus-clock-tools-meta">
+            <span className="ide-stimulus-clock-badge" data-testid="ide-stimulus-clock-badge">
+              {clockLane.badge}
+            </span>
+            {clockLane.detail ? (
+              <span className="ide-stimulus-clock-detail" data-testid="ide-stimulus-clock-detail">
+                {clockLane.detail}
+              </span>
+            ) : null}
+          </div>
+          <div className="ide-stimulus-clock-tools-actions">
+            <label className="ide-stimulus-clock-count-label">
+              Rows
+              <input
+                type="number"
+                min={1}
+                max={16}
+                step={1}
+                className="ide-stimulus-clock-count-input"
+                value={clockLane.count}
+                onChange={(event) =>
+                  clockLane.onCountChange(Math.max(1, Math.min(16, Number(event.target.value || '1'))))
+                }
+                data-testid="ide-stimulus-clock-pattern-count"
+              />
+            </label>
+            <button
+              type="button"
+              className="ide-stimulus-mini-btn"
+              onClick={() => clockLane.onApplyPattern('alternating')}
+              data-testid="ide-stimulus-clock-pattern-alternating"
+            >
+              Alternating
+            </button>
+            {clockLane.onAppendPulseBehavior ? (
+              <>
+                <span className="ide-stimulus-clock-behavior-label">Clock behavior</span>
+                <button
+                  type="button"
+                  className="ide-stimulus-mini-btn ide-stimulus-mini-btn--primary"
+                  onClick={() => clockLane.onAppendPulseBehavior?.('rising')}
+                  data-testid="ide-stimulus-clock-behavior-rising"
+                >
+                  Rising edge
+                </button>
+                <button
+                  type="button"
+                  className="ide-stimulus-mini-btn"
+                  onClick={() => clockLane.onAppendPulseBehavior?.('falling')}
+                  data-testid="ide-stimulus-clock-behavior-falling"
+                >
+                  Falling edge
+                </button>
+                <button
+                  type="button"
+                  className="ide-stimulus-mini-btn"
+                  onClick={() => clockLane.onAppendPulseBehavior?.('high')}
+                  data-testid="ide-stimulus-clock-behavior-high"
+                >
+                  Hold high
+                </button>
+                <button
+                  type="button"
+                  className="ide-stimulus-mini-btn"
+                  onClick={() => clockLane.onAppendPulseBehavior?.('low')}
+                  data-testid="ide-stimulus-clock-behavior-low"
+                >
+                  Hold low
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('pulse')} data-testid="ide-stimulus-clock-pattern-pulse">Add pulse</button>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('hold-low')} data-testid="ide-stimulus-clock-pattern-hold-low">Hold low</button>
+                <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('hold-high')} data-testid="ide-stimulus-clock-pattern-hold-high">Hold high</button>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
       <div className="ide-stimulus-grid-scroll" ref={gridScrollRef}>
         <div style={{ minWidth: totalW, position: 'relative' }}>
         <div className="ide-stimulus-row ide-stimulus-row--header" style={{ display: 'flex', height: groupH + 12, alignItems: 'stretch' }}>
           <div style={{ width: labelW, flexShrink: 0 }} />
           {ticks.map((tick) => (
-            <div key={tick} className={`ide-stimulus-tick-header${activeSelectedTick === tick ? ' is-selected' : ''}`} style={{ width: tickW, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onMouseEnter={() => setHoveredTick(tick)} onMouseLeave={() => setHoveredTick(null)} onClick={() => selectTick(tick)}>
+            <div key={tick} className={`ide-stimulus-tick-header${activeSelectedTick === tick ? ' is-selected' : ''}`} data-case-state={caseEvidenceByTick?.[tick] ?? 'not-run'} aria-current={activeSelectedTick === tick ? 'true' : undefined} style={{ width: tickW, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'center', position: 'relative', fontSize: '0.72em', fontFamily: 'var(--rb-font-mono, monospace)', cursor: 'pointer' }} onClick={() => selectTick(tick)}>
                 <span className="ide-stimulus-tick-title">{describeCaseTitle(tick)}</span>
-              {activeSelectedTick === tick || hoveredTick === tick ? (
-                <div className={`ide-stimulus-tick-actions${activeSelectedTick === tick ? ' is-pinned' : ''}`}>
-                  <button
-                    type="button"
-                    aria-label={`Duplicate ${describeCase(tick)}`}
-                    title={`Duplicate ${describeCase(tick)}`}
-                    onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => duplicateTick(vectors, inputFields, tick)); selectTick(tick + 1); }}
-                    data-testid={`ide-stimulus-duplicate-tick-${tick}`}
-                  >
-                    Dup
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`Delete ${describeCase(tick)}`}
-                    title={`Delete ${describeCase(tick)}`}
-                    onClick={(event) => { event.stopPropagation(); commitVectors((vectors) => removeTick(vectors, tick)); }}
-                    data-testid={`ide-stimulus-delete-tick-${tick}`}
-                  >
-                    Del
-                  </button>
-                </div>
-              ) : null}
             </div>
           ))}
           <div style={{ width: addColW, flexShrink: 0 }} />
@@ -711,7 +863,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <div
             key={field.id}
             className={`ide-stimulus-row${index % 2 === 1 ? ' ide-stimulus-row--stripe' : ''}${clockLane?.fieldId === field.id ? ' ide-stimulus-row--clock' : ''}`}
-            style={{ display: 'flex', height: clockLane?.fieldId === field.id ? clockRowH : rowH, alignItems: 'center' }}
+            style={{ display: 'flex', height: rowH, alignItems: 'center' }}
             data-testid={clockLane?.fieldId === field.id ? 'ide-stimulus-clock-row' : undefined}
           >
             <div
@@ -727,42 +879,13 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
               >
                 {field.label}{field.pin ? <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-secondary)' }}>{field.pin}</code> : null}
               </button>
-              {clockLane?.fieldId === field.id ? (
-                <div className="ide-stimulus-clock-tools">
-                  <div className="ide-stimulus-clock-tools-meta">
-                    <span className="ide-stimulus-clock-badge" data-testid="ide-stimulus-clock-badge">{clockLane.badge}</span>
-                    {clockLane.detail ? (
-                      <span className="ide-stimulus-clock-detail" data-testid="ide-stimulus-clock-detail">{clockLane.detail}</span>
-                    ) : null}
-                  </div>
-                  <div className="ide-stimulus-clock-tools-actions">
-                    <label className="ide-stimulus-clock-count-label">
-                      Rows
-                      <input
-                        type="number"
-                        min={1}
-                        max={16}
-                        step={1}
-                        className="ide-stimulus-clock-count-input"
-                        value={clockLane.count}
-                        onChange={(event) => clockLane.onCountChange(Math.max(1, Math.min(16, Number(event.target.value || '1'))))}
-                        data-testid="ide-stimulus-clock-pattern-count"
-                      />
-                    </label>
-                    <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('alternating')} data-testid="ide-stimulus-clock-pattern-alternating">Alternating</button>
-                    <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('pulse')} data-testid="ide-stimulus-clock-pattern-pulse">Add pulse</button>
-                    <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('hold-low')} data-testid="ide-stimulus-clock-pattern-hold-low">Hold low</button>
-                    <button type="button" className="ide-stimulus-mini-btn" onClick={() => clockLane.onApplyPattern('hold-high')} data-testid="ide-stimulus-clock-pattern-hold-high">Hold high</button>
-                  </div>
-                </div>
-              ) : null}
             </div>
             {ticks.length === 0 && index === 0 ? (
               <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', paddingLeft: 8, fontSize: '0.75em', color: 'var(--rb-text-secondary)', fontStyle: 'italic' }}>{clockLane?.fieldId === field.id ? 'Add a case, then use the clock lane to add a rising edge.' : 'Add a case or use a pattern to start authoring.'}</div>
             ) : ticks.map((tick) => {
               const value = getInputValue(authoredVectors, tick, field.id);
               const inputCellTestId = `ide-stimulus-cell-${field.id}-t${tick}`;
-              const rowHeight = clockLane?.fieldId === field.id ? clockRowH : rowH;
+              const rowHeight = rowH;
               return (
                 <button key={tick} type="button" className={`ide-stimulus-value-cell-button ide-stimulus-value-cell-button--input${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} onPointerDown={() => { markDirectCellActivation(inputCellTestId); handleInputPointerDown(tick, field.id); }} onClick={() => { if (shouldIgnoreDirectCellClick(inputCellTestId)) return; handleInputPointerDown(tick, field.id); }} onPointerEnter={(event) => {
                   if (!paintSession || paintSession.kind !== 'input' || (event.buttons & 1) === 0) return;
@@ -780,7 +903,9 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         {outputFields.length > 0 ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: '0.68em', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>Expected outputs</div>
+              <div className="ide-stimulus-group-label" title="Expected outputs; Unset means no check" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
+                Expected · Unset = no check
+              </div>
               {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: addColW, flexShrink: 0 }} />
             </div>
@@ -817,13 +942,77 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                         >
                           <span className="ide-stimulus-cell__value">{value}</span>
                         </div>
-                      ) : <span style={{ fontSize: '0.72em', color: 'var(--rb-text-secondary)' }}>-</span>}
+                      ) : <span className="ide-stimulus-cell__unset">Unset</span>}
                     </button>
                   );
                 })}
                 <div style={{ width: addColW, flexShrink: 0 }} />
               </div>
             ))}
+          </>
+        ) : null}
+        {outputFields.length > 0 ? (
+          <>
+            <div
+              className="ide-stimulus-group-header ide-stimulus-group-header--observed"
+              data-testid="ide-stimulus-observed-group"
+              style={{ display: 'flex', height: groupH, alignItems: 'center' }}
+            >
+              <div style={{ width: labelW, flexShrink: 0, paddingLeft: 8, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
+                Observed outputs <span className="ide-stimulus-readonly-label">read-only</span>
+              </div>
+              {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
+              <div style={{ width: addColW, flexShrink: 0 }} />
+            </div>
+            {outputFields.map((field) => (
+              <div key={field.id} className="ide-stimulus-row ide-stimulus-row--observed" style={{ display: 'flex', height: rowH, alignItems: 'center' }}>
+                <div className="ide-stimulus-label-cell ide-stimulus-label-cell--observed" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4 }}>
+                  {field.label}
+                </div>
+                {ticks.map((tick) => {
+                  const observedValue = observedValuesByTick?.[tick]?.[field.id];
+                  const hasObservedValue = observedValue === '0' || observedValue === '1';
+                  const visibleValue = hasObservedValue ? observedValue : 'Not run';
+                  return (
+                    <output
+                      key={tick}
+                      className={`ide-stimulus-observed-cell${hasObservedValue ? ' has-value' : ' is-empty'}`}
+                      data-testid={`ide-stimulus-observed-${field.id}-t${tick}`}
+                      data-value={hasObservedValue ? observedValue : 'not-run'}
+                      title={`${field.label} observed in ${describeCase(tick)}: ${hasObservedValue ? observedValue : 'not run'}`}
+                      style={{ width: tickW, flexShrink: 0, height: rowH }}
+                    >
+                      {visibleValue}
+                    </output>
+                  );
+                })}
+                <div style={{ width: addColW, flexShrink: 0 }} />
+              </div>
+            ))}
+            <div
+              className="ide-stimulus-row ide-stimulus-row--case-status"
+              data-testid="ide-stimulus-case-status-row"
+              style={{ display: 'flex', height: rowH, alignItems: 'center' }}
+            >
+              <div className="ide-stimulus-label-cell ide-stimulus-label-cell--status" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4 }}>
+                Case status
+              </div>
+              {ticks.map((tick) => {
+                const state = caseEvidenceByTick?.[tick] ?? 'not-run';
+                return (
+                  <output
+                    key={tick}
+                    className={`ide-stimulus-case-status is-${state}`}
+                    data-testid={`ide-stimulus-case-status-t${tick}`}
+                    data-state={state}
+                    style={{ width: tickW, flexShrink: 0, height: rowH }}
+                  >
+                    {caseStateLabel(tick)}
+                  </output>
+                );
+              })}
+              <div style={{ width: addColW, flexShrink: 0 }} />
+            </div>
           </>
         ) : null}
         </div>

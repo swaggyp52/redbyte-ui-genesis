@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 import React from 'react';
-import { IdeButton, IdeStatusPill } from './IdePrimitives';
+import { IdeButton } from './IdePrimitives';
 import { SurfacePanel } from './SurfaceLayoutPrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
 
@@ -122,6 +122,11 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
         />
       </div>
 
+      <details className="ide-project-overview-inventory" data-testid={`${testId}-inventory`}>
+        <summary>
+          Components and reusable blocks
+          <span>{outline.nodeTypeBreakdown.length + outline.macros.length + outline.customComponents.length}</span>
+        </summary>
       {topTypes.length > 0 && (
         <section
           className="ide-project-overview-section"
@@ -171,7 +176,6 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
                 <ModuleRow
                   name={macro.name}
                   ioSummary={macro.ioSummary}
-                  ioTone="ok"
                   description={macro.description}
                   kindLabel="Macro"
                   onClick={
@@ -214,7 +218,6 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
                 <ModuleRow
                   name={def.name}
                   ioSummary={def.ioSummary}
-                  ioTone="idle"
                   description={def.description}
                   kindLabel="Component"
                   onClick={
@@ -230,6 +233,7 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
           </ul>
         )}
       </section>
+      </details>
     </SurfacePanel>
   );
 };
@@ -237,7 +241,6 @@ export const ProjectOverviewPanel: React.FC<ProjectOverviewPanelProps> = ({
 interface ModuleRowProps {
   name: string;
   ioSummary: string;
-  ioTone: 'ok' | 'idle';
   description: string;
   kindLabel: string;
   /** When provided, the row renders as a clickable navigation button. */
@@ -249,7 +252,6 @@ interface ModuleRowProps {
 const ModuleRow: React.FC<ModuleRowProps> = ({
   name,
   ioSummary,
-  ioTone,
   description,
   kindLabel,
   onClick,
@@ -271,7 +273,7 @@ const ModuleRow: React.FC<ModuleRowProps> = ({
         )}
       </div>
       <div className="ide-project-overview-module-meta">
-        <IdeStatusPill tone={ioTone}>{ioSummary}</IdeStatusPill>
+        <span className="ide-project-overview-module-io">{ioSummary}</span>
         {description && (
           <span className="ide-project-overview-module-desc">{description}</span>
         )}

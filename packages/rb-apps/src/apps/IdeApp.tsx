@@ -17,11 +17,12 @@ import './ide/ide-root.css';
 import './ide/ide-polish-pass.css';
 import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
+import './ide/unified-workbench-v3.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
-import { IdeLeftRail, type IdeMode } from './ide/components/IdeLeftRail';
+import { IdeStageNav, type IdeMode } from './ide/components/IdeStageNav';
 import { getIdeModeLabel } from './ide/workflowStages';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
@@ -30,7 +31,6 @@ import { deriveProjectOutlineSummary } from './ide/projectOutline';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
 import type { VerifyFailureTarget } from './ide/surfaces/VerifySurface';
 import { KeyboardShortcutsModal } from './ide/components/KeyboardShortcutsModal';
-import { OnboardingOverlay } from './ide/components/OnboardingOverlay';
 import { resolveIdeBuildIdentity } from './ide/buildIdentity';
 import {
   normalizeIdeMode,
@@ -41,6 +41,7 @@ import {
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
+import { buildProjectExportPackageSourceHash } from './ide/exportTrustState';
 import { buildCurrentVerifyProjectHash, toProjectIoMapping } from './ide/verifyProjectHash';
 import {
   choosePrimaryDiagnosticAction,
@@ -69,7 +70,11 @@ import {
 } from './ide/projectIdentity';
 import { deriveIoSignalRoles } from './ide/ioSignalRoles';
 import { deriveTimingGuidance } from './ide/timingGuidance';
-import { useProjectRuntime, type ProjectIoRow } from './ide/projectRuntime';
+import {
+  useProjectRuntime,
+  type ProjectIoRow,
+  type ProjectTestbenchSnapshot,
+} from './ide/projectRuntime';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -82,7 +87,10 @@ import {
   type GuidedLabSignal,
 } from './ide/labTaskDefinition';
 import type { IdeImportMeta } from './ide/projectImportMeta';
-import { deriveProjectWorkflowAuthority } from './ide/projectWorkflowAuthority';
+import {
+  deriveProjectWorkflowAuthority,
+  isDesignOwnedExportDiagnostic,
+} from './ide/projectWorkflowAuthority';
 import { resolveBasys3SignalBinding } from '../fpga/boards/basys3/basys3SignalSemantics';
 import {
   decodePersistedIdeProject,
@@ -98,31 +106,67 @@ import {
   type LabSessionMeta,
 } from './ide/persistence/labSession';
 import { BoardSignalProvider } from './ide/BoardSignalContext';
-import { computeVectorStimulusHash, getActiveScenario } from './ide/verifyScenario';
+import {
+  computeVectorStimulusHash,
+  getActiveScenario,
+  type VerifyScenario,
+} from './ide/verifyScenario';
 import { netlistFromCircuit } from '../export/netlistExport';
 import { vhdlFromNetlist } from '../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../fpga/boards/basys3/basys3Bundle';
 import { deriveVerifySchedule } from '../fpga/boards/basys3/verifySchedule';
 import type { HardwareMappingV2EditOperation } from './ide/hardwareMappingV2EditorModel';
 
-const DesignSurface = React.lazy(() =>
-  import('./ide/surfaces/DesignSurface').then((module) => ({ default: module.DesignSurface }))
-);
+const loadDesignSurface = () =>
+  import('./ide/surfaces/DesignSurface').then((module) => ({ default: module.DesignSurface }));
+const loadVerifySurface = () =>
+  import('./ide/surfaces/VerifySurface').then((module) => ({ default: module.VerifySurface }));
+const loadHardwareSurface = () =>
+  import('./ide/surfaces/HardwareSurface').then((module) => ({ default: module.HardwareSurface }));
+const loadExportSurface = () =>
+  import('./ide/surfaces/ExportSurface').then((module) => ({ default: module.ExportSurface }));
+const loadImportSurface = () =>
+  import('./ide/surfaces/ImportSurface').then((module) => ({ default: module.ImportSurface }));
 
-const VerifySurface = React.lazy(() =>
-  import('./ide/surfaces/VerifySurface').then((module) => ({ default: module.VerifySurface }))
-);
+const DesignSurface = React.lazy(loadDesignSurface);
+const VerifySurface = React.lazy(loadVerifySurface);
+const HardwareSurface = React.lazy(loadHardwareSurface);
+const ExportSurface = React.lazy(loadExportSurface);
+const ImportSurface = React.lazy(loadImportSurface);
 
-const HardwareSurface = React.lazy(() =>
-  import('./ide/surfaces/HardwareSurface').then((module) => ({ default: module.HardwareSurface }))
-);
+const IDE_LAZY_SURFACE_LOADERS = [
+  loadDesignSurface,
+  loadVerifySurface,
+  loadHardwareSurface,
+  loadExportSurface,
+  loadImportSurface,
+] as const;
 
-const ExportSurface = React.lazy(() =>
-  import('./ide/surfaces/ExportSurface').then((module) => ({ default: module.ExportSurface }))
-);
-
-const ImportSurface = React.lazy(() =>
-  import('./ide/surfaces/ImportSurface').then((module) => ({ default: module.ImportSurface }))
+const IdeSurfaceLoadingFallback: React.FC<{ mode: Exclude<IdeMode, 'project'> }> = ({ mode }) => (
+  <section
+    className="ide-surface-loading-shell"
+    data-ide-mode-marker={mode}
+    data-testid="ide-surface-loading"
+    aria-label={`Loading ${getIdeModeLabel(mode)} workspace`}
+  >
+    <main
+      className="ide-surface-loading-workbench"
+      data-testid="ide-mode-body"
+      data-loading-surface={mode}
+      aria-label={`${mode} workspace`}
+      aria-busy="true"
+    >
+      <div className="ide-surface-loading-taskbar" aria-hidden="true" />
+      <div className="ide-surface-loading-grid" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+      <p className="ide-copy" role="status" aria-live="polite">
+        Loading {getIdeModeLabel(mode)} workspace…
+      </p>
+    </main>
+  </section>
 );
 
 const DEFAULT_FPGA_PART = 'xc7a35tcpg236-1';
@@ -138,6 +182,14 @@ type IdeImportCommitMeta = IdeImportMeta;
 type IdeImportFidelity = IdeImportMeta['fidelity'];
 
 type IdeCircuitConnection = Circuit['connections'][number];
+
+function digestWorkspaceSnapshot(
+  project: RBProject,
+  scenarios: VerifyScenario[],
+  activeScenarioId: string
+): string {
+  return digestValue({ project, scenarios, activeScenarioId });
+}
 
 function resolveConnectionRef(
   connection: IdeCircuitConnection,
@@ -178,6 +230,13 @@ export const IdeApp: React.FC = () => {
   const activeMode = useMemo(() => normalizeIdeMode(currentMode), [currentMode]);
   const activeModeRef = useRef<IdeMode>(activeMode);
   const restoringModeFromHistoryRef = useRef(false);
+
+  useEffect(() => {
+    // The IDE is a connected workbench, so its stage chunks are warmed as soon
+    // as the shell mounts. Navigation must never tear the workplane down while
+    // the next stage waits on a network round trip.
+    void Promise.allSettled(IDE_LAZY_SURFACE_LOADERS.map((loadSurface) => loadSurface()));
+  }, []);
   const [pendingExampleId, setPendingExampleId] = useState<string | null>(null);
   const [diagnosticRouteRequest, setDiagnosticRouteRequest] = useState<IdeDiagnosticRouteRequest | null>(null);
   const [designFocusRequest, setDesignFocusRequest] = useState<DesignFocusRequest | null>(null);
@@ -191,7 +250,6 @@ export const IdeApp: React.FC = () => {
   const [autosaveAvailable, setAutosaveAvailable] = useState(false);
   const isRestoringRef = useRef(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [workflowOrientationRequest, setWorkflowOrientationRequest] = useState(0);
   // C-1: Debug bridge — frozen circuit state from a verification tick
   const [debugState, setDebugState] = useState<{
     tick: number;
@@ -205,10 +263,13 @@ export const IdeApp: React.FC = () => {
   const [verifySelectedTick, setVerifySelectedTick] = useState<number | null>(null);
   const sessionMetaRef = useRef<LabSessionMeta | null>(null);
   const exportProjectRef = useRef<typeof exportProject | null>(null);
+  const blockingDesignIssueRef = useRef(false);
   const pendingImportMetaRef = useRef<IdeImportCommitMeta | null>(null);
   const projectIdRef = useRef('');
   const projectNameRef = useRef('');
   const projectHashRef = useRef('');
+  const scenariosRef = useRef<VerifyScenario[]>([]);
+  const activeScenarioIdRef = useRef('');
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
   const [vectorsAreAutoGenerated, setVectorsAreAutoGenerated] = useState(false);
 
@@ -295,6 +356,9 @@ export const IdeApp: React.FC = () => {
   const renameVerifyScenario = useProjectRuntime((state) => state.renameScenario);
   const deleteVerifyScenario = useProjectRuntime((state) => state.deleteScenario);
   const switchVerifyScenario = useProjectRuntime((state) => state.switchScenario);
+  const updateVerifyScenarioSequentialPolicy = useProjectRuntime(
+    (state) => state.updateScenarioSequentialPolicy
+  );
   const appendVerifyScenarioStep = useProjectRuntime((state) => state.appendScenarioStep);
   const updateVerifyScenarioStep = useProjectRuntime((state) => state.updateScenarioStep);
   const moveVerifyScenarioStep = useProjectRuntime((state) => state.moveScenarioStep);
@@ -679,6 +743,13 @@ export const IdeApp: React.FC = () => {
 
   const handleRunVerification = useCallback(
     (input: Parameters<typeof runRuntimeVerification>[0]) => {
+      // Structural compiler/export blockers invalidate assertion grading. Keep
+      // Observe available, but never let a checked run publish a misleading
+      // PASS/FAIL while Design has no valid output authority.
+      if (input.assertionMode && blockingDesignIssueRef.current) {
+        setLastSavedAt('Compare is blocked until the Design issue is repaired.');
+        return;
+      }
       // Use the ref to avoid TDZ: exportProject (declared later in this function body)
       // cannot be used in a useCallback dep array declared here. exportProjectRef
       // is always up-to-date (assigned at line ~714 on every render).
@@ -690,7 +761,7 @@ export const IdeApp: React.FC = () => {
           : undefined,
       });
     },
-    [runRuntimeVerification]
+    [runRuntimeVerification, setLastSavedAt]
   );
 
   const handleClearVerification = useCallback(() => {
@@ -784,8 +855,10 @@ export const IdeApp: React.FC = () => {
     const snapshot = saveIdeProjectSnapshot({
       projectId: backupId,
       projectName: backupName,
-      projectHash: digestValue(backupProject),
+      projectHash: digestWorkspaceSnapshot(backupProject, scenarios, activeScenarioId),
       project: backupProject,
+      scenarios,
+      activeScenarioId,
     });
 
     if (!snapshot) {
@@ -793,7 +866,7 @@ export const IdeApp: React.FC = () => {
     }
 
     return { name: backupName, failed: false };
-  }, [hasCircuit, projectId, projectName, savedProjectHash]);
+  }, [activeScenarioId, hasCircuit, projectId, projectName, savedProjectHash, scenarios]);
 
   const handleSafeLoadIntoIde = useCallback(
     (
@@ -805,6 +878,7 @@ export const IdeApp: React.FC = () => {
         nextMode?: IdeMode | null;
         backupCurrent?: boolean;
         importMeta?: IdeImportMeta | null;
+        testbenchSnapshot?: ProjectTestbenchSnapshot;
       }
     ) => {
       const sourceLabel = options?.sourceLabel ?? project.name ?? 'project';
@@ -813,7 +887,7 @@ export const IdeApp: React.FC = () => {
         : createRecoveryBackup();
 
       try {
-        loadFromProject(project);
+        loadFromProject(project, options?.testbenchSnapshot);
       } catch (error) {
         const reason = error instanceof Error ? error.message : 'unknown project error';
         setLastSavedAt(`Could not load ${sourceLabel}: ${reason}`);
@@ -1048,8 +1122,11 @@ export const IdeApp: React.FC = () => {
       xdcText,
     ]
   );
-  const projectHash = useMemo(() => digestValue(exportProject), [exportProject]);
-  const determinismHash = projectHash;
+  const determinismHash = useMemo(() => digestValue(exportProject), [exportProject]);
+  const projectHash = useMemo(
+    () => digestWorkspaceSnapshot(exportProject, scenarios, activeScenarioId),
+    [activeScenarioId, exportProject, scenarios]
+  );
 
   useEffect(() => {
     if (currentMode === activeMode) return;
@@ -1084,6 +1161,8 @@ export const IdeApp: React.FC = () => {
   projectIdRef.current = projectId;
   projectNameRef.current = projectName;
   projectHashRef.current = projectHash;
+  scenariosRef.current = scenarios;
+  activeScenarioIdRef.current = activeScenarioId;
   sessionMetaRef.current = {
     version: 1,
     savedAt: Date.now(),
@@ -1140,12 +1219,14 @@ export const IdeApp: React.FC = () => {
       projectName,
       projectHash,
       project: exportProject,
+      scenarios,
+      activeScenarioId,
     });
     if (!snapshot) return;
     setSavedProjectHash(snapshot.projectHash);
     setLastSavedAt(`Saved ${formatSavedAtLabel(snapshot.savedAtIso)}`);
     refreshSavedProjects();
-  }, [exportProject, projectHash, projectId, projectName, refreshSavedProjects, setLastSavedAt]);
+  }, [activeScenarioId, exportProject, projectHash, projectId, projectName, refreshSavedProjects, scenarios, setLastSavedAt]);
 
   const handleRenameProject = useCallback(
     (nextName: string) => {
@@ -1156,7 +1237,7 @@ export const IdeApp: React.FC = () => {
         ...exportProject,
         name: trimmed,
       };
-      const renamedHash = digestValue(renamedProject);
+      const renamedHash = digestWorkspaceSnapshot(renamedProject, scenarios, activeScenarioId);
       setProjectIdentity({ projectName: trimmed });
 
       const snapshot = saveIdeProjectSnapshot({
@@ -1164,6 +1245,8 @@ export const IdeApp: React.FC = () => {
         projectName: trimmed,
         projectHash: renamedHash,
         project: renamedProject,
+        scenarios,
+        activeScenarioId,
       });
 
       if (snapshot) {
@@ -1207,6 +1290,8 @@ export const IdeApp: React.FC = () => {
       setLastSavedAt,
       setProjectIdentity,
       sourceExampleId,
+      scenarios,
+      activeScenarioId,
     ]
   );
 
@@ -1219,12 +1304,14 @@ export const IdeApp: React.FC = () => {
         projectId: nextProjectId,
       },
     };
-    const nextHash = digestValue(nextProject);
+    const nextHash = digestWorkspaceSnapshot(nextProject, scenarios, activeScenarioId);
     const snapshot = saveIdeProjectSnapshot({
       projectId: nextProjectId,
       projectName,
       projectHash: nextHash,
       project: nextProject,
+      scenarios,
+      activeScenarioId,
     });
     if (!snapshot) return;
     setProjectIdentity({
@@ -1240,6 +1327,8 @@ export const IdeApp: React.FC = () => {
     projectName,
     refreshSavedProjects,
     savedProjects,
+    scenarios,
+    activeScenarioId,
     setLastSavedAt,
     setProjectIdentity,
   ]);
@@ -1273,6 +1362,10 @@ export const IdeApp: React.FC = () => {
         closeLoadModal: true,
         nextMode: 'project',
         backupCurrent: true,
+        testbenchSnapshot: {
+          scenarios: snapshot.scenarios,
+          activeScenarioId: snapshot.activeScenarioId,
+        },
       });
     },
     [handleSafeLoadIntoIde, refreshSavedProjects, setLastSavedAt]
@@ -1354,6 +1447,10 @@ export const IdeApp: React.FC = () => {
       savedProjectHash: snapshot.projectHash,
       nextMode: restoredMode,
       backupCurrent: false,
+      testbenchSnapshot: {
+        scenarios: snapshot.scenarios,
+        activeScenarioId: snapshot.activeScenarioId,
+      },
     });
     isRestoringRef.current = false;
     if (!restored) {
@@ -1388,6 +1485,8 @@ export const IdeApp: React.FC = () => {
         projectName,
         projectHash,
         project: exportProject,
+        scenarios,
+        activeScenarioId,
       });
       if (snapshot) {
         setSavedProjectHash(snapshot.projectHash);
@@ -1406,6 +1505,8 @@ export const IdeApp: React.FC = () => {
     projectHash,
     projectId,
     projectName,
+    scenarios,
+    activeScenarioId,
     savedProjectHash,
     setLastSavedAt,
   ]);
@@ -1452,6 +1553,10 @@ export const IdeApp: React.FC = () => {
     () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
     [activeScenario, exportProject, verifyLastRun]
   );
+  const currentExportPackageSourceHash = useMemo(
+    () => buildProjectExportPackageSourceHash(exportProject, exportViewModel.artifacts),
+    [exportProject, exportViewModel.artifacts]
+  );
   const exportRequiredMappingGapCount = useMemo(
     () =>
       exportViewModel.pinTable.filter(
@@ -1468,16 +1573,82 @@ export const IdeApp: React.FC = () => {
     }),
     [exportHasRequiredMappingGap, exportRequiredMappingGapCount, readiness]
   );
+  const designDiagnostics = useMemo(
+    () => deriveDesignCompilerDiagnostics(exportProject),
+    [exportProject]
+  );
+  const liveScheduleContract = useMemo(() => {
+    if (!exportProject) return undefined;
+    return deriveVerifySchedule(
+      exportProject.circuit,
+      exportProject.ioMapping,
+      exportProject.hdl
+    );
+  }, [exportProject]);
+  const exportDesignDiagnostics = useMemo(
+    () =>
+      exportViewModel.errors.filter(
+        (diagnostic) =>
+          diagnostic.canonical.blocking &&
+          isDesignOwnedExportDiagnostic(
+            diagnostic.code,
+            liveScheduleContract?.timingMode
+          )
+      ),
+    [exportViewModel.errors, liveScheduleContract?.timingMode]
+  );
+  const designSurfaceDiagnostics = useMemo(() => {
+    const diagnosticsById = new Map(
+      designDiagnostics.map((diagnostic) => [diagnostic.id, diagnostic] as const)
+    );
+    for (const diagnostic of exportDesignDiagnostics) {
+      diagnosticsById.set(diagnostic.canonical.id, diagnostic.canonical);
+    }
+    return Array.from(diagnosticsById.values());
+  }, [designDiagnostics, exportDesignDiagnostics]);
+  const blockingDesignIssue = useMemo(() => {
+    const exportDiagnostic = exportDesignDiagnostics[0];
+    if (exportDiagnostic) {
+      return {
+        title: exportDiagnostic.title,
+        message: exportDiagnostic.message,
+        hint: exportDiagnostic.fix ?? exportDiagnostic.hint[0],
+      };
+    }
+    const compilerDiagnostic = designDiagnostics.find(
+      (diagnostic) => diagnostic.blocking || diagnostic.severity === 'error'
+    );
+    if (!compilerDiagnostic) return null;
+    return {
+      title: compilerDiagnostic.title,
+      message: compilerDiagnostic.message,
+      hint: compilerDiagnostic.hint[0],
+    };
+  }, [designDiagnostics, exportDesignDiagnostics]);
+  const blockingDesignIssueMessage = useMemo(
+    () =>
+      blockingDesignIssue
+        ? [blockingDesignIssue.title, blockingDesignIssue.message, blockingDesignIssue.hint]
+            .filter(Boolean)
+            .join(' ')
+        : undefined,
+    [blockingDesignIssue]
+  );
+  blockingDesignIssueRef.current = Boolean(blockingDesignIssue);
   const projectHealth = useMemo(
     () =>
       deriveProjectHealth(projectHealthCore, {
         hasCircuit: effectiveReadiness.hasCircuit,
         hasIoMapping: effectiveReadiness.hasIoMapping,
         hasVectors: effectiveReadiness.hasVectors,
+        hasBlockingDesignIssue: Boolean(blockingDesignIssue),
+        blockingDesignIssueMessage,
         projectKind: effectiveReadiness.projectKind,
         verifyQualification: effectiveReadiness.verifyQualification,
       }),
     [
+      blockingDesignIssue,
+      blockingDesignIssueMessage,
       effectiveReadiness.hasCircuit,
       effectiveReadiness.hasIoMapping,
       effectiveReadiness.hasVectors,
@@ -1491,14 +1662,6 @@ export const IdeApp: React.FC = () => {
     [exportViewModel.artifacts]
   );
 
-  const liveScheduleContract = useMemo(() => {
-    if (!exportProject) return undefined;
-    return deriveVerifySchedule(
-      exportProject.circuit,
-      exportProject.ioMapping,
-      exportProject.hdl
-    );
-  }, [exportProject]);
   const liveSignalRoles = useMemo(() => {
     if (!liveScheduleContract) return {};
     return deriveIoSignalRoles(projectIoRows, liveScheduleContract);
@@ -1518,20 +1681,15 @@ export const IdeApp: React.FC = () => {
     }));
   }, []);
 
-  const designDiagnostics = useMemo(
-    () => deriveDesignCompilerDiagnostics(exportProject),
-    [exportProject]
-  );
-
   const designCompilerStatus = useMemo<DesignCompilerStatus>(
     () => ({
       dirtySinceVerify: projectHealthCore.dirtySinceVerify,
       dirtySinceExport: projectHealthCore.dirtySinceExport,
-      errorCount: designDiagnostics.filter((entry) => entry.severity === 'error').length,
-      warningCount: designDiagnostics.filter((entry) => entry.severity === 'warn').length,
-      diagnostics: designDiagnostics,
+      errorCount: designSurfaceDiagnostics.filter((entry) => entry.severity === 'error').length,
+      warningCount: designSurfaceDiagnostics.filter((entry) => entry.severity === 'warn').length,
+      diagnostics: designSurfaceDiagnostics,
     }),
-    [designDiagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
+    [designSurfaceDiagnostics, projectHealthCore.dirtySinceExport, projectHealthCore.dirtySinceVerify]
   );
   const verifyMappingComplete = missingRequiredCount === 0;
   const unmappedOutputLabels = useMemo(
@@ -1607,17 +1765,21 @@ export const IdeApp: React.FC = () => {
           hasCircuit: effectiveReadiness.hasCircuit,
           hasIoMapping: effectiveReadiness.hasIoMapping,
           hasVectors: effectiveReadiness.hasVectors,
+          hasBlockingDesignIssue: Boolean(blockingDesignIssue),
+          blockingDesignIssueMessage,
           projectKind: effectiveReadiness.projectKind,
           verifyQualification: effectiveReadiness.verifyQualification,
         },
         verifyLastRun,
         verifyRunHistory,
         currentVerifyProjectHash,
-        currentExportHash: exportViewModel.exportHash,
+        currentExportHash: currentExportPackageSourceHash,
       }),
     [
       currentVerifyProjectHash,
-      exportViewModel.exportHash,
+      blockingDesignIssue,
+      blockingDesignIssueMessage,
+      currentExportPackageSourceHash,
       projectHealthCore,
       effectiveReadiness.hasCircuit,
       effectiveReadiness.hasIoMapping,
@@ -1770,6 +1932,8 @@ export const IdeApp: React.FC = () => {
           projectName: projectNameRef.current,
           projectHash: projectHashRef.current,
           project: exportProjectRef.current,
+          scenarios: scenariosRef.current,
+          activeScenarioId: activeScenarioIdRef.current,
         });
       }
       if (sessionMetaRef.current) {
@@ -1804,31 +1968,26 @@ export const IdeApp: React.FC = () => {
         onResetToExample={handleResetToExample}
         onRunVerify={() => setCurrentMode('verify')}
         onExport={() => setCurrentMode('export')}
+        onImport={() => setCurrentMode('import')}
         onRenameProject={handleRenameProject}
-        onWorkflowHelp={activeMode === 'project' ? () => setWorkflowOrientationRequest((previous) => previous + 1) : undefined}
         onHelp={() => setShowShortcuts(true)}
       />
 
-      <OnboardingOverlay
-        mode={activeMode}
-        onOpenDesign={() => setCurrentMode('design')}
-        autoShow={!hasCircuit}
-        openRequestId={workflowOrientationRequest}
-        placement="integrated"
+      <IdeStageNav
+        currentMode={activeMode}
+        onModeChange={setCurrentMode}
+        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
+        stepsBlocked={{
+          design: Boolean(blockingDesignIssue),
+          verify: !hasCircuit || Boolean(blockingDesignIssue),
+          hardware: !hasCircuit || Boolean(blockingDesignIssue),
+          export: !workflowAuthority.exportAvailable,
+        }}
       />
+
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}
 
       <div className="ide-layout-shell">
-        <IdeLeftRail
-          currentMode={activeMode}
-          onModeChange={setCurrentMode}
-          stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
-          stepsBlocked={{
-            verify: !hasCircuit,
-            hardware: !hasCircuit,
-            export: !workflowAuthority.exportAvailable,
-          }}
-        />
         <div className="ide-surface-column">
         {activeMode === 'project' ? (
           <ErrorBoundary fallbackTitle="Project workspace encountered an error">
@@ -1920,6 +2079,8 @@ export const IdeApp: React.FC = () => {
                   projectName,
                   projectHash,
                   project: exportProjectRef.current,
+                  scenarios,
+                  activeScenarioId,
                 });
                 if (snap) {
                   setSavedProjectHash(snap.projectHash);
@@ -1940,6 +2101,10 @@ export const IdeApp: React.FC = () => {
                   savedProjectHash: snap.projectHash,
                   nextMode: 'project',
                   backupCurrent: true,
+                  testbenchSnapshot: {
+                    scenarios: snap.scenarios,
+                    activeScenarioId: snap.activeScenarioId,
+                  },
                 });
                 isRestoringRef.current = false;
               }}
@@ -1968,11 +2133,7 @@ export const IdeApp: React.FC = () => {
         ) : activeMode === 'design' ? (
           <ErrorBoundary fallbackTitle="Design workspace encountered an error">
             <Suspense
-              fallback={
-                <div className="ide-copy" data-testid="ide-surface-loading">
-                  Loading {getIdeModeLabel('design')} workspace...
-                </div>
-              }
+              fallback={<IdeSurfaceLoadingFallback mode="design" />}
             >
             <ThrowOnce surface="design" />
             <DesignSurface
@@ -2042,11 +2203,7 @@ export const IdeApp: React.FC = () => {
         ) : activeMode === 'verify' ? (
           <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
             <Suspense
-              fallback={
-                <div className="ide-copy" data-testid="ide-surface-loading">
-                  Loading {getIdeModeLabel('verify')} workspace...
-                </div>
-              }
+              fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
             <VerifySurface
               circuitGraph={circuit}
@@ -2056,6 +2213,7 @@ export const IdeApp: React.FC = () => {
               hasVectors={hasVectors}
               vectors={authoritativeProjectVectors}
               lastRun={verifyLastRun}
+              designBlockingIssue={blockingDesignIssue ?? undefined}
               mappingComplete={verifyMappingComplete}
               unmappedOutputLabels={unmappedOutputLabels}
               hasFloatingOutputWarning={verifyHasFloatingOutputWarning}
@@ -2116,6 +2274,7 @@ export const IdeApp: React.FC = () => {
               onRenameScenario={renameVerifyScenario}
               onDeleteScenario={deleteVerifyScenario}
               onSwitchScenario={switchVerifyScenario}
+              onUpdateScenarioSequentialPolicy={updateVerifyScenarioSequentialPolicy}
               onAppendScenarioStep={appendVerifyScenarioStep}
               onUpdateScenarioStep={updateVerifyScenarioStep}
               onMoveScenarioStep={moveVerifyScenarioStep}
@@ -2132,16 +2291,13 @@ export const IdeApp: React.FC = () => {
         ) : activeMode === 'hardware' ? (
           <ErrorBoundary fallbackTitle="Map Pins workspace encountered an error">
             <Suspense
-              fallback={
-                <div className="ide-copy" data-testid="ide-surface-loading">
-                  Loading {getIdeModeLabel('hardware')} workspace...
-                </div>
-              }
+              fallback={<IdeSurfaceLoadingFallback mode="hardware" />}
             >
             <HardwareSurface
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
+              mappingProjection={exportViewModel.mappingProjection}
               missingRequiredPortsFromExport={exportRequiredMappingGapCount}
               expectedIoRows={hardwareExpectedIoRows}
               vectorsCount={authoritativeProjectVectors.length}
@@ -2176,17 +2332,15 @@ export const IdeApp: React.FC = () => {
         ) : activeMode === 'export' ? (
           <ErrorBoundary fallbackTitle="Export workspace encountered an error">
             <Suspense
-              fallback={
-                <div className="ide-copy" data-testid="ide-surface-loading">
-                  Loading {getIdeModeLabel('export')} workspace...
-                </div>
-              }
+              fallback={<IdeSurfaceLoadingFallback mode="export" />}
             >
             <ExportSurface
               project={exportProject}
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
-              designReady={effectiveReadiness.hasCircuit && effectiveReadiness.hasIoMapping}
+              lastExport={projectHealthCore.lastExport}
+              designBlockingIssue={blockingDesignIssue ?? undefined}
+              designReady={workflowAuthority.designReady}
               workflowAuthority={workflowAuthority}
               activeScenario={activeScenario ?? undefined}
               dirtySinceVerify={projectHealthCore.dirtySinceVerify}
@@ -2208,11 +2362,7 @@ export const IdeApp: React.FC = () => {
         ) : (
           <ErrorBoundary fallbackTitle="Import workspace encountered an error">
             <Suspense
-              fallback={
-                <div className="ide-copy" data-testid="ide-surface-loading">
-                  Loading {getIdeModeLabel('import')} workspace...
-                </div>
-              }
+              fallback={<IdeSurfaceLoadingFallback mode="import" />}
             >
             <ImportSurface
               onImportProject={handleImportProject}

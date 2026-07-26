@@ -16,8 +16,8 @@ export interface IdeTopBarProps {
   onResetToExample?: () => void;
   onRunVerify?: () => void;
   onExport?: () => void;
+  onImport?: () => void;
   onHelp?: () => void;
-  onWorkflowHelp?: () => void;
   onRenameProject?: (nextName: string) => void;
 }
 
@@ -50,8 +50,9 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   saveState,
   currentMode,
   buildIdentity,
+  onSave,
+  onImport,
   onHelp,
-  onWorkflowHelp,
   onRenameProject,
 }) => {
   const [editingName, setEditingName] = React.useState(false);
@@ -67,7 +68,6 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
 
   const modeLabel = currentMode ? getIdeModeLabel(currentMode) : null;
   const canRenameProject = Boolean(onRenameProject);
-  const handleHelp = onHelp ?? onWorkflowHelp;
   const boardLabel = boardTarget.toLowerCase() === 'basys3' ? 'Basys3' : boardTarget;
 
   React.useEffect(() => {
@@ -107,7 +107,13 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   }, [projectName]);
 
   return (
-    <header className="ide-top-bar" data-testid="ide-top-bar" data-save-state={saveState}>
+    <header
+      className="ide-top-bar"
+      data-testid="ide-top-bar"
+      data-save-state={saveState}
+      data-build-sha={buildIdentity?.shortSha}
+      data-build-environment={buildIdentity?.envLabel}
+    >
       <div className="ide-top-left">
         <div className="ide-brand" aria-label="RedByte">
           <span className="ide-brand-mark" aria-hidden="true">
@@ -174,20 +180,6 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
           <span className="ide-topbar-fact-label">Board</span>
           <strong>{boardLabel}</strong>
         </span>
-        <span className="ide-topbar-scope" data-testid="ide-proof-scope">Browser E0</span>
-        {buildIdentity && (
-          <span
-            className="ide-topbar-build ide-build-badge"
-            data-testid="ide-build-badge"
-            title={buildIdentity.title}
-            aria-label={buildIdentity.title}
-          >
-            <span className="ide-build-badge-label">build</span>
-            <code className="ide-build-badge-sha">{buildIdentity.shortSha}</code>
-            <span aria-hidden="true">/</span>
-            <span>{buildIdentity.envLabel}</span>
-          </span>
-        )}
         <span
           className={`ide-save-dot ${saveDotClass}`}
           data-testid="ide-save-state"
@@ -197,12 +189,34 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-save-label" aria-live="polite">
           {saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved'}
         </span>
-        {handleHelp && (
+        {onSave && (
+          <button
+            type="button"
+            className="ide-topbar-action"
+            onClick={onSave}
+            data-testid="ide-topbar-save-btn"
+          >
+            Save
+          </button>
+        )}
+        {onImport && (
+          <button
+            type="button"
+            className="ide-topbar-action"
+            onClick={onImport}
+            data-testid="mode-button-import"
+            data-active={currentMode === 'import' ? 'true' : 'false'}
+            aria-current={currentMode === 'import' ? 'page' : undefined}
+          >
+            Import
+          </button>
+        )}
+        {onHelp && (
           <button
             className="ide-topbar-help-btn"
-            onClick={handleHelp}
-            title={onWorkflowHelp ? 'Workflow help' : 'Help and keyboard shortcuts'}
-            aria-label={onWorkflowHelp ? 'Workflow help' : 'Help and keyboard shortcuts'}
+            onClick={onHelp}
+            title="Help and keyboard shortcuts"
+            aria-label="Help and keyboard shortcuts"
             data-testid="ide-topbar-help-btn"
           >
             Help

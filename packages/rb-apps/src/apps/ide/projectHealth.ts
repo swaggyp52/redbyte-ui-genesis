@@ -43,11 +43,46 @@ export interface ProjectHealthVerifyResult {
   ranAtIso?: string;
 }
 
+export type ProjectHealthExportVerificationTrust = 'draft' | 'unverified' | 'trusted';
+export type ProjectHealthExportDownloadKind = 'project' | 'kit';
+export type ProjectHealthExportSourceState =
+  | 'current'
+  | 'stale'
+  | 'missing'
+  | 'failed'
+  | 'trace-only'
+  | 'incomplete'
+  | 'blocked';
+
+export interface ProjectHealthExportSourceHashes {
+  /** Hash of the current RedByte project snapshot used to request the download. */
+  project?: string;
+  /** Fingerprint of every generated package input, including Verify-derived artifacts. */
+  export?: string;
+  /** Hash recorded by the Verify result that accompanied the download, when present. */
+  verify?: string;
+}
+
+export interface ProjectHealthExportSourceCurrentness {
+  project: ProjectHealthExportSourceState;
+  export: ProjectHealthExportSourceState;
+  mapping: ProjectHealthExportSourceState;
+  verify: ProjectHealthExportSourceState;
+}
+
 export interface ProjectHealthExportResult {
   status: 'ok' | 'blocked';
   hash?: string;
   manifestHash?: string;
   bundleHash?: string;
+  /** SHA-256 of the exact downloaded ZIP bytes. This does not alter ZIP generation. */
+  packageHash?: string;
+  /** Verify trust at the moment the package was downloaded. */
+  verificationTrust?: ProjectHealthExportVerificationTrust;
+  downloadKind?: ProjectHealthExportDownloadKind;
+  downloadedAtIso?: string;
+  sourceHashes?: ProjectHealthExportSourceHashes;
+  sourceCurrentness?: ProjectHealthExportSourceCurrentness;
   artifacts?: string[];
   ranAtIso?: string;
 }
@@ -67,6 +102,14 @@ export interface ProjectReadinessState {
   hasCircuit: boolean;
   hasIoMapping: boolean;
   hasVectors: boolean;
+  /**
+   * A current structural Design error (for example an undriven output or an
+   * unsupported feedback topology). This is deliberately separate from
+   * `hasCircuit`: a populated graph is not necessarily a usable design.
+   */
+  hasBlockingDesignIssue?: boolean;
+  /** Student-facing cause supplied by the current compiler/export authority. */
+  blockingDesignIssueMessage?: string;
   projectKind?: ProjectKind;
   verifyQualification?: 'incomplete-mapping';
 }
@@ -131,6 +174,16 @@ export function deriveProjectHealth(
     });
   }
 
+  if (readiness.hasCircuit && readiness.hasBlockingDesignIssue) {
+    blockingIssues.push({
+      code: 'RBP1006',
+      message:
+        readiness.blockingDesignIssueMessage?.trim() ||
+        'The current circuit has a structural Design blocker.',
+      fixPath: { mode: 'design', actionLabel: 'Open Design' },
+    });
+  }
+
   if (!readiness.hasIoMapping) {
     blockingIssues.push({
       code: 'RBP1001',
@@ -174,11 +227,13 @@ export function deriveStageCompletion(
   readiness: ProjectReadinessState
 ): Record<IdeWorkflowRouteMode, boolean> {
   const verifyState = deriveProjectVerifyState(health);
+  const designComplete = readiness.hasCircuit && !readiness.hasBlockingDesignIssue;
   return {
-    design: readiness.hasCircuit,
-    verify: verifyState === 'assertions-match',
-    hardware: readiness.hasIoMapping,
+    design: designComplete,
+    verify: designComplete && verifyState === 'assertions-match',
+    hardware: designComplete && readiness.hasIoMapping,
     export:
+      designComplete &&
       verifyState === 'assertions-match' &&
       health.lastExport?.status === 'ok' &&
       !health.dirtySinceExport,
@@ -195,6 +250,9 @@ export function choosePrimaryProjectCta(
       mode: 'design',
       code: 'RBP3000',
     };
+  }
+  if (readiness.hasBlockingDesignIssue) {
+    return { label: 'Open Design', mode: 'design', code: 'RBP1006' };
   }
   const verifyState = deriveProjectVerifyState(health);
   const needsVerify =

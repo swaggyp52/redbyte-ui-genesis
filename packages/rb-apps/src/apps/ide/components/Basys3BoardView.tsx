@@ -350,7 +350,7 @@ export const Basys3BoardView: React.FC<Basys3BoardViewProps> = ({
             />
             {/* expanded hitbox */}
             <rect data-testid={`ide-hw-map-sw-${idx}-hit`}
-              x={trackX - 8} y={trackY - 8} width={trackW + 16} height={trackH + 16}
+              x={trackX - 11} y={trackY - 8} width={trackW + 22} height={trackH + 16}
               rx={6} fill="transparent" />
             <text x={centerX} y={220} fontSize={7} fontFamily="IBM Plex Mono, monospace"
               textAnchor="middle"

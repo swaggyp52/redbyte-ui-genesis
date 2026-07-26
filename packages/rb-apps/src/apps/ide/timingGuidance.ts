@@ -1,5 +1,6 @@
 import { INTERNAL_SIM_CLOCK_NAME, type VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 import type { RuntimeVerifyRun } from './projectRuntime';
+import type { VerifyClockPolicy } from './verifyClockPolicy';
 
 export type TimingGuidanceKind = 'combinational' | 'clock' | 'latch-control' | 'sequential';
 
@@ -167,7 +168,10 @@ export function formatTimingTooltip(guidance: TimingGuidance): string {
     : 'Sequential circuit — stateful behavior detected';
 }
 
-export function formatTimingProtocol(guidance: TimingGuidance): string {
+export function formatTimingProtocol(
+  guidance: TimingGuidance,
+  clockPolicy?: VerifyClockPolicy | null
+): string {
   if (guidance.kind === 'latch-control') {
     return guidance.signalName
       ? `Latch control (${guidance.signalName}: 0 -> 1 -> 0 per case)`
@@ -175,7 +179,16 @@ export function formatTimingProtocol(guidance: TimingGuidance): string {
   }
   if (guidance.kind === 'clock' || guidance.kind === 'sequential') {
     const signalName = guidance.signalName ?? 'CLK';
-    return `Clocked macro (${signalName}: 0 -> 1 -> 0 per case)`;
+    if (clockPolicy?.overrideMode === 'auto') {
+      return `Auto clock (${signalName}: one rising edge and post-edge sample per case)`;
+    }
+    if (
+      clockPolicy?.overrideMode === 'manual-pulses' ||
+      clockPolicy?.overrideMode === 'custom-pattern'
+    ) {
+      return `Authored clock (${signalName}: follows each authored row level)`;
+    }
+    return `Clocked macro (${signalName}: derived clock protocol)`;
   }
   return 'Combinational settle (one evaluation per case)';
 }

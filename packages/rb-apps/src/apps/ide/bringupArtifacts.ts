@@ -6,7 +6,10 @@ import { compareCodepoint } from '../../export/codepointSort';
 import { deriveVerifySchedule } from '../../fpga/boards/basys3/verifySchedule';
 import { resolveBasys3PackagePin } from '../../fpga/boards/basys3/basys3Pins';
 import { deriveIoSignalRoles } from './ioSignalRoles';
-import { simulateExpectedIoRows } from './sim/simEngine';
+import {
+  simulateExpectedIoRows,
+  type VerifyClockExecutionPolicy,
+} from './sim/simEngine';
 import type { SimulatedExpectedIoRow } from './sim/simTypes';
 import {
   getCanonicalIoSignalKey,
@@ -23,11 +26,22 @@ export interface BringUpIoRow {
   port?: string;
   direction: 'in' | 'out';
   pin: string;
+  packagePin?: string;
+  artifactPortName?: string;
+  boardResourceId?: string | null;
+  boardResourceLabel?: string | null;
+  exactXdcLine?: string;
   required: boolean;
 }
 
 export interface BringUpExpectedIoSignal {
   signal: string;
+  logicalSignalId: string;
+  logicalLabel: string;
+  artifactPortName?: string;
+  boardResourceId?: string | null;
+  boardResourceLabel?: string | null;
+  exactXdcLine?: string;
   direction: 'in' | 'out';
   pin: string;
   packagePin: string;
@@ -63,6 +77,7 @@ export interface BringUpArtifactsInput {
     expected: string;
     actual: string;
   }>;
+  clockPolicy?: VerifyClockExecutionPolicy;
 }
 
 export interface BringUpArtifacts {
@@ -199,6 +214,7 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
           circuit: input.project.circuit,
           ioRows: input.ioRows,
           vectors: input.project.vectors ?? [],
+          clockPolicy: input.clockPolicy,
         })
       : [];
   const vectorTicks = uniqueSortedTicks(input.project.vectors ?? []);
@@ -220,9 +236,15 @@ function buildExpectedIoReport(input: BringUpArtifactsInput): BringUpExpectedIoR
 
     return {
       signal: signalName,
+      logicalSignalId: row.id,
+      logicalLabel: row.label,
+      artifactPortName: row.artifactPortName,
+      boardResourceId: row.boardResourceId,
+      boardResourceLabel: row.boardResourceLabel,
+      exactXdcLine: row.exactXdcLine,
       direction: 'out' as const,
       pin: row.pin,
-      packagePin: resolveBasys3PackagePin(row.pin) ?? row.pin,
+      packagePin: row.packagePin ?? resolveBasys3PackagePin(row.pin) ?? row.pin,
       values,
     };
   });
@@ -260,7 +282,12 @@ function buildBringUpMarkdown(input: {
       )
     )
     .slice(0, 6)
-    .map((row) => `- ${getCanonicalIoSignalKey(row, input.ioRows)} -> ${row.pin}`);
+    .map((row) => {
+      const logicalSignal = getCanonicalIoSignalKey(row, input.ioRows);
+      const artifactPort = row.artifactPortName ?? logicalSignal;
+      const packagePin = row.packagePin ?? resolveBasys3PackagePin(row.pin) ?? row.pin;
+      return `- ${logicalSignal} -> ${artifactPort} -> ${row.pin} / ${packagePin}`;
+    });
 
   const lines = [
     '# Basys3 Bring-Up',

@@ -55,6 +55,15 @@ export interface DeterministicVerifyResult {
   evidence: Omit<VerifyEvidenceCapsule, 'circuitHash'>;
 }
 
+export interface VerifyClockExecutionPolicy {
+  overrideMode: VerifyClockPolicy['overrideMode'];
+  resetBehavior: VerifyClockPolicy['resetBehavior'];
+  startLevel?: 0 | 1;
+  signalId?: string;
+  signalLabel?: string;
+  resetSignalName?: string;
+}
+
 // TODO(slice-7): Retained as transitional wrappers — real callers in projectRuntime.ts and
 // bringupArtifacts.ts still pass Circuit. Remove once those callers are migrated to pass
 // SimulationModel directly (requires deriving the model at the call site).
@@ -323,7 +332,7 @@ export function runDeterministicVerifyFromModel(
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
   scheduleContract?: VerifyScheduleContract,
-  _clockPolicy?: VerifyClockPolicy
+  clockPolicy?: VerifyClockExecutionPolicy
 ): DeterministicVerifyResult {
   if (!model.isRunnable) {
     return buildInvalidIrResult(model, ioRows, vectors);
@@ -339,7 +348,8 @@ export function runDeterministicVerifyFromModel(
     model,
     ioRows,
     vectors,
-    contract
+    contract,
+    clockPolicy
   );
   const traceByTick = new Map<number, RuntimeSimTraceSample>();
   for (const entry of cases) {
@@ -524,6 +534,7 @@ export function simulateExpectedIoRows(params: {
   ioRows: SimulationIoRow[];
   vectors: TestVector[];
   scheduleContract?: VerifyScheduleContract;
+  clockPolicy?: VerifyClockExecutionPolicy;
 }): SimulatedExpectedIoRow[] {
   const context = buildDeterministicVerifyContext(
     params.circuit,
@@ -537,6 +548,7 @@ export function simulateExpectedIoRows(params: {
     ioRows: params.ioRows,
     vectors: params.vectors,
     scheduleContract: contract,
+    clockPolicy: params.clockPolicy,
   });
 }
 
@@ -546,7 +558,7 @@ export function simulateExpectedIoRowsFromModel(params: {
   ioRows: SimulationIoRow[];
   vectors: TestVector[];
   scheduleContract?: VerifyScheduleContract;
-  clockPolicy?: VerifyClockPolicy;
+  clockPolicy?: VerifyClockExecutionPolicy;
 }): SimulatedExpectedIoRow[] {
   if (!params.model.isRunnable || params.vectors.length === 0) {
     return [];
@@ -560,7 +572,8 @@ export function simulateExpectedIoRowsFromModel(params: {
     params.model,
     params.ioRows,
     params.vectors,
-    contract
+    contract,
+    params.clockPolicy
   );
   const outputRows = params.ioRows.filter((row) => row.direction === 'out');
   const rows: SimulatedExpectedIoRow[] = [];
@@ -586,7 +599,8 @@ function simulateVectorCasesFromModel(
   model: SimulationModel,
   ioRows: SimulationIoRow[],
   vectors: TestVector[],
-  scheduleContract: VerifyScheduleContract
+  scheduleContract: VerifyScheduleContract,
+  clockPolicy?: VerifyClockExecutionPolicy
 ): Array<{
   vectorId: string;
   caseIndex: number;
@@ -603,25 +617,45 @@ function simulateVectorCasesFromModel(
     );
   }
 
-  const engine = new CircuitEngine(simCircuit);
-  const inputs = deriveSimulationInputsFromModel(model, simCircuit);
-  const resetNodeId = resolveResetNodeIdFromModel(model, ioRows, scheduleContract);
-  if (resetNodeId) {
-    inputs[resetNodeId] = 1;
-  }
-  applyInputsToEngine(engine, inputs);
-  engine.tick();
-  if (resetNodeId) {
-    inputs[resetNodeId] = 0;
-    applyInputsToEngine(engine, inputs);
-    engine.tick();
-  }
-
   const inputBindings = buildInputBindingsFromModel(ioRows, model);
   const clockNodeId =
     scheduleContract.schedule === 'clocked_macro'
-      ? resolveClockNodeIdFromModel(model, ioRows, scheduleContract)
+      ? resolveClockNodeIdFromModel(model, ioRows, scheduleContract, clockPolicy)
       : undefined;
+  const authoredClock = usesAuthoredClockPolicy(clockPolicy);
+  if (authoredClock) {
+    initializeAuthoredInputState(
+      simCircuit,
+      inputBindings,
+      vectors[0],
+      clockNodeId,
+      clockPolicy?.startLevel ?? 0,
+      scheduleContract.analysis.sequentialNodes.map((node) => node.id)
+    );
+  }
+
+  const engine = new CircuitEngine(simCircuit);
+  const inputs = deriveSimulationInputsFromModel(model, simCircuit);
+  const resetNodeId = resolveResetNodeIdFromModel(model, ioRows, scheduleContract);
+  // Authored timelines own the very first engine transition. Do not settle the
+  // persisted circuit input state before vector 0: a saved-high reset (or any
+  // other stale INPUT state) must not mutate sequential state ahead of authored
+  // stimulus. Auto rows also own cycle 0; there is no hidden reset prelude.
+  const autoClock = clockPolicy?.overrideMode === 'auto';
+  if (!authoredClock && !autoClock) {
+    const autoSequenceReset = !clockPolicy || clockPolicy.resetBehavior === 'auto-sequence';
+    if (resetNodeId && autoSequenceReset) {
+      inputs[resetNodeId] = 1;
+    }
+    applyInputsToEngine(engine, inputs);
+    engine.tick();
+    if (resetNodeId && autoSequenceReset) {
+      inputs[resetNodeId] = 0;
+      applyInputsToEngine(engine, inputs);
+      engine.tick();
+    }
+  }
+
   let combinationalTick = 0;
   const sortedVectors = [...vectors]
     .map((vector, index) => ({
@@ -648,6 +682,7 @@ function simulateVectorCasesFromModel(
     for (const binding of inputBindings) {
       if (
         scheduleContract.schedule === 'clocked_macro' &&
+        !authoredClock &&
         clockNodeId &&
         binding.nodeId === clockNodeId
       ) {
@@ -662,6 +697,7 @@ function simulateVectorCasesFromModel(
       scheduleContract.schedule === 'clocked_macro'
         ? executeClockedMacroVectorCase(engine, model, inputs, entry.tick, {
             clockNodeId,
+            authoredClock,
           })
         : executeCombinationalVectorCase(engine, model, inputs, entry.tick, combinationalTick);
     if (scheduleContract.schedule !== 'clocked_macro') {
@@ -719,18 +755,21 @@ function executeClockedMacroVectorCase(
   sampleTick: number,
   input: {
     clockNodeId: string | undefined;
+    authoredClock: boolean;
   }
 ): { engineTick: number; output: RuntimeSimTraceSample } {
-  if (input.clockNodeId) {
+  if (input.clockNodeId && !input.authoredClock) {
     let output: RuntimeSimTraceSample | null = null;
     for (const clockValue of CLOCKED_MACRO_SEQUENCE) {
       inputs[input.clockNodeId] = clockValue;
       applyInputsToEngine(engine, inputs);
       engine.tick();
-      output = {
-        tick: sampleTick,
-        signals: normalizeSignalMap(engine, model),
-      };
+      if (clockValue === 1) {
+        output = {
+          tick: sampleTick,
+          signals: normalizeSignalMap(engine, model),
+        };
+      }
     }
     return {
       engineTick: sampleTick,
@@ -751,6 +790,64 @@ function executeClockedMacroVectorCase(
       signals: normalizeSignalMap(engine, model),
     },
   };
+}
+
+function usesAuthoredClockPolicy(clockPolicy: VerifyClockExecutionPolicy | undefined): boolean {
+  return (
+    clockPolicy?.overrideMode === 'manual-pulses' ||
+    clockPolicy?.overrideMode === 'custom-pattern'
+  );
+}
+
+function initializeAuthoredInputState(
+  circuit: Circuit,
+  inputBindings: Array<{ nodeId: string; lookupKeys: string[] }>,
+  firstVector: TestVector | undefined,
+  clockNodeId: string | undefined,
+  startLevel: 0 | 1,
+  sequentialNodeIds: string[]
+): void {
+  const sequentialIds = new Set(sequentialNodeIds);
+  const firstInputs = normalizeVectorInputMap(firstVector?.inputs ?? {});
+  const initialInputByNodeId = new Map<string, 0 | 1>();
+  for (const binding of inputBindings) {
+    initialInputByNodeId.set(
+      binding.nodeId,
+      binding.nodeId === clockNodeId
+        ? startLevel
+        : resolveBoundInputValue(binding.lookupKeys, firstInputs) ?? 0
+    );
+  }
+  circuit.nodes = circuit.nodes.map((node) => {
+    const initialInput = initialInputByNodeId.get(node.id);
+    if (initialInput !== undefined) {
+      return {
+        ...node,
+        state: {
+          ...(node.state ?? {}),
+          isOn: initialInput,
+        },
+      };
+    }
+    if (sequentialIds.has(node.id)) {
+      const width = Math.max(1, Math.floor(Number(node.config?.width ?? 1)));
+      return {
+        ...node,
+        state: {
+          // Verification always starts from the same synthesizable power-up
+          // state. Canvas/runtime residue must not become hidden stimulus.
+          ...(node.state ?? {}),
+          q: 0,
+          qBar: 1,
+          bankValue: 0,
+          bankBits: Array.from({ length: width }, () => 0),
+          lastClk: startLevel,
+          prevClk: startLevel,
+        },
+      };
+    }
+    return node;
+  });
 }
 
 function buildInvalidIrResult(
@@ -1043,10 +1140,17 @@ function deriveSimulationInputsFromModel(
 function resolveClockNodeIdFromModel(
   model: SimulationModel,
   ioRows: SimulationIoRow[],
-  scheduleContract: VerifyScheduleContract
+  scheduleContract: VerifyScheduleContract,
+  clockPolicy?: VerifyClockExecutionPolicy
 ): string | undefined {
   if (scheduleContract.needsSimClockInjection) {
     return INTERNAL_SIM_CLOCK_NAME;
+  }
+  for (const signalHint of [clockPolicy?.signalId, clockPolicy?.signalLabel]) {
+    const policyMatch = resolveInputNodeIdBySignalNameFromModel(model, ioRows, signalHint);
+    if (policyMatch) {
+      return policyMatch;
+    }
   }
   const signalName = normalizeIoSignalKey(scheduleContract.clockSignalName ?? '');
   if (signalName) {

@@ -1,5 +1,6 @@
 import { decodeRBProject, encodeRBProject, type RBProject } from '../../export/projectFormat';
 import { compareCodepoint } from '../../export/codepointSort';
+import type { VerifyScenario } from './verifyScenario';
 
 const STORAGE_VERSION = 1 as const;
 const PROJECT_INDEX_KEY = `rb.ide.projects.v${STORAGE_VERSION}.index`;
@@ -12,6 +13,9 @@ export interface PersistedIdeProjectSnapshot {
   savedAtIso: string;
   projectHash: string;
   rbprojJson: string;
+  /** Local workspace-only testbench documents; RBProject remains portable. */
+  scenarios?: VerifyScenario[];
+  activeScenarioId?: string;
 }
 
 export interface PersistedIdeProjectIndexEntry {
@@ -30,6 +34,8 @@ export function saveIdeProjectSnapshot(input: {
   projectName: string;
   projectHash: string;
   project: RBProject;
+  scenarios?: VerifyScenario[];
+  activeScenarioId?: string;
   savedAtIso?: string;
 }): PersistedIdeProjectSnapshot | null {
   if (typeof localStorage === 'undefined') return null;
@@ -43,6 +49,8 @@ export function saveIdeProjectSnapshot(input: {
     savedAtIso: input.savedAtIso ?? new Date().toISOString(),
     projectHash: input.projectHash,
     rbprojJson: encodeRBProject(input.project),
+    scenarios: input.scenarios ? structuredClone(input.scenarios) : undefined,
+    activeScenarioId: input.activeScenarioId,
   };
 
   try {
@@ -74,6 +82,8 @@ export function loadIdeProjectSnapshot(projectId: string): PersistedIdeProjectSn
     if (typeof parsed.savedAtIso !== 'string' || parsed.savedAtIso.trim().length === 0) return null;
     if (typeof parsed.projectHash !== 'string' || parsed.projectHash.trim().length === 0) return null;
     if (typeof parsed.rbprojJson !== 'string' || parsed.rbprojJson.trim().length === 0) return null;
+    if (parsed.scenarios !== undefined && !Array.isArray(parsed.scenarios)) return null;
+    if (parsed.activeScenarioId !== undefined && typeof parsed.activeScenarioId !== 'string') return null;
     return parsed;
   } catch {
     return null;
