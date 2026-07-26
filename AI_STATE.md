@@ -7642,6 +7642,39 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-07-26 (Visual System v1 — Graphite Spectrum workbench)
+
+**Subsystem**
+
+- Shared IDE shell and stage navigation
+- Project, Design, Verify, Map Pins, Export, and Import student workspaces
+
+**What changed**
+
+- Established a neutral graphite foundation with stage-specific violet, cyan, fuchsia, amber, mint, and sky accents, shared focus treatment, and a connected icon-based workflow navigator.
+- Reworked Project into a visual command center with a read-only circuit graph, explicit goal, recommended next action, workflow progress, recent-project continuity, and secondary technical details.
+- Made Design canvas-first, removed the duplicate quick-input block, prioritized common logic before the full board inventory, reduced idle inspector weight, and surfaced logical A/B/CIN/CARRY/SUM names beside board aliases.
+- Rebuilt Verify as a rail-free simulation studio with a semantic signal shelf, stimulus/expected/observed authoring grid, compact not-run states, and concrete PASS/FAIL waveform and repair workspaces.
+- Connected Map Pins table selection to a large interactive Basys3 reference while preserving Map Pins as the only assignment authority.
+- Reframed Export as a grouped file browser and line-numbered handoff viewer, and aligned Import's upload/review/apply flow to the same visual system without changing replacement authority.
+- Stored browser evidence and side-by-side comparisons under ignored `.redbyte/product-immersion/visual-system-v1/`.
+
+**Validation**
+
+- Focused Vitest set covering Project, Verify, Map Pins, Export, Import, and Basys3 board behavior -> PASS (`48 passed`, `6` files).
+- `pnpm -s typecheck` -> PASS.
+- `pnpm -s css:audit:ide` -> PASS with no reported warnings or errors.
+- `pnpm -s build:unified` -> PASS with valid merged `dist/`.
+- Browser review exercised Project loaded/details, Design idle/selected, Verify pre-run/PASS/FAIL, Map Pins partial/selected/complete, Export draft/file preview, and Import upload/review at 1366x768, 1440x900, and 1920x1080. The induced Verify mismatch and cleared mapping were restored before closeout; Import replacement was not applied.
+
+**Remaining weakness**
+
+- This is a bounded local visual-system slice, not production or classroom-readiness proof.
+- The legacy `ide-root.css` and `ide-polish-pass.css` layers remain substantial; this slice adds a scoped final visual-system layer rather than pruning that historical CSS.
+- The screenshot matrix demonstrates the requested desktop breakpoints, but no full Playwright, classroom gate, complete Vitest suite, Vivado run, push, PR, deploy, or live-site verification was performed.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-04-23 (Hardware finalization / happy-path cleanup)
 
 **Subsystem**: IDE Hardware / Map Pins
