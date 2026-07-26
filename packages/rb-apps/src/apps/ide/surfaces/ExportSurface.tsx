@@ -1807,7 +1807,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                               onClick={() => setSelectedArtifactPath(artifact.path)}
                               data-testid={'ide-export-file-' + slug}
                             >
-                              <span>{artifact.path}</span>
+                              <span className="ide-export-v3__file-icon" aria-hidden="true">
+                                {formatArtifactGlyph(artifact.path)}
+                              </span>
+                              <span className="ide-export-v3__file-name">{artifact.path}</span>
                               <strong>{formatArtifactAvailability(artifact.status, downloadReady, exportTrusted)}</strong>
                             </button>
                           );
@@ -1853,7 +1856,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                     </header>
                     <div data-testid="ide-export-artifact-preview">
                       <pre data-testid="ide-export-preview-code">
-                        {selectedArtifact.content || 'File content will appear when its owning stage is ready.'}
+                        {(selectedArtifact.content || 'File content will appear when its owning stage is ready.')
+                          .split('\n')
+                          .map((line, index) => (
+                            <span className="ide-export-v3__code-line" key={`${selectedArtifact.path}-${index}`}>
+                              <span className="ide-export-v3__line-number" aria-hidden="true">{index + 1}</span>
+                              <span>{line.length > 0 ? line : ' '}</span>
+                            </span>
+                          ))}
                       </pre>
                     </div>
                   </>
@@ -2091,6 +2101,16 @@ function formatArtifactAvailability(
   if (status !== 'ready') return 'Pending';
   if (!downloadReady) return 'Generated';
   return hasTrustedCurrentReceipt ? 'Ready' : 'Downloadable';
+}
+
+function formatArtifactGlyph(path: string): string {
+  const extension = path.split('.').pop()?.toLowerCase();
+  if (extension === 'vhd') return 'VH';
+  if (extension === 'xdc') return 'XC';
+  if (extension === 'tcl') return 'TC';
+  if (extension === 'json') return '{}';
+  if (extension === 'md') return 'MD';
+  return 'TX';
 }
 
 function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGroup[] {

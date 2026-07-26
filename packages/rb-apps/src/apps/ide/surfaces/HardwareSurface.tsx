@@ -230,7 +230,16 @@ export function signalHumanLabel(signal: string): string {
 
 function formatProjectSignalName(row: HardwareMappingRow): string {
   const label = getStudentFacingIoLabel(row, row.id).trim() || row.id;
-  return label.replace(/\s+/g, ' ').toUpperCase();
+  return splitMappingSignalLabel(label).logical;
+}
+
+function splitMappingSignalLabel(label: string): { logical: string; physical: string | null } {
+  const normalized = label.replace(/\s+/g, ' ').trim().toUpperCase();
+  const parenthetical = normalized.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+  if (!parenthetical) return { logical: normalized, physical: null };
+  const physical = parenthetical[1]?.trim() || null;
+  const logical = parenthetical[2]?.trim() || normalized;
+  return { logical, physical: physical && physical !== logical ? physical : null };
 }
 
 function resolveBoardControlAlias(pin: string | undefined): string | null {
@@ -664,8 +673,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const selectedProjectionResource = selectedMappingProjection
     ? getBasys3BoardResource(selectedMappingProjection.packagePin ?? undefined)
     : null;
-  const selectedMappingLabel = selectedMappingProjection?.logicalLabel ??
-    (selectedMappingRow ? formatProjectSignalName(selectedMappingRow) : null);
+  const selectedMappingLabel = selectedMappingProjection?.logicalLabel
+    ? splitMappingSignalLabel(selectedMappingProjection.logicalLabel).logical
+    : selectedMappingRow
+      ? formatProjectSignalName(selectedMappingRow)
+      : null;
   const selectedMappingBoardControl = selectedProjectionResource?.alias ??
     (selectedMappingRow ? describeBoardControl(selectedMappingRow.pin) : null);
   const selectedMappingPackagePin = selectedMappingProjection?.packagePin ??
@@ -2843,7 +2855,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           </IdeCallout>
         )}
 
-        {/* Unified Workbench v3: mapping is the work; board imagery stays secondary. */}
+        {/* Visual System v1: the assignment table and physical board are one mapping workspace. */}
         {hwMode === 'map' ? (
           <section
             className="ide-hw-v3"
@@ -2986,9 +2998,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                               ? 'Needs review'
                               : isMissing
                                 ? 'Unassigned'
-                                : row.required
+                              : row.required
                                   ? 'Assigned'
                                   : 'Optional';
+                          const signalIdentity = splitMappingSignalLabel(
+                            projection?.logicalLabel ?? getStudentFacingIoLabel(row, row.id)
+                          );
                           return (
                             <tr
                               key={row.id}
@@ -3002,7 +3017,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                               }}
                             >
                               <th scope="row" data-testid={'ide-hw-map-row-signal-' + row.id}>
-                                {projection?.logicalLabel ?? formatProjectSignalName(row)}
+                                <strong>{signalIdentity.logical}</strong>
+                                {signalIdentity.physical ? <small>{signalIdentity.physical}</small> : null}
                               </th>
                               <td data-testid={'ide-hw-map-row-role-' + row.id}>
                                 {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}
@@ -3127,7 +3143,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       <p className="ide-surface-block-label">Board reference</p>
                       <h3>Basys3</h3>
                       <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
-                        Use the resource selector above to assign a control. This smaller board stays a physical reference.
+                      Select a compatible control on the board or use the resource selector. Save the assignment when the signal-resource path is correct.
                       </p>
                     </div>
                   </header>
@@ -3141,8 +3157,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       mappedAliases={mapModeAliases}
                       highlightedAlias={selectedMappingRowPin}
                       allowedAliases={selectedAllowedBoardAliases}
-                      assignmentMode={false}
-                      onSelectAlias={() => undefined}
+                      assignmentMode={Boolean(selectedMappingRow)}
+                      onSelectAlias={(alias) => setSelectedBoardResourceAlias(alias)}
                     />
                   </div>
                 </section>

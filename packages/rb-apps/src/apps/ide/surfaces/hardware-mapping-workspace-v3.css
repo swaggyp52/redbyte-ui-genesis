@@ -400,3 +400,148 @@
     flex-direction: column;
   }
 }
+
+/* Visual System v1: Map Pins is a physical planning workspace, not a spreadsheet. */
+.ide-root .ide-hw-v3 {
+  gap: 14px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 82% 16%, rgba(231, 176, 75, 0.07), transparent 28%),
+    var(--rb-canvas);
+}
+
+.ide-root .ide-hw-v3__progress,
+.ide-root .ide-hw-v3__assignments,
+.ide-root .ide-hw-v3__editor,
+.ide-root .ide-hw-v3__board,
+.ide-root .ide-hw-v3__lab,
+.ide-root .ide-hw-v3__after {
+  border-color: var(--rb-border);
+  background: var(--rb-surface-1);
+  box-shadow: var(--rb-shadow-panel);
+}
+
+.ide-root .ide-hw-v3__progress {
+  border-top: 3px solid var(--rb-map-pins);
+  background:
+    linear-gradient(110deg, rgba(231, 176, 75, 0.1), transparent 38%),
+    var(--rb-surface-1);
+}
+
+.ide-root .ide-hw-v3__progress-copy > strong {
+  color: var(--rb-map-pins);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.ide-root .ide-hw-v3__metrics {
+  border-color: rgba(231, 176, 75, 0.24);
+  background: rgba(10, 14, 20, 0.54);
+}
+
+.ide-root .ide-hw-v3__metrics.is-ready strong {
+  color: var(--rb-map-pins);
+}
+
+.ide-root .ide-hw-v3__workspace {
+  grid-template-columns: minmax(620px, 1.45fr) minmax(390px, 1fr);
+  gap: 14px;
+}
+
+.ide-root .ide-hw-v3__side {
+  gap: 14px;
+}
+
+.ide-root .ide-hw-v3__board {
+  order: 0;
+  overflow: visible;
+  opacity: 1;
+  border-color: rgba(231, 176, 75, 0.3);
+}
+
+.ide-root .ide-hw-v3__editor {
+  position: static;
+  order: 1;
+}
+
+.ide-root .ide-hw-v3__board-reference-graphic {
+  min-height: 300px;
+  padding: 16px;
+  pointer-events: auto;
+  background:
+    linear-gradient(rgba(231, 176, 75, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(231, 176, 75, 0.025) 1px, transparent 1px),
+    #090d14;
+  background-size: 20px 20px;
+}
+
+.ide-root .ide-hw-v3__board > :last-child {
+  max-height: none;
+}
+
+.ide-root .ide-hw-v3__board-reference-graphic svg {
+  width: 100%;
+  min-height: 270px;
+}
+
+.ide-root .ide-hw-v3__table .ide-hw-v3__mapping-row:hover {
+  background: rgba(231, 176, 75, 0.06);
+}
+
+.ide-root .ide-hw-v3__table .ide-hw-v3__mapping-row.is-selected {
+  background: rgba(231, 176, 75, 0.1);
+  box-shadow: inset 3px 0 0 var(--rb-map-pins);
+}
+
+.ide-root .ide-hw-v3__row-action:hover,
+.ide-root .ide-hw-v3__row-action:focus-visible {
+  border-color: var(--rb-map-pins);
+  background: rgba(231, 176, 75, 0.1);
+}
+
+.ide-root .ide-hw-v3__status {
+  color: var(--rb-text);
+}
+
+.ide-root .ide-hw-v3__mapping-row > th {
+  display: grid;
+  gap: 2px;
+}
+
+.ide-root .ide-hw-v3__mapping-row > th strong {
+  color: var(--rb-text);
+  font-size: 14px;
+}
+
+.ide-root .ide-hw-v3__mapping-row > th small {
+  color: var(--rb-text-muted);
+  font-family: var(--rb-font-mono);
+  font-size: 11px !important;
+  font-weight: 600;
+}
+
+.ide-root .ide-hw-v3__field select:focus {
+  border-color: var(--rb-map-pins);
+  box-shadow: 0 0 0 3px rgba(231, 176, 75, 0.14);
+  outline: none;
+}
+
+@media (max-width: 1180px) {
+  .ide-root .ide-hw-v3__workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .ide-root .ide-hw-v3__side {
+    grid-template-columns: minmax(360px, 1fr) minmax(360px, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .ide-root .ide-hw-v3 {
+    padding: 8px;
+  }
+
+  .ide-root .ide-hw-v3__side {
+    grid-template-columns: 1fr;
+  }
+}
