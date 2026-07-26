@@ -336,6 +336,54 @@ describe('IdeApp lab-day wiring', () => {
     expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a100tcsg324-1');
   });
 
+  it('resets inherited top authority when Build Fresh is renamed', async () => {
+    const view = render(<IdeApp />);
+
+    fireEvent.click(await view.findByTestId('ide-project-build-fresh-primary'));
+    await waitFor(() => {
+      expect(
+        view.queryByTestId('ide-project-build-fresh-confirm') ??
+          (view.getByTestId('ide-root').getAttribute('data-ide-stage') === 'design'
+            ? view.getByTestId('ide-root')
+            : null)
+      ).toBeTruthy();
+    });
+    const confirmBuildFresh = view.queryByTestId('ide-project-build-fresh-confirm');
+    if (confirmBuildFresh) {
+      fireEvent.click(confirmBuildFresh);
+    }
+    await waitFor(() => {
+      expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('design');
+    });
+
+    fireEvent.click(view.getByTestId('ide-topbar-project-rename'));
+    const nameInput = view.getByTestId('ide-topbar-project-name-input');
+    fireEvent.change(nameInput, { target: { value: 'Full Adder' } });
+    fireEvent.keyDown(nameInput, { key: 'Enter' });
+
+    await act(async () => {
+      useProjectRuntime.getState().applyCircuitMutation({
+        nodes: [
+          { id: 'input-a', type: 'INPUT', x: 0, y: 0, label: 'A' },
+          { id: 'output-sum', type: 'OUTPUT', x: 200, y: 0, label: 'SUM' },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'input-a', portName: 'out' },
+            to: { nodeId: 'output-sum', portName: 'in' },
+          },
+        ],
+      });
+    });
+
+    fireEvent.click(view.getByTestId('mode-button-project'));
+    await waitFor(() => {
+      expect((view.getByTestId('ide-project-fpga-top') as HTMLInputElement).value).toBe(
+        'full_adder'
+      );
+    });
+  }, 15000);
+
   it('keeps a structural Design blocker dominant over missing Compare evidence', async () => {
     const view = render(<IdeApp />);
 

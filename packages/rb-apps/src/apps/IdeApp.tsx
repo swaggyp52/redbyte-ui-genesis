@@ -1233,12 +1233,25 @@ export const IdeApp: React.FC = () => {
     (nextName: string) => {
       const trimmed = nextName.trim();
       if (trimmed.length === 0 || trimmed === projectName) return;
+      const followsProjectIdentity = projectKind === 'blank' || projectKind === 'custom';
+      const renamedTop = followsProjectIdentity
+        ? buildTopEntityName(trimmed)
+        : effectiveTopEntityName;
 
       const renamedProject: RBProject = {
         ...exportProject,
         name: trimmed,
+        hdl: exportProject.hdl
+          ? { ...exportProject.hdl, top: renamedTop }
+          : exportProject.hdl,
+        fpga: exportProject.fpga
+          ? { ...exportProject.fpga, top: renamedTop }
+          : exportProject.fpga,
       };
       const renamedHash = digestWorkspaceSnapshot(renamedProject, scenarios, activeScenarioId);
+      if (followsProjectIdentity) {
+        setFpgaConfig((current) => ({ ...current, top: renamedTop }));
+      }
       setProjectIdentity({ projectName: trimmed });
 
       const snapshot = saveIdeProjectSnapshot({
@@ -1282,6 +1295,7 @@ export const IdeApp: React.FC = () => {
       activeExampleId,
       activeMode,
       exportProject,
+      effectiveTopEntityName,
       projectId,
       projectKind,
       projectName,
@@ -2039,6 +2053,7 @@ export const IdeApp: React.FC = () => {
               onStartGuidedLab={handleStartGuidedLab}
               onStartBlankProject={() => {
                 replaceWithBlankProject();
+                setFpgaConfig(buildIdeFpgaConfig({ name: 'Untitled Project' }));
                 if (projectKind === 'import') {
                   clearImportRecoveryUrlState();
                 }
