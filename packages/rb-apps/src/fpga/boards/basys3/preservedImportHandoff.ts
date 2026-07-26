@@ -6,7 +6,7 @@ import { extractXdcPortNames } from './portLint';
 export type PreservedImportHandoff = {
   topVhd: string;
   topXdc: string;
-  companions: { exportPath: string; content: string }[];
+  companions: { sourcePath: string; exportPath: string; content: string }[];
 };
 
 /**
@@ -20,6 +20,7 @@ export function companionArtifactPathFromSourcePath(sourcePath: string): string 
     .split('/')
     .filter((segment) => segment.length > 0 && segment !== '.' && segment !== '..')
     .map((segment) => segment.replace(/[^a-zA-Z0-9._-]/g, '_'));
+  while (segments[0]?.toLowerCase() === 'imported') segments.shift();
   const rel = segments.join('/');
   return rel.length > 0 ? `imported/${rel}` : 'imported/unnamed.vhd';
 }
@@ -53,7 +54,10 @@ function alignmentIssuesVhdlPortsToXdc(vhdlText: string, xdcText: string): strin
  * RedByte can export the preserved RTL + constraints instead of emitting only a netlist stub top.
  * Returns null when handoff requirements are not met or when HDL/XDC port alignment fails.
  */
-export function tryBuildPreservedImportHandoff(project: RBProject): PreservedImportHandoff | null {
+export function tryBuildPreservedImportHandoff(
+  project: RBProject,
+  projectedXdcText?: string,
+): PreservedImportHandoff | null {
   const tags = project.meta?.tags ?? [];
   if (!tags.includes('multi-file-hdl')) return null;
   if (project.meta?.projectKind !== 'import') return null;
@@ -73,7 +77,8 @@ export function tryBuildPreservedImportHandoff(project: RBProject): PreservedImp
     project.fpga?.constraints?.type === 'xdc' ? (project.fpga.constraints.text ?? '').trim() : '';
   if (!xdcText) return null;
 
-  const alignment = alignmentIssuesVhdlPortsToXdc(topSource.text, xdcText);
+  const handoffXdc = projectedXdcText?.trim() || xdcText;
+  const alignment = alignmentIssuesVhdlPortsToXdc(topSource.text, handoffXdc);
   if (alignment.length > 0) return null;
 
   const companions = sources
@@ -81,13 +86,14 @@ export function tryBuildPreservedImportHandoff(project: RBProject): PreservedImp
     .slice()
     .sort((left, right) => compareCodepoint(left.path, right.path))
     .map((source) => ({
+      sourcePath: source.path,
       exportPath: companionArtifactPathFromSourcePath(source.path),
       content: source.text,
     }));
 
   return {
     topVhd: topSource.text,
-    topXdc: xdcText,
+    topXdc: handoffXdc,
     companions,
   };
 }

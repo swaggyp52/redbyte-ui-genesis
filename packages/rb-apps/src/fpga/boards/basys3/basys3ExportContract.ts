@@ -27,6 +27,7 @@ import {
   BASYS3_LED_PINS,
   BASYS3_SEGMENT_PINS,
   BASYS3_ANODE_PINS,
+  getBasys3BoardResource,
   resolveBasys3PackagePin,
 } from './basys3Pins';
 import type { IoMapping } from '@redbyte/rb-utils';
@@ -133,8 +134,12 @@ export interface Basys3PortContract {
 
   /** Back-reference to IoMappingEntry.id. */
   entryId: string;
+  /** Student-authored semantic label. Never substituted for the artifact port name. */
+  logicalLabel: string;
   nodeId: string;
   port: string;
+  /** Saved board alias/package-pin token before board-catalog resolution. */
+  pinAlias?: string;
 
   /**
    * All string aliases that should resolve to this port during verify
@@ -142,6 +147,40 @@ export interface Basys3PortContract {
    * user label, and pin alias.
    */
   verifyAliases: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Semantic mapping projection
+// ---------------------------------------------------------------------------
+
+export type Basys3MappingConflictState =
+  | 'none'
+  | 'missing-pin'
+  | 'invalid-resource'
+  | 'direction-mismatch'
+  | 'duplicate-package-pin'
+  | 'artifact-port-collision';
+
+/**
+ * One semantic I/O binding projected all the way to its generated artifact.
+ *
+ * This is the public mapping authority consumed by Map Pins, Export summaries,
+ * XDC, README, and bring-up artifacts. `logicalLabel` is the student's circuit
+ * meaning; `artifactPortName` is the exact HDL/XDC port reference. They are
+ * intentionally allowed to diverge (for example EN -> SW -> SW0/V17).
+ */
+export interface Basys3SemanticMappingProjection {
+  logicalSignalId: string;
+  logicalLabel: string;
+  direction: 'in' | 'out';
+  artifactPortName: string;
+  boardResourceId: string | null;
+  boardResourceLabel: string | null;
+  packagePin: string | null;
+  ioStandard: 'LVCMOS33';
+  exactXdcLine: string;
+  required: boolean;
+  conflictState: Basys3MappingConflictState;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +225,9 @@ export interface Basys3ExportContract {
   ports: Basys3PortContract[];
   inputPorts: Basys3PortContract[];
   outputPorts: Basys3PortContract[];
+
+  /** Semantic-to-artifact authority used by every mapping/package projection. */
+  mappingProjection: Basys3SemanticMappingProjection[];
 
   /**
    * Contract violations. If any entry has severity 'error', export MUST be
@@ -286,6 +328,7 @@ export function buildExportContract(
     const timingRole = detectTimingRole(role, clockPolicy);
 
     const topPort = exportModel.topPorts.find((p) => p.name === ref.portName);
+    const semanticPort = exportModel.ir.ports.find((port) => port.sourceNodeId === ref.nodeId);
 
     const verifyAliases = Array.from(
       new Set(
@@ -308,8 +351,10 @@ export function buildExportContract(
       suppressClockBuffer,
       timingRole,
       entryId: ref.entryId,
+      logicalLabel: semanticPort?.name?.trim() || ref.label?.trim() || ref.entryId,
       nodeId: ref.nodeId,
       port: ref.port,
+      pinAlias: ref.pin,
       verifyAliases,
     };
   });
@@ -327,11 +372,89 @@ export function buildExportContract(
     ports,
     inputPorts,
     outputPorts,
+    mappingProjection: [],
     errors: [],
   };
 
   contract.errors = validateExportContract(contract);
+  contract.mappingProjection = buildSemanticMappingProjection(contract);
   return contract;
+}
+
+/** Build the deterministic semantic mapping projection from the port contract. */
+export function buildSemanticMappingProjection(
+  contract: Basys3ExportContract,
+): Basys3SemanticMappingProjection[] {
+  const packagePinCounts = new Map<string, number>();
+  const artifactPortCollisions = collectArtifactPortCollisions(contract.ports);
+
+  for (const port of contract.ports) {
+    if (port.packagePin) {
+      packagePinCounts.set(port.packagePin, (packagePinCounts.get(port.packagePin) ?? 0) + 1);
+    }
+  }
+
+  return contract.ports.map((port) => {
+    const resource = getBasys3BoardResource(port.pinAlias ?? port.packagePin);
+    const directionMismatch =
+      (port.direction === 'in' && BOARD_OUTPUT_ONLY_ROLES.has(port.resourceRole)) ||
+      (port.direction === 'out' && BOARD_INPUT_ONLY_ROLES.has(port.resourceRole));
+
+    let conflictState: Basys3MappingConflictState = 'none';
+    if (artifactPortCollisions.has(port.portName.toLowerCase())) {
+      conflictState = 'artifact-port-collision';
+    } else if (port.packagePin && (packagePinCounts.get(port.packagePin) ?? 0) > 1) {
+      conflictState = 'duplicate-package-pin';
+    } else if (directionMismatch) {
+      conflictState = 'direction-mismatch';
+    } else if (!port.packagePin) {
+      conflictState = port.pinAlias?.trim() ? 'invalid-resource' : 'missing-pin';
+    }
+
+    return {
+      logicalSignalId: port.entryId,
+      logicalLabel: port.logicalLabel,
+      direction: port.direction,
+      artifactPortName: port.xdcRef,
+      boardResourceId: resource?.id ?? null,
+      boardResourceLabel: resource?.label ?? null,
+      packagePin: port.packagePin || null,
+      ioStandard: port.ioStandard,
+      exactXdcLine: port.packagePin
+        ? `set_property PACKAGE_PIN ${port.packagePin} [get_ports {${port.xdcRef}}]`
+        : '',
+      required: true,
+      conflictState,
+    };
+  });
+}
+
+/**
+ * Return HDL port names that would be declared more than once. Vector members
+ * may share one port name only when they have distinct bit indices and one
+ * direction; scalar/vector mixtures and cross-direction vectors are collisions.
+ */
+function collectArtifactPortCollisions(ports: Basys3PortContract[]): Set<string> {
+  const portsByName = new Map<string, Basys3PortContract[]>();
+  for (const port of ports) {
+    const key = port.portName.toLowerCase();
+    const entries = portsByName.get(key) ?? [];
+    entries.push(port);
+    portsByName.set(key, entries);
+  }
+
+  const collisions = new Set<string>();
+  for (const [portName, entries] of portsByName) {
+    if (entries.length < 2) continue;
+    const directions = new Set(entries.map((entry) => entry.direction));
+    const slots = entries.map((entry) => entry.bitIndex ?? '__scalar__');
+    const duplicateSlot = new Set(slots).size !== slots.length;
+    const mixesScalarAndVector = slots.includes('__scalar__');
+    if (directions.size > 1 || duplicateSlot || mixesScalarAndVector) {
+      collisions.add(portName);
+    }
+  }
+  return collisions;
 }
 
 // ---------------------------------------------------------------------------
@@ -385,24 +508,19 @@ export function validateExportContract(
   // A collision only occurs when two entries share the same portName AND the same
   // bitIndex (or when two scalar entries share the same portName). Either case
   // produces a duplicate identifier in the VHDL entity declaration.
-  const seenPortSlots = new Map<string, number>();
-  for (const port of contract.ports) {
-    const key = `${port.portName.toLowerCase()}::${port.bitIndex ?? '__scalar__'}`;
-    seenPortSlots.set(key, (seenPortSlots.get(key) ?? 0) + 1);
-  }
-  for (const [key, count] of seenPortSlots) {
-    if (count > 1) {
-      const [portName] = key.split('::');
-      errors.push({
-        code: 'RBEX-CT-001',
-        message:
-          `${count} ports resolve to the same VHDL identifier slot "${portName}" ` +
-          `after sanitization. Rename the conflicting signals so each produces a unique ` +
-          `VHDL entity port.`,
-        portName,
-        severity: 'error',
-      });
-    }
+  for (const portName of collectArtifactPortCollisions(contract.ports)) {
+    const collidingPorts = contract.ports.filter(
+      (port) => port.portName.toLowerCase() === portName,
+    );
+    errors.push({
+      code: 'RBEX-CT-001',
+      message:
+        `${collidingPorts.length} mappings resolve to repeated VHDL entity port "${portName}" ` +
+        `after scalar/vector grouping. Rename the conflicting signals so each produces a unique ` +
+        `VHDL entity port.`,
+      portName,
+      severity: 'error',
+    });
   }
 
   // RBEX-CT-002: Empty port name
@@ -511,6 +629,26 @@ export function validateExportContract(
         severity: 'error',
       });
     }
+  }
+
+  // RBEX-CT-008: Duplicate physical package pin. A single package ball cannot
+  // legally bind two independent top-level ports.
+  const packagePinPorts = new Map<string, Basys3PortContract[]>();
+  for (const port of contract.ports) {
+    if (!port.packagePin) continue;
+    const entries = packagePinPorts.get(port.packagePin) ?? [];
+    entries.push(port);
+    packagePinPorts.set(port.packagePin, entries);
+  }
+  for (const [packagePin, ports] of packagePinPorts) {
+    if (ports.length < 2) continue;
+    errors.push({
+      code: 'RBEX-CT-008',
+      message:
+        `Package pin "${packagePin}" is assigned to ${ports.length} artifact ports ` +
+        `(${ports.map((port) => port.xdcRef).join(', ')}). Choose a unique Basys3 resource for each signal.`,
+      severity: 'error',
+    });
   }
 
   return errors;

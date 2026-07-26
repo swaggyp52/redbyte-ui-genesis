@@ -17,7 +17,13 @@ import { PROOF_LANGUAGE, SIGNAL_LANGUAGE } from '../../productLanguage';
 
 export type ExportTrustCondition = 'trusted' | 'advisory' | 'blocked';
 export type ExportHandoffTone = 'ok' | 'warn' | 'error';
-export type ExportVerifyProvenance = 'not-run' | 'stale' | 'trace' | 'pass' | 'fail';
+export type ExportVerifyProvenance =
+  | 'not-run'
+  | 'design-blocked'
+  | 'stale'
+  | 'trace'
+  | 'pass'
+  | 'fail';
 export type ExportBuildProvenance = 'not-built' | 'previous' | 'current';
 export type ExportStepState = 'idle' | 'running' | 'done' | 'warn' | 'error' | 'skipped';
 
@@ -114,7 +120,7 @@ export interface ExportReadinessHeroProps {
   readonly mappedPinsLabel: string;
   readonly artifactsLabel: string;
 
-  // ── Package handoff (collapsed section) ───────────────────────────────────────
+  // ── Package handoff (visible readiness context) ───────────────────────────────
   readonly packageStatusTone: ExportHandoffTone;
   readonly packageStatusLabel: string;
   readonly packageHeadline: string;
@@ -391,6 +397,9 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
               {verifyProvenance === 'not-run' && (
                 <span className="ide-export-provenance-none">Not run</span>
               )}
+              {verifyProvenance === 'design-blocked' && (
+                <span className="ide-export-provenance-fail">Inconclusive - Design blocked</span>
+              )}
               {verifyProvenance === 'stale' && (
                 <span className="ide-export-provenance-stale" title="Circuit changed since the last checked run">
                   Previous build
@@ -494,7 +503,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
       {SIGNAL_LANGUAGE.exportPinSummary}. Mapping names the logical signal, the Basys3 resource, and the package pin written to constraints.
     </p>
 
-    {/* Package handoff (collapsed) */}
+    {/* Package handoff stays visible; deeper agreement evidence remains collapsed. */}
     <div className="ide-export-summary-support">
       <details className="ide-export-handoff-advanced" open>
         <summary className="ide-summary-toggle">Handoff details</summary>
@@ -876,7 +885,7 @@ export const ExportAdvancedDetails: React.FC<ExportAdvancedDetailsProps> = ({
         </div>
         <p
           className="ide-copy"
-          style={{ fontSize: 10, marginTop: 0 }}
+          style={{ fontSize: 12, marginTop: 0 }}
           data-testid="ide-export-copy-state"
         >
           {debugReportCopyState === 'copied'

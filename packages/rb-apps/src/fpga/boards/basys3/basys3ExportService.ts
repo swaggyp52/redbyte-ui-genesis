@@ -24,9 +24,17 @@ import {
   normalizeBasys3PinAlias,
   resolveBasys3PackagePin,
 } from './basys3Pins';
-import { buildBasys3ExportModel, buildTopLevelBindingRefs } from './basys3ExportModel';
-import { buildExportContract } from './basys3ExportContract';
+import {
+  buildBasys3ExportModel,
+  buildTopLevelBindingRefs,
+  toSignalName,
+} from './basys3ExportModel';
+import {
+  buildExportContract,
+  type Basys3SemanticMappingProjection,
+} from './basys3ExportContract';
 import { tryBuildPreservedImportHandoff } from './preservedImportHandoff';
+import { deriveVerifySchedule } from './verifySchedule';
 
 export interface Basys3ExportError {
   type: 'validation' | 'constraint' | 'logic' | 'unknown';
@@ -36,6 +44,10 @@ export interface Basys3ExportError {
 
 export interface Basys3ExportResult {
   success: boolean;
+  /** Canonical semantic-to-artifact mapping, available even when validation blocks packaging. */
+  mappingProjection: Basys3SemanticMappingProjection[];
+  /** Manifest-first project snapshot with generated HDL/XDC synchronized to the bundle. */
+  projectProjection?: RBProject;
   bundle?: {
     topVhd: string;
     topXdc: string;
@@ -43,8 +55,8 @@ export interface Basys3ExportResult {
     topVerilog?: string;
     testbench?: string;
     /** Preserved companion VHDL from import (design sources only). */
-    importedCompanionSources?: { exportPath: string; content: string }[];
-    /** `preserved-import-rtl` replaces netlist stub top with imported sources + XDC. */
+    importedCompanionSources?: { sourcePath: string; exportPath: string; content: string }[];
+    /** `preserved-import-rtl` replaces the netlist stub with imported RTL plus projection XDC. */
     exportMode?: 'synthesized-netlist' | 'preserved-import-rtl';
   };
   errors: Basys3ExportError[];
@@ -323,50 +335,58 @@ export function verifyDeterminism(hash1: string, hash2: string): boolean {
 export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
   const result: Basys3ExportResult = {
     success: false,
+    mappingProjection: [],
     errors: [],
     warnings: [],
   };
 
-  // Step 1: Validate project structure
-  const validationErrors = validateProjectForBasys3(project);
-  result.errors.push(...validationErrors);
-
-  if (validationErrors.some((e) => e.severity === 'error')) {
-    return result;
+  // Step 1: Build the semantic projection before validation returns. Map Pins
+  // needs exact conflict/missing state even when packaging is blocked.
+  const ioMapping = getExportIoMapping(project);
+  const entityName = project.hdl?.top ?? project.fpga?.top ?? 'top';
+  const exportModel = ioMapping
+    ? buildBasys3ExportModel(project.circuit, ioMapping)
+    : undefined;
+  if (exportModel) {
+    const configByNodeId = new Map(
+      project.circuit.nodes.map((node) => [node.id, { ...(node.config ?? {}) }])
+    );
+    for (const node of exportModel.netlist.nodes) {
+      const config = configByNodeId.get(node.id);
+      if (config) {
+        (node as typeof node & { config?: Record<string, unknown> }).config = config;
+      }
+    }
   }
+  const contract = ioMapping && exportModel
+    ? buildExportContract(exportModel, ioMapping, entityName)
+    : undefined;
+  result.mappingProjection = contract?.mappingProjection ?? [];
 
-  // Step 2: Validate canonical export contract BEFORE generating any files.
+  // Step 2: Validate project structure and the canonical export contract.
   // The contract checks naming invariants, direction mismatches, duplicate ports,
   // reserved words, and clock policy. Any 'error'-severity contract violation
   // blocks export so that no malformed HDL/XDC is ever emitted.
-  const ioMapping = getExportIoMapping(project);
-  if (!ioMapping) {
-    result.errors.push({
-      type: 'unknown',
-      severity: 'error',
-      message: 'IO mapping is required for Basys3 export',
-    });
-    return result;
-  }
+  result.errors.push(...validateProjectForBasys3(project));
 
-  const entityName = project.hdl?.top ?? 'top';
-  const exportModel = buildBasys3ExportModel(project.circuit, ioMapping);
-  const contract = buildExportContract(exportModel, ioMapping, entityName);
-
-  for (const contractError of contract.errors) {
+  for (const contractError of contract?.errors ?? []) {
     result.errors.push({
       type: 'constraint',
       severity: contractError.severity,
       message: `[${contractError.code}] ${contractError.message}`,
     });
   }
-  if (contract.errors.some((e) => e.severity === 'error')) {
+  if (result.errors.some((entry) => entry.severity === 'error')) {
+    return result;
+  }
+  if (!ioMapping || !exportModel || !contract) {
     return result;
   }
 
   // Step 3: Generate Basys3 bundle (contract is clean — safe to emit files)
   const bundleResult = exportBasys3Bundle(project.circuit, ioMapping, {
     entityName,
+    contract,
     exportModel,  // reuse the already-built model — no redundant elaboration
   });
   const hdlPortProjection = isTopLevelHdlPortProjection(project);
@@ -380,7 +400,7 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     hdlPortProjection &&
     bundleResult.warnings.length > 0 &&
     bundleResult.warnings.every((warning) => isHdlProjectionScaffoldWarning(warning));
-  const preservedHandoff = tryBuildPreservedImportHandoff(project);
+  const preservedHandoff = tryBuildPreservedImportHandoff(project, bundleResult.topXdc);
   const treatBundleValid = bundleResult.valid || allowProjectionWarnings || Boolean(preservedHandoff);
   if (!treatBundleValid) {
     result.errors.push({
@@ -399,9 +419,14 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
     importedCompanionSources: preservedHandoff?.companions,
     exportMode: preservedHandoff ? 'preserved-import-rtl' : 'synthesized-netlist',
   };
+  result.projectProjection = buildCanonicalBasys3ProjectProjection(
+    project,
+    result.bundle,
+    entityName,
+  );
   if (preservedHandoff) {
     result.warnings.push(
-      'Export uses preserved imported VHDL and XDC (multi-file handoff). The synthesized netlist top was not emitted.'
+      'Export uses preserved imported VHDL with projection-generated XDC (multi-file handoff). The synthesized netlist top was not emitted.'
     );
   }
 
@@ -410,12 +435,12 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
   //
   // Authority hierarchy for testbench.vhd:
   //   1. buildRuntimeBackedTestbench (in buildExportViewModel) — PRIMARY path.
-  //      Uses activeScenario.vectors + VerifyScheduleContract from the last Verify run.
-  //      This path respects the assertionMask and carries full provenance.
+  //      Uses the current scenario/project execution plan and derived clock policy.
+  //      This path uses the current scenario execution plan and carries provenance.
   //
   //   2. This path (basys3ExportService) — COMPAT FALLBACK only.
-  //      Used when buildExportViewModel has no activeScenario and no runtimeVerifyRun.
-  //      Reads project.vectors directly; no assertionMask; schedule derived from circuit.
+  //      Used by callers that invoke this low-level service directly.
+  //      Reads project.vectors directly; clock behavior derives from current project authority.
   //      This path exists to ensure bundle.testbench is populated for legacy callers that
   //      do not pass an activeScenario (e.g. raw export API calls, unit tests without run).
   //
@@ -441,13 +466,79 @@ export function exportProjectAsBasys3(project: RBProject): Basys3ExportResult {
 
   // Step 5: Compute determinism hash
   // Use the encoded project + bundle to detect any non-determinism
-  const projectJson = JSON.stringify(project, Object.keys(project).sort());
+  const projectForHash = result.projectProjection ?? project;
+  const projectJson = JSON.stringify(projectForHash, Object.keys(projectForHash).sort());
   const bundleJson = JSON.stringify(result.bundle, Object.keys(result.bundle).sort());
   result.determinismHash = computeDeterminismHash(projectJson, bundleJson);
 
   result.success = !result.errors.some((entry) => entry.severity === 'error');
 
   return result;
+}
+
+/**
+ * Synchronize the manifest-owned generated HDL/XDC with the files being packaged.
+ * Sibling files remain useful transport copies, but import restores this manifest
+ * first and therefore can never revive a stale pre-export projection.
+ */
+export function buildCanonicalBasys3ProjectProjection(
+  project: RBProject,
+  bundle: NonNullable<Basys3ExportResult['bundle']>,
+  entityName: string,
+): RBProject {
+  const companionSources = (bundle.importedCompanionSources ?? []).map((source) => ({
+    path: source.exportPath,
+    language: 'vhdl' as const,
+    text: source.content,
+  }));
+  const canonicalPaths = new Set(
+    [
+      'top.vhd',
+      ...(bundle.importedCompanionSources ?? []).flatMap((source) => [source.sourcePath, source.exportPath]),
+    ].map(normalizeSourcePath),
+  );
+  const preservedSources = (project.hdl?.sources ?? []).filter((source) => {
+    const normalizedPath = normalizeSourcePath(source.path);
+    if (canonicalPaths.has(normalizedPath)) return false;
+    return !isTopAuthoritySource(source.path, source.text, entityName);
+  });
+  const sources = [
+    ...preservedSources,
+    ...companionSources,
+    { path: 'top.vhd', language: 'vhdl' as const, text: bundle.topVhd },
+  ].sort((left, right) => compareCodepoint(left.path, right.path));
+
+  return {
+    ...project,
+    hdl: {
+      ...(project.hdl ?? { sources: [] }),
+      top: entityName,
+      sources,
+    },
+    fpga: {
+      ...(project.fpga ?? { board: 'basys3' as const }),
+      board: 'basys3',
+      top: entityName,
+      constraints: {
+        type: 'xdc',
+        text: bundle.topXdc,
+      },
+    },
+  };
+}
+
+function normalizeSourcePath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+}
+
+function isTopAuthoritySource(path: string, text: string, entityName: string): boolean {
+  const normalizedPath = normalizeSourcePath(path);
+  const fileName = normalizedPath.split('/').pop() ?? normalizedPath;
+  const stem = fileName.replace(/\.[^.]+$/, '');
+  const normalizedEntity = entityName.toLowerCase();
+  if (stem === 'top' || stem === normalizedEntity) return true;
+  const escapedEntity = entityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`\\b(?:entity|module)\\s+${escapedEntity}\\b`, 'i').test(text);
 }
 
 /**
@@ -690,6 +781,10 @@ function normalizeMappings(
         entry.nodeId ?? '',
         entry.port ?? '',
         `${entry.nodeId}_${entry.port}`,
+        // Required HDL ports use this exact sanitizer. Keep it as an explicit
+        // alias even when a board-resource-shaped pin (for example SW5) makes
+        // the semantic binding model choose a grouped artifact reference.
+        toSignalName(entry),
         bindingRef?.portName ?? '',
         bindingRef?.signalRef ?? '',
         bindingRef?.xdcRef ?? '',
@@ -823,34 +918,20 @@ function validateSynthSubset(
     pushDiagnostic(diagnostic);
   }
 
-  // Sequential boundary enforcement: block export on unsupported temporal patterns.
-  // These mirror the temporal issue checks in verifySchedule.ts so that Export and Verify
-  // agree on what is supported. Verify blocks via hasUnsupportedTemporal; Export blocks here.
-  if (project.hdl?.sources) {
-    for (const source of project.hdl.sources) {
-      if (/falling_edge\s*\(/i.test(source.text ?? '')) {
-        pushDiagnostic({
-          type: 'logic',
-          severity: 'error',
-          message:
-            'Unsupported temporal construct: falling_edge(). RedByte v1 only supports rising-edge-triggered sequential logic.',
-        });
-        break;
-      }
-    }
-  }
-
-  const activeLowResetPattern = /^(reset_n|rst_n|nreset|nrst)$/i;
-  for (const binding of simModel.resetBindings) {
-    const signalName = binding.canonicalName ?? binding.netName ?? '';
-    if (activeLowResetPattern.test(signalName)) {
-      pushDiagnostic({
-        type: 'logic',
-        severity: 'error',
-        message: `Unsupported reset convention: "${signalName}" suggests active-low reset. RedByte v1 only supports active-high reset signals.`,
-      });
-      break;
-    }
+  // Verify and Export consume the same temporal support boundary. This includes
+  // raw HDL timing constructs and circuit-owned register configuration that is
+  // intentionally absent from the structural IR.
+  const scheduleContract = deriveVerifySchedule(
+    project.circuit,
+    getExportIoMapping(project),
+    project.hdl
+  );
+  for (const issue of scheduleContract.temporalIssues) {
+    pushDiagnostic({
+      type: 'logic',
+      severity: 'error',
+      message: issue.message,
+    });
   }
 
   return diagnostics.sort((left, right) => compareCodepoint(left.message, right.message));

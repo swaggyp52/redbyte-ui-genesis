@@ -5,11 +5,33 @@ import {
   type Basys3ExportError,
   validateArtifactConsistency,
 } from '../../../fpga/boards/basys3/basys3ExportService';
-import { generateTestbenchVhdl } from '../../../fpga/boards/basys3/testbenchGenerator';
+import type {
+  Basys3MappingConflictState,
+  Basys3SemanticMappingProjection,
+} from '../../../fpga/boards/basys3/basys3ExportContract';
+import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import {
+  generateTestbenchVhdl,
+  type TestbenchClockDriveView,
+} from '../../../fpga/boards/basys3/testbenchGenerator';
 import { generateVivadoImportTcl } from '../../../fpga/boards/basys3/vivadoImportTcl';
-import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
-import { getRuntimeVerifyRunKind, type RuntimeVerifyRun } from '../projectRuntime';
-import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
+import {
+  deriveVerifySchedule,
+  type VerifyScheduleContract,
+} from '../../../fpga/boards/basys3/verifySchedule';
+import {
+  getRuntimeVerifyRunKind,
+  normalizeVectorsForLiveIo,
+  type ProjectIoRow,
+  type RuntimeVerifyRun,
+} from '../projectRuntime';
+import {
+  computeExecutionStimulusHash,
+  computeScenarioContentHash,
+  materializeScenarioVectors,
+  normalizeScenarioSequentialPolicy,
+  type VerifyScenario,
+} from '../verifyScenario';
 import { resolveIoMappingFromProjectFields, type IoMapping, type TestVector } from '@redbyte/rb-utils';
 import {
   createIdeDiagnostic,
@@ -19,9 +41,21 @@ import {
   type IdeDiagnosticOwner,
   type IdeDiagnosticSeverity,
 } from '../diagnostics';
-import { buildBringUpArtifacts } from '../bringupArtifacts';
+import { buildBringUpArtifacts, type BringUpIoRow } from '../bringupArtifacts';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { flattenProjectMacros } from '../macros/macroFlattener';
+import {
+  detectVerifyClockPolicy,
+  materializeVectorsForClockPolicy,
+  resolveEffectiveVerifyClockPolicy,
+  resolveVerifyTick0Meaning,
+  type VerifyClockPolicy,
+} from '../verifyClockPolicy';
+import {
+  buildVerifyCircuitEvidenceHash,
+  buildVerifyMappingEvidenceHash,
+} from '../verifyProjectHash';
+import { stableSerialize } from '../../../utils/stableSerialize';
 
 function getEffectiveIoMapping(project: RBProject): IoMapping | undefined {
   return resolveIoMappingFromProjectFields({
@@ -57,6 +91,15 @@ export interface ExportPinTableRow {
   status: ExportPinStatus;
   notes?: string;
   suggestedPin?: string;
+  logicalSignalId?: string;
+  logicalLabel?: string;
+  artifactPortName?: string;
+  boardResourceId?: string | null;
+  boardResourceLabel?: string | null;
+  packagePin?: string | null;
+  ioStandard?: 'LVCMOS33';
+  exactXdcLine?: string;
+  conflictState?: Basys3MappingConflictState;
 }
 
 /**
@@ -129,6 +172,7 @@ export interface ExportViewModel {
   errors: ExportDiagnosticView[];
   warnings: ExportDiagnosticView[];
   pinTable: ExportPinTableRow[];
+  mappingProjection: Basys3SemanticMappingProjection[];
   artifacts: ExportArtifactView[];
   exportHash?: string;
   /**
@@ -153,8 +197,14 @@ export function buildExportViewModel(
   runtimeVerifyRun?: RuntimeVerifyRun,
   activeScenario?: VerifyScenario
 ): ExportViewModel {
+  const verifyAuthority = buildExportVerifyAuthority(project, runtimeVerifyRun, activeScenario);
   const flattenedProject = flattenProjectMacros(project);
-  const runtimeBackedTestbench = buildRuntimeBackedTestbench(flattenedProject, runtimeVerifyRun, activeScenario);
+  const runtimeBackedTestbench = buildRuntimeBackedTestbench(
+    flattenedProject,
+    runtimeVerifyRun,
+    activeScenario,
+    verifyAuthority,
+  );
   const exportResult = exportProjectAsBasys3(flattenedProject);
   const runtimeBackedTestbenchErrors = buildRuntimeBackedTestbenchErrors(
     exportResult.bundle?.topVhd,
@@ -169,7 +219,12 @@ export function buildExportViewModel(
   const errors = diagnostics.filter((entry) => entry.severity === 'error');
   const warnings = diagnostics.filter((entry) => entry.severity === 'warning');
   const requiredPorts = collectRequiredPorts(diagnostics);
-  const pinTable = buildPinTable(flattenedProject, diagnostics, requiredPorts);
+  const pinTable = buildPinTable(
+    flattenedProject,
+    diagnostics,
+    requiredPorts,
+    exportResult.mappingProjection,
+  );
   const designTop = resolveTopEntity(flattenedProject);
   const simulationTop = `${designTop}_tb`;
   const topAuthority: ExportTopAuthority = { designTop, simulationTop };
@@ -181,8 +236,13 @@ export function buildExportViewModel(
     runtimeVerifyRun,
     activeScenario,
     topAuthority,
+    verifyAuthority,
   );
-  const exportedScenario = buildScenarioProvenance(activeScenario, runtimeVerifyRun);
+  const exportedScenario = buildScenarioProvenance(
+    activeScenario,
+    runtimeVerifyRun,
+    verifyAuthority.runtimeEvidenceCurrent,
+  );
 
   return {
     status: errors.length > 0 ? 'blocked' : 'ok',
@@ -190,6 +250,7 @@ export function buildExportViewModel(
     errors,
     warnings,
     pinTable,
+    mappingProjection: exportResult.mappingProjection,
     artifacts,
     exportHash: exportResult.determinismHash,
     topAuthority,
@@ -313,10 +374,14 @@ function collectRequiredPorts(
 function buildPinTable(
   project: RBProject,
   diagnostics: ExportDiagnosticView[],
-  requiredPorts: Map<string, RequiredPortDescriptor>
+  requiredPorts: Map<string, RequiredPortDescriptor>,
+  mappingProjection: Basys3SemanticMappingProjection[],
 ): ExportPinTableRow[] {
   const rows = new Map<string, ExportPinTableRow>();
   const liveIoNodeLabels = buildLiveIoNodeLabelIndex(project);
+  const projectionById = new Map(
+    mappingProjection.map((projection) => [projection.logicalSignalId, projection]),
+  );
 
   const appendMapping = (
     direction: ExportPinDirection,
@@ -329,8 +394,22 @@ function buildPinTable(
     const portKey = normalizePort(portName);
     const existing = rows.get(portKey);
     const pin = normalizePin(entry.pin);
-    const required = requiredPorts.has(portKey);
+    const projection = projectionById.get(entry.id);
+    const required = projection?.required ?? requiredPorts.has(portKey);
     const suggestedPin = suggestPin(portName, direction);
+    const projectionFields = projection
+      ? {
+          logicalSignalId: projection.logicalSignalId,
+          logicalLabel: projection.logicalLabel,
+          artifactPortName: projection.artifactPortName,
+          boardResourceId: projection.boardResourceId,
+          boardResourceLabel: projection.boardResourceLabel,
+          packagePin: projection.packagePin,
+          ioStandard: projection.ioStandard,
+          exactXdcLine: projection.exactXdcLine,
+          conflictState: projection.conflictState,
+        }
+      : {};
 
     if (!existing) {
       rows.set(portKey, {
@@ -340,16 +419,25 @@ function buildPinTable(
         pin,
         required,
         status: pin ? 'mapped' : 'missing',
-        notes: entry.label ? `Signal label: ${entry.label}` : undefined,
+        notes: projection
+          ? `${projection.logicalLabel} -> ${projection.artifactPortName} -> ${projection.boardResourceLabel ?? 'unassigned'}`
+          : entry.label
+            ? `Signal label: ${entry.label}`
+            : undefined,
         suggestedPin,
+        ...projectionFields,
       });
       return;
     }
 
+    const shouldAdoptProjection = Boolean(pin) || !existing.logicalSignalId;
     existing.required = existing.required || required;
     existing.pin = existing.pin || pin;
     existing.direction = mergeDirection(existing.direction, direction);
     existing.suggestedPin = existing.suggestedPin || suggestedPin;
+    if (shouldAdoptProjection) {
+      Object.assign(existing, projectionFields);
+    }
   };
 
   const ioMapping = getEffectiveIoMapping(project);
@@ -362,7 +450,13 @@ function buildPinTable(
 
   for (const requiredPort of requiredPorts.values()) {
     const portKey = normalizePort(requiredPort.name);
-    const existing = rows.get(portKey);
+    const existing =
+      rows.get(portKey) ??
+      [...rows.values()].find(
+        (row) =>
+          Boolean(row.artifactPortName) &&
+          normalizePort(row.artifactPortName ?? '') === portKey
+      );
     if (existing) {
       existing.required = true;
       existing.direction = mergeDirection(existing.direction, requiredPort.direction);
@@ -410,11 +504,13 @@ function buildArtifacts(
   runtimeBackedTestbench: { content: string; note: string } | undefined,
   runtimeVerifyRun?: RuntimeVerifyRun,
   activeScenario?: VerifyScenario,
-  topAuthority?: ExportTopAuthority
+  topAuthority?: ExportTopAuthority,
+  verifyAuthority?: ExportVerifyAuthority,
 ): ExportArtifactView[] {
   const artifacts: ExportArtifactView[] = [];
   const bundle = exportResult.bundle;
-  const rbprojJson = encodeRBProject(project);
+  const projectedProject = exportResult.projectProjection ?? project;
+  const rbprojJson = encodeRBProject(projectedProject);
   const topEntity = resolveTopEntity(project);
   const companionPaths =
     bundle?.importedCompanionSources?.map((row) => row.exportPath).sort(compareCodepoint) ?? [];
@@ -422,20 +518,29 @@ function buildArtifacts(
   const vivadoImportTcl = generateVivadoImportTcl({
     projectName: project.name,
     topEntity,
+    part: project.fpga?.part,
     sourcePaths: vhdlSourcePaths,
     constraintsPath: 'top.xdc',
     simulationPath: 'testbench.vhd',
   });
+  const bringUpProject = verifyAuthority
+    ? { ...projectedProject, vectors: verifyAuthority.executionVectors }
+    : activeScenario
+      ? { ...projectedProject, vectors: materializeScenarioVectors(activeScenario) }
+      : projectedProject;
+  const currentRuntimeVerifyRun = verifyAuthority?.currentRuntimeVerifyRun;
+  const exportClockPolicy = verifyAuthority?.clockPolicy;
   const bringUpArtifacts = buildBringUpArtifacts({
-    project,
-    ioRows: collectBringUpIoRows(project),
+    project: bringUpProject,
+    ioRows: collectBringUpIoRows(projectedProject, exportResult.mappingProjection),
     expectedBehavior:
       project.description?.trim() || 'Outputs should reflect deterministic bring-up vectors.',
     exportHash: exportResult.determinismHash,
-    verifyHash: runtimeVerifyRun?.deterministicHash,
-    verifyReportHash: runtimeVerifyRun?.reportHash,
-    verifyGeneratedAtIso: runtimeVerifyRun?.generatedAtIso,
-    verifyRows: runtimeVerifyRun?.report.rows,
+    verifyHash: currentRuntimeVerifyRun?.deterministicHash,
+    verifyReportHash: currentRuntimeVerifyRun?.reportHash,
+    verifyGeneratedAtIso: currentRuntimeVerifyRun?.generatedAtIso,
+    verifyRows: currentRuntimeVerifyRun?.report.rows,
+    clockPolicy: exportClockPolicy,
   });
 
   // Provenance header fields — injected into every generated text artifact.
@@ -639,27 +744,371 @@ function buildArtifacts(
   return artifacts;
 }
 
-/**
- * The only permitted export from RuntimeVerifyRun into HDL content generation.
- *
- * This is a frozen, read-only view of VerifyScheduleContract. It contains ONLY
- * timing and schedule policy — no compare results, no waveform, no status flags.
- *
- * Creation rule: extract via `extractExportScheduleView(runtimeVerifyRun)` — never
- * spread a full RuntimeVerifyRun into a content-generation function directly.
- */
-type ExportScheduleView = Readonly<VerifyScheduleContract>;
+/** The only clock behavior permitted across the export-to-HDL boundary. */
+type ExportClockDriveView = Readonly<TestbenchClockDriveView>;
+
+interface ExportVerifyAuthority {
+  vectors: TestVector[];
+  executionVectors: TestVector[];
+  clockPolicy?: VerifyClockPolicy;
+  runtimeEvidenceCurrent: boolean;
+  currentRuntimeVerifyRun?: RuntimeVerifyRun;
+}
 
 /**
- * Firewall function: extracts the ExportScheduleView from a RuntimeVerifyRun.
- * This is the ONLY place in the export pipeline where a RuntimeVerifyRun may
- * be read for HDL content purposes. The result is frozen to prevent mutation.
- *
- * All testbench VHDL content generation must receive this view — never the run.
+ * Scenario execution firewall for generated simulation-source content.
+ * Only clock drive mode and signal identity cross this boundary; scenario
+ * status, waveform, compare rows, and reports remain presentation-only.
  */
-function extractExportScheduleView(run: RuntimeVerifyRun | undefined): ExportScheduleView | undefined {
-  if (!run?.scheduleContract) return undefined;
-  return Object.freeze({ ...run.scheduleContract }) as ExportScheduleView;
+function extractExportClockDriveView(
+  policy: VerifyClockPolicy | undefined
+): ExportClockDriveView | undefined {
+  if (!policy) return undefined;
+  const signalId = policy.signalId?.trim() || undefined;
+  const signalLabel = policy.signalLabel?.trim() || undefined;
+  return Object.freeze({
+    mode: policy.overrideMode === 'auto' ? 'auto' : 'authored',
+    signalId,
+    signalLabel,
+    startLevel: policy.startLevel === 1 ? 1 : 0,
+  }) as ExportClockDriveView;
+}
+
+function getExportVectors(
+  project: RBProject,
+  activeScenario: VerifyScenario | undefined,
+): TestVector[] {
+  return activeScenario
+    ? materializeScenarioVectors(activeScenario)
+    : (project.vectors ?? []).map((vector) => ({
+        ...vector,
+        inputs: { ...(vector.inputs ?? {}) },
+        expected: { ...(vector.expected ?? {}) },
+      }));
+}
+
+function getProjectCircuitHash(project: RBProject): string {
+  // Runtime Verify hashes the live, unflattened circuit. Export must compare
+  // against that same authority before macro flattening changes its shape.
+  return buildVerifyCircuitEvidenceHash(project.circuit);
+}
+
+function canonicalizeScheduleEvidence(contract: VerifyScheduleContract) {
+  return {
+    schedule: contract.schedule,
+    timingMode: contract.timingMode ?? null,
+    reason: contract.reason,
+    analysis: {
+      hasClockedMacros: contract.analysis.hasClockedMacros,
+      hasClockNet: contract.analysis.hasClockNet,
+      sequentialNodes: [...contract.analysis.sequentialNodes]
+        .map((node) => ({
+          id: node.id,
+          type: node.type,
+          clockPort: node.clockPort ?? null,
+        }))
+        .sort((left, right) => {
+          const leftKey = [left.id, left.type, left.clockPort ?? ''].join('\u0000');
+          const rightKey = [right.id, right.type, right.clockPort ?? ''].join('\u0000');
+          if (leftKey < rightKey) return -1;
+          if (leftKey > rightKey) return 1;
+          return 0;
+        }),
+      clockSource: contract.analysis.clockSource ?? null,
+      clockNetName: contract.analysis.clockNetName?.trim() || null,
+    },
+    needsSimClockInjection: contract.needsSimClockInjection,
+    clockSignalName: contract.clockSignalName?.trim() || null,
+    samplePoint: contract.samplePoint,
+    tick0Meaning: contract.tick0Meaning,
+    resetHint: contract.resetHint
+      ? {
+          signalName: contract.resetHint.signalName.trim(),
+          activeLevel: contract.resetHint.activeLevel,
+        }
+      : null,
+    hasUnsupportedTemporal: contract.hasUnsupportedTemporal,
+    temporalIssues: [...contract.temporalIssues]
+      .map((issue) => ({ code: issue.code, message: issue.message }))
+      .sort((left, right) => {
+        const leftKey = `${left.code}\u0000${left.message}`;
+        const rightKey = `${right.code}\u0000${right.message}`;
+        if (leftKey < rightKey) return -1;
+        if (leftKey > rightKey) return 1;
+        return 0;
+      }),
+  };
+}
+
+function canonicalizeExecutionPlanVectors(
+  vectors: readonly Pick<TestVector, 'tick' | 'inputs' | 'expected'>[]
+) {
+  return vectors
+    .map((vector, index) => ({
+      tick: Number.isFinite(Number(vector.tick))
+        ? Math.max(0, Math.floor(Number(vector.tick)))
+        : index,
+      inputs: Object.fromEntries(
+        Object.keys(vector.inputs ?? {})
+          .sort(compareCodepoint)
+          .map((key) => [
+            key,
+            vector.inputs?.[key] === true ||
+            vector.inputs?.[key] === 1 ||
+            vector.inputs?.[key] === '1'
+              ? 1
+              : 0,
+          ])
+      ),
+      expected: Object.fromEntries(
+        Object.keys(vector.expected ?? {})
+          .sort(compareCodepoint)
+          .map((key) => [
+            key,
+            vector.expected?.[key] === true ||
+            vector.expected?.[key] === 1 ||
+            vector.expected?.[key] === '1'
+              ? 1
+              : 0,
+          ])
+      ),
+      caseIndex: index,
+    }))
+    .sort((left, right) =>
+      left.tick === right.tick ? left.caseIndex - right.caseIndex : left.tick - right.tick
+    )
+    .map(({ caseIndex: _caseIndex, ...vector }) => vector);
+}
+
+function isRuntimeScheduleCurrentForExport(
+  project: RBProject,
+  runtimeVerifyRun: RuntimeVerifyRun,
+  clockPolicy: VerifyClockPolicy | undefined,
+  vectors: readonly TestVector[]
+): boolean {
+  const currentSchedule = deriveVerifySchedule(
+    project.circuit,
+    getEffectiveIoMapping(project),
+    project.hdl
+  );
+  if (runtimeVerifyRun.schedule !== currentSchedule.schedule) return false;
+  if (!runtimeVerifyRun.scheduleContract) return false;
+  if (
+    stableSerialize(canonicalizeScheduleEvidence(runtimeVerifyRun.scheduleContract)) !==
+    stableSerialize(canonicalizeScheduleEvidence(currentSchedule))
+  ) {
+    return false;
+  }
+  const expectedMeta = {
+    circuitKind: currentSchedule.schedule === 'clocked_macro' ? 'sequential' : 'combinational',
+    clockingProtocol: currentSchedule.schedule === 'clocked_macro' ? 'clocked_macro' : null,
+    samplePoint: currentSchedule.samplePoint,
+    tick0Meaning: resolveVerifyTick0Meaning({
+      structuralTick0Meaning: currentSchedule.tick0Meaning,
+      vectors,
+      ioRows: getProjectClockIoRows(project),
+      policy: clockPolicy,
+    }),
+    clockSignalName: currentSchedule.clockSignalName ?? null,
+  };
+  return stableSerialize(runtimeVerifyRun.meta) === stableSerialize(expectedMeta);
+}
+
+function isRuntimeRunCurrentForExport(
+  project: RBProject,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  activeScenario: VerifyScenario | undefined,
+  vectors: readonly TestVector[],
+  executionVectors: readonly TestVector[],
+  clockPolicy: VerifyClockPolicy | undefined,
+): boolean {
+  if (!runtimeVerifyRun) return false;
+  // Observe/trace runs are useful diagnostic evidence, but they never prove
+  // expected-output agreement and therefore cannot authorize Export evidence.
+  if (getRuntimeVerifyRunKind(runtimeVerifyRun) !== 'verify') return false;
+  // The compatibility path has no scenario content/version authority. Its
+  // stimulus hash intentionally excludes expected outputs, so even an exact
+  // input hash cannot prove that report rows or assertion masks are current.
+  // Generate from project.vectors, but never inject runtime evidence there.
+  if (!activeScenario) return false;
+  const normalizedVectors = normalizeVectorsForLiveIo(
+    vectors.map((vector) => ({
+      ...vector,
+      inputs: { ...(vector.inputs ?? {}) },
+      expected: { ...(vector.expected ?? {}) },
+    })),
+    getProjectClockIoRows(project),
+    clockPolicy
+  );
+  if (!isRuntimeScheduleCurrentForExport(project, runtimeVerifyRun, clockPolicy, normalizedVectors)) {
+    return false;
+  }
+  if (activeScenario) {
+    if (runtimeVerifyRun.scenarioId !== activeScenario.id) return false;
+    if (
+      typeof runtimeVerifyRun.scenarioContentHash !== 'string' ||
+      runtimeVerifyRun.scenarioContentHash !== computeScenarioContentHash(activeScenario)
+    ) {
+      return false;
+    }
+  }
+  if (
+    typeof runtimeVerifyRun.scenarioStimulusHash !== 'string' ||
+    runtimeVerifyRun.scenarioStimulusHash !== computeExecutionStimulusHash(normalizedVectors, clockPolicy)
+  ) {
+    return false;
+  }
+  if (
+    stableSerialize(canonicalizeExecutionPlanVectors(runtimeVerifyRun.report.vectors)) !==
+    stableSerialize(canonicalizeExecutionPlanVectors(executionVectors))
+  ) {
+    return false;
+  }
+  if (
+    typeof runtimeVerifyRun.mappingEvidenceHash !== 'string' ||
+    runtimeVerifyRun.mappingEvidenceHash !== buildVerifyMappingEvidenceHash(getEffectiveIoMapping(project))
+  ) {
+    return false;
+  }
+  return (
+    typeof runtimeVerifyRun.evidence?.circuitHash === 'string' &&
+    runtimeVerifyRun.evidence.circuitHash === getProjectCircuitHash(project)
+  );
+}
+
+function getProjectClockIoRows(project: RBProject): ProjectIoRow[] {
+  const ioMapping = getEffectiveIoMapping(project);
+  return [
+    ...(ioMapping?.inputs ?? []).map((row) => ({
+      id: row.id,
+      label: row.label ?? row.id,
+      direction: 'in' as const,
+      pin: row.pin ?? '',
+      nodeId: row.nodeId ?? row.id,
+      port: 'out',
+      required: true,
+    })),
+    ...(ioMapping?.outputs ?? []).map((row) => ({
+      id: row.id,
+      label: row.label ?? row.id,
+      direction: 'out' as const,
+      pin: row.pin ?? '',
+      nodeId: row.nodeId ?? row.id,
+      port: 'in',
+      required: true,
+    })),
+  ];
+}
+
+function detectProjectClockPolicy(project: RBProject): VerifyClockPolicy | null {
+  const ioMapping = getEffectiveIoMapping(project);
+  return detectVerifyClockPolicy({
+    circuit: project.circuit,
+    ioRows: getProjectClockIoRows(project),
+    scheduleContract: deriveVerifySchedule(project.circuit, ioMapping, project.hdl),
+  });
+}
+
+function resolveExportClockPolicy(
+  project: RBProject,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  activeScenario: VerifyScenario | undefined,
+  vectors: readonly TestVector[],
+): VerifyClockPolicy | undefined {
+  const currentSchedule = deriveVerifySchedule(
+    project.circuit,
+    getEffectiveIoMapping(project),
+    project.hdl
+  );
+  if (currentSchedule.schedule !== 'clocked_macro') return undefined;
+  const savedPolicy = normalizeScenarioSequentialPolicy(activeScenario?.sequentialPolicy);
+  const detectedPolicy = detectProjectClockPolicy(project);
+  const selectedPolicy = resolveEffectiveVerifyClockPolicy({
+    savedPolicy,
+    detectedPolicy,
+    overrideMode: savedPolicy?.overrideMode ?? detectedPolicy?.overrideMode ?? 'manual-pulses',
+    requestedRunCycles: savedPolicy?.runCycles ?? detectedPolicy?.runCycles ?? 1,
+    totalVectorCount: vectors.length,
+  });
+  const normalizedSelectedPolicy = normalizeScenarioSequentialPolicy(selectedPolicy);
+  if (selectedPolicy && normalizedSelectedPolicy) return selectedPolicy;
+
+  // A legacy project may have no saved or detectable policy. In that narrow
+  // case, accept the run policy only when it proves its own exact stimulus and
+  // circuit authority; a stale run must never manufacture export behavior.
+  const runtimePolicy = runtimeVerifyRun?.clockPolicy;
+  const normalizedRuntimePolicy = normalizeScenarioSequentialPolicy(runtimePolicy);
+  const effectiveRuntimePolicy =
+    runtimePolicy && normalizedRuntimePolicy
+      ? {
+          ...runtimePolicy,
+          runCycles: Math.max(1, vectors.length, runtimePolicy.runCycles),
+        }
+      : undefined;
+  if (
+    effectiveRuntimePolicy &&
+    isRuntimeRunCurrentForExport(
+      project,
+      runtimeVerifyRun,
+      activeScenario,
+      vectors,
+      materializeVectorsForClockPolicy({
+        vectors: normalizeVectorsForLiveIo(
+          vectors.map((vector) => ({
+            ...vector,
+            inputs: { ...(vector.inputs ?? {}) },
+            expected: { ...(vector.expected ?? {}) },
+          })),
+          getProjectClockIoRows(project),
+          effectiveRuntimePolicy
+        ),
+        ioRows: getProjectClockIoRows(project),
+        policy: effectiveRuntimePolicy,
+      }),
+      effectiveRuntimePolicy,
+    )
+  ) {
+    return effectiveRuntimePolicy;
+  }
+  return undefined;
+}
+
+function buildExportVerifyAuthority(
+  project: RBProject,
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  activeScenario: VerifyScenario | undefined,
+): ExportVerifyAuthority {
+  const vectors = getExportVectors(project, activeScenario);
+  const clockPolicy = resolveExportClockPolicy(project, runtimeVerifyRun, activeScenario, vectors);
+  const normalizedVectors = normalizeVectorsForLiveIo(
+    vectors.map((vector) => ({
+      ...vector,
+      inputs: { ...(vector.inputs ?? {}) },
+      expected: { ...(vector.expected ?? {}) },
+    })),
+    getProjectClockIoRows(project),
+    clockPolicy
+  );
+  const executionVectors = materializeVectorsForClockPolicy({
+    vectors: normalizedVectors,
+    ioRows: getProjectClockIoRows(project),
+    policy: clockPolicy,
+  });
+  const runtimeEvidenceCurrent = isRuntimeRunCurrentForExport(
+    project,
+    runtimeVerifyRun,
+    activeScenario,
+    vectors,
+    executionVectors,
+    clockPolicy,
+  );
+  return {
+    vectors,
+    executionVectors,
+    clockPolicy,
+    runtimeEvidenceCurrent,
+    currentRuntimeVerifyRun: runtimeEvidenceCurrent ? runtimeVerifyRun : undefined,
+  };
 }
 
 /**
@@ -668,32 +1117,23 @@ function extractExportScheduleView(run: RuntimeVerifyRun | undefined): ExportSch
  * Inputs are structurally limited to:
  *   - project (RBProject) — top-entity name, port list
  *   - vectors (TestVector[]) — scenario vectors or compat project.vectors
- *   - scheduleView (ExportScheduleView | undefined) — frozen schedule policy from firewall
+ *   - clockDriveView (ExportClockDriveView | undefined) — current scenario clock policy
  *
  * This function must NEVER receive RuntimeVerifyRun, waveform snapshots, compare
  * results, report rows, or any derived verify state. Those exist only in buildTestbenchNote.
  *
  * AUDIT RULE: If the signature of this function gains a RuntimeVerifyRun parameter,
- * or any field from RuntimeVerifyRun beyond the ExportScheduleView — that is a bug.
- * The type system will catch direct RuntimeVerifyRun passing; the firewall comment
+ * or any field from RuntimeVerifyRun — that is a bug. The type system catches
+ * direct RuntimeVerifyRun passing; the firewall comment
  * catches structural cheats (e.g. manually spreading run fields here).
  */
 function generateTestbenchContent(
   project: RBProject,
   vectors: TestVector[],
-  scheduleView: ExportScheduleView | undefined,
-  legacyRunSchedule?: { schedule: RuntimeVerifyRun['schedule']; clockSignalName?: string }
+  clockDriveView: ExportClockDriveView | undefined,
 ): string {
   return generateTestbenchVhdl(project, vectors, {
-    scheduleOverride: scheduleView
-      ? { ...scheduleView, reason: 'verify-last-run' as const }
-      : legacyRunSchedule
-        ? {
-            schedule: legacyRunSchedule.schedule,
-            reason: 'verify-last-run' as const,
-            clockSignalName: legacyRunSchedule.clockSignalName,
-          }
-        : undefined,
+    clockDrive: clockDriveView,
   });
 }
 
@@ -707,21 +1147,18 @@ function generateTestbenchContent(
 function buildTestbenchNote(
   activeScenario: VerifyScenario | undefined,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
-  clockNote: string
+  clockNote: string,
+  runtimeEvidenceCurrent: boolean,
 ): string {
   const runKind = getRuntimeVerifyRunKind(runtimeVerifyRun);
   if (activeScenario) {
     const contentHash = computeScenarioContentHash(activeScenario);
     const runStatus = runtimeVerifyRun?.status ?? null;
-    const isStale =
-      runtimeVerifyRun && typeof runtimeVerifyRun.scenarioContentHash === 'string'
-        ? runtimeVerifyRun.scenarioContentHash !== contentHash
-        : false;
-
-    if (isStale) {
+    if (runtimeVerifyRun && !runtimeEvidenceCurrent) {
       return (
-        `STALE — scenario '${activeScenario.name}' v${activeScenario.version} changed since ` +
-        `last Verify run. Vectors reflect the current scenario; re-run Verify to confirm alignment.`
+        `STALE — scenario '${activeScenario.name}' v${activeScenario.version}, its execution policy, ` +
+        `vectors, or the circuit changed since the last Verify run. Export uses current project authority; ` +
+        `re-run Verify to confirm alignment.`
       );
     }
     if (runKind === 'trace') {
@@ -752,6 +1189,12 @@ function buildTestbenchNote(
   }
 
   // No active scenario — vectors from project.vectors (compat fallback).
+  if (runtimeVerifyRun && !runtimeEvidenceCurrent) {
+    return (
+      'STALE — project vectors, execution policy, or circuit changed since the last Verify run. ' +
+      'Export uses current project authority; re-run Verify to confirm alignment.'
+    );
+  }
   const runStatus = runtimeVerifyRun?.status ?? null;
   const scheduleLabel = runtimeVerifyRun?.schedule ?? 'derived';
   if (runKind === 'trace') {
@@ -769,30 +1212,29 @@ function buildTestbenchNote(
 function buildRuntimeBackedTestbench(
   project: RBProject,
   runtimeVerifyRun: RuntimeVerifyRun | undefined,
-  activeScenario: VerifyScenario | undefined
+  activeScenario: VerifyScenario | undefined,
+  verifyAuthority: ExportVerifyAuthority,
 ): { content: string; note: string } | undefined {
   // Vector source authority:
-  //   1. activeScenario.vectors — PRIMARY (scenario is the authoritative vector source)
+  //   1. materialized active scenario vectors — PRIMARY (steps expand before generation)
   //   2. project.vectors — COMPAT FALLBACK (when no scenario is present)
-  const vectors = activeScenario ? activeScenario.vectors : project.vectors;
+  const vectors = verifyAuthority.executionVectors;
   if (!vectors || vectors.length === 0) return undefined;
 
-  // Require at least a scenario or a runtime run to produce a runtime-backed testbench.
-  // Without either, fall through to the bundle.testbench compatibility path.
-  if (!runtimeVerifyRun && !activeScenario) return undefined;
+  // Scenario-less compatibility exports use this same current execution plan.
+  // Run presence can change the note, but never the generated VHDL bytes.
 
   // ── EXPORT AUTHORITY FIREWALL ────────────────────────────────────────────────
-  // Cross the authority boundary exactly once: extract a frozen ExportScheduleView
-  // from the runtime run. After this point, `runtimeVerifyRun` must NOT be passed
-  // to any content-generation function — only `scheduleView` is permitted.
-  // The assertionMask field on the view records which outputs were asserted and
-  // MUST be used by the testbench generator to restrict VHDL assertions.
-  const scheduleView = extractExportScheduleView(runtimeVerifyRun);
-  const legacyRunSchedule = runtimeVerifyRun && !scheduleView
-    ? { schedule: runtimeVerifyRun.schedule, clockSignalName: runtimeVerifyRun.meta.clockSignalName ?? undefined }
-    : undefined;
+  // Generated VHDL receives only the current project/scenario execution plan
+  // and a frozen clock-drive view. Runtime evidence can annotate the note only.
+  const currentRuntimeVerifyRun = verifyAuthority.currentRuntimeVerifyRun;
+  const clockDriveView = extractExportClockDriveView(verifyAuthority.clockPolicy);
 
-  const content = generateTestbenchContent(project, vectors, scheduleView, legacyRunSchedule);
+  const content = generateTestbenchContent(
+    project,
+    vectors,
+    clockDriveView,
+  );
   // ────────────────────────────────────────────────────────────────────────────
 
   // ── NOTE ZONE (UI metadata only — may read any RuntimeVerifyRun field) ───────
@@ -800,10 +1242,15 @@ function buildRuntimeBackedTestbench(
   // runtimeVerifyRun.status, .schedule, .scenarioContentHash, etc.
   // None of these reads affect VHDL artifact content.
   const clockNote =
-    scheduleView?.clockSignalName && scheduleView.clockSignalName.length > 0
-      ? `, clock=${scheduleView.clockSignalName}`
+    currentRuntimeVerifyRun?.meta.clockSignalName
+      ? `, clock=${currentRuntimeVerifyRun.meta.clockSignalName}`
       : '';
-  const note = buildTestbenchNote(activeScenario, runtimeVerifyRun, clockNote);
+  const note = buildTestbenchNote(
+    activeScenario,
+    runtimeVerifyRun,
+    clockNote,
+    verifyAuthority.runtimeEvidenceCurrent,
+  );
   // ────────────────────────────────────────────────────────────────────────────
 
   return { content, note };
@@ -846,7 +1293,8 @@ function buildProvenanceHeader(
  */
 function buildScenarioProvenance(
   activeScenario: VerifyScenario | undefined,
-  runtimeVerifyRun: RuntimeVerifyRun | undefined
+  runtimeVerifyRun: RuntimeVerifyRun | undefined,
+  runtimeEvidenceCurrent: boolean,
 ): ExportedScenarioProvenance | undefined {
   if (
     !activeScenario ||
@@ -857,16 +1305,12 @@ function buildScenarioProvenance(
     return undefined;
   }
   const contentHash = computeScenarioContentHash(activeScenario);
-  const isStaleComparedToLastPass =
-    typeof runtimeVerifyRun.scenarioContentHash === 'string'
-      ? runtimeVerifyRun.scenarioContentHash !== contentHash
-      : false;
   return {
     id: activeScenario.id,
     name: activeScenario.name,
     version: activeScenario.version,
     contentHash,
-    isStaleComparedToLastPass,
+    isStaleComparedToLastPass: !runtimeEvidenceCurrent,
   };
 }
 
@@ -878,26 +1322,38 @@ function resolveTopEntity(project: RBProject): string {
   return top.length > 0 ? top : 'top';
 }
 
-function collectBringUpIoRows(project: RBProject): Array<{
-  id: string;
-  nodeId?: string;
-  label: string;
-  port?: string;
-  direction: 'in' | 'out';
-  pin: string;
-  required: boolean;
-}> {
-  const rows: Array<{
-    id: string;
-    nodeId?: string;
-    label: string;
-    port?: string;
-    direction: 'in' | 'out';
-    pin: string;
-    required: boolean;
-  }> = [];
-
+function collectBringUpIoRows(
+  project: RBProject,
+  mappingProjection: Basys3SemanticMappingProjection[] = [],
+): BringUpIoRow[] {
+  const rows: BringUpIoRow[] = [];
   const ioMapping = getEffectiveIoMapping(project);
+
+  if (mappingProjection.length > 0) {
+    const mappingById = new Map(
+      [...(ioMapping?.inputs ?? []), ...(ioMapping?.outputs ?? [])]
+        .map((entry) => [entry.id, entry] as const),
+    );
+    return mappingProjection.map((projection) => {
+      const source = mappingById.get(projection.logicalSignalId);
+      const resource = getBasys3BoardResource(projection.packagePin ?? undefined);
+      return {
+        id: projection.logicalSignalId,
+        nodeId: source?.nodeId,
+        label: projection.logicalLabel,
+        port: source?.port,
+        direction: projection.direction,
+        pin: resource?.alias ?? source?.pin ?? projection.packagePin ?? '',
+        packagePin: projection.packagePin ?? '',
+        artifactPortName: projection.artifactPortName,
+        boardResourceId: projection.boardResourceId,
+        boardResourceLabel: projection.boardResourceLabel,
+        exactXdcLine: projection.exactXdcLine,
+        required: projection.required,
+      };
+    });
+  }
+
   for (const input of ioMapping?.inputs ?? []) {
     rows.push({
       id: input.id,
@@ -1215,7 +1671,7 @@ function extractNodeTypeFromMessage(message: string): string | undefined {
 }
 
 function extractNodeIdFromMessage(message: string): string | undefined {
-  const direct = message.match(/node "([^"]+)"/i);
+  const direct = message.match(/node\s+["']([^"']+)["']/i);
   if (direct?.[1]) return direct[1];
   const dotted = message.match(/for "([^"]+)\.[^"]+"/i);
   if (dotted?.[1]) return dotted[1];
@@ -1232,7 +1688,14 @@ function diagnosticCodeFor(
   if (lowered.includes('unsupported synth subset node type')) return 'RBEX4100';
   if (lowered.includes('multiple drivers detected')) return 'RBEX4101';
   if (lowered.includes('combinational loop detected')) return 'RBEX4102';
-  if (lowered.includes('floating output detected')) return 'RBEX4103';
+  if (
+    lowered.includes('floating output detected') ||
+    lowered.includes('undriven output') ||
+    (lowered.includes('output port') && lowered.includes('has no driver')) ||
+    (lowered.includes('output') && lowered.includes('is not driven'))
+  ) {
+    return 'RBEX4103';
+  }
   if (lowered.includes('missing a clock input') || lowered.includes('no clock signal bound')) return 'RBEX4200';
   if (lowered.includes('multiple clock domains detected')) return 'RBEX4201';
   if (lowered.includes('multiple clock drivers')) return 'RBEX4202';

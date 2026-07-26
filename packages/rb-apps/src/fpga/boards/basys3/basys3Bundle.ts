@@ -1,22 +1,18 @@
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { getVhdlStatefulNodeTypes, toCircuitV1 } from '@redbyte/rb-logic-core';
+import { toCircuitV1 } from '@redbyte/rb-logic-core';
 import { circuitToVerilog } from '@redbyte/rb-fpga-toolchain';
-import type { IoMapping, IoMappingEntry } from '@redbyte/rb-utils';
+import type { IoMapping } from '@redbyte/rb-utils';
 import { compareCodepoint } from '../../../export/codepointSort';
-import type { Netlist } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import {
   BASYS3_ALLOWED_PACKAGE_PINS,
-  BASYS3_ANODE_PINS,
-  BASYS3_BUTTON_PINS,
-  BASYS3_CLOCK_PIN,
-  BASYS3_DP_PIN,
-  BASYS3_LED_PINS,
-  BASYS3_SEGMENT_PINS,
-  BASYS3_SWITCH_PINS,
-  resolveBasys3PackagePin,
 } from './basys3Pins';
 import { buildBasys3ExportModel, type Basys3ExportModel } from './basys3ExportModel';
+import {
+  buildExportContract,
+  type Basys3ExportContract,
+  type Basys3PortContract,
+} from './basys3ExportContract';
 import { lintBasys3ProjectPorts } from './portLint';
 
 export { buildVhdlTopLevelBindings } from './basys3ExportModel';
@@ -30,37 +26,9 @@ export interface Basys3BundleResult {
   valid: boolean;
 }
 
-function sanitizeIdentifier(name: string): string {
-  const normalized = name
-    .trim()
-    .replace(/[^A-Za-z0-9_]+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_+|_+$/g, '');
-
-  if (normalized.length === 0) return '';
-  if (/^[A-Za-z]/.test(normalized)) return normalized;
-  return `sig_${normalized}`;
-}
-
-function mappingKey(entry: IoMappingEntry): string {
-  return `${entry.nodeId}.${entry.port}.${entry.id}`;
-}
-
-function stableSortMapping(entries: IoMappingEntry[]): IoMappingEntry[] {
-  return [...entries].sort((left, right) => compareCodepoint(mappingKey(left), mappingKey(right)));
-}
-
 function parsePackagePin(line: string): string | null {
   const match = line.match(/PACKAGE_PIN\s+([A-Za-z0-9]+)/);
   return match?.[1] ?? null;
-}
-
-function toSignalName(entry: IoMappingEntry): string {
-  if (entry.label?.trim()) {
-    const sanitizedLabel = sanitizeIdentifier(entry.label.trim());
-    if (sanitizedLabel.length > 0) return sanitizedLabel;
-  }
-  return sanitizeIdentifier(`${entry.nodeId}_${entry.port}`);
 }
 
 const XDC_GROUP_ORDER = [
@@ -73,58 +41,29 @@ const XDC_GROUP_ORDER = [
   'Other',
 ] as const;
 
-const BASYS3_SWITCH_PIN_SET = new Set<string>(BASYS3_SWITCH_PINS);
-const BASYS3_BUTTON_PIN_SET = new Set<string>(BASYS3_BUTTON_PINS);
-const BASYS3_LED_PIN_SET = new Set<string>(BASYS3_LED_PINS);
-const BASYS3_SEGMENT_PIN_SET = new Set<string>(BASYS3_SEGMENT_PINS);
-const BASYS3_ANODE_PIN_SET = new Set<string>(BASYS3_ANODE_PINS);
-
-function detectSignalGroup(entry: IoMappingEntry): string {
-  const packagePin = resolveBasys3PackagePin(entry.pin ?? '');
-  if (!packagePin) return 'Other';
-  if (packagePin === BASYS3_CLOCK_PIN) return 'Clock';
-  if (BASYS3_SWITCH_PIN_SET.has(packagePin)) return 'Switches';
-  if (BASYS3_BUTTON_PIN_SET.has(packagePin)) return 'Buttons';
-  if (BASYS3_LED_PIN_SET.has(packagePin)) return 'LEDs';
-  if (BASYS3_ANODE_PIN_SET.has(packagePin)) return '7-Segment Anodes';
-  if (packagePin === BASYS3_DP_PIN || BASYS3_SEGMENT_PIN_SET.has(packagePin)) return '7-Segment Cathodes';
-  return 'Other';
-}
-
-const STATEFUL_NODE_TYPES = new Set(getVhdlStatefulNodeTypes());
-
-function hasStatefulNodes(netlist: Netlist): boolean {
-  return netlist.nodes.some((node) => STATEFUL_NODE_TYPES.has(node.type));
-}
-
-function hasClockInput(ioMapping: IoMapping): boolean {
-  return ioMapping.inputs.some((entry) => {
-    const alias = (entry.pin ?? '').toUpperCase().trim();
-    return alias === 'CLK' || alias === 'CLK100MHZ' || alias === 'W5';
-  });
-}
-
-type DesignClassification = 'sequential-clocked' | 'sequential-latch' | 'combinational';
-
-function classifyDesign(ioMapping: IoMapping, netlist: Netlist): DesignClassification {
-  if (hasClockInput(ioMapping)) return 'sequential-clocked';
-  if (hasStatefulNodes(netlist)) return 'sequential-latch';
-  return 'combinational';
+function xdcGroupForPort(port: Basys3PortContract): typeof XDC_GROUP_ORDER[number] {
+  switch (port.resourceRole) {
+    case 'clock': return 'Clock';
+    case 'switch_input': return 'Switches';
+    case 'button_input': return 'Buttons';
+    case 'led_output': return 'LEDs';
+    case 'sevenseg_enable_output': return '7-Segment Anodes';
+    case 'sevenseg_segment_output':
+    case 'sevenseg_dp_output': return '7-Segment Cathodes';
+    default: return 'Other';
+  }
 }
 
 function buildTopXdc(
-  ioMapping: IoMapping,
+  contract: Basys3ExportContract,
   warnings: string[],
-  portRefMap: Map<string, string> | null,
-  classification: DesignClassification,
-  entityName: string = 'top',
 ): string {
   const lines: string[] = [];
   lines.push('# RedByte Basys3 Constraints (deterministic)');
-  lines.push(`# Generated for top module: ${entityName}`);
-  if (classification === 'sequential-clocked') {
+  lines.push(`# Generated for top module: ${contract.entityName}`);
+  if (contract.clockPolicy === 'clocked_primary') {
     lines.push('# Timing: Sequential design (clocked) — create_clock constraint generated below.');
-  } else if (classification === 'sequential-latch') {
+  } else if (contract.clockPolicy === 'latch_async') {
     lines.push('# Timing: Sequential design (latch-based) — create_clock intentionally omitted.');
     lines.push('# Vivado timing/power warnings for unconstrained paths are expected and non-blocking.');
   } else {
@@ -134,18 +73,14 @@ function buildTopXdc(
   lines.push('# CLOCK_BUFFER_TYPE NONE applied to all switch/button ports to prevent synthesis clock-buffer insertion.');
   lines.push('');
 
-  type TaggedEntry = { entry: IoMappingEntry; dir: 'in' | 'out' };
-
-  const allEntries: TaggedEntry[] = [
-    ...stableSortMapping(ioMapping.inputs).map((entry) => ({ entry, dir: 'in' as const })),
-    ...stableSortMapping(ioMapping.outputs).map((entry) => ({ entry, dir: 'out' as const })),
-  ];
-
-  const groups = new Map<string, TaggedEntry[]>();
-  for (const tagged of allEntries) {
-    const group = detectSignalGroup(tagged.entry);
+  const projectionById = new Map(
+    contract.mappingProjection.map((projection) => [projection.logicalSignalId, projection]),
+  );
+  const groups = new Map<string, Basys3PortContract[]>();
+  for (const port of contract.ports) {
+    const group = xdcGroupForPort(port);
     if (!groups.has(group)) groups.set(group, []);
-    groups.get(group)?.push(tagged);
+    groups.get(group)?.push(port);
   }
 
   for (const groupName of XDC_GROUP_ORDER) {
@@ -153,46 +88,36 @@ function buildTopXdc(
     if (!entries || entries.length === 0) continue;
 
     lines.push(`## ${groupName}`);
-    const isNonClockInputGroup = groupName === 'Switches' || groupName === 'Buttons';
-    for (const { entry, dir } of entries) {
-      if (!entry.pin) {
-        warnings.push(`Missing pin mapping for ${entry.nodeId}.${entry.port}`);
+    for (const port of entries) {
+      const projection = projectionById.get(port.entryId);
+      if (!projection?.packagePin || !projection.exactXdcLine) {
+        warnings.push(`Missing pin mapping for ${port.nodeId}.${port.port}`);
         continue;
       }
-      const packagePin = resolveBasys3PackagePin(entry.pin);
-      if (!packagePin) {
-        warnings.push(`Unsupported Basys3 pin alias for ${entry.nodeId}.${entry.port}: ${entry.pin}`);
-        continue;
-      }
-      const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
-      lines.push(`set_property PACKAGE_PIN ${packagePin} [get_ports {${portRef}}]`);
-      lines.push(`set_property IOSTANDARD LVCMOS33 [get_ports {${portRef}}]`);
+      lines.push(projection.exactXdcLine);
+      lines.push(`set_property IOSTANDARD ${projection.ioStandard} [get_ports {${projection.artifactPortName}}]`);
       // SW/BTN ports can be student-driven event sources, including manual clocks like
       // Lab 8 ENTER, but they are never real FPGA oscillators. Always suppress BUFG
       // inference so Vivado does not invent clock-buffered domains on board controls.
       // This is safe for combinational, latch, and true clocked designs alike.
-      if (isNonClockInputGroup && dir === 'in') {
-        lines.push(`set_property CLOCK_BUFFER_TYPE NONE [get_ports {${portRef}}]`);
+      if (port.suppressClockBuffer) {
+        lines.push(`set_property CLOCK_BUFFER_TYPE NONE [get_ports {${projection.artifactPortName}}]`);
       }
-      if (packagePin === 'W5') {
+      if (port.timingRole === 'primary_clock') {
         lines.push(
-          `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${portRef}}]`,
+          `create_clock -period 10.000 -name sys_clk -waveform {0.000 5.000} [get_ports {${projection.artifactPortName}}]`,
         );
       }
     }
     lines.push('');
   }
 
-  if (classification === 'sequential-latch') {
+  if (contract.clockPolicy === 'latch_async') {
     const asyncInputPortRefs = Array.from(
       new Set(
-        allEntries
-          .filter(({ entry, dir }) => {
-            if (dir !== 'in') return false;
-            const group = detectSignalGroup(entry);
-            return group === 'Switches' || group === 'Buttons';
-          })
-          .map(({ entry }) => portRefMap?.get(entry.id) ?? toSignalName(entry))
+        contract.ports
+          .filter((port) => port.timingRole === 'false_path_input')
+          .map((port) => projectionById.get(port.entryId)?.artifactPortName ?? port.xdcRef)
       )
     );
 
@@ -211,13 +136,9 @@ function buildTopXdc(
 }
 
 function buildReadme(
-  ioMapping: IoMapping,
+  contract: Basys3ExportContract,
   warnings: string[],
-  portRefMap: Map<string, string> | null,
 ): string {
-  const sortedInputs = stableSortMapping(ioMapping.inputs);
-  const sortedOutputs = stableSortMapping(ioMapping.outputs);
-
   const lines: string[] = [];
   lines.push('# RedByte Basys3 Export — Vivado Import Kit');
   lines.push('');
@@ -241,27 +162,19 @@ function buildReadme(
   lines.push('5. Open Hardware Manager and program the Basys3.');
   lines.push('');
   lines.push('## Pin map');
-  lines.push('| Signal | Alias | Package Pin | Direction |');
-  lines.push('| --- | --- | --- | --- |');
+  lines.push('| Logical signal | Artifact port | Board resource | Package Pin | Direction |');
+  lines.push('| --- | --- | --- | --- | --- |');
 
-  for (const entry of sortedInputs) {
-    const packagePin = entry.pin ? resolveBasys3PackagePin(entry.pin) : null;
-    if (!packagePin) {
-      warnings.push(`README pin map omitted invalid input pin alias: ${entry.nodeId}.${entry.port}`);
+  for (const projection of contract.mappingProjection) {
+    if (!projection.packagePin) {
+      warnings.push(`README pin map omitted invalid mapping: ${projection.logicalSignalId}`);
       continue;
     }
-    const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
-    lines.push(`| ${portRef} | ${entry.pin} | ${packagePin} | input |`);
-  }
-
-  for (const entry of sortedOutputs) {
-    const packagePin = entry.pin ? resolveBasys3PackagePin(entry.pin) : null;
-    if (!packagePin) {
-      warnings.push(`README pin map omitted invalid output pin alias: ${entry.nodeId}.${entry.port}`);
-      continue;
-    }
-    const portRef = portRefMap?.get(entry.id) ?? toSignalName(entry);
-    lines.push(`| ${portRef} | ${entry.pin} | ${packagePin} | output |`);
+    lines.push(
+      `| ${projection.logicalLabel} | ${projection.artifactPortName} | ` +
+      `${projection.boardResourceLabel ?? 'Unknown resource'} | ${projection.packagePin} | ` +
+      `${projection.direction === 'in' ? 'input' : 'output'} |`,
+    );
   }
 
   lines.push('');
@@ -284,11 +197,16 @@ function extractXdcPortNames(xdcText: string): string[] {
 export function exportBasys3Bundle(
   circuit: Circuit,
   ioMapping: IoMapping,
-  options?: { entityName?: string; exportModel?: Basys3ExportModel },
+  options?: {
+    entityName?: string;
+    exportModel?: Basys3ExportModel;
+    contract?: Basys3ExportContract;
+  },
 ): Basys3BundleResult {
   const warnings: string[] = [];
   const exportModel = options?.exportModel ?? buildBasys3ExportModel(circuit, ioMapping);
   const entityName = options?.entityName ?? 'top';
+  const contract = options?.contract ?? buildExportContract(exportModel, ioMapping, entityName);
 
   const vhdl = vhdlFromNetlist(exportModel.netlist, {
     entityName,
@@ -310,13 +228,7 @@ export function exportBasys3Bundle(
   }
   warnings.push(...verilog.warnings);
 
-  const xdcPortRefMap = new Map<string, string>();
-  for (const ref of [...exportModel.inputRefs, ...exportModel.outputRefs]) {
-    xdcPortRefMap.set(ref.entryId, ref.xdcRef);
-  }
-
-  const classification = classifyDesign(ioMapping, exportModel.netlist);
-  const topXdc = buildTopXdc(ioMapping, warnings, xdcPortRefMap, classification, entityName);
+  const topXdc = buildTopXdc(contract, warnings);
   const lint = lintBasys3ProjectPorts(
     {
       sources: [{ path: 'top.v', language: 'verilog', text: verilog.verilog }],
@@ -368,7 +280,7 @@ export function exportBasys3Bundle(
   }
   warnings.push(...vhdlXdcMismatches);
 
-  const readme = buildReadme(ioMapping, warnings, xdcPortRefMap);
+  const readme = buildReadme(contract, warnings);
   const uniqueWarnings = Array.from(new Set(warnings)).sort((left, right) =>
     compareCodepoint(left, right),
   );

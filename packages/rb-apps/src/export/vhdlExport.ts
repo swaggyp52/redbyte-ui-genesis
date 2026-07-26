@@ -76,6 +76,20 @@ const OUTPUT_NODE_TYPES = new Set(getBoundaryOutputNodeTypes());
  */
 const SUPPORTED_LOGIC_TYPES = new Set(getVhdlLogicNodeTypes());
 
+const INITIALIZED_SEQUENTIAL_TYPES = new Set([
+  'DFlipFlop',
+  'Register1',
+  'RegisterBus',
+  'StateBank',
+  'DLatch',
+  'TFlipFlop',
+  'JKFlipFlop',
+]);
+
+type ConfigBackedNetlistNode = NetlistNode & {
+  config?: Record<string, unknown>;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -498,9 +512,14 @@ export function vhdlFromNetlist(
       lines.push(`  signal ${sigName}_sum   : STD_LOGIC;`);
       lines.push(`  signal ${sigName}_carry : STD_LOGIC;`);
     } else {
-      lines.push(`  signal ${sigName} : STD_LOGIC;`);
-      if (['DFlipFlop', 'Register1', 'RegisterBus', 'StateBank', 'DLatch', 'TFlipFlop', 'JKFlipFlop'].includes(node.type)) {
-        lines.push(`  signal ${sigName}_inv : STD_LOGIC;`);
+      const isInitializedSequential = INITIALIZED_SEQUENTIAL_TYPES.has(node.type);
+      lines.push(
+        isInitializedSequential
+          ? `  signal ${sigName} : STD_LOGIC := '0';`
+          : `  signal ${sigName} : STD_LOGIC;`,
+      );
+      if (isInitializedSequential) {
+        lines.push(`  signal ${sigName}_inv : STD_LOGIC := '1';`);
       }
     }
   });
@@ -537,6 +556,10 @@ export function vhdlFromNetlist(
     }
 
     if (node.type === 'DFlipFlop' || node.type === 'Register1' || node.type === 'RegisterBus' || node.type === 'StateBank') {
+      const registerConfig = (node as ConfigBackedNetlistNode).config ?? {};
+      const isConfiguredRegister1 = node.type === 'Register1';
+      const registerResetKind = String(registerConfig.resetKind ?? 'none').toLowerCase();
+      const registerHasEnable = registerConfig.hasEnable === true;
       const d =
         resolveInputSignal(node.id, 'd', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'in', nets, nodeIdToSignal, topInputBindingByTarget) ??
@@ -545,13 +568,24 @@ export function vhdlFromNetlist(
         resolveInputSignal(node.id, 'clk', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'clock', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'c', nets, nodeIdToSignal, topInputBindingByTarget);
-      const rst =
+      const connectedRst =
         resolveInputSignal(node.id, 'rst', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'reset', nets, nodeIdToSignal, topInputBindingByTarget) ??
         resolveInputSignal(node.id, 'clr', nets, nodeIdToSignal, topInputBindingByTarget);
-      const en =
+      const connectedEn =
         resolveInputSignal(node.id, 'en', nets, nodeIdToSignal, topInputBindingByTarget) ??
-        resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget);
+        resolveInputSignal(node.id, 'enable', nets, nodeIdToSignal, topInputBindingByTarget) ??
+        resolveInputSignal(node.id, 'ce', nets, nodeIdToSignal, topInputBindingByTarget);
+      const rst = isConfiguredRegister1
+        ? registerResetKind === 'async_clear'
+          ? connectedRst
+          : null
+        : connectedRst;
+      const en = isConfiguredRegister1
+        ? registerHasEnable
+          ? connectedEn
+          : null
+        : connectedEn;
 
       nodeIdToSignal.set(`${node.id}:Q`, sigName);
       nodeIdToSignal.set(`${node.id}:q`, sigName);
@@ -564,6 +598,13 @@ export function vhdlFromNetlist(
         lines.push(`  ${sigName} <= '0'; -- missing ${node.type} clock`);
         lines.push(`  ${sigName}_inv <= '1';`);
         return;
+      }
+
+      if (isConfiguredRegister1 && registerResetKind === 'async_clear' && !rst) {
+        warnings.push(`Register1 "${node.id}" enables async clear but has no reset input; reset will remain inactive`);
+      }
+      if (isConfiguredRegister1 && registerHasEnable && !en) {
+        warnings.push(`Register1 "${node.id}" enables clock enable but has no EN/CE input; the register will hold its initial value`);
       }
 
       if (rst) {
@@ -582,6 +623,8 @@ export function vhdlFromNetlist(
         lines.push(`      if ${en} = '1' then`);
         lines.push(`        ${sigName} <= ${d};`);
         lines.push('      end if;');
+      } else if (isConfiguredRegister1 && registerHasEnable) {
+        lines.push('      null; -- enabled register with no EN/CE input holds state');
       } else {
         lines.push(`      ${sigName} <= ${d};`);
       }
