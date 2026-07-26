@@ -41,6 +41,7 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [deletePending, setDeletePending] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +65,10 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
       renameInputRef.current?.select();
     }
   }, [renaming]);
+
+  useEffect(() => {
+    setDeletePending(false);
+  }, [activeScenario?.id]);
 
   const handleStartRename = useCallback(() => {
     setRenameValue(activeScenario?.name ?? '');
@@ -95,15 +100,21 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
     [activeScenarioId, onSwitch]
   );
 
-  const handleDelete = useCallback(() => {
+  const handleConfirmDelete = useCallback(() => {
     if (!activeScenario || !canDelete) return;
     onDelete(activeScenario.id);
+    setDeletePending(false);
   }, [activeScenario, canDelete, onDelete]);
 
   if (!activeScenario) return null;
 
   return (
-    <div className="ide-scenario-library-header" data-testid="ide-scenario-library-header">
+    <div
+      className="ide-scenario-library-header ide-testbench-document-manager"
+      data-testid="ide-scenario-library-header"
+      aria-label="Testbench document manager"
+    >
+      <span className="ide-scenario-library-label">Testbench</span>
       {/* Scenario switcher — name button + dropdown */}
       <div className="ide-scenario-switcher" ref={dropdownRef}>
         {renaming ? (
@@ -159,47 +170,79 @@ export const ScenarioLibraryHeader: React.FC<ScenarioLibraryHeaderProps> = ({
         )}
       </div>
 
-      {/* CRUD actions */}
-      <div className="ide-scenario-library-actions">
-        <button
-          className="ide-scenario-action-btn"
-          onClick={onCreate}
-          title="New scenario (seeded from current)"
-          data-testid="ide-scenario-create-btn"
-          aria-label="Create new scenario"
+      {/* Lifecycle actions stay behind one disclosure so the document remains the focus. */}
+      <details className="ide-scenario-library-manage" data-testid="ide-scenario-library-manage">
+        <summary>Manage testbenches</summary>
+        <div className="ide-scenario-library-actions">
+          <button
+            className="ide-scenario-action-btn"
+            onClick={onCreate}
+            title="New scenario (seeded from current)"
+            data-testid="ide-scenario-create-btn"
+            aria-label="Create new scenario"
+          >
+            New scenario
+          </button>
+          <button
+            className="ide-scenario-action-btn"
+            onClick={onDuplicate}
+            title="Duplicate active scenario"
+            data-testid="ide-scenario-duplicate-btn"
+            aria-label="Duplicate scenario"
+          >
+            Duplicate
+          </button>
+          <button
+            className="ide-scenario-action-btn"
+            onClick={handleStartRename}
+            title="Rename active scenario"
+            data-testid="ide-scenario-rename-btn"
+            aria-label="Rename scenario"
+          >
+            Rename
+          </button>
+          <button
+            className={`ide-scenario-action-btn ide-scenario-action-btn--danger${!canDelete ? ' is-disabled' : ''}`}
+            onClick={() => setDeletePending(true)}
+            disabled={!canDelete}
+            title={canDelete ? 'Delete active scenario' : 'Cannot delete the last scenario'}
+            data-testid="ide-scenario-delete-btn"
+            aria-label="Delete scenario"
+            aria-disabled={!canDelete}
+          >
+            Delete
+          </button>
+        </div>
+      </details>
+      {deletePending && activeScenario ? (
+        <div
+          className="ide-scenario-delete-confirmation"
+          data-testid="ide-scenario-delete-confirmation"
+          role="alert"
         >
-          New scenario
-        </button>
-        <button
-          className="ide-scenario-action-btn"
-          onClick={onDuplicate}
-          title="Duplicate active scenario"
-          data-testid="ide-scenario-duplicate-btn"
-          aria-label="Duplicate scenario"
-        >
-          Duplicate
-        </button>
-        <button
-          className="ide-scenario-action-btn"
-          onClick={handleStartRename}
-          title="Rename active scenario"
-          data-testid="ide-scenario-rename-btn"
-          aria-label="Rename scenario"
-        >
-          Rename
-        </button>
-        <button
-          className={`ide-scenario-action-btn ide-scenario-action-btn--danger${!canDelete ? ' is-disabled' : ''}`}
-          onClick={handleDelete}
-          disabled={!canDelete}
-          title={canDelete ? 'Delete active scenario' : 'Cannot delete the last scenario'}
-          data-testid="ide-scenario-delete-btn"
-          aria-label="Delete scenario"
-          aria-disabled={!canDelete}
-        >
-          Delete
-        </button>
-      </div>
+          <span>
+            Delete <strong>{activeScenario.name}</strong>? Other testbenches are not affected.
+          </span>
+          <div className="ide-scenario-delete-confirmation-actions">
+            <button
+              type="button"
+              className="ide-scenario-action-btn ide-scenario-action-btn--danger"
+              onClick={handleConfirmDelete}
+              data-testid="ide-scenario-delete-confirm"
+            >
+              Delete testbench
+            </button>
+            <button
+              type="button"
+              className="ide-scenario-action-btn"
+              onClick={() => setDeletePending(false)}
+              data-testid="ide-scenario-delete-cancel"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

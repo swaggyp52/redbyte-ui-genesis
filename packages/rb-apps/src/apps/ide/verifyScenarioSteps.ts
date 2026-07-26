@@ -178,9 +178,20 @@ export function materializeVectorsFromScenarioSteps(
       }
       case 'pulse_step': {
         if (target) {
-          currentInputs[target] = 1;
+          const behavior = step.pulseBehavior ?? 'rising';
+          if (behavior === 'high' || behavior === 'low') {
+            currentInputs[target] = behavior === 'high' ? 1 : 0;
+            for (let d = 0; d < duration; d += 1) pushVector();
+            break;
+          }
+
+          // Materialize an explicit pre-edge level followed by the requested
+          // edge. Keeping the post-edge level for `duration` samples gives the
+          // deterministic engine a real rising/falling transition even when
+          // this is the scenario's first authored timing step.
+          currentInputs[target] = behavior === 'rising' ? 0 : 1;
           pushVector();
-          currentInputs[target] = 0;
+          currentInputs[target] = behavior === 'rising' ? 1 : 0;
           for (let d = 0; d < duration; d += 1) pushVector();
         } else {
           pushVector();

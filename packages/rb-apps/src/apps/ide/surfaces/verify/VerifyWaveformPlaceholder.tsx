@@ -60,10 +60,9 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
         /* ── Empty state: no vectors authored yet ── */
         <div className="ide-vwp-empty-hero" data-testid="ide-verify-waveform-placeholder-cta">
           <div className="ide-vwp-empty-hero-icon" aria-hidden="true">◈</div>
-          <h4 className="ide-vwp-empty-hero-title">Run Verify to see waveforms</h4>
+          <h4 className="ide-vwp-empty-hero-title">Build the first testbench case</h4>
           <p className="ide-vwp-empty-hero-desc">
-            Stimulus rows will drive the inputs. Observed outputs will appear here after Run.
-            Build your first stimulus in the pane on the left, or seed a starter set below.
+            This is the evidence workspace, not an error. Add a case in the testbench, then run it to record observed outputs here.
           </p>
           <ol className="ide-vwp-empty-hero-steps" data-testid="ide-verify-waveform-placeholder-steps">
             <li>Set input stimulus in the grid.</li>
@@ -86,17 +85,17 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
             {allSignals.length > 0 ? (
               <>
                 <span className="ide-vwp-empty-hero-signals-label">Signals in this circuit:</span>
-                <div className="ide-vwp-empty-hero-chips">
+                <ul className="ide-vwp-empty-signal-list" aria-label="Signals available to the testbench">
                   {allSignals.map((signal) => (
-                    <span
+                    <li
                       key={signal.name}
-                      className={`ide-vwp-empty-chip ide-vwp-empty-chip--${signal.kind}`}
+                      className={`ide-vwp-empty-signal ide-vwp-empty-signal--${signal.kind}`}
                     >
                       {signal.kind === 'clk' ? '⏱' : signal.kind === 'in' ? '→' : '←'}{' '}
                       <code>{signal.name}</code>
-                    </span>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </>
             ) : (
               <span className="ide-vwp-empty-hero-signals-label">
@@ -109,26 +108,22 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
         /* ── Vectors exist: show lane preview + a strong "ready to run" hero ── */
         <>
           <div className="ide-vwp-summary" data-testid="ide-vwp-header">
-            <span className="ide-vwp-observe-chip" data-testid="ide-vwp-observe-chip">
-              Observe
-            </span>
+            <strong className="ide-vwp-workspace-label" data-testid="ide-vwp-observe-chip">
+              Observed output workspace
+            </strong>
             <p className="ide-vwp-header-note" data-testid="ide-vwp-header-run-note">
               {runLabel} to populate waveform and observed outputs.
             </p>
-            <div className="ide-vwp-header-meta">
-              <span className="ide-vwp-header-chip">
-                {allSignals.length} lane{allSignals.length === 1 ? '' : 's'}
-              </span>
-              <span className="ide-vwp-header-chip">
-                {isSequential ? 'Sequential lab' : 'Combinational lab'}
-              </span>
-            </div>
+            <dl className="ide-vwp-header-facts">
+              <div><dt>Lanes</dt><dd>{allSignals.length}</dd></div>
+              <div><dt>Timing</dt><dd>{isSequential ? 'Sequential' : 'Combinational'}</dd></div>
+            </dl>
           </div>
 
           <div className="ide-vwp-ready-hero" data-testid="ide-verify-waveform-placeholder-ready">
-            <h4 className="ide-vwp-ready-hero-title">Run Verify to see waveforms</h4>
+            <h4 className="ide-vwp-ready-hero-title">Testbench ready for its first run</h4>
             <p className="ide-vwp-ready-hero-desc">
-              Stimulus rows will drive the inputs. Observed outputs will appear here after Run.
+              The case grid is editable now. After Run, this pane shows the values RedByte computed at each case.
             </p>
             {onRun ? (
               <button
@@ -149,8 +144,9 @@ export const VerifyWaveformPlaceholder: React.FC<VerifyWaveformPlaceholderProps>
                 <span className="ide-vwp-lane-label">
                   <code>{signal.name}</code>
                 </span>
-                <div className="ide-vwp-lane-trace">
-                  <div className="ide-vwp-lane-bar" />
+                <div className="ide-vwp-lane-trace" aria-label={`${signal.name} has no sample yet`}>
+                  <div className="ide-vwp-lane-bar" aria-hidden="true" />
+                  <span className="ide-vwp-lane-empty-label">No sample yet</span>
                 </div>
               </div>
             ))}

@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TestVector } from '@redbyte/rb-utils';
-import { getRuntimeVerifyRunKind, type RunVerificationInput, type RuntimeVerifyRun } from '../projectRuntime';
+import {
+  getRuntimeVerifyRunKind,
+  normalizeVectorsForLiveIo,
+  type ProjectIoRow,
+  type RunVerificationInput,
+  type RuntimeVerifyRun,
+} from '../projectRuntime';
 import { buildVerifyTickSignalIndex, normalizeSignalKey, type VerifyTickSignalIndexEntry } from '../verifyReport';
 import { adaptVerifyPreflightIssue } from '../diagnostics';
 import type { IdeExampleDefinition } from '../examplesCatalog';
@@ -44,13 +50,16 @@ import {
   type SweepPreset,
 } from './ScenarioBuilderPanel';
 import { AssertionCanvas, type AssertionCanvasProps } from '../components/AssertionCanvas';
-import type { StimulusClockPattern } from '../components/StimulusCanvas';
-import { ScenarioLibraryHeader } from './ScenarioLibraryHeader';
+import type {
+  StimulusCaseEvidenceState,
+  StimulusClockPattern,
+  StimulusPulseBehavior,
+} from '../components/StimulusCanvas';
 import {
+  computeExecutionStimulusHash,
   computeScenarioContentHash,
-  computeScenarioStimulusHash,
-  computeVectorStimulusHash,
   type VerifyScenario,
+  type VerifyScenarioSequentialPolicy,
 } from '../verifyScenario';
 import type { VerifyMode } from '../verifyMode';
 import type {
@@ -78,6 +87,9 @@ import {
 } from '../clockAuthority';
 import {
   detectVerifyClockPolicy,
+  isAutomaticClockPolicyAvailable,
+  materializeVectorsForClockPolicy,
+  resolveEffectiveVerifyClockPolicy,
   type VerifyClockOverrideMode,
   type VerifyClockPolicy,
 } from '../verifyClockPolicy';
@@ -124,11 +136,13 @@ import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
 import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
+import { TestbenchDocumentTabs } from './verify/TestbenchDocumentTabs';
+import './verify/simulation-studio-v3.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
   topStripSlots: ['command-bar', 'status-row'],
-  leftDockPolicy: 'collapsed-default',
+  leftDockPolicy: 'always',
   rightDockPolicy: 'hidden',
   exitPaths: [],
 } satisfies IdeChromeContract;
@@ -197,6 +211,12 @@ export interface VerifySurfaceProps {
   hasVectors: boolean;
   vectors?: TestVector[];
   lastRun?: RuntimeVerifyRun;
+  /** Structural Design authority. Checked runs are inconclusive while present. */
+  designBlockingIssue?: {
+    title: string;
+    message: string;
+    hint?: string;
+  };
   mappingComplete?: boolean;
   hasFloatingOutputWarning?: boolean;
   probeSignals?: Array<{ key: string; label?: string }>;
@@ -242,6 +262,7 @@ export interface VerifySurfaceProps {
   onRenameScenario?: (name: string) => void;
   onDeleteScenario?: (id: string) => void;
   onSwitchScenario?: (id: string) => void;
+  onUpdateScenarioSequentialPolicy?: (policy: VerifyScenarioSequentialPolicy) => void;
   onAppendScenarioStep?: (draft: ScenarioStepDraft) => void;
   onUpdateScenarioStep?: (
     stepId: string,
@@ -330,7 +351,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   board,
   hasVectors,
   vectors,
-  lastRun,
+  lastRun: persistedLastRun,
+  designBlockingIssue,
   mappingComplete = true,
   hasFloatingOutputWarning = false,
   probeSignals = [],
@@ -370,6 +392,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onRenameScenario,
   onDeleteScenario,
   onSwitchScenario,
+  onUpdateScenarioSequentialPolicy,
   onAppendScenarioStep,
   onUpdateScenarioStep,
   onMoveScenarioStep,
@@ -383,6 +406,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
 }) => {
+  const gradingBlockedByDesign = Boolean(designBlockingIssue);
+  // Preserve observation traces, but revoke checked PASS/FAIL presentation
+  // while the circuit compiler says the output authority is structurally invalid.
+  const lastRun =
+    gradingBlockedByDesign && getRuntimeVerifyRunKind(persistedLastRun) === 'verify'
+      ? undefined
+      : persistedLastRun;
   const { setHoverBoardSignal } = useBoardSignal();
   const inputFieldSeed = useMemo(
     () =>
@@ -487,10 +517,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const customVectorCount = customVectors.length;
   const totalVectorCount = authoredVectors.length + customVectorCount;
+  /** Cases carrying at least one asserted output. This is not a check count. */
   const totalExpectedCaseCount = useMemo(
     () =>
-      authoredVectors.filter((vector) => Object.keys(vector.expected).length > 0).length +
-      customVectors.filter((vector) => Object.keys(vector.expected ?? {}).length > 0).length,
+      authoredVectors.filter((vector) => hasAssertedExpectedEntries(vector.expected)).length +
+      customVectors.filter((vector) => hasAssertedExpectedEntries(vector.expected ?? {})).length,
+    [authoredVectors, customVectors]
+  );
+  const totalAssertedCheckCount = useMemo(
+    () =>
+      [...authoredVectors, ...customVectors].reduce(
+        (count, vector) =>
+          count + Object.values(vector.expected ?? {}).filter(isAssertedExpectedValue).length,
+        0
+      ),
     [authoredVectors, customVectors]
   );
   const hasVerifyCircuitStructure = useMemo(() => {
@@ -538,7 +578,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [tickZoom, setTickZoom] = useState<'all' | 'fail' | 'window'>('all');
   const [tickWidth, setTickWidth] = useState(DEFAULT_VERIFY_TICK_WIDTH);
   const [tickWindowCenter, setTickWindowCenter] = useState<number | null>(null);
-  const [waveformToolsOpen, setWaveformToolsOpen] = useState(false);
   const [truthTableMode, setTruthTableMode] = useState<TruthTableMode>('ticks');
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Next-run compare intent. This is authoring state only; it does not describe
@@ -556,11 +595,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [pinnedSignalOrder, setPinnedSignalOrder] = useState<string[]>([]);
   const [manualLaneOrder, setManualLaneOrder] = useState<string[]>([]);
   const [hiddenSignals, setHiddenSignals] = useState<string[]>([]);
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<SignalLaneGroup, boolean>>({
-    Inputs: true,
-    Outputs: false,
-    Internal: true,
-  });
   const [cursorA, setCursorA] = useState<number | null>(null);
   const [cursorB, setCursorB] = useState<number | null>(null);
   const [previewingVectorId, setPreviewingVectorId] = useState<string | null>(null);
@@ -573,9 +607,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const [sweepSeed, setSweepSeed] = useState('0');
   const [sweepHoldTicks, setSweepHoldTicks] = useState(1);
   const [clockPatternCount, setClockPatternCount] = useState(4);
-  const [clockOverrideMode, setClockOverrideMode] =
-    useState<VerifyClockOverrideMode>('manual-pulses');
-  const [clockRunCycles, setClockRunCycles] = useState(8);
+  const [clockOverrideMode, setClockOverrideMode] = useState<VerifyClockOverrideMode>(
+    () => activeScenario?.sequentialPolicy?.overrideMode ?? 'manual-pulses'
+  );
+  const [clockRunCycles, setClockRunCycles] = useState(
+    () => activeScenario?.sequentialPolicy?.runCycles ?? 8
+  );
   // ─── Timeline authoring helpers ──────────────────────────────────────────
   const [holdN, setHoldN] = useState(3);
   const [pulseSignal, setPulseSignal] = useState<string>(() => editableInputFields[0]?.id ?? '');
@@ -588,9 +625,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   });
   const waveformScrollRef = useRef<HTMLDivElement | null>(null);
-  const lastAutoExpandedPassRunRef = useRef<string | null>(null);
   const scenarioBuilderDetailsRef = useRef<HTMLElement>(null);
-  const [scenarioWorkbenchExpanded, setScenarioWorkbenchExpanded] = useState(() => Boolean(lastRun));
+  const lastAnnouncedRunRef = useRef<RuntimeVerifyRun | null>(null);
+  const runAnnouncementOrdinalRef = useRef(0);
+  const [runAnnouncement, setRunAnnouncement] = useState('');
   const lastRunWorkbenchKey = useMemo(
     () =>
       lastRun
@@ -598,10 +636,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         : 'no-run',
     [lastRun?.generatedAtIso, lastRun?.reportHash]
   );
-
-  useEffect(() => {
-    setScenarioWorkbenchExpanded(Boolean(lastRun));
-  }, [lastRunWorkbenchKey, lastRun]);
 
   // N2 — restore oscilloscope UI state from sessionStorage on mount
   useEffect(() => {
@@ -622,14 +656,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       if (typeof s.tickZoom === 'string' && ['all', 'fail', 'window'].includes(s.tickZoom)) {
         setTickZoom(s.tickZoom as 'all' | 'fail' | 'window');
       }
-      if (s.collapsedGroups && typeof s.collapsedGroups === 'object') {
-        const nextGroups = s.collapsedGroups as Partial<Record<SignalLaneGroup, boolean>>;
-        setCollapsedGroups((previous) => ({
-          Inputs: typeof nextGroups.Inputs === 'boolean' ? nextGroups.Inputs : previous.Inputs,
-          Outputs: typeof nextGroups.Outputs === 'boolean' ? nextGroups.Outputs : previous.Outputs,
-          Internal: typeof nextGroups.Internal === 'boolean' ? nextGroups.Internal : previous.Internal,
-        }));
-      }
     } catch { /* silent — sessionStorage unavailable */ }
   }, []); // mount-only
 
@@ -648,11 +674,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           tickZoom,
           manualLaneOrder,
           hiddenSignals,
-          collapsedGroups,
         })
       );
     } catch { /* silent — storage quota or unavailable */ }
-  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals, collapsedGroups]);
+  }, [selectedTick, cursorA, cursorB, drawerOpen, tickWidth, waveformDensity, tickZoom, manualLaneOrder, hiddenSignals]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -715,11 +740,61 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [vectorCollectionSignature]);
 
   useEffect(() => {
+    if (gradingBlockedByDesign) {
+      setNextRunUsesAssertions(false);
+      return;
+    }
     if (lastRun || runModeTouchedByStudentRef.current) return;
     setNextRunUsesAssertions(totalExpectedCaseCount > 0);
-  }, [lastRun, totalExpectedCaseCount]);
+  }, [gradingBlockedByDesign, lastRun, totalExpectedCaseCount]);
 
-  const runRows = lastRun?.report.rows ?? [];
+  const canonicalWaveformSignalByRawKey = useMemo(
+    () =>
+      buildCanonicalWaveformSignalAliases({
+        lastRun,
+        inputFields,
+        outputFields,
+        mappedSignals,
+      }),
+    [inputFields, lastRun, mappedSignals, outputFields]
+  );
+  const runRows = useMemo(
+    () =>
+      (lastRun?.report.rows ?? []).map((row) => ({
+        ...row,
+        signal:
+          canonicalWaveformSignalByRawKey.get(normalizeFieldId(normalizeSignalKey(row.signal))) ??
+          row.signal,
+      })),
+    [canonicalWaveformSignalByRawKey, lastRun?.report.rows]
+  );
+  const canonicalEvidenceFailures = useMemo(
+    () =>
+      (lastRun?.evidence?.failures ?? []).map((failure) => ({
+        ...failure,
+        signal:
+          canonicalWaveformSignalByRawKey.get(
+            normalizeFieldId(normalizeSignalKey(failure.signal))
+          ) ?? failure.signal,
+      })),
+    [canonicalWaveformSignalByRawKey, lastRun?.evidence?.failures]
+  );
+  const surfaceLastRun = useMemo<RuntimeVerifyRun | undefined>(() => {
+    if (!lastRun) return undefined;
+    return {
+      ...lastRun,
+      report: {
+        ...lastRun.report,
+        rows: runRows,
+      },
+      evidence: lastRun.evidence
+        ? {
+            ...lastRun.evidence,
+            failures: canonicalEvidenceFailures,
+          }
+        : undefined,
+    };
+  }, [canonicalEvidenceFailures, lastRun, runRows]);
   useEffect(() => {
     if (!lastRun) return;
     if (getRuntimeVerifyRunKind(lastRun) === 'verify') {
@@ -731,8 +806,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
   }, [lastRun]);
   const tickIndex = useMemo(
-    () => (lastRun?.report ? buildVerifyTickSignalIndex(lastRun.report) : { ticks: [], rowsByTick: {} }),
-    [lastRun?.report]
+    () =>
+      surfaceLastRun?.report
+        ? buildVerifyTickSignalIndex(surfaceLastRun.report)
+        : { ticks: [], rowsByTick: {} },
+    [surfaceLastRun?.report]
   );
   const timelineTicks = tickIndex.ticks;
   const waveformTicks = useMemo(() => {
@@ -745,17 +823,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => (waveformTicks.length > 0 ? waveformTicks : timelineTicks),
     [waveformTicks, timelineTicks]
   );
-  const canonicalWaveformSignalByRawKey = useMemo(
-    () =>
-      buildCanonicalWaveformSignalAliases({
-        lastRun,
-        inputFields,
-        outputFields,
-        mappedSignals,
-      }),
-    [inputFields, lastRun, mappedSignals, outputFields]
-  );
-
   const signalTimeline = useMemo(() => {
     const signalValueMap = new Map<string, Map<number, string>>();
     const waveformSource = lastRun?.waveform ?? [];
@@ -764,9 +831,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         const signal =
           canonicalWaveformSignalByRawKey.get(normalizeFieldId(rawSignal)) ?? rawSignal;
         const values = signalValueMap.get(signal) ?? new Map<number, string>();
-        values.set(sample.tick, value);
+        if (
+          !values.has(sample.tick) ||
+          normalizeFieldId(rawSignal) === normalizeFieldId(signal)
+        ) {
+          values.set(sample.tick, value);
+        }
         signalValueMap.set(signal, values);
       }
+    }
+
+    const knownSignals = new Set(
+      Array.from(signalValueMap.keys(), (signal) => normalizeFieldId(signal))
+    );
+    for (const field of [...inputFields, ...outputFields]) {
+      const signal = field.id;
+      const normalized = normalizeFieldId(signal);
+      if (!normalized || knownSignals.has(normalized)) continue;
+      signalValueMap.set(signal, new Map<number, string>());
+      knownSignals.add(normalized);
     }
 
     const displayTicks = waveformTicks.length > 0 ? waveformTicks : timelineTicks;
@@ -779,12 +862,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           value: values.get(tick) ?? '-',
         })),
       }));
-  }, [canonicalWaveformSignalByRawKey, lastRun?.waveform, timelineTicks, waveformTicks]);
+  }, [canonicalWaveformSignalByRawKey, inputFields, lastRun?.waveform, outputFields, timelineTicks, waveformTicks]);
 
   const failingRows = useMemo(
     () => runRows.filter((row) => row.status === 'fail'),
     [runRows]
   );
+  const passingRows = useMemo(
+    () => runRows.filter((row) => row.status === 'pass'),
+    [runRows]
+  );
+  const runTickCount = useMemo(() => {
+    const ticks = new Set<number>();
+    for (const row of runRows) ticks.add(row.tick);
+    for (const sample of lastRun?.waveform ?? []) ticks.add(sample.tick);
+    return ticks.size;
+  }, [lastRun?.waveform, runRows]);
   const failuresByTick = useMemo(() => {
     const grouped = new Map<number, VerifyRow[]>();
     for (const row of failingRows) {
@@ -831,12 +924,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const studentVerifyModel = useMemo(
     () =>
       buildVerifyStudentViewModel({
-        lastRun,
+        lastRun: surfaceLastRun,
         mappedSignals,
         selectedFailureKey,
         preflightDiagnostics: verifyPreflightDiagnostics,
       }),
-    [lastRun, mappedSignals, selectedFailureKey, verifyPreflightDiagnostics]
+    [mappedSignals, selectedFailureKey, surfaceLastRun, verifyPreflightDiagnostics]
   );
   const studentFailureRows = studentVerifyModel.failureRows;
   const studentSelectedFailure = studentVerifyModel.selectedFailure;
@@ -859,7 +952,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const selectedFailureEvidence = useMemo(() => {
     if (!selectedFailureCase) return null;
-    const failures = lastRun?.evidence?.failures ?? [];
+    const failures = surfaceLastRun?.evidence?.failures ?? [];
     return (
       failures.find(
         (entry) =>
@@ -873,7 +966,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ) ??
       null
     );
-  }, [lastRun?.evidence?.failures, selectedFailureCase]);
+  }, [selectedFailureCase, surfaceLastRun?.evidence?.failures]);
   const firstFailTickFromRows = failingRows[0]?.tick ?? null;
   const failTicksBySignal = useMemo(() => {
     const grouped = new Map<string, number[]>();
@@ -938,6 +1031,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [probeSignals]);
   const mappedSignalDirectionKeys = useMemo(() => {
     const keys = new Map<string, 'in' | 'out'>();
+    for (const field of inputFields) {
+      for (const candidate of [field.id, field.label ?? '']) {
+        const normalized = normalizeFieldId(candidate);
+        if (normalized) keys.set(normalized, 'in');
+      }
+    }
+    for (const field of outputFields) {
+      for (const candidate of [field.id, field.label ?? '']) {
+        const normalized = normalizeFieldId(candidate);
+        if (normalized) keys.set(normalized, 'out');
+      }
+    }
     for (const signal of mappedSignals ?? []) {
       for (const candidate of [signal.id, signal.label ?? '']) {
         const normalized = normalizeFieldId(candidate);
@@ -947,7 +1052,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
     }
     return keys;
-  }, [mappedSignals]);
+  }, [inputFields, mappedSignals, outputFields]);
   const matchedProbeSignalKeys = useMemo(() => {
     const matched = new Set<string>();
     if (probeSignalKeys.size === 0) return matched;
@@ -989,7 +1094,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [failingSignalKeys, mappedSignalKeys, matchedProbeSignalKeys, selectedFailureCase, signalTimeline]);
   const [showAllSignals, setShowAllSignals] = useState(false);
   const [showMismatchOnlySignals, setShowMismatchOnlySignals] = useState(false);
-  const [signalsRailCollapsed, setSignalsRailCollapsed] = useState(true);
   const mismatchOnlyTimeline = useMemo(() => {
     const filtered = signalTimeline.filter((entry) =>
       failingSignalKeys.has(normalizeFieldId(entry.signal))
@@ -1075,41 +1179,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return grouped;
   }, [laneGroupBySignal, visibleSignalTimeline]);
-  const passRunWithNoMismatches = (lastRun?.status ?? 'idle') === 'pass' && failingRows.length === 0;
-  const effectiveCollapsedGroups = useMemo<Record<SignalLaneGroup, boolean>>(() => {
-    const onlyInternalLanes =
-      visibleSignalTimeline.length > 0 &&
-      visibleSignalTimeline.every(
-        (entry) => (laneGroupBySignal.get(entry.signal) ?? 'Internal') === 'Internal'
-      );
-    if (!onlyInternalLanes) return collapsedGroups;
-    return {
-      ...collapsedGroups,
-      Internal: false,
-    };
-  }, [collapsedGroups, laneGroupBySignal, visibleSignalTimeline]);
-
-  useEffect(() => {
-    if (!passRunWithNoMismatches) return;
-    if (groupedVisibleSignals.Inputs.length === 0) return;
-    const runKey = lastRunWorkbenchKey === 'no-run' ? null : lastRunWorkbenchKey;
-    if (!runKey || lastAutoExpandedPassRunRef.current === runKey) return;
-    setCollapsedGroups((previous) =>
-      previous.Inputs ? { ...previous, Inputs: false } : previous
-    );
-    lastAutoExpandedPassRunRef.current = runKey;
-  }, [
-    groupedVisibleSignals.Inputs.length,
-    lastRunWorkbenchKey,
-    passRunWithNoMismatches,
-  ]);
   const displaySignalTimeline = useMemo(() => {
-    return visibleSignalTimeline.filter((entry) => {
-      if (hiddenSignalSet.has(entry.signal)) return false;
-      const group = laneGroupBySignal.get(entry.signal) ?? 'Internal';
-      return !effectiveCollapsedGroups[group];
-    });
-  }, [effectiveCollapsedGroups, hiddenSignalSet, laneGroupBySignal, visibleSignalTimeline]);
+    return visibleSignalTimeline.filter((entry) => !hiddenSignalSet.has(entry.signal));
+  }, [hiddenSignalSet, visibleSignalTimeline]);
   const visibleSignalCount = displaySignalTimeline.length;
   const boardSignalByLane = useMemo(() => {
     const mapping = new Map<string, ReturnType<typeof resolveBoardSignal>>();
@@ -1182,13 +1254,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   // Reveal the optional output-check editor inside the Stimulus Workbench.
   // Used by compare/failure CTAs to route students into the secondary checks path.
   const handleEditExpectedOutputs = useCallback(() => {
-    setNextRunUsesAssertions(true);
-    setScenarioWorkbenchExpanded(true);
+    setNextRunUsesAssertions(!gradingBlockedByDesign);
     const details = scenarioBuilderDetailsRef.current;
     if (details) {
       details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const firstExpectedCell = details.querySelector<HTMLButtonElement>(
+        '[data-testid^="ide-stimulus-expected-"]'
+      );
+      firstExpectedCell?.focus({ preventScroll: true });
+      window.requestAnimationFrame(() => {
+        firstExpectedCell?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      });
     }
-  }, []);
+  }, [gradingBlockedByDesign]);
 
   const selectFailureAtTick = useCallback(
     (tick: number, preferredSignal?: string | null) => {
@@ -1436,29 +1514,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, onVectorsChange]
   );
 
-  // ─── Fix expectation from failure ────────────────────────────────────────
-  // Sets v.expected[signal] DIRECTLY to the failure's actual value.
-  // This is NOT a blind toggle — it is an explicit "accept this actual as correct" action.
-  // Constraint: only updates the specific (vectorId, signal) pair; leaves all other rows unchanged.
-  const handleFixExpectation = useCallback(
-    (vectorId: string, signal: string, actualValue: '0' | '1') => {
-      const result = updateExpectedCellInVectorSets({
-        projectVectors: authoredVectors,
-        customVectors,
-        tick: -1,
-        signal,
-        vectorId,
-        nextValue: actualValue === '1' ? 1 : 0,
-      });
-      if (!result.changed) return;
-      onVectorsChange?.(result.projectVectors);
-      onCustomVectorsChange?.(result.customVectors);
-      setNextRunUsesAssertions(true);
-      setOracleApplied(false);
-    },
-    [authoredVectors, customVectors, onCustomVectorsChange, onVectorsChange]
-  );
-
   // ─── Inline cell toggle ──────────────────────────────────────────────────
   // Toggles a scalar binary (0|1) input cell directly in the vector table.
   const handleToggleVectorCell = useCallback(
@@ -1702,6 +1757,12 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 direction: signal.direction,
                 pin: signal.pin,
                 nodeId: signal.nodeId,
+                timingRole:
+                  liveSignalRoles?.[signal.id] === 'clock'
+                    ? 'clock' as const
+                    : liveSignalRoles?.[signal.id] === 'reset'
+                      ? 'reset' as const
+                      : undefined,
               }))
             : [
                 ...inputFields.map((field) => ({
@@ -1727,15 +1788,36 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       inputFieldSeed,
       inputFields,
       mappedSignals,
+      liveSignalRoles,
       outputFieldSeed,
       outputFields,
     ]
   );
+  const savedAutoPolicyAvailable = Boolean(
+    activeScenario?.sequentialPolicy?.overrideMode === 'auto' &&
+      activeScenario.sequentialPolicy.executionModel === 'external-input-auto-toggle' &&
+      activeScenario.sequentialPolicy.sourceType !== 'manual' &&
+      activeScenario.sequentialPolicy.sourceType !== 'explicit-clock-component'
+  );
+  const autoClockAvailable = detectedClockPolicy
+    ? isAutomaticClockPolicyAvailable(detectedClockPolicy)
+    : savedAutoPolicyAvailable;
   useEffect(() => {
-    if (!detectedClockPolicy) return;
-    setClockOverrideMode(detectedClockPolicy.overrideMode);
-    setClockRunCycles(detectedClockPolicy.runCycles);
+    const savedPolicy = activeScenario?.sequentialPolicy;
+    if (!savedPolicy && !detectedClockPolicy) return;
+    const requestedMode =
+      savedPolicy?.overrideMode ?? detectedClockPolicy?.overrideMode ?? 'manual-pulses';
+    setClockOverrideMode(
+      requestedMode === 'auto' && !autoClockAvailable ? 'manual-pulses' : requestedMode
+    );
+    setClockRunCycles(
+      Math.max(1, savedPolicy?.runCycles ?? detectedClockPolicy?.runCycles ?? 1)
+    );
   }, [
+    activeScenario?.id,
+    activeScenario?.sequentialPolicy?.overrideMode,
+    activeScenario?.sequentialPolicy?.runCycles,
+    autoClockAvailable,
     detectedClockPolicy?.boardAlias,
     detectedClockPolicy?.overrideMode,
     detectedClockPolicy?.runCycles,
@@ -1743,41 +1825,117 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     detectedClockPolicy?.sourceType,
   ]);
   const effectiveClockPolicy = useMemo<VerifyClockPolicy | null>(() => {
-    if (!detectedClockPolicy) return null;
-    const autoRunEnabled =
-      clockOverrideMode === 'auto' ? detectedClockPolicy.autoRunEnabled : false;
-    return {
-      ...detectedClockPolicy,
+    if (activeScheduleContract?.schedule !== 'clocked_macro') return null;
+    const resolvedPolicy = resolveEffectiveVerifyClockPolicy({
+      savedPolicy: activeScenario?.sequentialPolicy,
+      detectedPolicy: detectedClockPolicy,
       overrideMode: clockOverrideMode,
-      autoRunEnabled,
-      executionModel:
-        clockOverrideMode === 'auto'
-          ? detectedClockPolicy.executionModel
-          : 'manual',
-      runCycles: Math.max(1, totalVectorCount, clockRunCycles, detectedClockPolicy.runCycles),
-      resetBehavior:
-        clockOverrideMode === 'auto'
-          ? detectedClockPolicy.resetBehavior
-          : detectedClockPolicy.resetSignalName
-            ? 'custom'
-            : 'none',
-      manualWarning:
-        clockOverrideMode === 'auto'
-          ? detectedClockPolicy.manualWarning
-          : detectedClockPolicy.manualWarning ??
+      requestedRunCycles: clockRunCycles,
+      totalVectorCount,
+    });
+    if (!resolvedPolicy) return null;
+    return clockOverrideMode === 'auto'
+      ? resolvedPolicy
+      : {
+          ...resolvedPolicy,
+          manualWarning:
+            resolvedPolicy.manualWarning ??
             'Manual clock source — use this only if your hardware design really clocks from a switch or button.',
-    };
-  }, [clockOverrideMode, clockRunCycles, detectedClockPolicy, totalVectorCount]);
+        };
+  }, [activeScenario?.sequentialPolicy, activeScheduleContract?.schedule, clockOverrideMode, clockRunCycles, detectedClockPolicy, totalVectorCount]);
+  const persistScenarioSequentialPolicy = useCallback(
+    (overrideMode: VerifyClockOverrideMode, runCycles: number) => {
+      const preserveSavedAuto =
+        overrideMode === 'auto' && activeScenario?.sequentialPolicy?.overrideMode === 'auto';
+      const sourcePolicy =
+        overrideMode === 'auto'
+          ? preserveSavedAuto
+            ? effectiveClockPolicy ?? detectedClockPolicy
+            : detectedClockPolicy ?? effectiveClockPolicy
+          : effectiveClockPolicy ?? detectedClockPolicy;
+      if (!sourcePolicy || !onUpdateScenarioSequentialPolicy) return;
+      const canonicalSignalId =
+        inputFieldAliases.get(
+          normalizeFieldId(sourcePolicy.signalId ?? sourcePolicy.signalLabel)
+        ) ?? sourcePolicy.signalId;
+      const canonicalResetSignal = sourcePolicy.resetSignalName
+        ? inputFieldAliases.get(normalizeFieldId(sourcePolicy.resetSignalName)) ??
+          sourcePolicy.resetSignalName
+        : undefined;
+      const authoredClock = overrideMode !== 'auto';
+      const autoPolicy = preserveSavedAuto
+        ? sourcePolicy
+        : detectedClockPolicy ?? sourcePolicy;
+      onUpdateScenarioSequentialPolicy({
+        overrideMode,
+        runCycles: Math.max(1, Math.min(4096, Math.floor(runCycles))),
+        activeEdge: 'rising',
+        resetBehavior: authoredClock
+          ? canonicalResetSignal
+            ? 'custom'
+            : 'none'
+          : autoPolicy.resetBehavior,
+        sourceType: sourcePolicy.sourceType,
+        executionModel: authoredClock ? 'manual' : autoPolicy.executionModel,
+        signalId: canonicalSignalId,
+        signalLabel: sourcePolicy.signalLabel,
+        resetSignalName: canonicalResetSignal,
+        startLevel: sourcePolicy.startLevel,
+      });
+    },
+    [
+      activeScenario?.sequentialPolicy?.overrideMode,
+      detectedClockPolicy,
+      effectiveClockPolicy,
+      inputFieldAliases,
+      onUpdateScenarioSequentialPolicy,
+    ]
+  );
+  const handleClockOverrideModeChange = useCallback(
+    (overrideMode: VerifyClockOverrideMode) => {
+      if (overrideMode === 'auto' && !autoClockAvailable) return;
+      setClockOverrideMode(overrideMode);
+      persistScenarioSequentialPolicy(overrideMode, clockRunCycles);
+    },
+    [autoClockAvailable, clockRunCycles, persistScenarioSequentialPolicy]
+  );
+  const handleClockRunCyclesChange = useCallback(
+    (runCycles: number) => {
+      const normalizedRunCycles = Math.max(1, Math.min(4096, Math.floor(runCycles)));
+      setClockRunCycles(normalizedRunCycles);
+      persistScenarioSequentialPolicy(clockOverrideMode, normalizedRunCycles);
+    },
+    [clockOverrideMode, persistScenarioSequentialPolicy]
+  );
   const autoClockModeActive = Boolean(
     effectiveClockPolicy?.overrideMode === 'auto' && effectiveClockPolicy.autoRunEnabled
   );
   const autoExternalClockMode = Boolean(
     autoClockModeActive && effectiveClockPolicy?.executionModel === 'external-input-auto-toggle'
   );
-  const stimulusPanelInputFields = useMemo(
-    () => (autoExternalClockMode ? editableInputFields : stimulusInputFields),
-    [autoExternalClockMode, editableInputFields, stimulusInputFields]
-  );
+  const stimulusPanelInputFields = useMemo(() => {
+    const fields = autoExternalClockMode ? editableInputFields : stimulusInputFields;
+    if (
+      !autoClockModeActive ||
+      effectiveClockPolicy?.resetBehavior !== 'auto-sequence' ||
+      !effectiveClockPolicy.resetSignalName
+    ) {
+      return fields;
+    }
+    const resetKey = normalizeFieldId(effectiveClockPolicy.resetSignalName);
+    return fields.filter(
+      (field) =>
+        normalizeFieldId(field.id) !== resetKey &&
+        normalizeFieldId(field.label) !== resetKey
+    );
+  }, [
+    autoClockModeActive,
+    autoExternalClockMode,
+    editableInputFields,
+    effectiveClockPolicy?.resetBehavior,
+    effectiveClockPolicy?.resetSignalName,
+    stimulusInputFields,
+  ]);
 
   // Manual-event / lab-style timing: after each verify run, default to stepping one case at a time
   // (Prev/Next + snapshot grid). Other timing modes default step UI off; users can opt in via toggle.
@@ -1825,11 +1983,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       lastRun?.schedule === 'clocked_macro'
   );
   const signalRoleLookup = useMemo(
-    () => normalizeSignalRoles({
-      ...(liveSignalRoles ?? {}),
-      ...(lastRun?.report.signalRoles ?? {}),
-    }),
-    [liveSignalRoles, lastRun?.report.signalRoles]
+    () =>
+      canonicalizeVerifySignalRoles(
+        normalizeSignalRoles({
+          ...(liveSignalRoles ?? {}),
+          ...(lastRun?.report.signalRoles ?? {}),
+        }),
+        inputFieldAliases,
+        outputFieldAliases
+      ),
+    [inputFieldAliases, liveSignalRoles, lastRun?.report.signalRoles, outputFieldAliases]
   );
   const clockSignalNames = useMemo(() => {
     const names = new Map<string, string>();
@@ -1837,8 +2000,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       const trimmed = signalName?.trim();
       if (!trimmed || trimmed === INTERNAL_SIM_CLOCK_NAME) return;
       const normalized = normalizeFieldId(trimmed);
-      if (!names.has(normalized)) {
-        names.set(normalized, trimmed);
+      const canonical = inputFieldAliases.get(normalized) ?? trimmed;
+      const canonicalNormalized = normalizeFieldId(canonical);
+      if (!names.has(canonicalNormalized)) {
+        names.set(canonicalNormalized, canonical);
       }
     };
 
@@ -1857,6 +2022,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [
     activeScheduleContract?.clockSignalName,
     effectiveTimingGuidance.signalName,
+    inputFieldAliases,
     lastRun?.meta.clockSignalName,
     liveSignalRoles,
     lastRun?.report.signalRoles,
@@ -2591,9 +2757,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     if (!container) return;
     setTickWidth(fitWaveformTickWidth(container.clientWidth, Math.max(zoomedTicks.length, 1)));
   }, [zoomedTicks.length]);
-  const toggleLaneGroup = useCallback((group: SignalLaneGroup) => {
-    setCollapsedGroups((previous) => ({ ...previous, [group]: !previous[group] }));
-  }, []);
   const handleWaveformWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
     const container = waveformScrollRef.current;
     if (!container) return;
@@ -2767,38 +2930,83 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const isStarterScenario =
     scenarioAuthority === 'starter' || (projectKind === 'example' && Boolean(sourceExampleId));
   const hasStaleAuthoredReference = isRunStale && totalExpectedCaseCount > 0;
-  const currentScenarioStimulusHash = computeVectorStimulusHash(authoredVectors);
-  const lastRunReportVectors = lastRun?.report.vectors ?? [];
-  const lastRunScenarioStimulusHash =
-    lastRun === undefined
-      ? null
-      : lastRunReportVectors.length === authoredVectors.length
-          ? computeVectorStimulusHash(lastRunReportVectors)
-          : typeof lastRun.scenarioStimulusHash === 'string' && lastRun.scenarioStimulusHash.trim().length > 0
-            ? lastRun.scenarioStimulusHash.trim()
-          : null;
-  const currentVectorReferenceSignature = useMemo(
-    () => buildVectorReferenceSignature([...authoredVectors, ...customVectors]),
-    [authoredVectors, customVectors]
+  const currentScenarioContentHash = activeScenario
+    ? computeScenarioContentHash(activeScenario)
+    : null;
+  const lastRunScenarioContentHash =
+    typeof lastRun?.scenarioContentHash === 'string' &&
+    lastRun.scenarioContentHash.trim().length > 0
+      ? lastRun.scenarioContentHash.trim()
+      : null;
+  const freshnessIoRows = useMemo<ProjectIoRow[]>(() => {
+    const signals =
+      mappedSignals && mappedSignals.length > 0
+        ? mappedSignals
+        : [
+            ...inputFields.map((field) => ({
+              id: field.id,
+              label: field.label,
+              direction: 'in' as const,
+              nodeId: field.id,
+              pin: '',
+            })),
+            ...outputFields.map((field) => ({
+              id: field.id,
+              label: field.label,
+              direction: 'out' as const,
+              nodeId: field.id,
+              pin: '',
+            })),
+          ];
+    return signals.map((signal) => ({
+      id: signal.id,
+      nodeId: signal.nodeId ?? signal.id,
+      port: signal.direction === 'in' ? 'out' : 'in',
+      label: signal.label ?? signal.id,
+      direction: signal.direction,
+      pin: signal.pin ?? '',
+      required: true,
+    }));
+  }, [inputFields, mappedSignals, outputFields]);
+  const currentExecutionVectorReferenceSignature = useMemo(() => {
+    const normalizedVectors = normalizeVectorsForLiveIo(
+      [...authoredVectors, ...customVectors].map((vector) => ({
+        ...vector,
+        inputs: { ...(vector.inputs ?? {}) },
+        expected: { ...(vector.expected ?? {}) },
+      })),
+      freshnessIoRows,
+      effectiveClockPolicy
+    );
+    return buildVectorReferenceSignature(
+      materializeVectorsForClockPolicy({
+        vectors: normalizedVectors,
+        ioRows: freshnessIoRows,
+        policy: effectiveClockPolicy,
+      })
+    );
+  }, [authoredVectors, customVectors, effectiveClockPolicy, freshnessIoRows]);
+  const lastRunExecutionVectorReferenceSignature = useMemo(
+    () => (lastRun ? buildVectorReferenceSignature(lastRun.report.vectors ?? []) : null),
+    [lastRun]
   );
-  const lastRunVectorReferenceSignature = useMemo(() => {
-    if (!lastRun) return null;
-    const lastRunVectors = lastRun.report.vectors ?? [];
-    const currentVectorCount = authoredVectors.length + customVectors.length;
-    if (lastRunVectors.length !== currentVectorCount) return null;
-    return buildVectorReferenceSignature(lastRunVectors);
-  }, [authoredVectors.length, customVectors.length, lastRun]);
-
-  // Scenario-stale detection: same scenario, vectors edited since last run.
-  // Condition: activeScenario hash differs from what was hashed at run time.
-  const isScenarioStale =
+  // A present content hash binds the run to the named document (including
+  // expected outputs and sequential policy). Legacy/custom-row runs may omit
+  // that exact-document stamp, so the normalized materialized execution plan
+  // below remains the visible Verify freshness authority for those runs.
+  const isScenarioContentStale =
     lastRun !== undefined &&
     activeScenario !== undefined &&
     activeScenario !== null &&
     lastRun.scenarioId === activeScenario.id &&
-    typeof lastRunScenarioStimulusHash === 'string' &&
-    typeof currentScenarioStimulusHash === 'string' &&
-    lastRunScenarioStimulusHash !== currentScenarioStimulusHash;
+    lastRunScenarioContentHash !== null &&
+    lastRunScenarioContentHash !== currentScenarioContentHash;
+  const isExecutionPlanStale =
+    lastRun !== undefined &&
+    activeScenario !== undefined &&
+    activeScenario !== null &&
+    lastRun.scenarioId === activeScenario.id &&
+    lastRunExecutionVectorReferenceSignature !== currentExecutionVectorReferenceSignature;
 
   // Wrong-scenario detection: waveform belongs to a different scenario than the active one.
   const isWrongScenario =
@@ -2808,10 +3016,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRun.scenarioId !== activeScenario.id;
   const isTestbenchStale =
     lastRun !== undefined &&
-    (isScenarioStale ||
-      (lastRunVectorReferenceSignature !== null &&
-        currentVectorReferenceSignature !== lastRunVectorReferenceSignature)) &&
+    (isScenarioContentStale || isExecutionPlanStale) &&
     !isWrongScenario;
+  const runEvidenceIsStale = Boolean(
+    lastRun &&
+      (isRunStale || isTestbenchStale || isWrongScenario || hasStaleAuthoredReference)
+  );
+  const canApplyRunDerivedRepair = Boolean(lastRun && !runEvidenceIsStale);
 
   // "Switch back" CTA: only if the scenario that produced the run still exists in the library.
   // Constraint: never show a broken switch-back button for a deleted scenario.
@@ -2918,7 +3129,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         runKind: useAssertionsForNextRun ? 'verify' : 'trace',
         scenarioVersion: activeScenario?.version,
         scenarioContentHash: activeScenario ? computeScenarioContentHash(activeScenario) : undefined,
-        scenarioStimulusHash: computeVectorStimulusHash(allVectors),
+        scenarioStimulusHash: computeExecutionStimulusHash(
+          allVectors,
+          effectiveClockPolicy
+        ),
         deterministicHash,
         assertionMode: useAssertionsForNextRun,
         vectors: allVectors,
@@ -2938,13 +3152,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const handleRunWithPreflight = useCallback(
     (useAssertionsForNextRun: boolean = nextRunUsesAssertions) => {
+      if (gradingBlockedByDesign && useAssertionsForNextRun) {
+        setNextRunUsesAssertions(false);
+        return;
+      }
       if (someVectorsOrphaned && useAssertionsForNextRun) {
         setOrphanPreflight(true);
         return;
       }
       runVerificationWithMode(useAssertionsForNextRun);
     },
-    [nextRunUsesAssertions, runVerificationWithMode, someVectorsOrphaned]
+    [gradingBlockedByDesign, nextRunUsesAssertions, runVerificationWithMode, someVectorsOrphaned]
   );
 
   const runVerification = useCallback(() => {
@@ -2957,9 +3175,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, []);
 
   const handleSetCompareMode = useCallback(() => {
+    if (gradingBlockedByDesign) return;
     runModeTouchedByStudentRef.current = true;
     setNextRunUsesAssertions(true);
-  }, []);
+  }, [gradingBlockedByDesign]);
 
   const handleKeepOlderReference = useCallback(() => {
     setNextRunUsesAssertions(true);
@@ -3133,6 +3352,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ) ?? null
     );
   }, [autoExternalClockMode, clockSignalNames, effectiveTimingGuidance, stimulusPanelInputFields]);
+  const appendExplicitPulseBehavior = useCallback(
+    (behavior: StimulusPulseBehavior) => {
+      if (!clockLaneField || !onVectorsChange) return;
+
+      const sortedVectors = [...authoredVectors].sort((left, right) => left.tick - right.tick);
+      const lastVector = sortedVectors.at(-1);
+      const startTick = lastVector ? lastVector.tick + 1 : 0;
+      const baseInputs = editableInputFields.reduce<Record<string, 0 | 1>>((acc, field) => {
+        acc[field.id] = normalizeBit(lastVector?.inputs?.[field.id] ?? 0);
+        return acc;
+      }, {});
+      const appendedValues: Array<0 | 1> =
+        behavior === 'rising'
+          ? [0, 1]
+          : behavior === 'falling'
+            ? [1, 0]
+            : Array.from(
+                { length: clockPatternCount },
+                () => (behavior === 'high' ? 1 : 0) as 0 | 1
+              );
+      onVectorsChange([
+        ...sortedVectors,
+        ...appendedValues.map((value, index) => ({
+          id: `vec-clk-explicit-${String(startTick + index).padStart(2, '0')}`,
+          tick: startTick + index,
+          inputs: { ...baseInputs, [clockLaneField.id]: value },
+          expected: {},
+        })),
+      ]);
+      setOracleApplied(false);
+    },
+    [authoredVectors, clockLaneField, clockPatternCount, editableInputFields, onVectorsChange]
+  );
   const clockLaneConfig = useMemo(
     () =>
       clockLaneField
@@ -3153,14 +3405,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             count: clockPatternCount,
             onCountChange: setClockPatternCount,
             onApplyPattern: appendClockPattern,
+            onAppendPulseBehavior:
+              onVectorsChange &&
+              (effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
+                effectiveClockPolicy?.overrideMode === 'custom-pattern')
+                ? appendExplicitPulseBehavior
+                : undefined,
           }
         : undefined,
     [
       appendClockPattern,
+      appendExplicitPulseBehavior,
       boardClockBinding,
       clockLaneField,
       clockPatternCount,
+      effectiveClockPolicy?.overrideMode,
       effectiveTimingGuidance.kind,
+      onVectorsChange,
     ]
   );
 
@@ -3329,7 +3590,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const applyScopedCapture = useCallback(
     (scope: CaptureScope): boolean => {
-      if ((lastRun?.waveform?.length ?? 0) === 0 || !captureContext) return false;
+      if (!canApplyRunDerivedRepair || (lastRun?.waveform?.length ?? 0) === 0 || !captureContext) return false;
       const result = applyCaptureScopeToVectorSets({
         projectVectors: authoredVectors,
         customVectors,
@@ -3342,7 +3603,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return changed;
     },
-    [authoredVectors, captureContext, commitVectorCollections, customVectors, lastRun?.waveform?.length]
+    [authoredVectors, canApplyRunDerivedRepair, captureContext, commitVectorCollections, customVectors, lastRun?.waveform?.length]
   );
 
   const applyExpectedCellValue = useCallback(
@@ -3353,11 +3614,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       nextValue: 0 | 1 | null;
       rerunCompare?: boolean;
     }): boolean => {
+      if (!canApplyRunDerivedRepair) return false;
+      const canonicalSignal =
+        canonicalWaveformSignalByRawKey.get(normalizeFieldId(input.signal)) ?? input.signal;
       const result = updateExpectedCellInVectorSets({
         projectVectors: authoredVectors,
         customVectors,
         tick: input.tick,
-        signal: input.signal,
+        signal: canonicalSignal,
         vectorId: input.vectorId,
         nextValue: input.nextValue,
       });
@@ -3367,22 +3631,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return changed;
     },
-    [authoredVectors, commitVectorCollections, customVectors]
+    [authoredVectors, canApplyRunDerivedRepair, canonicalWaveformSignalByRawKey, commitVectorCollections, customVectors]
   );
 
   const applyObservedFailures = useCallback(
     (failures: VerifyFailureExplanationCase[]): boolean => {
+      if (!canApplyRunDerivedRepair) return false;
       let nextProjectVectors = authoredVectors;
       let nextCustomVectors = customVectors;
       let changed = false;
 
       for (const failure of failures) {
         if (!isRepairableObservedFailure(failure)) continue;
+        const canonicalSignal =
+          canonicalWaveformSignalByRawKey.get(normalizeFieldId(failure.signal)) ?? failure.signal;
         const result = updateExpectedCellInVectorSets({
           projectVectors: nextProjectVectors,
           customVectors: nextCustomVectors,
           tick: failure.tick,
-          signal: failure.signal,
+          signal: canonicalSignal,
           vectorId: failure.vectorId,
           nextValue: failure.actual === '1' ? 1 : 0,
         });
@@ -3398,7 +3665,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setOracleApplied(false);
       return true;
     },
-    [authoredVectors, customVectors, onCustomVectorsChange, onVectorsChange]
+    [authoredVectors, canApplyRunDerivedRepair, canonicalWaveformSignalByRawKey, customVectors, onCustomVectorsChange, onVectorsChange]
   );
 
   const queueScopedCapture = useCallback(
@@ -3516,6 +3783,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [handleRunWithPreflight, pendingAssertionRun]);
 
   const canSetOracle =
+    canApplyRunDerivedRepair &&
     (lastRun?.waveform?.length ?? 0) > 0 &&
     ((authoredVectors.length > 0 && onVectorsChange !== undefined) ||
       (customVectors.length > 0 && onCustomVectorsChange !== undefined));
@@ -3527,7 +3795,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const vectors = effectiveNextRunVectors;
     if (vectors.length === 0) return undefined;
 
-    const roles = normalizeSignalRoles(liveSignalRoles ?? {});
+    const roles = canonicalizeVerifySignalRoles(
+      normalizeSignalRoles(liveSignalRoles ?? {}),
+      inputFieldAliases,
+      outputFieldAliases
+    );
     const inputLaneLabels = new Map<string, string>();
     const outputLaneLabels = new Map<string, string>();
     const assertedOutputs = new Set<string>();
@@ -3600,7 +3872,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     const resolvedClockSignalName = (() => {
       if (contract?.clockSignalName) {
-        const normalizedKey = normalizeFieldId(contract.clockSignalName);
+        const normalizedKey =
+          inputFieldAliases.get(normalizeFieldId(contract.clockSignalName)) ??
+          normalizeFieldId(contract.clockSignalName);
         return inputLaneLabels.get(normalizedKey) ?? contract.clockSignalName;
       }
       const clockEntry = Object.entries(roles).find(([, role]) => role === 'clock');
@@ -3616,7 +3890,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       clockPolicy: isClocked ? 'clocked' : 'combinational',
       clockSignalName: isClocked ? resolvedClockSignalName : undefined,
     };
-  }, [activeScheduleContract, effectiveNextRunVectors, inputFields, liveSignalRoles, outputFields]);
+  }, [
+    activeScheduleContract,
+    effectiveNextRunVectors,
+    inputFieldAliases,
+    inputFields,
+    liveSignalRoles,
+    outputFieldAliases,
+    outputFields,
+  ]);
   // ────────────────────────────────────────────────────────────────────────────
 
   const verifySession = useMemo(
@@ -3663,16 +3945,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     sessionStatus === 'stimulus-only' || sessionStatus === 'assertions-incomplete';
   const isDraftSession = sessionStatus === 'draft';
   const verifyWorkflowPhase = lastRun ? 'post-run' : 'pre-run';
-  const stimulusPanelCollapsed = Boolean(lastRun) && !scenarioWorkbenchExpanded;
   const verifyWorkspaceMode =
     verifyWorkflowPhase === 'pre-run'
       ? 'stimulus-focus'
       : layoutMode === 'compact'
         ? 'stimulus-focus'
-        : stimulusPanelCollapsed
-          ? 'waveform-focus'
-          : 'split';
-  const draftPresentationStatus = totalVectorCount > 0 ? 'READY' : 'NOT STARTED';
+        : 'split';
+  const needsExpectedOutputs =
+    totalVectorCount > 0 && outputFields.length > 0 && totalExpectedCaseCount === 0;
+  const draftPresentationStatus =
+    totalVectorCount === 0 ? 'NOT STARTED' : needsExpectedOutputs ? 'NEEDS CHECKS' : 'READY';
   const readyDraftCanRun = isDraftSession && draftPresentationStatus === 'READY';
   const sessionStatusBadgeLabel = isDraftSession
     ? draftPresentationStatus
@@ -3682,40 +3964,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       ? 'error'
       : sessionShowsAssertionMatch
         ? lastRun?.qualification === 'incomplete-mapping' ? 'warn' : 'ok'
-        : isDraftSession && draftPresentationStatus === 'NOT STARTED'
+        : isDraftSession && (draftPresentationStatus === 'NOT STARTED' || needsExpectedOutputs)
           ? 'warn'
           : verifySession.tone;
   const hasSessionFailureEvidence =
-    sessionSignalsAssertionFailure && failingRows.length > 0;
+    canApplyRunDerivedRepair && sessionSignalsAssertionFailure && failingRows.length > 0;
   // Keep failure analysis secondary so the editor + waveform remain the primary
   // desktop workbench. Detailed failure review lives in the lower analysis drawer.
   const showInlineFailureWorkbenchPanels = false;
-  const canInspectFirstMismatch = hasSessionFailureEvidence && !isRunStale;
-  const postRunToolbarMode =
-    hasSessionFailureEvidence || canInspectFirstMismatch ? 'visible' : 'advanced';
-  const captureIsPrimary =
-    verifySession.recommendedNextAction === 'capture' && canSetOracle && !canInspectFirstMismatch;
-  const primaryActionKind: 'run' | 'capture' | 'inspect' = canInspectFirstMismatch
-    ? 'inspect'
-    : captureIsPrimary
-      ? 'capture'
-      : 'run';
-  const runActionTone = primaryActionKind === 'run' ? 'primary' : 'secondary';
-  const captureActionTone = primaryActionKind === 'capture' ? 'primary' : 'secondary';
   // ── B-12 Slice 3: canonical result zone ──────────────────────────────────────
   const emptyStateRunLabel = verifySession.runLabel;
-  const referenceModeLabel: string = hasStaleAuthoredReference
-    ? `Stale saved checks loaded (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'})`
-    : totalExpectedCaseCount === 0
-      ? 'Observation run only — no saved checks'
-      : !nextRunIsCompare
-        ? `Saved checks available (${totalVectorCount} vector${totalVectorCount === 1 ? '' : 's'}), next run stays in observation mode`
-        : authoredVectors.length > 0 && customVectorCount > 0
-          ? `Saved checks armed (${totalVectorCount} project + custom)`
-          : customVectorCount > 0
-            ? `Saved checks armed (${customVectorCount} custom)`
-            : `Saved checks armed (${authoredVectors.length} project)`;
-  const sessionModeBadge: string = nextRunIsCompare ? 'Checks armed' : 'Observe';
   const compactCommandRunLabel =
     totalExpectedCaseCount > 0
       ? lastRun
@@ -3726,16 +3984,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ? 'Run Compare'
           : 'Run Observe'
       : verifySession.runLabel;
-  const sessionTitle: string = !lastRun
-    ? 'Ready to run'
-    : isTraceOnly ? 'Outputs observed — stimulus captured'
-    : sessionStatus === 'assertions-match' ? 'Checks aligned'
-    : sessionStatus === 'assertions-differ' ? 'Checks need review'
-    : sessionStatus === 'stale'
-      ? hasStaleAuthoredReference || !nextRunIsCompare
-        ? 'Observe current circuit'
-        : 'Compare current circuit'
-    : sessionStatusBadgeLabel;
   const hasStructuralOutputRecovery =
     lastRun?.status === 'fail' &&
     failingRows.length === 0 &&
@@ -3747,16 +3995,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         issue.kind === 'missing-output-row'
       )
     );
-  const commandBarEvidenceLabel =
-    lastRun && sessionShowsCompareEvidence
-      ? hasStructuralOutputRecovery
-        ? 'Output not driven'
-        : failingRows.length > 0
-        ? `${failingRows.length} mismatch${failingRows.length === 1 ? '' : 'es'}${typeof firstFailureTick === 'number' ? ` · t${firstFailureTick}` : ''}`
-        : `${runRows.length}/${runRows.length} match`
-      : lastRun && sessionShowsTraceEvidence
-        ? `${runVectorCount} observed row${runVectorCount === 1 ? '' : 's'}`
-        : undefined;
   const commandBarCoverageLabel =
     lastRun && runRows.length > 0 && inputCoverage && !hasStructuralOutputRecovery
       ? `${inputCoverage.pct}% coverage`
@@ -3881,43 +4119,37 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       waveformTicks.length,
     ]
   );
-  const runProofIsStale = Boolean(
-    lastRun && sessionShowsAssertionMatch && (isRunStale || isTestbenchStale || hasStaleAuthoredReference)
-  );
-  const runProofTitle =
-    runProofIsStale
-      ? 'Checks changed - rerun Compare'
-      : sessionShowsAssertionMatch
-      ? lastRun?.qualification === 'incomplete-mapping'
-        ? 'Checks passed — finish pin mapping'
-        : `Checks passed · ${runRows.length} case${runRows.length === 1 ? '' : 's'}`
-      : sessionSignalsAssertionFailure
-        ? `Checks failed · ${failingRows.length}/${runRows.length} case${runRows.length === 1 ? '' : 's'}`
-      : sessionStatus === 'stale'
-          ? 'Stale results on this page'
-            : sessionShowsTraceEvidence
-            ? 'Simulation only (no checks)'
-            : verifySession.title;
-  const runProofSummary =
-    runProofIsStale
-      ? 'The previous run matched before the circuit or saved checks changed. Rerun Compare before trusting PASS/FAIL.'
-      : sessionShowsAssertionMatch
-      ? lastRun?.qualification === 'incomplete-mapping'
-        ? `${unmappedOutputLabels.length > 0 ? `${unmappedOutputLabels.slice(0, 3).join(', ')}${unmappedOutputLabels.length > 3 ? ` +${unmappedOutputLabels.length - 3} more` : ''} ${unmappedOutputLabels.length === 1 ? 'is' : 'are'} not connected to board pins.` : 'Some outputs are not connected to board pins.'} Open Project, then the Map Pins stage, and finish pin names there — Export and Hardware read that same table.`
-        : 'Every saved check matched the observed outputs.'
-      : sessionSignalsAssertionFailure
-        ? 'Use the chart below: red ticks mark the problem times. Then fix your circuit or the saved check at that point.'
-      : sessionStatus === 'stale'
-          ? hasStaleAuthoredReference
-            ? 'The visible waveform belongs to an older build. Verify has switched back to stimulus tracing so you can inspect the live circuit before re-authoring or intentionally reusing the older reference.'
-            : 'The visible waveform belongs to the previously verified build hash. Re-run Verify so the evidence matches the current circuit again.'
-      : sessionShowsTraceEvidence
-            ? 'This run recorded live waveform behavior only. Save observed outputs as assertions or reveal the assertions editor when you want explicit verification.'
-            : verifySession.summary;
+  const runProofIsStale = runEvidenceIsStale;
+  useEffect(() => {
+    if (!lastRun) {
+      lastAnnouncedRunRef.current = null;
+      runAnnouncementOrdinalRef.current = 0;
+      setRunAnnouncement('');
+      return;
+    }
+    if (lastAnnouncedRunRef.current === lastRun) return;
+
+    lastAnnouncedRunRef.current = lastRun;
+    runAnnouncementOrdinalRef.current += 1;
+    const ordinal = runAnnouncementOrdinalRef.current;
+    const runKind = getRuntimeVerifyRunKind(lastRun);
+    const outcome =
+      runKind === 'trace'
+        ? 'Observation complete.'
+        : lastRun.status === 'pass'
+          ? 'Compare passed.'
+          : 'Compare failed.';
+    const comparedChecks = lastRun.report.rows.length;
+    const detail =
+      runKind === 'verify'
+        ? ` ${comparedChecks} saved check${comparedChecks === 1 ? '' : 's'} compared.`
+        : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
+    setRunAnnouncement(`Verification run ${ordinal}. ${outcome}${detail}`);
+  }, [lastRun]);
   const verifyLayoutPolicy = useMemo(
     () => ({
-      /** Keep shell rails secondary so the stimulus/waveform pair owns the page. */
-      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('collapsed' as const),
+      /** Keep the compact signal browser stable beside the primary workspace. */
+      leftDockMode: isNoCircuitTaskFirst ? ('hidden' as const) : ('visible' as const),
       /** Saved cases and mismatch detail now live in the lower details tray. */
       rightDockMode: ('hidden' as const),
       consoleMode: isNoCircuitTaskFirst
@@ -3938,6 +4170,22 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   const primaryStatus = useMemo<VerifyPrimaryStatusAreaProps | null>(() => {
     if (isNoCircuitTaskFirst) {
       return null;
+    }
+
+    if (gradingBlockedByDesign && designBlockingIssue) {
+      return {
+        tone: 'error',
+        title: 'Design blocks Compare',
+        message: `${designBlockingIssue.title}. ${designBlockingIssue.message} Checked PASS/FAIL evidence is inconclusive until this circuit issue is repaired.`,
+        actions: onGoToDesign
+          ? [{
+              label: 'Open Design',
+              onClick: onGoToDesign,
+              tone: 'primary',
+              testId: 'ide-verify-design-blocked-open-design',
+            }]
+          : [],
+      };
     }
 
     if (hasStaleAuthoredReference) {
@@ -4037,6 +4285,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [
     activeScenario?.name,
     canResetToStimulusOnly,
+    designBlockingIssue,
+    gradingBlockedByDesign,
     handleKeepOlderReference,
     handleResetToStimulusOnly,
     handleStaleRecapture,
@@ -4050,6 +4300,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     lastRunScenarioName,
     mappingComplete,
     onGoToHardware,
+    onGoToDesign,
     onOpenProjectVectors,
     onSwitchScenario,
     runVerification,
@@ -4065,83 +4316,69 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     selectedFailureDisplayLabel,
   ]);
   const compactPrimaryStatusAction =
-    primaryStatus?.title === 'Board pins are not finished on Project'
+    lastRun && primaryStatus?.title === 'Board pins are not finished on Project'
       ? primaryStatus.actions?.[0]
       : undefined;
-  const verifySessionMetricsRow = Boolean(lastRun) ? ('inline' as const) : ('hidden' as const);
-  const testbenchRunSummary = useMemo<React.ReactNode>(() => {
-    const drivenInputs = editableInputFields
-      .map((field) => field.label ?? field.id)
-      .filter((label) => label.trim().length > 0);
-    const checkedOutputs = outputFields
-      .filter((field) =>
-        totalExpectedCaseCount > 0
-          ? authoredVectors.some((vector) => vector.expected?.[field.id] !== undefined)
-          : false
-      )
-      .map((field) => field.label ?? field.id);
-    const uniqueTicks = Array.from(new Set(effectiveNextRunVectors.map((vector) => vector.tick)));
-    const effectiveTickCount =
-      uniqueTicks.length > 0
-        ? uniqueTicks.length
-        : autoClockModeActive && effectiveClockPolicy
-          ? effectiveClockPolicy.runCycles
-          : 0;
-    const tickLabel = effectiveTickCount === 1 ? '1 tick' : `${effectiveTickCount} ticks`;
-    const effectiveCaseCount =
-      totalVectorCount > 0
-        ? totalVectorCount
-        : autoClockModeActive && effectiveClockPolicy
-          ? effectiveClockPolicy.runCycles
-          : 0;
-    const caseLabel = effectiveCaseCount === 1 ? '1 case' : `${effectiveCaseCount} cases`;
-    const clockLabel = isSequentialRun
-      ? autoClockModeActive && effectiveClockPolicy
-        ? `${effectiveClockPolicy.runCycles} auto cycle${effectiveClockPolicy.runCycles === 1 ? '' : 's'}`
-        : clockActivitySummary.risingCount > 0
-        ? `${clockActivitySummary.risingCount} rising edge${clockActivitySummary.risingCount === 1 ? '' : 's'}`
-        : 'no rising edge yet'
-      : 'not required';
-    const compareLabel =
-      nextRunUsesAssertions && totalExpectedCaseCount > 0
-        ? 'compare checks on'
-        : 'observe only';
-
-    return (
-      <div className="ide-verify-testbench-summary" data-testid="ide-verify-testbench-summary">
-        <div className="ide-verify-testbench-summary-grid ide-verify-testbench-summary-grid--compact">
-          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-inputs">
-            Inputs: {drivenInputs.length}
-          </span>
-          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-outputs">
-            Checks: {checkedOutputs.length}
-          </span>
-          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-cases">
-            {caseLabel}
-          </span>
-          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-clock">
-            {tickLabel}
-          </span>
-          <span className="ide-verify-testbench-summary-chip" data-testid="ide-verify-testbench-summary-compare">
-            {compareLabel}
-          </span>
-          <span className="ide-verify-testbench-summary-chip is-muted">{clockLabel}</span>
-        </div>
-      </div>
+  const testbenchEvidenceIsStale = runEvidenceIsStale;
+  const testbenchObservedValuesByTick = useMemo(() => {
+    const timelineBySignal = new Map(
+      signalTimeline.map((entry) => [normalizeFieldId(entry.signal), entry.values] as const)
     );
-  }, [
-    autoClockModeActive,
-    authoredVectors,
-    clockActivitySummary.risingCount,
-    editableInputFields,
-    effectiveClockPolicy,
-    effectiveNextRunVectors,
-    isSequentialRun,
-    nextRunUsesAssertions,
-    outputFields,
-    totalExpectedCaseCount,
-    totalVectorCount,
-  ]);
+    const observed: Record<number, Record<string, string>> = {};
+    for (const vector of authoredVectors) {
+      const row: Record<string, string> = {};
+      if (!isWrongScenario) {
+        for (const field of outputFields) {
+          const normalizedField = normalizeFieldId(field.id);
+          const reportRow = runRowLookup.get(`${vector.tick}|${normalizedField}`);
+          const timelineValue = timelineBySignal
+            .get(normalizedField)
+            ?.find((entry) => entry.tick === vector.tick)?.value;
+          const value = reportRow?.actual ?? timelineValue;
+          if (value != null && value !== '-') row[field.id] = value;
+        }
+      }
+      observed[vector.tick] = row;
+    }
+    return observed;
+  }, [authoredVectors, isWrongScenario, outputFields, runRowLookup, signalTimeline]);
+  const testbenchCaseEvidenceByTick = useMemo(() => {
+    const evidence: Record<number, StimulusCaseEvidenceState> = {};
+    for (const vector of authoredVectors) {
+      if (!lastRun) {
+        evidence[vector.tick] = 'not-run';
+        continue;
+      }
+      if (testbenchEvidenceIsStale) {
+        evidence[vector.tick] = 'stale';
+        continue;
+      }
+      if (!sessionShowsCompareEvidence) {
+        evidence[vector.tick] = 'observed';
+        continue;
+      }
+      const assertedSignalKeys = new Set(
+        Object.entries(vector.expected ?? {})
+          .filter(([, value]) => value != null)
+          .map(([signal]) => normalizeFieldId(signal))
+      );
+      if (assertedSignalKeys.size === 0) {
+        evidence[vector.tick] = 'observed';
+        continue;
+      }
+      const caseRows = runRows.filter(
+        (row) => row.tick === vector.tick && assertedSignalKeys.has(normalizeFieldId(row.signal))
+      );
+      if (caseRows.some((row) => row.status === 'fail')) {
+        evidence[vector.tick] = 'fail';
+      } else if (caseRows.length > 0) {
+        evidence[vector.tick] = 'pass';
+      } else {
+        evidence[vector.tick] = 'observed';
+      }
+    }
+    return evidence;
+  }, [authoredVectors, lastRun, runRows, sessionShowsCompareEvidence, testbenchEvidenceIsStale]);
   const stimulusAssist = useMemo<React.ReactNode>(() => {
     if (verifyMode !== 'sequential') return null;
 
@@ -4176,6 +4413,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const clockPolicyCopy =
       effectiveClockPolicy?.sourceType === 'explicit-clock-component'
         ? 'Sim Clock components are import-only in this release. Replace the component with the CLK100MHZ board resource before trusting auto Verify or Export.'
+        : !autoClockAvailable
+          ? 'This clock source is authored from the visible clock lane. Auto clock is unavailable; use Manual pulses or Custom pattern.'
         : effectiveClockPolicy?.sourceType === 'board-clock'
           ? 'Auto mode generates the board clock. Manual/custom modes expose an editable clock lane.'
           : 'Auto mode generates clock cycles. Manual/custom modes expose an editable clock lane.';
@@ -4246,7 +4485,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <button
                     type="button"
                     className={`ide-verify-clock-policy-btn${clockOverrideMode === 'auto' ? ' is-active' : ''}`}
-                    onClick={() => setClockOverrideMode('auto')}
+                    onClick={() => handleClockOverrideModeChange('auto')}
+                    disabled={!autoClockAvailable}
+                    aria-disabled={!autoClockAvailable}
+                    title={
+                      autoClockAvailable
+                        ? undefined
+                        : 'Auto clock requires a supported automatic board-clock source.'
+                    }
                     data-testid="ide-verify-clock-mode-auto"
                   >
                     {autoModeLabel}
@@ -4254,7 +4500,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <button
                     type="button"
                     className={`ide-verify-clock-policy-btn${clockOverrideMode === 'manual-pulses' ? ' is-active' : ''}`}
-                    onClick={() => setClockOverrideMode('manual-pulses')}
+                    onClick={() => handleClockOverrideModeChange('manual-pulses')}
                     data-testid="ide-verify-clock-mode-manual"
                   >
                     Manual pulses
@@ -4262,26 +4508,35 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   <button
                     type="button"
                     className={`ide-verify-clock-policy-btn${clockOverrideMode === 'custom-pattern' ? ' is-active' : ''}`}
-                    onClick={() => setClockOverrideMode('custom-pattern')}
+                    onClick={() => handleClockOverrideModeChange('custom-pattern')}
                     data-testid="ide-verify-clock-mode-custom"
                   >
                     Custom pattern
                   </button>
                 </div>
-                <label className="ide-verify-clock-policy-cycles" data-testid="ide-verify-clock-run-cycles">
-                  Run length
-                  <input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={clockRunCycles}
-                    onChange={(event) =>
-                      setClockRunCycles(Math.max(1, Number(event.target.value || '1')))
-                    }
-                    data-testid="ide-verify-clock-run-cycles-input"
-                  />
-                  <span>cycles</span>
-                </label>
+                {clockOverrideMode === 'auto' ? (
+                  <label className="ide-verify-clock-policy-cycles" data-testid="ide-verify-clock-run-cycles">
+                    Run length
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={clockRunCycles}
+                      onChange={(event) =>
+                        handleClockRunCyclesChange(Number(event.target.value || '1'))
+                      }
+                      data-testid="ide-verify-clock-run-cycles-input"
+                    />
+                    <span>cycles</span>
+                  </label>
+                ) : (
+                  <span
+                    className="ide-verify-clock-policy-line"
+                    data-testid="ide-verify-clock-authored-run-length"
+                  >
+                    Run length: {totalVectorCount} authored row{totalVectorCount === 1 ? '' : 's'}
+                  </span>
+                )}
                 {manualClockWarning ? (
                   <span className="ide-verify-clock-policy-warning" data-testid="ide-verify-clock-manual-warning">
                     {manualClockWarning}
@@ -4300,6 +4555,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     );
   }, [
     autoClockModeActive,
+    autoClockAvailable,
     boardClockBinding,
     clockOverrideMode,
     clockRunCycles,
@@ -4307,6 +4563,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     clockActivitySummary,
     effectiveClockPolicy,
     effectiveTimingGuidance.kind,
+    handleClockOverrideModeChange,
+    handleClockRunCyclesChange,
     isFirstRunState,
     nextRunNeedsClockActivity,
     sequentialGuidanceCopy.introStep,
@@ -4336,9 +4594,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return 'Clock cycles are generated automatically during Verify and do not require manual painting.';
     }
     if (effectiveClockPolicy.overrideMode === 'manual-pulses') {
-      return 'Manual pulses mode exposes the clock lane for explicit debug pulses and hand-edited edges.';
+      return 'Manual pulses mode exposes explicit Rising edge, Falling edge, Hold high, and Hold low timing steps.';
     }
-    return 'Custom pattern mode uses the clock lane so you can paint the exact timing sequence.';
+    return 'Custom pattern mode combines direct clock painting with explicit edge and level timing steps.';
   }, [boardClockBinding, effectiveClockPolicy, isSequentialRun]);
 
   const selectedRepairDiagnosis = useMemo(() => {
@@ -4420,11 +4678,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           <strong>{outputSignalOrder[0] ?? 'output'}</strong>
         </div>
         <div className="ide-verify-repair-panel__fact">
-          <span>Expected rows</span>
-          <strong>{totalExpectedCaseCount}</strong>
+          <span>Authored checks</span>
+          <strong>{totalAssertedCheckCount}</strong>
         </div>
         <div className="ide-verify-repair-panel__fact">
-          <span>Observed rows</span>
+          <span>Compared checks</span>
           <strong>{runRows.length}</strong>
         </div>
       </div>
@@ -4460,11 +4718,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     </section>
   ) : null;
 
-  const repairPanel = hasSessionFailureEvidence && selectedFailureExplanationCase ? (
+  const repairPanel = canApplyRunDerivedRepair && hasSessionFailureEvidence && selectedFailureExplanationCase ? (
     <section
       className="ide-verify-repair-panel"
       data-testid="ide-verify-repair-panel"
-      data-stale={isRunStale || isTestbenchStale ? 'true' : 'false'}
+      data-stale={runEvidenceIsStale ? 'true' : 'false'}
       data-category={selectedRepairDiagnosis?.category ?? 'unknown'}
       data-repair-primary-lane={selectedRepairDiagnosis?.primaryLane ?? 'none'}
     >
@@ -4649,14 +4907,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       shellDensity="immersive"
       surfaceFrame="edge-to-edge"
       productSpine={{
-        statusLabel: isNoCircuitTaskFirst ? 'No circuit' : sessionStatusBadgeLabel,
-        statusTone: isNoCircuitTaskFirst ? 'warn' : sessionStatusTone,
+        statusLabel: isNoCircuitTaskFirst
+          ? 'No circuit'
+          : gradingBlockedByDesign
+            ? 'Design blocked'
+            : sessionStatusBadgeLabel,
+        statusTone: isNoCircuitTaskFirst || gradingBlockedByDesign ? 'warn' : sessionStatusTone,
         detail: isNoCircuitTaskFirst
           ? 'Open Design, load a starter, or import a project before authoring test cases.'
-          : verifySession.summary,
-        primaryLabel: isNoCircuitTaskFirst ? 'Open Design' : verifySession.runLabel,
-        onPrimary: isNoCircuitTaskFirst ? onGoToDesign : runVerification,
-        primaryDisabled: !isNoCircuitTaskFirst && runState === 'running',
+          : gradingBlockedByDesign
+            ? 'Compare is unavailable and prior grading is inconclusive until the structural Design issue is repaired. Observe remains ungraded.'
+          : needsExpectedOutputs
+            ? 'Expected-output cells are Unset. Add at least one 0 or 1 check to unlock Compare; Observe remains available for ungraded output capture.'
+            : verifySession.summary,
+        primaryLabel: isNoCircuitTaskFirst || gradingBlockedByDesign
+          ? 'Open Design'
+          : needsExpectedOutputs
+            ? 'Add expected outputs'
+            : verifySession.runLabel,
+        onPrimary: isNoCircuitTaskFirst || gradingBlockedByDesign
+          ? onGoToDesign
+          : needsExpectedOutputs
+            ? handleEditExpectedOutputs
+            : runVerification,
+        primaryDisabled: !isNoCircuitTaskFirst && !gradingBlockedByDesign && runState === 'running',
         recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
         onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
         doneLabel: sessionShowsAssertionMatch
@@ -4664,19 +4938,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : 'Current expected outputs are authored and compared against observed outputs.',
         blockedLabel: isNoCircuitTaskFirst
           ? 'No circuit boundary is available to verify.'
+          : gradingBlockedByDesign
+            ? 'Structural Design authority is invalid; checked PASS/FAIL evidence is revoked.'
           : sessionSignalsAssertionFailure
             ? `${failingRows.length} failing output check${failingRows.length === 1 ? '' : 's'} need repair.`
             : sessionStatus === 'stale'
               ? 'Evidence is stale after project or testbench changes.'
               : totalVectorCount === 0
                 ? 'No stimulus cases authored yet.'
+                : needsExpectedOutputs
+                  ? 'No expected-output checks are saved. Unset cells are not compared.'
                 : 'No blocking Verify failure selected.',
       }}
       dock={
         <section
           className="ide-verify-left-dock"
           data-testid="ide-verify-left-dock"
-          data-collapsed={signalsRailCollapsed ? 'true' : 'false'}
+          data-collapsed="false"
         >
           <header
             className="ide-verify-signal-rail-header"
@@ -4694,15 +4972,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </span>
               </div>
               <div className="ide-verify-signal-rail-actions">
-                <button
-                  type="button"
-                  className="ide-verify-signal-rail-action-btn ide-verify-signal-rail-toggle"
-                  onClick={() => setSignalsRailCollapsed((previous) => !previous)}
-                  data-testid="ide-verify-signal-rail-toggle"
-                  aria-expanded={signalsRailCollapsed ? 'false' : 'true'}
-                >
-                  {signalsRailCollapsed ? 'Expand' : 'Collapse'}
-                </button>
                 {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
                   <button
                     type="button"
@@ -4739,18 +5008,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               (['Inputs', 'Outputs', 'Internal'] as const).map((group) => (
                 <section key={group} className="ide-verify-signal-group" data-testid={`ide-verify-group-${toTestId(group)}`}>
                   <header className="ide-design-subheader ide-verify-signal-group-header">
-                    <button
-                      type="button"
-                      className="ide-verify-group-toggle"
-                      onClick={() => toggleLaneGroup(group)}
-                      data-testid={`ide-verify-group-toggle-${toTestId(group)}`}
-                    >
-                      {effectiveCollapsedGroups[group] ? '▸' : '▾'} {group}
-                    </button>
+                    <strong className="ide-verify-signal-group-label">{group}</strong>
                     <span className="ide-copy">{groupedVisibleSignals[group].length}</span>
                   </header>
-                  {!effectiveCollapsedGroups[group] && (
-                    <div className="ide-verify-group-body">
+                  <div className="ide-verify-group-body">
                       {groupedVisibleSignals[group].length === 0 ? (
                         <p className="ide-copy">No {group.toLowerCase()} lanes.</p>
                       ) : (
@@ -4776,8 +5037,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           </div>
                         ))
                       )}
-                    </div>
-                  )}
+                  </div>
                 </section>
               ))
             )}
@@ -4785,52 +5045,17 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </section>
       }
       inspector={null}
-      console={
-        <section className="ide-verify-console" data-testid="ide-verify-console">
-          <header className="ide-design-diagnostics-drawer-header">
-            <h3>Activity</h3>
-            <IdeStatusPill tone={sessionStatusTone} data-testid="ide-verify-console-status">
-              {sessionStatusBadgeLabel}
-            </IdeStatusPill>
-          </header>
-          <div className="ide-design-diagnostics-list">
-            {hasResults ? (
-              <>
-                <article className="ide-design-diagnostic-row">
-                  <div className="ide-design-diagnostic-row-header">
-                    <code>VERIFY</code>
-                    <span>
-                      Scenario <strong>{lastRun?.scenarioName ?? 'n/a'}</strong> completed at{' '}
-                      <code>{lastRun?.generatedAtIso ?? 'n/a'}</code>.
-                    </span>
-                  </div>
-                </article>
-                <article className="ide-design-diagnostic-row">
-                  <div className="ide-design-diagnostic-row-header">
-                    <code>HASH</code>
-                    <span data-testid="ide-verify-console-hash">
-                      report=<code>{lastRun?.reportHash ?? '—'}</code>
-                    </span>
-                  </div>
-                </article>
-                {hasSessionFailureEvidence && firstFailure ? (
-                  <article className="ide-design-diagnostic-row is-error">
-                    <div className="ide-design-diagnostic-row-header">
-                      <code>FIRST_FAIL</code>
-                      <span>
-                        tick <code>{firstFailure.tick}</code> signal <code>{firstFailure.signal}</code>
-                      </span>
-                    </div>
-                  </article>
-                ) : null}
-              </>
-            ) : (
-              <p className="ide-copy">Run the current stimulus to populate deterministic activity output.</p>
-            )}
-          </div>
-        </section>
-      }
+      console={null}
     >
+      <div
+        className="ide-verify-run-announcer"
+        data-testid="ide-verify-run-announcer"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {runAnnouncement}
+      </div>
       <IdePanel
         className="ide-verify-panel"
         testId="ide-verify-panel"
@@ -4839,28 +5064,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {verifyMode !== 'blocked' ? (
           <VerifyContextHeader
             projectName={projectName?.trim() ? projectName.trim() : 'Untitled project'}
-            board={board?.trim() ? board.trim() : 'Basys3'}
             stateLabel={
-              runState === 'running'
+              gradingBlockedByDesign
+                ? 'Design blocked'
+                : runState === 'running'
                 ? 'Running'
                 : verifyMode === 'blocked'
                   ? 'Blocked'
                   : isNoCircuitTaskFirst
                     ? 'No circuit'
-                  : runProofIsStale
-                    ? 'Stale'
-                    : sessionShowsAssertionMatch
-                      ? 'Pass'
-                      : sessionSignalsAssertionFailure
-                        ? 'Fail'
-                        : sessionShowsTraceEvidence
-                          ? 'Observation only'
-                          : isDraftSession && totalVectorCount === 0
-                            ? 'Not started'
-                            : 'Not run'
+                    : sessionStatusBadgeLabel
             }
             stateTone={
-              runState === 'running'
+              gradingBlockedByDesign
+                ? 'attention'
+                : runState === 'running'
                 ? 'running'
                 : runProofIsStale
                   ? 'stale'
@@ -4876,24 +5094,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           ? 'attention'
                           : 'idle'
             }
-            modeLabel={nextRunIsCompare ? 'Compare checks' : 'Observe only'}
-            nextActionHint={
-              runState === 'running'
-                ? 'Verifying the current circuit…'
-                : verifyMode === 'blocked'
-                  ? 'Blocked — fix Design or Map Pins first.'
-                  : isNoCircuitTaskFirst
-                    ? 'Open Design, load a course starter, or recover/import HDL before running Verify.'
-                  : sessionSignalsAssertionFailure
-                    ? 'Open the first failing check, then update Design or expected outputs.'
-                    : runProofIsStale
-                      ? 'Checks changed. Rerun Compare before trusting PASS/FAIL.'
-                      : sessionShowsAssertionMatch
-                        ? 'Trusted comparison evidence. Continue to Map Pins or Export when ready.'
-                        : isDraftSession && totalVectorCount === 0
-                          ? 'Add stimulus rows or seed a starter set, then Run Verify.'
-                          : 'Press Run to record observed outputs for the current stimulus.'
-            }
             scenarioName={
               activeScenario?.name?.trim()
                 ? activeScenario.name.trim()
@@ -4905,59 +5105,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         {/* ── Unified chrome: authority callout + procedure row share one card (hidden in blocked mode) ── */}
         {verifyMode !== 'blocked' && !isNoCircuitTaskFirst && (
         <VerifyCommandBar
-          isCompareMode={nextRunIsCompare}
+          isCompareMode={nextRunIsCompare && !gradingBlockedByDesign}
           onSetObserve={handleSetObserveMode}
           onSetCompare={handleSetCompareMode}
-          compareAvailable={totalExpectedCaseCount > 0}
-          onRun={() => handleRunWithPreflight()}
-          runLabel={compactCommandRunLabel}
+          compareAvailable={totalExpectedCaseCount > 0 && !gradingBlockedByDesign}
+          compareUnavailableReason={
+            gradingBlockedByDesign
+              ? 'Repair the structural Design issue before running Compare.'
+              : undefined
+          }
+          onRun={() => handleRunWithPreflight(gradingBlockedByDesign ? false : undefined)}
+          runLabel={gradingBlockedByDesign ? 'Run Observe' : compactCommandRunLabel}
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
-          onGenerate={handleGenerateBasicVectors}
-          generateLabel={isSequentialRun ? 'Generate starter stimulus' : 'Seed stimulus'}
-          showGenerate={isFirstRunState || totalVectorCount === 0}
-          onSaveAsExpected={canSetOracle ? handleSetOracleExpected : undefined}
-          showSaveAsExpected={Boolean(canSetOracle && !isFirstRunState)}
-          statusLabel={sessionStatusBadgeLabel}
-          statusTone={sessionStatusTone}
-          sessionStatusBadge={sessionStatusBadgeLabel}
-          sessionModeLabel={undefined}
-          sessionTitle={undefined}
-          referenceModeLabel={sessionSignalsAssertionFailure ? undefined : referenceModeLabel}
-          primaryStatusTitle={compactPrimaryStatusAction ? primaryStatus?.title : undefined}
-          primaryStatusMessage={compactPrimaryStatusAction ? primaryStatus?.message : undefined}
-          compactStatusActionLabel={compactPrimaryStatusAction ? 'Project → Map Pins' : undefined}
-          compactStatusActionTone={compactPrimaryStatusAction?.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction?.tone}
-          compactStatusActionTestId={compactPrimaryStatusAction?.testId}
-          onCompactStatusAction={compactPrimaryStatusAction?.onClick}
-          isSequential={isSequentialRun}
-          evidenceLabel={commandBarEvidenceLabel}
-          evidenceTone={
-            lastRun && sessionShowsCompareEvidence
-              ? (failingRows.length === 0 ? 'pass' : 'fail')
-              : lastRun && sessionShowsTraceEvidence
-                ? 'idle'
-                : undefined
-          }
-          coverageLabel={sessionSignalsAssertionFailure ? undefined : commandBarCoverageLabel}
-          sessionMetricsRow={verifySessionMetricsRow}
-          showAnalysisToggle={Boolean(lastRun)}
-          analysisOpen={drawerOpen}
-          analysisHint={analysisDrawerHint}
-          onToggleAnalysis={() => setDrawerOpen((prev) => !prev)}
-          showEditCases={hasSessionFailureEvidence}
-          onEditCases={handleEditExpectedOutputs}
-          showGoToDesign={Boolean(lastRun) && (Boolean(onGoToDesign) || Boolean(onGoToDesignWithInputs))}
-          onGoToDesign={handleGoToDesignFromVerify}
-          goToDesignTick={selectedTick}
-          experimentScenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
-          experimentCaseLabel={lastRun && !sessionSignalsAssertionFailure ? (selectedTick != null ? `Case t${selectedTick}` : 'No case selected') : null}
-          experimentTimingHint={lastRun && !sessionSignalsAssertionFailure && isSequentialRun ? sequencerModeLabel : null}
+          needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
+          onAuthorExpectedOutputs={handleEditExpectedOutputs}
         />
         )}
         {primaryStatus && !compactPrimaryStatusAction ? (
-          <details className="ide-verify-session-guidance" data-testid="ide-verify-session-guidance">
-            <summary>Session guidance</summary>
+          <div className="ide-verify-session-guidance" data-testid="ide-verify-session-guidance">
             <VerifyPrimaryStatusArea
               {...primaryStatus}
               density="embedded"
@@ -4968,7 +5134,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               }
               footnoteTestId={hasStaleAuthoredReference ? 'ide-verify-stale-reference-mode' : undefined}
             />
-          </details>
+          </div>
         ) : null}
         </div>
         </VerifyHeaderRegion>
@@ -5142,13 +5308,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         <div
           className="ide-verify-lab-grid"
           data-testid="ide-verify-lab-grid"
-          data-stimulus-layout={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}
+          data-stimulus-layout="stable"
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
         >
         <VerifyStimulusRegion
           className="ide-verify-testbench-primary"
-          data-panel-state={stimulusPanelCollapsed ? 'collapsed' : 'expanded'}
+          data-panel-state="stable"
           data-work-priority="primary"
         >
 
@@ -5206,8 +5372,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* Scenario library strip — rendered whenever scenario library props are provided */}
-        {scenarios && scenarios.length > 0 && (!isFirstRunState || scenarios.length > 1) && (
-          <ScenarioLibraryHeader
+        {scenarios && scenarios.length > 0 && (
+          <TestbenchDocumentTabs
             scenarios={scenarios}
             activeScenarioId={activeScenarioId ?? null}
             onSwitch={(id) => onSwitchScenario?.(id)}
@@ -5364,13 +5530,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           }
           onGoToHardware={onGoToHardware}
           detailsRef={scenarioBuilderDetailsRef}
-          initialExpanded={Boolean(lastRun)}
-          workbenchExpanded={scenarioWorkbenchExpanded}
-          onWorkbenchExpandedChange={setScenarioWorkbenchExpanded}
-          allowWorkbenchCollapse={false}
           clockLane={clockLaneConfig}
           stimulusAssist={stimulusAssist}
-          runSummary={testbenchRunSummary}
+          observedValuesByTick={testbenchObservedValuesByTick}
+          caseEvidenceByTick={testbenchCaseEvidenceByTick}
         />
         </VerifyStimulusRegion>
 
@@ -5385,12 +5548,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               runLabel={emptyStateRunLabel}
               onRun={undefined}
               runDisabled={runState === 'running'}
-              onSeed={
-                totalVectorCount === 0 && (isFirstRunState || totalVectorCount === 0)
-                  ? handleGenerateBasicVectors
-                  : undefined
-              }
-              seedLabel={isSequentialRun ? 'Generate starter stimulus' : 'Seed stimulus'}
+              onSeed={undefined}
             />
           ) : <div
             className="ide-verify-workbench ide-verify-workbench-v2"
@@ -5440,9 +5598,15 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 }
                 headline={
                   runProofIsStale
-                    ? 'Checks changed - rerun Compare before trusting PASS/FAIL.'
+                    ? isWrongScenario
+                      ? 'Results belong to another testbench - rerun the active testbench.'
+                      : lastRunKind === 'trace'
+                        ? 'Design or stimulus changed - run Observe again before using this waveform.'
+                        : isRunStale
+                          ? 'Design changed - rerun Compare before trusting PASS/FAIL.'
+                          : 'Checks changed - rerun Compare before trusting PASS/FAIL.'
                     : sessionShowsAssertionMatch
-                      ? `All ${totalVectorCount} test case${totalVectorCount === 1 ? '' : 's'} matched.`
+                      ? `All ${runRows.length} asserted check${runRows.length === 1 ? '' : 's'} across ${lastRun.report.vectors.length} case${lastRun.report.vectors.length === 1 ? '' : 's'} matched.`
                       : sessionSignalsAssertionFailure
                         ? 'Your circuit output does not match the expected result.'
                         : sessionShowsTraceEvidence
@@ -5450,36 +5614,62 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           : 'Run recorded.'
                 }
                 subline={
-                  sessionSignalsAssertionFailure
-                    ? 'Check the expected value, the circuit logic, or whether the output is disconnected.'
+                  runProofIsStale
+                    ? isWrongScenario
+                      ? `Last run: ${lastRun.scenarioName}. Active testbench: ${activeScenario?.name ?? 'another testbench'}.`
+                      : 'Previous evidence remains visible for reference only; it cannot change current expected values.'
+                    : sessionSignalsAssertionFailure
+                    ? 'Check these causes before changing the testbench or circuit.'
                     : lastRun.qualification === 'incomplete-mapping'
                       ? 'The behavior matched; finish pin mapping before hardware handoff.'
                       : lastRun.scenarioName
                         ? `Scenario: ${lastRun.scenarioName}`
                         : undefined
                 }
-                guidanceItems={sessionSignalsAssertionFailure ? [
-                  'Expected value is incorrect.',
-                  'Circuit logic is incorrect.',
-                  'Output is disconnected.',
-                ] : undefined}
+                guidanceItems={
+                  !runProofIsStale && sessionSignalsAssertionFailure
+                    ? [
+                        'Expected value is incorrect.',
+                        'Circuit logic is incorrect.',
+                        'Output is disconnected.',
+                      ]
+                    : undefined
+                }
                 metrics={(() => {
                   const list: VerifyResultsMetric[] = [];
-                  if (sessionShowsCompareEvidence) {
+                  list.push({
+                    id: 'cases',
+                    label: 'Run cases',
+                    value: String(lastRun.report.vectors.length),
+                    tone: 'neutral',
+                  });
+                  if (!runProofIsStale && sessionShowsCompareEvidence) {
                     list.push({
                       id: 'passed',
-                      label: 'Passed',
-                      value: String(Math.max(0, totalExpectedCaseCount - failingRows.length)),
+                      label: 'Checks passed',
+                      value: String(passingRows.length),
                       tone: 'ok',
                     });
                     list.push({
                       id: 'failed',
-                      label: 'Failed',
+                      label: 'Checks failed',
                       value: String(failingRows.length),
                       tone: failingRows.length > 0 ? 'blocked' : 'neutral',
                     });
                   }
-                  if (typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
+                  list.push({
+                    id: 'ticks',
+                    label: 'Run ticks',
+                    value: String(runTickCount),
+                    tone: 'neutral',
+                  });
+                  list.push({
+                    id: 'wave-samples',
+                    label: 'Wave samples',
+                    value: String(lastRun.waveform.length),
+                    tone: 'neutral',
+                  });
+                  if (!runProofIsStale && typeof commandBarCoverageLabel === 'string' && commandBarCoverageLabel.trim().length > 0) {
                     list.push({
                       id: 'coverage',
                       label: 'Coverage',
@@ -5490,27 +5680,84 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   return list;
                 })()}
                 primaryActionLabel={
-                  sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
+                  !runProofIsStale && sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
                     ? 'Open Design'
                     : undefined
                 }
                 onPrimaryAction={
-                  sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
+                  !runProofIsStale && sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
                     ? handleGoToDesignFromVerify
                     : undefined
                 }
-                primaryActionTestId="ide-verify-results-summary-open-design"
-                secondaryActionLabel={sessionSignalsAssertionFailure ? 'Review expected outputs' : undefined}
-                onSecondaryAction={sessionSignalsAssertionFailure ? handleEditExpectedOutputs : undefined}
-                secondaryActionTestId="ide-verify-results-summary-review-expected"
+                primaryActionTestId="ide-verify-inspect-design"
               />
             ) : null}
             {structuralRecoveryPanel || repairPanel ? (
-              <details className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure">
-                <summary>Failure details</summary>
+              <section className="ide-verify-advanced-failure" data-testid="ide-verify-advanced-failure" aria-label="Failure repair">
                 {structuralRecoveryPanel}
                 {repairPanel}
-              </details>
+              </section>
+            ) : null}
+            {lastRun ? (
+              <div
+                className="ide-verify-results-actions"
+                data-testid="ide-vcb-utilities-panel"
+                aria-label="Run inspection and repair actions"
+              >
+                {!sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs) ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={handleGoToDesignFromVerify}
+                    testId="ide-verify-inspect-design"
+                  >
+                    Open in Design
+                  </IdeButton>
+                ) : null}
+                <button
+                  type="button"
+                  className={`ide-vcb-analysis-toggle${drawerOpen ? ' is-open' : ''}`}
+                  onClick={() => setDrawerOpen((previous) => !previous)}
+                  data-testid="ide-verify-drawer-toggle"
+                  aria-expanded={drawerOpen}
+                  aria-pressed={drawerOpen}
+                >
+                  <span className="ide-vcb-analysis-label">
+                    {drawerOpen ? 'Close run inspector' : 'Inspect run'}
+                  </span>
+                  {!drawerOpen && analysisDrawerHint ? (
+                    <span className="ide-vcb-analysis-hint" data-testid="ide-verify-drawer-hint">
+                      {analysisDrawerHint}
+                    </span>
+                  ) : null}
+                </button>
+                {hasSessionFailureEvidence ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={handleEditExpectedOutputs}
+                    testId="ide-verify-run-proof-edit-vectors"
+                  >
+                    Edit expected outputs
+                  </IdeButton>
+                ) : null}
+                {canSetOracle && !isFirstRunState ? (
+                  <IdeButton
+                    tone="secondary"
+                    onClick={handleSetOracleExpected}
+                    testId="ide-vcb-save-expected"
+                  >
+                    Use observed as expected
+                  </IdeButton>
+                ) : null}
+                {compactPrimaryStatusAction ? (
+                  <IdeButton
+                    tone={compactPrimaryStatusAction.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction.tone}
+                    onClick={compactPrimaryStatusAction.onClick}
+                    testId={compactPrimaryStatusAction.testId}
+                  >
+                    Project → Map Pins
+                  </IdeButton>
+                ) : null}
+              </div>
             ) : null}
             <section className="ide-verify-oscilloscope-stage" data-testid="ide-verify-workspace-waveform" data-state={runProofIsStale ? 'stale' : sessionShowsAssertionMatch ? 'pass' : sessionSignalsAssertionFailure ? 'fail' : 'idle'}>
               {/* ── Oscilloscope instrument header ── */}
@@ -5550,6 +5797,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 </div>
               </div>
               <div className="ide-verify-waveform-bar" data-testid="ide-verify-waveform-bar">
+                <div className="ide-verify-waveform-primary" data-testid="ide-verify-waveform-primary">
                 {canStepThroughCases ? (
                   <div className="ide-verify-step-controls" data-testid="ide-verify-step-controls">
                     <IdeButton
@@ -5577,48 +5825,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         </IdeButton>
                         {onDebugTickSelected && selectedTick !== null ? (
                           <IdeButton tone="ghost" onClick={handleDebugInDesign} testId="ide-verify-step-debug-design">
-                            Show in Design
+                            Open in Design
                           </IdeButton>
                         ) : null}
                       </div>
                     ) : null}
                   </div>
                 ) : null}
-                {/* Left: Fail navigator */}
-                <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
-                  {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
-                    <>
-                      <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
-                        First mismatch
-                      </IdeButton>
-                      {selectedFailureCase && (
-                        <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
-                          <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
-                          <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
-                          <span className="ide-verify-fail-nav-summary__values ide-copy">
-                            expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
-                          </span>
-                        </span>
-                      )}
-                      {selectedFailurePositionLabel && (
-                        <span className="ide-verify-fail-nav-position ide-copy">
-                          {selectedFailurePositionLabel}
-                        </span>
-                      )}
-                      <span
-                        className="ide-verify-fail-nav-waveform-hint ide-copy"
-                        data-testid="ide-verify-fail-nav-waveform-hint"
-                      >
-                        Same names appear as lanes in the chart under this bar.
-                      </span>
-                    </>
-                  ) : (
-                    <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
-                      {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
-                    </span>
-                  )}
-                </div>
-
                 <div className="ide-verify-waveform-transport" data-testid="ide-verify-waveform-transport">
                 {/* Center: Zoom + Row density */}
                 <div className="ide-verify-wfbar-group ide-verify-wfbar-center">
@@ -5663,19 +5876,46 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       </code>
                     </label>
                   ) : null}
-                  {allWaveformTicks.length > 0 && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => setWaveformToolsOpen((previous) => !previous)}
-                      testId="ide-verify-waveform-tools-toggle"
-                    >
-                      {waveformToolsOpen ? 'Hide tools' : 'Waveform tools'}
-                    </IdeButton>
+                </div>
+                </div>
+                </div>
+
+                {/* Fail/meta navigation intentionally owns a separate row. */}
+                <div className="ide-verify-wfbar-group ide-verify-wfbar-left" data-testid="ide-verify-fail-nav">
+                  {hasSessionFailureEvidence && failTicksSorted.length > 0 ? (
+                    <>
+                      <IdeButton tone="secondary" onClick={handleJumpToFirstFailure} testId="ide-verify-fail-nav-first">
+                        First mismatch
+                      </IdeButton>
+                      {selectedFailureCase && (
+                        <span className="ide-verify-fail-nav-summary" data-testid="ide-verify-fail-nav-summary">
+                          <code>{selectedFailureDisplayLabel ?? selectedFailureCase.signal}</code>
+                          <span className="ide-verify-fail-nav-summary__tick">t{selectedFailureCase.tick}</span>
+                          <span className="ide-verify-fail-nav-summary__values ide-copy">
+                            expected <code>{selectedFailureCase.expected}</code> · got <code>{selectedFailureCase.actual}</code>
+                          </span>
+                        </span>
+                      )}
+                      {selectedFailurePositionLabel && (
+                        <span className="ide-verify-fail-nav-position ide-copy">
+                          {selectedFailurePositionLabel}
+                        </span>
+                      )}
+                      <span
+                        className="ide-verify-fail-nav-waveform-hint ide-copy"
+                        data-testid="ide-verify-fail-nav-waveform-hint"
+                      >
+                        Same names appear as lanes in the chart under this bar.
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
+                      {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
+                    </span>
                   )}
                 </div>
-                </div>
               </div>
-              {waveformToolsOpen && (
+              {allWaveformTicks.length > 0 && (
                 <div className="ide-verify-waveform-tools-panel" data-testid="ide-verify-waveform-tools-panel">
                   <div className="ide-verify-waveform-tools-section">
                     <span className="ide-verify-waveform-tools-label ide-copy">View</span>
@@ -5949,11 +6189,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   onSelectPeer={(peer) => applyFailureSelection(peer)}
                   onJumpToFix={(failure) => reviewFailureInVerify(failure)}
                   onOpenInDesign={(failure) => openFailureInDesign(failure)}
-                  onAcceptObserved={handleFailureAcceptObserved}
-                  onCaptureRow={handleFailureCaptureRow}
-                  onCaptureSignal={handleFailureCaptureSignal}
-                  onSetExpectedBit={handleFailureSetExpectedBit}
-                  onClearExpected={handleFailureClearExpected}
+                  onAcceptObserved={canApplyRunDerivedRepair ? handleFailureAcceptObserved : undefined}
+                  onCaptureRow={canApplyRunDerivedRepair ? handleFailureCaptureRow : undefined}
+                  onCaptureSignal={canApplyRunDerivedRepair ? handleFailureCaptureSignal : undefined}
+                  onSetExpectedBit={canApplyRunDerivedRepair ? handleFailureSetExpectedBit : undefined}
+                  onClearExpected={canApplyRunDerivedRepair ? handleFailureClearExpected : undefined}
                   onRerunCompare={() => handleRunWithPreflight(true)}
                 />
               ) : null}
@@ -6068,11 +6308,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         )}
                       </div>
                       {selectedFailureEvidence && (
-                        <details
+                        <div
                           className="ide-verify-failure-explainer__inputs ide-verify-technical-details"
                           data-testid="ide-verify-explainer-technical-details"
                         >
-                          <summary>Technical details</summary>
+                          <strong>Comparison trace</strong>
                           <div className="ide-verify-failure-explainer__chips" style={{ marginTop: '0.75rem' }}>
                             <div className="ide-kv-row" data-testid="ide-verify-mismatch-case-id">
                               <span>Vector case</span>
@@ -6097,7 +6337,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                               </code>
                             </div>
                           </div>
-                        </details>
+                        </div>
                       )}
                       {selectedFailurePattern && (
                         <div
@@ -6150,7 +6390,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={focusMismatchLanes}
                           testId="ide-verify-explainer-show-mismatches"
                         >
-                          Show only mismatches
+                          Mismatches only
                         </IdeButton>
                         {showMismatchOnlySignals && (
                           <IdeButton
@@ -6158,7 +6398,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             onClick={clearMismatchLaneFilter}
                             testId="ide-verify-explainer-show-all-lanes"
                           >
-                            Show all lanes
+                            All lanes
                           </IdeButton>
                         )}
                       </div>
@@ -6272,11 +6512,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     onSelectPeer={(peer) => applyFailureSelection(peer)}
                     onJumpToFix={(failure) => reviewFailureInVerify(failure)}
                     onOpenInDesign={(failure) => openFailureInDesign(failure)}
-                    onAcceptObserved={handleFailureAcceptObserved}
-                    onCaptureRow={handleFailureCaptureRow}
-                    onCaptureSignal={handleFailureCaptureSignal}
-                    onSetExpectedBit={handleFailureSetExpectedBit}
-                    onClearExpected={handleFailureClearExpected}
+                    onAcceptObserved={canApplyRunDerivedRepair ? handleFailureAcceptObserved : undefined}
+                    onCaptureRow={canApplyRunDerivedRepair ? handleFailureCaptureRow : undefined}
+                    onCaptureSignal={canApplyRunDerivedRepair ? handleFailureCaptureSignal : undefined}
+                    onSetExpectedBit={canApplyRunDerivedRepair ? handleFailureSetExpectedBit : undefined}
+                    onClearExpected={canApplyRunDerivedRepair ? handleFailureClearExpected : undefined}
                     onRerunCompare={() => handleRunWithPreflight(true)}
                   />
                   {/* Run context — scenario, protocol, sampling, tick range */}
@@ -6404,7 +6644,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     rows={inspectorVectorRows}
                     testId="ide-verify-vectors-table"
                   />
-                  {selectedFailure && selectedFailure.vectorId && (
+                  {canApplyRunDerivedRepair && selectedFailure && selectedFailure.vectorId && (
                     <div
                       className="ide-verify-fix-expectation-strip"
                       data-testid="ide-verify-fix-expectation-strip"
@@ -6417,13 +6657,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <button
                         type="button"
                         className="ide-verify-fix-expectation-btn"
-                        onClick={() =>
-                          handleFixExpectation(
-                            selectedFailure.vectorId!,
-                            selectedFailure.signal,
-                            selectedFailure.actual as '0' | '1'
-                          )
-                        }
+                        onClick={() => handleFailureAcceptObserved(selectedFailure)}
                         data-testid="ide-verify-fix-expectation-btn"
                         title={`Set expected ${getFailureSignalLabel(selectedFailure)} = ${selectedFailure.actual} for this authored row`}
                       >
@@ -6504,13 +6738,19 @@ function buildVectorReferenceSignature(
   }>
 ): string {
   return JSON.stringify(
-    vectors.map((vector, index) => ({
-      tick: Number.isFinite(Number(vector.tick))
-        ? Math.max(0, Math.floor(Number(vector.tick)))
-        : index,
-      inputs: normalizeReferenceRecord(vector.inputs ?? {}),
-      expected: normalizeReferenceRecord(vector.expected ?? {}),
-    }))
+    vectors
+      .map((vector, index) => ({
+        tick: Number.isFinite(Number(vector.tick))
+          ? Math.max(0, Math.floor(Number(vector.tick)))
+          : index,
+        inputs: normalizeReferenceRecord(vector.inputs ?? {}),
+        expected: normalizeReferenceRecord(vector.expected ?? {}),
+        caseIndex: index,
+      }))
+      .sort((left, right) =>
+        left.tick === right.tick ? left.caseIndex - right.caseIndex : left.tick - right.tick
+      )
+      .map(({ caseIndex: _caseIndex, ...vector }) => vector)
   );
 }
 
@@ -6542,6 +6782,7 @@ function normalizeVectors(
       ),
       expected: Object.fromEntries(
         Object.entries(vector.expected ?? {})
+          .filter(([, value]) => isAssertedExpectedValue(value))
           .map(([key, value]) => [
             outputAliases.get(normalizeFieldId(key)) ??
               normalizeFieldId(key),
@@ -6575,14 +6816,16 @@ function buildVerifyFieldAliasMap(
   fields: VerifyVectorDraftInput[],
   seed: Array<{ id: string; label?: string; pin?: string; nodeId?: string }>
 ): Map<string, string> {
-  const aliases = new Map<string, string>();
+  const ownersByAlias = new Map<string, Set<string>>();
   const validIds = new Set(fields.map((field) => field.id));
 
   const register = (canonicalId: string, ...candidates: Array<string | undefined>) => {
     for (const candidate of candidates) {
       const normalized = normalizeFieldId(candidate ?? '');
-      if (!normalized || aliases.has(normalized)) continue;
-      aliases.set(normalized, canonicalId);
+      if (!normalized) continue;
+      const owners = ownersByAlias.get(normalized) ?? new Set<string>();
+      owners.add(canonicalId);
+      ownersByAlias.set(normalized, owners);
     }
   };
 
@@ -6607,7 +6850,28 @@ function buildVerifyFieldAliasMap(
     );
   }
 
+  const aliases = new Map<string, string>();
+  for (const [alias, owners] of ownersByAlias) {
+    if (owners.size === 1) aliases.set(alias, Array.from(owners)[0]);
+  }
   return aliases;
+}
+
+function canonicalizeVerifySignalRoles(
+  roles: Record<string, 'clock' | 'reset' | 'input' | 'output'>,
+  inputAliases: Map<string, string>,
+  outputAliases: Map<string, string>
+): Record<string, 'clock' | 'reset' | 'input' | 'output'> {
+  const canonical: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {};
+  for (const [rawSignal, role] of Object.entries(roles)) {
+    const normalized = normalizeFieldId(rawSignal);
+    const signal =
+      role === 'output'
+        ? outputAliases.get(normalized) ?? rawSignal
+        : inputAliases.get(normalized) ?? outputAliases.get(normalized) ?? rawSignal;
+    canonical[normalizeFieldId(signal)] = role;
+  }
+  return canonical;
 }
 
 function nextVectorTick(vectors: VerifySurfaceProps['vectors']): number {
@@ -6684,50 +6948,55 @@ function buildCanonicalWaveformSignalAliases(input: {
   outputFields: VerifyVectorDraftInput[];
   mappedSignals?: VerifyMappedSignal[];
 }): Map<string, string> {
-  const aliases = new Map<string, string>();
-  const canonicalByNormalized = new Map<string, string>();
-  const registerCanonical = (canonical: string | null | undefined, ...candidates: Array<string | null | undefined>) => {
+  const ownersByAlias = new Map<string, Set<string>>();
+  const registerAliases = (
+    canonical: string | null | undefined,
+    ...candidates: Array<string | null | undefined>
+  ) => {
     const canonicalName = typeof canonical === 'string' ? canonical.trim() : '';
     if (!canonicalName) return;
     for (const candidate of [canonicalName, ...candidates]) {
       const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
-      if (!normalized || canonicalByNormalized.has(normalized)) continue;
-      canonicalByNormalized.set(normalized, canonicalName);
-    }
-  };
-  const registerAlias = (canonical: string | null | undefined, ...candidates: Array<string | null | undefined>) => {
-    const canonicalName = typeof canonical === 'string' ? canonical.trim() : '';
-    if (!canonicalName) return;
-    registerCanonical(canonicalName);
-    for (const candidate of candidates) {
-      const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
-      if (!normalized || aliases.has(normalized)) continue;
-      aliases.set(normalized, canonicalName);
+      if (!normalized) continue;
+      const owners = ownersByAlias.get(normalized) ?? new Set<string>();
+      owners.add(canonicalName);
+      ownersByAlias.set(normalized, owners);
     }
   };
   const resolveCanonical = (...candidates: Array<string | null | undefined>) => {
     for (const candidate of candidates) {
       const normalized = normalizeFieldId(normalizeSignalKey(candidate ?? ''));
       if (!normalized) continue;
-      const canonical = canonicalByNormalized.get(normalized);
-      if (canonical) return canonical;
+      const owners = ownersByAlias.get(normalized);
+      if (owners?.size === 1) return Array.from(owners)[0];
     }
     return null;
   };
 
   for (const field of [...input.inputFields, ...input.outputFields]) {
-    registerCanonical(field.id, field.label);
+    registerAliases(field.id, field.label);
   }
   for (const signal of input.mappedSignals ?? []) {
-    registerCanonical(signal.id, signal.label);
+    const canonical = resolveCanonical(signal.id, signal.label) ?? signal.id;
+    registerAliases(
+      canonical,
+      signal.id,
+      signal.label,
+      signal.nodeId,
+      signal.nodeId ? `${signal.nodeId}.in` : '',
+      signal.nodeId ? `${signal.nodeId}.out` : '',
+      signal.nodeId ? `${signal.nodeId}_in` : '',
+      signal.nodeId ? `${signal.nodeId}_out` : '',
+      signal.nodeId ? `${signal.nodeId}:in` : '',
+      signal.nodeId ? `${signal.nodeId}:out` : ''
+    );
   }
 
   for (const row of input.lastRun?.evidence?.ioRows ?? []) {
     const canonical =
       resolveCanonical(row.id, row.label) ??
-      row.id.trim() ??
-      row.label.trim();
-    registerAlias(
+      (row.id.trim() || row.label.trim());
+    registerAliases(
       canonical,
       row.id,
       row.label,
@@ -6742,11 +7011,24 @@ function buildCanonicalWaveformSignalAliases(input: {
   }
 
   for (const entry of input.lastRun?.evidence?.normalizationMap ?? []) {
-    const canonical = resolveCanonical(entry.rawKey, entry.normalizedKey) ?? entry.rawKey;
-    registerAlias(canonical, entry.rawKey, entry.normalizedKey, entry.matchedSignal);
+    const canonical =
+      resolveCanonical(entry.rawKey, entry.normalizedKey, entry.matchedSignal) ?? entry.rawKey;
+    registerAliases(canonical, entry.rawKey, entry.normalizedKey, entry.matchedSignal);
   }
 
+  const aliases = new Map<string, string>();
+  for (const [alias, owners] of ownersByAlias) {
+    if (owners.size === 1) aliases.set(alias, Array.from(owners)[0]);
+  }
   return aliases;
+}
+
+function isAssertedExpectedValue(value: unknown): boolean {
+  return value === 0 || value === 1 || value === false || value === true || value === '0' || value === '1';
+}
+
+function hasAssertedExpectedEntries(record: Record<string, unknown>): boolean {
+  return Object.values(record).some(isAssertedExpectedValue);
 }
 
 function buildCaptureContext(input: {
@@ -7249,13 +7531,20 @@ function formatTickWindowReason(input: {
   return `Showing ${shownTicks.length} ticks for local context.`;
 }
 
-function resolveVerifyLayoutMode(width?: number): VerifyLayoutMode {
+function resolveVerifyLayoutMode(width?: number, height?: number): VerifyLayoutMode {
   const nextWidth =
     typeof width === 'number'
       ? width
       : typeof window !== 'undefined'
         ? window.innerWidth
         : 1440;
+  const nextHeight =
+    typeof height === 'number'
+      ? height
+      : typeof window !== 'undefined'
+        ? window.innerHeight
+        : 900;
+  if (nextWidth <= 1180 && nextHeight <= 700) return 'compact';
   if (nextWidth >= 1280) return 'wide';
   if (nextWidth >= 960) return 'standard';
   return 'compact';
@@ -7273,7 +7562,7 @@ function fitWaveformTickWidth(containerWidth: number, tickCount: number): number
 }
 
 function formatVerifyProtocol(run: RuntimeVerifyRun): string {
-  return formatTimingProtocolLabel(deriveTimingGuidanceFromRun(run));
+  return formatTimingProtocolLabel(deriveTimingGuidanceFromRun(run), run.clockPolicy);
 }
 
 function formatVerifySampling(run: RuntimeVerifyRun): string {

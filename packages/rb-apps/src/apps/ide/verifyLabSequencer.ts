@@ -158,7 +158,8 @@ export function buildLabSequencerStepsFromScenarioSteps(
     });
 
     if (step.kind === 'pulse_step') {
-      tick += 2;
+      const duration = Math.max(1, Math.floor(step.durationTicks ?? 1));
+      tick += step.pulseBehavior === 'high' || step.pulseBehavior === 'low' ? duration : duration + 1;
       continue;
     }
     tick += Math.max(1, Math.floor(step.durationTicks ?? 1));

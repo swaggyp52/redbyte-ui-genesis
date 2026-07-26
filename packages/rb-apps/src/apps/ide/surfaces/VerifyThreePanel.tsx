@@ -18,12 +18,13 @@ export const VerifyThreePanel: React.FC<VerifyThreePanelProps> = ({
 
   if (!hasLeftPanel && !hasRightPanel) {
     return (
-      <main
+      <section
         className="ide-verify-three-panel-center ide-verify-three-panel-center--solo"
         data-testid="ide-verify-three-panel-center"
+        aria-label="Simulation results"
       >
         {centerPanel}
-      </main>
+      </section>
     );
   }
 
@@ -39,9 +40,13 @@ export const VerifyThreePanel: React.FC<VerifyThreePanelProps> = ({
           {leftPanel}
         </aside>
       ) : null}
-      <main className="ide-verify-three-panel-center" data-testid="ide-verify-three-panel-center">
+      <section
+        className="ide-verify-three-panel-center"
+        data-testid="ide-verify-three-panel-center"
+        aria-label="Simulation results"
+      >
         {centerPanel}
-      </main>
+      </section>
       {hasRightPanel ? (
         <aside className="ide-verify-three-panel-right" data-testid="ide-verify-three-panel-right">
           {rightPanel}

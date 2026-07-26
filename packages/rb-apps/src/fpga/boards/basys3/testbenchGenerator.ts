@@ -24,6 +24,13 @@ interface SignalCatalog {
     logicalToCanonical: Map<string, string>;
 }
 
+export interface TestbenchClockDriveView {
+  mode: 'auto' | 'authored';
+  signalId?: string;
+  signalLabel?: string;
+  startLevel: 0 | 1;
+}
+
 interface TestbenchGenerationOptions {
   scheduleOverride?: Partial<VerifyScheduleContract> & Pick<VerifyScheduleContract, 'schedule'>;
   /**
@@ -32,6 +39,8 @@ interface TestbenchGenerationOptions {
    * Vector types (STD_LOGIC_VECTOR) are preserved; stimulus uses bit-indexed references.
    */
   entityVhd?: string;
+  /** Sanitized scenario execution intent. Never pass Verify run/result state here. */
+  clockDrive?: Readonly<TestbenchClockDriveView>;
 }
 
 // ---------------------------------------------------------------------------
@@ -262,10 +271,23 @@ export function generateTestbenchVhdl(
       resolvedEntityVhd,
       scheduleContract,
       topModule,
+      options?.clockDrive,
     );
   }
 
-  const signalCatalog = collectSignals(project, vectors, scheduleContract.schedule, scheduleContract.clockSignalName);
+  const authoredClock =
+    scheduleContract.schedule === 'clocked_macro' && options?.clockDrive?.mode === 'authored';
+  const clockSignalHints = [
+    options?.clockDrive?.signalId,
+    options?.clockDrive?.signalLabel,
+    scheduleContract.clockSignalName,
+  ];
+  const signalCatalog = collectSignals(
+    project,
+    vectors,
+    scheduleContract.schedule,
+    clockSignalHints
+  );
 
   const vhdlNameByLogical = buildNameMap([
     ...signalCatalog.inputs,
@@ -289,6 +311,7 @@ export function generateTestbenchVhdl(
     ? uniqueSorted([signalCatalog.clock, ...signalCatalog.inputs])
     : signalCatalog.inputs;
   const declaredOutputs = signalCatalog.outputs;
+  const authoredClockStartLevel = authoredClock && options?.clockDrive?.startLevel === 1 ? 1 : 0;
 
   const componentPorts = [
     ...declaredInputs.map((name) => `      ${vhdlNameByLogical.get(name)} : in  std_logic`),
@@ -296,9 +319,15 @@ export function generateTestbenchVhdl(
   ].join(';\n');
 
   const signalDecls = [
-    ...declaredInputs.map((name) => `  signal ${vhdlNameByLogical.get(name)} : std_logic := '0';`),
+    ...declaredInputs.map((name) =>
+      `  signal ${vhdlNameByLogical.get(name)} : std_logic := '${
+        authoredClock && name === signalCatalog.clock ? authoredClockStartLevel : 0
+      }';`
+    ),
     ...declaredOutputs.map((name) => `  signal ${vhdlNameByLogical.get(name)} : std_logic;`),
-    ...(scheduleContract.schedule === 'clocked_macro' ? ["  constant CLK_HALF_PERIOD : time := 5 ns;"] : []),
+    ...(scheduleContract.schedule === 'clocked_macro' && !authoredClock
+      ? ["  constant CLK_HALF_PERIOD : time := 5 ns;"]
+      : []),
   ].join('\n');
 
   const portMapEntries = [
@@ -306,8 +335,16 @@ export function generateTestbenchVhdl(
     ...declaredOutputs.map((name) => `      ${vhdlNameByLogical.get(name)} => ${vhdlNameByLogical.get(name)}`),
   ].join(',\n');
 
-  const stimulus = generateStimulus(vectors, scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
-  const clockProcess = buildClockProcess(scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
+  const stimulus = generateStimulus(
+    vectors,
+    scheduleContract.schedule,
+    signalCatalog.clock,
+    vhdlNameByLogical,
+    authoredClock
+  );
+  const clockProcess = authoredClock
+    ? ''
+    : buildClockProcess(scheduleContract.schedule, signalCatalog.clock, vhdlNameByLogical);
 
   return `library ieee;
 use ieee.std_logic_1164.all;
@@ -328,7 +365,7 @@ begin
   -- Deterministic schedule contract with Verify runner:
   -- schedule=${scheduleContract.schedule}
   -- reason=${scheduleContract.reason}
-  -- sequence=${scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
+  -- sequence=${authoredClock ? 'authored-vectors' : scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
   dut: ${toVhdlIdentifier(topModule)}
     port map (
 ${portMapEntries}
@@ -370,16 +407,22 @@ function generateTestbenchFromEntity(
   topVhd: string,
   scheduleContract: ReturnType<typeof deriveVerifySchedule>,
   topModule: string,
+  clockDrive?: Readonly<TestbenchClockDriveView>,
 ): string {
   const entityPorts = parseEntityPortInfos(topVhd);
   const labelToRef = buildLabelToEntityRef(project, entityPorts);
+  const authoredClock =
+    scheduleContract.schedule === 'clocked_macro' && clockDrive?.mode === 'authored';
 
   // Resolve clock signal name if needed
   let clockPortRef: string | undefined;
   if (scheduleContract.schedule === 'clocked_macro') {
-    const hint = scheduleContract.clockSignalName?.trim() ?? '';
-    if (hint.length > 0) {
-      clockPortRef = labelToRef.get(hint) ?? labelToRef.get(hint.toUpperCase()) ?? hint;
+    const hints = [clockDrive?.signalId, clockDrive?.signalLabel, scheduleContract.clockSignalName]
+      .map((hint) => hint?.trim() ?? '')
+      .filter(Boolean);
+    for (const hint of hints) {
+      clockPortRef = labelToRef.get(hint) ?? labelToRef.get(hint.toUpperCase());
+      if (clockPortRef) break;
     }
     if (!clockPortRef) {
       const clkPort = entityPorts.find(
@@ -397,13 +440,15 @@ function generateTestbenchFromEntity(
   const signalDeclLines = entityPorts.map((p) => {
     const init =
       p.direction === 'in'
-        ? p.isVector
-          ? " := (others => '0')"
-          : " := '0'"
+        ? buildEntityInputInitializer(
+            p,
+            authoredClock ? clockPortRef : undefined,
+            authoredClock && clockDrive?.startLevel === 1 ? 1 : 0,
+          )
         : '';
     return `  signal ${p.name} : ${p.typeDecl}${init};`;
   });
-  if (scheduleContract.schedule === 'clocked_macro') {
+  if (scheduleContract.schedule === 'clocked_macro' && !authoredClock) {
     signalDeclLines.push('  constant CLK_HALF_PERIOD : time := 5 ns;');
   }
   const signalDecls = signalDeclLines.join('\n');
@@ -418,8 +463,11 @@ function generateTestbenchFromEntity(
     clockPortRef,
     labelToRef,
     entityPorts,
+    authoredClock,
   );
-  const clockProcess = buildEntityClockProcess(scheduleContract.schedule, clockPortRef);
+  const clockProcess = authoredClock
+    ? ''
+    : buildEntityClockProcess(scheduleContract.schedule, clockPortRef);
 
   return `library ieee;
 use ieee.std_logic_1164.all;
@@ -440,7 +488,7 @@ begin
   -- Deterministic schedule contract with Verify runner:
   -- schedule=${scheduleContract.schedule}
   -- reason=${scheduleContract.reason}
-  -- sequence=${scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
+  -- sequence=${authoredClock ? 'authored-vectors' : scheduleContract.schedule === 'clocked_macro' ? CLOCKED_MACRO_SEQUENCE.join('->') : 'single-tick'}
   dut: ${toVhdlIdentifier(topModule)}
     port map (
 ${portMapEntries}
@@ -456,12 +504,42 @@ end architecture sim;
 `;
 }
 
+function buildEntityInputInitializer(
+  port: EntityPortInfo,
+  clockPortRef: string | undefined,
+  clockStartLevel: 0 | 1,
+): string {
+  const normalizedPort = port.name.trim().toLowerCase();
+  const normalizedClock = clockPortRef?.replace(/\s+/g, '').toLowerCase();
+  const scalarClock = normalizedClock === normalizedPort;
+
+  if (!port.isVector) {
+    return ` := '${scalarClock ? clockStartLevel : 0}'`;
+  }
+
+  if (clockStartLevel === 1 && normalizedClock) {
+    const bitPrefix = `${normalizedPort}(`;
+    if (normalizedClock.startsWith(bitPrefix) && normalizedClock.endsWith(')')) {
+      const bitIndex = normalizedClock.slice(bitPrefix.length, -1);
+      if (/^\d+$/.test(bitIndex)) {
+        return ` := (${bitIndex} => '1', others => '0')`;
+      }
+    }
+    if (scalarClock) {
+      return " := (others => '1')";
+    }
+  }
+
+  return " := (others => '0')";
+}
+
 function generateEntityStimulus(
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
   clockPortRef: string | undefined,
   labelToRef: Map<string, string>,
   entityPorts: EntityPortInfo[],
+  authoredClock: boolean,
 ): string {
   const outputPortNames = new Set(
     entityPorts.filter((p) => p.direction === 'out').map((p) => p.name.toLowerCase()),
@@ -474,17 +552,13 @@ function generateEntityStimulus(
     for (const key of uniqueSorted(Object.keys(vector.inputs))) {
       const ref = labelToRef.get(key) ?? labelToRef.get(key.toUpperCase()) ?? key;
       // Skip clock — handled by clock process below
-      if (clockPortRef && ref === clockPortRef) continue;
+      if (!authoredClock && clockPortRef && ref === clockPortRef) continue;
       lines.push(`    ${ref} <= ${toBitLiteral(vector.inputs[key])};`);
     }
 
-    if (schedule === 'clocked_macro' && clockPortRef) {
-      if (index === 0) {
-        lines.push('    wait for 0 ns;');
-      } else {
-        lines.push(`    wait until rising_edge(${clockPortRef});`);
-        lines.push('    wait for 0 ns;');
-      }
+    if (schedule === 'clocked_macro' && clockPortRef && !authoredClock) {
+      lines.push(`    wait until rising_edge(${clockPortRef});`);
+      lines.push('    wait for 0 ns;');
       lines.push('    wait for 0 ns;');
     } else {
       lines.push('    wait for 10 ns;');
@@ -513,7 +587,8 @@ function generateStimulus(
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
   clockSignal: string | undefined,
-  nameMap: Map<string, string>
+  nameMap: Map<string, string>,
+  authoredClock: boolean,
 ): string {
   const lines: string[] = [];
   const safeClock = clockSignal ? nameMap.get(clockSignal) : undefined;
@@ -522,19 +597,15 @@ function generateStimulus(
     lines.push(`    -- Vector ${index} (tick=${vector.tick})`);
 
     for (const inputName of uniqueSorted(Object.keys(vector.inputs))) {
-      if (safeClock && nameMap.get(inputName) === safeClock) continue;
+      if (!authoredClock && safeClock && nameMap.get(inputName) === safeClock) continue;
       const signalName = nameMap.get(inputName);
       if (!signalName) continue;
       lines.push(`    ${signalName} <= ${toBitLiteral(vector.inputs[inputName])};`);
     }
 
-    if (schedule === 'clocked_macro' && safeClock) {
-      if (index === 0) {
-        lines.push('    wait for 0 ns;');
-      } else {
-        lines.push(`    wait until rising_edge(${safeClock});`);
-        lines.push('    wait for 0 ns;');
-      }
+    if (schedule === 'clocked_macro' && safeClock && !authoredClock) {
+      lines.push(`    wait until rising_edge(${safeClock});`);
+      lines.push('    wait for 0 ns;');
       lines.push('    wait for 0 ns;');
     } else {
       lines.push('    wait for 10 ns;');
@@ -606,7 +677,7 @@ function collectSignals(
   project: RBProject,
   vectors: TestVector[],
   schedule: 'combinational' | 'clocked_macro',
-  scheduleClockHint?: string
+  scheduleClockHints: Array<string | undefined> = []
 ): SignalCatalog {
   const inputNames = new Set<string>();
   const outputNames = new Set<string>();
@@ -691,8 +762,18 @@ function collectSignals(
 
     let clock: string | undefined;
   if (schedule === 'clocked_macro') {
-    if (scheduleClockHint && scheduleClockHint.trim().length > 0) {
-        clock = logicalToCanonical.get(scheduleClockHint.trim()) ?? scheduleClockHint.trim();
+    const resolvedClockHint = scheduleClockHints
+      .map((hint) => hint?.trim() ?? '')
+      .filter((hint) => hint.length > 0)
+      .map(
+        (hint) =>
+          logicalToCanonical.get(hint) ??
+          logicalToCanonical.get(hint.toLowerCase()) ??
+          (inputNames.has(hint) ? hint : undefined)
+      )
+      .find((hint): hint is string => typeof hint === 'string');
+    if (resolvedClockHint) {
+      clock = resolvedClockHint;
       inputNames.add(clock);
     } else if (inputNames.has('clk')) {
       clock = 'clk';

@@ -13,16 +13,9 @@ interface ResolveActiveScheduleContractInput {
 export function resolveActiveScheduleContract(
   input: ResolveActiveScheduleContractInput
 ): VerifyScheduleContract | undefined {
-  const lastRunMatchesCurrentDesign =
-    input.lastRun?.scheduleContract != null &&
-    input.lastRun.deterministicHash !== '' &&
-    input.deterministicHash !== '' &&
-    input.lastRun.deterministicHash === input.deterministicHash;
-
-  if (lastRunMatchesCurrentDesign) {
-    return input.lastRun?.scheduleContract;
-  }
-
+  // Current project derivation is always authoritative. A persisted run
+  // contract is historical evidence and only a compatibility fallback when
+  // the live contract is unavailable.
   return input.liveScheduleContract ?? input.lastRun?.scheduleContract ?? undefined;
 }
 

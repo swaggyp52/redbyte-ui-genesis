@@ -3,11 +3,6 @@
 
 import React from 'react';
 import { IdeButton } from '../../components/IdePrimitives';
-import { TESTBENCH_LANGUAGE } from '../../productLanguage';
-
-function experimentCaseEmphasisClass(label: string): string {
-  return /no case/i.test(label) ? ' is-idle' : ' is-locus';
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -18,25 +13,32 @@ export interface VerifyCommandBarProps {
   readonly onSetCompare: () => void;
   /** Whether assertion verification is available (expected values exist) */
   readonly compareAvailable: boolean;
+  readonly compareUnavailableReason?: string;
 
   /** Run action */
   readonly onRun: () => void;
   readonly runLabel: string;
   readonly runDisabled: boolean;
   readonly runPulsing?: boolean;
+  /**
+   * When cases exist without saved checks, authoring expected outputs becomes
+   * the primary task while Observe remains available as a secondary run.
+   */
+  readonly needsExpectedOutputs?: boolean;
+  readonly onAuthorExpectedOutputs?: () => void;
 
-  /** Generate / initialize action */
-  readonly onGenerate: () => void;
-  readonly generateLabel: string;
-  readonly showGenerate: boolean;
+  /** @deprecated Generation now belongs to the empty testbench editor. */
+  readonly onGenerate?: () => void;
+  readonly generateLabel?: string;
+  readonly showGenerate?: boolean;
 
   /** Save as expected */
   readonly onSaveAsExpected?: () => void;
-  readonly showSaveAsExpected: boolean;
+  readonly showSaveAsExpected?: boolean;
 
   /** Status chip */
-  readonly statusLabel: string;
-  readonly statusTone: 'ok' | 'warn' | 'error' | 'idle';
+  readonly statusLabel?: string;
+  readonly statusTone?: 'ok' | 'warn' | 'error' | 'idle';
   readonly sessionStatusBadge?: string;
   readonly sessionModeLabel?: string;
   readonly sessionTitle?: string;
@@ -49,7 +51,7 @@ export interface VerifyCommandBarProps {
   readonly onCompactStatusAction?: () => void;
 
   /** Circuit kind for contextual hints */
-  readonly isSequential: boolean;
+  readonly isSequential?: boolean;
 
   /** Compact post-run evidence metrics */
   readonly evidenceLabel?: string;
@@ -97,390 +99,167 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onSetObserve,
   onSetCompare,
   compareAvailable,
+  compareUnavailableReason,
   onRun,
   runLabel,
   runDisabled,
   runPulsing,
-  onGenerate,
-  generateLabel,
-  showGenerate,
-  onSaveAsExpected,
-  showSaveAsExpected,
-  statusLabel,
-  statusTone,
-  sessionStatusBadge,
-  sessionModeLabel,
-  sessionTitle,
-  referenceModeLabel,
-  primaryStatusTitle,
-  primaryStatusMessage,
-  compactStatusActionLabel,
-  compactStatusActionTone = 'secondary',
-  compactStatusActionTestId,
-  onCompactStatusAction,
-  isSequential,
-  evidenceLabel,
-  evidenceTone,
-  coverageLabel,
-  sessionMetricsRow = 'hidden',
-  showAnalysisToggle,
-  analysisOpen,
-  analysisHint,
-  onToggleAnalysis,
-  showEditCases,
-  onEditCases,
-  showGoToDesign,
-  onGoToDesign,
-  goToDesignTick,
-  experimentScenarioName,
-  experimentCaseLabel,
-  experimentTimingHint,
-  leadingPanel,
-  failureRecoveryLine,
+  needsExpectedOutputs = false,
+  onAuthorExpectedOutputs,
 }) => {
-  const hasUtilityActions = Boolean(
-    (showEditCases && onEditCases) || (showSaveAsExpected && onSaveAsExpected)
-  );
-  const canToggleRunPlan = compareAvailable || isCompareMode;
-  const [utilitiesOpen, setUtilitiesOpen] = React.useState(false);
+  const commandBarRef = React.useRef<HTMLDivElement>(null);
+  const restoreRunFocusRef = React.useRef(false);
+  const observeModeActive = !isCompareMode;
+  const compareModeDisabled = !compareAvailable;
 
   React.useEffect(() => {
-    if (!hasUtilityActions) {
-      setUtilitiesOpen(false);
+    if (!runDisabled || !restoreRunFocusRef.current) return;
+
+    const handleFocusIn = (event: FocusEvent) => {
+      const runButton = commandBarRef.current?.querySelector<HTMLButtonElement>(
+        '[data-testid="ide-vcb-run"]'
+      );
+      if (
+        event.target !== runButton &&
+        event.target !== document.body &&
+        event.target !== document.documentElement
+      ) {
+        restoreRunFocusRef.current = false;
+      }
+    };
+
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, [runDisabled]);
+
+  React.useEffect(() => {
+    if (runDisabled || !restoreRunFocusRef.current) return;
+
+    const canRestoreRunFocus = () => {
+      const runButton = commandBarRef.current?.querySelector<HTMLButtonElement>(
+        '[data-testid="ide-vcb-run"]'
+      );
+      const activeElement = document.activeElement;
+      return (
+        runButton != null &&
+        (activeElement === runButton ||
+          activeElement === document.body ||
+          activeElement === document.documentElement)
+      );
+    };
+
+    if (!canRestoreRunFocus()) {
+      restoreRunFocusRef.current = false;
+      return;
     }
-  }, [hasUtilityActions]);
 
-  const toneClass =
-    statusTone === 'ok' ? 'ide-vcb-status--ok'
-    : statusTone === 'error' ? 'ide-vcb-status--error'
-    : statusTone === 'warn' ? 'ide-vcb-status--warn'
-    : 'ide-vcb-status--idle';
-  const scenarioHeadline =
-    experimentScenarioName != null && experimentScenarioName.trim() !== ''
-      ? experimentScenarioName.trim()
-      : null;
-  const sessionCoverageLabel = [
-    coverageLabel,
-    isSequential ? 'Sequential' : null,
-  ].filter(Boolean).join(' · ');
-  const normalizeSessionLabel = (value: string | null | undefined): string =>
-    (value ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
-  const seenSessionLabels = new Set<string>();
-  const sessionMetaParts = [
-    {
-      key: 'status',
-      label: sessionStatusBadge,
-      node:
-        sessionStatusBadge != null ? (
-          <span key="status" data-testid="ide-verify-session-status">
-            {sessionStatusBadge}
-          </span>
-        ) : null,
-    },
-    {
-      key: 'mode',
-      label: sessionModeLabel,
-      node:
-        sessionModeLabel ? (
-          <span key="mode" data-testid="ide-verify-session-mode">
-            {sessionModeLabel}
-          </span>
-        ) : null,
-    },
-    {
-      key: 'primary-status',
-      label: primaryStatusTitle,
-      node:
-        primaryStatusTitle ? (
-          <span key="primary-status" data-testid="ide-verify-primary-status" title={primaryStatusMessage}>
-            {primaryStatusTitle}
-          </span>
-        ) : null,
-    },
-    {
-      key: 'title',
-      label: sessionTitle,
-      node:
-        sessionTitle ? (
-          <span key="title" className="ide-vcb-session-title" data-testid="ide-verify-session-title">
-            {sessionTitle}
-          </span>
-        ) : null,
-    },
-  ]
-    .filter((entry) => entry.node != null && normalizeSessionLabel(entry.label) !== normalizeSessionLabel(statusLabel))
-    .filter((entry) => {
-      const normalized = normalizeSessionLabel(entry.label);
-      if (!normalized) return false;
-      if (seenSessionLabels.has(normalized)) return false;
-      seenSessionLabels.add(normalized);
-      return true;
-    })
-    .map((entry) => entry.node as React.ReactNode);
-  const experimentInline =
-    scenarioHeadline != null ||
-    experimentCaseLabel != null ||
-    (experimentTimingHint != null && experimentTimingHint.trim() !== '') ? (
-      <span key="experiment" className="ide-vcb-experiment-inline" data-testid="ide-vcb-experiment-context">
-        {scenarioHeadline ? (
-          <span className="ide-vcb-experiment-scenario" data-testid="ide-vcb-experiment-scenario">
-            {scenarioHeadline}
-          </span>
-        ) : null}
-        {experimentCaseLabel != null ? (
-          <span
-            className={`ide-vcb-experiment-case${experimentCaseEmphasisClass(experimentCaseLabel)}`}
-            data-testid="ide-vcb-experiment-case"
-          >
-            {experimentCaseLabel}
-          </span>
-        ) : null}
-        {experimentTimingHint != null && experimentTimingHint.trim() !== '' ? (
-          <span className="ide-vcb-experiment-timing" data-testid="ide-vcb-experiment-timing">
-            {experimentTimingHint.trim()}
-          </span>
-        ) : null}
-      </span>
-    ) : null;
-  const compactMetaNodes = [...sessionMetaParts].filter(Boolean);
-  const showMetricsRow =
-    sessionMetricsRow === 'inline' &&
-    (Boolean(evidenceLabel) || Boolean(sessionCoverageLabel));
-  const observeModeActive = !isCompareMode;
-  const compareModeDisabled = !compareAvailable && !isCompareMode;
-  const metricsNodes = [
-    evidenceLabel ? (
-      <span
-        key="evidence"
-        className={`ide-vcb-evidence ide-vcb-evidence--${evidenceTone ?? 'idle'}`}
-        data-testid="ide-vcb-evidence"
-      >
-        {evidenceLabel}
-      </span>
-    ) : null,
-    sessionCoverageLabel ? (
-      <span key="coverage" className="ide-vcb-coverage" data-testid="ide-vcb-coverage">
-        {sessionCoverageLabel}
-      </span>
-    ) : null,
-  ].filter(Boolean);
+    const frame = window.requestAnimationFrame(() => {
+      if (restoreRunFocusRef.current && canRestoreRunFocus()) {
+        commandBarRef.current
+          ?.querySelector<HTMLButtonElement>('[data-testid="ide-vcb-run"]')
+          ?.focus();
+      }
+      restoreRunFocusRef.current = false;
+    });
 
-  const interleaveWithSeparators = (nodes: React.ReactNode[], separatorClassName: string) =>
-    nodes.flatMap((node, index) =>
-      index === 0
-        ? [node]
-        : [
-            <span
-              key={`${separatorClassName}-${index}`}
-              className={separatorClassName}
-              aria-hidden="true"
-            >
-              ·
-            </span>,
-            node,
-          ]
-    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [runDisabled, runLabel]);
+
+  const handleRun = () => {
+    restoreRunFocusRef.current =
+      document.activeElement?.getAttribute('data-testid') === 'ide-vcb-run';
+    onRun();
+  };
 
   return (
     <div
-      className={`ide-verify-command-bar${leadingPanel ? ' ide-verify-command-bar--with-leading' : ''}`}
+      ref={commandBarRef}
+      className="ide-verify-command-bar"
       data-testid="ide-verify-command-bar"
+      data-run-mode={isCompareMode ? 'compare' : 'observe'}
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
-      {leadingPanel ? <div className="ide-vcb-leading-slot">{leadingPanel}</div> : null}
       <div className="ide-vcb-row ide-vcb-row--primary">
-        {/* Left: primary loop actions — Run is the first visible control */}
-        <div className="ide-vcb-group ide-vcb-group--actions">
-          {showGenerate && (
-            <IdeButton
-              tone="secondary"
-              onClick={onGenerate}
-              testId="ide-vcb-generate"
-            >
-              {generateLabel}
-            </IdeButton>
-          )}
-          <IdeButton
-            tone="primary"
-            onClick={onRun}
-            disabled={runDisabled}
-            testId="ide-vcb-run"
-            className={runPulsing ? 'is-pulsing' : undefined}
-            hierarchySurface="verify"
-            hierarchyRole="next"
-          >
-            {runLabel}
-          </IdeButton>
-        </div>
-
-        {canToggleRunPlan && (
-          <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
-            <span className="ide-vcb-mode-label" data-testid="ide-vcb-next-run-label">
-              Next run
-            </span>
-            <div className="ide-vcb-mode-toggle" role="group" aria-label="Next run mode">
-              <button
-                type="button"
-                className={`ide-vcb-mode-btn${observeModeActive ? ' is-active' : ''}`}
-                onClick={onSetObserve}
-                data-testid="ide-vcb-observe-only"
-                aria-pressed={observeModeActive ? 'true' : 'false'}
-              >
-                Observe only
-              </button>
-              <button
-                type="button"
-                className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
-                onClick={onSetCompare}
-                data-testid="ide-vcb-use-saved-checks"
-                aria-pressed={isCompareMode ? 'true' : 'false'}
-                disabled={compareModeDisabled}
-              >
-                Compare checks
-              </button>
-            </div>
-            <span
-              className="ide-vcb-mode-explainer"
-              data-testid="ide-vcb-mode-explainer"
-            >
-              {observeModeActive
-                ? `Observe: ${TESTBENCH_LANGUAGE.observe} No expected outputs are checked.`
-                : `Compare: ${TESTBENCH_LANGUAGE.compare}`}
-            </span>
-          </div>
-        )}
-
-        {null}
-
-        <div className="ide-vcb-group ide-vcb-group--status">
-          {showAnalysisToggle && onToggleAnalysis && (
+        <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
+          <div className="ide-vcb-mode-toggle" role="group" aria-label="Verification mode">
             <button
               type="button"
-              className={`ide-vcb-analysis-toggle${analysisOpen ? ' is-open' : ''}`}
-              onClick={onToggleAnalysis}
-              data-testid="ide-verify-drawer-toggle"
-              aria-expanded={analysisOpen ? 'true' : 'false'}
+              className={`ide-vcb-mode-btn${observeModeActive ? ' is-active' : ''}`}
+              onClick={onSetObserve}
+              data-testid="ide-vcb-observe-only"
+              aria-pressed={observeModeActive ? 'true' : 'false'}
             >
-              <span className="ide-vcb-analysis-label">
-                {analysisOpen ? 'Hide details' : 'Details'}
-              </span>
-              {!analysisOpen && analysisHint && (
-                <span
-                  className="ide-vcb-analysis-hint"
-                  data-testid="ide-verify-drawer-hint"
-                >
-                  {analysisHint}
-                </span>
-              )}
+              Observe
             </button>
-          )}
-          {compactStatusActionLabel && onCompactStatusAction && (
-            <IdeButton
-              tone={compactStatusActionTone}
-              onClick={onCompactStatusAction}
-              testId={compactStatusActionTestId}
+            <button
+              type="button"
+              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
+              onClick={onSetCompare}
+              data-testid="ide-vcb-use-saved-checks"
+              aria-pressed={isCompareMode ? 'true' : 'false'}
+              disabled={compareModeDisabled}
+              title={
+                compareModeDisabled
+                  ? compareUnavailableReason ?? 'Add at least one expected output to enable Compare.'
+                  : undefined
+              }
             >
-              {compactStatusActionLabel}
+              Compare checks
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="ide-vcb-group ide-vcb-group--actions ide-vcb-run-authority"
+          data-testid="ide-vcb-run-authority"
+        >
+          {needsExpectedOutputs ? (
+            <>
+              <IdeButton
+                tone="primary"
+                onClick={onAuthorExpectedOutputs}
+                disabled={runDisabled || !onAuthorExpectedOutputs}
+                testId="ide-vcb-author-expected"
+                hierarchySurface="verify"
+                hierarchyRole="next"
+              >
+                Add expected outputs
+              </IdeButton>
+              <IdeButton
+                tone="secondary"
+                onClick={handleRun}
+                disabled={runDisabled}
+                testId="ide-vcb-run"
+                hierarchySurface="verify"
+                hierarchyRole="utility"
+              >
+                Run Observe
+              </IdeButton>
+            </>
+          ) : (
+            <IdeButton
+              tone="primary"
+              onClick={handleRun}
+              disabled={runDisabled}
+              testId="ide-vcb-run"
+              className={runPulsing ? 'is-pulsing' : undefined}
+              hierarchySurface="verify"
+              hierarchyRole="next"
+            >
+              {runLabel}
             </IdeButton>
           )}
-          {showGoToDesign && onGoToDesign && (
-            <span className="ide-vcb-design-bridge">
-              <IdeButton
-                tone="ghost"
-                onClick={onGoToDesign}
-                testId="ide-verify-inspect-design"
-              >
-                Open in Design
-              </IdeButton>
-            </span>
-          )}
-          {hasUtilityActions && (
-            <div className="ide-vcb-utilities">
-              <button
-                type="button"
-                className={`ide-vcb-utilities-toggle${utilitiesOpen ? ' is-open' : ''}`}
-                onClick={() => setUtilitiesOpen((open) => !open)}
-                data-testid="ide-vcb-utilities-toggle"
-                aria-expanded={utilitiesOpen ? 'true' : 'false'}
-              >
-                Tools
-              </button>
-              {utilitiesOpen && (
-                <div className="ide-vcb-utilities-panel" data-testid="ide-vcb-utilities-panel">
-                  {showEditCases && onEditCases && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => {
-                        onEditCases();
-                        setUtilitiesOpen(false);
-                      }}
-                      testId="ide-verify-run-proof-edit-vectors"
-                    >
-                      Open checks
-                    </IdeButton>
-                  )}
-                  {showSaveAsExpected && onSaveAsExpected && (
-                    <IdeButton
-                      tone="ghost"
-                      onClick={() => {
-                        onSaveAsExpected();
-                        setUtilitiesOpen(false);
-                      }}
-                      testId="ide-vcb-save-expected"
-                    >
-                      Save observed outputs
-                    </IdeButton>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
-        <div className="ide-vcb-truth-strip" data-testid="ide-vcb-session-summary">
-          <div className="ide-vcb-truth-strip-stack">
-            <span data-testid="ide-verify-summary-status">
-              <span className={`ide-vcb-status ${toneClass}`} data-testid="ide-vcb-status">
-                {statusLabel}
-              </span>
-            </span>
-            {compactMetaNodes.length > 0 && (
-              <span
-                className="ide-vcb-session-line ide-vcb-session-line--meta ide-vcb-session-line--compact"
-                data-testid="ide-verify-session-meta"
-              >
-                {interleaveWithSeparators(compactMetaNodes, 'ide-vcb-session-sep')}
-              </span>
-            )}
-            {showMetricsRow && metricsNodes.length > 0 ? (
-              <span className="ide-vcb-session-line ide-vcb-session-line--metrics">
-                {interleaveWithSeparators(metricsNodes, 'ide-vcb-session-sep ide-vcb-session-sep--muted')}
-              </span>
-            ) : null}
-          </div>
-          {referenceModeLabel ? (
-            <details
-              className="ide-vcb-session-details"
-              data-testid="ide-vcb-session-details"
-              data-hierarchy-surface="verify"
-              data-hierarchy-role="advanced"
-            >
-              <summary className="ide-vcb-session-details-summary">Session details</summary>
-              <span className="ide-vcb-reference-mode" data-testid="ide-verify-reference-mode">
-                {referenceModeLabel}
-              </span>
-            </details>
-          ) : null}
-        </div>
-      </div>
-      {failureRecoveryLine && failureRecoveryLine.trim() !== '' ? (
-        <p
-          className="ide-vcb-failure-recovery ide-copy"
-          data-testid="ide-vcb-failure-recovery"
-        >
-          {failureRecoveryLine.trim()}
+
+        <p className="ide-vcb-mode-explainer" data-testid="ide-vcb-mode-explainer">
+          {needsExpectedOutputs
+            ? 'Record observed outputs without grading expected values. Expected cells marked Unset are not checks; add at least one to unlock Compare.'
+            : observeModeActive
+            ? 'Record observed outputs without grading expected values.'
+            : 'Check filled expected outputs against this run.'}
         </p>
-      ) : null}
+      </div>
     </div>
   );
 };

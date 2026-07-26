@@ -102,7 +102,7 @@ const HINTS: Array<{
   },
   {
     condition: (ctx) => ctx.onlyFirstTickFails,
-    text: 'Only the first tick fails. Check your initial/reset state: does tick 0 represent the expected start condition?',
+    text: 'Only the first sampled case fails. Compare its authored inputs and expected output with the next passing case.',
   },
   {
     condition: (ctx) =>
@@ -129,9 +129,7 @@ export function deriveVerifyFailurePattern(
 
   const allRunFailure = input.totalRows > 0 && input.failCount === input.totalRows;
   const startupSupported =
-    input.tick0Meaning !== null ||
-    input.hasResetSignalRole ||
-    (input.isSequentialRun && input.samplePoint === 'post-rising-edge');
+    input.tick0Meaning === 'initial-state' || input.tick0Meaning === 'reset-phase';
   const firstFailureAtStart =
     input.firstFailureTick !== null &&
     input.firstRunTick !== null &&

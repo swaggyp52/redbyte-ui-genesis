@@ -321,11 +321,11 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
             ) : null}
 
             {inputSnapshot && inputSnapshot.length > 0 ? (
-              <details
+              <section
                 className="ide-kv-row ide-kv-row--full ide-verify-right-detail-group"
                 data-testid="ide-verify-failure-input-snapshot"
               >
-                <summary>Inputs at t{failure.tick}</summary>
+                <h4>Inputs at t{failure.tick}</h4>
                 <table
                   className="ide-verify-failure-input-table"
                   data-testid="ide-verify-failure-input-table"
@@ -345,12 +345,12 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
                     ))}
                   </tbody>
                 </table>
-              </details>
+              </section>
             ) : null}
 
             {peers.length > 0 ? (
-              <details className="ide-kv-row ide-verify-right-detail-group" data-testid="ide-verify-right-peer-list">
-                <summary>Also differing at t{failure.tick}</summary>
+              <section className="ide-kv-row ide-verify-right-detail-group" data-testid="ide-verify-right-peer-list">
+                <h4>Also differing at t{failure.tick}</h4>
                 <div className="ide-inline-actions">
                   {peers.map((peer) => (
                     <button
@@ -363,7 +363,7 @@ export const VerifyFailureExplanationPanel: React.FC<VerifyFailureExplanationPan
                     </button>
                   ))}
                 </div>
-              </details>
+              </section>
             ) : null}
           </div>
         )}

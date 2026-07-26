@@ -19,7 +19,12 @@ export { CLOCKED_MACRO_SEQUENCE } from '@redbyte/rb-utils';
 export const INTERNAL_SIM_CLOCK_NAME = '__sim_clk__';
 
 export interface TemporalIssue {
-  code: 'unsupported-falling-edge' | 'multi-clock-domain' | 'active-low-reset';
+  code:
+    | 'unsupported-falling-edge'
+    | 'multi-clock-domain'
+    | 'active-low-reset'
+    | 'unsupported-register-family'
+    | 'unsupported-register-config';
   message: string;
 }
 
@@ -41,20 +46,9 @@ export interface VerifyScheduleContract {
   hasUnsupportedTemporal: boolean;
   temporalIssues: TemporalIssue[];
   /**
-   * Explicit assertion mask — records which output signal names were actively asserted
-   * (i.e., had expected values) during the verify run that produced this contract.
-   *
-   * `true`  → the signal was compared; a mismatch here is a real failure.
-   * `false` → the signal was present in the IO mapping but left blank; it was not compared.
-   * absent  → the signal was not part of the assertion set at all.
-   *
-   * This field is set when the contract is stored inside a RuntimeVerifyRun and must be
-   * read by testbench generation to emit VHDL assertion statements only for asserted signals.
-   * Signals absent from the mask must never produce simulation failures in the generated
-   * testbench, preserving the rule that blank expected outputs are never compared.
-   *
-   * Populated at verify-run time (not at schedule-derivation time).
-   * Absent for contracts derived purely from circuit structure (no run context available).
+   * Legacy run metadata retained for persisted-record compatibility. Current
+   * schedule derivation and generated HDL do not consume this field; assertions
+   * come directly from the current authored vectors.
    */
   assertionMask?: Record<string, boolean>;
 }
@@ -76,7 +70,7 @@ export function buildDeterministicVerifyContext(
   return {
     ir,
     simModel,
-    schedule: deriveVerifyScheduleFromStructure(ir, simModel, ioMapping, hdl),
+    schedule: deriveVerifyScheduleFromStructure(ir, simModel, ioMapping, hdl, semanticCircuit),
   };
 }
 
@@ -92,7 +86,8 @@ export function deriveVerifyScheduleFromStructure(
   ir: CircuitIR,
   simModel: SimulationModel,
   ioMapping?: IoMapping,
-  hdl?: ToolchainProjectInput
+  hdl?: ToolchainProjectInput,
+  circuit?: Circuit
 ): VerifyScheduleContract {
   const analysis = buildSequentialAnalysisFromStructure(ir, simModel, ioMapping);
   const hdlSequentialHint = hasHdlSequentialHint(hdl);
@@ -114,7 +109,7 @@ export function deriveVerifyScheduleFromStructure(
   const clockSignalName = needsSimClockInjection
     ? INTERNAL_SIM_CLOCK_NAME
     : resolvedClockSignalName;
-  const temporalIssues = collectTemporalIssuesFromStructure(simModel, ioMapping, hdl);
+  const temporalIssues = collectTemporalIssuesFromStructure(simModel, ioMapping, hdl, circuit);
   const timingMode =
     schedule === 'combinational'
       ? 'combinational'
@@ -183,13 +178,76 @@ function buildSequentialAnalysisFromStructure(
 function collectTemporalIssuesFromStructure(
   simModel: SimulationModel,
   ioMapping: IoMapping | undefined,
-  hdl: ToolchainProjectInput | undefined
+  hdl: ToolchainProjectInput | undefined,
+  circuit: Circuit | undefined
 ): TemporalIssue[] {
   const issues: TemporalIssue[] = [];
   collectFallingEdgeIssues(hdl, issues);
   collectMultiClockDomainIssuesFromStructure(simModel, issues);
   collectActiveLowResetIssuesFromStructure(simModel, ioMapping, issues);
+  collectRegisterConfigurationIssues(circuit, issues);
   return issues;
+}
+
+function collectRegisterConfigurationIssues(
+  circuit: Circuit | undefined,
+  issues: TemporalIssue[]
+): void {
+  for (const node of circuit?.nodes ?? []) {
+    if (node.type === 'RegisterBus' || node.type === 'StateBank') {
+      issues.push({
+        code: 'unsupported-register-family',
+        message: `Unsupported sequential component: ${node.type} "${node.label ?? node.id}" is simulated in RedByte but is not supported by the scalar VHDL export path. Use Register1 primitives or flatten the state into supported scalar registers.`,
+      });
+      continue;
+    }
+    if (node.type !== 'Register1') continue;
+
+    const config = node.config ?? {};
+    const label = node.label ?? node.id;
+    const clockPolarity = String(config.clockPolarity ?? 'rising_edge').toLowerCase();
+    const resetKind = String(config.resetKind ?? 'none').toLowerCase();
+    const resetPolarity = String(config.resetPolarity ?? 'active_high').toLowerCase();
+    const hasEnable = config.hasEnable === true;
+    const enablePolarity = String(config.enablePolarity ?? 'active_high').toLowerCase();
+    const width = Number(config.width ?? 1);
+
+    if (clockPolarity === 'falling_edge') {
+      issues.push({
+        code: 'unsupported-falling-edge',
+        message: `Unsupported Register1 configuration on "${label}": falling-edge capture is not supported by VHDL export. Select rising-edge capture.`,
+      });
+    }
+    if (resetKind === 'async_preset') {
+      issues.push({
+        code: 'unsupported-register-config',
+        message: `Unsupported Register1 configuration on "${label}": asynchronous preset is not supported. Use active-high asynchronous clear or no reset.`,
+      });
+    } else if (resetKind === 'sync_reset' || resetKind === 'sync_set') {
+      issues.push({
+        code: 'unsupported-register-config',
+        message: `Unsupported Register1 configuration on "${label}": synchronous reset/set is not supported. Use active-high asynchronous clear or no reset.`,
+      });
+    }
+    if (resetKind !== 'none' && resetPolarity === 'active_low') {
+      issues.push({
+        code: 'unsupported-register-config',
+        message: `Unsupported Register1 configuration on "${label}": active-low reset is not supported. Select active-high reset.`,
+      });
+    }
+    if (hasEnable && enablePolarity === 'active_low') {
+      issues.push({
+        code: 'unsupported-register-config',
+        message: `Unsupported Register1 configuration on "${label}": active-low enable is not supported. Select active-high enable.`,
+      });
+    }
+    if (!Number.isFinite(width) || Math.floor(width) !== 1) {
+      issues.push({
+        code: 'unsupported-register-config',
+        message: `Unsupported Register1 configuration on "${label}": width must be 1 for scalar VHDL export. Use Register1 with width 1.`,
+      });
+    }
+  }
 }
 
 function collectFallingEdgeIssues(

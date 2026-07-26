@@ -9,7 +9,11 @@ import {
   resolveIoMappingFromProjectFields,
 } from '@redbyte/rb-utils';
 import type { CustomTestVector } from './components/VectorEditor';
-import { buildCurrentVerifyProjectHash } from './verifyProjectHash';
+import {
+  buildCurrentVerifyProjectHash,
+  buildVerifyCircuitEvidenceHash,
+  buildVerifyMappingEvidenceHash,
+} from './verifyProjectHash';
 import { normalizeRBProject, type RBProject } from '../../export/projectFormat';
 import { stableSerialize } from '../../utils/stableSerialize';
 import {
@@ -17,6 +21,7 @@ import {
   type VerifyScheduleContract,
 } from '../../fpga/boards/basys3/verifySchedule';
 import { digestValue } from '../../utils/digest';
+import { normalizeCircuit } from '../../recording/runRecordUtils';
 import {
   deleteMacro as deleteMacroFromLibrary,
   instantiateMacroIntoCircuit,
@@ -46,6 +51,7 @@ import {
 import type {
   ProjectHealthCore,
   ProjectHealthExportResult,
+  ProjectHealthExportSourceState,
   ProjectHealthVerifyResult,
   VerifyRunKind,
 } from './projectHealth';
@@ -75,12 +81,17 @@ import {
   DEFAULT_SCENARIO_ID,
   createScenario,
   createDefaultScenario,
+  cloneScenarioSequentialPolicy,
+  computeExecutionStimulusHash,
+  computeScenarioContentHash,
   getActiveScenario,
   materializeScenarioVectors,
   migrateProjectVectorsToScenario,
+  normalizeScenarioSequentialPolicy,
   repairScenarioLibrary,
   stampScenario,
   type VerifyScenario,
+  type VerifyScenarioSequentialPolicy,
 } from './verifyScenario';
 import {
   createScenarioStep,
@@ -112,6 +123,7 @@ import {
 import {
   detectVerifyClockPolicy,
   materializeVectorsForClockPolicy,
+  resolveVerifyTick0Meaning,
   type VerifyClockPolicy,
 } from './verifyClockPolicy';
 
@@ -198,6 +210,8 @@ export interface RuntimeVerifyRun {
   scenarioVersion?: number;
   scenarioContentHash?: string;
   scenarioStimulusHash?: string;
+  /** Exact effective IO/pin mapping used by this run. Legacy runs omit it and are stale for Export. */
+  mappingEvidenceHash?: string;
   status: 'pass' | 'fail';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
@@ -283,6 +297,11 @@ export interface ProjectRuntimeActions {
   };
 }
 
+export interface ProjectTestbenchSnapshot {
+  scenarios?: VerifyScenario[];
+  activeScenarioId?: string;
+}
+
 export interface ProjectRuntimeState {
   projectId: string;
   projectName: string;
@@ -316,7 +335,7 @@ export interface ProjectRuntimeState {
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
   loadExample: (exampleId: string) => void;
-  loadFromProject: (project: RBProject) => void;
+  loadFromProject: (project: RBProject, testbench?: ProjectTestbenchSnapshot) => void;
   setMappingPin: (rowId: string, pin: string) => void;
   setMappingPins: (updates: Record<string, string>) => void;
   applyHardwareMappingEdit: (operation: HardwareMappingV2EditOperation) => void;
@@ -330,6 +349,7 @@ export interface ProjectRuntimeState {
   renameScenario: (name: string) => void;
   deleteScenario: (scenarioId: string) => void;
   switchScenario: (scenarioId: string) => void;
+  updateScenarioSequentialPolicy: (policy: VerifyScenarioSequentialPolicy) => void;
   appendScenarioStep: (draft: ScenarioStepDraft) => void;
   updateScenarioStep: (
     stepId: string,
@@ -642,7 +662,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           lastSavedAt: `Example loaded: ${example.name}`,
         });
       },
-      loadFromProject: (project) => {
+      loadFromProject: (project, testbench) => {
         const circuit = cloneCircuit(project.circuit);
         const legacyProjectIoRows = ioRowsFromProject(project);
         const {
@@ -669,8 +689,9 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             : persistedProjectKind;
         const activeExampleId = projectKind === 'example' ? sourceExampleId : null;
         const activeLabTaskId = normalizeGuidedLabTaskId(project.meta?.labId);
-        const sourceProjectVectors = normalizeVectorsForLiveIo(
-          rekeyVectorsForLiveIo(cloneVectors(project.vectors ?? []), legacyProjectIoRows, projectIoRows),
+        const sourceProjectVectors = preserveCompatibleVectorAuthorship(
+          cloneVectors(project.vectors ?? []),
+          legacyProjectIoRows,
           projectIoRows
         );
         const restoredIdentity = resolveDetachedExampleIdentity({
@@ -680,9 +701,24 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectDescription: project.description ?? '',
           fallbackProjectName: 'Imported project',
         });
+        const persistedScenarioAuthority = normalizeScenarioAuthority(
+          project.meta?.scenarioAuthority,
+          deriveScenarioAuthority({
+            projectKind,
+            activeExampleId,
+            hasVectors: sourceProjectVectors.length > 0,
+            hasAssertions: sourceProjectVectors.some(
+              (vector) => Object.keys(vector.expected ?? {}).length > 0
+            ),
+            dirtySinceVerify: true,
+            verifyStatus: null,
+            vectorsAreAutoGenerated: projectKind === 'example',
+          })
+        );
         const shouldResetDetachedStarterCompareState =
           projectKind !== 'example' &&
           Boolean(sourceExampleId) &&
+          persistedScenarioAuthority === 'starter' &&
           sourceProjectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
         const projectVectors = shouldResetDetachedStarterCompareState
           ? stripExpectedOutputs(sourceProjectVectors)
@@ -697,18 +733,45 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               verifyStatus: null,
               vectorsAreAutoGenerated: false,
             })
-          : normalizeScenarioAuthority(
-              project.meta?.scenarioAuthority,
-              deriveScenarioAuthority({
-                projectKind,
-                activeExampleId,
-                hasVectors: projectVectors.length > 0,
-                hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
-                dirtySinceVerify: true,
-                verifyStatus: null,
-                vectorsAreAutoGenerated: projectKind === 'example',
-              })
-            );
+          : persistedScenarioAuthority;
+        const repairedTestbench =
+          Array.isArray(testbench?.scenarios) && testbench.scenarios.length > 0
+            ? repairScenarioLibrary(testbench.scenarios, testbench.activeScenarioId, projectVectors)
+            : migrateProjectVectorsToScenario(projectVectors);
+        const restoredScenarios = repairedTestbench.scenarios.map((scenario) => {
+          const vectors = preserveCompatibleVectorAuthorship(
+            cloneVectors(scenario.vectors),
+            legacyProjectIoRows,
+            projectIoRows
+          );
+          if (!shouldResetDetachedStarterCompareState) {
+            return {
+              ...scenario,
+              vectors,
+              steps: reconcileScenarioStepsForLiveIo(
+                scenario.steps,
+                legacyProjectIoRows,
+                projectIoRows
+              ),
+              sequentialPolicy: reconcileScenarioSequentialPolicyForLiveIo(
+                scenario.sequentialPolicy,
+                legacyProjectIoRows,
+                projectIoRows
+              ),
+            };
+          }
+          const strippedVectors = stripExpectedOutputs(vectors);
+          return {
+            ...scenario,
+            vectors: strippedVectors,
+            steps: scenario.steps ? deriveScenarioStepsFromVectors(strippedVectors) : undefined,
+            sequentialPolicy: reconcileScenarioSequentialPolicyForLiveIo(
+              scenario.sequentialPolicy,
+              legacyProjectIoRows,
+              projectIoRows
+            ),
+          };
+        });
         const loadedProjectName = restoredIdentity.projectName;
         const loadedProjectDescription = restoredIdentity.projectDescription;
         // Register any custom components from the project
@@ -736,7 +799,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           hardwareMappingV2,
           projectIoRows,
           projectVectors,
-          ...migrateProjectVectorsToScenario(projectVectors),
+          scenarios: restoredScenarios,
+          activeScenarioId: repairedTestbench.activeScenarioId,
           customVectors: [],
           circuit,
           designPast: [],
@@ -873,7 +937,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               hasAssertions: projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0),
               dirtySinceVerify: true,
               verifyStatus: null,
-              vectorsAreAutoGenerated: state.projectKind === 'example' && Boolean(state.activeExampleId),
+              // setVectors is the authored edit path. Starter/bring-up generation has
+              // dedicated actions below, so an edit inside an example must stop being
+              // treated as inherited starter evidence before the first Design change.
+              vectorsAreAutoGenerated: false,
             }),
             projectHealthCore: {
               ...state.projectHealthCore,
@@ -968,7 +1035,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       createScenario: () => {
         set((state) => {
-          const newScenario = createScenario('New Scenario', resolveActiveScenarioVectors(state));
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const newScenario = createScenario(
+            'New Scenario',
+            resolveActiveScenarioVectors(state),
+            activeScenario?.sequentialPolicy
+          );
           return commitScenarioSelection(state, [...state.scenarios, newScenario], newScenario.id);
         });
       },
@@ -977,7 +1049,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
           if (!activeScenario) return state;
           const duplicate = {
-            ...createScenario(`${activeScenario.name} Copy`, materializeScenarioVectors(activeScenario)),
+            ...createScenario(
+              `${activeScenario.name} Copy`,
+              materializeScenarioVectors(activeScenario),
+              activeScenario.sequentialPolicy
+            ),
             steps: activeScenario.steps?.map(cloneScenarioStep),
           };
           return commitScenarioSelection(state, [...state.scenarios, duplicate], duplicate.id);
@@ -1024,6 +1100,42 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             return state;
           }
           return commitScenarioSelection(state, state.scenarios, activeScenario.id);
+        });
+      },
+      updateScenarioSequentialPolicy: (policy) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const normalizedPolicy = reconcileScenarioSequentialPolicyForLiveIo(
+            normalizeScenarioSequentialPolicy(policy),
+            state.projectIoRows,
+            state.projectIoRows
+          );
+          if (
+            stableSerialize(activeScenario.sequentialPolicy ?? null) ===
+            stableSerialize(normalizedPolicy ?? null)
+          ) {
+            return state;
+          }
+          const nextScenario = stampScenario({
+            ...activeScenario,
+            sequentialPolicy: normalizedPolicy,
+          });
+          const scenarios = state.scenarios.map((scenario) =>
+            scenario.id === nextScenario.id ? nextScenario : scenario
+          );
+          const selection = commitScenarioSelection(state, scenarios, nextScenario.id);
+          return {
+            ...selection,
+            projectHealthCore: {
+              ...selection.projectHealthCore,
+              // Sequential execution choices remain outside portable RBProject,
+              // but they govern generated simulation-source testbench bytes.
+              dirtySinceExport: true,
+            },
+            scenarioAuthority:
+              state.scenarioAuthority === 'verified' ? 'stale' : state.scenarioAuthority,
+          };
         });
       },
       appendScenarioStep: (draft) => {
@@ -1406,23 +1518,22 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         let runtimeRun: RuntimeVerifyRun | undefined;
         set((state) => {
           const scenarioId = input.scenarioId.trim() || 'runtime-verify';
-          const scenarioName = input.scenarioName.trim() || 'Runtime verification';
-          const scenarioVersion =
-            Number.isFinite(input.scenarioVersion)
+          const matchedScenario = state.scenarios.find((scenario) => scenario.id === scenarioId);
+          const scenarioName =
+            matchedScenario?.name ?? (input.scenarioName.trim() || 'Runtime verification');
+          const scenarioVersion = matchedScenario
+            ? matchedScenario.version
+            : Number.isFinite(input.scenarioVersion)
               ? Math.max(0, Math.floor(Number(input.scenarioVersion)))
               : undefined;
-          const scenarioContentHash =
-            typeof input.scenarioContentHash === 'string' &&
-            input.scenarioContentHash.trim().length > 0
-              ? input.scenarioContentHash.trim()
-              : undefined;
-          const scenarioStimulusHash =
-            typeof input.scenarioStimulusHash === 'string' &&
-            input.scenarioStimulusHash.trim().length > 0
-              ? input.scenarioStimulusHash.trim()
-              : undefined;
-          const circuitHash = digestValue(stableSerialize(state.circuit));
+          const circuitHash = buildVerifyCircuitEvidenceHash(state.circuit);
           const ioMapping = toIoMapping(state.projectIoRows);
+          const mappingEvidenceHash = buildVerifyMappingEvidenceHash(
+            resolveIoMappingFromProjectFields({
+              ioMapping,
+              hardwareMappingV2: state.hardwareMappingV2,
+            }) ?? ioMapping
+          );
           const verifyContext = buildDeterministicVerifyContext(
             state.circuit,
             ioMapping
@@ -1431,10 +1542,6 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ? cloneVerifyScheduleContract(input.scheduleContract)
             : verifyContext.schedule;
           const model = verifyContext.simModel;
-          const authoredVectors = normalizeVectorsForLiveIo(
-            cloneVectors(input.vectors ?? resolveActiveScenarioVectors(state)),
-            state.projectIoRows
-          );
           const clockPolicy =
             input.clockPolicy ??
             detectVerifyClockPolicy({
@@ -1442,6 +1549,21 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ioRows: state.projectIoRows,
               scheduleContract,
             });
+          const authoredVectors = normalizeVectorsForLiveIo(
+            cloneVectors(input.vectors ?? resolveActiveScenarioVectors(state)),
+            state.projectIoRows,
+            clockPolicy
+          );
+          // This binds the run to the scenario document version. Exact run-input
+          // authority remains separate in scenarioStimulusHash + report.vectors,
+          // so appended custom rows cannot become Export authority by inheritance.
+          const scenarioContentHash = matchedScenario
+            ? computeScenarioContentHash(matchedScenario)
+            : undefined;
+          const scenarioStimulusHash = computeExecutionStimulusHash(
+            authoredVectors,
+            clockPolicy
+          );
           const runtimeVectors = materializeVectorsForClockPolicy({
             vectors: authoredVectors,
             ioRows: state.projectIoRows,
@@ -1474,7 +1596,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                   state.projectIoRows,
                   deterministicVectors,
                   scheduleContract,
-                  clockPolicy
+                  clockPolicy ?? undefined
                 )
               : null;
           const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
@@ -1513,6 +1635,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             scenarioVersion,
             scenarioContentHash,
             scenarioStimulusHash,
+            mappingEvidenceHash,
             status: report.status,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
@@ -1522,7 +1645,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             schedule: scheduleContract.schedule,
             scheduleContract: cloneVerifyScheduleContract(scheduleContract),
             clockPolicy: clockPolicy ? { ...clockPolicy } : undefined,
-            meta: buildVerifyRunMeta(scheduleContract),
+            meta: buildVerifyRunMeta(
+              scheduleContract,
+              clockPolicy,
+              authoredVectors,
+              state.projectIoRows
+            ),
             report,
             waveform,
             evidence,
@@ -1530,7 +1658,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
 
           // Build ledger entry (synchronous hashes via digestValue + stableSerialize)
           const vectorsHash = digestValue(stableSerialize(runtimeVectors));
-          const mappingHash = digestValue(stableSerialize(ioMapping));
+          const mappingHash = mappingEvidenceHash;
           // Use the same hash function as buildCurrentVerifyProjectHash in IdeApp so that
           // deriveVerifyCurrent's ledger comparison always resolves correctly.
           // The prior inline computation included vector `id` fields (via cloneVectors spread)
@@ -1594,6 +1722,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 ranAtIso: report.generatedAtIso,
               },
               dirtySinceVerify: false,
+              dirtySinceExport: true,
             },
           };
         });
@@ -1667,6 +1796,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             ...state.projectHealthCore,
             lastVerify: undefined,
             dirtySinceVerify: true,
+            dirtySinceExport: true,
           },
         }));
       },
@@ -1718,6 +1848,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ...state.projectHealthCore,
               lastVerify: result,
               dirtySinceVerify: false,
+              dirtySinceExport: true,
             },
           };
         });
@@ -1947,6 +2078,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ...s,
           vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })),
           steps: s.steps?.map(cloneScenarioStep),
+          sequentialPolicy: cloneScenarioSequentialPolicy(s.sequentialPolicy),
         })),
         activeScenarioId: state.activeScenarioId,
         customVectors: [...(state.customVectors ?? [])],
@@ -2041,21 +2173,20 @@ export function mergePersistedRuntimeState(
     hardwareMappingV2,
     projectIoRows,
   } = deriveAuthoritativeHardwareState(circuit, pickHardwareMappingV2FromProject(normalizedProject));
-  const projectVectors = normalizeVectorsForLiveIo(
-    rekeyVectorsForLiveIo(cloneVectors(normalizedProject.vectors ?? []), legacyProjectIoRows, projectIoRows),
+  const projectVectors = preserveCompatibleVectorAuthorship(
+    cloneVectors(normalizedProject.vectors ?? []),
+    legacyProjectIoRows,
     projectIoRows
   );
   const rawVerifyLastRun = tryCloneVerifyRun(candidate.verifyLastRun);
   const invalidateVerifyTrust = hasLegacyVerifyTrust(rawVerifyLastRun, candidate.projectHealthCore);
   const verifyLastRun = invalidateVerifyTrust ? undefined : rawVerifyLastRun;
   const verifyRunHistory = invalidateVerifyTrust ? [] : normalizeVerifyRunHistory(candidate.verifyRunHistory);
-  const restoredVerifyProjectHash = digestValue(
-    stableSerialize({
-      circuit,
-      vectors: projectVectors,
-      mapping: toIoMapping(projectIoRows),
-    })
-  );
+  const restoredVerifyProjectHash = buildCurrentVerifyProjectHash({
+    circuit,
+    projectVectors,
+    projectIoRows,
+  });
   const latestVerifyLedgerEntry = verifyRunHistory.at(-1);
   const hasRestoredVerifyProjectHashMismatch =
     !invalidateVerifyTrust &&
@@ -2085,10 +2216,17 @@ export function mergePersistedRuntimeState(
     isAuthoritativeVerifyHash(projectHealthCore.lastVerify.hash) &&
     !verifyLastRun;
   const restoredExportHash = computeRestoredExportHash(normalizedProject);
+  const hasExactPackageSourceReceipt = Boolean(
+    projectHealthCore.lastExport?.packageHash &&
+    /^[a-f0-9]{64}$/i.test(projectHealthCore.lastExport.packageHash) &&
+    projectHealthCore.lastExport.hash?.startsWith('pkgsrc_') &&
+    projectHealthCore.lastExport.sourceHashes?.export === projectHealthCore.lastExport.hash
+  );
   const hasRestoredLegacyExportWithoutHash =
     projectHealthCore.lastExport?.status === 'ok' &&
     (!projectHealthCore.lastExport.hash || projectHealthCore.lastExport.hash.length === 0);
   const hasRestoredExportHashMismatch =
+    !hasExactPackageSourceReceipt &&
     projectHealthCore.lastExport?.status === 'ok' &&
     typeof projectHealthCore.lastExport.hash === 'string' &&
     projectHealthCore.lastExport.hash.length > 0 &&
@@ -2103,18 +2241,19 @@ export function mergePersistedRuntimeState(
       : migrateProjectVectorsToScenario(projectVectors);
   const scenarios = repairedScenarios.map((scenario) => ({
     ...scenario,
-    steps: normalizeScenarioSteps(scenario.steps),
-    vectors: normalizeVectorsForLiveIo(
-      rekeyVectorsForLiveIo(
-        cloneVectors(
-          materializeScenarioVectors({
-            ...scenario,
-            steps: normalizeScenarioSteps(scenario.steps),
-          })
-        ),
-        legacyProjectIoRows,
-        projectIoRows
-      ),
+    steps: reconcileScenarioStepsForLiveIo(
+      normalizeScenarioSteps(scenario.steps),
+      legacyProjectIoRows,
+      projectIoRows
+    ),
+    sequentialPolicy: reconcileScenarioSequentialPolicyForLiveIo(
+      scenario.sequentialPolicy,
+      legacyProjectIoRows,
+      projectIoRows
+    ),
+    vectors: preserveCompatibleVectorAuthorship(
+      cloneVectors(scenario.vectors),
+      legacyProjectIoRows,
       projectIoRows
     ),
   }));
@@ -2165,31 +2304,29 @@ export function mergePersistedRuntimeState(
   const shouldResetDetachedStarterCompareState =
     restoredProjectKind !== 'example' &&
     Boolean(persistedSourceExampleId) &&
+    persistedScenarioAuthority === 'starter' &&
     projectVectors.some((vector) => Object.keys(vector.expected ?? {}).length > 0);
   const detachedProjectVectors = shouldResetDetachedStarterCompareState
     ? stripExpectedOutputs(projectVectors)
     : projectVectors;
   const detachedScenarios = shouldResetDetachedStarterCompareState
-    ? scenarios.map((scenario) => ({
-        ...scenario,
-        vectors: stripExpectedOutputs(scenario.vectors),
-        steps: scenario.steps?.map((step) => ({
-          ...step,
-          expectedValue: undefined,
-        })),
-      }))
+    ? scenarios.map((scenario) => {
+        const vectors = stripExpectedOutputs(scenario.vectors);
+        return {
+          ...scenario,
+          vectors,
+          steps: scenario.steps ? deriveScenarioStepsFromVectors(vectors) : undefined,
+        };
+      })
     : scenarios;
-  const detachedCustomVectors = normalizeVectorsForLiveIo(
-    rekeyVectorsForLiveIo(
-      cloneVectors(
-        Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
-      ).map((vector) => ({
-        ...vector,
-        expected: shouldResetDetachedStarterCompareState ? {} : vector.expected,
-      })),
-      legacyProjectIoRows,
-      projectIoRows
-    ),
+  const detachedCustomVectors = preserveCompatibleVectorAuthorship(
+    cloneVectors(
+      Array.isArray(candidate.customVectors) ? (candidate.customVectors as CustomTestVector[]) : []
+    ).map((vector) => ({
+      ...vector,
+      expected: shouldResetDetachedStarterCompareState ? {} : vector.expected,
+    })),
+    legacyProjectIoRows,
     projectIoRows
   );
   const detachedScenarioAuthority = shouldResetDetachedStarterCompareState
@@ -2763,31 +2900,11 @@ function createDesignHistorySnapshot(
 }
 
 function buildValidOutputSignalKeys(rows: ProjectIoRow[]): Set<string> {
-  const validOutputKeys = new Set<string>();
-  for (const row of rows) {
-    if (row.direction !== 'out') continue;
-    for (const candidate of [row.id, row.label, row.nodeId]) {
-      const normalized = normalizePortToken(candidate);
-      if (normalized.length > 0) {
-        validOutputKeys.add(normalized);
-      }
-    }
-  }
-  return validOutputKeys;
+  return new Set(buildLiveIoAliasMap(rows, 'out').keys());
 }
 
 function buildValidInputSignalKeys(rows: ProjectIoRow[]): Set<string> {
-  const validInputKeys = new Set<string>();
-  for (const row of rows) {
-    if (row.direction !== 'in') continue;
-    for (const candidate of [row.id, row.label, row.nodeId]) {
-      const normalized = normalizePortToken(candidate);
-      if (normalized.length > 0) {
-        validInputKeys.add(normalized);
-      }
-    }
-  }
-  return validInputKeys;
+  return new Set(buildLiveIoAliasMap(rows, 'in').keys());
 }
 
 export function pruneStaleVectorExpected<T extends TestVector>(
@@ -2824,10 +2941,41 @@ function pruneStaleVectorInputs<T extends TestVector>(
 
 function ensureVectorInputCoverage<T extends TestVector>(
   vectors: T[],
-  rows: ProjectIoRow[]
+  rows: ProjectIoRow[],
+  clockPolicy?: VerifyClockPolicy | null
 ): T[] {
   const inputRows = rows.filter((row) => row.direction === 'in');
   if (inputRows.length === 0) return cloneVectors(vectors);
+  const requestedAuthoredClockAliases =
+    clockPolicy && clockPolicy.overrideMode !== 'auto'
+      ? new Set(
+          [clockPolicy.signalId, clockPolicy.signalLabel]
+            .map((value) => normalizePortToken(value ?? ''))
+            .filter((value) => value.length > 0)
+        )
+      : null;
+  const authoredClockRow = requestedAuthoredClockAliases
+    ? inputRows.find((row) =>
+        [row.id, row.label, row.nodeId]
+          .map((value) => normalizePortToken(value ?? ''))
+          .some((alias) => alias.length > 0 && requestedAuthoredClockAliases.has(alias))
+      )
+    : undefined;
+  const authoredClockAliases = requestedAuthoredClockAliases
+    ? new Set([
+        ...requestedAuthoredClockAliases,
+        ...[authoredClockRow?.id, authoredClockRow?.label, authoredClockRow?.nodeId]
+          .map((value) => normalizePortToken(value ?? ''))
+          .filter((value) => value.length > 0),
+      ])
+    : null;
+  const autoResetAliases =
+    clockPolicy?.overrideMode === 'auto' &&
+    clockPolicy.resetBehavior === 'auto-sequence' &&
+    clockPolicy.resetSignalName
+      ? new Set([normalizePortToken(clockPolicy.resetSignalName)])
+      : null;
+  let authoredClockValue: 0 | 1 = clockPolicy?.startLevel === 1 ? 1 : 0;
 
   return vectors.map((vector) => {
     const nextInputs: Record<string, 0 | 1> = { ...(vector.inputs ?? {}) };
@@ -2838,15 +2986,32 @@ function ensureVectorInputCoverage<T extends TestVector>(
     );
 
     for (const row of inputRows) {
-      const aliases = [row.id, row.label, row.nodeId]
-        .map((key) => normalizePortToken(key))
-        .filter((key) => key.length > 0);
-      const hasCoverage = aliases.some((alias) => normalizedInputKeys.has(alias));
+      const canonicalInputKey = normalizePortToken(row.id);
+      const hasCoverage =
+        canonicalInputKey.length > 0 && normalizedInputKeys.has(canonicalInputKey);
       if (hasCoverage) continue;
       const inputKey = row.id.trim();
       if (!inputKey) continue;
-      nextInputs[inputKey] = 0;
+      const rowAliases = [row.id, row.label, row.nodeId]
+        .map((value) => normalizePortToken(value ?? ''))
+        .filter((value) => value.length > 0);
+      if (autoResetAliases && rowAliases.some((alias) => autoResetAliases.has(alias))) {
+        // Preserve omission until policy materialization so Auto can distinguish
+        // "use the reset sequence" from an explicit authored reset=0.
+        continue;
+      }
+      const isAuthoredClock = Boolean(
+        authoredClockAliases && rowAliases.some((alias) => authoredClockAliases.has(alias))
+      );
+      nextInputs[inputKey] = isAuthoredClock ? authoredClockValue : 0;
       normalizedInputKeys.add(normalizePortToken(inputKey));
+    }
+
+    if (authoredClockAliases) {
+      const clockEntry = Object.entries(nextInputs).find(([key]) =>
+        authoredClockAliases.has(normalizePortToken(key))
+      );
+      if (clockEntry) authoredClockValue = clockEntry[1] === 1 ? 1 : 0;
     }
 
     return {
@@ -2870,7 +3035,7 @@ function buildRowRekeyMap(
     nextRowsByNodeId.set(normalizedNodeId, row);
   }
 
-  const rekeyMap = new Map<string, string>();
+  const canonicalOwnersByAlias = new Map<string, Set<string>>();
   for (const row of previousRows) {
     if (row.direction !== direction) continue;
     const normalizedNodeId = normalizePortToken(row.nodeId);
@@ -2878,13 +3043,19 @@ function buildRowRekeyMap(
     const nextRow = nextRowsByNodeId.get(normalizedNodeId);
     const canonicalKey = nextRow?.id?.trim();
     if (!nextRow || !canonicalKey) continue;
-    for (const candidate of [row.id, row.label, row.nodeId]) {
+    for (const candidate of buildIoRowSignalCandidates(row)) {
       const normalizedCandidate = normalizePortToken(candidate);
       if (!normalizedCandidate) continue;
-      rekeyMap.set(normalizedCandidate, canonicalKey);
+      const owners = canonicalOwnersByAlias.get(normalizedCandidate) ?? new Set<string>();
+      owners.add(canonicalKey);
+      canonicalOwnersByAlias.set(normalizedCandidate, owners);
     }
   }
 
+  const rekeyMap = new Map<string, string>();
+  for (const [alias, owners] of canonicalOwnersByAlias) {
+    if (owners.size === 1) rekeyMap.set(alias, Array.from(owners)[0]);
+  }
   return rekeyMap;
 }
 
@@ -2949,10 +3120,9 @@ function ensureVectorOutputCoverage<T extends TestVector>(
     );
 
     for (const row of outputRows) {
-      const aliases = [row.id, row.label, row.nodeId]
-        .map((key) => normalizePortToken(key))
-        .filter((key) => key.length > 0);
-      const hasCoverage = aliases.some((alias) => normalizedExpectedKeys.has(alias));
+      const canonicalOutputKey = normalizePortToken(row.id);
+      const hasCoverage =
+        canonicalOutputKey.length > 0 && normalizedExpectedKeys.has(canonicalOutputKey);
       if (hasCoverage) continue;
       const outputKey = row.id.trim();
       if (!outputKey) continue;
@@ -2968,17 +3138,64 @@ function ensureVectorOutputCoverage<T extends TestVector>(
   }) as T[];
 }
 
-function normalizeVectorsForLiveIo<T extends TestVector>(
+export function normalizeVectorsForLiveIo<T extends TestVector>(
   vectors: T[],
-  rows: ProjectIoRow[]
+  rows: ProjectIoRow[],
+  clockPolicy?: VerifyClockPolicy | null
 ): T[] {
+  const inputAliases = buildLiveIoAliasMap(rows, 'in');
+  const outputAliases = buildLiveIoAliasMap(rows, 'out');
+  const canonicalVectors = vectors
+    .map((vector, originalIndex) => ({
+      vector: {
+        ...vector,
+        inputs: rekeyRuntimeSignalRecord(vector.inputs ?? {}, inputAliases),
+        expected: rekeyRuntimeSignalRecord(
+          filterAssertedExpectedValues(vector.expected),
+          outputAliases
+        ),
+      } as T,
+      originalIndex,
+    }))
+    .sort((left, right) => {
+      const leftTick = Number.isFinite(left.vector.tick)
+        ? Math.max(0, Math.floor(Number(left.vector.tick)))
+        : left.originalIndex;
+      const rightTick = Number.isFinite(right.vector.tick)
+        ? Math.max(0, Math.floor(Number(right.vector.tick)))
+        : right.originalIndex;
+      return leftTick - rightTick || left.originalIndex - right.originalIndex;
+    })
+    .map(({ vector }) => vector);
   return ensureVectorInputCoverage(
     pruneStaleVectorInputs(
-      pruneStaleVectorExpected(vectors, buildValidOutputSignalKeys(rows)),
+      pruneStaleVectorExpected(canonicalVectors, buildValidOutputSignalKeys(rows)),
       buildValidInputSignalKeys(rows)
     ),
-    rows
+    rows,
+    clockPolicy
   );
+}
+
+function filterAssertedExpectedValues(
+  record: TestVector['expected']
+): Record<string, number | boolean> {
+  const next: Record<string, number | boolean> = {};
+  for (const [signal, value] of Object.entries(
+    (record ?? {}) as Record<string, unknown>
+  )) {
+    if (
+      value === 0 ||
+      value === 1 ||
+      value === false ||
+      value === true ||
+      value === '0' ||
+      value === '1'
+    ) {
+      next[signal] = value === '0' ? 0 : value === '1' ? 1 : value;
+    }
+  }
+  return next;
 }
 
 function getBoundaryIoShape(
@@ -3068,6 +3285,10 @@ function resolveBoundaryStudentLabel(
 }
 
 function shouldRekeyBoundaryRowId(row: ProjectIoRow, nextLabel: string): boolean {
+  if ((row.mappingKind ?? 'scalar') !== 'scalar') {
+    return false;
+  }
+
   const currentIdToken = normalizePortToken(row.id);
   const currentLabelToken = normalizePortToken(row.label);
   const nextRowIdToken = normalizePortToken(normalizeBoardRowId(nextLabel));
@@ -3145,6 +3366,303 @@ function synchronizeProjectIoRows(circuit: Circuit, rows: ProjectIoRow[]): Proje
   return synchronized;
 }
 
+function buildDesignBehaviorFingerprint(circuit: Circuit, rows: ProjectIoRow[]): string {
+  const logicalIo = rows
+    .map((row) => ({
+      id: row.id,
+      nodeId: row.nodeId,
+      port: row.port,
+      label: row.label,
+      direction: row.direction,
+    }))
+    .sort((left, right) =>
+      `${left.direction}:${left.nodeId}:${left.id}`.localeCompare(
+        `${right.direction}:${right.nodeId}:${right.id}`
+      )
+    );
+  return digestValue(stableSerialize({ circuit: normalizeCircuit(circuit), logicalIo }));
+}
+
+function hasSameVectorIoContract(leftRows: ProjectIoRow[], rightRows: ProjectIoRow[]): boolean {
+  const normalizeRows = (rows: ProjectIoRow[]) =>
+    rows
+      .map((row) => ({
+        id: row.id,
+        nodeId: row.nodeId,
+        port: row.port,
+        label: row.label,
+        direction: row.direction,
+      }))
+      .sort((left, right) =>
+        `${left.direction}:${left.nodeId}:${left.id}`.localeCompare(
+          `${right.direction}:${right.nodeId}:${right.id}`
+        )
+      );
+
+  return stableSerialize(normalizeRows(leftRows)) === stableSerialize(normalizeRows(rightRows));
+}
+
+function preserveCompatibleVectorAuthorship<T extends TestVector>(
+  vectors: T[],
+  previousRows: ProjectIoRow[],
+  nextRows: ProjectIoRow[]
+): T[] {
+  // Rekey still-compatible references, but deliberately do not prune removed
+  // signals. Verify owns the visible partial/orphan review state for those cells.
+  return ensureVectorOutputCoverage(
+    ensureVectorInputCoverage(
+      rekeyVectorsForLiveIo(cloneVectors(vectors), previousRows, nextRows),
+      nextRows
+    ),
+    nextRows
+  );
+}
+
+function rekeyScenarioStepRecord(
+  value: VerifyScenarioStep['value'] | VerifyScenarioStep['expectedValue'],
+  rekeyMap: Map<string, string>
+): VerifyScenarioStep['value'] | VerifyScenarioStep['expectedValue'] {
+  if (!value || typeof value !== 'object') return value;
+  return rekeyVectorSignalRecord(value, rekeyMap);
+}
+
+function reconcileScenarioStepsForLiveIo(
+  steps: VerifyScenarioStep[] | undefined,
+  previousRows: ProjectIoRow[],
+  nextRows: ProjectIoRow[]
+): VerifyScenarioStep[] | undefined {
+  if (!steps) return undefined;
+  const inputRekeyMap = buildRowRekeyMap(previousRows, nextRows, 'in');
+  const outputRekeyMap = buildRowRekeyMap(previousRows, nextRows, 'out');
+  const anyRekeyMap = new Map([...inputRekeyMap, ...outputRekeyMap]);
+
+  return steps.map((sourceStep) => {
+    const step = cloneScenarioStep(sourceStep);
+    const targetMap =
+      step.kind === 'assert_scalar' || step.kind === 'assert_bus'
+        ? outputRekeyMap
+        : step.kind === 'set_input' ||
+            step.kind === 'set_bit' ||
+            step.kind === 'set_slice' ||
+            step.kind === 'set_bus' ||
+            step.kind === 'apply_reset' ||
+            step.kind === 'pulse_step'
+          ? inputRekeyMap
+          : anyRekeyMap;
+    const normalizedTarget = normalizePortToken(step.targetRef ?? '');
+    const targetRef = normalizedTarget
+      ? (targetMap.get(normalizedTarget) ?? step.targetRef)
+      : step.targetRef;
+
+    return {
+      ...step,
+      targetRef,
+      value:
+        step.kind === 'set_slice' || step.kind === 'set_bus'
+          ? rekeyScenarioStepRecord(step.value, inputRekeyMap)
+          : step.value,
+      expectedValue:
+        step.kind === 'assert_bus'
+          ? rekeyScenarioStepRecord(step.expectedValue, outputRekeyMap)
+          : step.expectedValue,
+    };
+  });
+}
+
+function buildIoRowSignalCandidates(row: ProjectIoRow): string[] {
+  const nodeId = row.nodeId?.trim() ?? '';
+  return [
+    row.id,
+    row.label,
+    nodeId,
+    nodeId ? `${nodeId}.in` : '',
+    nodeId ? `${nodeId}.out` : '',
+    nodeId ? `${nodeId}_in` : '',
+    nodeId ? `${nodeId}_out` : '',
+    nodeId ? `${nodeId}:in` : '',
+    nodeId ? `${nodeId}:out` : '',
+  ].filter((candidate) => candidate.trim().length > 0);
+}
+
+function buildLiveIoAliasMap(
+  rows: ProjectIoRow[],
+  direction?: 'in' | 'out'
+): Map<string, string> {
+  const candidatesByAlias = new Map<string, Set<string>>();
+  for (const row of rows) {
+    if (direction && row.direction !== direction) continue;
+    const canonical = row.id.trim();
+    if (!canonical) continue;
+    for (const candidate of buildIoRowSignalCandidates(row)) {
+      const normalized = normalizePortToken(candidate);
+      if (!normalized) continue;
+      const owners = candidatesByAlias.get(normalized) ?? new Set<string>();
+      owners.add(canonical);
+      candidatesByAlias.set(normalized, owners);
+    }
+  }
+
+  const aliases = new Map<string, string>();
+  for (const [alias, owners] of candidatesByAlias) {
+    if (owners.size === 1) aliases.set(alias, Array.from(owners)[0]);
+  }
+  return aliases;
+}
+
+function canonicalizeVerifySignalName(
+  signal: string,
+  aliases: Map<string, string>
+): string {
+  return aliases.get(normalizePortToken(signal)) ?? signal.trim();
+}
+
+function rekeyRuntimeSignalRecord<T>(
+  record: Record<string, T>,
+  aliases: Map<string, string>
+): Record<string, T> {
+  const next: Record<string, T> = {};
+  for (const [rawSignal, value] of Object.entries(record)) {
+    const signal = canonicalizeVerifySignalName(rawSignal, aliases);
+    if (!(signal in next) || normalizePortToken(rawSignal) === normalizePortToken(signal)) {
+      next[signal] = value;
+    }
+  }
+  return next;
+}
+
+function reconcileScenarioSequentialPolicyForLiveIo(
+  policy: VerifyScenarioSequentialPolicy | undefined,
+  previousRows: ProjectIoRow[],
+  nextRows: ProjectIoRow[]
+): VerifyScenarioSequentialPolicy | undefined {
+  if (!policy) return undefined;
+  const inputRekeyMap = buildRowRekeyMap(previousRows, nextRows, 'in');
+  const currentInputAliases = buildRowRekeyMap(nextRows, nextRows, 'in');
+  const resolveInputId = (...candidates: Array<string | undefined>): string | undefined => {
+    for (const candidate of candidates) {
+      const normalized = normalizePortToken(candidate ?? '');
+      if (!normalized) continue;
+      const resolved = inputRekeyMap.get(normalized) ?? currentInputAliases.get(normalized);
+      if (resolved) return resolved;
+    }
+    return undefined;
+  };
+
+  const signalId = resolveInputId(policy.signalId, policy.signalLabel) ?? policy.signalId;
+  const signalRow = signalId
+    ? nextRows.find(
+        (row) => row.direction === 'in' && normalizePortToken(row.id) === normalizePortToken(signalId)
+      )
+    : undefined;
+  const resetSignalName =
+    resolveInputId(policy.resetSignalName) ?? policy.resetSignalName;
+
+  return {
+    ...policy,
+    signalId,
+    signalLabel: signalRow?.label?.trim() || signalId || policy.signalLabel,
+    resetSignalName,
+  };
+}
+
+function reconcileTestbenchAfterDesignChange(input: {
+  state: ProjectRuntimeState;
+  snapshot: DesignHistorySnapshot;
+  nextIoRows: ProjectIoRow[];
+  designBehaviorChanged: boolean;
+  isDetachingFromExample: boolean;
+}): Pick<
+  ProjectRuntimeState,
+  'projectVectors' | 'customVectors' | 'scenarios' | 'scenarioAuthority'
+> {
+  const { state, snapshot, nextIoRows, designBehaviorChanged, isDetachingFromExample } = input;
+  // Design history predates testbench edits. A structural undo with the same
+  // logical I/O contract must not rewind the compatibility vector mirror to an
+  // older snapshot while the named scenario correctly preserves current
+  // authorship. Historical vectors are only needed when undo/redo changes the
+  // I/O contract and must restore/rekey signal identities.
+  const shouldRestoreSnapshotVectors =
+    snapshot.projectVectors !== undefined &&
+    !hasSameVectorIoContract(state.projectIoRows, nextIoRows);
+  const sourceProjectVectors = shouldRestoreSnapshotVectors
+    ? cloneVectors(snapshot.projectVectors)
+    : cloneVectors(state.projectVectors);
+  const projectVectorRows = shouldRestoreSnapshotVectors
+    ? snapshot.projectIoRows
+    : state.projectIoRows;
+
+  if (!designBehaviorChanged) {
+    return {
+      projectVectors: sourceProjectVectors,
+      customVectors: cloneVectors(state.customVectors),
+      scenarios: state.scenarios.map((scenario) => ({
+        ...scenario,
+        vectors: cloneVectors(scenario.vectors),
+        steps: scenario.steps?.map(cloneScenarioStep),
+        sequentialPolicy: cloneScenarioSequentialPolicy(scenario.sequentialPolicy),
+      })),
+      scenarioAuthority: state.scenarioAuthority,
+    };
+  }
+
+  const nextProjectVectors = preserveCompatibleVectorAuthorship(
+    sourceProjectVectors,
+    projectVectorRows,
+    nextIoRows
+  );
+  const nextCustomVectors = preserveCompatibleVectorAuthorship(
+    cloneVectors(state.customVectors),
+    state.projectIoRows,
+    nextIoRows
+  );
+  const nextScenarios = state.scenarios.map((scenario) => ({
+    ...scenario,
+    vectors: preserveCompatibleVectorAuthorship(
+      cloneVectors(scenario.vectors),
+      state.projectIoRows,
+      nextIoRows
+    ),
+    steps: reconcileScenarioStepsForLiveIo(
+      scenario.steps,
+      state.projectIoRows,
+      nextIoRows
+    ),
+    sequentialPolicy: reconcileScenarioSequentialPolicyForLiveIo(
+      scenario.sequentialPolicy,
+      state.projectIoRows,
+      nextIoRows
+    ),
+  }));
+  const shouldDiscardInheritedStarterExpectations =
+    isDetachingFromExample && state.scenarioAuthority === 'starter';
+  const projectVectors = shouldDiscardInheritedStarterExpectations
+    ? stripExpectedOutputs(nextProjectVectors)
+    : nextProjectVectors;
+  const customVectors = shouldDiscardInheritedStarterExpectations
+    ? stripExpectedOutputs(nextCustomVectors)
+    : nextCustomVectors;
+  const scenarios = shouldDiscardInheritedStarterExpectations
+    ? nextScenarios.map((scenario) => {
+        const vectors = stripExpectedOutputs(scenario.vectors);
+        return {
+          ...scenario,
+          vectors,
+          steps: scenario.steps ? deriveScenarioStepsFromVectors(vectors) : undefined,
+        };
+      })
+    : nextScenarios;
+  const scenarioAuthority =
+    projectVectors.length === 0
+      ? 'none'
+      : shouldDiscardInheritedStarterExpectations
+        ? 'draft'
+        : state.scenarioAuthority === 'verified'
+          ? 'stale'
+          : state.scenarioAuthority;
+
+  return { projectVectors, customVectors, scenarios, scenarioAuthority };
+}
+
 function commitDesignSnapshot(
   state: ProjectRuntimeState,
   snapshot: DesignHistorySnapshot,
@@ -3168,6 +3686,7 @@ function commitDesignSnapshot(
   | 'sourceExampleId'
   | 'scenarioAuthority'
   | 'activeExampleId'
+  | 'verifyLastRun'
   | 'projectHealthCore'
 > {
   const nextCircuit = cloneCircuit(snapshot.circuit);
@@ -3177,66 +3696,18 @@ function commitDesignSnapshot(
       : migrateIoMappingToHardwareMappingV2(toIoMappingFromProjectIoRows(snapshot.projectIoRows));
   const { hardwareMappingV2: nextHardwareMappingV2, projectIoRows: nextIoRows } =
     deriveAuthoritativeHardwareState(nextCircuit, snapshotHardwareMappingV2);
-  const sourceProjectVectors = snapshot.projectVectors
-    ? cloneVectors(snapshot.projectVectors)
-    : cloneVectors(state.projectVectors);
-  const projectVectorRows = snapshot.projectVectors ? snapshot.projectIoRows : state.projectIoRows;
-  const nextProjectVectors = ensureVectorOutputCoverage(
-    normalizeVectorsForLiveIo(
-      rekeyVectorsForLiveIo(sourceProjectVectors, projectVectorRows, nextIoRows),
-      nextIoRows
-    ),
-    nextIoRows
-  );
-  const nextCustomVectors = ensureVectorOutputCoverage(
-    normalizeVectorsForLiveIo(
-      rekeyVectorsForLiveIo(cloneVectors(state.customVectors), state.projectIoRows, nextIoRows),
-      nextIoRows
-    ),
-    nextIoRows
-  );
-  const nextScenarios = state.scenarios.map((scenario) => ({
-    ...scenario,
-    vectors: ensureVectorOutputCoverage(
-      normalizeVectorsForLiveIo(
-        rekeyVectorsForLiveIo(
-          cloneVectors(materializeScenarioVectors(scenario)),
-          state.projectIoRows,
-          nextIoRows
-        ),
-        nextIoRows
-      ),
-      nextIoRows
-    ),
-    steps: scenario.steps
-      ? deriveScenarioStepsFromVectors(
-          ensureVectorOutputCoverage(
-            normalizeVectorsForLiveIo(
-              rekeyVectorsForLiveIo(
-                cloneVectors(materializeScenarioVectors(scenario)),
-                state.projectIoRows,
-                nextIoRows
-              ),
-              nextIoRows
-            ),
-            nextIoRows
-          )
-        )
-      : undefined,
-  }));
-  const isDetachingFromExample = state.projectKind === 'example' && Boolean(state.activeExampleId);
-  const detachedProjectVectors = isDetachingFromExample
-    ? stripExpectedOutputs(nextProjectVectors)
-    : nextProjectVectors;
-  const detachedCustomVectors = isDetachingFromExample
-    ? stripExpectedOutputs(nextCustomVectors)
-    : nextCustomVectors;
-  const detachedScenarios = isDetachingFromExample
-    ? nextScenarios.map((scenario) => ({
-        ...scenario,
-        vectors: stripExpectedOutputs(scenario.vectors),
-      }))
-    : nextScenarios;
+  const designBehaviorChanged =
+    buildDesignBehaviorFingerprint(state.circuit, state.projectIoRows) !==
+    buildDesignBehaviorFingerprint(nextCircuit, nextIoRows);
+  const isDetachingFromExample =
+    designBehaviorChanged && state.projectKind === 'example' && Boolean(state.activeExampleId);
+  const reconciledTestbench = reconcileTestbenchAfterDesignChange({
+    state,
+    snapshot,
+    nextIoRows,
+    designBehaviorChanged,
+    isDetachingFromExample,
+  });
   const nextProjectKind = isDetachingFromExample
     ? (nextCircuit.nodes.length > 0 ? 'custom' : 'blank')
     : state.projectKind === 'home' && nextCircuit.nodes.length > 0
@@ -3246,11 +3717,6 @@ function commitDesignSnapshot(
     ? (state.sourceExampleId ?? state.activeExampleId ?? null)
     : state.sourceExampleId;
   const nextActiveExampleId = isDetachingFromExample ? null : state.activeExampleId;
-  const nextScenarioAuthority = isDetachingFromExample
-    ? (nextCircuit.nodes.length > 0 && detachedProjectVectors.length > 0 ? 'draft' : 'none')
-    : state.scenarioAuthority === 'verified'
-      ? 'stale'
-      : state.scenarioAuthority;
   // Detaching a starter removes example ownership, not the student's only honest
   // project identity. Keep the current name/summary unless the user explicitly changes them.
   const nextProjectName = state.projectName;
@@ -3259,26 +3725,37 @@ function commitDesignSnapshot(
     circuit: nextCircuit,
     hardwareMappingV2: nextHardwareMappingV2,
     projectIoRows: nextIoRows,
-    projectVectors: detachedProjectVectors,
-    customVectors: detachedCustomVectors,
-    scenarios: detachedScenarios,
+    projectVectors: reconciledTestbench.projectVectors,
+    customVectors: reconciledTestbench.customVectors,
+    scenarios: reconciledTestbench.scenarios,
     macroInsertionCounts: cloneMacroInsertionCounts(snapshot.macroInsertionCounts),
     designPast: history.designPast,
     designFuture: history.designFuture,
     // Tracks state transitions, not unique circuit graphs. Undo/redo transitions
     // intentionally advance this counter just like forward edits.
     designRevision: state.designRevision + 1,
-    sim: initializeSimulationStateForCircuit(nextCircuit, nextIoRows, state.sim),
+    sim: designBehaviorChanged
+      ? initializeSimulationStateForCircuit(nextCircuit, nextIoRows, state.sim)
+      : cloneSimState(state.sim),
     projectName: nextProjectName,
     projectDescription: nextProjectDescription,
     projectKind: nextProjectKind,
     sourceExampleId: nextSourceExampleId,
-    scenarioAuthority: nextScenarioAuthority,
+    scenarioAuthority: reconciledTestbench.scenarioAuthority,
     activeExampleId: nextActiveExampleId,
+    // A behavioral edit invalidates produced evidence, never authored intent.
+    // The archived run remains in verifyRunHistory for review, while current
+    // PASS/FAIL, waveform, mismatch, hash, and timestamp authority are cleared.
+    verifyLastRun: designBehaviorChanged
+      ? undefined
+      : state.verifyLastRun
+        ? cloneVerifyRun(state.verifyLastRun)
+        : undefined,
     projectHealthCore: {
       ...state.projectHealthCore,
-      dirtySinceVerify: true,
-      dirtySinceExport: true,
+      lastVerify: designBehaviorChanged ? undefined : state.projectHealthCore.lastVerify,
+      dirtySinceVerify: designBehaviorChanged ? true : state.projectHealthCore.dirtySinceVerify,
+      dirtySinceExport: designBehaviorChanged ? true : state.projectHealthCore.dirtySinceExport,
     },
   };
 }
@@ -3296,6 +3773,10 @@ function cloneVerifyRun(run: RuntimeVerifyRun): RuntimeVerifyRun {
     scenarioStimulusHash:
       typeof run.scenarioStimulusHash === 'string' && run.scenarioStimulusHash.trim().length > 0
         ? run.scenarioStimulusHash.trim()
+        : undefined,
+    mappingEvidenceHash:
+      typeof run.mappingEvidenceHash === 'string' && run.mappingEvidenceHash.trim().length > 0
+        ? run.mappingEvidenceHash.trim()
         : undefined,
     scheduleContract: run.scheduleContract
       ? cloneVerifyScheduleContract(run.scheduleContract)
@@ -3381,10 +3862,10 @@ function cloneVerifyScheduleContract(contract: VerifyScheduleContract): VerifySc
 //   d. Mapped board IO changes (pin assignments for IO nodes are updated).
 //      Detected by: deterministicHash mismatch (ioMapping is included in hash).
 //
-// When a run is demoted to STALE:
-//   - Surviving stimulus vectors are preserved (only expected-output authority is dropped).
-//   - Orphaned expected outputs (for ports that no longer exist) are dropped on next run.
-//   - The UI must not display a bare PASS or FAIL badge; it must show STALE prominently.
+// When a run is invalidated:
+//   - Authored stimulus and expected outputs remain durable project documents.
+//   - Orphaned references remain visible for review instead of being silently deleted.
+//   - The current PASS/FAIL and waveform slots are cleared; history remains archival.
 //
 // Invalidation is handled at two layers:
 //   1. Load-time: hasLegacyVerifyTrust() clears runs with pre-authoritative hash formats.
@@ -3839,11 +4320,67 @@ function normalizePersistedLastExport(
     hash: typeof candidate.hash === 'string' ? candidate.hash : undefined,
     manifestHash: typeof candidate.manifestHash === 'string' ? candidate.manifestHash : undefined,
     bundleHash: typeof candidate.bundleHash === 'string' ? candidate.bundleHash : undefined,
+    packageHash: typeof candidate.packageHash === 'string' ? candidate.packageHash : undefined,
+    verificationTrust:
+      candidate.verificationTrust === 'draft' ||
+      candidate.verificationTrust === 'unverified' ||
+      candidate.verificationTrust === 'trusted'
+        ? candidate.verificationTrust
+        : undefined,
+    downloadKind:
+      candidate.downloadKind === 'project' || candidate.downloadKind === 'kit'
+        ? candidate.downloadKind
+        : undefined,
+    downloadedAtIso:
+      typeof candidate.downloadedAtIso === 'string' ? candidate.downloadedAtIso : undefined,
+    sourceHashes:
+      candidate.sourceHashes && typeof candidate.sourceHashes === 'object'
+        ? {
+            project:
+              typeof candidate.sourceHashes.project === 'string'
+                ? candidate.sourceHashes.project
+                : undefined,
+            export:
+              typeof candidate.sourceHashes.export === 'string'
+                ? candidate.sourceHashes.export
+                : undefined,
+            verify:
+              typeof candidate.sourceHashes.verify === 'string'
+                ? candidate.sourceHashes.verify
+                : undefined,
+          }
+        : undefined,
+    sourceCurrentness:
+      candidate.sourceCurrentness && typeof candidate.sourceCurrentness === 'object'
+        ? {
+            project: normalizePersistedExportSourceState(candidate.sourceCurrentness.project),
+            export: normalizePersistedExportSourceState(candidate.sourceCurrentness.export),
+            mapping: normalizePersistedExportSourceState(candidate.sourceCurrentness.mapping),
+            verify: normalizePersistedExportSourceState(candidate.sourceCurrentness.verify),
+          }
+        : undefined,
     artifacts: Array.isArray(candidate.artifacts)
       ? candidate.artifacts.filter((artifact): artifact is string => typeof artifact === 'string')
       : undefined,
     ranAtIso: candidate.ranAtIso,
   };
+}
+
+function normalizePersistedExportSourceState(
+  value: unknown
+): ProjectHealthExportSourceState {
+  if (
+    value === 'current' ||
+    value === 'stale' ||
+    value === 'missing' ||
+    value === 'failed' ||
+    value === 'trace-only' ||
+    value === 'incomplete' ||
+    value === 'blocked'
+  ) {
+    return value;
+  }
+  return 'missing';
 }
 
 function normalizeBit(value: unknown): 0 | 1 {
@@ -3917,13 +4454,23 @@ function toIoMapping(rows: ProjectIoRow[]): IoMapping {
   };
 }
 
-function buildVerifyRunMeta(scheduleContract: VerifyScheduleContract): VerifyRunMeta {
+function buildVerifyRunMeta(
+  scheduleContract: VerifyScheduleContract,
+  clockPolicy?: VerifyClockPolicy | null,
+  vectors: TestVector[] = [],
+  ioRows: ProjectIoRow[] = []
+): VerifyRunMeta {
   const isClocked = scheduleContract.schedule === 'clocked_macro';
   return {
     circuitKind: isClocked ? 'sequential' : 'combinational',
     clockingProtocol: isClocked ? 'clocked_macro' : null,
     samplePoint: scheduleContract.samplePoint,
-    tick0Meaning: scheduleContract.tick0Meaning,
+    tick0Meaning: resolveVerifyTick0Meaning({
+      structuralTick0Meaning: scheduleContract.tick0Meaning,
+      vectors,
+      ioRows,
+      policy: clockPolicy,
+    }),
     clockSignalName: scheduleContract.clockSignalName ?? null,
   };
 }

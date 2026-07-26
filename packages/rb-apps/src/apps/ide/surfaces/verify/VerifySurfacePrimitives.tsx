@@ -7,7 +7,7 @@ import React from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VerifyContextHeader
-// One slim header that answers: project, board, state, mode, next action.
+// One slim header that answers: project/scenario and current verification state.
 // Sits above VerifyCommandBar so the user can read context at a glance before
 // they look at run controls or stimulus.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,14 +16,9 @@ export type VerifyStateTone = 'idle' | 'running' | 'pass' | 'fail' | 'stale' | '
 
 export interface VerifyContextHeaderProps {
   readonly projectName: string;
-  readonly board: string;
-  /** Compact verify-state label (e.g. "Not run", "Observe done", "Pass", "Stale"). */
+  /** Semantic verify-state label (e.g. "Not started", "Observation only", "Checks aligned", "Stale"). */
   readonly stateLabel: string;
   readonly stateTone: VerifyStateTone;
-  /** Mode label: "Observe only" or "Compare checks". */
-  readonly modeLabel: string;
-  /** One-line "what to do next" hint. */
-  readonly nextActionHint?: string;
   /** Optional scenario/case name shown alongside the project. */
   readonly scenarioName?: string | null;
 }
@@ -39,11 +34,8 @@ const STATE_TONE_CLASS: Record<VerifyStateTone, string> = {
 
 export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
   projectName,
-  board,
   stateLabel,
   stateTone,
-  modeLabel,
-  nextActionHint,
   scenarioName,
 }) => {
   return (
@@ -53,12 +45,12 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
     >
       <div className="ide-verify-job-header-main">
         <div className="ide-verify-job-copy">
-          <h2>Verify</h2>
-          <p>Does my circuit behave correctly? Define inputs and expected outputs, then run the testbench.</p>
+          <span className="ide-verify-job-kicker">Verify</span>
+          <h2>Simulation Studio</h2>
+          <p>Author a testbench, run the circuit, and compare waveform evidence with your expected behavior.</p>
         </div>
       </div>
-      <details className="ide-verify-context-details">
-        <summary>Session details</summary>
+      <div className="ide-verify-context-details" aria-label="Simulation session context">
         <div className="ide-verify-context-identity">
           <span
             className="ide-verify-context-project"
@@ -66,13 +58,6 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
             title={projectName}
           >
             {projectName}
-          </span>
-          <span className="ide-verify-context-sep" aria-hidden="true">/</span>
-          <span
-            className="ide-verify-context-board"
-            data-testid="ide-verify-context-board"
-          >
-            {board}
           </span>
           {scenarioName ? (
             <>
@@ -93,24 +78,10 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
             data-tone={stateTone}
           >
             <span className="ide-verify-context-state-dot" aria-hidden="true" />
-            {stateLabel}
+            <span data-testid="ide-verify-summary-status">{stateLabel}</span>
           </span>
-          <span
-            className="ide-verify-context-mode"
-            data-testid="ide-verify-context-mode"
-          >
-            {modeLabel}
-          </span>
-          {nextActionHint ? (
-            <span
-              className="ide-verify-context-next"
-              data-testid="ide-verify-context-next"
-            >
-              {nextActionHint}
-            </span>
-          ) : null}
         </div>
-      </details>
+      </div>
     </header>
   );
 };

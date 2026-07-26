@@ -2,7 +2,6 @@ import type { Circuit } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole, TestVector } from '@redbyte/rb-utils';
 import { BASYS3_CLOCK_PIN } from '../../fpga/boards/basys3/basys3Pins';
 import { resolveBasys3SignalBinding } from '../../fpga/boards/basys3/basys3SignalSemantics';
-import { getClockHelperValueForTick } from './clockAuthority';
 import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySchedule';
 
 export type VerifyClockSourceType =
@@ -46,6 +45,141 @@ export interface VerifyClockPolicy {
   resetSignalName?: string;
   resetBehavior: 'none' | 'auto-sequence' | 'custom';
   manualWarning?: string;
+}
+
+export type SavedVerifyClockPolicy = Pick<
+  VerifyClockPolicy,
+  | 'sourceType'
+  | 'executionModel'
+  | 'overrideMode'
+  | 'activeEdge'
+  | 'runCycles'
+  | 'resetBehavior'
+> &
+  Partial<
+    Pick<
+      VerifyClockPolicy,
+      | 'signalId'
+      | 'signalLabel'
+      | 'startLevel'
+      | 'resetSignalName'
+      | 'manualWarning'
+    >
+  >;
+
+export function isAutomaticClockPolicyAvailable(
+  policy?: Pick<
+    VerifyClockPolicy,
+    'autoRunEnabled' | 'executionModel' | 'sourceType'
+  > | null
+): boolean {
+  return Boolean(
+    policy?.autoRunEnabled &&
+      policy.executionModel === 'external-input-auto-toggle' &&
+      policy.sourceType !== 'manual' &&
+      policy.sourceType !== 'explicit-clock-component'
+  );
+}
+
+/** Shared scenario/detection authority for Verify execution and Export proof. */
+export function resolveEffectiveVerifyClockPolicy(input: {
+  savedPolicy?: SavedVerifyClockPolicy | null;
+  detectedPolicy?: VerifyClockPolicy | null;
+  overrideMode: VerifyClockOverrideMode;
+  requestedRunCycles: number;
+  totalVectorCount: number;
+}): VerifyClockPolicy | null {
+  const savedPolicy = input.savedPolicy ?? null;
+  const detectedPolicy = input.detectedPolicy ?? null;
+  const savedFallback: VerifyClockPolicy | null = savedPolicy
+    ? {
+        ...savedPolicy,
+        signalLabel: savedPolicy.signalLabel ?? savedPolicy.signalId ?? 'clk',
+        autoRunEnabled: savedPolicy.overrideMode === 'auto',
+        activeEdge: 'rising',
+        startLevel: savedPolicy.startLevel ?? 0,
+        dutyCycle: 0.5,
+      }
+    : null;
+  const detectedOrSavedPolicy = detectedPolicy ? { ...detectedPolicy } : savedFallback;
+  const savedModePolicy =
+    detectedOrSavedPolicy && savedPolicy
+      ? {
+          ...detectedOrSavedPolicy,
+          runCycles: savedPolicy.runCycles,
+          resetBehavior:
+            detectedPolicy && !detectedPolicy.resetSignalName
+              ? 'none' as const
+              : savedPolicy.resetBehavior,
+          activeEdge: 'rising' as const,
+          signalId: detectedPolicy?.signalId ?? savedPolicy.signalId,
+          signalLabel:
+            detectedPolicy?.signalLabel ??
+            savedPolicy.signalLabel ??
+            savedPolicy.signalId ??
+            detectedOrSavedPolicy.signalLabel,
+          resetSignalName:
+            detectedPolicy !== null
+              ? detectedPolicy.resetSignalName
+              : savedPolicy.resetSignalName,
+          startLevel: savedPolicy.startLevel ?? 0,
+          manualWarning: savedPolicy.manualWarning ?? detectedOrSavedPolicy.manualWarning,
+        }
+      : detectedOrSavedPolicy;
+  if (!savedModePolicy) return null;
+
+  const savedAutoAvailable = Boolean(
+    savedPolicy?.overrideMode === 'auto' &&
+      savedPolicy.executionModel === 'external-input-auto-toggle' &&
+      savedPolicy.sourceType !== 'manual' &&
+      savedPolicy.sourceType !== 'explicit-clock-component'
+  );
+  const autoAvailable = detectedPolicy
+    ? isAutomaticClockPolicyAvailable(detectedPolicy)
+    : savedAutoAvailable;
+  const effectiveOverrideMode =
+    input.overrideMode === 'auto' && !autoAvailable
+      ? 'manual-pulses'
+      : input.overrideMode;
+
+  // Saved policy owns the student's mode, run length, reset choice, and start
+  // level. Current detection owns the executable live clock/reset identity and
+  // capability. A renamed or repaired design must never emit an undeclared
+  // saved signal name into generated VHDL.
+  const preserveSavedAuto =
+    effectiveOverrideMode === 'auto' && savedPolicy?.overrideMode === 'auto';
+  const autoPolicy = preserveSavedAuto
+    ? savedModePolicy
+    : detectedPolicy ?? savedModePolicy;
+  const executionPolicy = effectiveOverrideMode === 'auto' ? autoPolicy : savedModePolicy;
+  const autoResetBehavior = executionPolicy.resetSignalName
+    ? preserveSavedAuto
+      ? savedModePolicy.resetBehavior
+      : autoPolicy.resetBehavior
+    : 'none';
+  return {
+    ...executionPolicy,
+    overrideMode: effectiveOverrideMode,
+    autoRunEnabled: effectiveOverrideMode === 'auto' && autoAvailable,
+    activeEdge: 'rising',
+    executionModel: effectiveOverrideMode === 'auto' ? autoPolicy.executionModel : 'manual',
+    runCycles:
+      effectiveOverrideMode === 'auto'
+        ? Math.max(1, input.totalVectorCount, input.requestedRunCycles)
+        : Math.max(1, input.totalVectorCount),
+    resetBehavior:
+      effectiveOverrideMode === 'auto'
+        ? autoResetBehavior
+        : executionPolicy.resetSignalName
+          ? 'custom'
+          : 'none',
+    manualWarning:
+      effectiveOverrideMode === 'auto'
+        ? savedModePolicy.manualWarning
+        : input.overrideMode === 'auto' && !autoAvailable
+          ? 'Auto clock is unavailable for this clock source. Author the clock lane in Manual pulses or Custom pattern mode.'
+          : executionPolicy.manualWarning ?? DEFAULT_MANUAL_WARNING,
+  };
 }
 
 interface DetectVerifyClockPolicyInput {
@@ -205,7 +339,7 @@ export function materializeVectorsForClockPolicy(input: {
 }): TestVector[] {
   const policy = input.policy;
   if (!policy || policy.overrideMode !== 'auto' || !policy.autoRunEnabled) {
-    return cloneVectors(input.vectors);
+    return cloneVectorsInExecutionOrder(input.vectors);
   }
 
   const inputRows = input.ioRows.filter((row) => row.direction === 'in');
@@ -214,9 +348,7 @@ export function materializeVectorsForClockPolicy(input: {
   const resetRow = policy.resetSignalName
     ? inputRows.find((row) => matchesSignalName(row, policy.resetSignalName ?? ''))
     : undefined;
-  const sortedVectors = cloneVectors(input.vectors).sort((left, right) =>
-    left.tick === right.tick ? compareText(left.id ?? '', right.id ?? '') : left.tick - right.tick
-  );
+  const sortedVectors = cloneVectorsInExecutionOrder(input.vectors);
   const cycleCount = Math.max(policy.runCycles, sortedVectors.length, 1);
   const vectors: TestVector[] = [];
 
@@ -252,14 +384,13 @@ export function materializeVectorsForClockPolicy(input: {
     }
 
     if (policy.signalId) {
-      inputs[policy.signalId] = getClockHelperValueForTick(cycleIndex, 'alternating');
+      // One Auto row represents the post-rising-edge sample for one cycle.
+      // Runtime still lowers the clock internally before the next case.
+      inputs[policy.signalId] = 1;
     }
 
-    if (
-      resetRow &&
-      policy.resetBehavior === 'auto-sequence' &&
-      !hasSignalInput(sourceVector?.inputs ?? {}, resetRow)
-    ) {
+    if (resetRow && policy.resetBehavior === 'auto-sequence') {
+      clearSignalAliases(inputs, resetRow);
       inputs[resetRow.id] = cycleIndex === 0 ? 1 : 0;
     }
 
@@ -278,17 +409,46 @@ export function materializeVectorsForClockPolicy(input: {
   return vectors;
 }
 
+export function resolveVerifyTick0Meaning(input: {
+  structuralTick0Meaning: 'initial-state' | null;
+  vectors: readonly TestVector[];
+  ioRows: readonly VerifyClockPolicyIoRow[];
+  policy?: VerifyClockPolicy | null;
+}): 'initial-state' | null {
+  const policy = input.policy;
+  if (!policy) return input.structuralTick0Meaning;
+  if (policy.overrideMode === 'auto') return null;
+  const firstVector = input.vectors[0];
+  if (!firstVector) return input.structuralTick0Meaning;
+  const clockRow = input.ioRows.find((row) => matchesClockSignal(row, policy));
+  const explicitClock = Object.entries(firstVector.inputs ?? {}).find(([key]) =>
+    matchesSignalToken(key, policy.signalId ?? '') ||
+    matchesSignalToken(key, policy.signalLabel) ||
+    Boolean(clockRow && matchesSignalName(clockRow, key))
+  );
+  if (!explicitClock) return input.structuralTick0Meaning;
+  const firstLevel = normalizeBit(explicitClock[1]);
+  return firstLevel !== policy.startLevel ? null : input.structuralTick0Meaning;
+}
+
 function resolveResetSignalName(
   inputRows: readonly VerifyClockPolicyIoRow[],
   scheduleContract: VerifyScheduleContract
 ): string | undefined {
   const hinted = scheduleContract.resetHint?.signalName?.trim();
-  if (hinted) {
-    return hinted;
-  }
+  const hintedRow = hinted
+    ? inputRows.find((row) => matchesSignalName(row, hinted))
+    : undefined;
+  if (hintedRow) return readSignalLabel(hintedRow);
+
   const resetRow =
     inputRows.find((row) => row.timingRole === 'reset') ??
-    inputRows.find((row) => isResetLike(readSignalLabel(row)) || isResetLike(row.id));
+    inputRows.find(
+      (row) =>
+        isResetLike(readSignalLabel(row)) ||
+        isResetLike(row.id) ||
+        isResetLike(row.nodeId)
+    );
   return resetRow ? readSignalLabel(resetRow) : undefined;
 }
 
@@ -411,7 +571,11 @@ function isResetLike(value: string | undefined): boolean {
     normalized === 'rst' ||
     normalized === 'reset' ||
     normalized === 'clear' ||
-    normalized === 'clr'
+    normalized === 'clr' ||
+    normalized.startsWith('rst_') ||
+    normalized.endsWith('_rst') ||
+    normalized.startsWith('reset_') ||
+    normalized.endsWith('_reset')
   );
 }
 
@@ -435,6 +599,17 @@ function cloneVectors(vectors: readonly TestVector[]): TestVector[] {
     inputs: normalizeBitRecord(vector.inputs),
     expected: normalizeBitRecord(vector.expected),
   }));
+}
+
+function cloneVectorsInExecutionOrder(vectors: readonly TestVector[]): TestVector[] {
+  return cloneVectors(vectors)
+    .map((vector, originalIndex) => ({ vector, originalIndex }))
+    .sort((left, right) =>
+      left.vector.tick === right.vector.tick
+        ? left.originalIndex - right.originalIndex
+        : left.vector.tick - right.vector.tick
+    )
+    .map(({ vector }) => vector);
 }
 
 function normalizeBitRecord(
@@ -466,13 +641,6 @@ function clearSignalAliases(
   }
 }
 
-function hasSignalInput(
-  inputs: Record<string, unknown>,
-  row: VerifyClockPolicyIoRow
-): boolean {
-  return Object.keys(inputs).some((key) => matchesSignalName(row, key));
-}
-
 function nextTickAfter(vectors: readonly TestVector[]): number {
   const lastTick = vectors.at(-1)?.tick;
   return Number.isFinite(lastTick) ? Math.max(0, Math.floor(lastTick)) + 1 : 0;
@@ -485,11 +653,5 @@ function normalizeTick(value: number | undefined, fallback: number): number {
 
 function normalizeBit(value: unknown): 0 | 1 {
   if (value === true || value === 1 || value === '1') return 1;
-  return 0;
-}
-
-function compareText(left: string, right: string): number {
-  if (left < right) return -1;
-  if (left > right) return 1;
   return 0;
 }
