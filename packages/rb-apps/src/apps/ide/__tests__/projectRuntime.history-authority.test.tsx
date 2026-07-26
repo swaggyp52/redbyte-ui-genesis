@@ -281,6 +281,29 @@ describe('projectRuntime history authority', () => {
     expectNoChecks();
   });
 
+  it('keeps sparse one-cell checks sparse across a compatible Design edit', () => {
+    useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
+    useProjectRuntime.getState().setVectors([
+      { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+      { tick: 1, inputs: { sw0: 1 }, expected: {} },
+    ]);
+
+    const expectSparseChecks = () => {
+      expect(useProjectRuntime.getState().projectVectors).toEqual([
+        { tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } },
+        { tick: 1, inputs: { sw0: 1 }, expected: {} },
+      ]);
+    };
+
+    expectSparseChecks();
+    useProjectRuntime.getState().addDesignNode('AND', { x: 420, y: 180 });
+    expectSparseChecks();
+    useProjectRuntime.getState().undoProjectEdit();
+    expectSparseChecks();
+    useProjectRuntime.getState().redoProjectEdit();
+    expectSparseChecks();
+  });
+
   it('owns undo/redo state transitions and keeps the editor projection in sync', async () => {
     render(<RuntimeProjectionHarness />);
 
@@ -959,7 +982,7 @@ describe('projectRuntime history authority', () => {
     ]);
   });
 
-  it('adding an output after verify and export invalidates authority and expands expected output identity per state', () => {
+  it('adding an output after verify and export invalidates authority without manufacturing checks', () => {
     useProjectRuntime.getState().loadFromProject(buildHistoryFixture());
 
     const originalHash = currentProjectHash();
@@ -1034,12 +1057,9 @@ describe('projectRuntime history authority', () => {
 
     expect(expandedState.projectIoRows.some((row) => row.nodeId === 'ld1_node' && row.label === 'ld1')).toBe(true);
     expect(addedOutputRow?.id).toBe('ld1');
-    expect(
-      expandedState.projectVectors.every((vector) => {
-        const expected = vector.expected ?? {};
-        return addedOutputRow !== undefined && addedOutputRow.id in expected && expected[addedOutputRow.id] === 0;
-      })
-    ).toBe(true);
+    expect(expandedState.projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(
+      true
+    );
     expect(expandedState.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(expandedState.projectHealthCore.dirtySinceExport).toBe(true);
     expect(verifyCurrent).toBe(false);
@@ -1093,12 +1113,9 @@ describe('projectRuntime history authority', () => {
     const redoneAddedOutputRow = redoneState.projectIoRows.find((row) => row.nodeId === 'ld1_node');
     expect(redoneAddedOutputRow?.id).toBe('ld1');
     expect(redoneState.projectIoRows.some((row) => row.nodeId === 'ld1_node' && row.label === 'ld1')).toBe(true);
-    expect(
-      redoneState.projectVectors.every((vector) => {
-        const expected = vector.expected ?? {};
-        return redoneAddedOutputRow !== undefined && redoneAddedOutputRow.id in expected && expected[redoneAddedOutputRow.id] === 0;
-      })
-    ).toBe(true);
+    expect(redoneState.projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(
+      true
+    );
   });
 
   it('adding an input after verify and export invalidates authority and expands vector input identity per state', () => {

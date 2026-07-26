@@ -3438,15 +3438,11 @@ function preserveCompatibleVectorAuthorship<T extends TestVector>(
     rekeyVectorsForLiveIo(cloneVectors(vectors), previousRows, nextRows),
     nextRows
   );
-  // Stimulus-only scenarios are intentional authored objects. A Design edit,
-  // undo, or redo may rekey their inputs, but must never manufacture expected
-  // outputs and silently turn an exploratory run into assertion work.
-  return rekeyed.map((vector) => {
-    if (Object.keys(vector.expected ?? {}).length === 0) {
-      return { ...vector, expected: {} };
-    }
-    return ensureVectorOutputCoverage([vector], nextRows)[0] ?? vector;
-  }) as T[];
+  // Expected outputs are optional, cell-level authored checks. A Design edit,
+  // undo, or redo may rekey a compatible output, but must never manufacture
+  // checks for other outputs. This preserves both stimulus-only scenarios and
+  // deliberately sparse one-cell comparison work.
+  return rekeyed as T[];
 }
 
 function rekeyScenarioStepRecord(
