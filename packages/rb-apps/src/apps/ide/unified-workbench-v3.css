@@ -1,0 +1,381 @@
+/* --------------------------------------------------------------------------
+   Unified Workbench v3: one horizontal flow and stable page workspaces.
+   This shell-owned layer retires the legacy workflow rail and transient
+   hide/show dock geometry without changing surface data contracts.
+   -------------------------------------------------------------------------- */
+
+:root[data-redbyte-mode='ide'] {
+  --ide-stage-nav-height: 48px;
+}
+
+.ide-root {
+  grid-template-rows:
+    var(--ide-topbar-height)
+    var(--ide-stage-nav-height)
+    minmax(0, 1fr);
+}
+
+.ide-root .ide-top-bar {
+  grid-row: 1;
+  gap: var(--rb-space-4);
+}
+
+.ide-root .ide-top-right {
+  gap: var(--rb-space-2);
+}
+
+.ide-root .ide-topbar-fact,
+.ide-root .ide-topbar-fact-label,
+.ide-root .ide-topbar-fact strong,
+.ide-root .ide-build-badge,
+.ide-root .ide-build-badge-sha,
+.ide-root .ide-save-label {
+  font-size: 13px;
+}
+
+.ide-root .ide-topbar-action,
+.ide-root .ide-topbar-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: var(--rb-radius-control);
+  color: var(--rb-text-primary);
+  background: transparent;
+  box-shadow: none;
+  font: 600 var(--rb-type-control) / 1 var(--rb-font-ui);
+}
+
+.ide-root .ide-topbar-action:hover,
+.ide-root .ide-topbar-help-btn:hover,
+.ide-root .ide-topbar-action:focus-visible,
+.ide-root .ide-topbar-help-btn:focus-visible {
+  border-color: var(--rb-border-strong);
+  background: var(--rb-surface-raised);
+}
+
+.ide-root .ide-stage-nav-frame {
+  grid-row: 2;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  min-height: 0;
+  padding: 0 var(--rb-space-4);
+  border-bottom: 1px solid var(--rb-border-subtle);
+  background: color-mix(in srgb, var(--rb-shell) 88%, var(--rb-surface-raised));
+}
+
+.ide-root .ide-stage-nav {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(128px, 1fr));
+  width: min(100%, 960px);
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.ide-root .ide-stage-nav-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 14px;
+  gap: 9px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--rb-text-secondary);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.ide-root .ide-stage-nav-button:hover,
+.ide-root .ide-stage-nav-button:focus-visible {
+  color: var(--rb-text-primary);
+  background: var(--rb-surface-raised);
+}
+
+.ide-root .ide-stage-nav-button[data-state='current'] {
+  border-bottom-color: var(--rb-focus);
+  color: var(--rb-text-primary);
+  background: var(--rb-state-info-bg);
+}
+
+.ide-root .ide-stage-nav-button[data-state='blocked'] {
+  color: var(--rb-text-muted);
+}
+
+.ide-root .ide-stage-nav-number {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 50%;
+  color: inherit;
+  font: 600 13px / 1 var(--rb-font-mono);
+}
+
+.ide-root .ide-stage-nav-button[data-state='current'] .ide-stage-nav-number {
+  border-color: var(--rb-focus);
+  color: var(--rb-focus);
+}
+
+.ide-root .ide-stage-nav-button[data-state='complete'] .ide-stage-nav-number {
+  border-color: var(--rb-success-border);
+  color: var(--rb-state-success);
+}
+
+.ide-root .ide-stage-nav-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.ide-root .ide-stage-nav-label {
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--rb-type-control);
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root .ide-stage-nav-state {
+  overflow: hidden;
+  color: var(--rb-text-muted);
+  font-size: 13px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root .ide-stage-nav-state {
+  color: var(--rb-state-success);
+  font-weight: 600;
+}
+
+.ide-root .ide-stage-nav-button[data-state='blocked'] .ide-stage-nav-state {
+  color: var(--rb-state-warning);
+}
+
+.ide-root .ide-layout-shell {
+  grid-row: 3;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.ide-root .ide-surface-column {
+  grid-column: 1;
+}
+
+.ide-root .ide-workbench-shell {
+  --ide-workbench-left-width: 216px;
+  --ide-workbench-right-width: 252px;
+  --ide-workbench-left-slot-width: var(--ide-workbench-left-width);
+  --ide-workbench-right-slot-width: var(--ide-workbench-right-width);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.ide-root .ide-workbench-shell:has(> .ide-workbench-console) {
+  grid-template-rows: minmax(0, 1fr) minmax(96px, auto);
+}
+
+.ide-root .ide-workbench-main {
+  grid-template-columns:
+    var(--ide-workbench-left-slot-width)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-slot-width) !important;
+}
+
+.ide-root .ide-workbench-main.hide-left-dock {
+  --ide-workbench-left-slot-width: 0px;
+}
+
+.ide-root .ide-workbench-main.hide-right-dock {
+  --ide-workbench-right-slot-width: 0px;
+}
+
+.ide-root .ide-workbench-main.hide-left-dock.hide-right-dock {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-root .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+  grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-slot-width) !important;
+}
+
+.ide-root .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+  grid-template-columns: var(--ide-workbench-left-slot-width) minmax(0, 1fr) !important;
+}
+
+.ide-root .ide-workbench-dock-left {
+  grid-column: 1;
+}
+
+.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-workspace {
+  grid-column: 1;
+}
+
+.ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right {
+  grid-column: 2;
+}
+
+.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace {
+  grid-column: 2;
+}
+
+.ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-dock-right {
+  grid-column: 3;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: clamp(196px, 15vw, 224px) !important;
+  --ide-workbench-right-width: clamp(228px, 18vw, 264px) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] {
+  --ide-workbench-left-width: clamp(184px, 14vw, 208px) !important;
+  --ide-workbench-right-width: clamp(224px, 18vw, 264px) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='hardware'] {
+  --ide-workbench-left-width: clamp(220px, 18vw, 268px) !important;
+  --ide-workbench-right-width: clamp(252px, 20vw, 300px) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='export'],
+.ide-root .ide-workbench-shell[data-ide-mode-marker='import'] {
+  --ide-workbench-right-width: clamp(280px, 23vw, 340px) !important;
+}
+
+.ide-root .ide-workbench-console {
+  grid-row: 2;
+  min-height: 96px;
+  max-height: 180px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 1040px) {
+  :root[data-redbyte-mode='ide'] {
+    --ide-stage-nav-height: 52px;
+  }
+
+  .ide-root .ide-stage-nav {
+    grid-template-columns: repeat(5, minmax(92px, 1fr));
+  }
+
+  .ide-root .ide-stage-nav-button {
+    grid-template-columns: 20px minmax(0, 1fr);
+    padding: 7px 9px;
+    gap: 6px;
+  }
+
+  .ide-root .ide-stage-nav-state {
+    display: none;
+  }
+
+  .ide-root .ide-topbar-fact,
+  .ide-root .ide-save-label {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .ide-root .ide-top-bar {
+    padding-inline: var(--rb-space-2);
+  }
+
+  .ide-root .ide-stage-nav-frame {
+    overflow-x: auto;
+    padding-inline: 0;
+  }
+
+  .ide-root .ide-stage-nav {
+    width: max-content;
+    min-width: 620px;
+  }
+
+  .ide-root .ide-workbench-main,
+  .ide-root .ide-workbench-main.hide-left-dock,
+  .ide-root .ide-workbench-main.hide-right-dock,
+  .ide-root .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    overflow: auto;
+  }
+
+  .ide-root .ide-workbench-dock-left,
+  .ide-root .ide-workbench-main.hide-left-dock .ide-workbench-dock-right,
+  .ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-dock-right,
+  .ide-root .ide-workbench-main.hide-left-dock .ide-workbench-workspace,
+  .ide-root .ide-workbench-main:not(.hide-left-dock) .ide-workbench-workspace {
+    grid-column: 1;
+  }
+
+  .ide-root .ide-workbench-dock-left {
+    grid-row: 1;
+    max-height: 220px;
+  }
+
+  .ide-root .ide-workbench-workspace {
+    grid-row: 2;
+    min-height: 520px;
+  }
+
+  .ide-root .ide-workbench-dock-right {
+    grid-row: 3;
+    max-height: 280px;
+  }
+}
+/* Surface chunk transitions retain a full workplane instead of flashing an
+   empty column while a lazy stage resolves. Chunks are also prefetched by the
+   shell; this fallback covers cold/direct stage entry and slow networks. */
+.ide-surface-loading-shell {
+  box-sizing: border-box;
+  display: grid;
+  min-height: 100%;
+  width: 100%;
+  padding: 12px;
+}
+
+.ide-surface-loading-workbench {
+  position: relative;
+  display: grid;
+  grid-template-rows: 44px minmax(280px, 1fr);
+  min-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
+  background: var(--rb-surface-1, #0c1420);
+}
+
+.ide-surface-loading-taskbar {
+  border-bottom: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), transparent 42%);
+}
+
+.ide-surface-loading-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.22fr) minmax(420px, 1fr) minmax(180px, 0.24fr);
+  min-height: 0;
+}
+
+.ide-surface-loading-grid > span + span {
+  border-left: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
+}
+
+.ide-surface-loading-workbench > p {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
+  background: var(--rb-surface-2, #111c2a);
+  transform: translate(-50%, -50%);
+}

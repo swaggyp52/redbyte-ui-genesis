@@ -1,0 +1,729 @@
+/* Unified Workbench v3: Design owns a stable library / canvas / inspector frame. */
+
+/* Supporting prose and metadata must remain readable in the compact workbench.
+   max() preserves larger inherited hierarchy, while interactive descendants
+   keep their separate 14px control contract below. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  :where(p, li, td, th, dt, dd, label, small, span, strong, summary):not(button *, a *, [role='button'] *) {
+  font-size: max(13px, 1em) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(button, input, select, textarea, label) {
+  font-size: 14px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-toolbar-group.is-mode
+  .ide-design-tool-segment {
+  font-size: 14px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+  grid-template-columns: minmax(200px, 212px) minmax(0, 1fr) minmax(240px, 256px) !important;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  min-width: 0;
+  max-width: none;
+  overflow: hidden auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  grid-column: 1;
+  grid-row: 1;
+  width: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  grid-column: 3;
+  grid-row: 1;
+  width: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-header,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel-header {
+  min-height: 42px;
+  padding: 8px 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette h3,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-panel h3,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-inspector-title {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-sections {
+  max-height: none;
+  overflow: visible;
+  gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-header p,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-summary,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-copy {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-count,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-subsection-count,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
+  font-size: 13px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > span,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > code {
+  font-size: 13px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-live-summary
+  .ide-kv-row > span,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-live-summary
+  .ide-kv-row > code {
+  font-size: 13px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
+  min-height: 40px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border: 1px solid rgba(120, 149, 179, 0.34);
+  border-radius: 7px;
+  background: rgba(24, 40, 59, 0.92);
+  color: #f8fbff;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-palette-card--custom
+  .ide-design-component-tile-glyph {
+  border-style: dashed;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title {
+  color: #f8fbff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(36, 175, 224, 0.5);
+  border-radius: 6px;
+  background: rgba(14, 35, 58, 0.8);
+  color: #d7e6f6;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition: background 100ms, border-color 100ms, color 100ms;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:hover:not(:disabled),
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:focus-visible {
+  border-color: rgba(56, 189, 248, 0.78);
+  background: rgba(36, 175, 224, 0.2);
+  color: #f8fbff;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.58);
+  outline-offset: 1px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile.is-placement-active {
+  border-color: rgba(226, 232, 240, 0.44);
+  background: rgba(25, 37, 54, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.18);
+  color: #f8fbff;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile.is-placed,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-resource-tile:disabled {
+  border-color: rgba(120, 147, 176, 0.4);
+  background: rgba(15, 26, 40, 0.75);
+  color: rgba(174, 196, 220, 0.7);
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--ide-border);
+  border-radius: var(--ide-radius-s);
+  background: var(--ide-surface-2);
+  color: var(--ide-text-strong);
+  font-size: 13px;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: background 100ms, border-color 100ms;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control.is-on {
+  border-color: var(--rb-success-border);
+  background: var(--rb-success-bg);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.58);
+  outline-offset: 1px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control .ide-design-input-toggle-label,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control .ide-design-input-toggle-value {
+  font-size: 14px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-control-bar {
+  padding: 6px 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-header {
+  min-height: 38px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 3px 4px;
+  border-block: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-badge {
+  padding: 4px 7px;
+  border: 1px solid rgba(56, 189, 248, 0.52);
+  border-radius: 6px;
+  background: rgba(14, 116, 144, 0.2);
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-message {
+  min-width: 0;
+  overflow: hidden;
+  color: #e0f2fe;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-message.is-error {
+  color: #fecaca;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-action {
+  min-height: 36px;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-wire-cuebar-shortcut {
+  color: rgba(186, 230, 253, 0.72);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Keep workspace truth in normal document flow. Legacy presentation CSS
+   positioned this row over the first canvas/code row, which obscured both the
+   code artifact controls and trace controls. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-status-bar {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 4px 8px !important;
+  pointer-events: auto !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar
+  .ide-design-workspace-health {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar
+  .ide-design-sim-story-strip {
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  max-width: min(300px, 34%) !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-meta {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-meta
+  .ide-design-canvas-titlebar-stat.is-trace {
+  display: block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-actions {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar {
+  min-height: 44px;
+  height: auto !important;
+  max-height: none !important;
+  flex-wrap: wrap !important;
+  overflow: visible !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-row-v3 {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap !important;
+  row-gap: 4px;
+  overflow: visible !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-btn {
+  min-height: 36px;
+  font-size: 14px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] [data-testid='ide-design-logical-io-explainer'] {
+  font-size: 13px;
+}
+
+/* First-use guidance is instructional content, not microcopy. Keep it readable
+   and keep its direct authoring actions above the fold. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-logical-io-note,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps li {
+  font-size: 13px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-context-disclosure {
+  border: 0;
+  border-radius: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-context {
+  max-height: 92px;
+  overflow: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.45fr);
+  gap: 10px;
+  padding: 8px 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-starter-details-label {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--rb-text-muted, #94a3b8);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  min-height: 460px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: max-content;
+  flex: 0 0 auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 6px;
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--rb-text-muted, #94a3b8);
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* The same indicator is used as an absolute canvas badge in older layouts.
+   In v3 it belongs to the toolbar and must not cover the canvas heading. */
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-toolbar-view-meta
+  .ide-design-canvas-zoom-indicator {
+  position: static !important;
+  inset: auto !important;
+  z-index: auto !important;
+  font-size: 13px !important;
+}
+
+/* The legacy toolbar and probe strip predate the v3 readability floor. These
+   are normal student-facing labels, not diagnostic microcopy. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-probe-pill {
+  font-size: 13px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-text strong {
+  font-size: 14px !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-canvas-controls {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-canvas-controls .ide-button {
+  min-height: 36px;
+  padding-inline: 8px;
+  font-size: 14px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-inspector-name-control {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor .ide-button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-input {
+  min-height: 40px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-label-editor > .ide-button {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-diagnostics-dialog {
+  display: grid;
+  gap: 12px;
+  min-width: min(680px, 78vw);
+  max-height: min(620px, 72vh);
+  overflow: auto;
+}
+
+/* Enlarged, visible wiring targets. A near miss is intercepted by DesignSurface. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live svg circle[data-port-id] {
+  r: 14px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live.is-wire-mode svg [data-port-id] {
+  stroke: rgba(56, 189, 248, 0.55);
+  stroke-width: 10px;
+  vector-effect: non-scaling-stroke;
+  cursor: crosshair;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-canvas-live.is-wire-mode
+  svg
+  [data-wire-port-state='source'] {
+  stroke: rgba(34, 211, 238, 0.92);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-canvas-live.is-wire-mode
+  svg
+  [data-wire-port-state='valid-target'] {
+  stroke: rgba(34, 197, 94, 0.95);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-canvas-live.is-wire-mode
+  svg
+  [data-wire-port-state='invalid-target'] {
+  stroke: rgba(100, 116, 139, 0.28);
+}
+
+/* Dense chip pins share one unambiguous hit region. The picker converts that
+   compact group into full-size keyboard and pointer targets without covering
+   the circuit itself. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.54);
+  border-radius: 10px;
+  background: rgba(5, 14, 24, 0.98);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.48);
+  color: #e2e8f0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header > div {
+  display: grid;
+  min-width: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header span,
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__hint {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__header strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close,
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice {
+  min-height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 7px;
+  background: rgba(15, 29, 44, 0.96);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close {
+  padding-inline: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__hint {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choices {
+  display: grid;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding-inline: 12px;
+  text-align: left;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice code {
+  color: #7dd3fc;
+  font-size: 13px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close:hover,
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice:not(:disabled):hover {
+  border-color: rgba(56, 189, 248, 0.72);
+  background: rgba(14, 66, 91, 0.72);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__close:focus-visible,
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .logic-port-picker[data-port-picker-compact='true'] {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .logic-port-picker[data-port-picker-compact='true']
+  .logic-port-picker__hint {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .logic-port-picker[data-port-picker-compact='true']
+  .logic-port-picker__choices {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .logic-port-picker__choice > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1179px) {
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+    grid-template-columns: minmax(196px, 212px) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(420px, 1fr) minmax(180px, 260px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+    grid-column: 2;
+    grid-row: 2;
+    border-top: 1px solid rgba(148, 163, 184, 0.2);
+    border-left: 0;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-pane-row,
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-pane--canvas,
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvasWrap,
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-layout,
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas,
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live {
+    min-height: 0;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty {
+    top: 8px;
+    left: 8px;
+    width: min(560px, calc(100% - 16px));
+    max-height: calc(100% - 16px);
+    gap: 6px;
+    padding: 10px 12px;
+    overflow: auto;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
+    font-size: 16px;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-steps {
+    display: none;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions {
+    gap: 6px;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions .ide-button {
+    min-height: 36px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+    grid-column: 1;
+    grid-row: 1;
+    max-height: 220px;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: 260px;
+  }
+}
