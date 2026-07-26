@@ -11,7 +11,7 @@ import {
   type ProjectWorkflowAuthority,
 } from '../projectWorkflowAuthority';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
-import { IdeButton, IdePanel } from '../components/IdePrimitives';
+import { IdeButton, IdeModal, IdePanel } from '../components/IdePrimitives';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import type { ProjectOutlineSummary } from '../projectOutline';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -182,6 +182,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const [identityEditing, setIdentityEditing] = useState(false);
   const [identityDraft, setIdentityDraft] = useState(projectName);
   const [changeProjectOpen, setChangeProjectOpen] = useState(false);
+  const [blankProjectDialogOpen, setBlankProjectDialogOpen] = useState(false);
   const [starterCatalogOpen, setStarterCatalogOpen] = useState(false);
   const [labCatalogOpen, setLabCatalogOpen] = useState(false);
   const [expandedLabId, setExpandedLabId] = useState(GANNON_PILOT_LABS[0]?.id ?? '');
@@ -192,6 +193,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const labCatalogRef = useRef<HTMLElement | null>(null);
   const starterCatalogRef = useRef<HTMLElement | null>(null);
   const highlightResetTimer = useRef<number | null>(null);
+  const blankProjectConfirmingRef = useRef(false);
 
   useEffect(() => {
     if (!identityEditing) setIdentityDraft(projectName);
@@ -390,14 +392,22 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
 
   const handleStartBlankProject = useCallback(() => {
     const start = onStartBlankProject ?? onOpenDesign;
-    if (readiness.hasCircuit && typeof window !== 'undefined') {
-      const confirmed = window.confirm(
-        'Build Fresh creates a fresh blank project. Your current project will be replaced. Cancel keeps your current work. Confirm means replace current work. Local saved projects stay available.'
-      );
-      if (!confirmed) return;
+    if (readiness.hasCircuit) {
+      blankProjectConfirmingRef.current = false;
+      setBlankProjectDialogOpen(true);
+      return;
     }
     start();
   }, [onOpenDesign, onStartBlankProject, readiness.hasCircuit]);
+  const cancelBlankProject = useCallback(() => {
+    setBlankProjectDialogOpen(false);
+  }, []);
+  const confirmBlankProject = useCallback(() => {
+    if (blankProjectConfirmingRef.current) return;
+    blankProjectConfirmingRef.current = true;
+    setBlankProjectDialogOpen(false);
+    (onStartBlankProject ?? onOpenDesign)();
+  }, [onOpenDesign, onStartBlankProject]);
   const openLabCatalog = useCallback(() => {
     setLabCatalogOpen(true);
     if (typeof window !== 'undefined') {
@@ -549,6 +559,37 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           ) : null}
         </div>
       </IdePanel>
+      {blankProjectDialogOpen ? (
+        <IdeModal
+          title="Start a new blank project?"
+          body={(
+            <div className="ide-project-build-fresh-dialog-copy">
+              <p>
+                Your current project will remain unchanged until you confirm.
+                <br />
+                Save or export it first if you need a backup.
+              </p>
+              <p>
+                {saveState === 'unsaved'
+                  ? 'This workspace has unsaved changes. Starting blank will discard them from the active workspace.'
+                  : 'Starting blank replaces the active workspace. Saved and recent projects remain available.'}
+              </p>
+            </div>
+          )}
+          actions={(
+            <>
+              <IdeButton tone="ghost" onClick={cancelBlankProject} testId="ide-project-build-fresh-cancel">
+                Cancel
+              </IdeButton>
+              <IdeButton tone="primary" onClick={confirmBlankProject} testId="ide-project-build-fresh-confirm">
+                Start blank project
+              </IdeButton>
+            </>
+          )}
+          onClose={cancelBlankProject}
+          testId="ide-project-build-fresh-dialog"
+        />
+      ) : null}
     </IdeSurfaceLayout>
   );
 };

@@ -169,4 +169,54 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
     expect(container.querySelector('details')).toBeNull();
     expect(container.querySelector('summary')).toBeNull();
   });
+
+  it('uses a deterministic in-app confirmation before replacing populated work', () => {
+    const props = makeProps();
+    props.onStartBlankProject = vi.fn();
+    const nativeConfirm = vi.spyOn(window, 'confirm');
+    const { getByTestId, queryByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...props} />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-project-change-project'));
+    const buildFresh = getByTestId('ide-project-path-build-fresh');
+    buildFresh.focus();
+    fireEvent.click(buildFresh);
+
+    const dialog = getByTestId('ide-project-build-fresh-dialog');
+    expect(dialog.textContent).toContain('Start a new blank project?');
+    expect(dialog.textContent).toContain('Your current project will remain unchanged until you confirm.');
+    expect(dialog.textContent).toContain('Save or export it first if you need a backup.');
+    expect(dialog.textContent).toContain('This workspace has unsaved changes.');
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(props.onStartBlankProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(getByTestId('ide-project-build-fresh-cancel'));
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(queryByTestId('ide-project-build-fresh-dialog')).toBeNull();
+    expect(props.onStartBlankProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(buildFresh);
+
+    nativeConfirm.mockRestore();
+  });
+
+  it('starts a blank project exactly once after explicit confirmation', () => {
+    const props = makeProps();
+    props.onStartBlankProject = vi.fn();
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface {...props} />
+      </BoardSignalProvider>
+    );
+
+    fireEvent.click(getByTestId('ide-project-change-project'));
+    fireEvent.click(getByTestId('ide-project-path-build-fresh'));
+    const confirm = getByTestId('ide-project-build-fresh-confirm');
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+
+    expect(props.onStartBlankProject).toHaveBeenCalledTimes(1);
+  });
 });

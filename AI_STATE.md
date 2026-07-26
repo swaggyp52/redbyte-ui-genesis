@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (local core learning loop: make Build Fresh deterministic)
+
+**Subsystem:** Unified Workbench v3 Project replacement dialog and blank-project runtime transition.
+
+**Defect and repair:** Build Fresh used a native browser confirmation and, when launched from an example, changed project identity without clearing the loaded circuit. Project now uses the existing in-app dialog surface with the explicit **Start a new blank project?** decision, cancel-safe copy, unsaved-state disclosure, Escape handling, keyboard focus containment, and focus restoration. Confirm is guarded against repeated activation and always calls the canonical empty-project replacement before opening Design; imported recovery URL state is cleared only after that explicit replacement.
+
+**Evidence and boundary:** Focused component and runtime tests pass `7/7`, and a local Browser-E0 replay proved populated Half Adder -> cancel with no change -> confirm -> empty Untitled Project Design -> reload -> Project/Design navigation with the blank state preserved at an actual `1366x768` viewport. This is local UI and project-state evidence only. PR #79, remotes, `main`, release branches, broad suites, generated artifacts, Vivado, bitstream, Basys3 observation, and E1/E2/E3 authority are unchanged.
+
 ## Change Log 2026-07-26 (local learning workbench: clarify simulation, replay, and scenario authorship)
 
 **Subsystem:** Unified Workbench v3 Project orientation, Design canvas modes and palette hierarchy, Verify scenario library, Map Pins simulation wording, and browser-local testbench authorship.

@@ -190,13 +190,69 @@ export const IdeModal: React.FC<{
   onClose?: () => void;
   testId?: string;
 }> = ({ title, body, actions, onClose, testId }) => {
+  const dialogRef = React.useRef<HTMLElement | null>(null);
+  const returnFocusRef = React.useRef<HTMLElement | null>(null);
+
+  React.useEffect(() => {
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const dialog = dialogRef.current;
+    const focusableSelector = [
+      'button:not([disabled])',
+      '[href]',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(',');
+    const focusable = dialog?.querySelectorAll<HTMLElement>(focusableSelector);
+    (focusable?.[0] ?? dialog)?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && onClose) {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+
+      const currentFocusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(focusableSelector)
+      ).filter((element) => !element.hasAttribute('disabled'));
+      if (currentFocusable.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = currentFocusable[0];
+      const last = currentFocusable[currentFocusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      returnFocusRef.current?.focus();
+    };
+  }, [onClose]);
+
   return (
     <div className="ide-modal-backdrop" role="presentation" onClick={onClose}>
       <section
+        ref={dialogRef}
         className="ide-modal"
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         data-testid={testId}
         onClick={(event) => event.stopPropagation()}
       >
