@@ -3003,7 +3003,6 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             >
                               <th scope="row" data-testid={'ide-hw-map-row-signal-' + row.id}>
                                 {projection?.logicalLabel ?? formatProjectSignalName(row)}
-                                {projection?.artifactPortName ? <small>Artifact {projection.artifactPortName}</small> : null}
                               </th>
                               <td data-testid={'ide-hw-map-row-role-' + row.id}>
                                 {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}

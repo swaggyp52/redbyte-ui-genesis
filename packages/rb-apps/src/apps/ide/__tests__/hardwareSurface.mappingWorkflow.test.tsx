@@ -331,7 +331,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toContain('ENArtifact SW');
+    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('EN');
     expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('Slide switch SW0');
     fireEvent.click(getByTestId('ide-hw-map-row-en'));
     expect(getByTestId('ide-hardware-chain-artifact').textContent).toContain('SW');
