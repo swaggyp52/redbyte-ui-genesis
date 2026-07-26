@@ -260,6 +260,27 @@ describe('projectRuntime history authority', () => {
     cleanup();
   });
 
+  it('keeps a new stimulus-only scenario free of checks across edit, undo, and redo', () => {
+    useProjectRuntime.getState().createScenario();
+    const activeScenarioId = useProjectRuntime.getState().activeScenarioId;
+    const expectNoChecks = () => {
+      const state = useProjectRuntime.getState();
+      const scenario = state.scenarios.find((candidate) => candidate.id === activeScenarioId);
+      expect(scenario?.vectors.length).toBeGreaterThan(0);
+      expect(
+        scenario?.vectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)
+      ).toBe(true);
+    };
+
+    expectNoChecks();
+    useProjectRuntime.getState().addDesignNode('AND', { x: 420, y: 180 });
+    expectNoChecks();
+    useProjectRuntime.getState().undoProjectEdit();
+    expectNoChecks();
+    useProjectRuntime.getState().redoProjectEdit();
+    expectNoChecks();
+  });
+
   it('owns undo/redo state transitions and keeps the editor projection in sync', async () => {
     render(<RuntimeProjectionHarness />);
 

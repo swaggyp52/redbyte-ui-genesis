@@ -3432,13 +3432,19 @@ function preserveCompatibleVectorAuthorship<T extends TestVector>(
 ): T[] {
   // Rekey still-compatible references, but deliberately do not prune removed
   // signals. Verify owns the visible partial/orphan review state for those cells.
-  return ensureVectorOutputCoverage(
-    ensureVectorInputCoverage(
-      rekeyVectorsForLiveIo(cloneVectors(vectors), previousRows, nextRows),
-      nextRows
-    ),
+  const rekeyed = ensureVectorInputCoverage(
+    rekeyVectorsForLiveIo(cloneVectors(vectors), previousRows, nextRows),
     nextRows
   );
+  // Stimulus-only scenarios are intentional authored objects. A Design edit,
+  // undo, or redo may rekey their inputs, but must never manufacture expected
+  // outputs and silently turn an exploratory run into assertion work.
+  return rekeyed.map((vector) => {
+    if (Object.keys(vector.expected ?? {}).length === 0) {
+      return { ...vector, expected: {} };
+    }
+    return ensureVectorOutputCoverage([vector], nextRows)[0] ?? vector;
+  }) as T[];
 }
 
 function rekeyScenarioStepRecord(
