@@ -1,5 +1,37 @@
 # AI State
 
+## Change Log 2026-07-26 (fix: put student submission artifacts first in Export)
+
+**Subsystem:** Unified Workbench v3 Export first-viewport hierarchy, generated-file selection, and artifact reachability proof.
+
+**Defect and repair:** The uninterrupted exact-SHA classroom aggregate reached 59 passing stages, then found that the rebuilt Export workstation placed the upstream readiness explanation between the primary package action and the generated files. At both classroom viewports the `top.vhd` file control was outside the visible region; at `1366x768` it remained five pixels below the viewport even after moving the file workspace forward because project metadata still preceded submission artifacts. Export now flows from package decision directly into the generated-file workspace, lists synthesizable source and constraints before project metadata, selects `top.vhd` as the initial live preview, and keeps upstream ownership immediately after the files. The artifact reachability gate retains its real-wheel requirement but now brings the named artifact into view instead of assuming it is the final item in a fixed file order.
+
+**Validation and boundary:** A rebuilt focused replay passes `ide:gate:action-first-entry-surfaces`, `ide:gate:export-first-viewport-artifacts`, `ide:gate:export-artifact-direct-preview`, and `ide:gate:export-package-inspector` at `1366x768` and `1440x900`; the focused Export component suites pass `2/2` files and `28/28` tests, and workspace typecheck passes. This is Browser-E0 information hierarchy and proof hardening only. Generated VHDL/XDC/testbench/Tcl/ZIP bytes, project and simulation authority, Vivado execution, bitstreams, Basys3 observation, and E1/E2/E3 claims are unchanged. The 59-pass aggregate remains failed evidence; a new reconstructed exact-SHA release and uninterrupted classroom aggregate are required before push.
+
+## Change Log 2026-07-25 (fix: keep Design guidance from trapping placed nodes)
+
+**Subsystem:** Design canvas unfinished-circuit guidance, node selection, and complex-build Design/Verify debugging proof.
+
+**Defect and repair:** The exact-SHA classroom aggregate completed the first 32 stages, then the complex-build gate could not reopen the third placed input for labeling. A stricter direct-click replay proved the unfinished-circuit guidance strip physically covered `sw2_node`; its explanatory paragraph intercepted every pointer attempt for 30 seconds. The guidance container now passes ordinary canvas interaction through to placed nodes while keeping its direct **Add AND** and **Wire** actions interactive. During active placement the full strip still blocks drops, so students cannot accidentally place a new node behind it. The gate now uses locator-backed direct clicks, waits for the intended node to become the sole selection authority, and waits for the visible label action before continuing.
+
+**Boundary:** Design Browser-E0 hit testing and proof synchronization only. No circuit, inspector semantics, simulation, project, mapping, generated artifact, Vivado, bitstream, Basys3, or E1/E2/E3 authority changes. The interrupted aggregate remains failed evidence; rebuilt direct-placement, complex-debug, and exact-SHA uninterrupted aggregate proof are required before push.
+
+## Change Log 2026-07-25 (fix: keep Verify post-run on one scroll authority)
+
+**Subsystem:** Unified Workbench v3 Verify post-run layout at classroom laptop viewports.
+
+**Defect and repair:** The exact release-SHA classroom aggregate found that a completed Compare run at `1366x768` and `1440x900` activated two nested vertical scrollers: the full Verify panel body and the results instrument deck. The laptop-height rule intended to make pre-run testbench authoring reachable was also forcing post-run workspace/frame/grid geometry to intrinsic height, so students could lose their place between authored stimulus and waveform evidence. The intrinsic-height and outer-scroll behavior is now scoped to the pre-run testbench. After a run, the two-column workstation remains contained by the panel and the instrument deck is the sole vertical authority for result, repair, and waveform evidence.
+
+**Boundary:** Verify Browser-E0 layout containment only. No simulation, expected-output, testbench-document, project, mapping, artifact-generation, Vivado, bitstream, Basys3, or E1/E2/E3 authority changes. The failed exact-SHA aggregate remains failed evidence; a rebuilt focused replay and a new uninterrupted release-SHA aggregate are required before push.
+
+## Change Log 2026-07-25 (test: align conflict-repair proof with artifact-port authority)
+
+**Subsystem:** Unified Workbench v3 Map Pins conflict-repair browser proof and the canonical Basys3 semantic mapping projection.
+
+**Proof defect and correction:** The conflict-repair gate deliberately remaps logical signal `SW1` onto Basys3 resource `SW0`, creating a duplicate package-pin fixture. The product correctly exposes the full consequence as logical signal `SW1` -> generated artifact port `SW` -> board resource `SW0` -> package pin `V17`, with `top.xdc` preview `get_ports {SW}`. The gate incorrectly demanded `get_ports {SW1}`, contradicting the canonical export contract in which the generated artifact port is allowed to diverge from the student's logical label. The gate now asserts the visible `SW` artifact-port link and exact `V17` / `get_ports {SW}` consequence, and reports the observed artifact/XDC text when that proof fails.
+
+**Boundary:** Browser-E0 proof alignment only. No product runtime, mapping authority, generated VHDL/XDC/testbench/Tcl/ZIP bytes, project schema, Vivado execution, bitstream, Basys3 observation, or E1/E2/E3 claim changes. Exact-SHA aggregate, reconstructed release, push, PR, and remote-check evidence remain pending.
+
 ## Change Log 2026-07-25 (fix: make Export artifacts reachable at classroom viewports)
 
 **Subsystem:** Unified Workbench v3 Export workspace overflow ownership and the existing first-viewport artifact browser gate.

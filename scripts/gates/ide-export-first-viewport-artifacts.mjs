@@ -146,8 +146,7 @@ async function assertArtifactReachability(page, label) {
       return null;
     }
 
-    scrollOwner.scrollTop = scrollOwner.scrollHeight;
-    fileBrowser.scrollTop = fileBrowser.scrollHeight;
+    testbench.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
     const ownerRect = scrollOwner.getBoundingClientRect();
     const targetRect = testbench.getBoundingClientRect();

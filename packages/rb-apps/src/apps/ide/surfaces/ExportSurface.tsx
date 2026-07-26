@@ -337,8 +337,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const [technicalEvidenceOpen, setTechnicalEvidenceOpen] = useState(false);
   const [highlightedPort, setHighlightedPort] = useState<string | null>(null);
   const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>(() => {
+    const topVhd = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'top.vhd');
     const readme = baseViewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-    return readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
+    return topVhd?.path ?? readme?.path ?? baseViewModel.artifacts[0]?.path ?? '';
   });
   const [openFixPathId, setOpenFixPathId] = useState<string | null>(null);
   // Phase 32: pipeline rebuild state
@@ -374,8 +375,9 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     }
     const exists = viewModel.artifacts.some((artifact) => artifact.path === selectedArtifactPath);
     if (!exists) {
+      const topVhd = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'top.vhd');
       const readme = viewModel.artifacts.find((artifact) => artifact.path.toLowerCase() === 'readme.txt');
-      setSelectedArtifactPath(readme?.path ?? viewModel.artifacts[0].path);
+      setSelectedArtifactPath(topVhd?.path ?? readme?.path ?? viewModel.artifacts[0].path);
     }
   }, [viewModel.artifacts, selectedArtifactPath]);
 
@@ -1763,34 +1765,6 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
           ) : null}
 
           <section
-            className="ide-export-v3__upstream"
-            data-testid="ide-export-upstream-readiness"
-            aria-labelledby="ide-export-v3-upstream-title"
-          >
-            <header className="ide-export-v3__section-header">
-              <div>
-                <p className="ide-surface-block-label">Upstream readiness</p>
-                <h3 id="ide-export-v3-upstream-title">What owns this package state</h3>
-              </div>
-              <p>Repair work stays in Design, Verify, or Map Pins.</p>
-            </header>
-            <div className="ide-export-v3__upstream-rows">
-              {upstreamReadinessRows.map((row) => (
-                <article
-                  key={row.id}
-                  className={row.ready ? 'is-ready' : 'is-blocked'}
-                  data-testid={'ide-export-upstream-' + row.id}
-                  data-owner={row.owner}
-                >
-                  <span>{row.owner}</span>
-                  <strong>{row.status}</strong>
-                  <p>{row.detail}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section
             className="ide-export-v3__files"
             data-testid="ide-export-package-contents"
             aria-labelledby="ide-export-v3-files-title"
@@ -1887,6 +1861,34 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
+            </div>
+          </section>
+
+          <section
+            className="ide-export-v3__upstream"
+            data-testid="ide-export-upstream-readiness"
+            aria-labelledby="ide-export-v3-upstream-title"
+          >
+            <header className="ide-export-v3__section-header">
+              <div>
+                <p className="ide-surface-block-label">Upstream readiness</p>
+                <h3 id="ide-export-v3-upstream-title">What owns this package state</h3>
+              </div>
+              <p>Repair work stays in Design, Verify, or Map Pins.</p>
+            </header>
+            <div className="ide-export-v3__upstream-rows">
+              {upstreamReadinessRows.map((row) => (
+                <article
+                  key={row.id}
+                  className={row.ready ? 'is-ready' : 'is-blocked'}
+                  data-testid={'ide-export-upstream-' + row.id}
+                  data-owner={row.owner}
+                >
+                  <span>{row.owner}</span>
+                  <strong>{row.status}</strong>
+                  <p>{row.detail}</p>
+                </article>
+              ))}
             </div>
           </section>
 
@@ -2094,13 +2096,6 @@ function formatArtifactAvailability(
 function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGroup[] {
   const groups: ExportArtifactGroup[] = [
     {
-      id: 'project',
-      label: 'Project',
-      description:
-        'Vivado setup scripts and RedByte project metadata for a reproducible project handoff.',
-      artifacts: [],
-    },
-    {
       id: 'source',
       label: 'Source',
       description:
@@ -2119,6 +2114,13 @@ function buildArtifactGroups(artifacts: ExportArtifactView[]): ExportArtifactGro
       label: 'Simulation',
       description:
         'Simulation-only testbench sources. These never enter the Vivado design source set.',
+      artifacts: [],
+    },
+    {
+      id: 'project',
+      label: 'Project',
+      description:
+        'Vivado setup scripts and RedByte project metadata for a reproducible project handoff.',
       artifacts: [],
     },
     {

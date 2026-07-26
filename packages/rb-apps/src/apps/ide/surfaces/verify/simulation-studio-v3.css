@@ -1204,30 +1204,34 @@
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-    .ide-verify-workspace {
+    .ide-verify-workspace:has(.ide-verify-lab-grid[data-verify-workflow-phase='pre-run']) {
     height: auto;
     overflow: visible;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-    :where(.ide-verify-lab-frame, .ide-verify-lab-grid) {
+    .ide-verify-lab-frame:has(> .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']),
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
     height: auto;
     overflow: visible;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-    .ide-verify-lab-grid {
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run'] {
     grid-template-rows: auto;
     align-items: start;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus {
     height: auto;
     overflow: visible;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus
     .ide-verify-scenario-builder-details--first-run {
     flex: 0 0 auto;
@@ -1235,6 +1239,7 @@
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus
     .ide-verify-scenario-builder-details--postrun {
     height: auto;
@@ -1244,6 +1249,7 @@
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus
     :where(.ide-verify-workbench-body, .ide-verify-vector-form, .ide-verify-vector-form--canvas-only, .ide-stimulus-canvas) {
     flex: 0 0 auto;
@@ -1251,16 +1257,19 @@
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus
     .ide-verify-scenario-builder-details--postrun
     .ide-verify-workbench-body,
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-verify-region--stimulus
     .ide-stimulus-canvas {
     overflow: visible;
   }
 
   .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
     .ide-stimulus-grid-scroll {
     flex: 0 0 auto;
     height: auto;
@@ -1269,6 +1278,15 @@
     overflow-y: visible;
     overscroll-behavior-x: contain;
     overscroll-behavior-y: auto;
+  }
+
+  /* After a run, the two-column workstation must stay inside the panel while
+     the instrument deck owns result/waveform scrolling. The pre-run outer
+     scroller above must not remain active and form a nested scroll trap. */
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-panel
+    > .ide-panel-body:has(.ide-verify-lab-grid[data-verify-workflow-phase='post-run']) {
+    overflow-y: hidden;
   }
 }
 

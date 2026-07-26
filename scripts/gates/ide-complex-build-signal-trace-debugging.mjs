@@ -375,7 +375,9 @@ async function placeFromPalette(page, selector, position) {
 
 async function editNodeLabel(page, nodeId, label) {
   await clickNode(page, nodeId);
-  await clickVisible(page, '[data-testid="ide-design-label-edit-btn"]', `label edit for ${nodeId}`);
+  const edit = page.locator('[data-testid="ide-design-label-edit-btn"]').first();
+  await edit.waitFor({ state: 'visible', timeout: 8000 });
+  await edit.click();
   const input = page.locator('[data-testid="ide-design-label-input"]').first();
   await input.waitFor({ state: 'visible', timeout: 5000 });
   await input.fill(label);
@@ -392,18 +394,24 @@ async function editNodeLabel(page, nodeId, label) {
 
 async function clickNode(page, nodeId) {
   const body = page.locator(`[data-node-id="${nodeId}"] .logic-node-body`).first();
-  await body.scrollIntoViewIfNeeded();
-  const box = await body.boundingBox();
-  assert(Boolean(box), `node ${nodeId} must have a clickable box`);
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await body.waitFor({ state: 'visible', timeout: 8000 });
+  await body.click();
   if (await activeWireStart(page)) {
     await page.keyboard.press('Escape');
     await page.waitForFunction(
       () => !window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.editingState?.wireStartPort,
       { timeout: 5000 },
     );
-    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    await body.click();
   }
+  await page.waitForFunction(
+    (expectedNodeId) => {
+      const selection = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection;
+      return selection?.nodes?.size === 1 && selection.nodes.has(expectedNodeId);
+    },
+    nodeId,
+    { timeout: 5000 },
+  );
 }
 
 async function clickPort(page, nodeId, portName) {

@@ -396,6 +396,25 @@
   min-height: 460px;
 }
 
+/* Guidance may float over an unfinished canvas, but its explanatory copy must
+   never make a placed node unselectable. Keep the direct actions interactive;
+   restore the full blocking surface only while placement mode is active so a
+   student cannot accidentally drop another node behind the guidance. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
+  pointer-events: none !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-authoring-quickstrip-actions {
+  pointer-events: auto !important;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-canvas:has(.ide-design-canvas-live[data-placement-active='1'])
+  .ide-design-authoring-quickstrip {
+  pointer-events: auto !important;
+}
+
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools {
   display: flex;
   align-items: center;

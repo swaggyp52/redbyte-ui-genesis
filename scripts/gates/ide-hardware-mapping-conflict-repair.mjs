@@ -75,11 +75,14 @@ async function proveConflictRepair(page, viewport) {
   assert(/conflict|resolve/i.test(await text(page.getByTestId('ide-hw-map-row-status-sw0').first())), `${viewport.label}: SW0 conflict is hidden`);
   assert(/conflict|resolve/i.test(await text(page.getByTestId('ide-hw-map-row-status-sw1').first())), `${viewport.label}: SW1 conflict is hidden`);
   assert(/sw1/i.test(await text(page.getByTestId('ide-hardware-chain-signal').first())), `${viewport.label}: selected signal is not SW1`);
+  const conflictingArtifactPort = await text(page.getByTestId('ide-hardware-chain-artifact').first());
+  assert(/artifact port\s*sw$/i.test(conflictingArtifactPort), `${viewport.label}: generated artifact port is not SW: ${conflictingArtifactPort}`);
   assert(/sw0|slide switch 0/i.test(await text(page.getByTestId('ide-hardware-chain-board').first())), `${viewport.label}: selected resource is not SW0`);
   assert(/v17/i.test(await text(page.getByTestId('ide-hardware-chain-pin').first())), `${viewport.label}: selected package pin is not V17`);
+  const conflictingXdc = await text(page.getByTestId('ide-hardware-basys3-binding-xdc').first());
   assert(
-    /package_pin\s+v17.*get_ports.*sw1/i.test(await text(page.getByTestId('ide-hardware-basys3-binding-xdc').first())),
-    `${viewport.label}: conflicting XDC consequence is missing`,
+    /package_pin\s+v17.*get_ports\s+\{?sw\}?/i.test(conflictingXdc),
+    `${viewport.label}: conflicting XDC consequence is missing: ${conflictingXdc}`,
   );
 
   await openModeByClick(page, 'export', `${viewport.label}/blocked Export`);
