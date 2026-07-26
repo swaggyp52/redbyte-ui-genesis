@@ -25,6 +25,10 @@ import {
 } from '../zipImport';
 import { getZipImportAuthorityModel } from '../importSurfaceZipAuthority';
 import {
+  buildZipInspectionMappingRecord,
+  isCanonicalImportPortIdentity,
+} from '../importPortIdentity';
+import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
@@ -38,6 +42,7 @@ import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPr
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
+import './import-recovery-workspace-v3.css';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'import',
@@ -346,7 +351,7 @@ function computeReconstructionLevelFromParsed(parsedHdl: ParsedHDL | null): Reco
 // ─── Phase 33: Import Pipeline Step Types ─────────────────────────────────
 type ImportPipelineStepId = 'load' | 'parse-hdl' | 'parse-xdc' | 'validate' | 'build';
 type ImportPipelineStepState = 'idle' | 'running' | 'done' | 'skipped' | 'error';
-type ImportWorkflowStepId = 'upload' | 'parse' | 'map' | 'review' | 'apply';
+type ImportWorkflowStepId = 'upload' | 'review' | 'apply';
 type ImportWorkflowStepState = 'pending' | 'active' | 'done' | 'blocked';
 
 interface ImportPipelineStep {
@@ -422,7 +427,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   onGoToExport,
   activeGuidedLabTask,
 }) => {
-  const [tab, setTab] = useState<ImportTab>(() => readImportUiState().tab ?? 'hdl');
+  const [tab, setTab] = useState<ImportTab>(() => readImportUiState().tab ?? 'upload');
   const [language, setLanguage] = useState<HdlLanguage>('auto');
   const [hdlText, setHdlText] = useState('');
   const [xdcText, setXdcText] = useState('');
@@ -443,6 +448,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const [selectedZipXdc, setSelectedZipXdc] = useState<string | null>(null);
   const hdlTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const hdlGutterRef = useRef<HTMLDivElement | null>(null);
+  const hdlEditorActionsRef = useRef<HTMLDivElement | null>(null);
   const xdcTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const xdcGutterRef = useRef<HTMLDivElement | null>(null);
   const [activeXdcWarningLine, setActiveXdcWarningLine] = useState<number | null>(null);
@@ -531,7 +537,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const source = (typeof sourceOverride === 'string' ? sourceOverride : hdlText).trim();
     if (!source) {
       setStatusMessage('Paste HDL before parsing.');
-      return;
+      return null;
     }
     try {
       setZipInspection(null);
@@ -567,9 +573,11 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         return next;
       });
       setStatusMessage(`HDL parsed: ${parsed.entityName} (${parsed.ports.length} ports).`);
+      return parsed;
     } catch (error) {
       setParsedHdl(null);
       setStatusMessage(`HDL parse failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      return null;
     }
   }, [hdlText, language, selectedEntityName, detectedEntityNames]);
 
@@ -610,6 +618,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
         e.preventDefault();
         e.stopPropagation();
         parseHdl();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextAction = hdlEditorActionsRef.current?.querySelector<HTMLButtonElement>(
+          'button:not([disabled])'
+        );
+        nextAction?.focus();
+        setStatusMessage('Left the HDL editor. Continue with Parse HDL or another import action.');
         return;
       }
 
@@ -712,7 +731,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const invalidNameErrors = useMemo(
     () =>
       ports
-        .filter((port) => !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(port.name))
+        .filter((port) => !isCanonicalImportPortIdentity(port.name))
         .map((port) => `Illegal port name "${port.name}" (expected HDL identifier).`),
     [ports]
   );
@@ -858,8 +877,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   // Detect process/always/rising_edge BEFORE the commit is applied.
   // These constructs are dropped silently; we must block the commit, not warn.
   const detectedBehavioralConstructs = useMemo(
-    () => (hdlText.trim() ? scanBehavioralConstructs(hdlText) : []),
-    [hdlText]
+    // Manifest HDL is preview/reference evidence; the decoded project is the
+    // restored authority and is not rebuilt through the HDL parser.
+    () => (isManifestZipImport || !hdlText.trim() ? [] : scanBehavioralConstructs(hdlText)),
+    [hdlText, isManifestZipImport]
   );
 
   // Compute reconstruction level for paste imports (where there's no zipInspection).
@@ -901,15 +922,18 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     const reconstructionLevel = effectiveReconstructionLevel;
 
     // diff vs current project
-    const currentPortNames = new Set((projectIoRows ?? []).map((r) => (r.port ?? r.label ?? '').toLowerCase()));
+    // `port` is the circuit-node connector (usually "in"/"out"), not the
+    // student-facing top-level signal name. Destructive import summaries must
+    // identify the signals that will actually be replaced.
+    const currentPortNames = new Set((projectIoRows ?? []).map((r) => (r.label ?? r.id ?? r.port ?? '').toLowerCase()));
     const incomingPortNames = new Set(parsedHdl.ports.map((p) => p.name.toLowerCase()));
     const addedPorts = parsedHdl.ports.filter((p) => !currentPortNames.has(p.name.toLowerCase()));
     const removedPortNames = (projectIoRows ?? [])
       .filter((r) => {
-        const key = (r.port ?? r.label ?? '').toLowerCase();
+        const key = (r.label ?? r.id ?? r.port ?? '').toLowerCase();
         return key.length > 0 && !incomingPortNames.has(key);
       })
-      .map((r) => r.port ?? r.label ?? r.id);
+      .map((r) => r.label ?? r.id ?? r.port);
 
     return {
       entityName: parsedHdl.entityName,
@@ -967,93 +991,63 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
   const currentWorkflowStepId = useMemo<ImportWorkflowStepId>(() => {
     if (showVerifyResetNotice) return 'apply';
     if (pendingApplyProject) return 'apply';
-    if (canImport) return 'review';
-    if (hasParsedHdl) return 'map';
-    if (importFirstLookDismissed && tab === 'hdl') return 'parse';
-    if (hasZipInspection || hdlText.trim().length > 0) return 'parse';
+    if (hasZipInspection || hasParsedHdl || hdlText.trim().length > 0 || importFirstLookDismissed) return 'review';
     return 'upload';
   }, [
-    canImport,
     hasParsedHdl,
     hasZipInspection,
     hdlText,
     importFirstLookDismissed,
     pendingApplyProject,
     showVerifyResetNotice,
-    tab,
   ]);
   const workflowSteps = useMemo<ImportWorkflowStep[]>(
     () => [
       {
         id: 'upload',
         order: 1,
-        label: 'Upload ZIP',
+        label: 'Upload',
         state:
-          hasZipInspection
+          hasZipInspection || hasParsedHdl || hdlText.trim().length > 0
             ? 'done'
             : currentWorkflowStepId === 'upload'
               ? 'active'
               : 'pending',
-        detail: hasZipInspection ? 'ZIP loaded' : 'Load a Vivado ZIP or sample',
-      },
-      {
-        id: 'parse',
-        order: 2,
-        label: 'Parse HDL',
-        state:
-          hasParsedHdl
-            ? 'done'
-            : currentWorkflowStepId === 'parse'
-              ? 'active'
-              : hasZipInspection || hdlText.trim().length > 0
-                ? 'pending'
-                : 'blocked',
-        detail: hasParsedHdl ? `${parsedEntityName} detected` : 'Detect top entity and ports',
-      },
-      {
-        id: 'map',
-        order: 3,
-        label: 'Map ports',
-        state:
-          !hasParsedHdl
-            ? 'blocked'
-            : unmappedPorts.length === 0
-              ? 'done'
-              : currentWorkflowStepId === 'map'
-                ? 'active'
-                : 'pending',
-        detail:
-          !hasParsedHdl
-            ? 'Parse HDL first'
-            : unmappedPorts.length === 0
-              ? 'All required ports mapped'
-              : `${unmappedPorts.length} port${unmappedPorts.length === 1 ? '' : 's'} still need pins`,
+        detail: hasZipInspection
+          ? 'ZIP loaded'
+          : hdlText.trim().length > 0
+            ? 'HDL source selected'
+            : 'Choose a ZIP or paste HDL',
       },
       {
         id: 'review',
-        order: 4,
-        label: 'Review schematic',
+        order: 2,
+        label: 'Review',
         state:
-          !hasParsedHdl
+          pendingApplyProject || showVerifyResetNotice
+            ? 'done'
+            : !hasZipInspection && !hasParsedHdl && hdlText.trim().length === 0
             ? 'blocked'
-            : canImport
-              ? currentWorkflowStepId === 'review' ? 'active' : 'done'
+            : currentWorkflowStepId === 'review'
+              ? 'active'
               : 'pending',
         detail:
           !hasParsedHdl
-            ? 'Preview appears after parse'
-            : `Review ${reviewModeLabel.toLowerCase()}`,
+            ? 'Parse source, inspect warnings, then map ports'
+            : unmappedPorts.length > 0
+              ? `${unmappedPorts.length} port${unmappedPorts.length === 1 ? '' : 's'} need review`
+              : `Inspect ${reviewModeLabel.toLowerCase()}`,
       },
       {
         id: 'apply',
-        order: 5,
-        label: 'Apply import',
+        order: 3,
+        label: 'Apply',
         state:
           showVerifyResetNotice
             ? 'done'
             : pendingApplyProject
               ? 'active'
-              : canImport
+              : canImport && detectedBehavioralConstructs.length === 0
                 ? 'pending'
                 : 'blocked',
         detail:
@@ -1061,12 +1055,15 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             ? 'Project replaced; rerun Verify'
             : pendingApplyProject
               ? 'Confirm project replacement'
+              : detectedBehavioralConstructs.length > 0
+                ? 'Review is available; replacement is blocked'
               : 'Review before replacing the active project',
       },
     ],
     [
       canImport,
       currentWorkflowStepId,
+      detectedBehavioralConstructs.length,
       hasParsedHdl,
       hasZipInspection,
       hdlText,
@@ -1078,7 +1075,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     ]
   );
   const workflowActiveLabel =
-    workflowSteps.find((step) => step.id === currentWorkflowStepId)?.label ?? 'Upload ZIP';
+    workflowSteps.find((step) => step.id === currentWorkflowStepId)?.label ?? 'Upload';
 
   const portRows = useMemo(
     () =>
@@ -1136,7 +1133,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     [mapping, ports, xdcResult]
   );
 
-  const parseXdc = (sourceOverride?: unknown) => {
+  const parseXdc = (sourceOverride?: unknown, parsedHdlOverride?: ParsedHDL | null) => {
     const source = (typeof sourceOverride === 'string' ? sourceOverride : xdcText).trim();
     if (!source) {
       setStatusMessage('Paste XDC before parsing.');
@@ -1149,9 +1146,10 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       const parsed = parseXdcPins(source);
       setXdcResult(parsed);
       setMapping((previous) => {
-        if (!parsedHdl) return previous;
+        const activeParsedHdl = parsedHdlOverride ?? parsedHdl;
+        if (!activeParsedHdl) return previous;
         const next = { ...previous };
-        for (const port of parsedHdl.ports) {
+        for (const port of activeParsedHdl.ports) {
           const mappedPin = parsed.pinMap[port.name];
           if (mappedPin && !(next[port.name] ?? '').trim()) {
             next[port.name] = mappedPin.toUpperCase();
@@ -1383,7 +1381,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
 
   const confirmApplyProject = () => {
     if (!pendingApplyProject) return;
-    if (!window.confirm('Replace your current project with this import? Cancel keeps your current work. Confirm means replace current work with the reviewed import.')) return;
     onImportCommitted?.({
       fidelity:
         zipInspection?.importMode === 'manifest'
@@ -1409,29 +1406,6 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setPendingApplyImportResult(null);
     setShowVerifyResetNotice(false);
     setStatusMessage('Import apply canceled.');
-  };
-
-  const confirmAndVerify = () => {
-    if (!pendingApplyProject) return;
-    if (!window.confirm('Replace your current project with this import? Cancel keeps your current work. Confirm means replace current work with the reviewed import.')) return;
-    onImportCommitted?.({
-      fidelity:
-        zipInspection?.importMode === 'manifest'
-          ? 'full'
-          : effectiveReconstructionLevel === 'full'
-            ? 'reconstructed'
-            : 'partial',
-      importMode: zipInspection?.importMode ?? 'reconstructed',
-      reconstructionLevel: effectiveReconstructionLevel,
-      sourceName:
-        zipInspection?.sourceName ??
-        `${parsedHdl?.entityName.trim() || 'imported-design'}.${parsedHdl?.lang === 'verilog' ? 'v' : 'vhd'}`,
-    });
-    onImportProject?.(pendingApplyProject);
-    setPendingApplyImportResult(null);
-    setShowVerifyResetNotice(true);
-    setStatusMessage('Project imported. Opening Verify…');
-    onGoToVerify?.();
   };
 
   const handleOpenZipPicker = () => {
@@ -1587,8 +1561,8 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     setHdlText(sample.hdl);
     setXdcText(sample.xdc);
     setTab('hdl');
-    parseHdl(sample.hdl);
-    if (sample.xdc.trim()) parseXdc(sample.xdc);
+    const parsedSample = parseHdl(sample.hdl);
+    if (sample.xdc.trim()) parseXdc(sample.xdc, parsedSample);
   }, [parseHdl, parseXdc]);
 
   const handleZipInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -1686,8 +1660,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       const constraintsText = inspection.project.fpga?.constraints?.text ?? '';
       setXdcText(constraintsText);
       setXdcResult(inspection.xdcResult ?? null);
-      setMapping(buildMappingRecord(inspection.project));
-      const mappedPins = Object.values(buildMappingRecord(inspection.project)).filter(
+      const inspectionMapping = buildZipInspectionMappingRecord(inspection);
+      setMapping(inspectionMapping);
+      const mappedPins = Object.values(inspectionMapping).filter(
         (pin) => pin.trim().length > 0
       ).length;
       setStatusMessage(
@@ -1737,8 +1712,9 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       const constraintsText = inspection.project.fpga?.constraints?.text ?? '';
       setXdcText(constraintsText);
       setXdcResult(inspection.xdcResult ?? null);
-      setMapping(buildMappingRecord(inspection.project));
-      const mappedPins = Object.values(buildMappingRecord(inspection.project)).filter(
+      const inspectionMapping = buildZipInspectionMappingRecord(inspection);
+      setMapping(inspectionMapping);
+      const mappedPins = Object.values(inspectionMapping).filter(
         (pin) => pin.trim().length > 0
       ).length;
       setStatusMessage(
@@ -1783,16 +1759,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       if (!hasZipInspection) handleOpenZipPicker();
       return;
     }
-    if (stepId === 'parse') {
-      setTab('hdl');
-      return;
-    }
-    if (stepId === 'map') {
-      jumpToReviewSection('mapping');
-      return;
-    }
     if (stepId === 'review') {
-      jumpToReviewSection('review');
+      if (!hasParsedHdl) {
+        setTab('hdl');
+        return;
+      }
+      jumpToReviewSection(unmappedPorts.length > 0 ? 'mapping' : 'review');
       return;
     }
     if (pendingApplyProject) {
@@ -1806,10 +1778,12 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     jumpToReviewSection('mapping');
   }, [
     canImport,
+    hasParsedHdl,
     hasZipInspection,
     jumpToReviewSection,
     pendingApplyProject,
     requestApplyProject,
+    unmappedPorts.length,
   ]);
 
   const copyDiagnostics = async () => {
@@ -1881,7 +1855,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
             {importEntryAction ? (
               <>
                 <div className="ide-inline-actions">
-                  <IdeButton tone="primary" onClick={runImportPrimaryAction} testId="ide-import-dock-primary">
+                  <IdeButton tone="secondary" onClick={runImportPrimaryAction} testId="ide-import-dock-primary">
                     {importEntryAction.primaryLabel}
                   </IdeButton>
                   <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-dock-secondary">
@@ -2175,7 +2149,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
       </div>
       <div className="ide-import-source-review-v1__actions">
         <IdeButton
-          tone="primary"
+          tone="secondary"
           onClick={canImport ? requestApplyProject : parseHdl}
           disabled={!canImport && !hdlText.trim()}
           testId="ide-import-source-review-primary"
@@ -2693,1623 +2667,419 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
     <IdeSurfaceLayout
       mode="import"
       layoutIntent="workbench"
-      consoleHasBlocking={blockingErrors.length > 0}
-      consoleHasEntries={blockingErrors.length > 0 || warnings.length > 0}
-      rightDockMode={isImportFirstLook ? 'hidden' : 'collapsed'}
+      leftDockMode="hidden"
+      rightDockMode="hidden"
       consoleMode="hidden"
+      consoleHasBlocking={blockingErrors.length > 0 || hasImportBlocker}
+      consoleHasEntries={warnings.length > 0 || blockingErrors.length > 0}
       productSpine={{
-        statusLabel: canImport
-          ? 'Ready to review'
-          : detectedBehavioralConstructs.length > 0
+        currentStage: workflowActiveLabel,
+        nextStage: currentWorkflowStepId === 'apply' ? 'Design' : currentWorkflowStepId === 'review' ? 'Apply' : 'Review',
+        status: showVerifyResetNotice
+          ? 'Applied'
+          : hasImportBlocker
             ? 'Blocked'
-            : hasParsedHdl
-              ? 'Needs mapping'
-              : 'Intake',
-        statusTone: canImport
-          ? 'ok'
-          : blockingErrors.length > 0 || detectedBehavioralConstructs.length > 0
-            ? 'error'
-            : hasParsedHdl
-              ? 'warn'
-              : 'idle',
-        detail: importEntryAction?.body ?? statusMessage,
-        primaryLabel: importEntryAction?.primaryLabel ?? 'Review Import',
-        onPrimary: importEntryAction ? runImportPrimaryAction : undefined,
-        recoveryLabel: pendingApplyProject
-          ? 'Cancel apply'
-          : onGoToDesign
-            ? 'Start fresh in Design'
-            : 'Cancel keeps current project',
-        onRecovery: pendingApplyProject ? cancelApplyProject : onGoToDesign,
-        doneLabel: canImport
-          ? 'Candidate is parsed and ready for explicit review before replacement.'
-          : 'Upload or paste source, parse it, map ports, and review before applying.',
-        blockedLabel: detectedBehavioralConstructs.length > 0
-          ? 'Unsupported behavioral HDL needs manual rebuild or a fresh Design path.'
-          : blockingErrors[0]?.message ?? (unmappedPorts.length > 0
-            ? `${unmappedPorts.length} port${unmappedPorts.length === 1 ? '' : 's'} still need pin review.`
-            : 'No import blocker selected.'),
+            : detectedBehavioralConstructs.length > 0
+              ? 'Reviewable · apply blocked'
+              : canImport
+                ? 'Ready to review'
+                : 'In progress',
+        owner: 'Import',
+        title: showVerifyResetNotice ? 'Project replacement complete' : activeImportTaskLabel,
+        detail: statusMessage,
       }}
-      dock={
-        leftDockContent ?? (
-        <section className="ide-workbench-placeholder" data-testid="ide-import-dock">
-          <header className="ide-workbench-placeholder-header">
-            <h3>Import</h3>
-          </header>
-          <div className="ide-kv-list">
-            <div className="ide-kv-row">
-              <span>HDL</span>
-              <IdeStatusPill tone={hasParsedHdl ? 'ok' : 'idle'}>
-                {hasParsedHdl ? 'Parsed' : 'Pending'}
-              </IdeStatusPill>
-            </div>
-            <div className="ide-kv-row">
-              <span>XDC</span>
-              <IdeStatusPill tone={hasParsedXdc ? 'ok' : 'idle'}>
-                {hasParsedXdc ? 'Parsed' : 'Pending'}
-              </IdeStatusPill>
-            </div>
-          </div>
-          <section className="ide-import-feedback" data-testid="ide-import-parse-feedback">
-            <header className="ide-workbench-placeholder-header ide-surface-dock-subheader">
-              <h3>Parse Feedback</h3>
-              {hasParsedHdl && (
-                <IdeStatusPill tone={hdlLooksValid ? 'ok' : hdlWarningCount > 0 ? 'warn' : 'idle'}>
-                  {hdlLooksValid
-                    ? 'OK'
-                    : hdlWarningCount > 0
-                      ? `${hdlWarningCount} warning${hdlWarningCount === 1 ? '' : 's'}`
-                      : 'Needs review'}
-                </IdeStatusPill>
-              )}
-            </header>
-
-            {!hasParsedHdl ? (
-              <p className="ide-copy">Parse HDL to see feedback.</p>
-            ) : hdlLooksValid && hdlWarningCount === 0 ? (
-              <>
-                <div className="ide-import-parse-summary" data-testid="ide-import-stage-summary">
-                  <span data-testid="ide-import-entity-summary">
-                    Entity: <strong>{parsedEntityName}</strong>
-                  </span>
-                  <span data-testid="ide-import-port-summary">
-                    {parsedHdl!.ports.length} port{parsedHdl!.ports.length !== 1 ? 's' : ''}{' '}
-                    ({parsedHdl!.ports.filter((p) => p.direction === 'in').length} in
-                    {' / '}{parsedHdl!.ports.filter((p) => p.direction === 'out').length} out)
-                  </span>
-                  {hasParsedXdc ? (
-                    <span data-testid="ide-import-xdc-ok">XDC ✓</span>
-                  ) : (
-                    <span style={{ color: 'var(--rb-warning)', fontSize: 10 }} data-testid="ide-import-xdc-missing">
-                      No XDC — pins auto-guessed
-                    </span>
-                  )}
-                </div>
-                {clockCandidatePort && (
-                  <div
-                    className="ide-import-clock-candidate"
-                    data-testid="ide-import-clock-candidate"
-                  >
-                    <IdeStatusPill tone="ok">CLK</IdeStatusPill>
-                    <code>{clockCandidatePort.name}</code>
-                    <span>
-                      {xdcResult?.pinMap[clockCandidatePort.name]
-                        ? `→ ${xdcResult.pinMap[clockCandidatePort.name]}`
-                        : 'no pin constraint yet'}
-                    </span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                {!hdlLooksValid && (
-                  <IdeCallout
-                    tone="warn"
-                    title="Ports not detected"
-                    testId="ide-import-hdl-ports-not-detected"
-                  >
-                    The parser couldn&apos;t confidently detect your top entity and ports. Check warnings below and verify your entity/module syntax.
-                  </IdeCallout>
-                )}
-                {hdlWarningCount > 0 ? (
-                  <ol className="ide-warning-list" data-testid="ide-import-parse-warnings">
-                    {hdlParseWarnings.slice(0, 10).map((w, idx) => (
-                      <li
-                        key={`${idx}-${w.message.slice(0, 20)}`}
-                        className="ide-warning-row"
-                        data-testid="ide-import-parse-warning-row"
-                      >
-                        <span className="ide-warning-index">{idx + 1}.</span>
-                        <span className="ide-warning-text">
-                          {w.line != null ? (
-                            <button
-                              type="button"
-                              className="ide-warning-jump"
-                              onClick={() => scrollToLine(w.line!)}
-                              data-testid="ide-import-parse-warning-line"
-                              title={`Jump to line ${w.line}`}
-                            >
-                              Ln {w.line}
-                            </button>
-                          ) : null}
-                          {w.message}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p className="ide-copy">No warnings were emitted, but ports still weren&apos;t detected.</p>
-                )}
-                {hdlWarningCount > 10 && (
-                  <p className="ide-copy" data-testid="ide-import-warning-truncation">
-                    Showing first 10 warnings.
-                  </p>
-                )}
-              </>
-            )}
-          </section>
-          <section className="ide-mini-guide" data-testid="ide-import-expectations">
-            <h4>What happens when you import</h4>
-            <ul className="ide-bullets">
-              <li><b>Apply Pins Only</b> fills missing pin assignments on your current project.</li>
-              <li><b>Replace Project…</b> swaps in the imported design (can overwrite your work).</li>
-            </ul>
-          </section>
-          <div className="ide-import-samples-grid">
-            {IMPORT_SAMPLES.filter((s) => !s.behavioral).map((sample) => (
-              <button
-                key={sample.id}
-                type="button"
-                className="ide-import-sample-card"
-                onClick={() => loadImportSample(sample.id)}
-                data-testid={`ide-import-load-sample-${sample.id}`}
-              >
-                <span className="ide-import-sample-card-name">{sample.name}</span>
-                <span className="ide-import-sample-card-desc">{sample.desc}</span>
-                <span className="ide-import-sample-card-learn">🎓 {sample.learn}</span>
-              </button>
-            ))}
-            {showBehavioralSamples && IMPORT_SAMPLES.filter((s) => s.behavioral).map((sample) => (
-              <button
-                key={sample.id}
-                type="button"
-                className="ide-import-sample-card ide-import-sample-card--behavioral"
-                onClick={() => loadImportSample(sample.id)}
-                data-testid={`ide-import-load-sample-${sample.id}`}
-                style={{ opacity: 0.7, borderStyle: 'dashed' }}
-              >
-                <span className="ide-import-sample-card-name">{sample.name}</span>
-                <span className="ide-import-sample-card-desc">{sample.desc}</span>
-                <span className="ide-import-sample-card-learn">⚠️ {sample.learn}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="ide-import-behavioral-toggle"
-            data-testid="ide-import-toggle-behavioral-samples"
-            onClick={() => setShowBehavioralSamples((prev) => !prev)}
-          >
-            {showBehavioralSamples ? '▲ Hide unsupported examples' : '▼ Show unsupported examples (will be blocked)'}
-          </button>
-        </section>
-        )
-      }
-      inspector={
-        inspectorContent ?? (
-        <>
-          <IdeInspectorSection title="Port Suggestions" defaultOpen testId="ide-import-port-suggestions">
-            {!parsedHdl ? (
-              <p className="ide-copy" data-testid="ide-import-port-suggestions-empty">Parse HDL to see port suggestions.</p>
-            ) : !hdlLooksValid ? (
-              <p className="ide-copy" data-testid="ide-import-port-suggestions-empty">
-                Ports not detected — see Parse Feedback in the left dock for warnings.
-              </p>
-            ) : suggestions.length === 0 ? (
-              <p className="ide-copy">No ports found in parsed HDL.</p>
-            ) : (
-              <>
-                {/* Summary counts */}
-                <div className="ide-kv-list" style={{ marginBottom: 'var(--ide-space-2)' }}>
-                  <div className="ide-kv-row">
-                    <span>Ready to apply</span>
-                    <IdeStatusPill tone="ok">{applicableItems.length}</IdeStatusPill>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>Already pinned</span>
-                    <IdeStatusPill tone="idle">{suggestions.filter(s => s.locked).length}</IdeStatusPill>
-                  </div>
-                  <div className="ide-kv-row">
-                    <span>No project row</span>
-                    <IdeStatusPill tone="idle">{suggestions.filter(s => !s.rowId).length}</IdeStatusPill>
-                  </div>
-                </div>
-
-                {/* Suggestion rows */}
-                {suggestions.map((s) => {
-                  const confidenceTone = s.confidence === 'high' ? 'ok' : s.confidence === 'medium' ? 'warn' : 'idle';
-                  return (
-                    <div
-                      key={s.portName}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr auto',
-                        gap: 'var(--ide-space-1)',
-                        alignItems: 'start',
-                        padding: 'var(--ide-space-1) 0',
-                        borderBottom: '1px solid color-mix(in srgb, var(--ide-border) 40%, transparent)',
-                        opacity: s.locked || !s.rowId ? 0.5 : 1,
-                      }}
-                      data-testid={`ide-import-suggestion-${s.portName}`}
-                    >
-                      <div>
-                        <code style={{ fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-                          {s.portName}
-                        </code>
-                        <span style={{ marginLeft: 'var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                          {s.direction === 'in' ? '→' : '←'}
-                        </span>
-                      </div>
-                      <IdeStatusPill tone={confidenceTone}>{s.confidence === 'high' ? 'HIGH' : s.confidence === 'medium' ? 'MED' : 'LOW'}</IdeStatusPill>
-
-                      {/* Pin control */}
-                      <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 'var(--ide-space-1)' }}>
-                        <select
-                          disabled={s.locked || !s.rowId}
-                          value={overrides[s.portName] !== undefined ? (overrides[s.portName] ?? '') : (s.pin ?? '')}
-                          onChange={(e) => setOverrides(prev => ({ ...prev, [s.portName]: e.target.value || null }))}
-                          style={{
-                            flex: 1,
-                            fontFamily: 'var(--rb-font-mono)',
-                            fontSize: 'var(--rb-font-size-1)',
-                            background: 'var(--ide-bg-input, #0e1e2e)',
-                            color: 'var(--ide-text)',
-                            border: '1px solid var(--ide-border)',
-                            borderRadius: 'var(--ide-radius-s)',
-                            padding: '2px 4px',
-                          }}
-                          aria-label={`Pin for ${s.portName}`}
-                        >
-                          {s.pin && <option value={s.pin}>{s.pin} (XDC)</option>}
-                          <option value="">— (skip)</option>
-                          {/* Common Basys pins as convenience */}
-                          {BASYS3_PHYSICAL_QUICK_PINS.map(p =>
-                            p !== s.pin ? <option key={p} value={p}>{p}</option> : null
-                          )}
-                        </select>
-                        {s.locked && (
-                          <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>locked</span>
-                        )}
-                        {!s.rowId && (
-                          <span style={{ fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>not in project</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Apply all */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ide-space-2)', marginTop: 'var(--ide-space-3)' }}>
-                  <IdeButton
-                    tone="primary"
-                    onClick={handleApplyAll}
-                    testId="ide-import-apply-all"
-                    disabled={applicableItems.length === 0}
-                  >
-                    Apply {applicableItems.length} suggestion{applicableItems.length !== 1 ? 's' : ''} to project
-                  </IdeButton>
-                  {onGoToProject && (
-                    <IdeButton
-                      tone="secondary"
-                      onClick={onGoToProject}
-                      testId="ide-import-go-project"
-                    >
-                      Review in Project
-                    </IdeButton>
-                  )}
-                </div>
-              </>
-            )}
-          </IdeInspectorSection>
-          <IdeInspectorSection title="Import Status" defaultOpen>
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>HDL</span>
-                <IdeStatusPill tone={hasParsedHdl ? 'ok' : 'idle'}>
-                  {hasParsedHdl ? 'Parsed' : 'Pending'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-kv-row">
-                <span>XDC</span>
-                <IdeStatusPill tone={hasParsedXdc ? 'ok' : 'idle'}>
-                  {hasParsedXdc ? 'Parsed' : 'Optional'}
-                </IdeStatusPill>
-              </div>
-              <div className="ide-kv-row">
-                <span>Ports mapped</span>
-                <span>
-                  {ports.length - unmappedPorts.length}/{ports.length}
-                </span>
-              </div>
-            </div>
-          </IdeInspectorSection>
-
-          <IdeInspectorSection title="Next Step" defaultOpen={false}>
-            {canImport ? (
-              <IdeCallout tone="success" title="Ready to Import">
-                Mapping is complete. Import this design to the project graph.
-              </IdeCallout>
-            ) : (
-              <IdeCallout tone="warn" title="Resolve Blockers">
-                Parse HDL, parse XDC, then map required ports before importing.
-              </IdeCallout>
-            )}
-          </IdeInspectorSection>
-        </>
-        )
-      }
     >
-      <IdePanel
-        title="Import / Recover"
-        description={
-          showImportHeaderAction
-            ? `${PROFESSIONAL_CLASSROOM_COPY.importUtility} Restore a RedByte project ZIP first. Vivado ZIPs and raw HDL remain available as recovery paths.`
-            : undefined
-        }
-        right={
-          showImportHeaderAction
-            ? canImport ? (
-                <IdeStatusPill tone="ok">Ready to Review</IdeStatusPill>
-              ) : (
-                <IdeStatusPill tone="warn">Needs Mapping</IdeStatusPill>
-              )
-            : null
-        }
-        testId="ide-import-panel"
-      >
-        {showImportHeaderAction ? (
-          <div className="ide-surface-command-stack">
-            <SurfaceCommandStrip
-              className="ide-import-command-strip"
-              testId="ide-import-command-strip"
-              label="Import HDL"
-              title={importEntryAction?.title ?? 'Review the import before replacing anything'}
-              description={
-                importEntryAction?.body ??
-                'Use the review flow to confirm structure, pins, and blockers before you replace the current project.'
-              }
-              meta={(
-                <>
-                  <IdeStatusPill tone={canImport ? 'ok' : hasParsedHdl ? 'warn' : 'idle'}>
-                    {canImport ? 'READY TO REVIEW' : hasParsedHdl ? 'NEEDS MAPPING' : 'INTAKE'}
-                  </IdeStatusPill>
-                  <span className={`ide-surface-command-chip${hasParsedHdl ? ' is-ok' : ''}`}>
-                    HDL {hasParsedHdl ? 'parsed' : 'pending'}
-                  </span>
-                  <span className={`ide-surface-command-chip${hasParsedXdc ? ' is-ok' : ''}`}>
-                    XDC {hasParsedXdc ? 'parsed' : 'optional'}
-                  </span>
-                  {hasParsedHdl ? (
-                    <span className={`ide-surface-command-chip${unmappedPorts.length === 0 ? ' is-ok' : ''}`}>
-                      {ports.length - unmappedPorts.length}/{ports.length} constrained
-                    </span>
-                  ) : null}
-                </>
-              )}
-              actions={(
-                <>
-                  <span data-testid="ide-primary-cta">
-                    <IdeButton
-                      tone="primary"
-                      onClick={requestApplyProject}
-                      disabled={!canImport}
-                      testId="ide-import-replace-project"
-                    >
-                      Review Import...
-                    </IdeButton>
-                  </span>
-                  <IdeButton
-                    tone="secondary"
-                    onClick={() => setTab('hdl')}
-                    testId="ide-import-command-strip-secondary-cta"
-                  >
-                    Back to HDL
-                  </IdeButton>
-                </>
-              )}
-            />
-            {!canImport && hasParsedHdl ? (
-              <span className="ide-import-apply-reason" data-testid="ide-import-apply-disabled-reason">
-                {unmappedPorts.length > 0
-                  ? `${unmappedPorts.length} unmapped port${unmappedPorts.length > 1 ? 's' : ''}`
-                  : `${blockingErrors.length} blocking error${blockingErrors.length > 1 ? 's' : ''}`}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
+      <IdePanel testId="ide-import-panel">
+        <section className="ide-import-v3" data-testid="ide-import-workbench" aria-label="Import recovery workflow">
+          <input
+            ref={zipInputRef}
+            type="file"
+            accept=".zip,application/zip"
+            hidden
+            onChange={(event) => void handleZipInputChange(event)}
+            data-testid="ide-import-zip-input"
+          />
 
-        {isImportFirstLook && importEntryAction ? (
-          <div className="ide-import-start-shell" data-testid="ide-import-start-shell">
-            <div className="ide-import-guided-wizard-v1" data-testid="ide-import-guided-wizard-v1">
-              <ol className="ide-import-wizard-track" data-testid="ide-import-wizard-track" aria-label="Import recovery steps">
-                <li className="is-active"><span>1</span><strong>Choose source</strong></li>
-                <li><span>2</span><strong>Inspect</strong></li>
-                <li><span>3</span><strong>Map or repair</strong></li>
-                <li><span>4</span><strong>Review</strong></li>
-                <li><span>5</span><strong>Apply import</strong></li>
-              </ol>
-            <SurfacePanel
-              className="ide-import-start-hero"
-              testId="ide-import-start-hero"
-              hierarchySurface="import"
-              hierarchyRole="primary"
-              hierarchyFocal="manifest-restore"
+          <header className="ide-import-v3__header">
+            <div>
+              <p className="ide-surface-block-label">Import</p>
+              <h2>Recover a project without replacing current work early</h2>
+              <p>Choose a source, review what RedByte reconstructed, then explicitly apply the replacement.</p>
+            </div>
+            <ol
+              className="ide-import-v3__steps"
+              data-testid="ide-import-horizontal-stepper"
+              aria-label="Upload, review, and apply progress"
             >
-              <div className="ide-import-start-hero__copy">
-                {isImportFirstLook ? (
-                  <span className="ide-import-start-hero__eyebrow">Recommended path</span>
-                ) : null}
-                <strong className="ide-import-start-hero__title">{importEntryAction.title}</strong>
-                <p className="ide-copy" style={{ margin: 0 }}>
-                  {importEntryAction.body}
-                </p>
-                <p className="ide-copy ide-import-utility-copy" data-testid="ide-import-utility-copy">
-                  {PROFESSIONAL_CLASSROOM_COPY.importUtility}
-                </p>
-              </div>
-              <div className="ide-import-start-hero__actions" data-testid="ide-import-source-step">
-                <IdeButton
-                  tone="primary"
-                  onClick={runImportPrimaryAction}
-                  testId="ide-import-start-primary"
-                  hierarchySurface="import"
-                  hierarchyRole="next"
+              {workflowSteps.map((step) => (
+                <li
+                  key={step.id}
+                  className={'is-' + step.state}
+                  aria-current={step.state === 'active' ? 'step' : undefined}
+                  data-testid={'ide-import-step-' + step.id}
                 >
-                  {importEntryAction.primaryLabel}
-                </IdeButton>
-                {isImportFirstLook ? (
-                  <div
-                    className="ide-import-start-other-options"
-                    data-testid="ide-import-start-other-options"
-                    data-hierarchy-surface="import"
-                    data-hierarchy-role="advanced"
-                  >
-                    <span className="ide-import-start-other-options-label">Other ways to start</span>
-                    <div className="ide-import-start-alternatives" data-testid="ide-import-start-alternatives">
-                      <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
-                        {importEntryAction.secondaryLabel}
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={() => loadImportSample('and-gate')}
-                        testId="ide-import-load-sample-and-gate"
-                      >
-                        Try structural sample
-                      </IdeButton>
-                      <IdeButton
-                        tone="ghost"
-                        onClick={() => setShowBehavioralSamples((prev) => !prev)}
-                        testId="ide-import-toggle-behavioral-samples"
-                      >
-                        {showBehavioralSamples ? 'Hide unsupported examples' : 'Show unsupported examples (blocked)'}
-                      </IdeButton>
-                      {showBehavioralSamples ? (
-                        <IdeButton
-                          tone="ghost"
-                          onClick={() => loadImportSample('edge-detect')}
-                          testId="ide-import-load-sample-edge-detect"
-                        >
-                          Try blocked behavioral sample
-                        </IdeButton>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <IdeButton tone="secondary" onClick={runImportSecondaryAction} testId="ide-import-start-secondary">
-                    {importEntryAction.secondaryLabel}
-                  </IdeButton>
-                )}
+                  <span>{step.order}</span>
+                  <div><strong>{step.label}</strong><small>{step.detail}</small></div>
+                </li>
+              ))}
+            </ol>
+          </header>
+
+          {showVerifyResetNotice ? (
+            <IdeCallout tone="success" title="Project replaced" testId="ide-import-verify-reset-notice">
+              <p className="ide-copy ide-copy--flush">
+                The reviewed import is now the active project. Run Verify again because prior evidence belongs to the replaced design.
+              </p>
+              <div className="ide-inline-actions">
+                {onGoToDesign ? <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-open-design">Open Design</IdeButton> : null}
+                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Verify</IdeButton> : null}
               </div>
-            </SurfacePanel>
-            {isImportFirstLook ? (
-              <SurfacePanel
-                className="ide-import-start-guidance"
-                testId="ide-import-start-guidance"
-                hierarchySurface="import"
-                hierarchyRole="context"
-              >
-                <div className="ide-import-start-guidance-grid">
-                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-zip">
-                    <span className="ide-import-start-guidance-eyebrow">Highest fidelity</span>
-                    <strong>RedByte project restore</strong>
-                    <p>A RedByte export ZIP with <code>project.rbproj.json</code> restores the embedded manifest as the source of truth.</p>
-                  </article>
-                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-review">
-                    <span className="ide-import-start-guidance-eyebrow">Reconstruction path</span>
-                    <strong>Vivado ZIP or VHDL</strong>
-                    <p>Without a RedByte manifest, RedByte reconstructs supported structure only. Behavioral HDL may recover ports only or stay blocked.</p>
-                  </article>
-                  <article className="ide-import-start-guidance-item" data-testid="ide-import-start-guidance-hdl">
-                    <span className="ide-import-start-guidance-eyebrow">Safe recovery</span>
-                    <strong>Nothing is overwritten yet</strong>
-                    <p data-testid="ide-import-cancel-preserves-copy">
-                      Your current project stays intact until Review Import and Confirm Replace Project. Cancel keeps current work, and failed imports do not change files.
-                    </p>
-                  </article>
-                </div>
-                <div className="ide-import-safety-boundary-v1" data-testid="ide-import-safety-boundary-v1">
-                  <strong>No overwrite before review.</strong>
-                  <span>Choose a source, inspect what RedByte found, then confirm replacement only after the review step.</span>
-                </div>
-              </SurfacePanel>
-            ) : null}
-            </div>
-          </div>
-        ) : null}
-        {showVerifyResetNotice ? (
-          <IdeCallout tone="info" title="Run Verify Again" testId="ide-import-verify-reset-notice">
-            <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored during import. Open Verify and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
-            </p>
-            {onGoToVerify ? (
-              <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
-                <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Verify
-                </IdeButton>
-              </div>
-            ) : null}
-          </IdeCallout>
-        ) : null}
-        {pendingApplyProject && commitPreview ? (
-          <SurfacePanel className="ide-import-commitPreview" testId="ide-import-commit-preview">
-            <div className="ide-import-commitPreview-header">
-              <span className="ide-import-commitPreview-title">COMMIT PREVIEW</span>
-              <IdeStatusPill tone="warn">Pending</IdeStatusPill>
-            </div>
-            <div className="ide-import-commitPreview-rows">
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">ENTITY</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview!.entityName}
-                  <span className="ide-import-commitPreview-lang"> ({commitPreview!.lang.toUpperCase()})</span>
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">PORTS</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview!.totalPorts} total · {commitPreview!.inCount} in / {commitPreview!.outCount} out
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">PINS</span>
-                <span className="ide-import-commitPreview-val">{commitPreview.mappedCount}/{commitPreview.totalPorts} mapped</span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">FIDELITY</span>
-                <span className="ide-import-commitPreview-val">
-                  {isManifestZipImport
-                    ? 'Full restore — exact RedByte project'
-                    : commitPreview.reconstructionLevel === 'full'
-                      ? 'Reconstructed — structural HDL parsed'
-                      : commitPreview.reconstructionLevel === 'ports-only'
-                        ? 'Partial — ports only, no internal logic'
-                        : 'Minimal — entity skeleton only'}
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">CIRCUIT</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview.nodeCount > 0
-                    ? `${commitPreview.nodeCount} nodes · ${commitPreview.connectionCount} connections`
-                    : 'Empty — no gates or wires recovered'}
-                </span>
-              </div>
-            </div>
-            {hasImportBlocker ? (
-              <IdeCallout tone="error" title="Cannot commit this import" testId="ide-import-behavioral-blocker">
-                {importBlockerReasons.map((reason, i) => (
-                  <p key={i} className="ide-copy" style={{ margin: 0 }}>{reason}</p>
-                ))}
-                {detectedBehavioralConstructs.length > 0 ? (
-                  <details style={{ marginTop: 'var(--ide-space-1)' }}>
-                    <summary style={{ cursor: 'pointer' }} data-testid="ide-import-blocker-dropped-constructs-summary">
-                      Show dropped constructs ({detectedBehavioralConstructs.length})
-                    </summary>
-                    <ul data-testid="ide-import-blocker-dropped-constructs">
-                      {detectedBehavioralConstructs.map((c) => (
-                        <li key={c}><code>{c}</code></li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : null}
-                {onGoToDesign && (
-                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-blocker-go-design">
-                      Start fresh in Design →
-                    </IdeButton>
-                  </div>
-                )}
-              </IdeCallout>
-            ) : null}
-            <IdeCallout tone="warn" title="Review before replace" testId="ide-import-review-before-replace">
-              Cancel keeps your current work. Confirm Replace Project means replace current work with this reviewed import.
             </IdeCallout>
-            <div className="ide-inline-actions ide-import-commit-actions" ref={applySectionRef}>
-              <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
-                Cancel - keep current work
-              </IdeButton>
-              <IdeButton tone="secondary" onClick={confirmApplyProject} disabled={hasImportBlocker} testId="ide-import-apply-confirm">
-                Confirm Replace Project
-              </IdeButton>
-              {onGoToVerify ? (
-                <div className="ide-import-verify-cta">
-                  <span className="ide-import-verify-cta-label">
-                    {hasImportBlocker
-                      ? 'Blocked — resolve issues above'
-                      : (pendingApplyProject?.vectors?.length ?? 0) > 0
-                        ? `${pendingApplyProject!.vectors!.length} baseline vectors ready`
-                        : 'Import + open Verify'}
-                  </span>
-                  <IdeButton tone="primary" onClick={confirmAndVerify} disabled={hasImportBlocker} testId="ide-import-apply-open-verify">
-                    Confirm &amp; Open Verify →
-                  </IdeButton>
-                </div>
-              ) : null}
-            </div>
-          </SurfacePanel>
-        ) : null}
-        {/* Hidden file input is unconditional so zipInputRef.current is always non-null,
-            even when the workbench is not yet mounted (first-look state). */}
-        <input
-          ref={zipInputRef}
-          type="file"
-          accept=".zip,application/zip"
-          hidden
-          onChange={(event) => {
-            void handleZipInputChange(event);
-          }}
-          data-testid="ide-import-zip-input"
-        />
-        {!isImportFirstLook ? (
-          <>
-            <SurfacePanel
-              className="ide-import-active-taskbar"
-              testId="ide-import-active-taskbar"
-              hierarchySurface="import"
-              hierarchyRole="active-task"
-              hierarchyFocal="recovery-workbench"
-            >
-              <div className="ide-import-active-taskbar__copy">
-                <span className="ide-import-active-taskbar__eyebrow">Recovery workbench</span>
-                <strong>{activeImportTaskLabel}</strong>
-                <p className="ide-copy">{activeImportTaskBody}</p>
-              </div>
-              <div className="ide-import-active-taskbar__meta">
-                <IdeStatusPill tone={canImport ? 'ok' : detectedBehavioralConstructs.length > 0 ? 'warn' : hasParsedHdl ? 'warn' : 'idle'}>
-                  {canImport ? 'Ready to review' : detectedBehavioralConstructs.length > 0 ? 'Blocked' : hasParsedHdl ? 'Needs mapping' : 'Intake'}
-                </IdeStatusPill>
-                {hasParsedHdl ? (
-                  <span className="ide-surface-command-chip">
-                    {ports.length - unmappedPorts.length}/{ports.length} mapped
-                  </span>
-                ) : (
-                  <span className="ide-surface-command-chip">HDL pending</span>
-                )}
-              </div>
-              <div className="ide-import-active-taskbar__actions">
-                <IdeButton
-                  tone="primary"
-                  onClick={canImport ? requestApplyProject : parseHdl}
-                  disabled={!canImport && !hdlText.trim()}
-                  testId={canImport ? 'ide-import-replace-project' : 'ide-import-active-primary'}
-                >
-                  {canImport ? 'Review Import...' : 'Parse HDL'}
-                </IdeButton>
-                <IdeButton
-                  tone="secondary"
-                  onClick={canApplySuggestions ? applySuggestions : () => setTab('xdc')}
-                  disabled={!canApplySuggestions && tab === 'xdc'}
-                  testId="ide-import-active-secondary"
-                >
-                  {canApplySuggestions ? 'Apply Pins Only' : 'Paste XDC'}
-                </IdeButton>
-                {detectedBehavioralConstructs.length > 0 && onGoToDesign ? (
-                  <IdeButton tone="ghost" onClick={onGoToDesign} testId="ide-import-active-start-fresh">
-                    Start fresh in Design
-                  </IdeButton>
-                ) : null}
-              </div>
-            </SurfacePanel>
-            <div className="ide-import-workbench-v2" data-testid="ide-import-workbench">
-              <div className="ide-import-source-and-review">
-                {sourceStageContent}
-                {sourceReviewLane}
-              </div>
-              {reviewWorkspace}
-            </div>
-          </>
-        ) : null}
-        {false && (
-        <>
-        <p
-          className="ide-copy"
-          style={{ color: 'var(--ide-text-soft)', marginBottom: 'var(--ide-space-2)' }}
-          data-testid="ide-import-mode-hint"
-        >
-          Recommended: start with a Vivado ZIP. RedByte only replaces the project after you review the import.
-        </p>
-        <div className="ide-import-secondary-tools" data-testid="ide-import-secondary-tools">
-          <span className="ide-import-secondary-tools-label">Secondary tools</span>
-          <div className="ide-inline-actions">
-            <IdeButton tone="secondary" onClick={parseHdl} testId="ide-import-parse">
-              Parse HDL
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={() => parseXdc()} testId="ide-import-parse-xdc">
-              Parse XDC
-            </IdeButton>
-            <IdeButton
-              tone="ghost"
-              onClick={applySuggestions}
-              disabled={!canApplySuggestions}
-              testId="ide-import-apply-pins-only"
-            >
-              Apply Pins Only
-            </IdeButton>
-            <IdeButton tone="ghost" onClick={copyDiagnostics} testId="ide-import-copy-diagnostics">
-              Copy report
-            </IdeButton>
-            <IdeButton
-              tone="ghost"
-              onClick={() => void handleProcessDesign()}
-              disabled={pipelineActive || (!hdlText.trim() && !zipInspection)}
-              testId="ide-import-process-design"
-            >
-              {pipelineActive ? 'Processing…' : 'Process Design'}
-            </IdeButton>
-          </div>
-        </div>
-        {showVerifyResetNotice && (
-          <IdeCallout
-            tone="info"
-            title="Run Verify Again"
-            testId="ide-import-verify-reset-notice"
-          >
-            <p className="ide-copy" style={{ margin: 0 }}>
-              Verification results are not restored during import. Open Verify and re-run your vectors — once you get a PASS, the export becomes trusted and ready.
-            </p>
-            {onGoToVerify && (
-              <div className="ide-inline-actions" style={{ marginTop: 'var(--ide-space-2)' }}>
-                <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify-after-import">
-                  Open Verify
-                </IdeButton>
-              </div>
-            )}
-          </IdeCallout>
-        )}
-        {pendingApplyProject && commitPreview ? (
-          <SurfacePanel className="ide-import-commitPreview" testId="ide-import-commit-preview">
-            <div className="ide-import-commitPreview-header">
-              <span className="ide-import-commitPreview-title">COMMIT PREVIEW</span>
-              <IdeStatusPill tone="warn">Pending</IdeStatusPill>
-            </div>
+          ) : null}
 
-            <div className="ide-import-commitPreview-rows">
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">ENTITY</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview!.entityName}
-                  <span className="ide-import-commitPreview-lang"> ({commitPreview!.lang.toUpperCase()})</span>
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">PORTS</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview!.totalPorts} total · {commitPreview!.inCount} in / {commitPreview!.outCount} out
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">PINS</span>
-                <span className="ide-import-commitPreview-val">
-                  {commitPreview!.mappedCount}/{commitPreview!.totalPorts} mapped
-                </span>
-              </div>
-              <div className="ide-import-commitPreview-row">
-                <span className="ide-import-commitPreview-key">GRAPH</span>
-                <span className="ide-import-commitPreview-val">
-                  {isManifestZipImport
-                    ? `manifest restore · ${commitPreview!.nodeCount} nodes`
-                    : commitPreview!.reconstructionLevel === 'full'
-                    ? `full · ${commitPreview!.nodeCount} nodes`
-                    : commitPreview!.reconstructionLevel === 'ports-only'
-                      ? 'Ports only — no circuit reconstructed'
-                      : `empty`}
-                </span>
-              </div>
-              {commitPreview!.addedPorts.length > 0 && (
-                <div className="ide-import-commitPreview-row ide-import-commitPreview-row--add">
-                  <span className="ide-import-commitPreview-key">+PORTS</span>
-                  <span className="ide-import-commitPreview-val">
-                    {commitPreview!.addedPorts.slice(0, 6).map((p) => p.name).join(', ')}
-                    {commitPreview!.addedPorts.length > 6 ? ` +${commitPreview!.addedPorts.length - 6} more` : ''}
-                  </span>
+          {!showVerifyResetNotice && !pendingApplyProject ? (
+            <section className="ide-import-v3__source" aria-labelledby="ide-import-v3-source-title">
+              <header className="ide-import-v3__section-header">
+                <div>
+                  <p className="ide-surface-block-label">1 · Upload</p>
+                  <h3 id="ide-import-v3-source-title">
+                    {tab === 'upload' ? 'Choose a project ZIP' : tab === 'hdl' ? 'Paste structural HDL' : 'Paste Basys3 constraints'}
+                  </h3>
                 </div>
-              )}
-              {commitPreview!.removedPortNames.length > 0 && (
-                <div className="ide-import-commitPreview-row ide-import-commitPreview-row--remove">
-                  <span className="ide-import-commitPreview-key">−PORTS</span>
-                  <span className="ide-import-commitPreview-val">
-                    {commitPreview!.removedPortNames.slice(0, 6).join(', ')}
-                    {commitPreview!.removedPortNames.length > 6 ? ` +${commitPreview!.removedPortNames.length - 6} more` : ''}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* ── STOP-SHIP: Behavioral / empty-circuit blocker ── */}
-            {hasImportBlocker && (
-              <IdeCallout
-                tone="error"
-                title="Cannot commit this import"
-                testId="ide-import-behavioral-blocker"
-              >
-                {importBlockerReasons.map((reason, i) => (
-                  <p key={i} className="ide-copy" style={{ margin: 0 }}>
-                    {reason}
-                  </p>
-                ))}
-                {detectedBehavioralConstructs.length > 0 && (
-                  <details style={{ marginTop: 'var(--ide-space-1)' }}>
-                    <summary
-                      style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}
-                      data-testid="ide-import-blocker-dropped-constructs-summary"
-                    >
-                      Show dropped constructs ({detectedBehavioralConstructs.length})
-                    </summary>
-                    <ul
-                      style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc', fontSize: 'var(--rb-font-size-1)' }}
-                      data-testid="ide-import-blocker-dropped-constructs"
-                    >
-                      {detectedBehavioralConstructs.map((c) => (
-                        <li key={c}><code>{c}</code></li>
-                      ))}
-                    </ul>
-                    <p style={{ marginTop: 'var(--ide-space-1)', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                      RedByte supports structural/combinational HDL only. Behavioral constructs are detected and reported but their logic is not imported.
-                    </p>
-                  </details>
-                )}
-                {onGoToDesign && (
-                  <div style={{ marginTop: 'var(--ide-space-2)' }}>
-                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-blocker-go-design">
-                      Start fresh in Design →
+                <div className="ide-import-v3__source-switch">
+                  {tab !== 'upload' ? (
+                    <IdeButton tone="secondary" onClick={() => setTab('upload')} testId="ide-import-source-zip">ZIP</IdeButton>
+                  ) : null}
+                  {tab !== 'hdl' ? (
+                    <IdeButton tone="secondary" onClick={() => { setImportFirstLookDismissed(true); setTab('hdl'); }} testId="ide-import-start-secondary">
+                      Paste HDL
                     </IdeButton>
-                  </div>
-                )}
-              </IdeCallout>
-            )}
-
-            <div className="ide-inline-actions ide-import-commit-actions">
-              <IdeButton tone="ghost" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
-                Cancel
-              </IdeButton>
-              <IdeButton
-                tone="secondary"
-                onClick={confirmApplyProject}
-                disabled={hasImportBlocker}
-                testId="ide-import-apply-confirm"
-              >
-                Confirm Replace Project
-              </IdeButton>
-              {onGoToVerify && (
-                <div className="ide-import-verify-cta">
-                  <span className="ide-import-verify-cta-label">
-                    {hasImportBlocker
-                      ? 'Blocked — resolve issues above'
-                      : (pendingApplyProject?.vectors?.length ?? 0) > 0
-                        ? `${pendingApplyProject!.vectors!.length} baseline vectors ready`
-                        : 'Import + open Verify'}
-                  </span>
-                  <IdeButton
-                    tone="primary"
-                    onClick={confirmAndVerify}
-                    disabled={hasImportBlocker}
-                    testId="ide-import-apply-open-verify"
-                  >
-                    Confirm &amp; Open Verify →
-                  </IdeButton>
+                  ) : null}
+                  {tab !== 'xdc' && hasParsedHdl ? (
+                    <IdeButton tone="ghost" onClick={() => setTab('xdc')} testId="ide-import-source-xdc">Paste XDC</IdeButton>
+                  ) : null}
                 </div>
-              )}
-            </div>
-          </SurfacePanel>
-        ) : null}
+              </header>
 
-        {tab === 'upload' && (
-          <p className="ide-import-upload-hint">
-            Try this in 60s: Load sample → Parse HDL → Parse XDC → Apply suggestions → Review
-          </p>
-        )}
-        <div className="ide-import-pipeline-tabs">
-          {(['upload', 'hdl', 'xdc'] as ImportTab[]).map((tabId, i) => (
-            <button
-              key={tabId}
-              type="button"
-              className={`ide-pipeline-stage ${tab === tabId ? 'ide-pipeline-stage--active' : 'ide-pipeline-stage--pending'}`}
-              onClick={() => setTab(tabId)}
-              aria-current={tab === tabId ? 'step' : undefined}
-            >
-              <span className="ide-pipeline-badge">{i + 1}</span>
-              <span className="ide-pipeline-label">
-                {tabId === 'upload' ? 'Upload ZIP' : tabId === 'hdl' ? 'VHDL / Verilog' : 'XDC Constraints'}
-              </span>
-            </button>
-          ))}
-        </div>
-        {pipelineSteps.some((s) => s.state !== 'idle') && (
-          <ol className="ide-import-pipeline-steps" data-testid="ide-import-pipeline-steps">
-            {pipelineSteps.map((s) => (
-              <li
-                key={s.id}
-                className={`ide-import-pipeline-step ide-import-pipeline-step--${s.state}`}
-                data-testid={`ide-import-pipeline-step-${s.id}`}
-              >
-                <span className="ide-import-step-mark">
-                  {s.state === 'done'    ? '[✔]'
-                 : s.state === 'running' ? '[…]'
-                 : s.state === 'error'   ? '[✗]'
-                 : s.state === 'skipped' ? '[—]'
-                 :                         '[ ]'}
-                </span>
-                <span className="ide-import-step-label">{s.label}</span>
-                {s.detail && <span className="ide-import-step-detail">{s.detail}</span>}
-              </li>
-            ))}
-          </ol>
-        )}
-        <IdeGrid columns={2} testId="ide-import-pipeline-grid">
-          <section className="ide-import-stage-col" data-testid="ide-import-inputs">
-            <IdeSectionHeader title="Inputs" meta="Stage 1" />
-
-            <div className="ide-import-target-cards">
-              <button
-                type="button"
-                className={`ide-import-target-card${tab === 'hdl' ? ' is-active' : ''}${hasParsedHdl ? ' is-done' : ''}`}
-                onClick={() => setTab('hdl')}
-                data-testid="ide-import-card-hdl"
-              >
-                <span className="ide-import-target-card-icon">&lt;/&gt;</span>
-                <span className="ide-import-target-card-title">HDL Source</span>
-                <span className="ide-import-target-card-desc">Paste Verilog or VHDL module</span>
-                {hasParsedHdl && <span className="ide-import-target-card-badge">&#10003; Parsed</span>}
-              </button>
-              <button
-                type="button"
-                className={`ide-import-target-card${tab === 'xdc' ? ' is-active' : ''}${hasParsedXdc ? ' is-done' : ''}`}
-                onClick={() => setTab('xdc')}
-                data-testid="ide-import-card-xdc"
-              >
-                <span className="ide-import-target-card-icon">&#x2316;</span>
-                <span className="ide-import-target-card-title">XDC Constraints</span>
-                <span className="ide-import-target-card-desc">Pin assignments from Vivado</span>
-                {hasParsedXdc ? (
-                  <span className="ide-import-target-card-badge">&#10003; Parsed</span>
-                ) : (
-                  <span className="ide-import-target-card-optional">Optional</span>
-                )}
-              </button>
-              <button
-                type="button"
-                className={`ide-import-target-card ide-import-target-card-zip${tab === 'upload' ? ' is-active' : ''}${hasZipInspection ? ' is-done' : ''}`}
-                onClick={() => { setTab('upload'); handleOpenZipPicker(); }}
-                disabled={zipBusy}
-                data-testid="ide-import-card-zip"
-              >
-                <span className="ide-import-target-card-icon">&#x25A6;</span>
-                <span className="ide-import-target-card-title">Vivado ZIP</span>
-                <span className="ide-import-target-card-desc">
-                  {zipBusy ? 'Importing...' : 'Auto-extract top module + constraints'}
-                </span>
-                {hasZipInspection ? (
-                  <span className="ide-import-target-card-badge">&#10003; Loaded</span>
-                ) : (
-                  <span className="ide-import-target-card-optional">Recommended</span>
-                )}
-              </button>
-            </div>
-
-            {hasParsedHdl && (
-              <div className="ide-import-parse-summary" data-testid="ide-import-parse-summary">
-                <span>Detected:</span>
-                <strong>{parsedHdl!.entityName}</strong>
-                <span>{ports.length} port{ports.length !== 1 ? 's' : ''}</span>
-                <span>XDC: {hasParsedXdc ? `${Object.keys(xdcResult!.pinMap).length} pins` : 'none'}</span>
-                {blockingErrors.length > 0 && (
-                  <span className="ide-import-summary-issues">{blockingErrors.length} issue{blockingErrors.length !== 1 ? 's' : ''}</span>
-                )}
-              </div>
-            )}
-
-            {tab === 'hdl' && (
-              <div className="ide-import-editor">
-                {/* ── Supported HDL subset declaration (Req 6 from audit) ── */}
-                <details
-                  className="ide-import-hdl-scope-box"
-                  data-testid="ide-import-hdl-scope"
-                  style={{
-                    marginBottom: 'var(--ide-space-2)',
-                    border: '1px solid var(--ide-border)',
-                    borderRadius: 'var(--ide-radius-s)',
-                    padding: 'var(--ide-space-1) var(--ide-space-2)',
-                    fontSize: 'var(--rb-font-size-1)',
-                  }}
-                >
-                  <summary style={{ cursor: 'pointer', fontWeight: 600, marginBottom: 'var(--ide-space-1)' }}>
-                    What HDL does RedByte support? (click to expand)
-                  </summary>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--ide-space-2)', marginTop: 'var(--ide-space-1)' }}>
-                    <div>
-                      <strong style={{ color: 'var(--rb-success, #4a4)' }}>Supported</strong>
-                      <ul style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc' }}>
-                        <li>entity / port declarations (VHDL + Verilog)</li>
-                        <li>structural component instantiations</li>
-                        <li>concurrent signal assignments</li>
-                        <li>Verilog gate primitives (and, or, not, xor …)</li>
-                        <li>simple assign statements</li>
-                      </ul>
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--rb-error, #e55)' }}>Not supported — will be BLOCKED</strong>
-                      <ul style={{ margin: 'var(--ide-space-1) 0 0 var(--ide-space-2)', padding: 0, listStyle: 'disc' }}>
-                        <li>process / always blocks</li>
-                        <li>sequential / clocked logic (rising_edge, posedge)</li>
-                        <li>generate statements</li>
-                        <li>generics / parameters</li>
-                        <li>multiple architectures (first only)</li>
-                      </ul>
-                    </div>
-                  </div>
-                </details>
-
-                {/* Live behavioral warning banner — shows immediately as user types */}
-                {detectedBehavioralConstructs.length > 0 && (
-                  <IdeCallout
-                    tone="error"
-                    title="Behavioral HDL cannot be imported"
-                    testId="ide-import-behavioral-warning"
-                  >
-                    <p className="ide-copy" style={{ margin: 0 }}>
-                      RedByte supports structural/combinational HDL only. The following constructs were
-                      detected and will block the commit step:{' '}
-                      <strong>{detectedBehavioralConstructs.join(', ')}</strong>.
-                    </p>
-                  </IdeCallout>
-                )}
-
-                <div className="ide-import-language-row">
-                  <span>Language</span>
-                  <select
-                    className="ide-export-pin-input"
-                    value={language}
-                    onChange={(event) => setLanguage(event.target.value as HdlLanguage)}
-                    data-testid="ide-import-language-select"
-                  >
-                    <option value="auto">Auto-detect</option>
-                    <option value="vhdl">VHDL</option>
-                    <option value="verilog">Verilog</option>
-                  </select>
-                  <IdeButton
-                    tone="ghost"
-                    onClick={() => setHdlText('')}
-                    testId="ide-import-clear-hdl"
-                  >
-                    Clear
-                  </IdeButton>
-                </div>
-                {detectedEntityNames.length >= 2 && (
-                  <div className="ide-import-entity-chooser" data-testid="ide-import-entity-chooser">
-                    <span className="ide-import-entity-chooser-label">Top Entity</span>
-                    <select
-                      className="ide-export-pin-input"
-                      value={selectedEntityName ?? detectedEntityNames[0]}
-                      onChange={(e) => setSelectedEntityName(e.target.value)}
-                      data-testid="ide-import-entity-select"
-                    >
-                      {detectedEntityNames.map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
-                    <span className="ide-import-entity-chooser-hint" data-testid="ide-import-entity-hint">
-                      {(selectedEntityName ?? detectedEntityNames[0]) === detectedEntityNames[0]
-                        ? 'Auto-selected: first entity'
-                        : 'User selected'}
-                    </span>
-                  </div>
-                )}
-                <div className="ide-code-editor" data-testid="ide-import-hdl-editor">
-                  <div
-                    className="ide-code-gutter"
-                    aria-hidden="true"
-                    data-testid="ide-import-hdl-gutter"
-                    ref={hdlGutterRef}
-                  >
-                    {Array.from({ length: lineCount }, (_, i) => {
-                      const lineNum = i + 1;
-                      return (
-                        <span
-                          key={lineNum}
-                          className={`ide-code-gutter-line${activeWarningLine === lineNum ? ' ide-code-gutter-line--warn' : ''}`}
-                        >
-                          {lineNum}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <textarea
-                    ref={hdlTextareaRef}
-                    className="ide-code-textarea"
-                    data-testid="ide-import-hdl-textarea"
-                    value={hdlText}
-                    onChange={(e) => setHdlText(e.target.value)}
-                    onScroll={handleHdlScroll}
-                    onKeyDown={handleHdlKeyDown}
-                    placeholder={"-- Paste your VHDL or Verilog here\n-- Structural VHDL and Verilog only (behavioral/process blocks not supported)\n-- Try one of the sample templates below ↓"}
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                  />
-                </div>
-              </div>
-            )}
-
-            {tab === 'xdc' && (
-              <div className="ide-import-editor">
-                <div className="ide-code-editor" data-testid="ide-import-xdc-editor">
-                  <div
-                    className="ide-code-gutter"
-                    aria-hidden="true"
-                    ref={xdcGutterRef}
-                  >
-                    {Array.from({ length: xdcLineCount }, (_, i) => {
-                      const lineNum = i + 1;
-                      return (
-                        <span
-                          key={lineNum}
-                          className={`ide-code-gutter-line${
-                            activeXdcWarningLine === lineNum ? ' ide-code-gutter-line--warn' : ''
-                          }`}
-                        >
-                          {lineNum}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <textarea
-                    ref={xdcTextareaRef}
-                    className="ide-code-textarea"
-                    data-testid="ide-import-xdc-input"
-                    value={xdcText}
-                    onChange={(event) => setXdcText(event.target.value)}
-                    onScroll={handleXdcScroll}
-                    placeholder="Paste XDC constraints here."
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                  />
-                </div>
-              </div>
-            )}
-
-            {tab === 'upload' && (
-              <div className="ide-empty-stack ide-import-zip-stage" data-testid="ide-import-zip-stage">
+              {tab === 'upload' ? (
                 <div
-                  className="ide-empty-illustration ide-empty-illustration-import"
-                  aria-hidden="true"
+                  className="ide-import-v3__dropzone"
                   data-testid="ide-import-zip-dropzone"
                   onDragOver={(event) => event.preventDefault()}
-                  onDrop={(event) => {
-                    void handleZipDrop(event);
-                  }}
-                />
-                <IdeCallout tone="info" title="Project / Vivado ZIP Import">
-                  Drop a RedByte export ZIP for full restore, or a Vivado project ZIP to inspect detected HDL, constraints, and reconstruction limits.
-                </IdeCallout>
-                <div className="ide-inline-actions">
+                  onDrop={(event) => void handleZipDrop(event)}
+                >
+                  <div>
+                    <strong>{zipInspection ? zipInspection.sourceName : 'RedByte project ZIP or Vivado project ZIP'}</strong>
+                    <p>
+                      {zipInspection
+                        ? 'Archive opened. Review the detected project below before applying anything.'
+                        : 'Drop one .zip archive here, or choose it from your computer. A manifest restores the most project state.'}
+                    </p>
+                  </div>
                   <IdeButton
-                    tone="secondary"
+                    tone={hasParsedHdl ? 'secondary' : 'primary'}
                     onClick={handleOpenZipPicker}
                     disabled={zipBusy}
                     testId="ide-import-zip-browse"
                   >
-                    {zipBusy ? 'Importing ZIP...' : 'Select ZIP'}
+                    {zipBusy ? 'Reading ZIP…' : zipInspection ? 'Choose another ZIP' : 'Choose ZIP'}
                   </IdeButton>
                 </div>
-                {zipImportError && (
-                  <IdeCallout tone="error" title="Could not open ZIP" testId="ide-import-zip-error">
-                    <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
-                      {formatZipImportErrorMessage(zipImportError)}
-                    </p>
-                    <details>
-                      <summary style={{ cursor: 'pointer', fontSize: 'var(--rb-font-size-1)', color: 'var(--ide-text-soft)' }}>
-                        Show technical details
-                      </summary>
-                      <p className="ide-copy" style={{ margin: 'var(--ide-space-1) 0 0', fontFamily: 'var(--rb-font-mono)', fontSize: 'var(--rb-font-size-1)' }}>
-                        {zipImportError}
-                      </p>
-                    </details>
-                  </IdeCallout>
-                )}
+              ) : null}
 
-                {zipInspection ? (
-                  <section className="ide-export-section" data-testid="ide-import-zip-inspection">
-                    <IdeSectionHeader
-                      title="ZIP Inspection"
-                      meta={`${zipInspection!.detectedFiles.length} detected / ${zipInspection!.ignoredFiles.length} ignored`}
-                    />
-                    <ImportZipAuthorityCallout zi={zipInspection!} />
-                    {!isManifestZipImport && (
-                    <div className="ide-import-zip-chooser" data-testid="ide-import-zip-chooser">
-                      <div className="ide-import-zip-chooser-col">
-                        <div className="ide-import-zip-chooser-label">
-                          HDL Top
-                          {zipInspection!.detectedTopPath === selectedZipHdl && (
-                            <span className="ide-import-zip-auto-badge" data-testid="ide-import-zip-hdl-auto">auto</span>
-                          )}
-                        </div>
-                        {zipInspection!.hdlCandidates.map((path) => (
-                          <label
-                            key={path}
-                            className={`ide-import-zip-radio-row${selectedZipHdl === path ? ' is-selected' : ''}`}
-                            data-testid={`ide-import-zip-hdl-option-${path}`}
-                          >
-                            <input
-                              type="radio"
-                              name="zip-hdl"
-                              value={path}
-                              checked={selectedZipHdl === path}
-                              onChange={() => setSelectedZipHdl(path)}
-                            />
-                            <code className="ide-import-zip-radio-path">{path}</code>
-                            {path === zipInspection!.detectedTopPath && (
-                              <span className="ide-import-zip-score-badge">scored #1</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-
-                      <div className="ide-import-zip-chooser-col">
-                        <div className="ide-import-zip-chooser-label">
-                          XDC Constraints
-                          {zipInspection!.detectedXdcPath === selectedZipXdc && (
-                            <span className="ide-import-zip-auto-badge" data-testid="ide-import-zip-xdc-auto">auto</span>
-                          )}
-                        </div>
-                        <label
-                          className={`ide-import-zip-radio-row${selectedZipXdc === null ? ' is-selected' : ''}`}
-                          data-testid="ide-import-zip-xdc-option-none"
-                        >
-                          <input
-                            type="radio"
-                            name="zip-xdc"
-                            value=""
-                            checked={selectedZipXdc === null}
-                            onChange={() => setSelectedZipXdc(null)}
-                          />
-                          <span className="ide-import-zip-radio-path" style={{ color: 'var(--ide-text-muted)' }}>none</span>
-                        </label>
-                        {zipInspection!.xdcCandidates.map((path) => (
-                          <label
-                            key={path}
-                            className={`ide-import-zip-radio-row${selectedZipXdc === path ? ' is-selected' : ''}`}
-                            data-testid={`ide-import-zip-xdc-option-${path}`}
-                          >
-                            <input
-                              type="radio"
-                              name="zip-xdc"
-                              value={path}
-                              checked={selectedZipXdc === path}
-                              onChange={() => setSelectedZipXdc(path)}
-                            />
-                            <code className="ide-import-zip-radio-path">{path}</code>
-                            {path === zipInspection!.detectedXdcPath && (
-                              <span className="ide-import-zip-score-badge">scored #1</span>
-                            )}
-                          </label>
-                        ))}
-                      </div>
-
-                      {(selectedZipHdl !== zipInspection!.detectedTopPath ||
-                        selectedZipXdc !== (zipInspection!.detectedXdcPath ?? null)) && selectedZipHdl && (
-                        <div className="ide-inline-actions" style={{ gridColumn: '1 / -1', marginTop: 'var(--ide-space-1)' }}>
-                          <IdeButton
-                            tone="secondary"
-                            onClick={() => void handleReextractZip(selectedZipHdl!, selectedZipXdc)}
-                            disabled={zipBusy}
-                            testId="ide-import-zip-reextract"
-                          >
-                            {zipBusy ? 'Re-extracting…' : 'Re-extract with selection'}
-                          </IdeButton>
-                        </div>
-                      )}
-                    </div>
-                    )}
-
-                    <div className="ide-kv-list">
-                      <div className="ide-kv-row">
-                        <span>Mode</span>
-                        <span data-testid="ide-import-zip-mode">
-                          {zipInspection!.importMode === 'manifest' ? 'RedByte manifest' : 'HDL/XDC reconstruction'}
-                        </span>
-                      </div>
-                      <div className="ide-kv-row">
-                        <span>Language</span>
-                        <span data-testid="ide-import-zip-top-language">
-                          {zipInspection!.detectedTopLanguage.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ide-import-zip-lists">
-                      <div>
-                        <h4>Detected</h4>
-                        <ul className="ide-list" data-testid="ide-import-zip-detected-list">
-                          {zipInspection!.detectedFiles.map((path) => (
-                            <li key={path}>
-                              <code>{path}</code>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4>Ignored</h4>
-                        {zipInspection!.ignoredFiles.length > 0 ? (
-                          <ul className="ide-list" data-testid="ide-import-zip-ignored-list">
-                            {zipInspection!.ignoredFiles.slice(0, 10).map((path) => (
-                              <li key={path}>
-                                <code>{path}</code>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="ide-copy">No extra files ignored.</p>
-                        )}
-                      </div>
-                    </div>
-                    {zipInspection!.weakPinPorts.length > 0 && (
-                      <div className="ide-import-weak-pins-callout" data-testid="ide-import-weak-pins">
-                        <span className="ide-import-weak-pins-label">Weak pin mappings</span>
-                        <p>
-                          {zipInspection!.weakPinPorts.length} port{zipInspection!.weakPinPorts.length !== 1 ? 's' : ''} have
-                          pins that are not in the Basys3 pin table. They have been mapped as-is; verify they are correct.
-                        </p>
-                        <ul>
-                          {zipInspection!.weakPinPorts.map((portName) => (
-                            <li key={portName} data-testid={`ide-import-weak-pin-${portName}`}>{portName}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {zipInspection?.reconstructionLevel === 'ports-only' && (
-                      <IdeCallout
-                        tone="warn"
-                        title="Ports only — no circuit reconstructed"
-                        testId="ide-import-recon-partial"
-                      >
-                        <p className="ide-copy" style={{ margin: '0 0 var(--ide-space-1)' }}>
-                          Only input/output ports were recovered. Internal logic was not reconstructed.
-                        </p>
-                        <p className="ide-copy" style={{ margin: 0 }}>
-                          Your project will have the correct port names but an empty circuit.
-                          Rebuild the gates manually in Design, or re-import from a RedByte project export.
-                        </p>
-                      </IdeCallout>
-                    )}
-                    {isManifestZipImport && (
-                      <div
-                        className="ide-import-recon-callout ide-import-recon-callout--full"
-                        data-testid="ide-import-recon-manifest"
-                      >
-                        <strong>RedByte project restored</strong>
-                        <p>
-                          RedByte restored the project directly from the embedded manifest. Extra HDL, XDC,
-                          and Vivado files in the ZIP were treated as reference material only.
-                        </p>
-                      </div>
-                    )}
-                    {!isManifestZipImport && zipInspection?.reconstructionLevel === 'full' && (
-                      <div
-                        className="ide-import-recon-callout ide-import-recon-callout--full"
-                        data-testid="ide-import-recon-full"
-                      >
-                        <strong>Structural HDL detected</strong>
-                        <p>Circuit reconstructed with gates and connections.</p>
-                      </div>
-                    )}
-                  </section>
-                ) : null}
-              </div>
-            )}
-          </section>
-
-          <section className="ide-import-stage-col" data-testid="ide-import-diagnostics-panel">
-            <IdeSectionHeader title="Diagnostics + Preview" meta="Stage 2/3" />
-            {!hasParsedHdl && !hdlText.trim() && (
-              <IdeCallout tone="info" title="Start with a ZIP or HDL" testId="ide-import-empty-state">
-                Load a Vivado ZIP for the fastest path, or paste a VHDL entity / Verilog module and then click{' '}
-                <strong>Parse HDL</strong>.
-              </IdeCallout>
-            )}
-            {!hasParsedHdl && hdlText.trim().length > 0 && (
-              <IdeCallout tone="warn" title="HDL ready — parse next" testId="ide-import-needs-parse">
-                Your HDL is ready. Click <strong>Parse HDL</strong> to inspect ports and build the import preview.
-              </IdeCallout>
-            )}
-            <div className="ide-kv-list">
-              <div className="ide-kv-row">
-                <span>Parsed Entity</span>
-                <code data-testid="ide-import-entity-name">{parsedEntityName}</code>
-              </div>
-              <div className="ide-kv-row">
-                <span>Status</span>
-                <span>{statusMessage}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Parse</span>
-                <span data-testid="ide-import-parse-status">{parseStatusLabel}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Reconstruction</span>
-                <span data-testid="ide-import-reconstruction-status">{reconstructionStatusLabel}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Compiler</span>
-                <span data-testid="ide-import-compiler-status">{compilerStatusLabel}</span>
-              </div>
-              <div className="ide-kv-row">
-                <span>Copy</span>
-                <span>{copyFeedback === 'idle' ? 'idle' : copyFeedback === 'copied' ? 'copied' : 'failed'}</span>
-              </div>
-            </div>
-
-            <section className="ide-export-section" data-testid="ide-import-ports-table">
-              <IdeSectionHeader title="Ports Table" meta={`${ports.length} ports`} />
-              <IdeDataTable
-                columns={['Port', 'Direction', 'Width', 'Mapped Pin', 'Status']}
-                rows={portRows}
-              />
-            </section>
-
-            {hasParsedHdl && (hasParsedXdc || unmappedPorts.length > 0) && (
-              <section
-                className="ide-import-xdc-coverage"
-                data-testid="ide-import-xdc-coverage"
-              >
-                <header className="ide-export-section-header">
-                  <h3>XDC Coverage</h3>
-                  <span className="ide-export-section-meta">
-                    {parsedHdl!.ports.length - unmappedPorts.length}/{parsedHdl!.ports.length} constrained
-                  </span>
-                </header>
-
-                {unmappedPorts.length > 0 && (
-                  <div className="ide-import-xdc-gaps" data-testid="ide-import-unmapped-list">
-                    {unmappedPorts.map((port) => (
-                      <div key={port.name} className="ide-import-xdc-gap-row ide-import-xdc-gap-row--unmapped">
-                        <IdeStatusPill tone="warn">UNMAPPED</IdeStatusPill>
-                        <code className="ide-import-xdc-gap-port">{port.name}</code>
-                        <span className="ide-import-xdc-gap-dir">{port.direction.toUpperCase()}</span>
-                        <span className="ide-import-xdc-gap-hint">No XDC constraint found</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {orphanXdcKeys.length > 0 && (
-                  <div className="ide-import-xdc-orphans" data-testid="ide-import-orphan-list">
-                    {orphanXdcKeys.map((key) => (
-                      <div key={key} className="ide-import-xdc-gap-row ide-import-xdc-gap-row--orphan">
-                        <IdeStatusPill tone="warn">ORPHAN</IdeStatusPill>
-                        <code className="ide-import-xdc-gap-port">{key}</code>
-                        <span className="ide-import-xdc-gap-dir">→ {xdcResult!.pinMap[key]}</span>
-                        {xdcResult!.pinEntries[key]?.line != null ? (
-                          <button
-                            type="button"
-                            className="ide-warning-jump"
-                            onClick={() => { setTab('xdc'); scrollToXdcLine(xdcResult!.pinEntries[key]!.line!); }}
-                            title={`Jump to XDC line ${xdcResult!.pinEntries[key]!.line}`}
-                            data-testid={`ide-import-xdc-jump-${key}`}
-                          >
-                            Ln {xdcResult!.pinEntries[key]!.line}
-                          </button>
-                        ) : (
-                          <span className="ide-import-xdc-gap-hint">In XDC but not in HDL</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {unmappedPorts.length === 0 && orphanXdcKeys.length === 0 && (
-                  <p className="ide-copy" style={{ margin: 0, fontSize: 11, color: 'var(--ide-text-muted)' }}>
-                    All HDL ports are constrained. No orphan XDC keys.
-                  </p>
-                )}
-              </section>
-            )}
-
-            <section className="ide-export-section" data-testid="ide-import-unmapped-list">
-              <IdeSectionHeader title="Unmapped Ports" meta={`${unmappedPorts.length} remaining`} />
-              {unmappedPorts.length > 0 ? (
-                <div className="ide-import-unmapped-rows">
-                  {unmappedPorts.map((port) => (
-                    <div key={port.name} className="ide-import-unmapped-row" data-testid={`ide-import-unmapped-row-${port.name}`}>
-                      <span className="ide-import-unmapped-port-name">{port.name}</span>
-                      <select
-                        className="ide-import-unmapped-pin-select"
-                        data-testid={`ide-import-unmapped-pin-select-${port.name}`}
-                        value={mapping[port.name] ?? ''}
-                        onChange={(e) => setMapping((prev) => ({ ...prev, [port.name]: e.target.value }))}
-                      >
-                        <option value="">— map to pin —</option>
-                        {BASYS3_QUICK_PINS.map((pin) => (
-                          <option key={pin} value={pin}>{pin}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
+              {tab === 'upload' && !zipInspection ? (
+                <div className="ide-import-v3__samples">
+                  <span>No ZIP available?</span>
+                  <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
+                    Load structural sample
+                  </IdeButton>
+                  <IdeButton tone="ghost" onClick={() => loadImportSample('edge-detect')} testId="ide-import-load-sample-edge-detect">
+                    Load blocked behavioral sample
+                  </IdeButton>
                 </div>
-              ) : hasParsedHdl ? (
-                <IdeCallout tone="success" title="All required ports mapped">
-                  Required ports are fully mapped and ready for import.
+              ) : null}
+
+              {zipImportError ? (
+                <IdeCallout tone="error" title="ZIP was not opened" testId="ide-import-zip-error">
+                  <p className="ide-copy ide-copy--flush">{formatZipImportErrorMessage(zipImportError)}</p>
+                  <p className="ide-import-v3__safe-state">Your active project was not changed.</p>
+                  <div className="ide-inline-actions">
+                    <IdeButton tone="primary" onClick={handleOpenZipPicker} disabled={zipBusy} testId="ide-import-retry-zip">
+                      Choose another ZIP
+                    </IdeButton>
+                    <IdeButton tone="secondary" onClick={() => setTab('hdl')} testId="ide-import-error-paste-hdl">
+                      Paste HDL instead
+                    </IdeButton>
+                  </div>
                 </IdeCallout>
               ) : null}
-            </section>
 
-            <section className="ide-export-section" data-testid="ide-import-warnings">
-              <IdeSectionHeader title="Warnings" meta={`${warnings.length} warnings`} />
-              {warnings.length > 0 ? (
-                <IdeCallout tone="warn" title="Vivado directives ignored">
-                  <ul className="ide-list">
-                    {warnings.map((warning) => (
-                      <li key={warning}>{warning}</li>
-                    ))}
-                  </ul>
-                </IdeCallout>
-              ) : hasParsedHdl ? (
-                <IdeCallout tone="info" title="No warnings">No parser warnings detected yet.</IdeCallout>
-              ) : null}
-            </section>
-
-            <section className="ide-export-section" data-testid="ide-import-errors">
-              <IdeSectionHeader title="Blocking Errors" meta={`${blockingErrors.length} blockers`} />
-              {blockingErrors.length > 0 ? (
-                <IdeCallout tone="error" title="Import blocked">
-                  <ul className="ide-list">
-                    {blockingErrors.map((error) => (
-                      <li key={error}>{error}</li>
-                    ))}
-                  </ul>
-                </IdeCallout>
-              ) : hasParsedHdl ? (
-                <IdeCallout tone="success" title="No blocking errors">
-                  Import can proceed once you click "Import to Project."
+              {submissionDetectedMessage ? (
+                <IdeCallout tone="info" title="Submission detected" testId="ide-import-submission-detected">
+                  {submissionDetectedMessage}
                 </IdeCallout>
               ) : null}
-            </section>
 
-            <section className="ide-export-section">
-              <IdeSectionHeader title="Preview Schematic" meta="v1 preview" />
-              <div data-testid="ide-import-schematic-preview">
-                {parsedHdl ? (
-                  <ImportSchematicPreview parsedHdl={parsedHdl!} mapping={mapping} />
-                ) : (
-                  <p className="ide-copy" style={{ color: 'var(--ide-text-muted)', fontSize: 11 }}>
-                    Parse HDL to see a port preview.
+              {submissionIntegrityMessage ? (
+                <IdeCallout tone="error" title="Submission integrity failed" testId="ide-import-submission-integrity-failed">
+                  {submissionIntegrityMessage}
+                </IdeCallout>
+              ) : null}
+
+              {zipInspection ? (
+                <div className="ide-import-v3__zip-summary" data-testid="ide-import-zip-inspection">
+                  <ImportZipAuthorityCallout zi={zipInspection} />
+                  <dl>
+                    <div><dt>Top source</dt><dd>{zipInspection.detectedTopPath ?? 'Not detected'}</dd></div>
+                    <div><dt>Constraints</dt><dd>{zipInspection.detectedXdcPath ?? 'Not detected'}</dd></div>
+                    <div><dt>Mode</dt><dd>{zipInspection.importMode === 'manifest' ? 'Manifest restore' : 'Reconstruction'}</dd></div>
+                  </dl>
+                </div>
+              ) : null}
+
+              {tab === 'hdl' ? (
+                <div className="ide-import-v3__editor">
+                  <div className="ide-import-v3__editor-bar">
+                    <label>
+                      Language
+                      <select value={language} onChange={(event) => setLanguage(event.target.value as HdlLanguage)} data-testid="ide-import-language-select">
+                        <option value="auto">Auto-detect</option>
+                        <option value="vhdl">VHDL</option>
+                        <option value="verilog">Verilog</option>
+                      </select>
+                    </label>
+                    {detectedEntityNames.length >= 2 ? (
+                      <label>
+                        Top entity
+                        <select
+                          value={selectedEntityName ?? detectedEntityNames[0]}
+                          onChange={(event) => setSelectedEntityName(event.target.value)}
+                          data-testid="ide-import-entity-select"
+                        >
+                          {detectedEntityNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+                  </div>
+                  {detectedBehavioralConstructs.length > 0 ? (
+                    <IdeCallout tone="error" title="Behavioral HDL is not importable" testId="ide-import-behavioral-warning">
+                      Detected: {detectedBehavioralConstructs.join(', ')}. The source remains visible, and replacement will be blocked.
+                    </IdeCallout>
+                  ) : null}
+                  <textarea
+                    ref={hdlTextareaRef}
+                    data-testid="ide-import-hdl-textarea"
+                    value={hdlText}
+                    onChange={(event) => setHdlText(event.target.value)}
+                    onScroll={handleHdlScroll}
+                    onKeyDown={handleHdlKeyDown}
+                    aria-describedby="ide-import-hdl-editor-keyboard-help"
+                    placeholder="Paste structural VHDL or Verilog. Behavioral process/always constructs are detected before replacement."
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                  <p
+                    id="ide-import-hdl-editor-keyboard-help"
+                    className="ide-import-v3__keyboard-help"
+                    data-testid="ide-import-hdl-editor-keyboard-help"
+                  >
+                    Keyboard: Tab indents, Shift+Tab outdents, Ctrl+S parses, and Escape leaves the editor for the actions below.
                   </p>
-                )}
+                  <div className="ide-import-v3__editor-actions" ref={hdlEditorActionsRef}>
+                    <IdeButton
+                      tone={hasParsedHdl ? 'secondary' : 'primary'}
+                      onClick={parseHdl}
+                      disabled={!hdlText.trim()}
+                      testId="ide-import-parse"
+                    >
+                      Parse HDL
+                    </IdeButton>
+                    <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
+                      Structural sample
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={() => loadImportSample('edge-detect')} testId="ide-import-load-sample-edge-detect">
+                      Blocked sample
+                    </IdeButton>
+                  </div>
+                </div>
+              ) : null}
+
+              {tab === 'xdc' ? (
+                <div className="ide-import-v3__editor">
+                  <textarea
+                    ref={xdcTextareaRef}
+                    data-testid="ide-import-xdc-input"
+                    value={xdcText}
+                    onChange={(event) => setXdcText(event.target.value)}
+                    onScroll={handleXdcScroll}
+                    placeholder="Paste XDC PACKAGE_PIN constraints here."
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                  />
+                  <div className="ide-import-v3__editor-actions">
+                    <IdeButton tone="secondary" onClick={() => parseXdc()} disabled={!xdcText.trim()} testId="ide-import-parse-xdc">
+                      Parse XDC
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={() => setTab('hdl')} testId="ide-import-back-hdl">Back to HDL</IdeButton>
+                  </div>
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
+          {!showVerifyResetNotice && hasParsedHdl && !pendingApplyProject ? (
+            <section className="ide-import-v3__review" data-testid="ide-import-review-shell" aria-labelledby="ide-import-v3-review-title">
+              <header className="ide-import-v3__section-header">
+                <div>
+                  <p className="ide-surface-block-label">2 · Review</p>
+                  <h3 id="ide-import-v3-review-title">Inspect the import candidate</h3>
+                </div>
+                <strong>
+                  {detectedBehavioralConstructs.length > 0
+                    ? 'Ready to review; replacement blocked'
+                    : canImport
+                      ? 'Ready for replacement review'
+                      : 'Resolve required mappings'}
+                </strong>
+              </header>
+
+              <div className="ide-import-v3__review-facts">
+                <div><span>Entity</span><strong>{parsedEntityName}</strong></div>
+                <div><span>Fidelity</span><strong>{reviewModeLabel}</strong></div>
+                <div><span>Ports</span><strong>{inputCount} in · {outputCount} out</strong></div>
+                <div data-testid="ide-import-board-detection">
+                  <span>Board</span>
+                  <strong>{boardDetection ? boardDetection.board : 'Not detected'}</strong>
+                  <small>{boardDetection ? boardDetection.confidence : 'No XDC evidence'}</small>
+                </div>
+              </div>
+
+              {effectiveReconstructionLevel === 'ports-only' ? (
+                <IdeCallout tone="warn" title="Ports only — no internal circuit" testId="ide-import-ports-only-warning">
+                  <p className="ide-copy ide-copy--flush">
+                    Internal logic was not reconstructed, so the circuit is empty. The project can preserve its top-level ports. Rebuild the circuit in Design before verification.
+                  </p>
+                  <div className="ide-inline-actions">
+                    {onGoToDesign ? (
+                      <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-ports-only-go-design">
+                        Rebuild in Design
+                      </IdeButton>
+                    ) : null}
+                    {onGoToExport ? (
+                      <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-import-go-to-export">
+                        Open Export
+                      </IdeButton>
+                    ) : null}
+                  </div>
+                </IdeCallout>
+              ) : effectiveReconstructionLevel === 'full' ? (
+                <div className="ide-import-v3__reconstruction" data-testid="ide-import-recon-full">
+                  <strong>Structural HDL circuit reconstructed</strong>
+                  <span>Gates and connections are available in the schematic preview.</span>
+                </div>
+              ) : null}
+
+              {warnings.length > 0 ? (
+                <IdeCallout tone="warn" title="Review parser warnings" testId="ide-import-warning-list">
+                  <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+                </IdeCallout>
+              ) : null}
+
+              {blockingErrors.length > 0 ? (
+                <IdeCallout tone="error" title="Required repairs" testId="ide-import-blocking-errors">
+                  <ul>{blockingErrors.map((error) => <li key={error}>{error}</li>)}</ul>
+                </IdeCallout>
+              ) : null}
+
+              <div className="ide-import-v3__review-workspace">
+                <section data-testid="ide-import-ports-table">
+                  <header>
+                    <div><p className="ide-surface-block-label">Port mapping</p><h4>Entity ports to board pins</h4></div>
+                    {canApplySuggestions ? (
+                      <IdeButton tone="secondary" onClick={applySuggestions} testId="ide-import-apply-pins-only">Apply suggestions</IdeButton>
+                    ) : null}
+                  </header>
+                  <IdeDataTable
+                    columns={['Entity Port', 'Board Pin', 'Direction', 'Width', 'Confidence', 'Status']}
+                    rows={portRows}
+                  />
+                </section>
+                <section className="ide-import-v3__schematic" data-testid="ide-import-schematic-preview">
+                  <header><p className="ide-surface-block-label">Schematic preview</p><h4>{parsedEntityName}</h4></header>
+                  <ImportSchematicPreview parsedHdl={parsedHdl} mapping={mapping} />
+                </section>
+              </div>
+
+              <div className="ide-import-v3__review-actions">
+                <p>{statusMessage}</p>
+                <div>
+                  <IdeButton
+                    tone="primary"
+                    onClick={requestApplyProject}
+                    disabled={!canImport}
+                    testId="ide-import-replace-project"
+                  >
+                    Review replacement
+                  </IdeButton>
+                  <IdeButton tone="secondary" onClick={() => setTab('hdl')} testId="ide-import-review-edit-source">
+                    Edit source
+                  </IdeButton>
+                </div>
               </div>
             </section>
-          </section>
-        </IdeGrid>
-        </>
-        )}
+          ) : null}
+
+          {!showVerifyResetNotice && pendingApplyProject && commitPreview ? (
+            <section className="ide-import-v3__apply" data-testid="ide-import-commit-preview" aria-labelledby="ide-import-v3-apply-title">
+              <header className="ide-import-v3__section-header">
+                <div><p className="ide-surface-block-label">3 · Apply</p><h3 id="ide-import-v3-apply-title">Confirm project replacement</h3></div>
+                <strong>{hasImportBlocker ? 'Blocked' : 'Ready to apply'}</strong>
+              </header>
+              <div className="ide-import-v3__apply-facts">
+                <div><span>Incoming entity</span><strong>{commitPreview.entityName}</strong></div>
+                <div><span>Reconstruction</span><strong>{commitPreview.reconstructionLevel}</strong></div>
+                <div><span>Circuit</span><strong>{commitPreview.nodeCount} nodes · {commitPreview.connectionCount} connections</strong></div>
+                <div><span>Port mapping</span><strong>{commitPreview.mappedCount}/{commitPreview.totalPorts} mapped</strong></div>
+              </div>
+              <div className="ide-import-v3__replacement">
+                <div>
+                  <span>Added ports</span>
+                  <strong>{commitPreview.addedPorts.length > 0 ? commitPreview.addedPorts.map((port) => port.name).join(', ') : 'None'}</strong>
+                </div>
+                <div>
+                  <span>Removed ports</span>
+                  <strong>{commitPreview.removedPortNames.length > 0 ? commitPreview.removedPortNames.join(', ') : 'None'}</strong>
+                </div>
+              </div>
+
+              {hasImportBlocker ? (
+                <IdeCallout tone="error" title="Replacement blocked" testId="ide-import-behavioral-blocker">
+                  <ul>{importBlockerReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
+                  {onGoToDesign ? (
+                    <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-blocker-go-design">
+                      Open Design to rebuild
+                    </IdeButton>
+                  ) : null}
+                </IdeCallout>
+              ) : (
+                <IdeCallout tone="warn" title="This replaces the active project" testId="ide-import-review-before-replace">
+                  Cancel keeps the current project unchanged. Confirm applies only the candidate shown above.
+                </IdeCallout>
+              )}
+
+              <div className="ide-import-v3__apply-actions">
+                <IdeButton tone="secondary" onClick={cancelApplyProject} testId="ide-import-apply-cancel">
+                  Cancel · keep current project
+                </IdeButton>
+                <IdeButton tone="primary" onClick={confirmApplyProject} disabled={hasImportBlocker} testId="ide-import-apply-confirm">
+                  Confirm replacement
+                </IdeButton>
+              </div>
+            </section>
+          ) : null}
+        </section>
       </IdePanel>
     </IdeSurfaceLayout>
   );
@@ -4555,19 +3325,6 @@ function buildDiagnosticsReport(params: {
     for (const warning of warnings) lines.push(`- ${warning}`);
   }
   return lines.join('\n');
-}
-
-function buildMappingRecord(project: RBProject): Record<string, string> {
-  const rows = [
-    ...(project.ioMapping?.inputs ?? []),
-    ...(project.ioMapping?.outputs ?? []),
-  ];
-  const mapping: Record<string, string> = {};
-  for (const row of rows) {
-    const key = (row.label ?? row.id).trim() || row.id;
-    mapping[key] = (row.pin ?? '').toUpperCase();
-  }
-  return mapping;
 }
 
 /**
