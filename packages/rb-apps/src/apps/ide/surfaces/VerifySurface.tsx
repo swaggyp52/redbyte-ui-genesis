@@ -4913,7 +4913,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       layoutIntent="workbench"
       consoleHasBlocking={sessionSignalsAssertionFailure}
       consoleHasEntries={false}
-      leftDockMode={verifyLayoutPolicy.leftDockMode}
+      leftDockMode="hidden"
       rightDockMode={verifyLayoutPolicy.rightDockMode}
       rightDockCanCollapse={false}
       consoleMode={verifyLayoutPolicy.consoleMode}
@@ -5151,6 +5151,77 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         ) : null}
         </div>
         </VerifyHeaderRegion>
+
+        {!isNoCircuitTaskFirst ? (
+          <section
+            className="ide-verify-signal-shelf"
+            data-testid="ide-verify-signal-shelf"
+            aria-label="Circuit signals"
+          >
+            <header>
+              <div>
+                <span>Signals</span>
+                <strong>
+                  {showMismatchOnlySignals
+                    ? `${visibleSignalCount} flagged`
+                    : showAllSignals
+                      ? `${signalTimeline.length} visible`
+                      : `${visibleSignalCount} relevant`}
+                </strong>
+              </div>
+              {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMismatchOnlySignals(false);
+                    setShowAllSignals((previous) => !previous);
+                  }}
+                  data-testid="ide-verify-show-all-signals-shelf"
+                >
+                  {showAllSignals ? 'Show relevant' : 'Show all'}
+                </button>
+              ) : null}
+            </header>
+            <div className="ide-verify-signal-shelf-groups" data-testid="ide-verify-signal-shelf-list">
+              {(['Inputs', 'Outputs', 'Internal'] as const).map((group) => {
+                const rows = groupedVisibleSignals[group];
+                if (rows.length === 0) return null;
+                return (
+                  <section key={group} className={`ide-verify-signal-shelf-group is-${group.toLowerCase()}`}>
+                    <span>{group}</span>
+                    <div>
+                      {rows.map((signalRow) => {
+                        const signalPresentation = getVerifySignalPresentation(
+                          signalRow.signal,
+                          [...inputFields, ...outputFields]
+                        );
+                        const logicalName = signalPresentation.logicalName;
+                        const physicalName = signalPresentation.physicalName;
+                        const mismatch = hasSessionFailureEvidence &&
+                          failingRows.some((row) => row.signal === signalRow.signal);
+                        return (
+                          <button
+                            key={signalRow.signal}
+                            className={selectedSignal === signalRow.signal ? 'is-active' : ''}
+                            type="button"
+                            onClick={() => handleSignalSelect(signalRow.signal)}
+                            onMouseEnter={() => handleSignalHover(signalRow.signal)}
+                            onMouseLeave={() => handleSignalHover(null)}
+                            data-testid={`ide-verify-shelf-signal-${toTestId(signalRow.signal)}`}
+                          >
+                            <strong>{logicalName}</strong>
+                            {physicalName ? <small>{physicalName}</small> : null}
+                            {mismatch ? <em>Mismatch</em> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
 
         {guidedLabTask ? (
           <section className="ide-guided-lab-card" data-testid="ide-verify-guided-full-adder-truth-table">
@@ -7679,4 +7750,34 @@ function buildTraceInputSortKey(input: TraceInputDescriptor): { group: number; i
     return { group: 3, index: buttonNameMatch[2].charCodeAt(0), name };
   }
   return { group: 4, index: 0, name };
+}
+
+function getVerifySignalPresentation(
+  signal: string,
+  fields: VerifyVectorDraftInput[]
+): { logicalName: string; physicalName: string | null } {
+  const signalKey = normalizeFieldId(signal);
+  const matchedField = fields.find((field) => {
+    const idKey = normalizeFieldId(field.id);
+    const label = field.label?.trim() ?? '';
+    const physicalLabel = label.replace(/\s*\([^()]+\)\s*$/, '').trim();
+    const physicalKey = normalizeFieldId(physicalLabel);
+    return (
+      idKey === signalKey ||
+      idKey.startsWith(signalKey) ||
+      signalKey.startsWith(idKey) ||
+      physicalKey === signalKey
+    );
+  });
+  const authoredLabel = matchedField?.label?.trim() || signal.trim();
+  const parenthetical = authoredLabel.match(/\(([^()]+)\)\s*$/);
+  const logicalName = (parenthetical?.[1] ?? authoredLabel).trim();
+  const authoredPhysical = authoredLabel.replace(/\s*\([^()]+\)\s*$/, '').trim();
+  const physicalName =
+    authoredPhysical && authoredPhysical !== logicalName
+      ? authoredPhysical
+      : signal.trim() !== logicalName
+        ? signal.trim()
+        : null;
+  return { logicalName, physicalName };
 }

@@ -620,7 +620,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     if (state === 'fail') return 'FAIL';
     if (state === 'stale') return 'STALE';
     if (state === 'observed') return 'Observed';
-    return 'Not run';
+    return '—';
   }, [caseEvidenceByTick]);
 
   if (inputFields.length === 0) {
@@ -877,7 +877,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 data-testid={`ide-stimulus-row-select-${field.id}`}
                 style={{ width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-primary)', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}
               >
-                {field.label}{field.pin ? <code style={{ marginLeft: 4, fontSize: '0.82em', color: 'var(--rb-text-secondary)' }}>{field.pin}</code> : null}
+                <strong>{getStimulusLogicalName(field.label)}</strong>
+                {(getStimulusPhysicalName(field.label) || field.pin) ? (
+                  <small>
+                    {[getStimulusPhysicalName(field.label), field.pin].filter(Boolean).join(' · ')}
+                  </small>
+                ) : null}
               </button>
             </div>
             {ticks.length === 0 && index === 0 ? (
@@ -893,7 +898,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                   setSelectedLaneKey(`input:${field.id}`);
                   commitVectors((vectors) => setInputValue(vectors, inputFields, tick, field.id, paintSession.value as 0 | 1));
                 }} data-testid={inputCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowHeight, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
-                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: tickW - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-accent)' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
+                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: tickW - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-stimulus-input, var(--rb-accent))' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
                 </button>
               );
             })}
@@ -903,15 +908,15 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
         {outputFields.length > 0 ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
-              <div className="ide-stimulus-group-label" title="Expected outputs; Unset means no check" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
-                Expected · Unset = no check
+              <div className="ide-stimulus-group-label" title="Expected outputs; empty cells are not compared" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
+                Expected · click to set
               </div>
               {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: addColW, flexShrink: 0 }} />
             </div>
             {outputFields.map((field) => (
               <div key={field.id} className="ide-stimulus-row ide-stimulus-row--output" style={{ display: 'flex', height: rowH, alignItems: 'center' }}>
-                <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{field.label}</button>
+                <button type="button" className={`ide-stimulus-label-cell ide-stimulus-label-cell--expected${selectedLane?.key === `expected:${field.id}` ? ' is-selected' : ''}`} onClick={() => setSelectedLaneKey(`expected:${field.id}`)} data-testid={`ide-stimulus-row-select-${field.id}`} style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8em', color: 'var(--rb-text-secondary)', fontStyle: 'italic', fontFamily: 'var(--rb-font-mono, monospace)', background: 'transparent', border: 'none', textAlign: 'left', cursor: 'pointer' }}>{getStimulusLogicalName(field.label)}</button>
                 {ticks.map((tick) => {
                   const value = getExpectedValue(authoredVectors, tick, field.id);
                   const expectedCellTestId = `ide-stimulus-expected-${field.id}-t${tick}`;
@@ -936,13 +941,13 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                             width: tickW - 8,
                             height: rowH - 10,
                             borderRadius: 3,
-                            background: value === 1 ? 'var(--rb-accent)' : 'transparent',
+                            background: value === 1 ? 'var(--rb-stimulus-expected, var(--rb-accent))' : 'transparent',
                             border: value === 0 ? '1px solid var(--rb-border)' : 'none',
                           }}
                         >
                           <span className="ide-stimulus-cell__value">{value}</span>
                         </div>
-                      ) : <span className="ide-stimulus-cell__unset">Unset</span>}
+                      ) : <span className="ide-stimulus-cell__unset">Set</span>}
                     </button>
                   );
                 })}
@@ -967,12 +972,12 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             {outputFields.map((field) => (
               <div key={field.id} className="ide-stimulus-row ide-stimulus-row--observed" style={{ display: 'flex', height: rowH, alignItems: 'center' }}>
                 <div className="ide-stimulus-label-cell ide-stimulus-label-cell--observed" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, paddingRight: 4 }}>
-                  {field.label}
+                  {getStimulusLogicalName(field.label)}
                 </div>
                 {ticks.map((tick) => {
                   const observedValue = observedValuesByTick?.[tick]?.[field.id];
                   const hasObservedValue = observedValue === '0' || observedValue === '1';
-                  const visibleValue = hasObservedValue ? observedValue : 'Not run';
+                  const visibleValue = hasObservedValue ? observedValue : '—';
                   return (
                     <output
                       key={tick}
@@ -1020,3 +1025,15 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
     </div>
   );
 };
+
+function getStimulusLogicalName(label: string): string {
+  const parenthetical = label.match(/\(([^()]+)\)\s*$/);
+  return (parenthetical?.[1] ?? label).trim();
+}
+
+function getStimulusPhysicalName(label: string): string | null {
+  const logicalName = getStimulusLogicalName(label);
+  if (logicalName === label.trim()) return null;
+  const physicalName = label.replace(/\s*\([^()]+\)\s*$/, '').trim();
+  return physicalName && physicalName !== logicalName ? physicalName : null;
+}

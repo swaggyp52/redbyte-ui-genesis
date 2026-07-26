@@ -38,7 +38,7 @@ describe('Testbench-first Verify contracts', () => {
       />
     );
 
-    expect(getByRole('heading', { name: 'Test your circuit' })).toBeTruthy();
+    expect(getByRole('heading', { name: 'Simulation Studio' })).toBeTruthy();
     expect(getByTestId('ide-verify-context-project').textContent).toBe('Half Adder');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Stale');
     expect(getByTestId('ide-verify-context-scenario').textContent).toContain('Half Adder Cases');
