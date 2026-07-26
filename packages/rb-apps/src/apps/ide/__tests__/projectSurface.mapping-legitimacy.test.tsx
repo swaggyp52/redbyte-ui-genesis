@@ -58,8 +58,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
 }
 
 describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
-  it('shows pipeline header, export alignment, and post-verify hint when mapping incomplete after verify', () => {
-    const { getByTestId } = render(
+  it('shows the mapping task and post-verify hint without a duplicate Export strip', () => {
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -82,7 +82,7 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
 
     expect(getByTestId('ide-project-map-pins-header').textContent).toContain('Board pin mapping');
     expect(getByTestId('ide-project-map-pipeline-copy').textContent).toContain('building the Vivado package');
-    expect(getByTestId('ide-project-map-export-alignment').textContent).toMatch(/Export/i);
+    expect(queryByTestId('ide-project-map-export-alignment')).toBeNull();
     expect(getByTestId('ide-project-mapping-post-verify-hint').textContent).toContain('verified');
   });
 

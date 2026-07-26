@@ -1,9 +1,9 @@
 .ide-project-v3 {
   display: grid;
-  gap: 18px;
+  gap: 14px;
   width: min(100%, 1440px);
   margin: 0 auto;
-  padding: 16px 18px 28px;
+  padding: 12px 18px 24px;
   color: var(--rb-text, #edf2f7);
 }
 
@@ -27,9 +27,9 @@
 .ide-project-v3-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(340px, 0.52fr);
-  gap: 28px;
+  gap: 20px;
   align-items: start;
-  padding: 8px 0 20px;
+  padding: 4px 0 14px;
   border-bottom: 1px solid color-mix(in srgb, var(--rb-border, #415066) 78%, transparent);
 }
 
@@ -43,7 +43,7 @@
   width: 100%;
   margin: 2px 0 8px;
   color: var(--rb-text-strong, #f8fafc);
-  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  font-size: clamp(1.45rem, 2vw, 2rem);
   font-weight: 720;
   line-height: 1.12;
 }
@@ -77,7 +77,13 @@
   margin: 0;
   color: var(--rb-text-muted, #aeb9c7);
   font-size: 0.98rem;
-  line-height: 1.55;
+  line-height: 1.45;
+}
+
+.ide-project-v3-source {
+  margin: 0;
+  color: var(--rb-text-muted, #aeb9c7);
+  font-size: 13px;
 }
 
 .ide-project-v3-goal {
@@ -108,13 +114,16 @@
 
 .ide-project-v3-next {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 9px;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border-left: 3px solid var(--rb-accent, #68b5ff);
   background: color-mix(in srgb, var(--rb-surface, #1a2532) 78%, transparent);
 }
 
 .ide-project-v3-next-state {
+  grid-column: 1 / -1;
   color: var(--rb-accent, #68b5ff);
   font-size: 13px;
   font-weight: 760;
@@ -141,10 +150,13 @@
 }
 
 .ide-project-v3-next .ide-project-v3-next-reason {
+  grid-column: 1;
   color: var(--rb-text, #edf2f7);
 }
 
 .ide-project-v3-next .ide-button {
+  grid-column: 2;
+  grid-row: 2 / span 2;
   width: max-content;
   min-width: 150px;
   margin-top: 3px;
@@ -152,7 +164,7 @@
 
 .ide-project-v3-meta {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-block: 1px solid color-mix(in srgb, var(--rb-border, #415066) 72%, transparent);
 }
 
@@ -162,7 +174,7 @@
   align-content: start;
   gap: 5px;
   min-width: 0;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border-right: 1px solid color-mix(in srgb, var(--rb-border, #415066) 58%, transparent);
 }
 
@@ -195,6 +207,35 @@
   align-items: center;
 }
 
+.ide-project-v3-more-actions {
+  position: relative;
+}
+
+.ide-project-v3-more-actions > summary,
+.ide-project-v3-record-shell > summary,
+.ide-project-v3-stage-details > summary {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border, #415066);
+  border-radius: 4px;
+  color: var(--rb-text-muted, #aeb9c7);
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ide-project-v3-more-actions > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ide-project-v3-more-actions .ide-project-v3-meta {
+  flex: 1 0 100%;
+  width: 100%;
+}
+
 .ide-project-v3-command-board {
   display: grid;
   gap: 14px;
@@ -217,7 +258,7 @@
   justify-content: space-between;
   gap: 24px;
   align-items: end;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
 }
 
 .ide-project-v3-change > header > p,
@@ -271,7 +312,7 @@
   grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr) auto;
   gap: 22px;
   align-items: start;
-  padding: 18px 4px;
+  padding: 12px 4px;
   border-bottom: 1px solid color-mix(in srgb, var(--rb-border, #415066) 68%, transparent);
 }
 
@@ -305,6 +346,44 @@
 .ide-project-v3-stage-body h3,
 .ide-project-v3-stage-body p {
   margin: 0;
+}
+
+.ide-project-v3-stage-details {
+  margin-top: 8px;
+}
+
+.ide-project-v3-stage-details > summary {
+  width: max-content;
+  min-height: 32px;
+  padding: 6px 8px;
+}
+
+.ide-project-v3-stage-details[open] > summary {
+  margin-bottom: 10px;
+}
+
+.ide-project-v3-record-shell {
+  margin: 0;
+  padding: 0;
+}
+
+.ide-project-v3-record-shell > summary {
+  width: max-content;
+  margin: 2px 18px 18px;
+}
+
+.ide-project-v3-record-shell[open] > summary {
+  margin-bottom: 0;
+}
+
+.ide-project-v3-record input {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--rb-border, #415066);
+  border-radius: 4px;
+  background: var(--rb-surface-deep, #111923);
+  color: var(--rb-text, #edf2f7);
 }
 
 .ide-project-v3-stage-body h3 {

@@ -156,10 +156,10 @@ describe('ProjectSurface workspace panels', () => {
     // The Bridge owns the project-kind label.
     // NB: the Project surface renders twice in some test contexts (panel + shadow);
     // we read the last (live) instance to match existing test patterns.
-    const overviews = getAllByTestId('ide-project-professional-overview');
-    const overview = overviews[overviews.length - 1];
-    expect(overview.textContent).toContain('Signal Tour: Switches -> LEDs');
-    expect(overview.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+    const contexts = getAllByTestId('ide-project-workspace-context');
+    expect(contexts[contexts.length - 1].textContent).toContain('Signal Tour: Switches -> LEDs');
+    const goals = getAllByTestId('ide-project-overview-goal');
+    expect(goals[goals.length - 1].textContent).toContain('Flip switches and the matching LEDs follow immediately.');
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
     expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Verify');
     const nextSteps = getAllByTestId('ide-project-command-strip-next-step-copy');

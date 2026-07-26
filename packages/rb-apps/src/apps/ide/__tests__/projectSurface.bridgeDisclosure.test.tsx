@@ -62,8 +62,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
   };
 }
 
-describe('ProjectSurface engineering record contract', () => {
-  it('keeps one launch point primary while presenting the engineering record without disclosure chrome', () => {
+describe('ProjectSurface technical record contract', () => {
+  it('keeps one launch point primary while placing the technical record behind a disclosure', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps({ projectKind: 'custom' })} />
@@ -79,20 +79,21 @@ describe('ProjectSurface engineering record contract', () => {
 
     const record = getByTestId('ide-project-bridge-disclosure');
     expect(record).toBeTruthy();
-    expect(record.querySelector('details')).toBeNull();
-    expect(record.querySelector('summary')).toBeNull();
+    expect(record.tagName).toBe('DETAILS');
+    expect(record.querySelector('summary')?.textContent).toBe('Technical details');
+    expect((record as HTMLDetailsElement).open).toBe(false);
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
   });
 
-  it('keeps the stable engineering identity visible without another click', () => {
+  it('keeps technical identity available without competing with the workflow', () => {
     const { container, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps({ projectKind: 'custom' })} />
       </BoardSignalProvider>
     );
 
-    expect(container.querySelector('details')).toBeNull();
-    expect(container.querySelector('summary')).toBeNull();
+    expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
+    expect(container.querySelector('summary')?.textContent).toBe('More project actions');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
     expect(getByTestId('ide-project-hash-short').textContent).toContain('abc123def456');
   });

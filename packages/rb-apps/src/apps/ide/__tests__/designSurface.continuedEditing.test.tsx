@@ -243,7 +243,7 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
   });
 
   it('shows the simulation strip when a verify signal is linked', () => {
@@ -280,8 +280,8 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
     });
 
     expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Blocking circuit issue');
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
   });
 
   it('workspace health reflects the compiler error count from compilerStatus', () => {
@@ -303,7 +303,7 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
     const view = renderSurface();
 
     expect(view.getByTestId('ide-design-authoring-summary')).toBeTruthy();
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
 
     act(() => {
       useLogicViewStore.getState().selectNode('sw0_node');
@@ -331,7 +331,7 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
+      expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
       expect(view.queryByTestId('ide-design-selection-inspector')).toBeNull();
     });
     expect(view.getByTestId('ide-design-authoring-summary')).toBeTruthy();

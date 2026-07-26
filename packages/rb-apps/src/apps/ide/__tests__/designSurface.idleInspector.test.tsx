@@ -149,8 +149,8 @@ afterEach(() => {
   window.cancelAnimationFrame = nativeCancelRaf;
 });
 
-describe('DesignSurface idle inspector contract', () => {
-  it('renders the default canvas inspector and useful idle overview stats when nothing is selected', () => {
+describe('DesignSurface contextual inspector contract', () => {
+  it('returns idle inspector space to the canvas when nothing is selected', () => {
     useCircuitStore.setState({
       circuit: structuredClone(BASE_CIRCUIT),
       isDirty: false,
@@ -160,22 +160,12 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
-    expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-idle-outputs').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-idle-nodes').textContent).toBe('2');
-    expect(view.getByTestId('ide-design-inspector-idle-wires').textContent).toBe('1');
-    expect(view.getByTestId('ide-design-inspector-io-state').textContent).toContain('Current I/O');
-    expect(view.getByTestId('ide-design-inspector-input-sw0_node').textContent).toContain('SW0');
-    expect(view.getByTestId('ide-design-inspector-output-ld0_node').textContent).toContain('LD0');
-    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('Verify');
-    expect(view.getByTestId('ide-design-inspector-proof-boundary').textContent).toContain('proof');
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
   });
 
-  it('keeps the default inspector contract while handling the empty-canvas branch', () => {
+  it('keeps the inspector hidden for an empty canvas', () => {
     useCircuitStore.setState({
       circuit: { nodes: [], connections: [] },
       isDirty: false,
@@ -185,11 +175,9 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
-    expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Empty canvas.');
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-idle-stats')).toBeNull();
   });
 });

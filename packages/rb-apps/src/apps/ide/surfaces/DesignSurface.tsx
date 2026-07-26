@@ -97,7 +97,7 @@ export const CHROME_CONTRACT = {
   surfaceId: 'design',
   topStripSlots: ['command-bar', 'status-row'],
   leftDockPolicy: 'always',
-  rightDockPolicy: 'always',
+  rightDockPolicy: 'contextual',
   exitPaths: [],
 } satisfies IdeChromeContract;
 
@@ -5584,7 +5584,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         mode="design"
         layoutIntent="workbench"
         leftDockMode={workspacePreset.leftDockMode}
-        rightDockMode={workspacePreset.rightDockMode}
+        rightDockMode={hasInspectorSelectionContext ? workspacePreset.rightDockMode : 'hidden'}
         consoleMode="hidden"
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
@@ -5710,7 +5710,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
               {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section" data-testid="ide-design-palette-section-io">
+                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>{ioPaletteSection.title}</h4>
@@ -5729,7 +5729,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Logic Gates */}
               {filteredPaletteByCategory.logic.length > 0 ? (
                 <section
-                  className="ide-palette-section"
+                  className="ide-palette-section ide-palette-section--logic"
                   data-testid="ide-design-palette-section-logic"
                 >
                   <header className="ide-palette-section-header">
@@ -5750,7 +5750,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               {/* Sequential & Timing */}
               {filteredPaletteByCategory.sequential.length > 0 ? (
                 <section
-                  className="ide-palette-section"
+                  className="ide-palette-section ide-palette-section--sequential"
                   data-testid="ide-design-palette-section-sequential"
                 >
                   <header className="ide-palette-section-header">
@@ -5792,7 +5792,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               filteredCustomComponents.length > 0 ||
               filteredMacros.length > 0 ? (
                 <section
-                  className="ide-palette-section"
+                  className="ide-palette-section ide-palette-section--reusable"
                   data-testid="ide-design-palette-section-reusable"
                 >
                   <header className="ide-palette-section-header">

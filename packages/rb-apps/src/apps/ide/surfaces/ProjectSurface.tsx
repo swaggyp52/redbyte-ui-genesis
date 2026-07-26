@@ -763,6 +763,11 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
           <p className="ide-project-v3-description" data-testid="ide-project-overview-summary">
             {projectSummary}
           </p>
+          {starterName && starterName !== projectName ? (
+            <p className="ide-project-v3-source" data-testid="ide-project-workspace-context">
+              Started from <strong>{starterName}</strong>
+            </p>
+          ) : null}
           {expectedBehavior ? (
             <p className="ide-project-v3-goal" data-testid="ide-project-overview-goal">
               <strong>Goal:</strong> {expectedBehavior}
@@ -792,7 +797,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             {heroStatusLabel}
           </span>
           <h2 data-testid="ide-projectx-next-title">Next: {activePrimaryCtaLabel}</h2>
-          <p data-testid="ide-project-hero-status">{heroStatusMessage}</p>
+          <p hidden data-testid="ide-project-hero-status">{heroStatusMessage}</p>
           <p className="ide-project-v3-next-reason" data-testid="ide-project-command-strip-next-step-copy">
             {nextStepReason}
           </p>
@@ -808,62 +813,46 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
         </section>
       </header>
 
-      <div className="ide-project-v3-meta" data-testid="ide-project-professional-facts">
-        <div>
-          <span>Readiness</span>
-          <strong data-testid="ide-project-readiness-blocker-count">{readinessLabel}</strong>
-        </div>
-        <label>
-          <span>Top module</span>
-          <input
-            type="text"
-            value={fpgaConfig?.top ?? topModuleName ?? 'top'}
-            data-testid="ide-project-fpga-top"
-            onChange={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value })}
-            readOnly={!onFpgaConfigChange}
-          />
-        </label>
-        <div>
-          <span>Target board</span>
-          <strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong>
-        </div>
-        <div>
-          <span>Save state</span>
-          <strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong>
-        </div>
-        <label>
-          <span>FPGA part</span>
-          <input
-            type="text"
-            value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
-            data-testid="ide-project-fpga-part"
-            onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
-            readOnly={!onFpgaConfigChange}
-          />
-        </label>
-        <div>
-          <span>Project type</span>
-          <strong>{projectContextLabel}</strong>
-          {fidelityLabel ? <small data-testid="ide-project-import-fidelity">{fidelityLabel}</small> : null}
-        </div>
-      </div>
-
       <div className="ide-project-v3-toolbar">
         <IdeButton tone="ghost" onClick={onToggleChangeProject} testId="ide-project-change-project">
           {changeProjectOpen ? 'Close project choices' : 'Change Project'}
         </IdeButton>
-        {onSaveNow ? (
-          <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">Save now</IdeButton>
-        ) : null}
-        {onOpenSavedProjects ? (
-          <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">Open existing</IdeButton>
-        ) : null}
-        {onRestoreLastSave ? (
-          <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">Restore last save</IdeButton>
-        ) : null}
-        {onResetProject ? (
-          <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">Reset project</IdeButton>
-        ) : null}
+        <details className="ide-project-v3-more-actions">
+          <summary>More project actions</summary>
+          <div>
+            <div className="ide-project-v3-meta" data-testid="ide-project-professional-facts">
+              <div>
+                <span>Readiness</span>
+                <strong data-testid="ide-project-readiness-blocker-count">{readinessLabel}</strong>
+              </div>
+              <div>
+                <span>Target board</span>
+                <strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong>
+              </div>
+              <div>
+                <span>Save state</span>
+                <strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong>
+              </div>
+              <div>
+                <span>Project type</span>
+                <strong>{projectContextLabel}</strong>
+                {fidelityLabel ? <small data-testid="ide-project-import-fidelity">{fidelityLabel}</small> : null}
+              </div>
+            </div>
+            {onSaveNow ? (
+              <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">Save now</IdeButton>
+            ) : null}
+            {onOpenSavedProjects ? (
+              <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">Open existing</IdeButton>
+            ) : null}
+            {onRestoreLastSave ? (
+              <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">Restore last save</IdeButton>
+            ) : null}
+            {onResetProject ? (
+              <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">Reset project</IdeButton>
+            ) : null}
+          </div>
+        </details>
       </div>
 
       {changeProjectOpen ? (
@@ -907,16 +896,11 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
       >
         <header className="ide-project-v3-workspace-header">
           <div>
-            <p className="ide-surface-block-label">Project workspace</p>
-            <h2>Design, proof, mapping, and handoff</h2>
+            <p className="ide-surface-block-label">Five-stage workflow</p>
+            <h2>Your project at a glance</h2>
           </div>
-          <p>Each row reports current project truth and opens the surface that owns the work.</p>
+          <p>Continue the recommended step above, or open the stage that needs attention.</p>
         </header>
-        <p className="ide-project-v3-workspace-context" data-testid="ide-project-workspace-context">
-          <strong>{starterName ?? projectName}</strong>
-          <span>{projectSummary}</span>
-          {expectedBehavior ? <span>Expected behavior: {expectedBehavior}</span> : null}
-        </p>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <span className="ide-project-v3-readiness-anchor" data-testid="ide-project-readiness-workspace">
@@ -931,14 +915,17 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             testId="ide-project-summary-design"
             actionTestId="ide-project-overview-open-design"
           >
-            <IoSummary inputRows={inputRows} outputRows={outputRows} />
-            {outline ? (
-              <ProjectInventory
-                outline={outline}
-                onFocusMacro={onFocusMacro}
-                onFocusCustomComponent={onFocusCustomComponent}
-              />
-            ) : null}
+            <details className="ide-project-v3-stage-details">
+              <summary>Design details</summary>
+              <IoSummary inputRows={inputRows} outputRows={outputRows} />
+              {outline ? (
+                <ProjectInventory
+                  outline={outline}
+                  onFocusMacro={onFocusMacro}
+                  onFocusCustomComponent={onFocusCustomComponent}
+                />
+              ) : null}
+            </details>
           </ProjectStageRow>
 
           <ProjectStageRow
@@ -969,24 +956,27 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                   ? `${missingRequiredRows.length} required signal${missingRequiredRows.length === 1 ? '' : 's'} still need a board resource`
                   : `${mappedRequiredRows.length}/${requiredRows.length} required signals mapped`}
               </p>
-              <p data-testid="ide-project-map-pipeline-copy">
-                Project mirrors the saved board binding before building the Vivado package. Assignments change only in Map Pins.
-              </p>
-              {missingRequiredRows.length > 0 ? (
-                <p className="ide-project-v3-missing" data-testid="ide-project-mapping-missing-list">
-                  Missing: {missingRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ')}
-                  {missingRequiredRows.length > 6 ? `, +${missingRequiredRows.length - 6} more` : ''}
+              <details className="ide-project-v3-stage-details">
+                <summary>Mapping details</summary>
+                <p data-testid="ide-project-map-pipeline-copy">
+                  Project mirrors the saved board binding before building the Vivado package. Assignments change only in Map Pins.
                 </p>
-              ) : (
-                <p className="ide-project-v3-mapped-list">
-                  Mapped: {mappedRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ') || 'No required board signals'}
-                </p>
-              )}
-              {hasVerifyRun && missingRequiredRows.length > 0 ? (
-                <p className="ide-project-v3-handoff-note" data-testid="ide-project-mapping-post-verify-hint">
-                  Logic was verified; finish board pins so the Vivado package matches the simulated interface.
-                </p>
-              ) : null}
+                {missingRequiredRows.length > 0 ? (
+                  <p className="ide-project-v3-missing" data-testid="ide-project-mapping-missing-list">
+                    Missing: {missingRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ')}
+                    {missingRequiredRows.length > 6 ? `, +${missingRequiredRows.length - 6} more` : ''}
+                  </p>
+                ) : (
+                  <p className="ide-project-v3-mapped-list">
+                    Mapped: {mappedRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ') || 'No required board signals'}
+                  </p>
+                )}
+                {hasVerifyRun && missingRequiredRows.length > 0 ? (
+                  <p className="ide-project-v3-handoff-note" data-testid="ide-project-mapping-post-verify-hint">
+                    Logic was verified; finish board pins so the Vivado package matches the simulated interface.
+                  </p>
+                ) : null}
+              </details>
               {missingRequiredRows.length > 0 ? (
                 <strong className="ide-project-v3-missing-count" data-testid="ide-project-mapping-warn-chip">
                   {missingRequiredRows.length} unmapped
@@ -1008,10 +998,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             actionTestId="ide-project-open-export"
           />
         </div>
-        <div className="ide-project-v3-export-alignment" data-testid="ide-project-map-export-alignment">
-          <strong>Export readiness</strong>
-          <span>{exportSummary}</span>
-        </div>
       </section>
 
       <RecentProjects
@@ -1020,16 +1006,41 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
         onOpenSavedProjects={onOpenSavedProjects}
       />
 
-      <div className="ide-project-v3-record-shell" data-testid="ide-project-bridge-disclosure">
-      <section className="ide-project-v3-record" data-testid="ide-project-bridge">
-        <header>
+      <details className="ide-project-v3-record-shell" data-testid="ide-project-bridge-disclosure">
+        <summary>Technical details</summary>
+        <section className="ide-project-v3-record" data-testid="ide-project-bridge">
+          <header>
+            <div>
+              <p className="ide-surface-block-label">Technical details</p>
+              <h2 data-testid="ide-project-bridge-title">Project configuration and evidence</h2>
+            </div>
+            <p data-testid="ide-project-bridge-subtitle">{bridgeSubtitle}</p>
+          </header>
+          <dl>
           <div>
-            <p className="ide-surface-block-label">Engineering record</p>
-            <h2 data-testid="ide-project-bridge-title">{projectName}</h2>
+            <dt>Top module</dt>
+            <dd>
+              <input
+                type="text"
+                value={fpgaConfig?.top ?? topModuleName ?? 'top'}
+                data-testid="ide-project-fpga-top"
+                onChange={(event) => onFpgaConfigChange?.({ top: event.currentTarget.value })}
+                readOnly={!onFpgaConfigChange}
+              />
+            </dd>
           </div>
-          <p data-testid="ide-project-bridge-subtitle">{bridgeSubtitle}</p>
-        </header>
-        <dl>
+          <div>
+            <dt>FPGA part</dt>
+            <dd>
+              <input
+                type="text"
+                value={fpgaConfig?.part ?? 'xc7a35tcpg236-1'}
+                data-testid="ide-project-fpga-part"
+                onChange={(event) => onFpgaConfigChange?.({ part: event.currentTarget.value })}
+                readOnly={!onFpgaConfigChange}
+              />
+            </dd>
+          </div>
           <div>
             <dt>Board</dt>
             <dd data-testid="ide-project-bridge-board">{fpgaConfig?.board ?? 'Basys3'}</dd>
@@ -1064,9 +1075,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <dd data-testid="ide-project-bridge-fidelity">{fidelityLabel}</dd>
             </div>
           ) : null}
-        </dl>
-      </section>
-      </div>
+          </dl>
+        </section>
+      </details>
     </>
   );
 };

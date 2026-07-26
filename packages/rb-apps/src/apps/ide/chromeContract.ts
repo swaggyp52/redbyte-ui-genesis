@@ -7,7 +7,7 @@ export type ChromeSlotId =
   | 'mode-banner'
   | 'workflow-ribbon';
 
-export type DockVisibilityPolicy = 'always' | 'collapsed-default' | 'hidden';
+export type DockVisibilityPolicy = 'always' | 'collapsed-default' | 'contextual' | 'hidden';
 
 export interface ExitPath {
   /** The sub-mode this exit path covers (e.g. 'bringup', 'proof', 'live') */

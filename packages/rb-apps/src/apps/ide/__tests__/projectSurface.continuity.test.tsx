@@ -112,7 +112,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-utility-region')).toBeNull();
   });
 
-  it('keeps engineering details visible in the workspace without disclosure chrome', () => {
+  it('keeps technical details available without duplicating the workflow or Export summary', () => {
     const { container, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
@@ -123,11 +123,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(commandStrip.textContent).toContain('Next: Verify');
     expect(getByTestId('ide-project-professional-overview')).toBeTruthy();
     expect(getByTestId('ide-project-bridge')).toBeTruthy();
-    expect(container.querySelector('details')).toBeNull();
-    expect(container.querySelector('summary')).toBeNull();
-    expect(getByTestId('ide-project-map-export-alignment').textContent).toContain(
-      'Draft handoff files are available in Export.'
-    );
+    expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
+    expect(container.querySelector('summary')?.textContent).toBe('More project actions');
+    expect(container.querySelector('[data-testid="ide-project-map-export-alignment"]')).toBeNull();
     expect(commandStrip.textContent).not.toContain('Ã');
   });
 
@@ -553,7 +551,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(bridgeSubtitle.textContent).toContain('Fresh Project');
     expect(bridgeSubtitle.textContent).not.toContain('Blank Project');
 
-    const overview = getByTestId('ide-project-professional-overview');
+    const overview = getByTestId('ide-project-overview-summary');
     expect(overview.textContent).toContain('started from a blank canvas');
     expect(overview.textContent).not.toContain('Top module top is loaded and ready for setup.');
   });
@@ -590,7 +588,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     // The Bridge owns kind framing; the always-visible overview owns the student project name.
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).not.toContain('signal-tour');
-    expect(getByTestId('ide-project-professional-overview').textContent).toContain('Signal Tour: Switches â†’ LEDs');
+    expect(getByTestId('ide-project-identity-strip-title').textContent).toContain('Signal Tour: Switches â†’ LEDs');
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();

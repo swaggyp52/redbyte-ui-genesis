@@ -20,7 +20,7 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
-  grid-template-columns: minmax(200px, 212px) minmax(0, 1fr) minmax(240px, 256px) !important;
+  grid-template-columns: minmax(188px, 196px) minmax(0, 1fr) minmax(232px, 244px) !important;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
 }
@@ -70,9 +70,31 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-sections {
+  display: flex;
+  flex-direction: column;
   max-height: none;
   overflow: visible;
   gap: 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--io {
+  order: 1;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--logic {
+  order: 2;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--board {
+  order: 3;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--sequential {
+  order: 4;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--reusable {
+  order: 5;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy,

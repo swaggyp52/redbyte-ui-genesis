@@ -201,12 +201,12 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('keeps the idle inspector direct, identity-first, and free of reveal controls', async () => {
+  it('keeps the idle inspector out of the canvas until there is a selection', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
 
     expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-actions')).toBeNull();
@@ -214,7 +214,7 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(view.queryByTestId('ide-design-context-inspector')).toBeNull();
     expect(view.queryByTestId('ide-design-board-signal')).toBeNull();
     expect(view.queryByTestId('ide-design-signal-probe')).toBeNull();
-    expect(view.getByTestId('ide-design-inspector-next-step').textContent).not.toContain('Live Simulation');
+    expect(view.queryByTestId('ide-design-inspector-next-step')).toBeNull();
     expect(view.queryByTestId('ide-design-live-sim-section')).toBeNull();
     expect(view.queryByTestId('ide-design-inspector-advanced')).toBeNull();
   });

@@ -92,7 +92,7 @@ function makeProps(): ProjectSurfaceProps {
 }
 
 describe('ProjectSurface Unified Workbench v3 overview', () => {
-  it('shows the complete project record with one clear primary action and no disclosure elements', () => {
+  it('shows the project workflow with one clear primary action and progressive disclosure', () => {
     const props = makeProps();
     const { container, getByTestId } = render(
       <BoardSignalProvider>
@@ -115,8 +115,8 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
 
     expect(container.querySelectorAll('.ide-button-primary')).toHaveLength(1);
     expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Map Pins');
-    expect(container.querySelector('details')).toBeNull();
-    expect(container.querySelector('summary')).toBeNull();
+    expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
+    expect(Array.from(container.querySelectorAll('summary')).map((summary) => summary.textContent)).toContain('Technical details');
 
     fireEvent.click(getByTestId('ide-project-command-strip-primary-cta'));
     expect(props.onPrimaryCta).toHaveBeenCalledTimes(1);

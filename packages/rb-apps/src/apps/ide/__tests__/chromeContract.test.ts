@@ -30,7 +30,7 @@ describe('IDE chrome contracts', () => {
     for (const contract of SURFACE_CONTRACTS) {
       expect(contract.topStripSlots.length).toBeGreaterThan(0);
       expect(contract.leftDockPolicy).toMatch(/^(always|collapsed-default|hidden)$/);
-      expect(contract.rightDockPolicy).toMatch(/^(always|collapsed-default|hidden)$/);
+      expect(contract.rightDockPolicy).toMatch(/^(always|collapsed-default|contextual|hidden)$/);
     }
   });
 

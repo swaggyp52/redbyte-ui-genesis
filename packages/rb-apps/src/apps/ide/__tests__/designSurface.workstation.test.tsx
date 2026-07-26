@@ -278,14 +278,14 @@ describe('DesignSurface workstation redesign', () => {
     );
   });
 
-  it('keeps the library and contextual inspector stable while selection changes', async () => {
+  it('keeps the library stable and reveals the inspector only after selection', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
       expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     });
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
 
     act(() => {
@@ -694,7 +694,7 @@ describe('DesignSurface workstation redesign', () => {
     expect(modeRoot.getAttribute('data-surface-frame')).toBe('edge-to-edge');
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-collapse-left')).toBeNull();
@@ -709,7 +709,7 @@ describe('DesignSurface workstation redesign', () => {
       expect(view.getByTestId('ide-design-workspace').getAttribute('data-design-view')).toBe('split');
     });
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.queryByTestId('ide-workbench-console')).toBeNull();
