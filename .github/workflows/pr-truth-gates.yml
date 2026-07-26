@@ -15,7 +15,7 @@ jobs:
   truth-gates:
     name: Classroom Truth Gates
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 180
     permissions:
       contents: read
 

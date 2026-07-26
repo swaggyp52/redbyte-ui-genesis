@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (ci: let Classroom Truth Gates reach a verdict)
+
+**Subsystem:** Required GitHub `Classroom Truth Gates` job timeout and exact-SHA release verification.
+
+**Defect and repair:** PR #79 started the required workflow on exact release SHA `cebd8cd2c`, completed setup and the no-solution Lab 4 guard, then GitHub cancelled `classroom:gate` at the job's hard 25-minute timeout. The same pinned Node `20.19.0` / pnpm `10.24.0` aggregate had just passed locally in 5,703,372 ms (about 95 minutes), before accounting for CI setup and the later no-solution, golden-export, and UI-dev-guard steps. The required job timeout is now 180 minutes so the authoritative suite can finish and report a real pass or failure instead of an infrastructure cancellation.
+
+**Boundary:** CI execution budget only. No product runtime, Project, Design, Verify, mapping, generated artifact, import, Vivado, bitstream, Basys3, or E1/E2/E3 semantics change. The cancelled GitHub run remains cancelled evidence; the updated exact release SHA must be reconstructed, rebuilt, rerun locally, pushed, and observed to a terminal remote result.
+
 ## Change Log 2026-07-26 (fix: put student submission artifacts first in Export)
 
 **Subsystem:** Unified Workbench v3 Export first-viewport hierarchy, generated-file selection, and artifact reachability proof.
