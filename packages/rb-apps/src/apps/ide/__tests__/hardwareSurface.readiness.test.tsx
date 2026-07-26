@@ -174,6 +174,57 @@ function renderHardware(overrides: Partial<HardwareSurfaceProps> = {}) {
 }
 
 describe('HardwareSurface readiness', () => {
+  it('projects a recorded Verify trace onto the simulated board with explicit trust copy', () => {
+    const verifyRun = {
+      ...makeVerifyRun('combinational', { a: 'input', sum: 'output' }),
+      waveform: [
+        { tick: 0, signals: { a: '0', sum: '0' }, mismatches: [] },
+        { tick: 1, signals: { a: '1', sum: '1' }, mismatches: [] },
+      ],
+    } as any;
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        {
+          id: 'a',
+          nodeId: 'input-a',
+          label: 'A',
+          direction: 'in',
+          pin: 'V17',
+          required: true,
+          boardResourceType: 'switch',
+        },
+        {
+          id: 'sum',
+          nodeId: 'output-sum',
+          label: 'SUM',
+          direction: 'out',
+          pin: 'U16',
+          required: true,
+          boardResourceType: 'led',
+        },
+      ],
+      verifyLastRun: verifyRun,
+    });
+
+    fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
+
+    expect(getByTestId('ide-hw-live-dock').textContent).toContain('Simulated board preview');
+    expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
+      'Browser simulation only'
+    );
+    expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
+      'Not observed hardware behavior'
+    );
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 1 / 2');
+    const offLedClass = getByTestId('ide-hw-ld-0').getAttribute('class');
+
+    fireEvent.click(getByTestId('ide-hw-simulated-board-next'));
+
+    expect(getByTestId('ide-hw-simulated-board-readout').textContent).toBe('Case 2 / 2');
+    expect(getByTestId('ide-hw-ld-0').getAttribute('class')).not.toBe(offLedClass);
+    expect(getByTestId('ide-hw-signal-log').textContent).toContain('SUM');
+  });
+
   it('renders the action-first mapping workspace without the superseded map rail or dock toggles', () => {
     const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
     const { getByTestId, queryByTestId } = renderHardware({

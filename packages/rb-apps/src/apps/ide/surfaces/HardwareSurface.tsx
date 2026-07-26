@@ -497,6 +497,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const [guidedHdlKey, setGuidedHdlKey] = useState('');
   const [guidedShowAdvanced, setGuidedShowAdvanced] = useState(false);
   const [guidedBusMemberRowIds, setGuidedBusMemberRowIds] = useState<string[]>([]);
+  const [simulatedBoardTraceIndex, setSimulatedBoardTraceIndex] = useState(0);
   const guidedBoundarySelectId = useId();
   const guidedHdlSelectId = useId();
   const guidedKindSelectId = useId();
@@ -1611,12 +1612,78 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     const m = new Map<string, { label: string; direction: 'in' | 'out' }>();
     for (const r of ioBusIoRows) {
       const meta = { label: r.label, direction: r.direction };
-      m.set(r.nodeId, meta);
-      m.set(`${r.nodeId}.out`, meta);
-      m.set(`${r.nodeId}.in`, meta);
+      for (const key of [
+        r.id,
+        r.label,
+        r.nodeId,
+        r.nodeId ? `${r.nodeId}.out` : '',
+        r.nodeId ? `${r.nodeId}.in` : '',
+      ].filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)) {
+        m.set(key, meta);
+        m.set(normalizeIoSignalKey(key), meta);
+      }
     }
     return m;
   }, [ioBusIoRows]);
+
+  const recordedVerifyTrace = useMemo(
+    () =>
+      (verifyLastRun?.waveform ?? []).map((sample) => ({
+        tick: sample.tick,
+        signals: Object.fromEntries(
+          Object.entries(sample.signals)
+            .filter(([, value]) => value === '0' || value === '1' || value === 0 || value === 1)
+            .map(([key, value]) => [key, value === '1' || value === 1 ? 1 : 0])
+        ) as Record<string, 0 | 1>,
+      })),
+    [verifyLastRun?.reportHash, verifyLastRun?.waveform]
+  );
+  const simulatedBoardTrace = sim.trace?.length ? sim.trace : recordedVerifyTrace;
+  const boundedSimulatedBoardTraceIndex = Math.min(
+    simulatedBoardTraceIndex,
+    Math.max(0, simulatedBoardTrace.length - 1)
+  );
+  const selectedSimulatedBoardSample =
+    simulatedBoardTrace[boundedSimulatedBoardTraceIndex] ?? null;
+
+  const simulatedBoardState = useMemo(() => {
+    const next = {
+      sw: [...ioBus.state.sw],
+      ld: [...ioBus.state.ld],
+      btn: [...ioBus.state.btn],
+    };
+    if (!selectedSimulatedBoardSample) return next;
+    const signalEntries = Object.entries(selectedSimulatedBoardSample.signals);
+    for (const row of mappingRows) {
+      const lookupKeys = new Set(
+        [
+          ...getIoSignalLookupKeys(row, mappingRows),
+          row.id,
+          row.label,
+          row.nodeId,
+          row.nodeId ? `${row.nodeId}.out` : '',
+          row.nodeId ? `${row.nodeId}.in` : '',
+        ]
+          .filter((candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0)
+          .map(normalizeIoSignalKey)
+      );
+      const matched = signalEntries.find(([key]) => lookupKeys.has(normalizeIoSignalKey(key)));
+      if (!matched) continue;
+      const value = matched[1] === 1 ? 1 : 0;
+      const alias = resolveBoardControlAlias(row.pin);
+      const switchMatch = /^SW(\d+)$/i.exec(alias ?? '');
+      const ledMatch = /^LD(\d+)$/i.exec(alias ?? '');
+      if (switchMatch && row.direction === 'in') next.sw[Number(switchMatch[1])] = value;
+      if (ledMatch && row.direction === 'out') next.ld[Number(ledMatch[1])] = value;
+    }
+    return next;
+  }, [
+    ioBus.state.btn,
+    ioBus.state.ld,
+    ioBus.state.sw,
+    mappingRows,
+    selectedSimulatedBoardSample,
+  ]);
 
   interface SignalChangeEvent {
     tick: number;
@@ -1627,22 +1694,27 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   }
 
   const signalChangeFeed = useMemo<SignalChangeEvent[]>(() => {
-    if (!sim.trace?.length) return [];
+    if (!simulatedBoardTrace.length) return [];
     const events: SignalChangeEvent[] = [];
+    const seenEvents = new Set<string>();
     let prev: Record<string, 0 | 1> = {};
-    for (const sample of sim.trace) {
+    for (const sample of simulatedBoardTrace) {
       for (const [k, v] of Object.entries(sample.signals)) {
-        const meta = nodeKeyToMeta.get(k);
+        const meta = nodeKeyToMeta.get(k) ?? nodeKeyToMeta.get(normalizeIoSignalKey(k));
         if (!meta) continue;
         const was = prev[k];
         if (was !== undefined && was !== v) {
-          events.push({ tick: sample.tick, label: meta.label, from: was, to: v as 0 | 1, direction: meta.direction });
+          const eventKey = `${sample.tick}:${meta.direction}:${meta.label}:${was}:${v}`;
+          if (!seenEvents.has(eventKey)) {
+            seenEvents.add(eventKey);
+            events.push({ tick: sample.tick, label: meta.label, from: was, to: v as 0 | 1, direction: meta.direction });
+          }
         }
       }
       Object.assign(prev, sample.signals);
     }
     return events.slice(-30).reverse();
-  }, [sim.trace, nodeKeyToMeta]);
+  }, [nodeKeyToMeta, simulatedBoardTrace]);
 
   // ── Assertions: trace × expected vectors ────────────────────────────
   const traceByTick = useMemo(() => {
@@ -1762,15 +1834,22 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const liveDock = (
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--live" testId="ide-hw-live-dock">
       <header className="ide-workbench-placeholder-header">
-        <h3>Live details</h3>
-        <IdeStatusPill tone={sim.running ? 'ok' : sim.tick > 0 ? 'warn' : 'idle'}>
-          {sim.running ? 'Sim running' : sim.tick > 0 ? 'Sim paused' : 'Not started'}
+        <h3>Simulated board preview</h3>
+        <IdeStatusPill tone={simulatedBoardTrace.length > 0 ? 'ok' : 'idle'}>
+          {simulatedBoardTrace.length > 0 ? 'Recorded trace' : 'No trace'}
         </IdeStatusPill>
       </header>
+      <IdeCallout tone="info" title="Browser simulation only" testId="ide-hw-simulated-board-trust">
+        <strong>Not observed hardware behavior</strong>
+        <p className="ide-copy ide-copy--flush">
+          This preview projects the selected Verify tick onto mapped Basys3 controls. It is not
+          programming or physical-board evidence.
+        </p>
+      </IdeCallout>
       <div className="ide-kv-list">
         <div className="ide-kv-row">
-          <span>Sim tick</span>
-          <code>{sim.tick}</code>
+          <span>Selected run tick</span>
+          <code>{selectedSimulatedBoardSample?.tick ?? 'Not run'}</code>
         </div>
         <div className="ide-kv-row">
           <span>Mapped I/O</span>
@@ -1793,6 +1872,44 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           <span>{vectorsCount}</span>
         </div>
       </div>
+      {simulatedBoardTrace.length > 0 ? (
+        <div className="ide-hw-simulated-trace" data-testid="ide-hw-simulated-board-trace">
+          <div className="ide-inline-actions">
+            <IdeButton
+              tone="ghost"
+              onClick={() => setSimulatedBoardTraceIndex((index) => Math.max(0, index - 1))}
+              disabled={boundedSimulatedBoardTraceIndex === 0}
+              testId="ide-hw-simulated-board-prev"
+            >
+              Previous
+            </IdeButton>
+            <strong data-testid="ide-hw-simulated-board-readout">
+              Case {boundedSimulatedBoardTraceIndex + 1} / {simulatedBoardTrace.length}
+            </strong>
+            <IdeButton
+              tone="ghost"
+              onClick={() =>
+                setSimulatedBoardTraceIndex((index) =>
+                  Math.min(simulatedBoardTrace.length - 1, index + 1)
+                )
+              }
+              disabled={boundedSimulatedBoardTraceIndex >= simulatedBoardTrace.length - 1}
+              testId="ide-hw-simulated-board-next"
+            >
+              Next
+            </IdeButton>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(0, simulatedBoardTrace.length - 1)}
+            value={boundedSimulatedBoardTraceIndex}
+            onChange={(event) => setSimulatedBoardTraceIndex(Number(event.target.value))}
+            aria-label="Selected Verify trace case"
+            data-testid="ide-hw-simulated-board-trace-scrubber"
+          />
+        </div>
+      ) : null}
       <div className="ide-inline-actions">
         <IdeButton tone="secondary" onClick={onOpenVerify}>Run Verify</IdeButton>
         <IdeButton tone="ghost" onClick={onGenerateBringUpVectors}>Gen Vectors</IdeButton>
@@ -3218,9 +3335,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         <div className={`ide-hw-board-wrap ${hwMode === 'proof' ? 'is-proof' : ''}`}>
           <div className="ide-hw-board-inner">
             <HardwareBoard2D
-              sw={ioBus.state.sw}
-              ld={ioBus.state.ld}
-              btn={ioBus.state.btn}
+              sw={hwMode === 'live' ? simulatedBoardState.sw : ioBus.state.sw}
+              ld={hwMode === 'live' ? simulatedBoardState.ld : ioBus.state.ld}
+              btn={hwMode === 'live' ? simulatedBoardState.btn : ioBus.state.btn}
               mappedSw={mappedSw}
               mappedLd={mappedLd}
               mismatchedLd={mismatchedLd}

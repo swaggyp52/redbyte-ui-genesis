@@ -7704,13 +7704,16 @@ This left an unresolved contradiction with the locked product direction (`Import
 - Made live scalar boundary rows materialize into the canonical hardware mapping document even when a blank project began with no mapping entries.
 - Changed the direct board-resource editor to persist the selected package pin, while continuing to display the student-facing Basys3 control alias.
 - Preserved visible duplicate-pin conflict diagnostics with both participating signal names and one-action repair.
+- Turned the simulated board into a selected-Verify-tick preview with explicit browser-only trust copy, mapped switch/LED projection, trace transport, and a deduplicated signal log.
 
 **Validation**
 
 - Browser mapping from a scratch-authored Full Adder progressed from `0 / 5` to `MAPPING COMPLETE`.
 - Browser conflict rehearsal reported `CARRY and SUM` sharing `LD0 (package pin U16)`.
+- Browser trace rehearsal projected case 8 onto SW0/SW1/SW2 and LD0/LD1 while labeling the surface `Browser simulation only` and `Not observed hardware behavior`.
 - Focused runtime blank-project mapping regression passed.
 - Existing Hardware direct-editor and mapping-workflow suites passed (`40` tests).
+- Focused simulated-board trace projection regression passed.
 
 **Boundary**
 
