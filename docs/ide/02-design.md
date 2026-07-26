@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-13
+last_validated: 2026-07-22
 owner: Connor Angiel
 used_by_claude: true
 role: Design surface spec
@@ -8,7 +8,7 @@ role: Design surface spec
 
 # Design Mode Spec
 
-Status: Design Workbench v1
+Status: Unified Workbench v3 RC source; final exact-SHA certification pending
 Mode ID: `design`
 
 ## Purpose
@@ -23,35 +23,39 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 
 ## Workspace Structure
 
-1. Workbench header
-- Compact `What do I do next?` guide rail tells students to place components, wire ports, label signals, then move to Verify.
-- `ide-design-workspace-header` is the only persistent top owner.
-- It carries the surface identity, the current workspace mode (`Canvas`, `Code`, `Split`, replay-linked variants), and the current `Open Verify` action. Project remains reachable through the five-stage rail or contextual recovery, not as a competing persistent header action.
-- The old standalone Design command strip is retired.
+1. Workbench header and direct toolbar
+- `ide-design-workspace-header` is the only persistent top owner. It names the current Canvas / Code / Split state and keeps the owning next action visible without adding a second command deck.
+- Select, Wire, Undo, Redo, Fit, Zoom, and View remain direct. Port selection opens a compact picker only when more than one port needs disambiguation; it must not become a canvas-obscuring HUD.
+- Project remains reachable through the horizontal five-stage navigator or contextual recovery. The old standalone Design command strip, rail controls, and floating layout toggles are retired.
 
-2. Left library
+2. Stable left library
 - Search and the core build categories stay first.
 - Default palette order is `Board -> IO -> Logic -> Sequential -> Reusable`.
 - `Board` starts expanded so Basys3 resources and `CLK100MHZ` are immediately reachable; it remains a helper layer, not the primary dashboard story.
 - Sim `Clock` is not a student-authored palette item in the current release. Imported `config.role === "sim"` Clock nodes may render for recovery/migration, but board-ready sequential designs should use the `CLK100MHZ` Board Resource.
-- In code and split modes the library collapses to an overlay rail by default so it does not reserve workspace width while idle.
+- At desktop/laptop Canvas widths the library remains a stable `200-220px` region. Constrained mode changes may reflow support content automatically; students do not manage the basic page layout.
 
 3. Center workspace
 - The canvas is the primary region and should win the page.
 - In Canvas mode, the left library, canvas, and right inspector share one workbench row; the canvas must remain the focal object at `1366x768` and `1440x900`.
+- The accepted full-viewport laptop canvas floor is `62%`. Recorded RC geometry is `63.1%` at `1366x768` and `65.0%` at `1440x900`; the strategic `70%` laptop target remains unmet and may not be reported as complete.
 - The tools row stays attached to the workbench header; expanded tool options open as a compact popup instead of adding another horizontal band.
 - Starter-loaded guidance is compact by default and must not push the graph below the first viewport; long summary / expected-behavior copy lives behind the `Starter brief` disclosure.
-- The Design status summary is allowed to overlay the canvas as a compact secondary cue, but it should not consume a standalone vertical band above the graph.
+- Status/selection guidance may not cover routine wiring paths or the main circuit graph.
 - The compact authoring card is the readiness owner for design issues.
 - The simulation strip is contextual and appears only when replay, stale replay, verify-linked focus, active simulation, or another real simulation story exists.
 - When opened from a failed Verify run, the simulation strip and failure brief restate the mismatch in student terms: failed label, expected value, observed value, tick, available input snapshot, and the next logic path to inspect. If the graph can trace the failed output's direct driver, Design shows the driver label/type, incoming/outgoing wire counts, and a Focus driver action; if not, it says no direct driver was found instead of inventing root cause. For multi-stage failures, Design also shows a compact upstream signal-trace panel with node depth, upstream sources, open input clues when available, and per-node Focus actions. The trace proves graph connectivity, not formal root cause.
 
-4. Right inspector
-- Is selection-driven support: it stays collapsed by default and opens when a selected node, wire, focused asset, mapping, or signal context needs direct controls.
+4. Stable right inspector
+- Is selection-driven support in a stable `240-280px` region at desktop widths. At constrained widths selected details move to a stable lower region automatically; the student does not open/close a core rail to recover the canvas.
 - For a selected node, the compact identity and actionable issue guidance come first, primary Actions follow immediately, and teaching/reference/mapping context follows in **Selection details**. Cross-platform font wrapping in secondary context must not push direct edit controls below the `1366x768` classroom first viewport.
 - Selection label editing is exposed by `ide-design-label-edit-btn`; the retired standalone context rename hook should not be used for new tests.
-- When the student explicitly opens the inspector without a selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It is not a persistent default work object.
-- In code and split modes the inspector also defaults to a collapsed overlay rail until the student asks for it or context makes it relevant.
+- With no selection, the compact **Design overview** fallback inside `ide-design-inspector-canvas-default` may show Inputs / Outputs / Nodes / Wires counts, current I/O values, the Verify-owns-proof boundary, and the empty-canvas branch. It stays secondary to the canvas.
+
+5. Port interaction authority
+- Sparse direct ports expose at least a `24x24` hit target; a single spacious port may use `32x32`.
+- Dense same-side ports expose a consolidated target at least `32x24` (the current tested dense cluster is `32x36`) and open a compact labeled port picker.
+- Direct targets and picker options must support pointer, Enter, and Space through the same wiring callback. The visible port name/side remains the student's authority; hidden implementation IDs do not become UI.
 
 ## Empty / Idle State
 
@@ -70,6 +74,9 @@ Build deterministic circuit graphs in a canvas-first workspace that stays honest
 - `ide:gate:complex-build-signal-trace-debugging` guards multi-stage failed-Compare Design debugging: a scratch two-stage sum path built with the wrong final gate opens Design with a bounded upstream trace for `SUM_OUT`, direct driver, intermediate gate, and input sources at `1366x768` and `1440x900`.
 - `ide:gate:design-workbench-v1` must stay semantic-neutral: no simulation, Verify, pin mapping, export generation, project format, or golden artifact changes are implied by that gate.
 - Before/after visual proof for this closeout is local-only under `.redbyte/product-immersion/design-workbench-v1/`.
+- `ide:gate:design-port-target-authority` is the RC interaction gate for direct/cluster target geometry, keyboard operation, compact port disambiguation, and normal wiring at the constrained laptop viewport.
+- `ide:gate:design-build-contract` and the adjacent wiring gate protect build/placement continuity after the target changes.
+- These are source-slice gates until they are rerun on the final reconstructed docs-complete SHA.
 
 ## Error / Status Rules
 

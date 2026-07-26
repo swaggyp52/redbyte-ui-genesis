@@ -494,7 +494,7 @@ ul li { margin-bottom: 0.3rem; }
   <div class="cover-subtitle">FPGA Educational IDE</div>
   <div class="cover-divider"></div>
   <div class="cover-title">Product Manual</div>
-  <div class="cover-edition">Version 1.0 · March 2026</div>
+  <div class="cover-edition">Version 1.2 · July 2026</div>
   <div class="cover-meta">
     Target Platform: Digilent Basys 3 (Artix-7 XC7A35T)<br>
     Toolchain: AMD Vivado ML Standard Edition<br>
@@ -508,8 +508,10 @@ ul li { margin-bottom: 0.3rem; }
   <table>
     <tbody>
       <tr><td>Document ID</td><td>RB-MAN-001</td></tr>
-      <tr><td>Version</td><td>1.0</td></tr>
-      <tr><td>Date</td><td>2026-03-31</td></tr>
+      <tr><td>Version</td><td>1.2</td></tr>
+      <tr><td>Date</td><td>2026-07-22</td></tr>
+      <tr><td>Release posture</td><td>Candidate documentation; final reconstructed exact-SHA certification pending</td></tr>
+      <tr><td>PDF artifact</td><td>Previous edition; regenerate and visually inspect from this source on the final exact SHA</td></tr>
       <tr><td>Classification</td><td>Product Reference</td></tr>
       <tr><td>Repository</td><td><code>redbyte-ui</code> monorepo</td></tr>
       <tr><td>Primary Package</td><td><code>packages/rb-apps</code></td></tr>
@@ -535,8 +537,10 @@ ul li { margin-bottom: 0.3rem; }
     <li class="toc-section"><a href="#s1">1. Introduction</a></li>
     <li class="toc-section"><a href="#s2">2. Product Overview</a></li>
     <li class="toc-sub"><a href="#s2-1">2.1 What RedByte Is</a></li>
-    <li class="toc-sub"><a href="#s2-2">2.2 Core Capabilities</a></li>
-    <li class="toc-sub"><a href="#s2-3">2.3 Design Philosophy</a></li>
+    <li class="toc-sub"><a href="#s2-2">2.2 The Problem RedByte Solves</a></li>
+    <li class="toc-sub"><a href="#s2-3">2.3 Core Capabilities</a></li>
+    <li class="toc-sub"><a href="#s2-4">2.4 Design Philosophy</a></li>
+    <li class="toc-sub"><a href="#s2-5">2.5 Unified Workbench v3 RC Authority</a></li>
     <li class="toc-section"><a href="#s3">3. Intended Users and Usage Contexts</a></li>
     <li class="toc-section"><a href="#s4">4. Core Concepts and Operating Model</a></li>
     <li class="toc-sub"><a href="#s4-1">4.1 The Canonical Workflow</a></li>
@@ -549,7 +553,7 @@ ul li { margin-bottom: 0.3rem; }
     <li class="toc-sub"><a href="#s7-1">7.1 Project Surface</a></li>
     <li class="toc-sub"><a href="#s7-2">7.2 Design Surface</a></li>
     <li class="toc-sub"><a href="#s7-3">7.3 Verify Surface</a></li>
-    <li class="toc-sub"><a href="#s7-4">7.4 Hardware Surface</a></li>
+    <li class="toc-sub"><a href="#s7-4">7.4 Map Pins Surface</a></li>
     <li class="toc-sub"><a href="#s7-5">7.5 Export Surface</a></li>
     <li class="toc-sub"><a href="#s7-6">7.6 Import Surface</a></li>
     <li class="toc-section"><a href="#s8">8. Circuit Design Workflow</a></li>
@@ -589,14 +593,18 @@ ul li { margin-bottom: 0.3rem; }
 
 <p>RedByte targets the <strong>Digilent Basys 3</strong> development board (Xilinx Artix-7 XC7A35T FPGA). It reduces the fragmented workflow of separate schematic editors, simulation tools, and manual constraint-file authoring, but it does not replace Vivado, perform timing closure, or guarantee arbitrary HDL/hardware success. Vivado remains the tool that synthesizes, implements, generates bitstreams, and programs hardware.</p>
 
-<h2 id="s2-2">2.2 Core Capabilities</h2>
+<h2 id="s2-2">2.2 The Problem RedByte Solves</h2>
+
+<p>Digital-logic work traditionally spans a schematic or HDL editor, simulator, constraint editor, and synthesis toolchain. RedByte keeps supported browser authoring, verification, Basys3 mapping, package generation, and recovery in one coherent workspace while preserving the external Vivado and hardware proof boundary.</p>
+
+<h2 id="s2-3">2.3 Core Capabilities</h2>
 
 <table>
   <thead>
     <tr><th>Capability</th><th>Description</th></tr>
   </thead>
   <tbody>
-    <tr><td><strong>Circuit Design</strong></td><td>Visual drag-and-drop canvas for constructing digital circuits from 25+ logic primitives including gates, flip-flops, and timing elements.</td></tr>
+    <tr><td><strong>Circuit Design</strong></td><td>Visual drag-and-drop canvas for supported gates, boundary I/O, native registers, legacy/theory sequential elements, and reusable blocks. The current palette has no generic Clock card: FPGA clock intent uses the Basys3 <code>CLK100MHZ</code> board resource and pure simulation can use an automatic internal clock.</td></tr>
     <tr><td><strong>Deterministic Simulation</strong></td><td>Tick-based engine using topological-sort evaluation. Same circuit + same inputs = same outputs, every time, on every machine.</td></tr>
     <tr><td><strong>Truth Table Verification</strong></td><td>Automated testing against expected truth table vectors with per-row pass/fail reporting. Supports combinational and sequential schedules.</td></tr>
     <tr><td><strong>Hardware Pin Mapping</strong></td><td>Dedicated interface for assigning circuit ports to Basys 3 physical pins — switches, LEDs, buttons, 7-segment display, clock.</td></tr>
@@ -606,7 +614,7 @@ ul li { margin-bottom: 0.3rem; }
   </tbody>
 </table>
 
-<h2 id="s2-3">2.3 Design Philosophy</h2>
+<h2 id="s2-4">2.4 Design Philosophy</h2>
 
 <div class="no-break">
 <table>
@@ -618,6 +626,17 @@ ul li { margin-bottom: 0.3rem; }
     <tr><td><strong>Local-First Operation</strong></td><td>All computation happens in the browser. No server, no account, no data leaves the machine.</td></tr>
   </tbody>
 </table>
+</div>
+
+<h2 id="s2-5">2.5 Unified Workbench v3 RC Authority</h2>
+
+<p>The current candidate source unifies the student flow as <strong>Project -&gt; Design -&gt; Verify -&gt; Map Pins -&gt; Export</strong>, with <strong>Import / Recover</strong> as a separate recovery utility. The pre-doc authority for this revision is local commit <code>0788044cbdf2699520d90a3428f2e5034dc73cab</code>. Project explains the loaded work; Design keeps the circuit grid dominant; Verify owns named testbench documents and per-document sequential policy; Map Pins owns the semantic signal-to-resource projection; Export separates structural <code>blocked</code>/<code>downloadable</code>, <code>verificationTrust</code> <code>unverified</code>/<code>draft</code>/<code>trusted</code>, and action <code>not-downloaded</code>/<code>downloaded</code>; Import is manifest-first and preserves exact scalar/vector-bit identities.</p>
+
+<p>Named sequential policy remains browser-local and outside portable <code>RBProject</code>, but it is not package-neutral. Authored rows and policy are materialized into one shared execution-vector sequence consumed by runtime Verify, bring-up expectations, and generated <code>testbench.vhd</code> together with the resolved clock/schedule projection. Auto <code>runCycles</code>, automatic reset behavior, resolved clock data, starting level, and authored stimulus may change package bytes, stale Export, and invalidate a prior receipt. UI status, waveform, and Compare-result objects do not generate bytes. This is Browser-E0/software-artifact behavior, not Vivado or board proof.</p>
+
+<div class="callout callout-warning">
+  <span class="callout-label">Candidate boundary</span>
+  Integrated pre-doc checkpoint <code>0788044cb</code> passes the touched 20-file/258-test authority matrix, workspace typecheck, unified build, and focused sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates under Node 20.19.0 / pnpm 10.24.0. Historical pre-sequential <code>f4f7ca8f3</code> passed the earlier 36-file/477-test matrix. This is Browser-E0 source evidence only. Final reconstructed exact-SHA certification and human release disposition remain pending; Guided 4-bit and Mapping Assistant v2 are excluded. Design grid occupancy is 63.1% at 1366px and 65.0% at 1440px: above the 62% floor, below the strategic 70% target.
 </div>
 </div>
 
@@ -640,7 +659,7 @@ ul li { margin-bottom: 0.3rem; }
 <table>
   <thead><tr><th>Context</th><th>Purpose</th><th>Submission System</th><th>Diagnostic Detail</th></tr></thead>
   <tbody>
-    <tr><td><strong>IdeApp</strong></td><td>Full six-surface IDE for lab assignments</td><td>Yes</td><td>Student-appropriate (simplified)</td></tr>
+    <tr><td><strong>IdeApp</strong></td><td>Five-stage lab IDE plus the Import / Recover utility</td><td>Yes</td><td>Student-appropriate (simplified)</td></tr>
     <tr><td><strong>SubmissionInspectorApp</strong></td><td>Instructor grading tool (inspector functionality delivered via Project surface)</td><td>Read-only review</td><td>Full (hashes, verdicts, tamper detection)</td></tr>
   </tbody>
 </table>
@@ -659,12 +678,12 @@ ul li { margin-bottom: 0.3rem; }
   <div class="workflow-arrow">→</div>
   <div class="workflow-stage">Verify</div>
   <div class="workflow-arrow">→</div>
-  <div class="workflow-stage">Hardware</div>
+  <div class="workflow-stage">Map Pins</div>
   <div class="workflow-arrow">→</div>
   <div class="workflow-stage">Export</div>
 </div>
 
-<p>RedByte organizes work into the product spine: <strong>Project -&gt; Design -&gt; Verify -&gt; Map Pins / Hardware -&gt; Export -&gt; Vivado -&gt; Program Board -&gt; Observe</strong>. Import remains available as a utility for bringing external HDL or previously exported projects into the environment. Users may navigate between surfaces freely; the system tracks completion status for each stage.</p>
+<p>RedByte organizes work into the product spine: <strong>Project -&gt; Design -&gt; Verify -&gt; Map Pins -&gt; Export -&gt; Vivado -&gt; Program Board -&gt; Observe</strong>. The five horizontal student stages end at Export. Import / Recover is a separate utility for bringing external HDL or previously exported projects into the environment; it is not a sixth stage.</p>
 
 <h2>4.1.1 Draft, Trusted, and Proven States</h2>
 
@@ -693,6 +712,8 @@ ul li { margin-bottom: 0.3rem; }
   For <strong>combinational circuits</strong>, evaluation typically stabilizes within one or two ticks. For <strong>sequential circuits</strong>, the engine detects clock edges by comparing the current clock value against the previous tick's value. A rising edge (0→1) triggers data capture in flip-flops.
 </div>
 
+<p>In manual/custom mode, each authored row is one settled sample and drives the resolved clock input. Only low-to-high advances rising-edge state; repeated high, high-to-low, repeated low, and flat-low stimulus hold it. An authored falling transition is valid stimulus, not falling-edge-triggered capture. The saved <code>activeEdge</code> field is normalized to <code>rising</code> in this RC; it does not enable falling-edge capture. Manual/custom execution adds no hidden reset. Auto materializes cycle 0 and the selected run cycles; every Auto report row and generated VHDL assertion is post-rising-edge. Automatic reset, when selected, is explicit in cycle 0 and later deassertion rather than a hidden runtime prelude.</p>
+
 <h2 id="s4-3">4.3 Verification Model</h2>
 
 <p>Verification compares actual circuit outputs against expected values defined in <strong>test vectors</strong>. RedByte automatically selects the correct verification schedule:</p>
@@ -701,14 +722,15 @@ ul li { margin-bottom: 0.3rem; }
   <thead><tr><th>Schedule</th><th>Circuit Type</th><th>Behavior per Vector Row</th></tr></thead>
   <tbody>
     <tr><td><strong>Combinational</strong></td><td>No flip-flops</td><td>Apply inputs → one tick → read outputs</td></tr>
-    <tr><td><strong>Clocked Macro</strong></td><td>Contains flip-flops</td><td>Apply inputs → CLK=0 tick → CLK=1 tick → CLK=0 tick → read outputs</td></tr>
+    <tr><td><strong>Auto board clock</strong></td><td>Contains flip-flops driven by the board clock</td><td>Start at cycle 0; materialize the greater of run-cycle count, authored-row count, and one, including automatic reset rows when applicable → sample every row post-rising-edge</td></tr>
+    <tr><td><strong>Manual/custom</strong></td><td>Contains authored clock/control stimulus</td><td>Drive authored clock → settle one row → capture only on low-to-high</td></tr>
   </tbody>
 </table>
 
 <h2 id="s4-4">4.4 Architecture Layers</h2>
 
 <div class="layer-diagram">
-  <div class="layer-row layer-e"><div class="layer-label">Layer E — UX Shell</div><div class="layer-content">Student-facing surfaces (IdeApp.tsx + 6 surfaces). No internal diagnostic language in default view.</div></div>
+  <div class="layer-row layer-e"><div class="layer-label">Layer E — UX Shell</div><div class="layer-content">Five student workflow stages plus the separate Import / Recover utility. No internal diagnostic language in the default view.</div></div>
   <div class="layer-row layer-d"><div class="layer-label">Layer D — Submission</div><div class="layer-content">Deterministic ZIP bundling with integrity hashes. Tamper detection and gate verdicts.</div></div>
   <div class="layer-row layer-c"><div class="layer-label">Layer C — Vivado Adapter</div><div class="layer-content">VHDL generation, XDC constraints, testbench generation, sequential analysis.</div></div>
   <div class="layer-row layer-b"><div class="layer-label">Layer B — Verification</div><div class="layer-content">Truth table comparison, pass/fail per vector, failing node identification.</div></div>
@@ -723,8 +745,8 @@ ul li { margin-bottom: 0.3rem; }
   <thead><tr><th>Level</th><th>Name</th><th>Source</th><th>What Is Preserved</th></tr></thead>
   <tbody>
     <tr><td><span class="badge badge-pass">1</span></td><td>Full</td><td>RedByte project archive (<code>.rbproj.json</code>)</td><td>All state: circuit, layout, vectors, probes, mappings.</td></tr>
-    <tr><td><span class="badge badge-info">2</span></td><td>Reconstructed</td><td>Structural VHDL (component instantiation)</td><td>Topology correct. Auto-layout. No vectors.</td></tr>
-    <tr><td><span class="badge badge-warn">3</span></td><td>Partial</td><td>Behavioral VHDL / concurrent assignments</td><td>I/O port names and directions only.</td></tr>
+    <tr><td><span class="badge badge-info">2</span></td><td>Reconstructed</td><td>Supported structural VHDL or RedByte-generated concurrent-assignment subset</td><td>Supported topology. Auto-layout. Manifest required for vectors, mapping, and metadata.</td></tr>
+    <tr><td><span class="badge badge-warn">3</span></td><td>Partial</td><td>Arbitrary behavioral/process HDL or unsupported constructs</td><td>I/O ports only, or blocked.</td></tr>
   </tbody>
 </table>
 </div>
@@ -764,9 +786,9 @@ pnpm dev</code></pre>
   <li>Drag two <strong>Switch</strong> nodes and one <strong>AND</strong> gate from the palette onto the canvas.</li>
   <li>Drag one <strong>Lamp</strong> node onto the canvas.</li>
   <li>Wire each Switch output to an AND gate input. Wire the AND output to the Lamp input.</li>
-  <li>Navigate to <strong>Verify</strong>. Add truth table vectors or use defaults. Click <strong>Run Verify</strong>.</li>
-  <li>Navigate to <strong>Hardware</strong>. Assign switches to SW0/SW1 and the lamp to LD0.</li>
-  <li>Navigate to <strong>Export</strong>. Click <strong>Download Vivado Kit</strong>.</li>
+  <li>Navigate to <strong>Verify</strong>. Add expected rows or use defaults. Click <strong>Run Compare</strong>.</li>
+  <li>Navigate to <strong>Map Pins</strong>. Assign switches to SW0/SW1 and the lamp to LD0.</li>
+  <li>Navigate to <strong>Export</strong>. Click <strong>Download Package</strong>.</li>
 </ol>
 
 <div class="result-box"><strong>Result:</strong> A ZIP file containing <code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>, automation scripts, and documentation files. RedByte may label this as a draft package or a trusted handoff depending on whether Compare, mapping, and export evidence are current. See Section 11.1 for the complete file list.</div>
@@ -778,21 +800,20 @@ pnpm dev</code></pre>
 
 <h2>6.1 Global Shell</h2>
 
-<p>The IDE shell consists of four persistent regions visible on every surface:</p>
+<p>The IDE shell consists of three persistent regions visible on every surface:</p>
 
 <table>
   <thead><tr><th>Region</th><th>Location</th><th>Content</th></tr></thead>
   <tbody>
-    <tr><td><strong>Top Bar</strong></td><td>Top</td><td>Product mark, project name, save state, contextual actions (Run Verify, Export, Help).</td></tr>
-    <tr><td><strong>Left Rail</strong></td><td>Left</td><td>Six mode entries: Project, Design, Verify, Hardware, Export, Import. Active marker and progress indicators.</td></tr>
-    <tr><td><strong>Main Content</strong></td><td>Center</td><td>Active surface content. Changes entirely when switching surfaces.</td></tr>
-    <tr><td><strong>Status Bar</strong></td><td>Bottom</td><td>Application version, last verification status.</td></tr>
+    <tr><td><strong>Top Bar</strong></td><td>Top</td><td>Product/project identity, board target, save state, Import / Recover utility, and Help.</td></tr>
+    <tr><td><strong>Stage Navigator</strong></td><td>Below top bar</td><td>Five horizontal stages: Project, Design, Verify, Map Pins, Export. Import remains an unnumbered utility.</td></tr>
+    <tr><td><strong>Main Content</strong></td><td>Center</td><td>The active surface's primary work object and state-owned action.</td></tr>
   </tbody>
 </table>
 
 <h2>6.2 Navigation and Status</h2>
 
-<p>Surface switching is always explicit — the user clicks a mode entry in the left rail. The system does not auto-switch surfaces. Each surface displays a maximum of <strong>three status pills</strong> (circuit health, verify result, export readiness) using deterministic language: PASS, FAIL, READY, BLOCKED.</p>
+<p>Surface switching is explicit through the horizontal stage navigator and state-owned CTAs. Pills are reserved for semantic states such as PASS, FAIL, stale, and blocked; ordinary information is shown as headings, rows, labels, or sentences.</p>
 </div>
 
 <!-- ═══════════════════════ SECTION 7 ═══════════════════════ -->
@@ -804,12 +825,12 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
   <tbody>
-    <tr><td><strong>Purpose</strong></td><td>Project-level overview, metadata management, starter example selection, submission export.</td></tr>
+    <tr><td><strong>Purpose</strong></td><td>Action-first entry plus a useful engineering overview of the loaded student's project.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>Session start, project creation, readiness review, metadata changes.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Summary cards: project identity, Basys 3 target, last verification, IO mapping completeness.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Edit name/description. Open starter example (with overwrite guard). Review readiness.</td></tr>
-    <tr><td><strong>Outputs</strong></td><td>Updated metadata. Readiness assessment. Submission export.</td></tr>
-    <tr><td><strong>Student View</strong></td><td>Lab name, student name input, verify status, "Export Submission" button. Hash data in Advanced panel only.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Textual engineering overview: identity, Design, Verify, Map Pins, Export, blocker, and one recommendation.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Edit identity, follow one recommended next action, open the owning Design/Verify/Map Pins/Export row, or use Change Project with replacement guards.</td></tr>
+    <tr><td><strong>Outputs</strong></td><td>Updated metadata and authoritative workflow summaries; Project does not duplicate mapping or package editors.</td></tr>
+    <tr><td><strong>Student View</strong></td><td>Project identity, Design/Verify/Map Pins/Export summaries, one recommendation, and state-owned actions such as <strong>Open Export</strong>. Export's technical evidence dialog contains secondary hashes/provenance.</td></tr>
   </tbody>
 </table>
 
@@ -820,8 +841,11 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Circuit construction via drag-and-drop gate placement and wiring.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>Whenever the circuit needs to be created or modified.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Circuit canvas with tool row (select, wire, delete, zoom). Left: searchable component palette. Right: selected element properties.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Place components, wire ports, select/move/delete, undo/redo (100 levels).</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Stable 200–220px library, dominant circuit canvas with direct Select/Wire/Undo/Redo/Fit/Zoom/View controls, and stable 240–280px inspector.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Place components, wire explicit ports, select/move/delete, undo/redo (100 levels), and use keyboard-reachable port targets.</td></tr>
+    <tr><td><strong>Geometry</strong></td><td>Circuit grid: 63.1% at 1366px and 65.0% at 1440px; 62% floor passed, strategic 70% target unmet. Sparse port targets are at least 24×24px; dense targets are at least 32×24px (current 32×36px).</td></tr>
+    <tr><td><strong>Palette</strong></td><td>AND/OR/NOT/NAND/NOR/XOR/XNOR, five 3-input gates, Register1/RegisterBus/StateBank, legacy/theory sequential elements, INPUT/OUTPUT/Ground, FullAdder, custom components, and separate Basys3 board resources. Generic Clock is not a current palette card.</td></tr>
+    <tr><td><strong>Registry boundary</strong></td><td>27 direct primitive registrations plus 4 composite registrations = 31 runtime registry additions. Runtime registration does not guarantee student-palette visibility.</td></tr>
     <tr><td><strong>Wiring Rules</strong></td><td>Output→Input valid. Fan-out allowed. Self-loops rejected. One connection per input port.</td></tr>
     <tr><td><strong>Health Indicator</strong></td><td>"Circuit OK" or "Issues found" (floating outputs, missing I/O).</td></tr>
   </tbody>
@@ -829,7 +853,7 @@ pnpm dev</code></pre>
 
 <div class="callout callout-tip">
   <span class="callout-label">Tip</span>
-  When navigating to Design from a failing verify result, the system highlights the relevant gate and displays a diagnostic callout.
+  Compare failures separate <strong>Edit expected</strong> from <strong>Inspect Design</strong>. Structural preflight failures use <strong>Open Design</strong> before Compare can run.
 </div>
 
 <h2 id="s7-3">7.3 Verify Surface</h2>
@@ -839,24 +863,33 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Run truth table verification, present pass/fail verdicts, enable failure analysis.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After building or modifying a circuit, before hardware mapping or export.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Top: PASS/FAIL banner with run summary. Center: truth table with per-row results. Right: signal picker and waveform preview.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Run Verify, Jump to failing node, Inspect failure diffs, Edit vectors, Scenario Builder.</td></tr>
-    <tr><td><strong>Schedule</strong></td><td>Auto-detected: combinational (1 tick) or clocked-macro (3-tick clock sequence) based on flip-flop presence.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Named testbench editor, one Observe/Compare command authority, and waveform/results workspace.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Run Observe/Compare, edit combinational rows or sequential timeline cells, inspect mismatch, choose <strong>Edit expected</strong>, <strong>Inspect Design</strong>, or structural <strong>Open Design</strong>, then rerun.</td></tr>
+    <tr><td><strong>Sequential policy</strong></td><td>Each named document owns execution override, run cycles, active edge, reset behavior, source type, execution model, resolved signal identity, and starting level where available. Auto board clock, manual pulses, and custom pattern are distinct choices.</td></tr>
+    <tr><td><strong>Sequential execution</strong></td><td>One materialized vector sequence drives runtime, bring-up expectations, and testbench generation. Manual/custom captures only on authored low-to-high; Auto materializes cycle 0/run cycles/reset and samples every row post-rising-edge. No hidden runtime reset prelude is added.</td></tr>
+    <tr><td><strong>Verify evidence currentness</strong></td><td><code>current</code>, <code>missing</code>, <code>stale</code>, and <code>failed</code> are distinct upstream evidence states, not Export <code>verificationTrust</code> values. Observe-only traces do not support trusted classification.</td></tr>
+    <tr><td><strong>Waveform</strong></td><td>Run transport and current/stale verdict stay adjacent to readable trace evidence; lanes use 36×36px interaction targets and labels remain at least 13px.</td></tr>
     <tr><td><strong>Hints</strong></td><td>14 diagnostic conditions evaluated on FAIL; matching fact-grounded hints displayed. Sequential circuit banner when DFF detected.</td></tr>
-    <tr><td><strong>Freshness</strong></td><td>Stale indicator when circuit modified since last verify. Name/description changes do not stale.</td></tr>
+    <tr><td><strong>Freshness</strong></td><td>A semantic Design fingerprint excludes node position/layout and project identity text. Topology, node type, logical I/O, and testbench-authority changes revoke current evidence.</td></tr>
   </tbody>
 </table>
 
-<h2 id="s7-4">7.4 Hardware Surface</h2>
+<div class="callout callout-note">
+  <span class="callout-label">Authorship and Design repair</span>
+  Named testbench identity, active document, cases, stimulus, expected values, sequential steps, and sequential execution policy are authored browser-workspace state. An Unset expected cell means no Compare check for that output on that row; Observe may still record it. Layout-only node moves preserve authorship and current evidence. Compatible truth-affecting Design edits preserve or rekey the same document but clear current Compare/waveform authority; structural breaks report <strong>DESIGN BLOCKED</strong> until repaired and rerun. Browser-local save/autosave/restore stores named <code>scenarios</code> and the active document beside portable <code>RBProject</code> JSON; this sidecar is not a new portable project field or proof of cross-browser/archive transfer. Its authored rows and policy can still change the shared materialized execution vectors and resolved clock/schedule projection used by generated <code>testbench.vhd</code>, package freshness, and receipt authority.
+</div>
+
+<h2 id="s7-4">7.4 Map Pins Surface</h2>
 
 <table>
   <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Map circuit ports to physical Basys 3 pins. Required before export.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After circuit is designed and verified.</td></tr>
-    <tr><td><strong>Tabs</strong></td><td>Map Pins, Prepare Board, Program Checklist, Live Details. Tabs appear above the hero card.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Pin assignment dropdowns (filtered by direction), pin presets, clear mapping.</td></tr>
-    <tr><td><strong>Callout Strip</strong></td><td>Compare and Export status always visible regardless of active tab.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Progress plus grouped mapping table; stable selected-signal editor; secondary non-assignment Basys 3 reference.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Select row <strong>Assign</strong>/<strong>Edit mapping</strong>/<strong>Resolve</strong>, choose a compatible Basys3 resource, inspect the package-pin/XDC consequence, and use <strong>Save assignment</strong>. The board graphic is reference-only.</td></tr>
+    <tr><td><strong>Projection</strong></td><td>Logical signal, direction, artifact port, board resource, package pin, I/O standard, exact XDC line, required state, and conflict state remain one coherent semantic row across Map Pins and Export.</td></tr>
+    <tr><td><strong>Boundary</strong></td><td>Proves saved mapping for XDC generation, not Vivado build, programming, or board behavior.</td></tr>
     <tr><td><strong>Available Pins</strong></td><td>16 switches, 16 LEDs, 5 buttons, 7-segment display (7 cathodes + 4 anodes + DP), CLK100MHZ.</td></tr>
   </tbody>
 </table>
@@ -868,9 +901,13 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Validate readiness, preview generated artifacts, produce Vivado Kit ZIP.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After design, verification, and complete pin mapping.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Top: READY/WARNING/BLOCKED status. Center: artifact preview for primary files (<code>top.vhd</code>, <code>top.xdc</code>, <code>testbench.vhd</code>). Right: pin table, validation.</td></tr>
-    <tr><td><strong>Primary CTA</strong></td><td><strong>Download Vivado Kit</strong> — downloads the ZIP file containing generated artifacts. A structurally valid project may download as a draft package; RedByte labels the handoff as trusted only when Compare, mapping, and export evidence are current.</td></tr>
-    <tr><td><strong>Single Path</strong></td><td>One generation path. Preview shows exact bytes that appear in the ZIP.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td><strong>What should I submit?</strong>, blocked/draft/ready handoff decision, and stable file list/selected preview for meaningful packages.</td></tr>
+    <tr><td><strong>Entry</strong></td><td>State-owned actions elsewhere use <strong>Open Export</strong> to route package work into this stage rather than duplicating Export controls.</td></tr>
+    <tr><td><strong>Primary CTA</strong></td><td><strong>Download Package</strong> is reserved for a trusted current handoff. A structurally valid but untrusted project exposes the separate <strong>Download draft</strong> action.</td></tr>
+    <tr><td><strong>Files and evidence</strong></td><td>The stable file browser selects exact generated content for preview/copy/download. <strong>Open technical evidence</strong> opens a separate diagnostics/provenance dialog.</td></tr>
+    <tr><td><strong>Trust and receipt</strong></td><td>Structural <code>blocked</code>/<code>downloadable</code>, <code>verificationTrust</code> <code>unverified</code>/<code>draft</code>/<code>trusted</code>, and action <code>not-downloaded</code>/<code>downloaded</code> stay separate. Verify evidence currentness remains upstream. The current receipt binds source fingerprint, project/Verify hashes, mapping currentness, download kind, trust state, and SHA-256 to the exact package.</td></tr>
+    <tr><td><strong>Sequential testbench</strong></td><td>Runtime, bring-up expectations, and testbench generation share materialized execution vectors plus the resolved clock/schedule projection. Auto <code>runCycles</code> and automatic reset can change bytes; every Auto assertion is post-rising-edge. Manual/custom assigns authored clock values and settles without the Auto scaffold.</td></tr>
+    <tr><td><strong>Manifest agreement</strong></td><td>The generated manifest embeds the exact generated <code>top.vhd</code> and <code>top.xdc</code>; preview, semantic mapping projection, ZIP, and manifest agree.</td></tr>
     <tr><td><strong>Scaffold Warnings</strong></td><td>HDL/XDC port mismatch warnings for projection-only exports are informational, not blocking.</td></tr>
   </tbody>
 </table>
@@ -881,16 +918,17 @@ pnpm dev</code></pre>
   <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
   <tbody>
     <tr><td><strong>Purpose</strong></td><td>Import external HDL, constraint files, or RedByte project archives.</td></tr>
-    <tr><td><strong>Tabs</strong></td><td>"Upload ZIP" (file picker), "Paste HDL" (paste VHDL source), "Paste XDC" (constraint text).</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Parsed ports table, schematic preview, diagnostics list with plain-language errors.</td></tr>
-    <tr><td><strong>Fidelity</strong></td><td>Full (project archive), Reconstructed (structural VHDL), Partial (behavioral VHDL). Reported explicitly.</td></tr>
+    <tr><td><strong>Sequence</strong></td><td>Horizontal Upload → Review → Apply. ZIP, <strong>Paste HDL</strong>, conditional <strong>Paste XDC</strong>, and samples are source choices inside Upload, not workflow tabs or stages.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Candidate identity/design/mapping/fidelity review followed by explicit replacement confirmation; Cancel preserves current work.</td></tr>
+    <tr><td><strong>Fidelity</strong></td><td>Full (manifest-first project archive), Reconstructed (supported structural or RedByte-generated concurrent-assignment VHDL), Partial/blocked (arbitrary behavioral or unsupported HDL).</td></tr>
+    <tr><td><strong>Identity</strong></td><td>Scalar and vector-bit ports such as <code>SW[1]</code> and <code>LED[1]</code> retain exact identity through Review, Apply, mapping, and re-export.</td></tr>
     <tr><td><strong>Submission Detection</strong></td><td>Identifies RedByte submission ZIPs and reports integrity status.</td></tr>
   </tbody>
 </table>
 
 <div class="callout callout-warning">
   <span class="callout-label">Warning</span>
-  RedByte's own exported <code>top.vhd</code> uses concurrent signal assignments optimized for synthesis. It imports at <strong>Partial</strong> fidelity only. For full-fidelity re-import, use the <code>.rbproj.json</code> file from the same export ZIP.
+  Supported RedByte-generated concurrent-assignment <code>top.vhd</code> can reconstruct the supported graph, but this is not a lossless restore. Use the embedded manifest for layout, authored Verify documents, mapping, and metadata. Loose sibling HDL/XDC cannot override a valid manifest.
 </div>
 </div>
 
@@ -921,7 +959,7 @@ pnpm dev</code></pre>
 <ol class="procedure">
   <li>Place the flip-flop (e.g., D Flip-Flop) on the canvas.</li>
   <li>Connect the <strong>D</strong> (data) port to the source signal.</li>
-  <li>Connect the <strong>CLK</strong> port to a Clock node or designated clock switch.</li>
+  <li>For FPGA intent, connect <strong>CLK</strong> to a top-level clock input created from the Basys3 <code>CLK100MHZ</code> board resource. Pure simulation can use RedByte's automatic internal simulation clock; the current Design palette has no generic Clock card.</li>
   <li>Optionally connect <strong>EN</strong> (enable) and <strong>RST</strong> (reset) ports.</li>
   <li>Connect the <strong>Q</strong> output to downstream logic or output indicators.</li>
 </ol>
@@ -938,14 +976,15 @@ pnpm dev</code></pre>
 
 <ol class="procedure">
   <li>Navigate to the <strong>Verify</strong> surface.</li>
-  <li>Review or author test vectors in the truth table. Each row specifies inputs and expected outputs.</li>
-  <li>Click <strong>Run Verify</strong>.</li>
+  <li>Choose or create the named testbench document, then review or author rows. Each row specifies inputs and expected outputs.</li>
+  <li>For a sequential document, review its saved execution mode, run cycles, active edge, reset behavior, source type, execution model, resolved clock identity, and starting level. Choose automatic board clock, manual pulses, or custom pattern deliberately. In manual/custom mode, only low-to-high advances rising-edge state; falling and flat/repeated levels hold it.</li>
+  <li>Select Compare and click <strong>Run Compare</strong>.</li>
   <li>Review results: ✓ per passing row, ✗ per failing row.</li>
-  <li>For failures: use <strong>Jump to failing node</strong> to navigate to the Design surface with the relevant gate highlighted.</li>
-  <li>Fix the circuit and re-verify until all vectors pass.</li>
+  <li>For failures, choose <strong>Edit expected</strong> when the saved check is wrong or <strong>Inspect Design</strong> when the circuit is wrong. Structural preflight failures expose <strong>Open Design</strong>.</li>
+  <li>Apply the correct repair and rerun Compare.</li>
 </ol>
 
-<div class="result-box"><strong>Result:</strong> A <span class="badge badge-pass">PASS</span> verdict confirms the circuit is correct for all tested input combinations. A <span class="badge badge-fail">FAIL</span> verdict identifies specific rows and signals that do not match expectations.</div>
+<div class="result-box"><strong>Result:</strong> A current <span class="badge badge-pass">PASS</span> applies only to the same current design and testbench state. Missing, stale, and <span class="badge badge-fail">FAIL</span> evidence remain distinct and cannot support Export <code>verificationTrust: trusted</code>. Runtime summary, waveform, checks, verdict, and counts describe the same execution.</div>
 
 <h2>Verification Determinism</h2>
 <p>Results are deterministic. Running the same circuit with the same vectors produces the same results every time, on every machine. The Verify surface displays a deterministic run hash to confirm reproducibility.</p>
@@ -956,10 +995,12 @@ pnpm dev</code></pre>
 <h1>10. Hardware Mapping and Board Preparation</h1>
 
 <ol class="procedure">
-  <li>Navigate to the <strong>Hardware</strong> surface, <strong>Map Pins</strong> tab.</li>
-  <li>For each circuit port, select a Basys 3 pin from the dropdown. Inputs map to switches/buttons; outputs map to LEDs/display segments.</li>
-  <li>For sequential circuits, assign the clock port to <strong>CLK100MHZ</strong> (pin W5).</li>
-  <li>Confirm "Mapping complete" status.</li>
+  <li>Navigate to the <strong>Map Pins</strong> stage.</li>
+  <li>Choose <strong>Assign</strong>, <strong>Edit mapping</strong>, or <strong>Resolve</strong> for one signal-table row.</li>
+  <li>Use the selected-signal <strong>Basys3 resource</strong> selector, review the package-pin/XDC consequence, and choose <strong>Save assignment</strong>. The smaller board graphic is reference-only.</li>
+  <li>For sequential FPGA designs with a top-level clock port, assign <strong>CLK100MHZ</strong> (pin W5).</li>
+  <li>Repeat until all required rows are assigned and no conflicts remain.</li>
+  <li>Confirm the semantic preview agrees on logical identity, artifact port, board resource, package pin, I/O standard, and exact generated XDC line.</li>
 </ol>
 
 <div class="callout callout-note">
@@ -979,7 +1020,7 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><code>top.vhd</code></td><td>Design Source</td><td>Synthesizable VHDL top-level entity.</td></tr>
     <tr><td><code>top.xdc</code></td><td>Constraints</td><td>Pin assignments with LVCMOS33 I/O standard.</td></tr>
-    <tr><td><code>testbench.vhd</code></td><td>Simulation Source</td><td>VHDL testbench from truth table vectors.</td></tr>
+    <tr><td><code>testbench.vhd</code></td><td>Simulation Source</td><td>VHDL testbench from the shared materialized execution vectors plus resolved clock/schedule projection.</td></tr>
     <tr><td><code>vivado_import.tcl</code></td><td>Automation</td><td>Tcl script for automated Vivado project creation.</td></tr>
     <tr><td><code>program_and_test.tcl</code></td><td>Automation</td><td>Tcl script for board programming and test.</td></tr>
     <tr><td><code>README.txt</code></td><td>Documentation</td><td>Quick-start instructions for the Vivado workflow.</td></tr>
@@ -989,10 +1030,12 @@ pnpm dev</code></pre>
   </tbody>
 </table>
 
+<p>Runtime Verify, bring-up expectations, and generated <code>testbench.vhd</code> consume the same materialized execution vectors plus the resolved clock/schedule projection. Auto board-clock testbenches use a free-running <code>clock_gen</code> and <code>CLK_HALF_PERIOD</code>, then wait for a rising edge before every materialized row assertion, including cycle 0. Auto <code>runCycles</code> and automatic reset behavior may change the vector sequence and package bytes; automatic reset is materialized rather than injected as a hidden runtime prelude. Manual/custom testbenches omit that scaffold, assign authored clock values, and sample after the deterministic settle interval. This is Browser-E0/software-artifact authority, not proof that Vivado executed the testbench.</p>
+
 <h2>11.2 Importing into Vivado</h2>
 
 <ol class="procedure">
-  <li><strong>Download the Vivado Kit</strong> from the Export surface and extract the ZIP.</li>
+  <li>Use <strong>Download Package</strong> for a trusted current handoff, or deliberately choose the separate <strong>Download draft</strong> action for an untrusted but structurally buildable package; then extract the ZIP.</li>
   <li>Open Vivado → <strong>Create Project</strong> → RTL Project.</li>
   <li>Add <code>top.vhd</code> as Design Source. Add <code>top.xdc</code> as Constraints.</li>
   <li>Select part: <code>xc7a35t-1cpg236-1</code> (or board "Basys3").</li>
@@ -1007,7 +1050,7 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>Error</th><th>Likely Cause</th><th>Resolution</th></tr></thead>
   <tbody>
-    <tr><td>"Port X not found in entity"</td><td>Port name mismatch</td><td>Re-map in Hardware surface and re-export.</td></tr>
+    <tr><td>"Port X not found in entity"</td><td>Port name mismatch</td><td>Re-map in Map Pins and re-export.</td></tr>
     <tr><td>"Multiple drivers on net"</td><td>Combinational loop</td><td>Fix the loop in Design, re-verify, re-export.</td></tr>
     <tr><td>"Timing not met"</td><td>Excessive logic depth</td><td>Simplify combinational path or add pipeline registers.</td></tr>
   </tbody>
@@ -1028,13 +1071,15 @@ pnpm dev</code></pre>
 <h1>12. Import and Reuse Workflows</h1>
 
 <h2>12.1 Full-Fidelity Re-import</h2>
-<p>Upload the <code>.rbproj.zip</code> archive on the Import surface's "Upload ZIP" tab. The system detects the project manifest and restores all state.</p>
+<p>Choose the <code>.rbproj.zip</code> archive in Import's Upload step. The embedded manifest is authoritative, its generated HDL/XDC projection must agree with the package, and loose sibling files cannot override it. Review the detected project, then use the explicit Apply confirmation; Cancel preserves current work.</p>
 
 <h2>12.2 Structural VHDL Import</h2>
-<p>Paste structural VHDL with component instantiation on the "Paste HDL" tab. The parser maps 37 HDL name variants (e.g., <code>and2</code>, <code>AND</code>, <code>and_gate</code>) to 9 RedByte node types through a built-in component library. Topology is reconstructed; positions are auto-assigned; test vectors must be re-authored.</p>
+<p>Inside Import's Upload step, choose <strong>Paste HDL</strong>, paste structural VHDL with component instantiation, and choose <strong>Parse HDL</strong>. The parser maps 37 HDL name variants (e.g., <code>and2</code>, <code>AND</code>, <code>and_gate</code>) to 9 RedByte node types. Review the candidate, choose <strong>Review replacement</strong>, then use the explicit <strong>Confirm replacement</strong> action; Cancel preserves the current project.</p>
+
+<p>Supported RedByte-generated concurrent-assignment <code>top.vhd</code> also reconstructs the supported graph. It remains reconstructed, not lossless: layout, authored Verify documents, mapping, and metadata require the manifest. Arbitrary behavioral/process HDL remains ports-only or blocked. Scalar/vector-bit identities such as <code>SW[1]</code> and <code>LED[1]</code> must survive Review, Apply, mapping, and re-export unchanged.</p>
 
 <h2>12.3 XDC Constraint Import</h2>
-<p>Paste constraint file content on the "Paste XDC" tab. Pin assignments are imported and applied to matching circuit ports.</p>
+<p>Inside the same Upload step, choose <strong>Paste HDL</strong> and parse the structural source first; then choose <strong>Paste XDC</strong>, paste constraints, and choose <strong>Parse XDC</strong>. Review and confirm the combined candidate before replacement.</p>
 </div>
 
 <!-- ═══════════════════════ SECTION 13 ═══════════════════════ -->
@@ -1044,8 +1089,10 @@ pnpm dev</code></pre>
 <h2>13.1 Student Submission</h2>
 <ol class="procedure">
   <li>Complete circuit design and achieve a <span class="badge badge-pass">PASS</span> verification.</li>
-  <li>Navigate to the <strong>Project</strong> surface.</li>
-  <li>Click <strong>Export Submission</strong>.</li>
+  <li>Navigate to <strong>Export</strong>, or use a state-owned <strong>Open Export</strong> action.</li>
+  <li>Read <strong>What should I submit?</strong>, then choose <strong>Download Package</strong> for a trusted current handoff. Use <strong>Download draft</strong> only when the course accepts an explicitly untrusted package.</li>
+  <li>Inspect the nine generated files in the file browser; use <strong>Open technical evidence</strong> only for diagnostics/provenance.</li>
+  <li>Check that the receipt's download kind, trust state, source fingerprint, project/Verify hashes, mapping currentness, and SHA-256 describe the exact downloaded package.</li>
   <li>Upload the downloaded archive to the institutional LMS.</li>
 </ol>
 
@@ -1095,6 +1142,8 @@ pnpm dev</code></pre>
 ├── EXPECTED_IO.json       # Machine-readable I/O expectations
 └── project.rbproj.json    # RedByte project snapshot</code></pre>
 
+<p>The Vivado-kit <code>project.rbproj.json</code> is a generated package projection. It embeds the exact generated <code>top.vhd</code> and <code>top.xdc</code> content used by the same package; Import validates that authority before a full restore. Named testbench documents remain browser-local and outside portable <code>RBProject</code>, while their authored rows and policy may still change the materialized execution vectors and resolved clock/schedule projection used by generated <code>testbench.vhd</code>.</p>
+
 <h2>14.2 Submission Package</h2>
 <pre><code>submission.rbproj.zip
 ├── rb-project.json       # Complete project state
@@ -1113,7 +1162,7 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td>Wire will not connect</td><td>Invalid direction</td><td>Source must be output port, target must be input port.</td></tr>
     <tr><td>"Issues found" health</td><td>Floating outputs / missing I/O</td><td>Connect all outputs; add INPUT/OUTPUT nodes for hardware ports.</td></tr>
-    <tr><td>Flip-flop output unchanged</td><td>No clock edge</td><td>Ensure Clock node connected to CLK port and value transitions 0→1.</td></tr>
+    <tr><td>Flip-flop output unchanged</td><td>No effective clock activity</td><td>For FPGA intent, connect a top-level clock and map it to <code>CLK100MHZ</code> (W5). For simulation-only intent, confirm Verify reports the automatic internal clock policy or author the required manual control activity.</td></tr>
   </tbody>
 </table>
 
@@ -1122,8 +1171,10 @@ pnpm dev</code></pre>
   <thead><tr><th>Symptom</th><th>Cause</th><th>Resolution</th></tr></thead>
   <tbody>
     <tr><td>All vectors fail</td><td>Wiring error</td><td>Trace signal paths in Design surface.</td></tr>
-    <tr><td>Sequential test fails</td><td>Missing clock</td><td>Connect clock to all flip-flops.</td></tr>
+    <tr><td>Sequential test fails</td><td>Missing clock/control activity</td><td>Confirm the top-level board clock mapping or Verify's automatic/internal/manual clock policy, then rerun.</td></tr>
+    <tr><td>Outputs advance while a manual/custom clock stays flat</td><td>Invalid execution evidence: state advanced without an authored low-to-high transition</td><td>Do not use the run to authorize Export. Repair the stimulus or product regression, then rerun Compare.</td></tr>
     <tr><td>Stale indicator</td><td>Circuit modified</td><td>Re-run verification.</td></tr>
+    <tr><td>Testbench remains after Design edit but PASS/waveform disappears</td><td>Design behavior changed, so prior evidence is archival</td><td>Repair any Design blocker and rerun Compare; authored cases were retained.</td></tr>
   </tbody>
 </table>
 
@@ -1164,12 +1215,12 @@ pnpm dev</code></pre>
 
 <div class="callout callout-tip">
   <span class="callout-label">Hardware</span>
-  Assign clock ports first for sequential designs. Use pin presets for standard lab configurations.
+  Select each signal's Assign/Edit/Resolve row action, choose a compatible Basys3 resource, and use <strong>Save assignment</strong>. The board graphic is reference-only. Map top-level FPGA clocks to <code>CLK100MHZ</code> (W5).
 </div>
 
 <div class="callout callout-tip">
   <span class="callout-label">Export</span>
-  Use <code>.rbproj.json</code> for re-import, not <code>top.vhd</code>. Keep the exported ZIP alongside the Vivado project as a design record.
+  Use the manifest for lossless re-import. Supported RedByte-generated <code>top.vhd</code> can reconstruct its graph, but it does not carry layout, authored Verify documents, mapping, or project metadata. Keep the exported ZIP alongside the Vivado project as a design record.
 </div>
 
 <div class="callout callout-tip">
@@ -1187,16 +1238,17 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><strong>Basys 3</strong></td><td>Digilent FPGA development board (Artix-7 XC7A35T). The target hardware platform for RedByte exports.</td></tr>
     <tr><td><strong>Circuit</strong></td><td>A collection of nodes and connections representing a digital logic design. The single source of truth.</td></tr>
-    <tr><td><strong>Clocked-macro schedule</strong></td><td>Verification schedule for sequential circuits. Three-tick clock sequence per vector row.</td></tr>
+    <tr><td><strong>Sequential policy</strong></td><td>The named Verify document's execution mode, run cycles, active edge, reset behavior, source type, execution model, resolved clock/control identity, and starting level. Its frozen projection may drive generated <code>testbench.vhd</code> without becoming a portable project field.</td></tr>
     <tr><td><strong>Connection</strong></td><td>Directional link from output port to input port. Format: <code>{ from: { nodeId, portName }, to: { nodeId, portName } }</code>.</td></tr>
     <tr><td><strong>Determinism</strong></td><td>Identical inputs always produce identical results, across runs and machines.</td></tr>
     <tr><td><strong>Fidelity level</strong></td><td>Import quality classification: Full, Reconstructed, or Partial.</td></tr>
     <tr><td><strong>Gate verdict</strong></td><td>Summary judgment of whether work meets lab requirements.</td></tr>
     <tr><td><strong>LVCMOS33</strong></td><td>3.3V low-voltage CMOS I/O standard used by the Basys 3 board.</td></tr>
-    <tr><td><strong>Node</strong></td><td>Any logic element: gate, flip-flop, switch, lamp, clock, or delay.</td></tr>
+    <tr><td><strong>Node</strong></td><td>Any supported logic, sequential, boundary-I/O, board-resource, reusable, or backward-compatible circuit element.</td></tr>
     <tr><td><strong>Port</strong></td><td>Named input or output connection point on a node.</td></tr>
     <tr><td><strong>Rising edge</strong></td><td>Clock transition from 0 to 1. Triggers data capture in flip-flops.</td></tr>
-    <tr><td><strong>Surface</strong></td><td>One of the six primary IDE screens: Project, Design, Verify, Hardware, Export, Import.</td></tr>
+    <tr><td><strong>Falling transition</strong></td><td>Authored clock transition from 1 to 0. Valid stimulus that holds rising-edge state; not falling-edge-triggered capture.</td></tr>
+    <tr><td><strong>Stage</strong></td><td>One of five student workflow destinations: Project, Design, Verify, Map Pins, or Export. Import / Recover is a separate utility, not a sixth stage.</td></tr>
     <tr><td><strong>Test vector</strong></td><td>A truth table row specifying input values and expected output values.</td></tr>
     <tr><td><strong>Tick</strong></td><td>One discrete simulation time step. All nodes evaluated once per tick in topological order.</td></tr>
     <tr><td><strong>Topological sort</strong></td><td>Algorithm ensuring nodes are evaluated after their input dependencies.</td></tr>
@@ -1220,10 +1272,12 @@ pnpm dev</code></pre>
     <tr><td>OR</td><td>a, b</td><td>out</td><td>1 when at least one input is 1.</td></tr>
     <tr><td>NOT</td><td>in</td><td>out</td><td>Complement of input.</td></tr>
     <tr><td>NAND</td><td>a, b</td><td>out</td><td>0 only when both inputs are 1.</td></tr>
+    <tr><td>NOR</td><td>a, b</td><td>out</td><td>1 only when both inputs are 0.</td></tr>
     <tr><td>XOR</td><td>a, b</td><td>out</td><td>1 when inputs differ.</td></tr>
+    <tr><td>XNOR</td><td>a, b</td><td>out</td><td>1 when inputs match.</td></tr>
   </tbody>
 </table>
-<p class="note"><strong>Note:</strong> NOR and XNOR are defined in the type system but are not currently registered in the active component palette. Use NOT+OR or NOT+XOR combinations as equivalents, or use the three-input NOR3 variant which is registered.</p>
+<p class="note"><strong>Registry truth:</strong> NOR and XNOR are registered runtime behaviors and current student palette entries. The runtime performs 27 direct primitive registrations plus 4 composite registrations, for 31 registry additions; palette visibility remains separately governed by the support registry.</p>
 
 <h3>A.2 Three-Input Gates</h3>
 <table>
@@ -1241,6 +1295,9 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>Primitive</th><th>Inputs</th><th>Outputs</th><th>Behavior</th></tr></thead>
   <tbody>
+    <tr><td>Register1</td><td>D, CLK, optional EN/RST</td><td>Q</td><td>Native one-bit register. This RC verifies/exports only rising-edge, active-high asynchronous clear, and active-high enable semantics; other configurations block explicitly.</td></tr>
+    <tr><td>RegisterBus</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas native bus register; Verify and Export are intentionally blocked in this RC until runtime/VHDL parity is complete.</td></tr>
+    <tr><td>StateBank</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas grouped state abstraction; Verify and Export are intentionally blocked in this RC until runtime/VHDL parity is complete.</td></tr>
     <tr><td>D Flip-Flop</td><td>D, CLK, EN, RST</td><td>Q, Q̄</td><td>Captures D on rising CLK edge. RST=1 forces Q=0. EN gates capture.</td></tr>
     <tr><td>T Flip-Flop</td><td>T, CLK, CLR</td><td>Q, Q̄</td><td>T=1 toggles Q on rising edge. T=0 holds.</td></tr>
     <tr><td>JK Flip-Flop</td><td>J, K, CLK, CLR</td><td>Q, Q̄</td><td>J=1,K=0: set. J=0,K=1: reset. J=K=1: toggle. J=K=0: hold.</td></tr>
@@ -1262,6 +1319,7 @@ pnpm dev</code></pre>
     <tr><td>Wire</td><td>in, out</td><td>Simple pass-through. Output equals input.</td></tr>
   </tbody>
 </table>
+<p class="note"><strong>Clock boundary:</strong> <code>Clock</code> remains a registered runtime behavior for legacy serialized projects and simulation internals, but it is not a current student-authoring palette card. Students choose Basys3 <code>CLK100MHZ</code> for FPGA clock intent; pure simulation may use an automatically injected internal clock.</p>
 
 <h2 id="sB">Appendix B: Basys 3 Pin Reference</h2>
 
@@ -1318,9 +1376,9 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>File</th><th>Entity</th><th>Key Properties</th></tr></thead>
   <tbody>
-    <tr><td><code>top.vhd</code></td><td><code>top</code></td><td>Synthesizable. Ports match Hardware surface. LVCMOS33 (via XDC). No behavioral process blocks.</td></tr>
+    <tr><td><code>top.vhd</code></td><td><code>top</code></td><td>Synthesizable. Ports match Map Pins. LVCMOS33 (via XDC). No behavioral process blocks.</td></tr>
     <tr><td><code>top.xdc</code></td><td>—</td><td>One <code>set_property PACKAGE_PIN</code> per port. <code>CLOCK_BUFFER_TYPE NONE</code> for switch/button inputs.</td></tr>
-    <tr><td><code>testbench.vhd</code></td><td><code>tb_top</code></td><td>Simulation only. Exercises all truth table rows. 10 ns clock period for sequential circuits.</td></tr>
+    <tr><td><code>testbench.vhd</code></td><td><code>tb_top</code></td><td>Simulation only. Auto board clock uses a free-running 10 ns generator and rising-edge waits; manual/custom assigns the authored clock per vector and uses deterministic settling.</td></tr>
   </tbody>
 </table>
 
@@ -1331,8 +1389,8 @@ pnpm dev</code></pre>
   <tbody>
     <tr><td><code>.rbproj.json</code> from ZIP</td><td><span class="badge badge-pass">Full</span></td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr>
     <tr><td>Structural VHDL</td><td><span class="badge badge-info">Reconstructed</span></td><td>✓ (topology)</td><td>Auto</td><td>—</td><td>—</td></tr>
-    <tr><td>Behavioral VHDL</td><td><span class="badge badge-warn">Partial</span></td><td>Ports only</td><td>—</td><td>—</td><td>—</td></tr>
-    <tr><td>RedByte <code>top.vhd</code></td><td><span class="badge badge-warn">Partial</span></td><td>Ports only</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Arbitrary behavioral/process HDL or unsupported constructs</td><td><span class="badge badge-warn">Partial / blocked</span></td><td>Ports only or blocked</td><td>—</td><td>—</td><td>—</td></tr>
+    <tr><td>Supported RedByte <code>top.vhd</code></td><td><span class="badge badge-info">Reconstructed</span></td><td>Supported graph</td><td>Auto</td><td>—</td><td>—</td></tr>
     <tr><td>XDC file</td><td>—</td><td>—</td><td>—</td><td>—</td><td>✓ (if match)</td></tr>
   </tbody>
 </table>
@@ -1343,7 +1401,7 @@ pnpm dev</code></pre>
   <div style="margin-bottom: 1rem;">
     <span style="font-size: 1.5rem; font-weight: 900; color: var(--rb-slate-900);"><span style="color: var(--rb-red);">Red</span>Byte</span>
   </div>
-  <p>Product Manual · Version 1.0 · March 2026</p>
+  <p>Product Manual · Version 1.2 · July 2026</p>
   <p>Attribution: Connor Angiel</p>
   <p>RedByte Proprietary License (RPL-1.0)</p>
 </div>

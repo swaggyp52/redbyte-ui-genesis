@@ -46,7 +46,7 @@ The IDE remains available at:
 The page must preserve these public truths:
 
 - RedByte is a proof-backed digital logic and FPGA workbench.
-- The workflow spine is `Project -> Design -> Verify -> Map Pins / Hardware -> Export`.
+- The workflow spine is `Project -> Design -> Verify -> Map Pins -> Export`.
 - Vivado is downstream and is not replaced by RedByte.
 - Trusted Export requires current Verify evidence and current mapping.
 - Draft Export is allowed but must not be described as trusted.

@@ -13,7 +13,7 @@ Use this to assign a supported RedByte lab without relying on agent-only context
 RedByte V1 is a browser-based Basys3 digital-logic lab workbench. The classroom spine is:
 
 ```text
-Project -> Design -> Verify -> Map Pins / Hardware -> Export
+Project -> Design -> Verify -> Map Pins -> Export
 ```
 
 Vivado build, board programming, and board observation are downstream proof steps. RedByte is not a Vivado replacement, not a universal HDL IDE, not a broad board abstraction, and not a SaaS classroom-management product.

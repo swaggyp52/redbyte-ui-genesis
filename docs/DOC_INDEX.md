@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-01
+last_validated: 2026-07-22
 owner: Connor Angiel
 used_by_claude: true
 role: navigation hub
@@ -8,7 +8,7 @@ role: navigation hub
 
 # Documentation Index
 
-**Last Updated:** 2026-07-02
+**Last Updated:** 2026-07-22
 
 Navigation hub for current RedByte documentation. Start with the startup order below, then follow the task-specific sections.
 
@@ -65,6 +65,8 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [product/RED_BYTE_UNIFIED_WORKBENCH_V3.md](./product/RED_BYTE_UNIFIED_WORKBENCH_V3.md) | Unified Workbench v3 product contract plus current RC authority addendum |
+| [handoff/GANNON_REDBYTE_V3_RC_README.md](./handoff/GANNON_REDBYTE_V3_RC_README.md) | Gannon RC source handoff, exact evidence boundary, exclusions, and final-certification checklist |
 | [product/GANNON_PILOT_READINESS.md](./product/GANNON_PILOT_READINESS.md) | Gannon pilot readiness boundary: browser-E0 pilot target vs not-sell-ready claims |
 | [product/GANNON_PILOT_GAP_MAP.md](./product/GANNON_PILOT_GAP_MAP.md) | Gannon pilot adoption gaps across student flow, stability, hardware proof, instructor operations, and commercial posture |
 | [product/REDBYTE_PRODUCT_REALITY_SPRINT.md](./product/REDBYTE_PRODUCT_REALITY_SPRINT.md) | Current student-usable Vivado-grade builder sprint record and selected complex-build debugging slice |
@@ -152,6 +154,7 @@ If a tracked doc references a generated pack that is missing locally, do not tre
 | [course/TA_TROUBLESHOOTING_GUIDE.md](./course/TA_TROUBLESHOOTING_GUIDE.md) | Current TA triage guide for setup, RedByte surfaces, Vivado, board, and Import |
 | [course/windows-quickstart.md](./course/windows-quickstart.md) | Current Windows course launcher and doctor reference |
 | [manuals/RedByte_Product_Manual.md](./manuals/RedByte_Product_Manual.md) | Canonical current product reference |
+| [manuals/RedByte_Product_Manual_print.html](./manuals/RedByte_Product_Manual_print.html) | Current print source; the PDF remains the previous edition until final exact-SHA regeneration and visual inspection |
 | [contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md](./contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md) | Active V1 target contract and execution order |
 | [product/RED_BYTE_LAB_PROFILE_MODEL.md](./product/RED_BYTE_LAB_PROFILE_MODEL.md) | Target model for professor-authored labs, course packs, and from-scratch student projects |
 | [manuals/MANUAL_CLAIM_AUDIT.md](./manuals/MANUAL_CLAIM_AUDIT.md) | Claim audit against source |

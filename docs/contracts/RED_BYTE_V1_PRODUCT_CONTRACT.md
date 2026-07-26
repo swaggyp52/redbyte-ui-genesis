@@ -45,7 +45,7 @@ RedByte V1 is not:
 The RedByte-owned spine is:
 
 ```text
-Project -> Design -> Verify -> Map Pins / Hardware -> Export
+Project -> Design -> Verify -> Map Pins -> Export
 ```
 
 The external proof spine is:

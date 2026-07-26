@@ -27,7 +27,7 @@ Do not market it as a Vivado replacement. RedByte is a learning IDE and proof-ha
 ## What Is Commercially Promising
 
 - The product has a narrow, understandable promise: visual digital logic, Verify checks, Basys3 mapping, and Vivado-ready E0 export packages.
-- The core workflow spine is real: Project -> Design -> Verify -> Map Pins / Hardware -> Export.
+- The core workflow spine is real: Project -> Design -> Verify -> Map Pins -> Export.
 - Certified starter flows pass in browser automation.
 - Blank-canvas AND workflow can reach Verify PASS and Export.
 - E0 package content is structurally credible and explicitly avoids overclaiming hardware proof.

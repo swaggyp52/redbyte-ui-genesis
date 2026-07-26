@@ -148,7 +148,7 @@ Proof:
 
 Proof:
 
-- Project -> Design -> Verify -> Map Pins / Hardware -> Export walkthrough evidence
+- Project -> Design -> Verify -> Map Pins -> Export walkthrough evidence
 - no new Vivado/Basys3 claims unless those tools were actually run
 
 ## Guardrails

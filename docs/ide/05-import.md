@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-04
+last_validated: 2026-07-22
 owner: Connor Angiel
 used_by_claude: true
 role: Import surface spec
@@ -8,7 +8,7 @@ role: Import surface spec
 
 # Import Mode Spec
 
-Status: Phase 1 v1 - utility contract closed locally by `ide:gate:import-recovery-contract`
+Status: Unified Workbench v3 RC source contract - browser E0 only; final reconstructed exact-SHA certification pending
 Mode ID: `import`
 
 ## Purpose
@@ -83,6 +83,17 @@ Show deterministic diagnostics:
 - Successful import routes to editable project state, and imported Verify PASS is not automatically treated as current trusted proof.
 - After a successful import is applied, Project Build Fresh keeps the same explicit replacement guard as other loaded work: cancel preserves the imported project, and confirm replaces it with a new empty Basys3 blank project so stale imported graph, I/O rows, mapping, import metadata, import URL state, Verify/export state, and identity do not survive.
 - Browser proof: `ide:gate:import-recovery-contract`, wired into `classroom:gate` and `verify:gates:classroom`.
+
+## Unified Workbench v3 RC authority (2026-07-22)
+
+- A RedByte ZIP containing `project.rbproj.json` is manifest-first. The embedded manifest is the only restore authority; loose sibling HDL or XDC files cannot silently override it.
+- The manifest is a generated package projection. Its embedded `top.vhd` and `top.xdc` bytes must agree exactly with the generated artifacts in the same package before the candidate may be treated as a coherent RedByte restore.
+- Scalar and vector-bit ports retain exact logical identity across parse, review, apply, mapping, and re-export. Names such as `SW[1]` and `LED[1]` must not collapse into a different scalar or ghost port.
+- Supported RedByte-generated concurrent-assignment VHDL can reconstruct the full supported circuit graph. This is still a reconstruction path: layout, authored Verify documents, mapping, and other RedByte metadata require the manifest for lossless restore.
+- Arbitrary behavioral/process HDL remains partial or blocked. Import must not imply that unsupported behavioral code becomes an editable RedByte schematic.
+- The active project remains unchanged until explicit Apply confirmation. Cancel and all parse/archive failure paths preserve the active project.
+- Focused source gates: `ide:gate:zip-import-recovery-contract` and the Import review/apply recovery gate. Both pass on integrated pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab`, alongside the touched 20-file/258-test authority matrix. Historical `f4f7ca8f3` passed the earlier 36-file/477-test matrix; the final reconstructed exact-SHA release run is still required.
+- Cross-surface authority requirement: run `ide:gate:mapping-preview-package-agreement` as a standalone gate outside the uninterrupted 72-step `classroom:gate`. It is the exact proof that Map Pins, package bytes, the embedded manifest, and manifest-first recovery agree; the aggregate does not substitute for it.
 
 ## Data Contract (RBProject)
 

@@ -16,7 +16,7 @@ This roadmap is an ordering document, not authorization to edit product source. 
 
 ## Operating Rules
 
-- Keep the existing product spine: Project -> Design -> Verify -> Map Pins / Hardware -> Export.
+- Keep the existing product spine: Project -> Design -> Verify -> Map Pins -> Export.
 - Keep Import as a utility, not a required spine step.
 - Keep E0/E1/E2/E3 evidence boundaries honest.
 - Do not rebaseline goldens or screenshots as part of UX repair unless the behavioral change is intended and reviewed.

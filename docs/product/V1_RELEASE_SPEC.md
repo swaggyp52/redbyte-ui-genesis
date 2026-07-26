@@ -21,7 +21,7 @@ role: v1 release scope definition — what must be true before calling this v1 p
 **Circuit scope:** Combinational circuits + rising-edge single-clock sequential circuits
 
 **Out of scope for v1 (must be blocked or warned, not silently wrong):**
-- Falling-edge clocking
+- Falling-edge-triggered state capture (authored high-to-low stimulus remains valid for the rising-edge model)
 - Multi-clock domains
 - Active-low reset
 - Asynchronous sequential logic
@@ -97,7 +97,7 @@ Verify must behave truthfully:
 - "Stale" must be surfaced when the circuit changes after a passing result.
 - Export must not offer Trusted Export status when Verify is stale or failing.
 - Board-clock scenarios (CLK100MHZ / W5) must auto-detect in the IDE and drive the testbench correctly in the exported VHDL.
-- No scenario with unsupported sequential features (falling-edge, multi-clock, active-low reset) may silently pass — they must be blocked or warned at Verify and at Export.
+- No scenario with unsupported sequential features (falling-edge-triggered capture, multi-clock, active-low reset) may silently pass — they must be blocked or warned at Verify and at Export. An authored high-to-low transition is valid rising-edge-model stimulus and must hold state rather than being rejected as a falling-edge-triggered design.
 
 ---
 

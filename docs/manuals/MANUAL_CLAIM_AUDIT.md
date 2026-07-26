@@ -1,9 +1,9 @@
 # RedByte Product Manual — Claim Audit
 
-**Document:** RB-AUDIT-001 v1.0
-**Date:** 2026-03-31
-**Auditor:** Claude (automated fact-check against repo source)
-**Scope:** Every material claim in `RedByte_Product_Manual.md` v1.0 verified against codebase, tests, and architecture docs.
+**Document:** RB-AUDIT-001 v1.2
+**Date:** 2026-07-22
+**Auditor:** Connor Angiel
+**Scope:** Material claims in `RedByte_Product_Manual.md` v1.2 reconciled against current code, tests, architecture docs, and Unified Workbench v3 RC source evidence.
 
 ---
 
@@ -20,8 +20,10 @@ Each claim is rated:
 | Status | Meaning |
 |--------|---------|
 | **VERIFIED** | Claim matches code exactly. No change needed. |
+| **CORRECTED** | The audit found an incorrect or stale claim and the current Markdown/print manuals now match source truth. |
 | **PARTIAL** | Claim is directionally correct but imprecise. Needs tightening. |
 | **NEEDS EDIT** | Claim is factually wrong. Must be corrected. |
+| **RESULT-DEPENDENT** | Semantic wording is prepared, but final exact-tree source/test evidence has not yet been recorded here. |
 
 ---
 
@@ -32,11 +34,11 @@ Each claim is rated:
 | Field | Value |
 |-------|-------|
 | **Claim** | Manual now states that RedByte is a deterministic FPGA learning/project-building environment with draft, trusted, and external proof states. |
-| **Sections** | Â§2.1, Â§4.1, Â§11 |
+| **Sections** | §2.1, §4.1, §11 |
 | **Status** | **VERIFIED** |
 | **Source** | `docs/contracts/RedByte_Product_Contract.md`, `docs/IDE_SYSTEM_MAP.md`, `projectWorkflowAuthority.ts`, `projectTruth.ts`, `docs/release/vivado-basys3-certification-matrix.md` |
 | **Proof** | `pnpm lab:vivado:cert:custom -- --case b1-mixed ...` and `--case b1-counter ...` passed E1; browser gate drift is tracked separately in `docs/release/product-hardening-ticket-2026-04-30-browser-rehearsal-gates.md`. |
-| **Correction** | Replaced old linear workflow wording with the full Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe spine, and removed "all rights reserved" boilerplate per legal attribution rules. |
+| **Correction** | Replaced old linear workflow wording with the exact RedByte-owned Project -> Design -> Verify -> Map Pins -> Export spine, identified Vivado build, board programming, and board observation as downstream proof activities, and removed "all rights reserved" boilerplate per legal attribution rules. |
 
 ---
 
@@ -46,7 +48,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual references `constraints.xdc` as the generated constraints file. |
 | **Sections** | §11.1 (Generated Files table), §14, Appendix C, multiple inline references |
-| **Status** | **NEEDS EDIT** |
+| **Status** | **CORRECTED** |
 | **Source** | `packages/rb-apps/src/fpga/boards/basys3/basys3Bundle.ts` line 191: filename is `top.xdc` |
 | **Tests** | Basys3 bundle tests confirm `top.xdc` output |
 | **Correction** | Replace all instances of `constraints.xdc` with `top.xdc`. |
@@ -59,22 +61,22 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual references testbench entity as `top_tb`. |
 | **Sections** | §11.1, Appendix C, inline code references |
-| **Status** | **NEEDS EDIT** |
+| **Status** | **CORRECTED** |
 | **Source** | `packages/rb-apps/src/fpga/boards/basys3/testbenchGenerator.ts` lines 292–293, 402–403: entity is `tb_top`. Confirmed by `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts` line 36: `const TESTBENCH_TOP_MODULE = 'tb_top'`. |
 | **Tests** | Testbench generator tests assert `tb_top` entity name |
 | **Correction** | Replace all instances of `top_tb` with `tb_top`. |
 
 ---
 
-### 3. Import Surface Tab Label
+### 3. Import Recovery Sequence
 
 | Field | Value |
 |-------|-------|
-| **Claim** | Manual references the Import surface tab as "Write HDL". |
+| **Claim** | Manual presents Import as a horizontal Upload -> Review -> Apply recovery sequence, with ZIP, Paste HDL, conditional Paste XDC, and samples as source choices inside Upload. |
 | **Sections** | §7.6, §12 |
-| **Status** | **NEEDS EDIT** |
-| **Source** | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` line 1990: tabs are "Upload ZIP", "Paste HDL", "Paste XDC". |
-| **Correction** | Replace "Write HDL" with "Paste HDL" throughout. |
+| **Status** | **VERIFIED** |
+| **Source** | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` and `import-recovery-workspace-v3.css`: horizontal stepper, source switch inside Upload, XDC choice after parsed HDL, reviewed candidate, cancel preservation, and explicit in-app apply confirmation. |
+| **Correction** | Replaced the predecessor tab model with the current recovery sequence and described HDL/XDC as Upload-source choices rather than workflow tabs. |
 
 ---
 
@@ -82,11 +84,11 @@ Each claim is rated:
 
 | Field | Value |
 |-------|-------|
-| **Claim** | Manual lists NOR and XNOR as available primitive gates in the palette. |
+| **Claim** | Manual lists NOR and XNOR as available primitive gates and distinguishes student-palette visibility from runtime registry size. |
 | **Sections** | §2.2, §7.2 (Component Palette), Appendix A |
-| **Status** | **NEEDS EDIT** |
-| **Source** | `packages/rb-logic-core/src/builtins.ts` defines AND, OR, NOT, NAND, XOR, AND3, OR3, NAND3, NOR3, XOR3, Clock, Delay, DFlipFlop, TFlipFlop, JKFlipFlop, INPUT, OUTPUT, PowerSource, Ground, Switch, Lamp, Wire. NOR and XNOR exist as type definitions in `nodes.ts` but are **not registered** in the active `builtins.ts` registry. Only NOR3 (three-input) is registered. |
-| **Correction** | Remove NOR and XNOR from the basic two-input gates list. Note NOR3 is available as a three-input variant. If the manual lists gate categories, clarify which are registered vs. defined-but-inactive. |
+| **Status** | **CORRECTED** |
+| **Source** | `packages/rb-logic-core/src/index.ts` registers both `NORBehavior` and `XNORBehavior`; `componentSupportRegistry.ts` marks both authoring/classroom capable; `DesignSurface.tsx` includes both palette cards. `index.ts` performs 27 direct primitive registrations and then 4 composite registrations (`RSLatch`, `DLatch`, `FullAdder`, `Counter4Bit`) for 31 registry additions. |
+| **Correction** | Restored NOR/XNOR to the current palette reference, added Register1/RegisterBus/StateBank, removed the generic Clock card from current palette guidance, and documented 27 direct plus 4 composite registry additions without equating registry presence to palette availability. |
 
 ---
 
@@ -96,7 +98,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual states the verify engine provides "up to 7 fact-grounded diagnostic hints." |
 | **Sections** | §9 |
-| **Status** | **NEEDS EDIT** |
+| **Status** | **CORRECTED** |
 | **Source** | `packages/rb-apps/src/apps/ide/verifyHints.ts` lines 48–121: the HINTS array contains **14 diagnostic conditions**. |
 | **Correction** | Replace "up to 7" with "14 diagnostic conditions" or "over a dozen diagnostic conditions." |
 
@@ -108,7 +110,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual states the import pipeline maps "26 HDL component types." |
 | **Sections** | §12, Appendix D/E |
-| **Status** | **NEEDS EDIT** |
+| **Status** | **CORRECTED** |
 | **Source** | `packages/rb-apps/src/import/hdlToCircuit.ts` lines 60–97: COMPONENT_MAP contains **37 HDL name variants** (e.g., `and2`, `AND`, `and_gate` all map to the same type) that resolve to **9 distinct RedByte node types**. |
 | **Correction** | Replace "26 HDL component types" with "37 HDL name variants mapping to 9 RedByte node types." |
 
@@ -120,7 +122,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual states the export pipeline validates entity names against VHDL reserved keywords. |
 | **Sections** | §11 |
-| **Status** | **NEEDS EDIT** |
+| **Status** | **CORRECTED** |
 | **Source** | No VHDL keyword checking logic found in `basys3Bundle.ts`, `vhdlGenerator.ts`, or `vivadoProjectFolder.ts`. The entity name defaults to `'top'` (line 247 of basys3Bundle.ts) with an optional override, but no keyword validation exists. |
 | **Correction** | Remove the VHDL keyword validation claim, or soften to "the default entity name `top` avoids VHDL reserved words." |
 
@@ -132,7 +134,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual describes SubmissionInspectorApp as a functioning application context for instructors. |
 | **Sections** | §3 (Application Contexts), §13 |
-| **Status** | **PARTIAL** |
+| **Status** | **CORRECTED** |
 | **Source** | `docs/ARCHITECTURE.md` defines SubmissionInspectorApp as one of four application contexts. However, no standalone `SubmissionInspectorApp.tsx` implementation file was found. The submission inspection UI appears to be integrated into IdeApp's Project surface rather than existing as a separate app. |
 | **Correction** | Clarify that SubmissionInspectorApp is an architecturally defined context whose inspector functionality is currently delivered through the IDE's Project surface. Do not claim it as a separate launchable application. |
 
@@ -144,7 +146,7 @@ Each claim is rated:
 |-------|-------|
 | **Claim** | Manual states the export ZIP contains three files: `top.vhd`, `constraints.xdc` (see finding #1), `testbench.vhd`. |
 | **Sections** | §11.1, §14, Appendix C |
-| **Status** | **PARTIAL** |
+| **Status** | **CORRECTED** |
 | **Source** | `packages/rb-apps/src/fpga/vivado/vivadoProjectFolder.ts` generates a ZIP containing: `top.vhd`, `top.xdc`, `testbench.vhd`, `vivado_import.tcl`, `README.txt`, `BRINGUP.md`, `EXPECTED_IO.json`, `program_and_test.tcl`, `project.rbproj.json`. |
 | **Correction** | List all generated files. The three HDL/XDC files are the primary deliverables; the remaining files are support/automation files. Describe both tiers. |
 
@@ -174,27 +176,27 @@ Each claim is rated:
 
 ---
 
-### 12. Six IDE Surfaces
+### 12. Five Stages Plus Import Utility
 
 | Field | Value |
 |-------|-------|
-| **Claim** | Manual documents six surfaces: Project, Design, Verify, Hardware, Export, Import. |
+| **Claim** | Manual documents five horizontal workflow stages—Project, Design, Verify, Map Pins, Export—and Import / Recover as an unnumbered utility. |
 | **Sections** | §6, §7.1–7.6 |
 | **Status** | **VERIFIED** |
-| **Source** | `packages/rb-apps/src/apps/ide/workflowStages.ts`: `IdeMode = 'project' | 'design' | 'verify' | 'hardware' | 'export' | 'import'`. Left rail in `IdeLeftRail.tsx` lines 181–234 confirms 6 entries. |
-| **Correction** | None. |
+| **Source** | `workflowStages.ts` retains six internal modes; `IdeStageNav.tsx` renders exactly five stages and `IdeTopBar.tsx` exposes Import as a utility. `ide-unified-workbench-v3-flow.mjs` rejects a permanent workflow rail and sixth numbered stage. |
+| **Correction** | Replaced the predecessor six-entry left-rail claim with the five-stage horizontal authority plus Import utility. |
 
 ---
 
-### 13. Hardware Surface Tabs
+### 13. Map Pins Workspace
 
 | Field | Value |
 |-------|-------|
-| **Claim** | Manual describes Hardware surface tabs. |
+| **Claim** | Manual describes Map Pins as a table-first assignment workspace with a stable selected-signal editor and secondary board reference. |
 | **Sections** | §7.4, §10 |
 | **Status** | **VERIFIED** |
-| **Source** | `HardwareSurface.tsx` lines 1256–1270 confirm tabs: Map Pins, Prepare Board, Program Checklist, Live Details. |
-| **Correction** | None. |
+| **Source** | `HardwareSurface.tsx`, `hardware-mapping-workspace-v3.css`, and `ide-hardware-mapping-conflict-repair.mjs` cover progress, mapping rows, selected resource/package-pin/XDC consequence, conflict repair, and secondary Basys3 reference. |
+| **Correction** | Removed the predecessor four-tab claim from the current student path. |
 
 ---
 
@@ -258,25 +260,134 @@ Each claim is rated:
 
 ---
 
+### 19. Verify Repair Actions
+
+| Field | Value |
+|-------|-------|
+| **Claim** | The manual names the current failure-repair actions: Edit expected for a wrong saved check, Inspect Design for a circuit mismatch, and Open Design for a structural preflight failure. |
+| **Sections** | §7.3, §9 |
+| **Status** | **VERIFIED** |
+| **Source** | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` renders `ide-verify-repair-edit-expected`, `ide-verify-repair-open-design` with visible label `Inspect Design`, and `ide-verify-structural-open-design` with visible label `Open Design`. |
+| **Correction** | Removed the stale `Jump to failing node` action from the current workflow. |
+
+---
+
+### 20. Export Workspace and Trust Actions
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Export separates trusted Download Package from untrusted Download draft, keeps a stable file browser/preview, and opens diagnostics/provenance in a secondary technical-evidence dialog. |
+| **Sections** | §7.5, §11, §13 |
+| **Status** | **VERIFIED** |
+| **Source** | `ExportSurface.tsx` renders `ide-export-package-download-v1`, `ide-export-draft-download-v1`, `ide-export-file-browser`, and the `ide-export-technical-dialog` opened by `Open technical evidence`; Project/Map Pins use `Open Export` for routing. |
+| **Correction** | Removed stale `Export Submission`, advanced-panel, and predecessor Export-control wording from the current student path. |
+
+---
+
+### 21. Clock Authoring Boundary
+
+| Field | Value |
+|-------|-------|
+| **Claim** | The current Design palette does not expose a generic Clock block; FPGA clock intent uses the Basys3 `CLK100MHZ` resource, while pure simulation can use an automatically injected internal clock. |
+| **Sections** | §2.3, §7.2, §8.4, §10, §15, §16, Appendix A |
+| **Status** | **VERIFIED** |
+| **Source** | `DesignSurface.tsx` explicitly removes the Sim Clock palette entry; `componentSupportRegistry.ts` marks `Clock` non-authorable and identifies it as legacy/sim; `verifySchedule.ts` and current Verify clock policy own automatic simulation clock behavior. |
+| **Correction** | Removed instructions to place a Clock node from the current Design palette and kept the registered legacy/runtime behavior clearly separate from student authoring. |
+
+---
+
+### 22. Named Verify Document Sequential Policy
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Each named Verify document owns its browser-local sequential policy. One shared materializer produces the execution vectors consumed by runtime Verify, bring-up expectations, and generated `testbench.vhd` together with the resolved clock/schedule projection. Manual/custom rows advance rising-edge state only on authored low-to-high transitions. Auto materializes cycle 0 and `runCycles`, including automatic reset in the visible vector sequence, and samples/asserts every row post-rising-edge. |
+| **Sections** | §2.5, §4.3, §4.4, §4.6, §7.3, §9, §11.4, §14.1, Glossary, Appendix C |
+| **Status** | **RESULT-DEPENDENT** |
+| **Source** | `verifyScenario.ts`, `verifyScenarioSteps.ts`, and `projectRuntime.ts` own document lifecycle/persistence; `verifyClockPolicy.ts` owns shared vector materialization; `simEngineCore.ts` owns execution; `buildExportViewModel.ts` consumes materialized vectors plus the resolved clock/schedule projection; `testbenchGenerator.ts` owns Auto-versus-manual/custom VHDL structure; `exportTrustState.ts` owns resulting freshness/receipt classification. |
+| **Tests** | Standalone `ide:gate:sequential-testbench-authority` plus the focused runtime/generated-testbench/freshness test inventory recorded by the exact-tree release program. The 72-step aggregate is not a substitute for the standalone gate. |
+| **Correction** | Split browser-local storage from runtime/package authority; added shared vector materialization, rising-edge-only capture, supported authored falling transitions, explicit Auto cycle-0/run-cycle/reset materialization, no hidden runtime reset prelude, post-rising-edge Auto sampling/assertion, and Export-staleness semantics. |
+
+---
+
+### 23. Semantic Mapping Projection
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Map Pins and Export share one semantic projection across logical signal identity, direction, artifact port, board resource, package pin, I/O standard, exact XDC line, required state, and conflict state. |
+| **Sections** | §2.5, §7.4, §10 |
+| **Status** | **RESULT-DEPENDENT** |
+| **Source** | `HardwareSurface.tsx`, `basys3ExportContract.ts`, `basys3ExportModel.ts`, `basys3ExportService.ts`, and `buildExportViewModel.ts`. |
+| **Tests** | Standalone `ide:gate:mapping-preview-package-agreement` plus `ide:gate:hardware-phase5-contract`. The 72-step aggregate is not a substitute for the standalone mapping/package gate. |
+| **Correction** | Added the semantic projection contract and row-local conflict language. |
+
+---
+
+### 24. Export Trust Axes and Package Receipt
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Export separates structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded`; Verify evidence currentness (`current`, `missing`, `stale`, or `failed`) remains upstream. A current receipt binds the exact package to source fingerprint, project/Verify hashes, mapping currentness, download kind, trust state, and SHA-256. |
+| **Sections** | §2.5, §4.6, §7.5, §11, §13 |
+| **Status** | **RESULT-DEPENDENT** |
+| **Source** | `exportTrustState.ts`, `ExportSurface.tsx`, `buildExportViewModel.ts`, and `basys3ExportService.ts`. |
+| **Tests** | `exportTrustState.test.ts`, `ide:gate:export-submission-answer-contract`, and related Export contract gates. |
+| **Correction** | Added the three-axis model, first-viewport submission answer, and exact receipt authority. |
+
+---
+
+### 25. Manifest-first Import and Generated VHDL Reconstruction
+
+| Field | Value |
+|-------|-------|
+| **Claim** | A RedByte ZIP restores from its embedded manifest; loose siblings cannot override it; supported RedByte-generated concurrent-assignment VHDL reconstructs its supported graph, while arbitrary behavioral/process HDL remains partial or blocked. |
+| **Sections** | §4.7, §7.6, §12, §14, §16, Appendix E |
+| **Status** | **CORRECTED** |
+| **Source** | `zipImport.ts`, `hdlToCircuit.ts`, `importPortIdentity.ts`, and `basys3ExportService.ts`. |
+| **Tests** | `zipImport.manifest.test.ts`, `zipImport.roundtrip.test.ts`, `importPortIdentity.test.ts`, and the source expectation repair at `f4f7ca8f35f79258fe8f2ff6ecbc68600784efb7`. |
+| **Correction** | Removed the stale claim that RedByte's generated concurrent-assignment `top.vhd` is always ports-only, while preserving the manifest as the only lossless restore path. |
+
+---
+
+### 26. Design Port Targets and Verify Readability Floors
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Design ports meet 24×24px sparse and 32×24px dense target floors (current dense 32×36px), and Verify waveform lanes use 36×36px targets with at least 13px labels. |
+| **Sections** | §2.5, §7.2, §7.3 |
+| **Status** | **VERIFIED** |
+| **Source** | `packages/rb-logic-view/src/components/NodeView.tsx`, `design-workbench-v3.css`, and Verify surface/style implementation. |
+| **Tests** | `NodeView.portTargets.test.tsx`, `ide:gate:design-port-target-authority`, and `ide:gate:verify-postrun-workbench-usability`. |
+| **Correction** | Added concrete interaction/readability floors and recorded the unresolved 70% Design occupancy target. |
+
+---
+
+### 27. First-viewport Submission Answer
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Export answers “What should I submit?” before technical evidence and distinguishes trusted package from draft. |
+| **Sections** | §7.5, §13 |
+| **Status** | **VERIFIED** |
+| **Source** | `ExportSurface.tsx` and `exportTrustState.ts`. |
+| **Tests** | `ide:gate:export-submission-answer-contract`. |
+| **Correction** | Added the explicit submission-answer step to the student workflow. |
+
+---
+
 ## Summary
 
-| Status | Count | Findings |
-|--------|-------|----------|
-| **NEEDS EDIT** | 7 | #1 XDC filename, #2 testbench entity, #3 Import tab label, #4 NOR/XNOR, #5 hint count, #6 COMPONENT_MAP size, #7 VHDL keyword validation |
-| **PARTIAL** | 2 | #8 SubmissionInspectorApp, #9 ZIP contents |
-| **VERIFIED** | 9 | #10–#18 (fidelity levels, examples, surfaces, tabs, pins, connection format, SHA-256, topological sort, architecture) |
+| Status | Findings |
+|--------|----------|
+| **NEEDS EDIT / PARTIAL / CORRECTED / VERIFIED** | Existing statuses outside the rows below are retained from the prior audit and were not recalculated by this semantic-only pass. |
+| **RESULT-DEPENDENT** | #22–#24 require final exact-tree source/test evidence before their status may be promoted. |
 
-**Total claims audited:** 18
-**Accuracy rate (VERIFIED):** 50%
-**Requiring correction:** 9 of 18
+This semantic-only pass does not recalculate status totals or close result-dependent rows.
 
 ---
 
 ## Correction Priority
 
-1. **P0 — Factual errors** (will confuse users): #1, #2, #3, #5
-2. **P1 — Overclaims** (promise features that don't exist as described): #4, #6, #7
-3. **P2 — Imprecision** (directionally correct but misleading): #8, #9
+Resolve the result-dependent rows only from final exact-tree evidence. Future source changes should follow `MANUAL_CONFORMANCE.md`, update the traceability row, and reopen a finding when a claim no longer matches current code or proof.
 
 ---
 

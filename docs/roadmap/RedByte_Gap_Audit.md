@@ -7,6 +7,8 @@
 
 > **Current reading note (2026-06-12):** This is a historical gap audit, not the active cockpit. P0 README/manual truth fixes, sequential boundary enforcement, design-time feedback, workflow-spine fixes, and the old `build:unified` blocker have later closure evidence. For current startup truth, use `AI_STATE.md`, `docs/ACTIVE_WORK.md`, `docs/DOC_INDEX.md`, `docs/product/RED_BYTE_CURRENT_TRUTH.md`, and `docs/product/RED_BYTE_WORK_QUEUE.md`.
 
+> **RC semantic routing note (2026-07-22):** The historical sequential scorecard below does not adjudicate Unified Workbench v3 manual/custom clock execution. Current RC contracts distinguish unsupported falling-edge-triggered capture from a supported authored high-to-low stimulus transition, which must hold rising-edge state. Current runtime, generated-testbench, Export-staleness, and proof requirements live in `docs/ide/03-verify.md`, `docs/ide/04-export.md`, `docs/IDE_SYSTEM_MAP.md`, and `docs/release/manual-assignment-qa-script.md`.
+
 ---
 
 ## 1. Executive Summary

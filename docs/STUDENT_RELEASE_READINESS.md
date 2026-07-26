@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-02
+last_validated: 2026-07-22
 owner: Connor Angiel
 used_by_claude: true
 role: canonical TA / instructor release surface
@@ -8,7 +8,7 @@ role: canonical TA / instructor release surface
 
 # Student release readiness (canonical TA / instructor surface)
 
-**Last updated:** 2026-07-02
+**Last updated:** 2026-07-22
 **Audience:** instructors, TAs, release owners  
 **RC1 freeze (single release posture):** [`RC1_STUDENT_RELEASE_FREEZE.md`](./RC1_STUDENT_RELEASE_FREEZE.md)  
 **Pairing docs:** `docs/course/STUDENT_QUICKSTART.md`, `docs/course/INSTRUCTOR_QUICKSTART.md`, `docs/course/TA_TROUBLESHOOTING_GUIDE.md`, `docs/lab-day-vivado-basys3-readiness.md` (lab-day bar), `docs/release/vivado-basys3-certification-matrix.md` (full matrix + tiers), `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` (current E1 harness), `docs/product/RED_BYTE_VIVADO_E1_RESULT_TEMPLATE.md` (E1 closeout template), `docs/release/from-scratch-basys3-authoring-checklist.md` (blank-project workflow), `docs/release/proof/security-lock-complex-round-trip-audit-2026-04-23.md` (final-project / multi-file import tier)
@@ -30,6 +30,12 @@ This document is the **single place** to learn what students can **actually** re
 **Student-safe claim for hardware labs requires at least E1 + E2 + E3** for the specific project class you assign. **E0 alone is never enough.**
 
 **Current harness note (2026-07-02):** `docs/product/RED_BYTE_VIVADO_E1_CERTIFICATION_PROTOCOL.md` defines the current E1 sprint harness as import/open project, VHDL compile readiness, behavioral simulation/testbench when present, and synthesis, with optional route-only implementation dry run. It deliberately does not claim bitstream generation or board observation. Older rows in this document may contain stronger legacy full-build evidence; do not use the new harness to upgrade any row without a real Vivado run.
+
+**Current Unified Workbench v3 RC source note (2026-07-25):** integrated pre-doc commit `0788044cbdf2699520d90a3428f2e5034dc73cab` unifies the five-stage workspace, browser-local named Verify documents with shared manual/Auto sequential execution authority, semantic Map Pins projection, exact package/manifest agreement, trusted-versus-draft Export receipt authority, and manifest-first Import recovery with exact scalar/vector-bit identity. The touched authority matrix passes 20/20 files and 258/258 tests under Node 20.19.0 / pnpm 10.24.0; typecheck, unified build, and the focused sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates pass. This is still Browser-E0 source evidence only: final reconstructed exact-SHA certification and human release disposition remain pending, and no E1/E2/E3 row below changes because of it.
+
+**RC semantic boundary:** A named scenario's policy remains browser-local and outside portable `RBProject`, but the shared materialized execution vectors and resolved clock/schedule projection may change generated `testbench.vhd`, package bytes, Export freshness, and receipt authority. Auto `runCycles` and automatic reset behavior are byte-bearing through that materialization. Auto board-clock and manual/custom testbench structures are therefore distinct Browser-E0/software-artifact claims. They add no Vivado, bitstream, programming, physical-board, E1, E2, or E3 credit to any row below. `ide:gate:sequential-testbench-authority` and `ide:gate:mapping-preview-package-agreement` remain separate required invocations outside the uninterrupted 72-step classroom aggregate.
+
+**RC exclusions and known debt:** Guided 4-bit and Mapping Assistant v2 are outside this candidate. Design reaches 63.1% circuit-grid occupancy at 1366px and 65.0% at 1440px against a 62% release floor; the strategic 70% laptop target remains unmet. Neither limitation may be hidden by a general “release ready” claim.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-01
+last_validated: 2026-07-25
 owner: Connor Angiel
 used_by_claude: true
 role: sequential model boundary contract
@@ -9,7 +9,7 @@ role: sequential model boundary contract
 # Sequential Support Boundary — RedByte v1
 
 > **Status:** Enforced
-> **Last updated:** 2026-04-01
+> **Last updated:** 2026-07-25
 > **Applies to:** Design, Verify, Export, Hardware surfaces
 
 ---
@@ -25,6 +25,7 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 | DFlipFlop | Edge-triggered | Rising-edge CLK | Async active-high RST | Captures D on 0→1 CLK transition |
 | TFlipFlop | Edge-triggered | Rising-edge CLK | Async active-high CLR | Toggles Q when T=1 on rising edge |
 | JKFlipFlop | Edge-triggered | Rising-edge CLK | Async active-high CLR | Standard JK truth table on rising edge |
+| Register1 | Edge-triggered | Rising-edge CLK | Async active-high clear | Generated parity only with active-high enable/clear semantics |
 | DLatch | Level-sensitive | N/A (uses EN) | None | Transparent when EN=1, holds when EN=0 |
 | RSLatch | Asynchronous | None | None | Cross-coupled NAND SR latch |
 
@@ -32,16 +33,18 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 
 | Pattern | Status | Enforcement |
 |---------|--------|-------------|
-| Falling-edge triggers | Blocked | Verify refuses to run; Export emits error |
+| Falling-edge-triggered state capture | Blocked | Verify refuses to run; Export emits error |
 | Multiple clock domains | Blocked | Verify refuses to run; Export emits error |
 | Active-low reset (naming or inversion) | Blocked | Verify refuses to run; Export emits error |
 | Synchronous reset | Not available | All reset ports are async in simulation and VHDL |
+| RegisterBus or StateBank generated parity | Blocked | May be authored in Design, but Verify and Export block until runtime/VHDL parity exists |
+| Register1 falling-edge, active-low, synchronous-clear, preset/set, or unsupported enable/reset configuration | Blocked | Verify and Export emit an explicit unsupported-register diagnostic |
 
-### Removed from Palette (v1)
+An authored high-to-low transition in a manual/custom Verify row is supported stimulus for this rising-edge model. It holds state; it does not request falling-edge-triggered capture.
 
-| Component | Reason |
-|-----------|--------|
-| Counter4Bit | Stub implementation — internals are Switches, not flip-flops. Will be restored when properly implemented. |
+### Palette Boundary
+
+The current native sequential palette exposes `Register1`, `RegisterBus`, and `StateBank`; legacy/theory elements remain separately labeled. Palette presence means the element can be placed and inspected. It does **not** promise Verify/Export parity. Only the supported `Register1` configuration above has scalar generated-VHDL parity in this RC. `RegisterBus` and `StateBank` are intentionally blocked at Verify and Export. `Counter4Bit` remains excluded because its old implementation was a non-functional stub.
 
 ---
 
@@ -49,9 +52,9 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 
 ### Design Surface
 
-- Sequential primitives are available in the palette (DFF, TFF, JKFF in "Sequential & Timing"; DLatch, RSLatch in "Reusable Blocks").
+- Native sequential palette entries are Register1, RegisterBus, and StateBank. Legacy/theory sequential elements are grouped separately.
 - Counter4Bit is **removed from the palette** because it is a non-functional stub.
-- No placement restrictions — unsupported patterns are caught downstream by Verify and Export.
+- Placement remains available for teaching and inspection; unsupported register families/configurations are caught as explicit Verify and Export blockers.
 
 ### Verify Surface
 
@@ -60,9 +63,9 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
   - `unsupported-falling-edge`: HDL contains `falling_edge()` or `negedge` patterns
   - `multi-clock-domain`: Multiple distinct clock sources detected
   - `active-low-reset`: Reset signal naming suggests active-low convention
-- When verify runs, the clocked macro sequence is `[0, 1, 0]` (setup → rising edge capture → post-edge stabilization).
-- Sample point is `post-rising-edge`. State accumulates across vectors.
-- If no external clock is mapped, sim clock injection provides a synthetic `__sim_clk__` node.
+- Manual/custom mode executes the persisted authored rows in stable tick/authored order. A low-to-high clock transition captures rising-edge state; falling, repeated-high, repeated-low, and flat-low rows are settled holds. No synthetic clock or hidden reset is injected.
+- Auto mode materializes one sampled row per selected cycle. Runtime internally lowers then raises the resolved clock for each row, and each report row/generated assertion is the post-rising-edge sample. When automatic reset applies, cycle 0 carries reset `1` and later cycles carry reset `0`.
+- Sample point is `post-rising-edge` for Auto and `settled-step` for manual/custom rows. State accumulates across the normalized execution plan from a deterministic zero initial state.
 - Sequential expectation mismatches are treated as Verify-authoring-or-timing issues first, not automatically as Design failures. The current Verify contract is:
   - unsupported temporal structure → block Verify and send the student back to Design
   - stale sequential evidence → show `STALE` and require rerun / recapture, never reuse FAIL wording
@@ -75,9 +78,10 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
   - **Error** if sequential circuit has no clock signal bound
   - **Error** if multiple clock domains detected
   - **Error** if active-low reset via NOT gate inversion
-  - **Error** if verify schedule has unsupported temporal issues (falling-edge, multi-clock, active-low reset)
+  - **Error** if verify schedule has unsupported temporal issues (falling-edge-triggered capture, multi-clock, active-low reset)
   - **Warning** if multiple reset sources detected
-- VHDL generation always produces `rising_edge(clk)` for edge-triggered primitives.
+- VHDL generation produces `rising_edge(clk)` only for supported rising-edge primitives/configurations; unsupported register families/configurations block before package generation.
+- Manual/custom testbench generation emits the authored clock value for every execution row and uses deterministic settle waits. Auto retains a free-running clock process and waits for the rising edge before each row assertion.
 - DLatch generates level-sensitive `if en = '1' then` — no clock constraint emitted.
 - XDC emits `create_clock -period 10.000` (100 MHz) for W5 pin only.
 
@@ -94,7 +98,7 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 
 - **Single domain:** Exactly one clock source per circuit.
 - **Edge:** Rising only (`0 → 1`).
-- **Source:** Either user-mapped CLK100MHZ (W5) pin or auto-injected sim clock.
+- **Source:** A resolved project clock input. Auto mode drives its cycle plan internally; manual/custom mode drives the authored clock lane.
 - **Frequency:** 100 MHz when using Basys3 W5 oscillator.
 
 ### Reset
@@ -107,10 +111,10 @@ RedByte v1 supports a **single-clock, rising-edge, active-high-reset** sequentia
 
 ## What "Pass" Means for Sequential Circuits
 
-A sequential verify run passes when **all asserted output values match simulation output after applying the clocked macro sequence**, with state carrying forward across vectors in order.
+A sequential Verify run passes when **all asserted output values match simulation output on the normalized execution plan**, with state carrying forward in stable tick/authored order.
 
-- Each vector drives inputs, then executes the 3-tick `[0, 1, 0]` clock macro.
-- Outputs are sampled after the post-edge stabilization tick.
+- Manual/custom rows drive their authored clock/reset/input values directly and sample the settled row; only an authored low-to-high transition captures rising-edge state.
+- Auto rows execute the same materialized cycle/reset plan used by generated `testbench.vhd` and `EXPECTED_IO.json`, and sample after the row's rising edge.
 - Unasserted outputs (blank expected values) are never compared and cannot cause failure.
 - A run with no assertions produces a `TRACE` result (waveform only, no pass/fail judgment).
 - A stale result (circuit hash changed since run) shows `STALE` status.
@@ -122,13 +126,12 @@ A sequential verify run passes when **all asserted output values match simulatio
 | Claim | File | Lines |
 |-------|------|-------|
 | Rising-edge only in simulation | `rb-logic-core/src/builtins.ts` | 287, 313, 340 |
-| CLOCKED_MACRO_SEQUENCE = [0,1,0] | `rb-utils/src/verifySchedule.ts` | 14 |
+| Manual/Auto execution materialization | `apps/ide/verifyClockPolicy.ts` | `materializeVectorsForClockPolicy` |
 | Falling-edge temporal issue | `basys3/verifySchedule.ts` | 186-201 |
 | Multi-clock temporal issue | `basys3/verifySchedule.ts` | 203-218 |
 | Active-low reset temporal issue | `basys3/verifySchedule.ts` | 220-236 |
 | Verify blocks on temporal issues | `sim/simEngineCore.ts` | 332-334 |
 | Export blocks on multi-clock | `basys3ExportService.ts` | 825-832 |
 | Export blocks on NOT-gate reset | `basys3ExportService.ts` | 843-854 |
-| VHDL rising_edge generation | `basys3/vhdlExport.ts` | 558, 643, 690 |
+| VHDL rising-edge and register boundary | `export/vhdlExport.ts`, `fpga/boards/basys3/verifySchedule.ts` | generated primitive/configuration guards |
 | Counter4Bit is a stub | `rb-logic-core/src/composite-defs.ts` | 264-289 |
-| Sim clock injection | `rb-logic-core/src/analysis/injectSimClock.ts` | 15-54 |

@@ -52,11 +52,13 @@ RedByte must enable a user to:
 
 ### 1.4 Supported product spine
 
-The product spine is:
+The five RedByte-owned student stages are:
 
 ```text
-Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Program Board -> Observe
+Project -> Design -> Verify -> Map Pins -> Export
 ```
+
+Vivado build, board programming, and physical observation are downstream proof tiers after Export. Import / Recover is a utility, not a sixth stage.
 
 Draft export is allowed when the design is structurally exportable. Trusted export requires current proof: design current, mapping current, testbench current, Compare checks passing, and the export bundle current. Vivado build, board programming, and board observation remain external proof tiers until recorded.
 
@@ -107,7 +109,7 @@ Draft export is allowed when the design is structurally exportable. Trusted expo
 | **Trust** | The user must be able to trust what the product says |
 | **Legibility** | The workflow, UI, and language must be understandable without internal knowledge |
 | **Determinism** | Simulation, verification, and generated outputs must be stable and reproducible |
-| **Coherence** | All six surfaces must behave like one product |
+| **Coherence** | The five student stages and separate Import / Recover utility must behave like one product |
 | **Professionalism** | The tool must look and feel intentional enough to be documented as a real product |
 
 ---
@@ -179,10 +181,13 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 - Sim clock injection when no physical clock is mapped
 
 **Detected but unsupported (must warn or block):**
-- Falling-edge sequential logic
+- Falling-edge-triggered state capture
 - Multi-clock domains
 - Active-low reset
 - Asynchronous sequential logic
+
+**Required behavior pending exact-tree proof:**
+- Authored manual/custom falling transitions remain valid stimulus for the rising-edge model; they hold rising-edge state rather than capturing on the fall
 
 **Not detected (audit needed):**
 - Any silent failure modes where unsupported patterns produce wrong results without warning
@@ -263,7 +268,7 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 |---|---|---|---|
 | Combinational path | Design -> Verify -> Export -> Vivado works for AND/OR/XOR circuits | runtime + Vivado validation | proven for matrix rows; keep per-row E1/E2/E3 truth in certification matrix |
 | Sequential path | Rising-edge single-clock path works end-to-end | runtime + Vivado validation | proven for matrix rows; board observation remains per-row |
-| Sequential boundaries | Falling-edge/multi-clock/reset are blocked or warned | code inspection + runtime | enforced for known boundary rows; keep regression coverage current |
+| Sequential boundaries | Falling-edge-triggered capture, multi-clock domains, and unsupported reset modes are blocked or warned | code inspection + runtime | enforced for known boundary rows; keep regression coverage current |
 | Design-time feedback | Driver conflicts, loops, floating drivers caught during design | runtime | implemented; still needs periodic runtime audit |
 | Export integrity | Preview = ZIP bytes | code inspection | proven (single codepath) |
 | Hardware rehearsal | Real Basys3 programming from exported kit | hardware test | per-row E2/E3 only; no blanket product claim |
@@ -284,7 +289,7 @@ Done when: A moderately complex circuit (8+ nodes) can be placed, wired, selecte
 Done when: Pass/fail has precise meaning. Failing guidance is grounded. Sequential timing language is consistent with Design and Export. No fake certainty.
 
 ### 9.4 Sequential/clocked path
-Done when: All detected-but-unsupported boundaries (falling-edge, multi-clock, active-low reset) are explicitly blocked or warned. Clock language is consistent across Design, Verify, Export, and docs.
+Done when: All detected-but-unsupported boundaries (falling-edge-triggered capture, multi-clock, active-low reset) are explicitly blocked or warned. Authored high-to-low stimulus remains supported and holds rising-edge state. Clock language is consistent across Design, Verify, Export, and docs.
 
 ### 9.5 Export / Vivado
 Done when: Export distinguishes draft buildable artifacts from trusted verified handoff. Pin overrides reconcile with HardwareSurface. Fallback testbench is validated. Generated artifacts work in Vivado without modification.

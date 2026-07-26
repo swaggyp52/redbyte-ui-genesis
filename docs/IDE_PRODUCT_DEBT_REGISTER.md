@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-05-03
+last_validated: 2026-07-15
 owner: Connor Angiel
 used_by_claude: true
 role: canonical IDE product debt register
@@ -8,22 +8,32 @@ role: canonical IDE product debt register
 
 # RedByte IDE Product Debt Register
 
-This file is the canonical owner for current IDE product debt: what is proven, what remains unsatisfying, what is risky to touch, and what needs browser or screenshot proof before cleanup.
+This file is the canonical owner for current IDE product debt: what is proven, what remains unsatisfying, what is risky to touch, and what needs browser or screenshot proof before cleanup. The current composition is Unified Workbench v3. Dated entries below remain as a historical debt ledger; they do not restore an older shell, disclosure, or collapsible-dock contract.
 
 ## Current Stable Truths
 
 - The product authority is exactly `Project -> Design -> Verify -> Map Pins -> Export`; Import is a separate utility and not a sixth progress stage.
-- The local professional-rebrand branch removes the proof ribbon, bottom status footer, and injected per-surface product-spine header so the top bar, five-stage rail, and active work surface are the only persistent hierarchy. Focused and full classroom browser validation passes locally.
-- Project is an action-first home rather than a readiness-card dashboard; the low-level bridge, starter catalog, recent work, and advanced metadata remain disclosed support paths.
-- Design is canvas-first with a compact core toolbar, collapsible library, and selection-driven inspector.
-- Verify has one Run authority; Observe remains non-proof trace evidence, Compare remains expected-output proof, and the local slice repairs the Observe -> Compare transition without changing comparison semantics.
+- Unified Workbench v3 removes the proof ribbon, bottom status footer, injected product-spine header, permanent workflow side rail, onboarding overlay, and core `details` disclosures. The persistent shell is one product bar, one horizontal five-stage navigator, and one active workbench; Import remains a separate utility.
+- Project is an action-first home rather than a readiness-card dashboard. First launch exposes one dominant `Start a Lab` path; loaded state exposes Continue plus direct alternate project paths without an orientation overlay or duplicate identity authority.
+- Design is canvas-first with three stable regions: a 212px component library, the dominant circuit canvas, and a 256px selection/repair inspector at the laptop reference widths. The retired Hide/Show dock controls are absent.
+- Verify has one Run authority and stable Signals, testbench, and waveform/evidence regions. Observe remains non-proof trace evidence; Compare remains expected-output proof; failure recovery exposes direct testbench-versus-design repair choices without hiding them in a disclosure.
 - Basys3 `CLK100MHZ` on `W5` is the authoritative board clock. Verify auto-runs it by default, manual pulses remain an explicit override, and exported `testbench.vhd` owns a free-running `clock_gen` process for the board clock.
 - The board-clock browser proof gate exists in `tests/e2e/board-clock-browser-proof.spec.ts` and was already committed on `origin/main` before this pass.
-- Hardware is locally recomposed table-first and Export readiness-first; both pass the professional-rebrand, focused, and full classroom browser-E0 closeout.
+- Map Pins is mapping-table first with a compact selected-signal-to-board-resource-to-package-pin consequence chain; Export is readiness and handoff first. Both retain the browser-E0 boundary and do not claim Vivado E1, programming E2, or board observation E3.
 - `ide-root.css` is still the primary legacy style system, and `ide-polish-pass.css` is still an additive overlay. Neither file should be pruned casually.
-- Screenshot tooling and IDE screenshot baseline tests already exist, but they are optional by default and are not yet strong enough to authorize broad CSS deletion.
+- Unified Workbench v3 has deterministic multi-viewport browser gates, focused surface tests, and retained screenshot evidence. That proof is sufficient for this bounded reconstruction, but it still does not authorize broad deletion from the legacy CSS strata.
 
-## Open Issues by Priority
+## Current Unified Workbench v3 Debt
+
+- **Design space target:** the enforced laptop floor is 62% of the full viewport. The measured canvas is 63.1% at `1366x768` and 65.0% at `1440x900`; the separate 70% strategic laptop target remains unmet.
+- **Usability evidence:** blind Student A and B flows completed locally. Student C stopped after native Import confirmation when browser control became unavailable, and the XOR flow has automated browser proof only. The usability lab is therefore partial.
+- **CSS authority:** the legacy root/polish files were reduced, but the total tracked CSS tree grew because v3 introduced surface-owned styles. Broad CSS deletion remains unsafe; keep each future change surface-scoped and browser-proven.
+- **Release boundary:** the v3 reconstruction is local source and browser-E0 proof only. It has not been pushed or deployed, and no new Vivado E1, Basys3 programming E2, or observed-board E3 evidence was produced.
+- **Next product sequence:** after explicit approval and branch review/sync, rebase the Guided 4-Bit Adder work, then build Hardware Mapping Assistant v2. Fresh hardware certification remains a separate proof lane.
+
+## Historical Debt Ledger
+
+The entries below preserve reproduction history and risk context. Each affected surface carries a 2026-07-15 v3 disposition; those dispositions and the current-debt section above win over older wording.
 
 ### RB-DEBT-001 - Hardware / Map Pins workspace still reads too dense
 
@@ -41,6 +51,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Follow-up (2026-05-05): mapped signal rows now separate circuit signal identity, role chips, mapped status, board binding/package pin, and the Edit Mapping action. Browser audit at `1366x768` and `1920x1080` confirmed the rows no longer read as a cramped debug-badge run while the Basys3 board remains the visual anchor.
 
 - Follow-up (local 2026-07-13, browser-E0 validated): Map Pins now begins with the mapping table and direct signal-to-Basys3-resource-to-package-pin action loop. Board reference, XDC explanation, and after-mapping tools are secondary; mapping authority and generated XDC semantics are unchanged. The after-state conflict repair path was not manually replayed after implementation.
+- V3 disposition (2026-07-15): **Closed as a general density finding; bounded follow-up remains.** Unified Workbench v3 keeps the mapping table primary, compresses the selected consequence chain, widens board switch hit targets, and browser-proves conflict repair. Hardware Mapping Assistant v2 is the next planned capability slice, not evidence that the current page is still the May 2026 error-like layout.
 
 ### RB-DEBT-002 - Export still splits attention between readiness and diagnostics
 
@@ -77,6 +88,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Status: **Partially resolved (2026-05-03)** - Verify now presents a clearer two-column workbench (compact stimulus strip, collapsed-by-default guidance + rail, cleaner clock panel grouping, stronger waveform pre-run guidance) with command-row/runtime stability fixes and board-clock/browser/export proof gates rerun green. Clock section further trimmed on 2026-05-03 (second pass): redundant Detected/Mode/Reset detail lines hidden via CSS so full cases grid is visible without scrolling. Remaining debt: small visual polish only, no semantic changes.
 
 - Follow-up (local 2026-07-13, browser-E0 validated): Verify has one command-bar Run authority, compact/disclosed session context, and a repaired Observe-only to Compare-checks transition. Focused repair/wrong-build/testbench gates and the full classroom aggregate pass.
+- V3 disposition (2026-07-15): **Closed for the v3 reconstruction.** Verify now presents stable Signals, testbench, and waveform/evidence regions; makes row authoring visually direct; keeps Compare truth distinct from Observe evidence; and places stale/wrong-scenario recovery above secondary utilities. Repeated-use usability remains bounded by the partial student lab rather than by a known structural blocker.
 
 ### RB-DEBT-004 - Design workbench still needs a screenshot-backed polish pass
 
@@ -95,6 +107,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Follow-up (2026-05-06): idle Design inspector now shows a compact current-I/O readout with input/output labels, package pin aliases, live values, and an explicit Verify-proof boundary. `ide:gate:design-correctness-contract` was reconciled from stale live-state-table selectors to current quick-input + inspector I/O selectors, restoring truth-table coverage for Signal Tour and Logic Gates. Remaining Design debt: left library density and broader screenshot-backed composition review.
 
 - Follow-up (local 2026-07-13, browser-E0 validated): Design now gives the circuit canvas first-order space, keeps only core editing controls direct, allows the library to collapse, and waits for a selection/repair context before opening the inspector. Four-viewport professional proof and the Design-focused/classroom gates pass.
+- V3 disposition (2026-07-15): **Superseded and closed for current composition.** Library, canvas, and inspector are stable visible regions; the old collapse/restore model is retired. Laptop canvas measurements clear the enforced 62% full-viewport floor, while the distinct 70% strategic target remains open.
 
 ### RB-DEBT-005 - Project home is improved but still needs a low-risk continuity audit
 
@@ -111,6 +124,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Status: Partially resolved with first/loaded multi-viewport browser-E0 continuity proof.
 
 - Follow-up (local 2026-07-13, browser-E0 validated): Project first launch is rebuilt around `Start your circuit` and one dominant action; loaded state emphasizes Continue with alternate paths disclosed. Professional-rebrand and full classroom continuity gates pass.
+- V3 disposition (2026-07-15): **Closed for the v3 reconstruction.** Project has one editable identity authority, one dominant first-launch action, direct loaded-project paths, visible continuity state, and no orientation overlay or core disclosure controls. The student-lab limitation is tracked globally rather than as a Project-specific continuity blocker.
 
 ### RB-DEBT-006 - Global CSS remains geological debt (strategy-first)
 
@@ -118,9 +132,9 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Category: CSS debt
 - Surface: Global CSS
 - Current evidence: measured inventory now comes from `pnpm css:audit:ide` (`scripts/ide-css-audit.mjs`), not handwritten header notes.
-- Final 2026-07-13 audit snapshot: `ide-root.css` has `36,420` lines, `6,137` selector entries, and `4,556` unique selectors.
-- Final 2026-07-13 audit snapshot: `ide-polish-pass.css` has `6,633` lines, `1,217` selector entries, and `1,039` unique selectors.
-- Exact selector overlap between root/polish is `11`, above the historical warning baseline of `5`; this remains explicit debt rather than a cleanup success claim.
+- Final 2026-07-15 audit snapshot: `ide-root.css` has `36,053` lines and `6,078` selector entries; `ide-polish-pass.css` has `6,127` lines and `1,250` selector entries. The audit reports zero errors and zero warnings.
+- Checkpoint-to-v3 legacy root/polish change: `42,617 -> 42,180` lines (`-437`) and `4,787 -> 4,631` `!important` declarations (`-156`). Exact selector overlap remains `5 -> 5`.
+- Checkpoint-to-v3 total tracked CSS change: `+4,088 / -453`, or `+3,635` net lines, and `4,820 -> 4,904` `!important` declarations (`+84`). This is not a total-CSS cleanup claim: the growth comes from new surface-owned v3 styles, including 240 new `!important` declarations.
 - Broad substring selectors in root: `2` (`[class*="ide-verify-"][class*="-banner"]`, `[class*="ide-verify-"][class*="-notice"]`).
 - The local recomposition deletes the playground CSS mirror (`apps/playground/src/ide/ide-root.css`) so the app no longer carries a second 825-line shell override source.
 - `theme/redbyte-primitives.css` is the scoped professional primitive layer (`704` lines in the final snapshot) with `0` `!important` declarations, `0` test-id selectors, and `0` broad class-substring selectors. It does not erase the remaining root/polish geological debt.
@@ -143,7 +157,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Files likely involved: `packages/rb-apps/src/apps/ide/ide-root.css`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`, `tests/e2e/ide-screenshot-baseline.spec.ts`, `scripts/verify-gates-classroom.ts`.
 - Status: In progress (instrumented) — strategy tooling and measurable baseline now exist; deletion-first cleanup remains blocked.
 
-- Local 2026-07-13 status: the playground mirror and a bounded set of obsolete shell overrides are removed, and final CSS/browser/classroom validation passes with the documented warnings. Root/polish size (`43,053` combined lines), `11` exact overlaps, and `4,830` total `!important` declarations across the current root/polish/theme/primitive chain remain substantial. Broad deletion-first cleanup remains blocked.
+- Local 2026-07-15 status: legacy root/polish authority shrank and its exact overlap did not increase, while the total tracked CSS tree grew as v3 moved composition rules into surface-owned files. Broad deletion-first cleanup remains blocked; future work must separate legacy-strata reduction from total-tree growth and prove one surface at a time.
 
 ### RB-DEBT-007 - Screenshot and browser proof coverage exists, but it is not yet a trusted safety net
 
@@ -203,11 +217,11 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 
 ## Next High-Leverage Passes
 
-1. ~~Convert IDE screenshot baselines from optional evidence into an intentional safety net for the authority surfaces.~~ **Done** (`tests/e2e/ide-surface-baselines.spec.ts`, 2026-05-02)
-2. ~~Do a screenshot-backed Export readiness-density pass.~~ **Partially done** (2026-05-03) - finish with a small visual balance/polish check only.
-3. Execute the CSS strategy instrumentation pass first (inventory + risk map + guardrail docs), then run one surface-scoped cleanup at a time with proof.
-4. Do a short Hardware follow-up polish pass only if Export changes reveal cross-surface drift.
-5. Revisit Verify workbench layout only after screenshot-gated CSS strategy is in place, while keeping board-clock truth locked.
+1. Obtain explicit approval, then review and sync the local v3 branch without weakening the evidence boundary.
+2. Rebase the Guided 4-Bit Adder work onto the accepted v3 composition.
+3. Build Hardware Mapping Assistant v2 as the next bounded product slice.
+4. Complete the interrupted Student C Import flow and run a blind XOR authoring trial.
+5. Continue CSS reduction only in surface-scoped, browser-proven slices; keep fresh Vivado/Basys3 certification separate.
 
 ### RB-DEBT-011 - Project first-load renders black main content area (F-P2)
 
@@ -215,7 +229,7 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Category: UI/UX - Routing/render
 - Surface: Project
 - Current evidence: **Resolved 2026-05-03.** Browser checks now show immediate Project/home content on first load at both `/` and `/os/` (1366x768 and 1920x1080), including clean-storage and saved-project restore paths.
-- How to reproduce or inspect: Navigate to `http://localhost:5173/` in dev or `http://127.0.0.1:4173/os/` in preview. Main content area is black. Click "Project" in the left rail — content appears.
+- Historical reproduction (closed): navigate to the old May 2026 build at `/` or `/os/`; the main content area appeared black until Project was selected in the then-current side rail. Unified Workbench v3 has no permanent workflow side rail.
 - Why it matters: First screen a student sees looks like a crash. Destroys first-impression trust.
 - Risk if touched: Low to medium. Likely an initial-mode initialization issue in the IDE root component.
 - Root cause: Mode selection had multiple dynamic write paths (`handleSafeLoadIntoIde`, diagnostic routing payloads, CTA mode handoff) without a shared runtime canonicalizer. In stale/legacy mode-value scenarios, the shell could mount with a non-canonical mode path, producing a blank-looking main workspace until a manual Project click forced a valid mode.
@@ -229,11 +243,11 @@ This file is the canonical owner for current IDE product debt: what is proven, w
 - Severity: Low
 - Category: UI/UX - Chrome visibility
 - Surface: All
-- Current evidence: Browser audit 2026-05-03 — "Rails On", "Console On", "Toolbar On", "Verify rows On" toggles appear in the top-right of all surfaces including Project (which has no concept of rails or console). They appear with different subsets per surface but are always visible. These are debug/developer controls, not student-facing.
-- How to reproduce or inspect: Open any surface. Top-right area shows toggle buttons next to BUILD badge.
+- Historical evidence: Browser audit 2026-05-03 showed "Rails On", "Console On", "Toolbar On", and "Verify rows On" toggles in the top-right of student surfaces. That composition is superseded.
+- Current inspection: Unified Workbench v3 exposes none of those developer chrome toggles. Its shell and workspace gates assert zero visible retired rail/dock controls while keeping stable surface work regions.
 - Why it matters: Adds visual noise; if a student accidentally toggles "Rails Off" or "Console Off" they get an unexpected layout change with no recovery path shown.
 - Risk if touched: Medium. Tests may depend on toggled panel DOM accessibility. Confirm all tests use data-testid selectors before gating the toggles.
 - Suggested next pass: Gate behind a developer/instructor mode (e.g. `?dev=true` query param). In default mode, hide entirely. Do not attempt until Slice 1 and Slice 2 from the product flow model are done.
 - Tests/browser proof needed: Confirm all tests that interact with rail/console/toolbar panels still pass after the toggle buttons are hidden (tests should use data-testid, not toggle button visibility).
 - Files likely involved: Chrome toggle host component in `packages/rb-apps/src/apps/ide/`, `packages/rb-apps/src/apps/ide/ide-polish-pass.css`.
-- Status: Open (confirmed in browser 2026-05-03)
+- Status: **Resolved by Unified Workbench v3 (2026-07-15).** The historical controls are absent from the current student shell; no developer-mode gating follow-up is required for this finding.

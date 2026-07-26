@@ -42,7 +42,9 @@ Vivado and a Basys3 board are not required to open RedByte or complete browser-l
 Use the surfaces in this order unless your instructor says otherwise:
 
 ```text
-Project -> Design -> Verify -> Map Pins / Hardware -> Export -> Vivado -> Board observation
+Project -> Design -> Verify -> Map Pins -> Export
+
+Vivado and board observation are downstream proof activities, not additional RedByte stages.
 ```
 
 RedByte owns Project through Export. Vivado build, board programming, and board observation are outside RedByte.
@@ -67,7 +69,7 @@ RedByte owns Project through Export. Vivado build, board programming, and board 
 - A current Compare PASS is the browser proof RedByte uses before trusted Export.
 - If a case fails, inspect the first mismatch, return to Design or the expected-output cells, repair, and rerun Compare.
 
-### Map Pins / Hardware
+### Map Pins
 
 - Map each required project input and output to a Basys3 resource such as `SW0`, `SW1`, `LD0`, a button, or `CLK100MHZ`.
 - Check the visible chain:

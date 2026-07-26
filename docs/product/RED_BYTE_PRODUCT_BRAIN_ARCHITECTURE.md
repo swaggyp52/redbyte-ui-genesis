@@ -63,7 +63,7 @@ These FPGA docs are background/constitutional unless current cockpit docs say ot
 | Module | Current owner doc(s) | Notes |
 |---|---|---|
 | Product identity and promise | `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/product/RED_BYTE_STUDIO_PRODUCT_BRIEF.md` | Browser-based FPGA educational IDE for Basys3. |
-| Current workflow spine | `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/manuals/RedByte_Product_Manual.md` | Project -> Design -> Verify -> Map Pins / Hardware -> Export. |
+| Current workflow spine | `docs/product/RED_BYTE_CURRENT_TRUTH.md`, `docs/manuals/RedByte_Product_Manual.md` | Project -> Design -> Verify -> Map Pins -> Export. |
 | Surface contracts | `docs/ide/00-ide-layout.md` through `docs/ide/05-import.md`, `docs/ide/SURFACE_CONFORMANCE.md` | Required before UI/surface work. |
 | Target product contract | `docs/contracts/RedByte_Product_Contract.md` | Target promise, not automatic shipped proof. |
 | Release proof posture | `docs/STUDENT_RELEASE_READINESS.md`, `docs/release/**` | Source for student-safe claims. |

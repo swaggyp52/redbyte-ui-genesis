@@ -88,7 +88,7 @@ Vivado package inspection artifacts:
 
 RedByte has a credible deterministic student workflow spine:
 
-`Project -> Design -> Verify -> Map Pins / Hardware -> Export`
+`Project -> Design -> Verify -> Map Pins -> Export`
 
 The core technical promise is much stronger than a prototype: starter workflows load, Verify Compare can pass, intentional failures are explainable, mapping state participates in trust, E0 Vivado packages are structurally coherent, project persistence/import/export recovery pass, and a blank-canvas AND workflow can reach Verify PASS and Export.
 
@@ -186,7 +186,7 @@ The product is not yet ready for unsupervised classroom or commercial deployment
 
 ## What Should Not Be Reopened From This Audit
 
-- The core Project -> Design -> Verify -> Map Pins / Hardware -> Export spine is the right spine.
+- The core Project -> Design -> Verify -> Map Pins -> Export spine is the right spine.
 - E0-only export language is directionally correct and should not be weakened.
 - Vivado remains downstream; RedByte should not pretend to synthesize, implement, program, or observe hardware without external proof.
 - The product needs student-facing hardening, not a new product concept or a new `.redbyte-brain/` directory.

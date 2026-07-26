@@ -21,7 +21,7 @@
 import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, statSync } from 'fs';
 import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
@@ -117,28 +117,35 @@ if (!PDF_ONLY) {
 
 // Step 3: Check weasyprint is available
 console.log('\nStep 3: Checking weasyprint...');
-const wpCheck = spawnSync('python3', ['-c', 'import weasyprint; print(weasyprint.__version__)'], { encoding: 'utf8' });
-if (wpCheck.status !== 0) {
-  fail('weasyprint not found. Install with: pip install weasyprint --break-system-packages');
+const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+const wpCheck = spawnSync(pythonCommand, ['-c', 'import weasyprint; print(weasyprint.__version__)'], { encoding: 'utf8' });
+const useWeasyprint = wpCheck.status === 0;
+if (useWeasyprint) {
+  log(`weasyprint ${wpCheck.stdout.trim()}`);
+} else {
+  warn('weasyprint is unavailable; using the installed Chromium/Edge print engine');
 }
-log(`weasyprint ${wpCheck.stdout.trim()}`);
 
 // Step 4: Generate PDF
 console.log('\nStep 4: Generating PDF...');
-const pdfScript = `
+if (useWeasyprint) {
+  const pdfScript = `
 import weasyprint, sys
 html = weasyprint.HTML(filename=sys.argv[1])
 html.write_pdf(sys.argv[2])
 `.trim();
 
-const result = spawnSync(
-  'python3',
-  ['-c', pdfScript, HTML_SRC, PDF_OUT],
-  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
-);
+  const result = spawnSync(
+    pythonCommand,
+    ['-c', pdfScript, HTML_SRC, PDF_OUT],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }
+  );
 
-if (result.status !== 0) {
-  fail(`weasyprint failed:\n${result.stderr}`);
+  if (result.status !== 0) {
+    fail(`weasyprint failed:\n${result.stderr}`);
+  }
+} else {
+  await generatePdfWithChromium();
 }
 
 const size = statSync(PDF_OUT).size;
@@ -149,3 +156,26 @@ console.log('\nDone.\n');
 console.log('  Outputs:');
 console.log(`    docs/manuals/RedByte_Product_Manual.pdf  (${kb} KB)`);
 console.log('');
+
+async function generatePdfWithChromium() {
+  let browser;
+  try {
+    const { chromium } = await import('playwright');
+    browser = await chromium.launch();
+    const page = await browser.newPage();
+    await page.goto(pathToFileURL(HTML_SRC).href, { waitUntil: 'load' });
+    await page.emulateMedia({ media: 'print' });
+    await page.pdf({
+      path: PDF_OUT,
+      format: 'Letter',
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: false,
+    });
+    log('Playwright Chromium PDF fallback');
+  } catch (error) {
+    fail(`Playwright Chromium PDF fallback failed:\n${error instanceof Error ? error.stack ?? error.message : String(error)}`);
+  } finally {
+    await browser?.close();
+  }
+}

@@ -2,6 +2,8 @@
 
 This checklist is the classroom-ready release gate for v1.
 
+> **Unified Workbench v3 RC routing:** This legacy V1 checklist does not certify the Unified Workbench v3 RC. RC evidence is governed by `docs/handoff/GANNON_REDBYTE_V3_RC_README.md`, `docs/release/manual-assignment-qa-script.md`, the exact-tree acceptance manifest, same-tree human review, and the uninterrupted 72-step `classroom:gate`. The RC also requires separate invocations of `ide:gate:sequential-testbench-authority` and `ide:gate:mapping-preview-package-agreement`; the aggregate does not replace either standalone gate.
+
 Related docs:
 
 - [v1.0.0-next-lab-ready Release Handoff](./v1.0.0-next-lab-ready-handoff.md)

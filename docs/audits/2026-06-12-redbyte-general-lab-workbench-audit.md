@@ -15,7 +15,7 @@ This audit records Sprint 0 for RedByte Platform Generalization + Gate Truth. Th
 Structured hardening ticket translation before coding:
 
 - Title: RedByte general lab workflow and gate truth repair.
-- Surface: Project, Design, Verify, Map Pins / Hardware, Export, gate harnesses.
+- Surface: Project, Design, Verify, Map Pins, Export, gate harnesses.
 - Journey segment: from-scratch blank project through exported Basys3 package.
 - Observed behavior: current gates still carried stale starter/blank assumptions, and the blank-project export path exposed aliasing defects after map changes.
 - Expected behavior: a small non-starter circuit can be built, verified, mapped, reverified, and exported without hidden ECE141 starter lock-in or false gate failures.
@@ -25,7 +25,7 @@ Structured hardening ticket translation before coding:
 
 ## Where RedByte Is Already General
 
-- The core spine is workflow-based rather than course-page-based: Project -> Design -> Verify -> Map Pins / Hardware -> Export.
+- The core spine is workflow-based rather than course-page-based: Project -> Design -> Verify -> Map Pins -> Export.
 - Design supports blank projects and generic digital primitives, not only certified starters.
 - Verify can consume authored vectors and active runtime scenarios instead of only canned starter vectors.
 - Map Pins stores authoritative IO rows and can map live input/output boundaries to Basys3 resources.
