@@ -6,6 +6,7 @@ import { StimulusCanvas } from '../components/StimulusCanvas';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { ScenarioLibraryHeader } from '../surfaces/ScenarioLibraryHeader';
 import { VerifySurface } from '../surfaces/VerifySurface';
+import { TestbenchDocumentTabs } from '../surfaces/verify/TestbenchDocumentTabs';
 import type { VerifyScenario } from '../verifyScenario';
 
 afterEach(() => {
@@ -65,6 +66,34 @@ function makePassRun(): RuntimeVerifyRun {
 }
 
 describe('professional Verify testbench workflow', () => {
+  it('summarizes real scenario stimulus and checks as a visual library card', () => {
+    const scenario: VerifyScenario = {
+      ...makeScenario('counter-sequence', 'Counter sequence'),
+      vectors: [
+        { tick: 0, inputs: { clk: 0, en: 1 }, expected: { q0: 0, q1: 0 } },
+        { tick: 1, inputs: { clk: 1, en: 1 }, expected: { q0: 1, q1: 0 } },
+      ],
+    };
+    const view = render(
+      <TestbenchDocumentTabs
+        scenarios={[scenario]}
+        activeScenarioId={scenario.id}
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onDuplicate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    );
+
+    const card = view.getByTestId('ide-testbench-document-tab-counter-sequence');
+    expect(card.textContent).toContain('Sequential');
+    expect(card.textContent).toContain('2 events');
+    expect(card.textContent).toContain('4 checks');
+    expect(view.getByTestId('ide-testbench-document-preview-counter-sequence')).toBeTruthy();
+    expect(view.getByTestId('ide-scenario-create-btn').textContent).toContain('New scenario');
+  });
+
   it('keeps stimulus, expected, observed, and per-case evidence in one work object', () => {
     const { getByTestId } = render(
       <StimulusCanvas

@@ -3183,12 +3183,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             <section className="ide-hw-v3__after" data-testid="ide-hw-after-mapping-tools">
               <div>
                 <p className="ide-surface-block-label">After mapping</p>
-                <p className="ide-copy ide-copy--flush">Open a focused board tool when the assignment table is ready.</p>
+                <p className="ide-copy ide-copy--flush">
+                  Check the assignment, rehearse the lab, or drive the simulated board. Simulation is exploratory and is not hardware evidence.
+                </p>
               </div>
               <div className="ide-hw-v3__after-actions" data-testid="ide-hw-mode-toggle">
                 <IdeButton tone="secondary" onClick={() => { setHwMode('bringup'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-bringup">Board Check</IdeButton>
                 <IdeButton tone="secondary" onClick={() => { setHwMode('proof'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-proof">Pre-flight</IdeButton>
-                <IdeButton tone="ghost" onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-live">Simulation</IdeButton>
+                <IdeButton tone="ghost" onClick={() => { setHwMode('live'); setSelectedMappingRowId(null); }} testId="ide-hw-mode-btn-live">Open simulated board</IdeButton>
               </div>
             </section>
           </section>

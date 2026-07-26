@@ -1523,7 +1523,9 @@ const RecentProjects: React.FC<{
             data-testid={`ide-project-recent-${project.projectId}`}
           >
             <strong>{project.projectName}</strong>
-            <span>Saved {formatSavedAt(project.savedAtIso)}</span>
+            <span title={formatSavedAt(project.savedAtIso)}>
+              Saved {formatSavedAtRelative(project.savedAtIso) ?? formatSavedAt(project.savedAtIso)}
+            </span>
           </button>
         ))}
       </div>

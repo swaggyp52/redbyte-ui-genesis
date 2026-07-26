@@ -1,5 +1,33 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { VerifyScenario } from '../../verifyScenario';
+import { materializeScenarioVectors, type VerifyScenario } from '../../verifyScenario';
+
+function summarizeScenario(scenario: VerifyScenario) {
+  const vectors = materializeScenarioVectors(scenario);
+  const checkCount = vectors.reduce(
+    (total, vector) => total + Object.keys(vector.expected ?? {}).length,
+    0
+  );
+  const inputNames = Array.from(
+    new Set(vectors.flatMap((vector) => Object.keys(vector.inputs ?? {})))
+  ).slice(0, 3);
+  const previewValues = inputNames.map((inputName) => ({
+    inputName,
+    values: vectors.slice(0, 12).map((vector) => (Number(vector.inputs?.[inputName]) ? 1 : 0)),
+  }));
+  const isSequential =
+    Boolean(scenario.steps?.length) ||
+    scenario.sequentialPolicy?.executionModel === 'manual_event_driven_lab' ||
+    (scenario.sequentialPolicy?.runCycles ?? 1) > 1 ||
+    inputNames.some((inputName) => /(^|[_\W])(clk|clock)([_\W]|$)/i.test(inputName));
+
+  return {
+    vectors,
+    checkCount,
+    previewValues,
+    kindLabel: isSequential ? 'Sequential' : 'Combinational',
+    cycleCount: scenario.sequentialPolicy?.runCycles,
+  };
+}
 
 export interface TestbenchDocumentTabsProps {
   readonly scenarios: readonly VerifyScenario[];
@@ -71,7 +99,7 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
           onClick={onCreate}
           data-testid="ide-scenario-create-btn"
         >
-          + New testbench
+          + New scenario
         </button>
       </div>
 
@@ -79,6 +107,7 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
         <div className="ide-testbench-document-tabs" role="tablist" aria-label="Open testbenches">
           {scenarios.map((scenario) => {
             const isActive = scenario.id === activeScenario.id;
+            const summary = summarizeScenario(scenario);
             return (
               <button
                 key={scenario.id}
@@ -89,8 +118,39 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
                 onClick={() => onSwitch(scenario.id)}
                 data-testid={`ide-testbench-document-tab-${scenario.id}`}
               >
-                <span>{scenario.name}</span>
-                <small>v{scenario.version}</small>
+                <span className="ide-testbench-document-card-heading">
+                  <span>{scenario.name}</span>
+                  <small>v{scenario.version}</small>
+                </span>
+                <span className="ide-testbench-document-card-meta">
+                  <span>{summary.kindLabel}</span>
+                  <span>{summary.vectors.length} events</span>
+                  <span>{summary.checkCount} checks</span>
+                  {summary.cycleCount ? <span>{summary.cycleCount} cycles</span> : null}
+                </span>
+                <span
+                  className="ide-testbench-document-preview"
+                  aria-label={`${scenario.name} stimulus preview`}
+                  data-testid={`ide-testbench-document-preview-${scenario.id}`}
+                >
+                  {summary.previewValues.length > 0 ? (
+                    summary.previewValues.map((row) => (
+                      <span className="ide-testbench-document-preview-row" key={row.inputName}>
+                        <span className="ide-testbench-document-preview-label">{row.inputName}</span>
+                        <span className="ide-testbench-document-preview-bits" aria-hidden="true">
+                          {row.values.map((value, index) => (
+                            <span
+                              key={`${row.inputName}-${index}`}
+                              className={value ? 'is-high' : 'is-low'}
+                            />
+                          ))}
+                        </span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="ide-testbench-document-preview-empty">No stimulus yet</span>
+                  )}
+                </span>
               </button>
             );
           })}

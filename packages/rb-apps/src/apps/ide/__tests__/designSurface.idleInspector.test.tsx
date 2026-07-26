@@ -150,6 +150,26 @@ afterEach(() => {
 });
 
 describe('DesignSurface contextual inspector contract', () => {
+  it('keeps authoring, exploratory simulation, and replay as explicit modes on one canvas', () => {
+    useCircuitStore.setState({
+      circuit: structuredClone(BASE_CIRCUIT),
+      isDirty: false,
+      past: [],
+      future: [],
+    });
+
+    const view = renderSurface();
+
+    expect(view.getByTestId('ide-design-palette-section-common')).toBeTruthy();
+    expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'edit');
+    expect(view.getByTestId('ide-design-learning-mode-replay')).toBeDisabled();
+
+    fireEvent.click(view.getByTestId('ide-design-learning-mode-live'));
+
+    expect(view.getByTestId('ide-design-learning-mode')).toHaveAttribute('data-mode', 'live');
+    expect(view.getByText('Exploratory simulation · not saved evidence')).toBeTruthy();
+  });
+
   it('returns idle inspector space to the canvas when nothing is selected', () => {
     useCircuitStore.setState({
       circuit: structuredClone(BASE_CIRCUIT),

@@ -85,6 +85,12 @@
   order: 1;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--common {
+  order: 0;
+  border-color: rgba(56, 189, 248, 0.34);
+  background: linear-gradient(180deg, rgba(14, 50, 73, 0.42), rgba(10, 24, 39, 0.52));
+}
+
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--logic {
   order: 2;
 }
@@ -353,6 +359,69 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-actions {
   display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode {
+  display: grid;
+  gap: 3px;
+  margin-left: 8px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs {
+  display: inline-flex;
+  min-height: 32px;
+  padding: 2px;
+  border: 1px solid rgba(120, 149, 179, 0.28);
+  border-radius: 7px;
+  background: rgba(5, 12, 22, 0.78);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs button {
+  min-width: 60px;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #91a5ba;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs button:hover:not(:disabled),
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs button:focus-visible {
+  background: rgba(56, 189, 248, 0.1);
+  color: #e0f2fe;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs button.is-active {
+  background: rgba(14, 116, 144, 0.34);
+  color: #f0f9ff;
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.4);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-tabs button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-learning-mode-truth {
+  color: #8ca1b6;
+  font-size: 11px !important;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-learning-mode[data-mode='live']
+  .ide-design-learning-mode-truth {
+  color: #67e8f9;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-learning-mode[data-mode='replay']
+  .ide-design-learning-mode-truth {
+  color: #c4b5fd;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar {

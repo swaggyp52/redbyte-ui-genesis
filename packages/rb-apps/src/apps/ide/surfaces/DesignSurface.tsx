@@ -1190,6 +1190,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [staleReplayBreadcrumb, setStaleReplayBreadcrumb] = useState<StaleReplayBreadcrumb | null>(null);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1);
+  const [designLearningMode, setDesignLearningMode] = useState<'edit' | 'live'>('edit');
   const runtimeSimTick = runtimeSim.tick;
   const simSpeed = runtimeSim.speedHz;
   const runtimeLiveSignals = useMemo(() => {
@@ -1243,6 +1244,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return mergedSignals;
   }, [effectiveExternalDebugSignals, effectiveExternalDebugTick, replayTickTraceIndex, replayTrace, runtimeLiveSignals]);
   const isReplayMode = effectiveExternalDebugTick != null;
+  const effectiveLearningMode = isReplayMode ? 'replay' : designLearningMode;
   const liveSignals = replaySignals ?? runtimeLiveSignals;
   const displayTrace = replayTraceWindow ?? runtimeSim.trace;
   const displayRuntimeSignals = useMemo(() => {
@@ -1421,6 +1423,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal?.(null);
     onClearVerifyFocus?.();
     onClearExternalDebug?.();
+    setDesignLearningMode('edit');
   }, [
     clearTrace,
     endWire,
@@ -1903,6 +1906,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       io: filtered.filter((item) => item.category === 'IO'),
       components: filtered.filter((item) => item.category === 'Components'),
     };
+  }, [paletteQueryTerms]);
+  const commonPaletteItems = useMemo(() => {
+    if (paletteQueryTerms.length > 0) return [];
+    const commonTypes = new Set(['INPUT', 'OUTPUT', 'AND', 'OR', 'XOR', 'NOT', 'Register1']);
+    return [...PALETTE_ITEMS, ...COMPOSITE_PALETTE_ITEMS].filter((item) =>
+      commonTypes.has(item.type)
+    );
   }, [paletteQueryTerms]);
   const filteredCustomComponents = useMemo(() => {
     if (!customComponentTypes || customComponentTypes.length === 0) return [];
@@ -5690,6 +5700,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
 
             <div className="ide-design-palette-sections">
+              {commonPaletteItems.length > 0 ? (
+                <section
+                  className="ide-palette-section ide-palette-section--common"
+                  data-testid="ide-design-palette-section-common"
+                >
+                  <header className="ide-palette-section-header">
+                    <div className="ide-palette-section-title-row">
+                      <h4>Common</h4>
+                      <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
+                    </div>
+                    <p className="ide-palette-section-copy">
+                      Start here for most combinational and first sequential circuits.
+                    </p>
+                  </header>
+                  <div className="ide-palette-card-list">
+                    {commonPaletteItems.map((item) =>
+                      renderNodePaletteCard(item, {
+                        testId: `ide-design-common-${item.type.toLowerCase()}`,
+                      })
+                    )}
+                  </div>
+                </section>
+              ) : null}
               {/* Board Resources — first: primary destination for board-aware work */}
               {filteredBoardGroups.length > 0 ? (
                 <section
@@ -6205,6 +6238,55 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <strong data-testid="ide-design-authoring-summary-status">{authoringStatusLabel}</strong>
                     </div>
                   </div>
+                  {!isCodeWorkspace ? (
+                    <div
+                      className="ide-design-learning-mode"
+                      data-testid="ide-design-learning-mode"
+                      data-mode={effectiveLearningMode}
+                      aria-label="Design workspace mode"
+                    >
+                      <div className="ide-design-learning-mode-tabs" role="group" aria-label="Design mode">
+                        <button
+                          type="button"
+                          className={effectiveLearningMode === 'edit' ? 'is-active' : ''}
+                          aria-pressed={effectiveLearningMode === 'edit'}
+                          onClick={handleResumeLiveEditing}
+                          data-testid="ide-design-learning-mode-edit"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={effectiveLearningMode === 'live' ? 'is-active' : ''}
+                          aria-pressed={effectiveLearningMode === 'live'}
+                          onClick={() => {
+                            onClearExternalDebug?.();
+                            setDesignLearningMode('live');
+                          }}
+                          data-testid="ide-design-learning-mode-live"
+                        >
+                          Live
+                        </button>
+                        <button
+                          type="button"
+                          className={effectiveLearningMode === 'replay' ? 'is-active' : ''}
+                          aria-pressed={effectiveLearningMode === 'replay'}
+                          disabled={!replaySession || replayTrace.length === 0}
+                          onClick={() => onSelectDebugTickIndex?.(0)}
+                          data-testid="ide-design-learning-mode-replay"
+                        >
+                          Replay
+                        </button>
+                      </div>
+                      <span className="ide-design-learning-mode-truth">
+                        {effectiveLearningMode === 'replay'
+                          ? 'Recorded Verify run · read-only evidence'
+                          : effectiveLearningMode === 'live'
+                            ? 'Exploratory simulation · not saved evidence'
+                            : 'Authoring circuit structure'}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
