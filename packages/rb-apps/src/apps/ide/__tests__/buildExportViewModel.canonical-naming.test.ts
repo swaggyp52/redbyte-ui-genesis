@@ -599,6 +599,23 @@ describe('buildExportViewModel canonical naming', () => {
     expect(validateArtifactConsistency(topVhd, testbenchVhd)).toEqual([]);
   });
 
+  it('classifies a mapped but undriven output as a Design-owned blocker', () => {
+    const project = createProjectFromExample('logic-gates');
+    project.circuit.connections = project.circuit.connections.filter((connection) => {
+      const target = typeof connection.to === 'string' ? connection.to : connection.to.nodeId;
+      return target !== 'ld2_node';
+    });
+
+    const viewModel = buildExportViewModel(project);
+    const diagnostic = viewModel.diagnostics.find((entry) =>
+      /output.+has no driver|floating output/i.test(entry.message)
+    );
+
+    expect(diagnostic?.code).toBe('RBEX4103');
+    expect(diagnostic?.owner).toMatchObject({ kind: 'node', nodeId: 'ld2_node' });
+    expect(diagnostic?.actions[0]?.payload.mode).toBe('design');
+  });
+
   it('keeps the logic-gates starter exportable without false RBEX9000 blockers', () => {
     const project = createProjectFromExample('logic-gates');
     const topVhd = getArtifactContent(project, 'top.vhd');
@@ -613,6 +630,159 @@ describe('buildExportViewModel canonical naming', () => {
     expect(viewModel.status).toBe('ok');
     expect(viewModel.errors.some((error) => /rst_btnc/i.test(error.message))).toBe(false);
     expect(viewModel.pinTable.find((row) => row.port === 'RST')?.status).toBe('mapped');
+  });
+
+  it('does not create a phantom missing row when a mapped logical label is sanitized', () => {
+    const project = createExportFixture();
+    project.hdl = undefined;
+    project.circuit.nodes[0] = {
+      ...project.circuit.nodes[0]!,
+      label: 'DATA (SW0)',
+    };
+    project.circuit.nodes[1] = { ...project.circuit.nodes[1]!, label: 'Q' };
+    project.ioMapping = {
+      inputs: [
+        { id: 'data', nodeId: 'sw0_node', port: 'out', label: 'DATA (SW0)', pin: 'SW0' },
+      ],
+      outputs: [
+        { id: 'q', nodeId: 'ld0_node', port: 'in', label: 'Q', pin: 'LD0' },
+      ],
+    };
+    project.vectors = [{ tick: 0, inputs: { data: 1 }, expected: { q: 1 } }];
+
+    const viewModel = buildExportViewModel(project);
+
+    expect(viewModel.status).toBe('ok');
+    expect(viewModel.pinTable.filter((row) => row.required && row.status === 'missing')).toEqual([]);
+    expect(viewModel.pinTable.find((row) => row.rowId === 'data')).toMatchObject({
+      port: 'DATA (SW0)',
+      artifactPortName: 'SW',
+      status: 'mapped',
+    });
+  });
+
+  it('matches a mapped switch-clock label to its sanitized required HDL port', () => {
+    const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-07-22T00:00:00.000Z',
+      updatedAt: '2026-07-22T00:00:00.000Z',
+      name: 'Manual switch clock naming',
+      description: 'DFF clocked by ENTER (SW5).',
+      circuit: {
+        nodes: [
+          { id: 'd_node', type: 'INPUT', label: 'D', x: 0, y: 0, config: {}, state: {} },
+          { id: 'enter_node', type: 'INPUT', label: 'ENTER (SW5)', x: 0, y: 100, config: {}, state: {} },
+          { id: 'ff_node', type: 'DFlipFlop', label: 'FF0', x: 200, y: 50, config: {}, state: {} },
+          { id: 'q_node', type: 'OUTPUT', label: 'Q', x: 400, y: 50, config: {}, state: {} },
+        ],
+        connections: [
+          { from: { nodeId: 'd_node', portName: 'out' }, to: { nodeId: 'ff_node', portName: 'D' } },
+          { from: { nodeId: 'enter_node', portName: 'out' }, to: { nodeId: 'ff_node', portName: 'CLK' } },
+          { from: { nodeId: 'ff_node', portName: 'Q' }, to: { nodeId: 'q_node', portName: 'in' } },
+        ],
+      },
+      ioMapping: {
+        inputs: [
+          { id: 'd', nodeId: 'd_node', port: 'out', label: 'D', pin: 'SW0' },
+          { id: 'enter', nodeId: 'enter_node', port: 'out', label: 'ENTER (SW5)', pin: 'SW5' },
+        ],
+        outputs: [
+          { id: 'q', nodeId: 'q_node', port: 'in', label: 'Q', pin: 'LD0' },
+        ],
+      },
+      vectors: [
+        { tick: 0, inputs: { d: 1, enter: 0 }, expected: { q: 0 } },
+        { tick: 1, inputs: { d: 1, enter: 1 }, expected: { q: 1 } },
+      ],
+      meta: { projectId: 'manual-switch-clock-naming' },
+    };
+
+    const viewModel = buildExportViewModel(project);
+
+    expect(viewModel.status).toBe('ok');
+    expect(viewModel.errors.some((error) => /enter_sw5/i.test(error.message))).toBe(false);
+    expect(viewModel.pinTable.find((row) => row.rowId === 'enter')).toMatchObject({
+      port: 'ENTER (SW5)',
+      artifactPortName: 'SW5',
+      status: 'mapped',
+    });
+  });
+
+  it('projects divergent logical names onto canonical SW/LED artifact ports and exact XDC lines', () => {
+    const viewModel = buildExportViewModel(createProjectFromExample('two-bit-counter'));
+    const enable = viewModel.mappingProjection.find((row) => row.logicalSignalId === 'en');
+    const q0 = viewModel.mappingProjection.find((row) => row.logicalSignalId === 'q0');
+    const q1 = viewModel.mappingProjection.find((row) => row.logicalSignalId === 'q1');
+
+    expect(enable).toEqual({
+      logicalSignalId: 'en',
+      logicalLabel: 'EN',
+      direction: 'in',
+      artifactPortName: 'SW',
+      boardResourceId: 'switch-0',
+      boardResourceLabel: 'Slide switch SW0',
+      packagePin: 'V17',
+      ioStandard: 'LVCMOS33',
+      exactXdcLine: 'set_property PACKAGE_PIN V17 [get_ports {SW}]',
+      required: true,
+      conflictState: 'none',
+    });
+    expect(q0).toMatchObject({ artifactPortName: 'LED[0]', packagePin: 'U16' });
+    expect(q1).toMatchObject({ artifactPortName: 'LED[1]', packagePin: 'E19' });
+
+    const enablePinRow = viewModel.pinTable.find((row) => row.rowId === 'en');
+    expect(enablePinRow).toMatchObject({
+      port: 'EN',
+      artifactPortName: 'SW',
+      packagePin: 'V17',
+      exactXdcLine: enable?.exactXdcLine,
+    });
+    expect(getArtifactContentFromViewModel(viewModel, 'top.xdc')).toContain(enable?.exactXdcLine);
+    expect(getArtifactContentFromViewModel(viewModel, 'README.txt')).toContain(
+      '| EN | SW | Slide switch SW0 | V17 | input |'
+    );
+  });
+
+  it('reports duplicate physical assignments in the projection even when export is blocked', () => {
+    const project = createExportFixture();
+    project.ioMapping!.outputs[0] = {
+      ...project.ioMapping!.outputs[0]!,
+      pin: 'V17',
+    };
+
+    const viewModel = buildExportViewModel(project);
+
+    expect(viewModel.status).toBe('blocked');
+    expect(viewModel.mappingProjection).toHaveLength(2);
+    expect(viewModel.mappingProjection.map((row) => row.conflictState)).toEqual([
+      'duplicate-package-pin',
+      'duplicate-package-pin',
+    ]);
+    expect(viewModel.errors.some((error) => error.message.includes('RBEX-CT-008'))).toBe(true);
+  });
+
+  it('blocks scalar/vector artifact port collisions even when their bit slots differ', () => {
+    const project = createExportFixture();
+    project.circuit.nodes[0]!.label = 'SW';
+    project.circuit.nodes[1]!.label = 'SW[0]';
+    project.ioMapping!.inputs[0] = {
+      ...project.ioMapping!.inputs[0]!,
+      label: 'SW',
+    };
+    project.ioMapping!.outputs[0] = {
+      ...project.ioMapping!.outputs[0]!,
+      label: 'SW[0]',
+    };
+
+    const viewModel = buildExportViewModel(project);
+
+    expect(viewModel.status).toBe('blocked');
+    expect(viewModel.mappingProjection.map((row) => row.conflictState)).toEqual([
+      'artifact-port-collision',
+      'artifact-port-collision',
+    ]);
+    expect(viewModel.errors.some((error) => error.message.includes('RBEX-CT-001'))).toBe(true);
   });
 
   it('suppresses projection-only HDL/XDC mismatch warnings for live Signal Tour export', () => {

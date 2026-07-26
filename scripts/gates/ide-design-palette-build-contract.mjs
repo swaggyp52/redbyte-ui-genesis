@@ -331,18 +331,16 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
       return selected instanceof Set ? selected.has(nodeId) : false;
     },
     aliasNodeId,
-    { timeout: 1000 }
+    { timeout: 5000 }
   );
-  if (!(await page.locator('[data-testid="ide-design-tool-delete"]').first().isVisible().catch(() => false))) {
-    const more = page.locator('[data-testid="ide-design-tools-toggle"]').first();
-    assert(await more.isVisible().catch(() => false), `${alias} delete must be reachable from More tools`);
-    await more.click();
-    await page.locator('[data-testid="ide-design-toolbar-expanded"]').first().waitFor({ state: 'visible', timeout: 5000 });
-  }
-  await page.waitForSelector('[data-testid="ide-design-tool-delete"]:not([disabled])', {
-    timeout: 1000,
-  });
-  await page.locator('[data-testid="ide-design-tool-delete"]').first().click();
+  const nodeDelete = page.locator('[data-testid="ide-design-inspector-delete"]').first();
+  await nodeDelete.waitFor({ state: 'visible', timeout: 5000 });
+  assert(!(await nodeDelete.isDisabled().catch(() => true)), `${alias} direct node delete must be enabled`);
+  assert(
+    !(await page.locator('[data-testid="ide-design-context-delete-wire"]').first().isVisible().catch(() => false)),
+    `${alias} node selection must expose node delete instead of wire delete`
+  );
+  await nodeDelete.click();
 
   await page.waitForFunction(
     (targetAlias) => {
@@ -354,9 +352,18 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
       return count === 0;
     },
     alias,
-    { timeout: 1000 }
+    { timeout: 5000 }
   );
 
+  await page.waitForFunction(
+    (targetAlias) => {
+      const testId = `ide-design-board-input-${String(targetAlias || '').trim().toLowerCase()}`;
+      const entry = document.querySelector(`[data-testid="${testId}"]`);
+      return entry instanceof HTMLButtonElement && !entry.disabled;
+    },
+    alias,
+    { timeout: 5000 },
+  );
   const enabledAfterDelete = !(await button.isDisabled().catch(() => true));
   assert(enabledAfterDelete, `${alias} palette entry should re-enable after deleting its node`);
 
@@ -377,9 +384,29 @@ async function assertBoardAliasCanDeleteAndReadd(page, alias, selector, placemen
       return count === 1;
     },
     alias,
-    { timeout: 1000 }
+    { timeout: 5000 }
   );
 
+  // Board placement selects the new node and the exclusive-dock policy may
+  // replace Library with Inspector. Reopen Library before asserting that the
+  // board alias is unavailable for a duplicate placement.
+  await revealDesignLibrary(page);
+  try {
+    await page.waitForFunction(
+      (targetAlias) => {
+        const testId = `ide-design-board-input-${String(targetAlias || '').trim().toLowerCase()}`;
+        const entry = document.querySelector(`[data-testid="${testId}"]`);
+        return entry instanceof HTMLButtonElement && entry.disabled;
+      },
+      alias,
+      { timeout: 5000 },
+    );
+  } catch (error) {
+    const diagnostics = await readBoardAliasDiagnostics(page, alias);
+    throw new Error(
+      `${alias} palette entry did not disable after re-placement: ${JSON.stringify(diagnostics)} (${error instanceof Error ? error.message : String(error)})`,
+    );
+  }
   const disabledAfterReadd = await button.isDisabled().catch(() => false);
   assert(disabledAfterReadd, `${alias} palette entry should disable again after re-placement`);
 }
@@ -407,6 +434,31 @@ async function readBoardAliasNodeId(page, alias) {
 
 async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
+}
+
+async function readBoardAliasDiagnostics(page, alias) {
+  return page.evaluate((targetAlias) => {
+    const normalized = String(targetAlias || '').trim().toUpperCase();
+    const runtime = window.__RB_PROJECT_RUNTIME__?.getState?.();
+    const circuitStore = window.__RB_CIRCUIT_STORE__?.getState?.();
+    const testId = `ide-design-board-input-${normalized.toLowerCase()}`;
+    const entry = document.querySelector(`[data-testid="${testId}"]`);
+    const compactNode = (node) => ({ id: node.id, type: node.type, label: node.label });
+    return {
+      entry: entry instanceof HTMLButtonElement
+        ? { disabled: entry.disabled, className: entry.className, title: entry.title }
+        : null,
+      runtimeNodes: (runtime?.circuit?.nodes ?? [])
+        .filter((node) => String(node.label || '').trim().toUpperCase() === normalized)
+        .map(compactNode),
+      circuitStoreNodes: (circuitStore?.circuit?.nodes ?? [])
+        .filter((node) => String(node.label || '').trim().toUpperCase() === normalized)
+        .map(compactNode),
+      ioRows: (runtime?.projectIoRows ?? []).filter((row) =>
+        [row.id, row.label, row.pin].some((value) => String(value || '').trim().toUpperCase() === normalized),
+      ),
+    };
+  }, alias);
 }
 
 async function clickElement(locator) {

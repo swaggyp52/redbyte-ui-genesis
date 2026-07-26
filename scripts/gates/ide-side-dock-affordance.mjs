@@ -52,9 +52,8 @@ const MODES = [
     id: 'import',
     routeOnly: true,
     focalSelectors: [
-      '[data-testid="ide-import-start-shell"]',
-      '[data-testid="ide-import-workspace"]',
-      '[data-testid="ide-mode-import"]',
+      '[data-testid="ide-import-workbench"]',
+      '[data-testid="ide-import-zip-dropzone"]',
     ],
   },
 ];
@@ -97,8 +96,7 @@ await runIdeGate('IDE side dock affordance satisfied', async ({ page, baseUrl })
       await checkSurface(failures, page, viewport, mode, async () => {
         await assertNoHorizontalOverflow(page, viewport, mode.id);
         await assertFocalWorkbenchVisible(page, viewport, mode);
-        await assertCollapsedRails(page, viewport, mode.id);
-        await assertOpenCloseRecovery(page, viewport, mode.id);
+        await assertStableSupportRegions(page, viewport, mode.id);
       });
     }
   }
@@ -151,95 +149,70 @@ async function checkSurface(failures, page, viewport, mode, callback) {
   }
 }
 
-async function assertCollapsedRails(page, viewport, mode) {
-  if (mode === 'design') {
-    const openLibrary = page.locator('[data-testid="ide-design-dock-palette"]').first();
-    assert(await openLibrary.isVisible().catch(() => false), `${viewport.label}: Design Library must be open on entry`);
-    const hideLibrary = page.locator('[data-testid="ide-design-library-collapse"]').first();
-    assert(await hideLibrary.isVisible().catch(() => false), `${viewport.label}: open Design Library must expose Hide`);
-    await hideLibrary.click();
-    await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
-  }
-  const rails = await readRailState(page);
-  for (const rail of rails.filter((candidate) => candidate.visible)) {
-    assert(
-      rail.width <= 52,
-      `${mode}: collapsed ${rail.side} dock rail consumes ${rail.width}px; expected <=52px`
-    );
-    assert(
-      rail.width >= 36,
-      `${mode}: collapsed ${rail.side} dock rail is too small to target (${rail.width}px)`
-    );
-    assert(
-      rail.tagName === 'BUTTON' && rail.focusable,
-      `${mode}: collapsed ${rail.side} dock rail must be a focusable button`
-    );
-    assert(
-      /\bshow\b/i.test(rail.text) || /\bshow\b/i.test(rail.ariaLabel ?? '') || /\bshow\b/i.test(rail.title ?? ''),
-      `${mode}: collapsed ${rail.side} dock rail must clearly say it restores the dock (${JSON.stringify({
-        text: rail.text,
-        ariaLabel: rail.ariaLabel,
-        title: rail.title,
-      })})`
-    );
-    assert(
-      !isVerticalWritingMode(rail.labelWritingMode) && !isVerticalWritingMode(rail.hintWritingMode),
-      `${mode}: collapsed ${rail.side} dock label uses awkward vertical text (${JSON.stringify({
-        text: rail.text,
-        labelWritingMode: rail.labelWritingMode,
-        hintWritingMode: rail.hintWritingMode,
-      })})`
-    );
-    assert(
-      rail.labelVisibleWidth > 0 && rail.labelVisibleHeight > 0,
-      `${mode}: collapsed ${rail.side} dock readable label is clipped`
-    );
-    assert(
-      rail.labelWithinRail && rail.hintWithinRail,
-      `${mode}: collapsed ${rail.side} dock label/hint must stay inside the rail button`
-    );
+async function assertStableSupportRegions(page, viewport, mode) {
+  const state = await page.evaluate(() => {
+    const region = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return { present: false, visible: false, width: 0, textLength: 0 };
+      const bounds = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return {
+        present: true,
+        visible: bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
+        width: Math.round(bounds.width * 10) / 10,
+        textLength: (element.textContent || '').replace(/\s+/g, ' ').trim().length,
+      };
+    };
+    const visibleControlCount = (selectors) =>
+      selectors
+        .flatMap((selector) => Array.from(document.querySelectorAll(selector)))
+        .filter((element) => {
+          const bounds = element.getBoundingClientRect();
+          const style = window.getComputedStyle(element);
+          return bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
+        }).length;
 
-    const focused = await focusRail(page, rail.testId);
-    assert(focused, `${mode}: collapsed ${rail.side} dock rail must accept keyboard focus`);
-  }
+    return {
+      leftDock: region('[data-testid="ide-left-dock"]'),
+      rightDock: region('[data-testid="ide-right-dock"]'),
+      designPalette: region('[data-testid="ide-design-dock-palette"]'),
+      genericRailControls: visibleControlCount([
+        '[data-testid="ide-workbench-dock-toggle-left"]',
+        '[data-testid="ide-workbench-dock-toggle-right"]',
+        '[data-testid="ide-workbench-dock-collapse-left"]',
+        '[data-testid="ide-workbench-dock-collapse-right"]',
+        '[data-testid="ide-design-library-collapse"]',
+      ]),
+    };
+  });
+
+  assert(
+    state.genericRailControls === 0,
+    `${viewport.label}/${mode}: retired dock Hide/Show rails must stay absent (${state.genericRailControls} visible)`
+  );
 
   if (mode === 'design') {
-    assert(rails.some((rail) => rail.side === 'left' && rail.visible), `${viewport.label}: Design Library restore rail missing`);
+    assert(state.leftDock.visible && state.designPalette.visible, `${viewport.label}: Design Library must remain directly available`);
     assert(
-      rails.some((rail) => rail.side === 'right' && rail.visible),
-      `${viewport.label}: Design Inspector restore rail missing`
+      state.leftDock.width >= 180 && state.leftDock.width <= 240,
+      `${viewport.label}: Design Library must be readable but bounded (${state.leftDock.width}px)`
     );
+    assert(state.designPalette.textLength >= 12, `${viewport.label}: Design Library must expose meaningful tools`);
+    assert(state.rightDock.visible, `${viewport.label}: Design Inspector must remain directly available`);
+    assert(
+      state.rightDock.width >= 220 && state.rightDock.width <= 300,
+      `${viewport.label}: Design Inspector must be useful without dominating the canvas (${state.rightDock.width}px)`
+    );
+    assert(state.rightDock.textLength >= 12, `${viewport.label}: Design Inspector must expose meaningful controls`);
   }
+
   if (mode === 'verify') {
-    assert(rails.some((rail) => rail.side === 'left' && rail.visible), `${viewport.label}: Verify Signals restore rail missing`);
-  }
-}
-
-async function assertOpenCloseRecovery(page, viewport, mode) {
-  const rails = (await readRailState(page)).filter((rail) => rail.visible);
-  for (const rail of rails) {
-    const before = await readWorkspaceWidth(page);
-    const toggle = page.locator(`[data-testid="${rail.testId}"]`).first();
-    await toggle.click();
-    await page.waitForTimeout(120);
-    await capture(page, viewport, mode, `${rail.side}-open`);
-
-    const openState = await readOpenDockState(page, rail.side);
-    assert(openState.visible, `${mode}: opening ${rail.side} dock must reveal readable support content`);
-    assert(openState.width >= 120, `${mode}: opened ${rail.side} dock width ${openState.width}px is unreadable`);
-    assert(openState.textLength >= 12, `${mode}: opened ${rail.side} dock should expose meaningful content`);
-    await assertNoHorizontalOverflow(page, viewport, `${mode}/${rail.side}-open`);
-
-    const collapse = page.locator(`[data-testid="ide-workbench-dock-collapse-${rail.side}"]`).first();
-    assert(await collapse.isVisible().catch(() => false), `${mode}: opened ${rail.side} dock needs an obvious collapse control`);
-    await collapse.click();
-    await page.waitForTimeout(120);
-
-    const after = await readWorkspaceWidth(page);
+    assert(state.leftDock.visible, `${viewport.label}: Verify Signals must remain directly available`);
     assert(
-      after >= before - 2,
-      `${mode}: closing ${rail.side} dock should restore workbench width (${before}px -> ${after}px)`
+      state.leftDock.width >= 160 && state.leftDock.width <= 320,
+      `${viewport.label}: Verify Signals must be readable but bounded (${state.leftDock.width}px)`
     );
+    assert(state.leftDock.textLength >= 12, `${viewport.label}: Verify Signals must expose meaningful controls`);
   }
 }
 
@@ -265,88 +238,6 @@ async function assertNoHorizontalOverflow(page, viewport, label) {
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth
   );
   assert(overflow <= 1, `${viewport.label}/${label}: horizontal root overflow ${overflow}px`);
-}
-
-async function readWorkspaceWidth(page) {
-  return page.evaluate(() => {
-    const bounds = document.querySelector('[data-testid="ide-mode-body"]')?.getBoundingClientRect();
-    return Math.round((bounds?.width ?? 0) * 10) / 10;
-  });
-}
-
-async function readOpenDockState(page, side) {
-  return page.evaluate((dockSide) => {
-    const selector = dockSide === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
-    const element = document.querySelector(selector);
-    if (!element) return { visible: false, width: 0, textLength: 0 };
-    const bounds = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    return {
-      visible: bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
-      width: Math.round(bounds.width * 10) / 10,
-      textLength: (element.textContent || '').replace(/\s+/g, ' ').trim().length,
-    };
-  }, side);
-}
-
-async function readRailState(page) {
-  return page.evaluate(() => {
-    const sides = [
-      { side: 'left', testId: 'ide-workbench-dock-toggle-left' },
-      { side: 'right', testId: 'ide-workbench-dock-toggle-right' },
-    ];
-
-    return sides.map(({ side, testId }) => {
-      const rail = document.querySelector(`[data-testid="${testId}"]`);
-      const label = rail?.querySelector('.ide-workbench-dock-toggle-rail-label') ?? null;
-      const hint = rail?.querySelector('.ide-workbench-dock-toggle-rail-hint') ?? null;
-      if (!rail) {
-        return { side, testId, present: false, visible: false };
-      }
-
-      const bounds = rail.getBoundingClientRect();
-      const labelBounds = label?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
-      const hintBounds = hint?.getBoundingClientRect() ?? new DOMRect(0, 0, 0, 0);
-      const style = window.getComputedStyle(rail);
-      const labelStyle = label ? window.getComputedStyle(label) : null;
-      const hintStyle = hint ? window.getComputedStyle(hint) : null;
-      const within = (childBounds) =>
-        childBounds.left >= bounds.left - 1 &&
-        childBounds.right <= bounds.right + 1 &&
-        childBounds.top >= bounds.top - 1 &&
-        childBounds.bottom <= bounds.bottom + 1;
-
-      return {
-        side,
-        testId,
-        present: true,
-        visible: bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
-        tagName: rail.tagName,
-        focusable: typeof rail.focus === 'function' && !rail.hasAttribute('disabled'),
-        text: (rail.textContent || '').replace(/\s+/g, ' ').trim(),
-        ariaLabel: rail.getAttribute('aria-label'),
-        title: rail.getAttribute('title'),
-        width: Math.round(bounds.width * 10) / 10,
-        height: Math.round(bounds.height * 10) / 10,
-        writingMode: style.writingMode,
-        labelWritingMode: labelStyle?.writingMode ?? '',
-        hintWritingMode: hintStyle?.writingMode ?? '',
-        labelVisibleWidth: Math.round(labelBounds.width * 10) / 10,
-        labelVisibleHeight: Math.round(labelBounds.height * 10) / 10,
-        labelWithinRail: label ? within(labelBounds) : false,
-        hintWithinRail: hint ? within(hintBounds) : false,
-      };
-    });
-  });
-}
-
-async function focusRail(page, testId) {
-  return page.evaluate((railTestId) => {
-    const rail = document.querySelector(`[data-testid="${railTestId}"]`);
-    if (!(rail instanceof HTMLElement)) return false;
-    rail.focus();
-    return document.activeElement === rail;
-  }, testId);
 }
 
 async function firstVisibleRect(page, selectors) {
@@ -391,8 +282,4 @@ async function capture(page, viewport, mode, state) {
     path: path.join(SCREENSHOT_ROOT, `${viewport.label}-${mode}-${state}.png`),
     fullPage: false,
   });
-}
-
-function isVerticalWritingMode(value) {
-  return /vertical|sideways/i.test(value);
 }

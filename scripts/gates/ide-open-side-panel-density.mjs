@@ -81,32 +81,13 @@ async function openFreshStarterProject(page, baseUrl, viewport) {
 async function checkSurface(failures, page, viewport, surface) {
   try {
     await openMode(page, viewport, surface.id);
-    if (surface.id === 'export') {
-      await openGeneratedFiles(page, `${viewport.label}/export`);
-    }
     await assertNoHorizontalOverflow(page, viewport, surface.id);
     await assertFocalWorkbenchVisible(page, viewport, surface);
     await capture(page, viewport, surface.id, 'initial');
 
-    const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-    assert(await toggle.isVisible().catch(() => false), `${surface.id}: right inspector restore rail is missing`);
-    await toggle.click();
-    await page.waitForTimeout(160);
-    await capture(page, viewport, surface.id, 'right-open');
-
-    await assertNoHorizontalOverflow(page, viewport, `${surface.id}/right-open`);
-    await assertFocalWorkbenchVisible(page, viewport, surface);
-    await assertOpenRightDockIsProportional(page, viewport, surface.id);
-
-    const collapse = page.locator('[data-testid="ide-workbench-dock-collapse-right"]').first();
-    assert(await collapse.isVisible().catch(() => false), `${surface.id}: open inspector needs a visible collapse control`);
-    await collapse.click();
-    await page.waitForTimeout(120);
-
-    assert(
-      await page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first().isVisible().catch(() => false),
-      `${surface.id}: collapsing the open inspector must restore the right rail`
-    );
+    await assertDirectDetailWorkspace(page, viewport, surface.id);
+    await assertNoHorizontalOverflow(page, viewport, `${surface.id}/direct-detail`);
+    await capture(page, viewport, surface.id, 'direct-detail');
   } catch (error) {
     failures.push(`${viewport.label}/${surface.id}: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -125,78 +106,44 @@ async function openMode(page, viewport, mode) {
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
 }
 
-async function assertOpenRightDockIsProportional(page, viewport, mode) {
-  const state = await page.evaluate(() => {
-    const dock = document.querySelector('[data-testid="ide-inspector"]');
-    const workspace = document.querySelector('[data-testid="ide-mode-body"]');
-    if (!dock || !workspace) return { visible: false };
+async function assertDirectDetailWorkspace(page, viewport, mode) {
+  const selector = mode === 'hardware' ? '[data-testid="ide-hw-map-table"]' : '[data-testid="ide-export-package-files"]';
+  const detail = page.locator(selector).first();
+  await detail.waitFor({ state: 'attached', timeout: 10000 });
+  await detail.scrollIntoViewIfNeeded();
 
-    const dockBounds = dock.getBoundingClientRect();
-    const workspaceBounds = workspace.getBoundingClientRect();
-    const style = window.getComputedStyle(dock);
-    const workspaceStyle = window.getComputedStyle(workspace);
-    const main = workspace.parentElement;
-    const mainBounds = main?.getBoundingClientRect();
-    const mainStyle = main ? window.getComputedStyle(main) : null;
-    const text = (dock.textContent || '').replace(/\s+/g, ' ').trim();
+  const state = await page.evaluate((detailSelector) => {
+    const element = document.querySelector(detailSelector);
+    if (!element) return { visible: false, width: 0, height: 0, textLength: 0, genericRailControls: -1 };
+    const bounds = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    const genericRailControls = [
+      '[data-testid="ide-workbench-dock-toggle-right"]',
+      '[data-testid="ide-workbench-dock-collapse-right"]',
+    ].flatMap((selector) => Array.from(document.querySelectorAll(selector))).filter((control) => {
+      const controlBounds = control.getBoundingClientRect();
+      const controlStyle = window.getComputedStyle(control);
+      return controlBounds.width > 1 && controlBounds.height > 1 && controlStyle.display !== 'none' && controlStyle.visibility !== 'hidden';
+    }).length;
     return {
-      visible:
-        dockBounds.width > 1 &&
-        dockBounds.height > 1 &&
-        style.display !== 'none' &&
-        style.visibility !== 'hidden',
-      dockLeft: Math.round(dockBounds.left * 10) / 10,
-      dockTop: Math.round(dockBounds.top * 10) / 10,
-      dockWidth: Math.round(dockBounds.width * 10) / 10,
-      dockHeight: Math.round(dockBounds.height * 10) / 10,
-      workspaceRight: Math.round(workspaceBounds.right * 10) / 10,
-      workspaceTop: Math.round(workspaceBounds.top * 10) / 10,
-      workspaceWidth: Math.round(workspaceBounds.width * 10) / 10,
-      workspaceHeight: Math.round(workspaceBounds.height * 10) / 10,
-      workspaceBoxSizing: workspaceStyle.boxSizing,
-      workspaceComputedWidth: workspaceStyle.width,
-      workspaceTransform: workspaceStyle.transform,
-      workspaceMarginInline: `${workspaceStyle.marginLeft} / ${workspaceStyle.marginRight}`,
-      workspacePaddingInline: `${workspaceStyle.paddingLeft} / ${workspaceStyle.paddingRight}`,
-      workspaceOffsetWidth: workspace.offsetWidth,
-      workspaceClientWidth: workspace.clientWidth,
-      mainWidth: mainBounds ? Math.round(mainBounds.width * 10) / 10 : null,
-      mainGridColumns: mainStyle?.gridTemplateColumns ?? null,
-      dockViewportShare: Math.round((dockBounds.width / window.innerWidth) * 1000) / 10,
-      dockHeightShare: Math.round((dockBounds.height / window.innerHeight) * 1000) / 10,
-      textLength: text.length,
+      visible: bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
+      width: Math.round(bounds.width * 10) / 10,
+      height: Math.round(bounds.height * 10) / 10,
+      textLength: (element.textContent || '').replace(/\s+/g, ' ').trim().length,
+      genericRailControls,
     };
-  });
+  }, selector);
 
-  assert(state.visible, `${mode}: open right inspector must be visible`);
-  assert(state.textLength >= 24, `${mode}: open right inspector must contain meaningful tool content`);
+  assert(state.visible, `${mode}: direct detail workspace must be visible without a drawer`);
+  assert(state.textLength >= 24, `${mode}: direct detail workspace must contain meaningful tools`);
   assert(
-    state.dockWidth >= 180 && state.dockWidth <= 320,
-    `${mode}: open right inspector width ${state.dockWidth}px is disproportionate; expected 180-320px`
+    state.width >= Math.min(720, viewport.width * 0.54),
+    `${mode}: direct detail workspace is too narrow (${state.width}px)`
   );
+  assert(state.height >= 160, `${mode}: direct detail workspace is too short (${state.height}px)`);
   assert(
-    state.dockViewportShare <= 24,
-    `${mode}: open right inspector consumes ${state.dockViewportShare}% of viewport width`
-  );
-  assert(
-    state.dockHeightShare >= 68,
-    `${mode}: open right inspector is acting like a short bottom drawer (${state.dockHeightShare}% viewport height)`
-  );
-  assert(
-    Math.abs(state.dockTop - state.workspaceTop) <= 2,
-    `${mode}: open right inspector should align with the workspace top (${JSON.stringify(state)})`
-  );
-  assert(
-    state.dockLeft >= state.workspaceRight - 2,
-    `${mode}: open right inspector should sit beside the workspace, not below it (${JSON.stringify(state)})`
-  );
-  assert(
-    state.workspaceHeight >= Math.min(560, viewport.height * 0.72),
-    `${mode}: opening inspector leaves only ${state.workspaceHeight}px of workspace height`
-  );
-  assert(
-    state.workspaceWidth >= Math.min(760, viewport.width * 0.56),
-    `${mode}: opening inspector leaves only ${state.workspaceWidth}px of workspace width`
+    state.genericRailControls === 0,
+    `${mode}: retired right-rail restore/collapse controls must stay absent (${state.genericRailControls} visible)`
   );
 }
 
@@ -215,16 +162,6 @@ async function assertFocalWorkbenchVisible(page, viewport, surface) {
     rect.top < viewport.height - 80,
     `${surface.id}: focal object starts below the useful first viewport (${rect.top}px)`
   );
-}
-
-async function openGeneratedFiles(page, label) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function assertNoHorizontalOverflow(page, viewport, label) {

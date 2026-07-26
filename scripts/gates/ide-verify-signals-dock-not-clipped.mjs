@@ -17,7 +17,6 @@ await runIdeGate('IDE Verify signals dock is readable and not clipped', async ({
   await page.addInitScript(() => {
     localStorage.clear();
     sessionStorage.clear();
-    localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
 
   const failures = [];
@@ -26,21 +25,36 @@ await runIdeGate('IDE Verify signals dock is readable and not clipped', async ({
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openVerify(page, baseUrl, viewport.label);
       await ensureVerifyVectorsReady(page);
-      await openSignalsDock(page, viewport.label);
+      await page.waitForSelector('[data-testid="ide-left-dock"]', { state: 'visible', timeout: 5000 });
       const metrics = await readDockMetrics(page);
 
-      assert(metrics.rootOverflowX <= 1, `${viewport.label}: opening Verify Signals dock must not create root overflow ${metrics.rootOverflowX}px`);
+      assert(metrics.rootOverflowX <= 1, `${viewport.label}: stable Verify Signals dock must not create root overflow ${metrics.rootOverflowX}px`);
       assert(metrics.dock.visible, `${viewport.label}: Verify Signals dock must be visible`);
-      assert(metrics.dock.width >= 220, `${viewport.label}: Verify Signals dock is too narrow (${metrics.dock.width}px)`);
+      assert(
+        metrics.dock.width >= 176 && metrics.dock.width <= 196,
+        `${viewport.label}: Verify Signals dock must honor the compact 176-196px support-rail contract (${metrics.dock.width}px)`
+      );
       assert(metrics.workspace.width >= 920, `${viewport.label}: Verify workspace should remain usable with Signals open (${metrics.workspace.width}px)`);
       assert(!metrics.header.clippedX, `${viewport.label}: Signals header is horizontally clipped ${JSON.stringify(metrics.header)}`);
       assert(!metrics.title.clippedX, `${viewport.label}: Signals title is horizontally clipped ${JSON.stringify(metrics.title)}`);
       assert(!metrics.count.clippedX, `${viewport.label}: Signals count chip is horizontally clipped ${JSON.stringify(metrics.count)}`);
       assert(!metrics.summary.clippedX, `${viewport.label}: Signals summary is horizontally clipped ${JSON.stringify(metrics.summary)}`);
-      assert(metrics.collapseButton.visible, `${viewport.label}: Signals dock collapse control must remain visible`);
-      assert(!metrics.collapseButton.clippedX, `${viewport.label}: Signals collapse control is horizontally clipped ${JSON.stringify(metrics.collapseButton)}`);
+      assert(metrics.titleText === 'Signals', `${viewport.label}: Signals dock title is missing (${JSON.stringify(metrics.titleText)})`);
+      assert(
+        /^\d+ (?:relevant|visible|flagged)$/.test(metrics.countText),
+        `${viewport.label}: Signals dock must expose its current lane scope (${JSON.stringify(metrics.countText)})`
+      );
+      assert(metrics.summaryText.length > 0, `${viewport.label}: Signals dock must expose a current focus summary`);
+      assert(metrics.retiredCollapseControlCount === 0, `${viewport.label}: retired Signals collapse controls must be absent`);
+      assert(metrics.retiredRestoreControlCount === 0, `${viewport.label}: retired Signals restore controls must be absent`);
       assert(metrics.signalList.visible, `${viewport.label}: Signals list must remain visible`);
       assert(!metrics.signalList.clippedX, `${viewport.label}: Signals list is horizontally clipped ${JSON.stringify(metrics.signalList)}`);
+      assert(metrics.signalListWithinDockX, `${viewport.label}: Signals list must remain within the stable dock geometry`);
+      assert(metrics.signalRowCount > 0, `${viewport.label}: Signals list must expose current circuit lanes`);
+      assert(metrics.firstSignalRow.visible, `${viewport.label}: first current signal control must be visible`);
+      assert(!metrics.firstSignalRow.clippedX, `${viewport.label}: first current signal control is horizontally clipped ${JSON.stringify(metrics.firstSignalRow)}`);
+
+      await assertSignalSelection(page, viewport.label);
     } catch (error) {
       failures.push(`${viewport.label}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -61,12 +75,16 @@ async function openVerify(page, baseUrl, viewportLabel) {
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
 }
 
-async function openSignalsDock(page, label) {
-  if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(await toggle.isVisible().catch(() => false), `${label}: collapsed Signals rail toggle must be visible`);
-  await toggle.click();
-  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
+async function assertSignalSelection(page, label) {
+  const firstSignal = page.locator('[data-testid="ide-verify-signal-list"] .ide-signal-row').first();
+  await firstSignal.click();
+  assert(
+    await firstSignal.evaluate((element) => element.classList.contains('is-active')),
+    `${label}: selecting a current signal must mark its direct control active`
+  );
+  const summaryText =
+    (await page.locator('[data-testid="ide-verify-signal-rail-summary"]').first().textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+  assert(/ active$/i.test(summaryText), `${label}: selecting a current signal must update the Signals focus summary (${JSON.stringify(summaryText)})`);
 }
 
 async function readDockMetrics(page) {
@@ -91,6 +109,8 @@ async function readDockMetrics(page) {
         clippedY,
         width: Math.round(bounds.width),
         height: Math.round(bounds.height),
+        left: Math.round(bounds.left),
+        right: Math.round(bounds.right),
         clientWidth: element.clientWidth,
         scrollWidth: element.scrollWidth,
         clientHeight: element.clientHeight,
@@ -98,16 +118,29 @@ async function readDockMetrics(page) {
       };
     }
 
+    const dock = rect('[data-testid="ide-left-dock"]');
+    const signalList = rect('[data-testid="ide-verify-signal-list"]');
+
     return {
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
-      dock: rect('[data-testid="ide-left-dock"]'),
+      dock,
       workspace: rect('[data-testid="ide-mode-body"]'),
       header: rect('[data-testid="ide-verify-signal-rail-header"]'),
       title: rect('.ide-verify-signal-rail-title'),
       count: rect('[data-testid="ide-verify-signal-filter-state"]'),
       summary: rect('[data-testid="ide-verify-signal-rail-summary"]'),
-      collapseButton: rect('[data-testid="ide-workbench-dock-collapse-left"]'),
-      signalList: rect('[data-testid="ide-verify-signal-list"]'),
+      titleText: document.querySelector('.ide-verify-signal-rail-title h3')?.textContent?.trim() ?? '',
+      countText: document.querySelector('[data-testid="ide-verify-signal-filter-state"]')?.textContent?.trim() ?? '',
+      summaryText: document.querySelector('[data-testid="ide-verify-signal-rail-summary"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      retiredCollapseControlCount: document.querySelectorAll(
+        '[data-testid="ide-workbench-dock-collapse-left"], [data-testid="ide-verify-signal-rail-toggle"]'
+      ).length,
+      retiredRestoreControlCount: document.querySelectorAll('[data-testid="ide-workbench-dock-toggle-left"]').length,
+      signalList,
+      signalListWithinDockX:
+        dock.visible && signalList.visible && signalList.left >= dock.left - 1 && signalList.right <= dock.right + 1,
+      signalRowCount: document.querySelectorAll('[data-testid="ide-verify-signal-list"] .ide-signal-row').length,
+      firstSignalRow: rect('[data-testid="ide-verify-signal-list"] .ide-signal-row'),
     };
   });
 }

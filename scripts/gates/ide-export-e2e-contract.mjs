@@ -214,12 +214,10 @@ async function readPreviewByPath(page, artifactPath) {
 }
 
 async function openGeneratedFiles(page, label) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
-  await details.locator('summary').click();
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const workspace = page.locator('[data-testid="ide-export-package-files"]').first();
+  await workspace.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await workspace.isVisible().catch(() => false), `${label}: generated files workspace must remain directly visible`);
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 function requireArtifactPath(paths, pattern, label) {

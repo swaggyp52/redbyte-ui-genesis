@@ -27,10 +27,18 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   await page.waitForSelector('[data-testid="ide-design-empty-state"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-design-canvas-stat-zoom"]', { timeout: 10000 });
 
-  await page.locator('[data-testid="ide-design-tools-toggle"]').click();
-  await page.waitForSelector('[data-testid="ide-design-toolbar-expanded"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-undo-depth"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-design-redo-depth"]', { timeout: 10000 });
+  const canvasViewTools = page.locator('[data-testid="ide-design-canvas-view-tools"]').first();
+  await canvasViewTools.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    (await canvasViewTools.getAttribute('data-open')) === 'true',
+    'canvas view controls must be directly available without a disclosure toggle'
+  );
+  await page.waitForSelector('[data-testid="ide-design-tool-undo"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-design-tool-redo"]', { timeout: 10000 });
+  assert(
+    (await page.locator('[data-testid="ide-design-tools-toggle"]').count()) === 0,
+    'the removed secondary Tools disclosure must not return'
+  );
 
   const checklistCount = await page.locator('[data-testid="ide-design-empty-checklist"] li').count();
   assert(checklistCount === 3, `expected three empty-state checklist steps, found ${checklistCount}`);
@@ -53,11 +61,13 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   await page.locator('[data-testid="ide-design-tool-select"]').click();
   await page.waitForFunction(
     () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'select',
+    undefined,
     { timeout: 5000 }
   );
   await page.locator('[data-testid="ide-design-tool-wire"]').click();
   await page.waitForFunction(
     () => document.querySelector('[data-testid="ide-design-live-canvas"]')?.getAttribute('data-tool-mode') === 'wire',
+    undefined,
     { timeout: 5000 }
   );
   const wirePillText = (await page.locator('[data-testid="ide-design-wire-cue"]').first().textContent())?.trim();
@@ -167,12 +177,7 @@ await runIdeGate('IDE design build contract satisfied', async ({ page, baseUrl }
   });
   assert(selectionPrimed, 'failed to prime multi-selection in logic view store');
 
-  await page.waitForFunction(() => {
-    const button = document.querySelector('[data-testid="ide-design-tool-delete"]');
-    return Boolean(button) && !button.hasAttribute('disabled');
-  }, { timeout: 5000 });
-
-  await page.locator('[data-testid="ide-design-tool-delete"]').click();
+  await page.keyboard.press('Delete');
 
   await page.waitForFunction(
     (baseline) => {

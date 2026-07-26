@@ -328,15 +328,15 @@ describe('IdeApp lab-day wiring', () => {
 
     fireEvent.click(view.getByTestId('mode-button-export'));
 
-    await waitFor(() => {
-      expect(view.getByTestId('ide-export-panel')).toBeTruthy();
-    });
+    await view.findByTestId('ide-export-panel', {}, { timeout: 15000 });
 
-    expect(view.getByTestId('ide-export-top-module').textContent).toBe('lab_day_top');
-    expect(view.getByTestId('ide-export-part-number').textContent).toContain('xc7a100tcsg324-1');
+    fireEvent.click(view.getByTestId('ide-export-file-top-vhd'));
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('entity lab_day_top is');
+    fireEvent.click(view.getByTestId('ide-export-file-vivado-import-tcl'));
+    expect(view.getByTestId('ide-export-preview-code').textContent).toContain('xc7a100tcsg324-1');
   });
 
-  it('keeps Verify as the dominant Project next action when mapped work lacks compare evidence', async () => {
+  it('keeps a structural Design blocker dominant over missing Compare evidence', async () => {
     const view = render(<IdeApp />);
 
     await act(async () => {
@@ -344,14 +344,14 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
+      expect(view.getByTestId('ide-projectx-next-status').textContent).toBe('DESIGN BLOCKED');
     });
 
-    expect(view.getByTestId('ide-project-hero-status').textContent).toBe(
-      'Mapping complete - add vectors in Verify before you rely on Export or hardware.'
-    );
+    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Design blocked');
+    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Compiler error');
+    expect(view.getByTestId('ide-project-hero-status').textContent).toContain('Output');
     expect(view.getByTestId('ide-project-command-strip-primary-cta').textContent).toContain(
-      'Continue to Verify'
+      'Open Design'
     );
   });
 
@@ -381,12 +381,12 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     fireEvent.click(await view.findByTestId('mode-button-hardware'));
-    await view.findByTestId('ide-hardware-panel');
-    fireEvent.click(view.getByTestId('ide-hw-mode-btn-map'));
+    await view.findByTestId('ide-hardware-panel', {}, { timeout: 15000 });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-hw-map-dock').textContent).toContain('Clock');
-      expect(view.getByTestId('ide-hw-map-dock').textContent).toContain('Mapped');
+      expect(view.getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+      expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent?.toLowerCase()).toContain('phase_driver');
+      expect(view.getByTestId('ide-hw-map-row-phase_driver').textContent).toContain('W5');
     });
   });
 
@@ -436,10 +436,11 @@ describe('IdeApp lab-day wiring', () => {
       await act(async () => {
         fireEvent.click(view.getByTestId('mode-button-export'));
       });
-      // Export uses a visible right inspector (no `ide-workbench-dock-toggle-right` rail).
+      await view.findByTestId('ide-export-panel', {}, { timeout: 15000 });
+      fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
       await waitFor(
         () => {
-          expect(view.getByTestId('ide-export-testbench-source')).toBeTruthy();
+          expect(view.getByTestId('ide-export-gate-verify').textContent).toContain('Ready');
         },
         { timeout: 15000 }
       );
@@ -448,12 +449,13 @@ describe('IdeApp lab-day wiring', () => {
       const activeScenarioAfterRun = stateAfterRun.scenarios.find(
         (scenario) => scenario.id === stateAfterRun.activeScenarioId
       )!;
-      expect(view.getByTestId('ide-export-scenario-name').textContent).toContain(activeScenarioAfterRun.name);
-      expect(view.getByTestId('ide-export-scenario-version').textContent).toContain(
-        String(activeScenarioAfterRun.version)
-      );
-      expect(view.getByTestId('ide-export-scenario-hash').textContent).toContain(
+      expect(stateAfterRun.verifyLastRun?.scenarioName).toBe(activeScenarioAfterRun.name);
+      expect(stateAfterRun.verifyLastRun?.scenarioVersion).toBe(activeScenarioAfterRun.version);
+      expect(stateAfterRun.verifyLastRun?.scenarioContentHash).toBe(
         computeScenarioContentHash(activeScenarioAfterRun)
+      );
+      expect(view.getByTestId('ide-export-technical-dialog').textContent).toContain(
+        stateAfterRun.verifyLastRun?.deterministicHash
       );
 
       await act(async () => {
@@ -465,10 +467,11 @@ describe('IdeApp lab-day wiring', () => {
       });
 
       fireEvent.click(view.getByTestId('mode-button-hardware'));
+      await view.findByTestId('ide-hardware-panel', {}, { timeout: 15000 });
 
       await waitFor(() => {
-        expect(view.getByTestId('ide-hardware-drift-callout').textContent).toContain(
-          'edited after the last verify run'
+        expect(view.getByTestId('ide-hardware-readiness-callout').textContent).toContain(
+          'changed after the last Compare run'
         );
       });
     },
@@ -489,7 +492,7 @@ describe('IdeApp lab-day wiring', () => {
     });
 
     await waitFor(() => {
-      expect(view.getByTestId('ide-scenario-library-header')).toBeTruthy();
+      expect(view.getByTestId('ide-testbench-documents')).toBeTruthy();
     });
 
     const defaultScenarioId = useProjectRuntime.getState().activeScenarioId;
@@ -513,8 +516,7 @@ describe('IdeApp lab-day wiring', () => {
       ]);
     });
 
-    fireEvent.click(view.getByTestId('ide-scenario-switcher-btn'));
-    fireEvent.click(await view.findByTestId(`ide-scenario-option-${defaultScenarioId}`));
+    fireEvent.click(await view.findByTestId(`ide-testbench-document-tab-${defaultScenarioId}`));
 
     await waitFor(() => {
       const state = useProjectRuntime.getState();
@@ -585,7 +587,8 @@ describe('IdeApp lab-day wiring', () => {
       expect(view.queryByTestId('ide-verify-auto-vector-notice')).toBeNull();
     });
 
-    expect(view.getByTestId('ide-vcb-status').textContent).toContain('READY');
+    expect(view.getByTestId('ide-vcb-author-expected')).toBeTruthy();
+    expect(view.getByTestId('ide-vcb-use-saved-checks')).toBeDisabled();
     expect(view.queryByTestId('ide-verify-session-mode')).toBeNull();
     expect(view.queryByTestId('ide-verify-session-title')).toBeNull();
     expect(view.getByTestId('ide-vcb-run')).toBeTruthy();

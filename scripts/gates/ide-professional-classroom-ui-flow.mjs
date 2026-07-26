@@ -296,10 +296,11 @@ async function assertExportPackageProfessional(page, viewport) {
 
   const packageFiles = page.getByTestId('ide-export-package-files').first();
   await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}/Export generated files must begin collapsed`);
+  assert(
+    (await packageFiles.getAttribute('open')) !== null,
+    `${viewport.label}/Export generated files must be open by default for direct package inspection`
+  );
   const fileBrowser = page.getByTestId('ide-export-file-browser-v1').first();
-  assert(!(await fileBrowser.isVisible().catch(() => false)), `${viewport.label}/Export file browser must stay behind its disclosure initially`);
-  await packageFiles.locator('summary').click();
   await fileBrowser.waitFor({ state: 'visible', timeout: 10000 });
 
   const readinessDetails = page.locator('.ide-export-package-readiness-details').first();

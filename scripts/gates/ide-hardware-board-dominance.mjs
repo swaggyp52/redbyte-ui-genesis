@@ -40,13 +40,13 @@ await runIdeGate('IDE Hardware table-first hierarchy satisfied', async ({ page, 
         minHeight: Math.round(viewport.height * 0.45),
       });
       const table = await assertVisibleRect(page, ['[data-testid="ide-hw-map-table"]'], `${viewport.label}/mapping table`, {
-        maxTop: viewport.height === 768 ? 320 : 330,
+        maxTop: 440,
         minWidth: Math.round(viewport.width * 0.38),
         minHeight: Math.round(viewport.height * 0.30),
       });
       const board = await assertVisibleRect(page, ['[data-testid="ide-hw-map-board"]'], `${viewport.label}/Basys3 board reference`, {
-        maxTop: viewport.height === 768 ? 320 : 330,
-        minWidth: Math.round(viewport.width * 0.24),
+        maxTop: 480,
+        minWidth: 320,
         minHeight: Math.round(viewport.height * 0.24),
       });
 

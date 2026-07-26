@@ -114,6 +114,11 @@ describe('preserved import handoff export', () => {
     expect(exportResult.errors.filter((e) => e.severity === 'error')).toEqual([]);
     expect(exportResult.bundle?.exportMode).toBe('preserved-import-rtl');
     expect(exportResult.bundle?.importedCompanionSources?.length).toBe(2);
+    expect(exportResult.projectProjection?.hdl?.sources.map((source) => source.path)).toEqual([
+      'imported/vhdl/demo_pkg.vhd',
+      'imported/vhdl/helper_mod.vhd',
+      'top.vhd',
+    ]);
     expect(exportResult.bundle?.topVhd).toContain('std_logic_vector');
 
     const viewModel = buildExportViewModel(project);
@@ -136,5 +141,34 @@ describe('preserved import handoff export', () => {
     const tcl = await loaded.file(`${slug}/vivado_import.tcl`)!.async('string');
     expect(tcl).toContain('sources_1/imported/');
     expect(tcl).toContain('sources_1/new/top.vhd');
+  });
+
+  it('regenerates preserved-import XDC from current mapping and keeps companion paths idempotent', () => {
+    const project = buildVectorTopImportProject();
+    project.ioMapping!.inputs[1] = {
+      ...project.ioMapping!.inputs[1]!,
+      pin: 'SW2',
+    };
+
+    const firstExport = exportProjectAsBasys3(project);
+    expect(firstExport.success).toBe(true);
+    expect(firstExport.bundle?.topVhd).toContain('security_demo_top');
+    expect(firstExport.bundle?.topXdc).toContain(
+      'set_property PACKAGE_PIN W16 [get_ports {sw[0]}]'
+    );
+    expect(firstExport.bundle?.topXdc).not.toContain(
+      'set_property PACKAGE_PIN V17 [get_ports {sw[0]}]'
+    );
+    expect(firstExport.projectProjection?.fpga?.constraints?.text).toBe(firstExport.bundle?.topXdc);
+
+    const secondExport = exportProjectAsBasys3(firstExport.projectProjection!);
+    expect(secondExport.success).toBe(true);
+    expect(secondExport.bundle?.topXdc).toBe(firstExport.bundle?.topXdc);
+    expect(secondExport.bundle?.importedCompanionSources?.map((source) => source.exportPath)).toEqual(
+      firstExport.bundle?.importedCompanionSources?.map((source) => source.exportPath)
+    );
+    expect(secondExport.projectProjection?.hdl?.sources).toEqual(
+      firstExport.projectProjection?.hdl?.sources
+    );
   });
 });

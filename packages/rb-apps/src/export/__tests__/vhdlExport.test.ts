@@ -243,7 +243,8 @@ describe('vhdlFromNetlist', () => {
     const result = vhdlFromNetlist(netlist, { entityName: 'top' });
     expect(result.warnings.join('\n')).not.toContain('missing DFlipFlop clock');
     expect(result.vhd).toMatch(/if rising_edge\(CLK(?:\(\d+\))?\) then/);
-    expect(result.vhd).toContain('signal dff_0_inv : STD_LOGIC;');
+    expect(result.vhd).toContain("signal dff_0 : STD_LOGIC := '0';");
+    expect(result.vhd).toContain("signal dff_0_inv : STD_LOGIC := '1';");
     expect(result.vhd).toContain('dff_0_inv <= not dff_0;');
   });
 

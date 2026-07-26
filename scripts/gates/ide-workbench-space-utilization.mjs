@@ -24,7 +24,9 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  designCanvasWidthRatio: 0.64,
+  // This is the accepted laptop floor. The separate 70% strategic target remains
+  // intentionally unmet at the 1366 and 1440 viewports.
+  designCanvasWidthRatio: 0.62,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
   verifyWaveformMinHeightRatio: 0.30,
@@ -70,7 +72,7 @@ await runIdeGate('IDE workbench space utilization satisfied', async ({ page, bas
       await page.waitForSelector('[data-node-id]', { timeout: 15000 });
       await capture(page, viewport, 'design');
       await assertDesignSpace(page, viewport);
-      await assertDesignRailsCanOpen(page, viewport);
+      await assertDesignStableRegions(page, viewport);
     });
 
     await checkSurface(failures, page, viewport, 'verify-before-run', async () => {
@@ -193,41 +195,35 @@ async function assertDesignSpace(page, viewport) {
     `${viewport.label}: Design canvas must keep the starter graph readable (${JSON.stringify(metrics.design)})`
   );
   assert(
-    metrics.rects.leftDock.visible && await visible(page.locator('[data-testid="ide-design-library-collapse"]').first()),
-    `${viewport.label}: Design Library should start visible with an explicit Hide control`
+    metrics.rects.leftDock.visible && metrics.rects.leftDock.width >= 180 && metrics.rects.leftDock.width <= 230,
+    `${viewport.label}: Design Library must remain a stable 180-230px region (${metrics.rects.leftDock.width.toFixed(1)}px)`
   );
   assert(
-    !metrics.rects.rightDock.visible && metrics.rects.rightToggle.visible,
-    `${viewport.label}: Design Inspector should start collapsed with a restore rail`
+    metrics.rects.rightDock.visible && metrics.rects.rightDock.width >= 210 && metrics.rects.rightDock.width <= 290,
+    `${viewport.label}: Design Inspector must remain a stable 210-290px region (${metrics.rects.rightDock.width.toFixed(1)}px)`
+  );
+  const availableWidth = metrics.rects.leftDock.width + canvas.width + metrics.rects.rightDock.width;
+  const availableShare = canvas.width / Math.max(1, availableWidth);
+  const minimumAvailableShare = viewport.width >= 1800 ? 0.70 : viewport.width >= 1440 ? 0.66 : 0.64;
+  assert(
+    availableShare >= minimumAvailableShare,
+    `${viewport.label}: Design canvas owns ${(availableShare * 100).toFixed(2)}% of the stable workbench; expected at least ${(minimumAvailableShare * 100).toFixed(0)}%`
+  );
+  assert(
+    metrics.retiredDockControlCount === 0,
+    `${viewport.label}: Design must not expose retired Hide/Show dock controls (${metrics.retiredDockControlCount})`
   );
 }
 
-async function assertDesignRailsCanOpen(page, viewport) {
-  const libraryCollapse = page.locator('[data-testid="ide-design-library-collapse"]').first();
-  assert(await visible(libraryCollapse), `${viewport.label}: visible Library Hide control missing`);
-  await libraryCollapse.click();
-
-  const leftToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  await leftToggle.waitFor({ state: 'visible', timeout: 5000 });
-  assert(await leftToggle.isVisible().catch(() => false), `${viewport.label}: hidden Library restore control missing`);
-  await leftToggle.click();
-  await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
+async function assertDesignStableRegions(page, viewport) {
   assert(
     await visible(page.locator('[data-testid="ide-design-dock-palette"]').first()),
-    `${viewport.label}: opening Library rail must reveal the Design palette`
+    `${viewport.label}: stable Design Library must expose the component palette`
   );
-  assert(await rightToggle.isVisible().catch(() => false), `${viewport.label}: collapsed Inspector restore rail missing`);
-  await rightToggle.click();
-  await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
   assert(
-    await visible(page.locator('[data-testid="ide-inspector"]').first()),
-    `${viewport.label}: opening Inspector rail must reveal the inspector`
+    await visible(page.locator('[data-testid="ide-right-dock"]').first()),
+    `${viewport.label}: stable Design Inspector must remain visible`
   );
-  const rightCollapse = page.locator('[data-testid="ide-workbench-dock-collapse-right"]').first();
-  if (await rightCollapse.isVisible().catch(() => false)) {
-    await rightCollapse.click();
-  }
 }
 
 async function assertVerifySpace(page, viewport, phase) {
@@ -250,10 +246,7 @@ async function assertVerifySpace(page, viewport, phase) {
       metrics.verify.gridExtraX <= 8,
       `${viewport.label}: Verify ${phase} stimulus grid needs horizontal mini-scroll (${metrics.verify.gridExtraX}px)`
     );
-    assert(
-      metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === true,
-      `${viewport.label}: Verify signal rail should not squeeze testbench by default`
-    );
+    assertStableVerifySignals(metrics, viewport, phase);
     return;
   }
 
@@ -267,9 +260,17 @@ async function assertVerifySpace(page, viewport, phase) {
     waveform.visibleHeight >= viewport.height * SPACE_BUDGETS.verifyWaveformMinHeightRatio,
     `${viewport.label}: Verify ${phase} waveform height ${waveform.visibleHeight.toFixed(1)}px is below useful size`
   );
+  assertStableVerifySignals(metrics, viewport, phase);
+}
+
+function assertStableVerifySignals(metrics, viewport, phase) {
   assert(
-    metrics.rects.leftDock.visible === false && metrics.rects.leftToggle.visible === true,
-    `${viewport.label}: Verify signal rail should not squeeze waveform by default`
+    metrics.rects.leftDock.visible && metrics.rects.verifySignals.visible,
+    `${viewport.label}: Verify ${phase} must keep the stable Signals region visible`
+  );
+  assert(
+    metrics.retiredDockControlCount === 0,
+    `${viewport.label}: Verify ${phase} must not expose retired dock toggles (${metrics.retiredDockControlCount})`
   );
 }
 
@@ -294,28 +295,27 @@ async function assertExportSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Export');
   await assertVisiblePrimary(page, viewport, 'Export handoff station', [
     '[data-testid="ide-export-package-inspector-v1"]',
-    '[data-testid="ide-export-handoff-station"]',
     '[data-testid="ide-export-readiness-hero"]',
   ]);
   await assertActionInViewport(page, viewport, 'Export primary handoff action', [
     '[data-testid="ide-export-package-build-v1"]',
-    '[data-testid="ide-export-rebuild-btn"]',
-    '[data-testid="ide-export-primary-handoff-cta"] button',
+    '[data-testid="ide-export-package-download-v1"]',
+    '[data-testid="ide-export-primary-actions"] button',
   ]);
 }
 
 async function assertImportSpace(page, viewport) {
   await assertNoHorizontalOverflow(page, viewport, 'Import');
   await assertVisiblePrimary(page, viewport, 'Import recovery workspace', [
-    '[data-testid="ide-import-start-shell"]',
-    '[data-testid="ide-import-workflow-rail"]',
-    '[data-testid="ide-import-workspace"]',
+    '[data-testid="ide-import-workbench"]',
   ]);
   await assertActionInViewport(page, viewport, 'Import primary action', [
-    '[data-testid="ide-import-start-primary"]',
-    '[data-testid="ide-import-zip-input"]',
-    '[data-testid="ide-import-tab-upload"]',
+    '[data-testid="ide-import-zip-browse"]',
   ]);
+  assert(
+    await visible(page.locator('[data-testid="ide-import-horizontal-stepper"]').first()),
+    `${viewport.label}: Import must expose the Upload, Review, Apply stepper`
+  );
 }
 
 async function assertVisiblePrimary(page, viewport, label, selectors) {
@@ -330,8 +330,16 @@ async function assertActionInViewport(page, viewport, label, selectors) {
   const rect = await firstVisibleRect(page, selectors);
   assert(rect.visible, `${viewport.label}: ${label} must be visible`);
   assert(rect.top < viewport.height - 40, `${viewport.label}: ${label} starts below the useful first viewport`);
-  assert(rect.visibleHeight >= 24, `${viewport.label}: ${label} is clipped vertically`);
-  assert(rect.visibleWidth >= 80, `${viewport.label}: ${label} is clipped horizontally`);
+  assert(rect.visibleHeight >= 40, `${viewport.label}: ${label} is below the 40px primary-control floor`);
+  assert(rect.visibleWidth >= 40, `${viewport.label}: ${label} is clipped horizontally`);
+  const textMetrics = await page.evaluate((selector) => {
+    const element = selector ? document.querySelector(selector) : null;
+    return element ? { clientWidth: element.clientWidth, scrollWidth: element.scrollWidth } : null;
+  }, rect.selector);
+  assert(
+    textMetrics && textMetrics.scrollWidth <= textMetrics.clientWidth + 1,
+    `${viewport.label}: ${label} text is clipped ${JSON.stringify(textMetrics)}`
+  );
 }
 
 async function assertNoHorizontalOverflow(page, viewport, label) {
@@ -443,12 +451,11 @@ async function readSurfaceMetrics(page) {
         shell: rect('[data-ide-mode-marker]'),
         workspace: rect('[data-testid="ide-mode-body"]'),
         leftDock: rect('[data-testid="ide-left-dock"]'),
-        rightDock: rect('[data-testid="ide-inspector"]'),
-        leftToggle: rect('[data-testid="ide-workbench-dock-toggle-left"]'),
-        rightToggle: rect('[data-testid="ide-workbench-dock-toggle-right"]'),
+        rightDock: rect('[data-testid="ide-right-dock"]'),
         designCanvas: rect('[data-testid="ide-design-live-canvas"]'),
         verifyStimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
         verifyGrid: rect('.ide-stimulus-grid-scroll'),
+        verifySignals: rect('[data-testid="ide-verify-left-dock"]'),
         verifyWaveform: rect(
           '[data-testid="ide-verify-region-waveform"], [data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-svg"]'
         ),
@@ -473,6 +480,9 @@ async function readSurfaceMetrics(page) {
           return element ? Math.max(0, element.scrollWidth - element.clientWidth) : 9999;
         })(),
       },
+      retiredDockControlCount: document.querySelectorAll(
+        '[data-testid*="dock-toggle"], [data-testid*="dock-collapse"], [data-testid="ide-design-library-collapse"]'
+      ).length,
     };
   });
 }

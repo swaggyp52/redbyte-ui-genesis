@@ -86,8 +86,8 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
     expect(getByTestId('ide-project-mapping-post-verify-hint').textContent).toContain('verified');
   });
 
-  it('flags required vs optional, applies row emphasis classes, and shows role + clock tag', () => {
-    const { container, getByTestId } = render(
+  it('summarizes missing mappings without rendering a second pin editor', () => {
+    const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -127,21 +127,19 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
-
-    expect(getByTestId('ide-project-map-req-clk_in').textContent).toContain('Required');
-    expect(getByTestId('ide-project-map-req-dbg').textContent).toContain('Optional');
-    expect(getByTestId('ide-project-role-clk_in').textContent).toContain('Clock');
-    expect(getByTestId('ide-project-alias-dbg').textContent).toContain('LD0 (pin U16)');
-    expect(getByTestId('ide-project-pin-field-dbg').textContent).toContain('LD0 (pin U16)');
-
-    const actionRow = container.querySelector('tr.ide-project-map-row--action');
-    expect(actionRow).toBeTruthy();
-    expect(container.querySelector('tr.ide-project-map-row--locked')).toBeTruthy();
+    expect(getByTestId('ide-project-mapping-overview').textContent).toContain(
+      '2 required signals still need a board resource'
+    );
+    expect(getByTestId('ide-project-mapping-missing-list').textContent).toContain('CLK_IN');
+    expect(getByTestId('ide-project-mapping-missing-list').textContent).toContain('BUS');
+    expect(queryByTestId('ide-project-mapping-table')).toBeNull();
+    expect(queryByTestId('ide-project-mapping-expand-btn')).toBeNull();
+    expect(queryByTestId('ide-project-map-req-clk_in')).toBeNull();
   });
 
   it('keeps Project mapping rows read-only and routes the student to Map Pins', () => {
     const onOpenHardware = vi.fn();
+    const onUpdateMappingPin = vi.fn();
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -158,17 +156,19 @@ describe('ProjectSurface — mapping legitimacy (trust + workflow)', () => {
               },
             ],
             onOpenHardware,
+            onUpdateMappingPin,
           })}
         />
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
-
-    expect(getByTestId('ide-project-pin-field-sw0').textContent).toContain('Assign in Map Pins');
+    expect(getByTestId('ide-project-mapping-overview').textContent).toContain('SW0');
+    expect(queryByTestId('ide-project-pin-field-sw0')).toBeNull();
     expect(queryByTestId('ide-project-map-input-sw0')).toBeNull();
+    expect(queryByTestId('ide-project-mapping-table')).toBeNull();
 
     fireEvent.click(getByTestId('ide-project-open-map-pins'));
     expect(onOpenHardware).toHaveBeenCalledTimes(1);
+    expect(onUpdateMappingPin).not.toHaveBeenCalled();
   });
 });

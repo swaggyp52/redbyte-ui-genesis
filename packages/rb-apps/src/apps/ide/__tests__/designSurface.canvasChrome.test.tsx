@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -152,13 +152,17 @@ beforeEach(() => {
   });
 });
 
-describe('DesignSurface canvas chrome simplification', () => {
-  it('keeps the first look to one toolbar row plus a compact status row', () => {
+describe('DesignSurface Unified Workbench v3 chrome', () => {
+  it('keeps the first look to one toolbar row, semantic status, and stable inspector facts', () => {
     const view = renderSurface();
 
     expect(view.queryByText('Circuit Designer')).toBeNull();
     expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Circuit');
-    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Ready to build');
+    expect(view.getByTestId('ide-design-authoring-issues').textContent).toContain('Ready for Verify');
+    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Ready for Verify');
+    expect(view.getByTestId('ide-design-inspector-idle-nodes').textContent).toBe('2');
+    expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
+    expect(view.getByTestId('ide-design-canvas-wrap').getAttribute('data-work-object')).toBe('circuit');
     expect(view.queryByTestId('ide-design-canvas-stat-nodes')).toBeNull();
     expect(view.queryByTestId('ide-design-canvas-stat-wires')).toBeNull();
     const zoomStat = view.getByTestId('ide-design-canvas-stat-zoom');
@@ -166,23 +170,24 @@ describe('DesignSurface canvas chrome simplification', () => {
     expect(zoomStat.textContent).toContain('%');
   });
 
-  it('groups view controls in one canvas tray without a second floating shortcut overlay', () => {
+  it('keeps direct view controls stable without a reveal toggle or disclosure', () => {
     const view = renderSurface();
 
     const tray = view.getByTestId('ide-design-canvas-view-tools');
-    const toggle = view.getByTestId('ide-design-view-tools-toggle');
-    expect(tray.getAttribute('data-open')).toBe('false');
-    expect(toggle.getAttribute('aria-expanded')).toBe('false');
-    expect(toggle.textContent).toContain('View');
+    const toolbar = view.getByTestId('ide-design-toolbar');
+    const liveCanvas = view.getByTestId('ide-design-live-canvas');
+    expect(tray.getAttribute('data-open')).toBe('true');
+    expect(toolbar.contains(tray)).toBe(true);
+    expect(liveCanvas.contains(tray)).toBe(false);
     expect(tray.contains(view.getByTestId('ide-design-canvas-controls'))).toBe(true);
-    expect(tray.contains(view.getByTestId('ide-design-zoom-presets'))).toBe(true);
+    expect(tray.contains(view.getByTestId('ide-design-zoom-out'))).toBe(true);
+    expect(tray.contains(view.getByTestId('ide-design-zoom-in'))).toBe(true);
+    expect(tray.contains(view.getByTestId('ide-design-zoom-reset'))).toBe(true);
     expect(tray.textContent).toContain('zoom');
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();
-
-    fireEvent.click(toggle);
-
-    expect(tray.getAttribute('data-open')).toBe('true');
-    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(view.queryByTestId('ide-design-view-tools-toggle')).toBeNull();
+    expect(view.queryByTestId('ide-design-fit-circuit-primary')).toBeNull();
+    expect(view.container.querySelector('details')).toBeNull();
   });
 
   it('surfaces verify focus inside the simulation strip instead of the toolbar band', () => {

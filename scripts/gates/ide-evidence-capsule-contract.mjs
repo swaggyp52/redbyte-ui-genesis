@@ -31,77 +31,16 @@ await runIdeGate('IDE evidence capsule contract satisfied', async ({ page, baseU
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 10000 });
-  const exportInspectorVisible = await page
-    .locator('[data-testid="ide-inspector"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  if (!exportInspectorVisible) {
-    const inspectorRail = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-    const railVisible = await inspectorRail.isVisible().catch(() => false);
-    if (railVisible) {
-      await inspectorRail.click();
-      await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 10000 });
-    }
-  }
+  const packageInspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
+  const packageState = await packageInspector.getAttribute('data-export-package-state');
+  assert(/ready|draft|blocked/i.test(packageState ?? ''), `export package state must be materialized, got "${packageState}"`);
+  assert(/E0/i.test(await text(page.locator('[data-testid="ide-export-e0-boundary-summary"]'))), 'Export must expose the browser-E0 evidence boundary');
 
-  const verifyProvenance = await text(page.locator('[data-testid="ide-export-provenance-verify"]'));
-  assert(
-    /Checks match/i.test(verifyProvenance),
-    `export provenance must show Compare evidence, got "${verifyProvenance}"`
-  );
-
-  // The current Export surface no longer exposes the old capsule build/file-list flow for
-  // this starter project. Evidence and rebuild/download behavior are now split: dedicated
-  // export gates cover download actions, while this contract verifies the evidence metadata,
-  // trust/advisory state, and debug report UI rendered on the Export surface.
-  const evidenceState = await text(page.locator('[data-testid="ide-export-handoff-summary-state"]'));
-  assert(
-    /Blocked|Available|Verified|Downloaded|Building|Needs Review|Ready/i.test(evidenceState),
-    `export evidence state must be materialized, got "${evidenceState}"`
-  );
-
-  const advancedDetails = page.locator('[data-testid="ide-export-advanced-details"]').first();
-  if (await advancedDetails.isVisible().catch(() => false)) {
-    const advancedOpen = (await advancedDetails.getAttribute('open').catch(() => null)) != null;
-    if (!advancedOpen) {
-      await advancedDetails.locator('summary').first().click();
-    }
-  }
-
-  const verifyDeterminismVisible = await page
-    .locator('[data-testid="ide-export-determinism-verify"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(verifyDeterminismVisible, 'verify-hash embedded determinism row must be visible');
-
-  const evidenceDetails = page.locator('[data-testid="ide-export-evidence-details"]').first();
-  const evidenceDetailsVisible = await evidenceDetails.isVisible().catch(() => false);
-  assert(evidenceDetailsVisible, 'debug report evidence details must be visible');
-  await evidenceDetails.locator('summary').first().click();
-
-  const copyReportVisible = await page
-    .locator('[data-testid="ide-export-copy-debug-report"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(copyReportVisible, 'copy debug report action must be visible');
-
-  const blockersVisible = await page
-    .locator('[data-testid="ide-export-blockers-list"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  const unverifiedCalloutVisible = await page
-    .locator('[data-testid="ide-export-unverified-callout"]')
-    .first()
-    .isVisible()
-    .catch(() => false);
-  assert(
-    blockersVisible ||
-      unverifiedCalloutVisible ||
-      /Available|Verified|Downloaded|Needs Review/i.test(evidenceState),
-    'export evidence surface must show blockers, an advisory, or a materialized available/aligned state'
-  );
+  await page.locator('[data-testid="ide-export-open-technical-evidence"]').first().click();
+  await page.waitForSelector('[data-testid="ide-export-technical-dialog"]', { state: 'visible', timeout: 10000 });
+  const verifyProvenance = await text(page.locator('[data-testid="ide-export-gate-verify"]'));
+  assert(/Verify evidence/i.test(verifyProvenance) && /Ready|Current/i.test(verifyProvenance), `technical evidence must show current Compare provenance, got "${verifyProvenance}"`);
+  assert(await page.locator('[data-testid="ide-export-deterministic-checks"]').first().isVisible(), 'deterministic package checks must be visible');
+  assert(await page.locator('[data-testid="ide-export-copy-report"]').first().isVisible(), 'copy debug report action must be visible');
+  assert(await page.locator('[data-testid="ide-export-blockers-list"]').first().isVisible(), 'technical diagnostics must be visible');
 });

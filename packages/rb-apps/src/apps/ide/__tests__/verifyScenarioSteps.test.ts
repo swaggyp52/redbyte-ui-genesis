@@ -19,6 +19,33 @@ describe('verifyScenarioSteps', () => {
     expect(vectors[1]?.expected).toEqual({ ld0: 1 });
   });
 
+  it.each([
+    ['rising', [0, 1, 1]],
+    ['falling', [1, 0, 0]],
+    ['high', [1, 1]],
+    ['low', [0, 0]],
+  ] as const)('materializes %s pulse behavior with an exact duration', (pulseBehavior, expected) => {
+    const vectors = materializeVectorsFromScenarioSteps(
+      [
+        createScenarioStep(
+          {
+            kind: 'pulse_step',
+            targetRef: 'clk',
+            pulseBehavior,
+            durationTicks: 2,
+          },
+          0
+        ),
+      ],
+      []
+    );
+
+    expect(vectors.map((vector) => vector.tick)).toEqual(
+      expected.map((_, index) => index)
+    );
+    expect(vectors.map((vector) => vector.inputs.clk)).toEqual(expected);
+  });
+
   it('derives typed steps from legacy vectors for migration fallback', () => {
     const steps = deriveScenarioStepsFromVectors([
       { tick: 0, inputs: { rst: 1, sw0: 0 }, expected: { ld0: 0 } },

@@ -4,7 +4,7 @@
 // result evidence collapsed into compact strip.
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -63,7 +63,7 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
   });
 
-  it('does not render the retired Verify SurfaceCommandStrip on cold start', () => {
+  it('guides a no-circuit cold start instead of presenting a runnable command bar', () => {
     const { queryByTestId, getByTestId } = render(
       <VerifySurface
         deterministicHash="comp-empty"
@@ -78,7 +78,8 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     );
 
     expect(queryByTestId('ide-verify-command-strip')).toBeNull();
-    expect(getByTestId('ide-verify-command-bar')).toBeTruthy();
+    expect(queryByTestId('ide-verify-command-bar')).toBeNull();
+    expect(getByTestId('ide-verify-no-circuit-task')).toBeTruthy();
   });
 
   it('renders exactly one VerifyCommandBar (ide-verify-command-bar)', () => {
@@ -114,12 +115,47 @@ describe('B-14 Slice 2 — Desktop composition: unified header', () => {
     expect(queryByTestId('ide-verify-prerun-lanes')).toBeNull();
   });
 
-  it('VerifyCommandBar shows pass/fail metrics post-run via evidence strip', () => {
+  it('shows pass/fail metrics in Results instead of the run command bar', () => {
     const { getByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
-    // Evidence strip renders compact metrics in the command bar area
-    expect(getByTestId('ide-vcb-evidence')).toBeTruthy();
+    expect(getByTestId('ide-verify-results-summary').getAttribute('role')).toBeNull();
+    expect(getByTestId('ide-verify-results-summary').getAttribute('aria-live')).toBeNull();
+    expect(getByTestId('ide-verify-results-summary-metrics')).toBeTruthy();
+    expect(getByTestId('ide-verify-results-summary-metric-passed')).toBeTruthy();
+  });
+
+  it('keeps one dedicated announcer mounted and changes its text for distinct runs with identical outcomes', async () => {
+    const view = render(<VerifySurface {...BASE_PROPS} />);
+    const announcer = view.getByTestId('ide-verify-run-announcer');
+
+    expect(announcer.getAttribute('role')).toBe('status');
+    expect(announcer.getAttribute('aria-live')).toBe('polite');
+    expect(announcer.textContent).toBe('');
+
+    const firstPass = makePassRun();
+    view.rerender(<VerifySurface {...BASE_PROPS} lastRun={firstPass} />);
+    await waitFor(() => expect(announcer.textContent).toContain('Verification run 1. Compare passed.'));
+    const firstAnnouncement = announcer.textContent;
+    expect(view.getByTestId('ide-verify-run-announcer')).toBe(announcer);
+    expect(view.getByTestId('ide-verify-results-summary').getAttribute('role')).toBeNull();
+
+    view.rerender(<VerifySurface {...BASE_PROPS} lastRun={firstPass} />);
+    expect(announcer.textContent).toBe(firstAnnouncement);
+
+    view.rerender(
+      <VerifySurface
+        {...BASE_PROPS}
+        lastRun={{ ...firstPass }}
+      />
+    );
+    await waitFor(() => expect(announcer.textContent).toContain('Verification run 2. Compare passed.'));
+    expect(view.getByTestId('ide-verify-run-announcer')).toBe(announcer);
+    expect(announcer.textContent).not.toBe(firstAnnouncement);
+
+    view.rerender(<VerifySurface {...BASE_PROPS} />);
+    await waitFor(() => expect(announcer.textContent).toBe(''));
+    expect(view.getByTestId('ide-verify-run-announcer')).toBe(announcer);
   });
 
   it('does not duplicate post-run metrics in the compact status strip once the command bar owns evidence', () => {

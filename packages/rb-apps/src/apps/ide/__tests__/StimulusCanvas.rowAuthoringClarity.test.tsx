@@ -42,8 +42,8 @@ describe('StimulusCanvas row authoring clarity', () => {
     expect(caseGroup.contains(addBtn)).toBe(true);
   });
 
-  it('keeps the toolbar focused on adding cases, not duplicating or deleting them', () => {
-    const { getByTestId } = render(
+  it('keeps add, duplicate, and delete as usable routine controls in the Cases toolbar', () => {
+    const { container, getByTestId } = render(
       <StimulusCanvas
         inputFields={INPUTS}
         outputFields={OUTPUTS}
@@ -52,9 +52,23 @@ describe('StimulusCanvas row authoring clarity', () => {
       />
     );
     const caseGroup = getByTestId('ide-stimulus-case-actions');
+    const controls = [
+      getByTestId('ide-stimulus-add-tick'),
+      getByTestId('ide-stimulus-duplicate-tick-0'),
+      getByTestId('ide-stimulus-delete-tick-0'),
+    ];
+
     expect(caseGroup.textContent).toContain('Add case');
-    expect(caseGroup.textContent).not.toContain('Duplicate case');
-    expect(caseGroup.textContent).not.toContain('Delete case');
+    expect(caseGroup.textContent).toContain('Duplicate case');
+    expect(caseGroup.textContent).toContain('Delete case');
+    for (const control of controls) {
+      expect(caseGroup.contains(control)).toBe(true);
+      expect(control.tagName).toBe('BUTTON');
+      expect((control as HTMLButtonElement).disabled).toBe(false);
+      expect(control.classList.contains('ide-stimulus-mini-btn')).toBe(true);
+    }
+    expect(container.querySelector('.ide-stimulus-tick-actions')).toBeNull();
+    expect(container.querySelector('.ide-stimulus-tick-header button')).toBeNull();
   });
 
   it('Cases group precedes the Advanced tools disclosure in DOM order', () => {
@@ -94,8 +108,8 @@ describe('StimulusCanvas row authoring clarity', () => {
     }
   });
 
-  it('shows selected-case ownership and inline actions without requiring hover', () => {
-    const { getByTestId } = render(
+  it('retargets the visible toolbar actions when the selected case changes', () => {
+    const { getByTestId, queryByTestId } = render(
       <StimulusCanvas
         inputFields={INPUTS}
         outputFields={OUTPUTS}
@@ -107,6 +121,14 @@ describe('StimulusCanvas row authoring clarity', () => {
     expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 1');
     expect(getByTestId('ide-stimulus-duplicate-tick-0')).toBeTruthy();
     expect(getByTestId('ide-stimulus-delete-tick-0')).toBeTruthy();
+
+    fireEvent.change(getByTestId('ide-stimulus-tick-target'), { target: { value: '1' } });
+
+    expect(getByTestId('ide-stimulus-selected-case-chip').textContent).toContain('Case 2');
+    expect(getByTestId('ide-stimulus-duplicate-tick-1').textContent).toBe('Duplicate case');
+    expect(getByTestId('ide-stimulus-delete-tick-1').textContent).toBe('Delete case');
+    expect(queryByTestId('ide-stimulus-duplicate-tick-0')).toBeNull();
+    expect(queryByTestId('ide-stimulus-delete-tick-0')).toBeNull();
   });
 
   it('keeps advanced tools hidden until the student opens the Advanced tools disclosure', () => {
@@ -141,10 +163,26 @@ describe('StimulusCanvas row authoring clarity', () => {
       />
     );
 
-    expect(getByText('Expected outputs')).toBeTruthy();
+    expect(getByText('Expected · Unset = no check')).toBeTruthy();
     expect(getByTestId('ide-stimulus-expected-ld0-t0')).toBeTruthy();
     expect(queryByText('Show checks')).toBeNull();
     expect(queryByText('Output assertions')).toBeNull();
+  });
+
+  it('names empty expected and observed evidence instead of showing ambiguous dashes', () => {
+    const { getByTestId, getByText } = render(
+      <StimulusCanvas
+        inputFields={INPUTS}
+        outputFields={OUTPUTS}
+        authoredVectors={[{ id: 'v0', tick: 0, inputs: { sw0: 0 }, expected: {} }]}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    expect(getByText('Expected · Unset = no check')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-expected-ld0-t0').textContent).toBe('Unset');
+    expect(getByTestId('ide-stimulus-observed-ld0-t0').textContent).toBe('Not run');
+    expect(getByTestId('ide-stimulus-observed-ld0-t0').getAttribute('data-value')).toBe('not-run');
   });
 
   it('renders a dedicated clock lane with inline pattern actions', () => {
@@ -179,6 +217,53 @@ describe('StimulusCanvas row authoring clarity', () => {
     expect(getByTestId('ide-stimulus-clock-pattern-pulse').textContent).toContain('Add pulse');
     expect(getByTestId('ide-stimulus-clock-pattern-hold-low')).toBeTruthy();
     expect(getByTestId('ide-stimulus-clock-pattern-hold-high')).toBeTruthy();
+  });
+
+  it('keeps explicit edge and level controls outside the clock signal row', () => {
+    const onAppendPulseBehavior = vi.fn();
+    const { getByTestId, queryByTestId } = render(
+      <StimulusCanvas
+        inputFields={[
+          { id: 'clk', label: 'CLK' },
+          { id: 'en', label: 'EN' },
+          { id: 'rst', label: 'RST' },
+        ]}
+        outputFields={OUTPUTS}
+        authoredVectors={[
+          { id: 'v0', tick: 0, inputs: { clk: 0, en: 1, rst: 0 }, expected: {} },
+        ]}
+        onVectorsChange={vi.fn()}
+        clockLane={{
+          fieldId: 'clk',
+          badge: 'Board clock',
+          detail: 'Manual pulses',
+          count: 4,
+          onCountChange: vi.fn(),
+          onApplyPattern: vi.fn(),
+          onAppendPulseBehavior,
+        }}
+      />
+    );
+
+    const clockRow = getByTestId('ide-stimulus-clock-row');
+    const clockTools = getByTestId('ide-stimulus-clock-tools');
+    expect(clockRow.contains(clockTools)).toBe(false);
+    expect(clockTools.compareDocumentPosition(clockRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(getByTestId('ide-stimulus-clock-behavior-rising'));
+    fireEvent.click(getByTestId('ide-stimulus-clock-behavior-falling'));
+    fireEvent.click(getByTestId('ide-stimulus-clock-behavior-high'));
+    fireEvent.click(getByTestId('ide-stimulus-clock-behavior-low'));
+
+    expect(onAppendPulseBehavior.mock.calls.map(([behavior]) => behavior)).toEqual([
+      'rising',
+      'falling',
+      'high',
+      'low',
+    ]);
+    expect(queryByTestId('ide-stimulus-clock-pattern-pulse')).toBeNull();
+    expect(queryByTestId('ide-stimulus-clock-pattern-hold-high')).toBeNull();
+    expect(queryByTestId('ide-stimulus-clock-pattern-hold-low')).toBeNull();
   });
 
   it('lets students hand-edit clock cells directly in the highlighted lane', () => {

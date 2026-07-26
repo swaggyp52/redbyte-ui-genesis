@@ -4,6 +4,7 @@ import type { VerifyScheduleContract } from '../../fpga/boards/basys3/verifySche
 import {
   detectVerifyClockPolicy,
   materializeVectorsForClockPolicy,
+  resolveEffectiveVerifyClockPolicy,
   type VerifyClockPolicy,
 } from '../verifyClockPolicy';
 
@@ -58,7 +59,7 @@ describe('verifyClockPolicy', () => {
       periodNs: 10,
       boardAlias: 'CLK100MHZ',
       packagePin: 'W5',
-      resetBehavior: 'auto-sequence',
+      resetBehavior: 'none',
     });
   });
 
@@ -212,11 +213,73 @@ describe('verifyClockPolicy', () => {
     });
 
     expect(vectors).toHaveLength(4);
-    expect(vectors.map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1]);
+    expect(vectors.map((vector) => vector.inputs.clk)).toEqual([1, 1, 1, 1]);
     expect(vectors.map((vector) => vector.inputs.en)).toEqual([1, 1, 1, 1]);
     expect(vectors.map((vector) => vector.inputs.rst)).toEqual([1, 0, 0, 0]);
     expect(vectors[0]?.expected).toEqual({ q0: 0 });
     expect(vectors.slice(1).every((vector) => Object.keys(vector.expected).length === 0)).toBe(true);
+  });
+
+  it('orders authored manual vectors by tick while preserving original order within a tick', () => {
+    const vectors = materializeVectorsForClockPolicy({
+      vectors: [
+        { id: 'late', tick: 4, inputs: { clk: 0 }, expected: {} },
+        { id: 'same-tick-first', tick: 1, inputs: { clk: 0 }, expected: {} },
+        { id: 'same-tick-second', tick: 1, inputs: { clk: 1 }, expected: {} },
+      ],
+      ioRows: [{ id: 'clk', label: 'CLK', direction: 'in' }],
+      policy: {
+        signalId: 'clk',
+        signalLabel: 'CLK',
+        sourceType: 'manual',
+        executionModel: 'manual',
+        overrideMode: 'manual-pulses',
+        autoRunEnabled: false,
+        activeEdge: 'rising',
+        startLevel: 0,
+        dutyCycle: 0.5,
+        runCycles: 3,
+        resetBehavior: 'none',
+      },
+    });
+
+    expect(vectors.map((vector) => vector.id)).toEqual([
+      'same-tick-first',
+      'same-tick-second',
+      'late',
+    ]);
+  });
+
+  it('overrides authored reset values with the authoritative Auto reset sequence', () => {
+    const policy: VerifyClockPolicy = {
+      signalId: 'clk',
+      signalLabel: 'CLK100MHZ',
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      overrideMode: 'auto',
+      autoRunEnabled: true,
+      activeEdge: 'rising',
+      startLevel: 0,
+      dutyCycle: 0.5,
+      runCycles: 2,
+      resetSignalName: 'BTNC',
+      resetBehavior: 'auto-sequence',
+    };
+
+    const vectors = materializeVectorsForClockPolicy({
+      vectors: [
+        { tick: 0, inputs: { rst_node: 0 }, expected: {} },
+        { tick: 1, inputs: { rst_node: 1 }, expected: {} },
+      ],
+      ioRows: [
+        { id: 'clk', label: 'CLK100MHZ', direction: 'in' },
+        { id: 'rst', label: 'BTNC', nodeId: 'rst_node', direction: 'in' },
+      ],
+      policy,
+    });
+
+    expect(vectors.map((vector) => vector.inputs.rst)).toEqual([1, 0]);
+    expect(vectors.every((vector) => !('rst_node' in vector.inputs))).toBe(true);
   });
 
   it('canonicalizes authored node-id inputs without leaving row-id defaults that override them', () => {
@@ -252,7 +315,7 @@ describe('verifyClockPolicy', () => {
       policy,
     });
 
-    expect(vectors[0]?.inputs).toMatchObject({ clk: 0, en: 1, rst: 0 });
+    expect(vectors[0]?.inputs).toMatchObject({ clk: 1, en: 1, rst: 1 });
     expect(vectors[0]?.inputs).not.toHaveProperty('clk_node');
     expect(vectors[0]?.inputs).not.toHaveProperty('en_node');
     expect(vectors[0]?.inputs).not.toHaveProperty('rst_node');
@@ -271,6 +334,50 @@ describe('verifyClockPolicy', () => {
     expect(policy).toMatchObject({
       resetSignalName: 'BTNC',
       resetBehavior: 'auto-sequence',
+    });
+  });
+
+  it('rebinds a stale structural reset hint to the current live reset row', () => {
+    const ioRows = [
+      { id: 'detected_clk', label: 'CLK100MHZ', direction: 'in' as const, pin: 'W5', timingRole: 'clock' as const },
+      { id: 'detected_reset', label: 'BTNC', direction: 'in' as const, pin: 'U18', timingRole: 'reset' as const },
+      { id: 'q0', label: 'LD0', direction: 'out' as const, pin: 'U16' },
+    ];
+    const policy = detectVerifyClockPolicy({
+      ioRows,
+      scheduleContract: makeClockedContract({
+        resetHint: { signalName: 'rst', activeLevel: 1 },
+      }),
+    });
+
+    expect(policy).toMatchObject({
+      signalId: 'detected_clk',
+      resetSignalName: 'BTNC',
+      resetBehavior: 'auto-sequence',
+    });
+    expect(
+      materializeVectorsForClockPolicy({
+        vectors: [{ tick: 0, inputs: {}, expected: { q0: 0 } }],
+        ioRows,
+        policy,
+      })[0]?.inputs
+    ).toMatchObject({ detected_clk: 1, detected_reset: 1 });
+  });
+
+  it('disables reset execution when no current live reset input row exists', () => {
+    const policy = detectVerifyClockPolicy({
+      ioRows: [
+        { id: 'clk', label: 'CLK100MHZ', direction: 'in', pin: 'W5', timingRole: 'clock' },
+        { id: 'q0', label: 'LD0', direction: 'out', pin: 'U16' },
+      ],
+      scheduleContract: makeClockedContract({
+        resetHint: { signalName: 'retired_internal_reset', activeLevel: 1 },
+      }),
+    });
+
+    expect(policy).toMatchObject({
+      resetSignalName: undefined,
+      resetBehavior: 'none',
     });
   });
 
@@ -306,9 +413,101 @@ describe('verifyClockPolicy', () => {
     });
 
     expect(vectors).toHaveLength(4);
-    expect(vectors.map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1]);
+    expect(vectors.map((vector) => vector.inputs.clk)).toEqual([1, 1, 1, 1]);
     expect(vectors.map((vector) => vector.inputs.en)).toEqual([0, 0, 0, 0]);
     expect(vectors.map((vector) => vector.inputs.rst)).toEqual([1, 0, 0, 0]);
     expect(vectors.every((vector) => Object.keys(vector.expected).length === 0)).toBe(true);
+  });
+
+  it('rebinds saved Auto intent to the current live clock and reset identities', () => {
+    const detected: VerifyClockPolicy = {
+      signalId: 'clk',
+      signalLabel: 'CLK100MHZ',
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      overrideMode: 'auto',
+      autoRunEnabled: true,
+      activeEdge: 'rising',
+      startLevel: 0,
+      dutyCycle: 0.5,
+      runCycles: 8,
+      resetSignalName: 'rst',
+      resetBehavior: 'auto-sequence',
+    };
+
+    const resolved = resolveEffectiveVerifyClockPolicy({
+      savedPolicy: {
+        overrideMode: 'auto',
+        runCycles: 12,
+        activeEdge: 'rising',
+        resetBehavior: 'custom',
+        sourceType: 'inferred',
+        executionModel: 'external-input-auto-toggle',
+        signalId: 'retired_clk',
+        signalLabel: 'Retired clock',
+        resetSignalName: 'retired_reset',
+        startLevel: 1,
+      },
+      detectedPolicy: detected,
+      overrideMode: 'auto',
+      requestedRunCycles: 12,
+      totalVectorCount: 2,
+    });
+
+    expect(resolved).toMatchObject({
+      overrideMode: 'auto',
+      autoRunEnabled: true,
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      signalId: 'clk',
+      signalLabel: 'CLK100MHZ',
+      resetSignalName: 'rst',
+      resetBehavior: 'custom',
+      startLevel: 1,
+      runCycles: 12,
+    });
+  });
+
+  it('falls back to authored clock mode when the live source cannot run Auto', () => {
+    const resolved = resolveEffectiveVerifyClockPolicy({
+      savedPolicy: {
+        overrideMode: 'auto',
+        runCycles: 12,
+        activeEdge: 'rising',
+        resetBehavior: 'auto-sequence',
+        sourceType: 'board-clock',
+        executionModel: 'external-input-auto-toggle',
+        signalId: 'old_clk',
+        signalLabel: 'Old clock',
+        startLevel: 0,
+      },
+      detectedPolicy: {
+        signalId: 'step_clk',
+        signalLabel: 'Step clock',
+        sourceType: 'manual',
+        executionModel: 'manual',
+        overrideMode: 'manual-pulses',
+        autoRunEnabled: false,
+        activeEdge: 'rising',
+        startLevel: 0,
+        dutyCycle: 0.5,
+        runCycles: 8,
+        resetBehavior: 'none',
+      },
+      overrideMode: 'auto',
+      requestedRunCycles: 12,
+      totalVectorCount: 3,
+    });
+
+    expect(resolved).toMatchObject({
+      overrideMode: 'manual-pulses',
+      autoRunEnabled: false,
+      executionModel: 'manual',
+      signalId: 'step_clk',
+      signalLabel: 'Step clock',
+      runCycles: 3,
+      resetBehavior: 'none',
+    });
+    expect(resolved?.manualWarning).toContain('Auto clock is unavailable');
   });
 });

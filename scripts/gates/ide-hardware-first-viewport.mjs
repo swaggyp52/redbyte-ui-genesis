@@ -4,19 +4,18 @@
  * Hardware first-viewport hierarchy gate.
  *
  * Contract:
- * 1) The visible build badge matches the current Git SHA.
+ * 1) The shell build identity matches the current Git SHA.
  * 2) Hardware opens the Logic Gates starter directly in Map Pins at classroom and desktop sizes.
- * 3) The mapping table is the primary first-viewport task; the Basys3 board remains a visible secondary reference.
- * 4) The selected signal -> board -> pin -> XDC chain remains first-viewport content.
- * 5) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
+ * 3) Progress and the selected-mapping editor lead the guided task; the mapping table remains visible below them.
+ * 4) The Basys3 board starts as a secondary reference beside the table and stays reachable below an expanded editor.
+ * 5) The selected signal -> board -> pin -> XDC chain remains first-viewport content.
+ * 6) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
  */
 
-import { execSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assert, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
-
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -39,11 +38,13 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
     try {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openStarterHardware(page, baseUrl, viewport.label);
+      await assertBuildHash(page, viewport.label);
 
-      const buildSha = (await page.locator('.ide-build-badge-sha').first().textContent().catch(() => ''))?.trim() ?? '';
+      const entryObservation = await readHardwareFirstViewportState(page);
+      observations.push({ viewport: viewport.label, phase: 'entry', ...entryObservation });
       assert(
-        buildSha === CURRENT_SHA,
-        `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${buildSha || 'missing'}`
+        entryObservation.board.top <= 560 && entryObservation.board.visibleHeight >= 150,
+        `${viewport.label}: Basys3 board reference must be visible before a signal editor expands ${JSON.stringify(entryObservation.board)}`
       );
 
       const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
@@ -61,7 +62,7 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       });
 
       const observation = await readHardwareFirstViewportState(page);
-      observations.push({ viewport: viewport.label, ...observation });
+      observations.push({ viewport: viewport.label, phase: 'selected', ...observation });
       await capture(page, viewport.label);
 
       assert(observation.mode === 'hardware', `${viewport.label}: expected Hardware mode, got ${observation.mode}`);
@@ -72,20 +73,12 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
         `${viewport.label}: Map Pins workspace starts too low (${observation.boardWorkspace.top.toFixed(1)}px)`
       );
       assert(
-        observation.table.top <= 315,
+        observation.table.top <= 560,
         `${viewport.label}: mapping table starts too low (${observation.table.top.toFixed(1)}px)`
-      );
-      assert(
-        observation.board.top <= 315,
-        `${viewport.label}: Basys3 board reference starts too low (${observation.board.top.toFixed(1)}px)`
       );
       assert(
         observation.table.visibleHeight >= 200,
         `${viewport.label}: mapping table visible height ${observation.table.visibleHeight.toFixed(1)}px < 200px`
-      );
-      assert(
-        observation.board.visibleHeight >= 150,
-        `${viewport.label}: Basys3 board reference visible height ${observation.board.visibleHeight.toFixed(1)}px < 150px`
       );
       assert(
         observation.table.visibleWidth >= observation.board.visibleWidth,
@@ -98,6 +91,13 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
       assert(
         observation.bindingChain.visibleHeight >= 44,
         `${viewport.label}: selected binding chain must remain visible in the first viewport`
+      );
+
+      await page.locator('[data-testid="ide-hw-map-board"]').first().scrollIntoViewIfNeeded();
+      const scrolledObservation = await readHardwareFirstViewportState(page);
+      assert(
+        scrolledObservation.board.visibleHeight >= 150,
+        `${viewport.label}: expanded mapping editor must leave the secondary board reference reachable ${JSON.stringify(scrolledObservation.board)}`
       );
 
       const bodyText = await normalizedText(page.locator('[data-testid="ide-mode-hardware"]').first());
@@ -126,7 +126,7 @@ async function openStarterHardware(page, baseUrl, viewportLabel) {
   await page.locator('[data-testid="mode-button-hardware"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 15000 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.waitForSelector('[data-testid="ide-hw-board-workspace"].ide-hw-board-workspace--map', {
+  await page.waitForSelector('[data-testid="ide-hw-board-workspace"].ide-hw-v3', {
     state: 'visible',
     timeout: 15000,
   });
@@ -158,21 +158,22 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
   await page.waitForFunction(
     () => {
       const workspace = document.querySelector('[data-testid="ide-hw-board-workspace"]');
-      const board = document.querySelector('[data-testid="ide-hw-map-board"]');
       const table = document.querySelector('[data-testid="ide-hw-map-table"]');
       const mode = document.querySelector('[data-ide-mode-marker]');
-      if (!workspace || !board || !table || !mode) return false;
+      const chain = document.querySelector('[data-testid="ide-hardware-basys3-binding-chain"]');
+      if (!workspace || !table || !chain || !mode) return false;
       if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
-      if (!workspace.classList.contains('ide-hw-board-workspace--map')) return false;
+      if (!workspace.classList.contains('ide-hw-v3')) return false;
 
       const workspaceRect = workspace.getBoundingClientRect();
-      const boardRect = board.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
+      const chainRect = chain.getBoundingClientRect();
+      const chainVisibleHeight = Math.max(0, Math.min(window.innerHeight, chainRect.bottom) - Math.max(0, chainRect.top));
       return (
         workspaceRect.top <= 200 &&
-        boardRect.top <= 315 &&
-        tableRect.top <= 315 &&
-        tableRect.width >= boardRect.width
+        tableRect.top <= 560 &&
+        tableRect.width >= 620 &&
+        chainVisibleHeight >= 44
       );
     },
     { timeout: 15000 },
@@ -180,7 +181,7 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
     const state = await readHardwareFirstViewportState(page);
     throw new Error(
       `${viewportLabel}: Hardware Map Pins layout did not settle into first-viewport contract ` +
-        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, board ${state.board.top.toFixed(1)}px/${state.board.width.toFixed(1)}px wide, ` +
+        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, chain ${state.bindingChain.top.toFixed(1)}px/${state.bindingChain.visibleHeight.toFixed(1)}px visible, ` +
         `table ${state.table.top.toFixed(1)}px/${state.table.width.toFixed(1)}px wide)`
     );
   });
@@ -223,7 +224,7 @@ async function readHardwareFirstViewportState(page) {
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
       mapWorkspaceActive:
-        document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-board-workspace--map') === true &&
+        document.querySelector('[data-testid="ide-hw-board-workspace"]')?.classList.contains('ide-hw-v3') === true &&
         !Array.from(document.querySelectorAll('[data-testid="ide-hw-stage-rail"]')).some((element) => {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);

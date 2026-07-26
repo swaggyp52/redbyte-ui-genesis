@@ -11,26 +11,6 @@ async function assertNoRuntimeErrors(page, errors) {
   assert(consoleErrors.length === 0, `page must not emit console/page errors: ${consoleErrors.join(' | ')}`);
 }
 
-function boxesOverlap(first, second) {
-  return (
-    first.x < second.x + second.width &&
-    first.x + first.width > second.x &&
-    first.y < second.y + second.height &&
-    first.y + first.height > second.y
-  );
-}
-
-function describeBox(box) {
-  return `x=${Math.round(box.x)} y=${Math.round(box.y)} w=${Math.round(box.width)} h=${Math.round(box.height)}`;
-}
-
-function assertNoOverlap(first, second, message) {
-  assert(
-    !boxesOverlap(first, second),
-    `${message}: first=${describeBox(first)}, second=${describeBox(second)}`
-  );
-}
-
 async function assertTargetCenterUnobstructed(page, target, message) {
   const box = await target.boundingBox();
   assert(box, `${message}: target must be measurable`);
@@ -58,16 +38,11 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
 
-  const buildBadge = page.locator('[data-testid="ide-build-badge"]').first();
-  assert(await visible(buildBadge), 'build identity must be visible before browser interaction proof');
+  const topBar = page.locator('[data-testid="ide-top-bar"]').first();
+  assert((await topBar.getAttribute('data-build-sha'))?.length > 0, 'top bar must retain build identity as non-competing diagnostic data');
 
   const orientation = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  assert(await visible(orientation), 'first Project launch must show workflow orientation');
-  assert(
-    (await orientation.getAttribute('data-onboarding-placement')) === 'integrated',
-    'first Project launch workflow orientation must be integrated with the command center'
-  );
-  const orientationBox = await orientation.boundingBox();
+  assert(!(await visible(orientation)), 'first Project launch must not inject workflow-orientation chrome');
   const launchTargets = [
     page.locator('[data-testid="ide-project-start-a-lab-primary"]').first(),
     page.locator('[data-testid="ide-project-build-fresh-primary"]').first(),
@@ -75,14 +50,10 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
     page.locator('[data-testid="ide-project-import-primary"]').first(),
     page.locator('[data-testid="ide-project-open-existing-primary"]').first(),
   ];
-  assert(orientationBox, 'workflow orientation must be measurable');
   for (const target of launchTargets) {
     if (!(await target.isVisible().catch(() => false))) continue;
-    await assertTargetCenterUnobstructed(page, target, 'workflow orientation must not block Project launch actions');
+    await assertTargetCenterUnobstructed(page, target, 'Project launch action must expose an unobstructed center target');
   }
-
-  await page.locator('[data-testid="ide-onboarding-skip"]').first().click();
-  await orientation.waitFor({ state: 'hidden', timeout: 10000 });
 
   const helpButton = page.locator('[data-testid="ide-topbar-help-btn"]').first();
   assert(await visible(helpButton), 'top bar must keep one visible Help affordance');
@@ -133,7 +104,7 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   );
   assert(
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
-    'dismissed workflow orientation must stay out of the way after reload'
+    'obsolete workflow-orientation chrome must stay absent after reload'
   );
   assert(await visible(helpButton), 'Help affordance must survive reload');
 
@@ -144,7 +115,7 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
   assert(
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),
-    'loaded Project must not inherit the full workflow orientation card by default'
+    'loaded Project must not inherit obsolete workflow-orientation chrome'
   );
   assert(
     await visible(helpButton),

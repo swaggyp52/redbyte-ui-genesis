@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assert, runIdeGate } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { width: 1366, height: 768, label: '1366x768' },
@@ -72,7 +73,7 @@ await runIdeGate('IDE Design workspace crash-proof recovery satisfied', async ({
     const recovered = await readRecoveredDesignState(page);
     assert(recovered.mode === 'design', `${viewport.label}: recovered mode should be design, got ${recovered.mode}`);
     assert(!recovered.hasBoundary, `${viewport.label}: error boundary remained after reload recovery`);
-    assert(recovered.buildBadge.length > 0, `${viewport.label}: build badge disappeared after recovery`);
+    await assertBuildHash(page, `${viewport.label}: recovered Design`);
     assert(recovered.rootOverflowX <= 2, `${viewport.label}: root has horizontal overflow after recovery`);
 
     await page.unroute('**/*').catch(() => null);
@@ -122,7 +123,6 @@ async function readRecoveredDesignState(page) {
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
-      buildBadge: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
       rootOverflowX: Math.max(
         0,
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth

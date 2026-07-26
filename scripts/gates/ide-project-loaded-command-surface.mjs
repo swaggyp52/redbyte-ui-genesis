@@ -48,19 +48,27 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
       await assertCommandConsoleNotCards(page, viewport);
 
       const commandText = await normalizedText(page.locator('[data-testid="ide-project-command-board-v1"]').first());
-      assert(/current action|next action|continue/i.test(commandText), `${viewport.label}: command board must name the current action`);
-      assert(/Design/i.test(commandText), `${viewport.label}: command board must include Design action`);
-      assert(/Verify/i.test(commandText), `${viewport.label}: command board must include Verify action`);
-      assert(/Continue Design/i.test(commandText), `${viewport.label}: command board must include the dominant Design continuation`);
+      assert(/next:\s*verify/i.test(commandText), `${viewport.label}: command board must name Next: Verify for the loaded starter`);
+      assert(
+        (await page.locator('[data-testid="ide-project-command-action-verify"]:visible').count()) === 1,
+        `${viewport.label}: the sole body primary must expose Verify routing truth`,
+      );
+      assert(
+        (await page.locator('[data-testid="ide-project-command-action-design"]:visible').count()) === 0,
+        `${viewport.label}: Design must remain peer navigation in the five-stage rail, not a duplicate body action`,
+      );
 
-      const requiredActions = [
-        ['[data-testid="ide-project-command-action-design"]', 'design'],
-        ['[data-testid="ide-project-command-action-verify"]', 'verify'],
+      await page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first().click();
+      await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
+      await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}-primary-return`);
+
+      const peerRailActions = [
+        ['[data-testid="mode-button-design"]', 'design'],
+        ['[data-testid="mode-button-verify"]', 'verify'],
         ['[data-testid="mode-button-hardware"]', 'hardware'],
         ['[data-testid="mode-button-export"]', 'export'],
-        ['[data-testid="mode-button-import"]', 'import'],
       ];
-      for (const [selector, targetMode] of requiredActions) {
+      for (const [selector, targetMode] of peerRailActions) {
         const action = page.locator(selector).first();
         assert(await visible(action), `${viewport.label}: ${selector} must be visible`);
         assert(!(await action.isDisabled().catch(() => false)), `${viewport.label}: ${selector} must be enabled`);
@@ -68,6 +76,12 @@ await runIdeGate('IDE Project loaded command surface satisfied', async ({ page, 
         await page.waitForSelector(`[data-testid="ide-mode-${targetMode}"]`, { timeout: 10000 });
         await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}-return`);
       }
+
+      const importAction = page.locator('[data-testid="mode-button-import"]').first();
+      assert(!(await importAction.isDisabled().catch(() => false)), `${viewport.label}: Import utility must be enabled`);
+      await importAction.click();
+      await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
+      await openMode(page, baseUrl, 'project', `project-loaded-command-surface-${viewport.label}-import-return`);
 
       assert(
         await visible(page.locator('[data-testid="ide-project-command-board-v1"]').first()),

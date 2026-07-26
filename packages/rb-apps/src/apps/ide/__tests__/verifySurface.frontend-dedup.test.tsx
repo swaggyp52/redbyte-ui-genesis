@@ -214,10 +214,10 @@ describe('Verify frontend — single canonical sequential helper (B-13 Phase 2)'
       />
     );
 
-    // Clock actions available via canonical helper
-    expect(getByTestId('ide-verify-insert-clock-pattern')).toBeTruthy();
-    expect(getByTestId('ide-verify-insert-clock-hold-low')).toBeTruthy();
-    expect(getByTestId('ide-verify-insert-clock-hold-high')).toBeTruthy();
-    expect(getByTestId('ide-verify-insert-clock-pulse')).toBeTruthy();
+    // Clock actions are owned by the canonical clock lane in the testbench grid.
+    expect(getByTestId('ide-stimulus-clock-pattern-alternating')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-hold-low')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-hold-high')).toBeTruthy();
+    expect(getByTestId('ide-stimulus-clock-pattern-pulse')).toBeTruthy();
   });
 });

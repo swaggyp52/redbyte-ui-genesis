@@ -2,8 +2,8 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -13,9 +13,6 @@ const VIEWPORTS = [
 const SCREENSHOT_ROOT = process.env.RB_VERIFY_NO_CIRCUIT_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_VERIFY_NO_CIRCUIT_SCREENSHOTS_DIR)
   : '';
-
-const HEAD_SHORT = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-const BUILD_BADGE_HASH = HEAD_SHORT.slice(0, 7);
 
 await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUrl }) => {
   const findings = [];
@@ -38,10 +35,10 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await openDirectVerify(page, baseUrl, viewport.label);
     await capture(page, viewport, 'direct-verify-no-circuit');
+    await assertBuildHash(page, `${viewport.label}/direct Verify`);
 
     const metrics = await readMetrics(page);
     assert(metrics.mode === 'verify', `${viewport.label}: expected Verify mode, got "${metrics.mode}"`);
-    assert(metrics.buildText.includes(BUILD_BADGE_HASH), `${viewport.label}: build badge "${metrics.buildText}" must include ${BUILD_BADGE_HASH}`);
     assert(!metrics.hasBoundary, `${viewport.label}: error boundary must not be visible`);
     assert(metrics.rootOverflowX <= 2, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.taskBox, `${viewport.label}: no-circuit task panel must be measurable`);
@@ -81,9 +78,19 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
     await openDirectVerify(page, baseUrl, `${viewport.label}-import-route`);
     await importButton.click();
     await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
+    const importWorkbench = page.locator('[data-testid="ide-import-workbench"]').first();
+    const importStepper = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
+    const importWorkbenchText = ((await importWorkbench.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    const importSteps = (await importStepper.locator('li').allTextContents()).map((step) => step.replace(/\s+/g, ' ').trim());
     assert(
-      await visible(page.locator('[data-testid="ide-import-dock"]').first()),
-      `${viewport.label}: Import / Recover must route to Import utility`
+      await visible(importWorkbench) &&
+        await visible(importStepper) &&
+        importSteps.length === 3 &&
+        /upload/i.test(importSteps[0]) &&
+        /review/i.test(importSteps[1]) &&
+        /apply/i.test(importSteps[2]) &&
+        /recover a project without replacing current work early/i.test(importWorkbenchText),
+      `${viewport.label}: Import / Recover must route to the v3 recovery workspace with Upload, Review, Apply, and the no-early-replacement boundary`
     );
   }
 
@@ -141,7 +148,6 @@ async function readMetrics(page) {
     }
 
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '',
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       rootOverflowX: Math.max(

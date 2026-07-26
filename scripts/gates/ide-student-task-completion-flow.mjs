@@ -125,7 +125,10 @@ async function assertDesignDirectManipulation(page, viewport) {
     }
 
     return {
-      dock: box('[data-testid="ide-inspector"]'),
+      supportDockPolicy:
+        document.querySelector('[data-testid="ide-mode-design"]')?.getAttribute('data-support-dock-policy') ?? '',
+      libraryDock: box('[data-testid="ide-left-dock"]'),
+      dock: box('[data-testid="ide-right-dock"]'),
       inspector: box('[data-testid="ide-design-selection-inspector"]'),
       identity: box('[data-testid="ide-design-inspector-identity-card"]'),
       actions: box('[data-testid="ide-design-inspector-actions"]'),
@@ -139,14 +142,29 @@ async function assertDesignDirectManipulation(page, viewport) {
     };
   });
 
-  assert(metrics.dock?.visibleWidth >= 260, `${viewport.label}: Design inspector dock too narrow ${JSON.stringify(metrics.dock)}`);
   assert(
-    metrics.inspector?.visibleWidth >= 224,
+    metrics.supportDockPolicy === 'stable',
+    `${viewport.label}: Design must use the stable v3 support-dock policy ${JSON.stringify(metrics)}`
+  );
+  assert(
+    metrics.libraryDock?.visibleWidth >= 180 && metrics.libraryDock?.visibleWidth <= 230,
+    `${viewport.label}: Design Library must remain a stable 180-230px region ${JSON.stringify(metrics.libraryDock)}`
+  );
+  assert(
+    metrics.dock?.visibleWidth >= 210 && metrics.dock?.visibleWidth <= 290,
+    `${viewport.label}: Design inspector dock must stay compact (210-290px) ${JSON.stringify(metrics.dock)}`
+  );
+  assert(
+    metrics.inspector?.visibleWidth >= Math.max(160, metrics.dock.visibleWidth - 48) &&
+      metrics.inspector?.visibleWidth <= metrics.dock.visibleWidth,
     `${viewport.label}: selected-node inspector content too narrow ${JSON.stringify(metrics.inspector)}`
   );
   assert(
-    metrics.canvas?.visibleWidth >= Math.round(viewport.width * 0.44),
-    `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify(metrics.canvas)}`
+    metrics.canvas && metrics.libraryDock && metrics.dock &&
+      metrics.canvas.visibleWidth /
+        (metrics.libraryDock.visibleWidth + metrics.canvas.visibleWidth + metrics.dock.visibleWidth) + 0.005 >=
+        (viewport.width >= 1440 ? 0.66 : 0.64),
+    `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify({ library: metrics.libraryDock, canvas: metrics.canvas, inspector: metrics.dock })}`
   );
   assert(
     metrics.identity && metrics.actions && metrics.identity.bottom <= metrics.actions.top,
@@ -215,22 +233,37 @@ async function assertVerifyFailRepairPass(page, viewport) {
 }
 
 async function clickRunAndReadStatus(page) {
-  const previousReportHash = await page.evaluate(
-    () => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.reportHash ?? null
+  const previousRunCount = await page.evaluate(
+    () => window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyRunHistory?.length ?? 0
   );
-  await clickVerifyRun(page);
+  await clickPreferredVerifyRun(page);
   await page.waitForFunction(
     (previous) => {
-      const nextHash = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun?.reportHash ?? null;
-      return Boolean(nextHash && nextHash !== previous);
+      const nextCount = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyRunHistory?.length ?? 0;
+      return nextCount > previous;
     },
-    previousReportHash,
+    previousRunCount,
     { timeout: 20000 }
   );
   await waitForVerifyResult(page, { timeout: 10000 });
   return ((await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')) ?? '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+async function clickPreferredVerifyRun(page) {
+  for (const testId of [
+    'ide-verify-stale-keep-reference',
+    'ide-verify-primary-status-rerun',
+    'ide-verify-primary-status-run-current',
+    'ide-verify-primary-status-rerun-active',
+  ]) {
+    const staleAction = page.getByTestId(testId).first();
+    if (!(await visible(staleAction))) continue;
+    await staleAction.click();
+    return;
+  }
+  await clickVerifyRun(page);
 }
 
 async function pickExpectedCell(page) {
@@ -285,12 +318,10 @@ async function assertExportHandoff(page, viewport) {
   await assertBuildHash(page, `${viewport.label}/Export`);
   const readinessHero = page.locator('[data-testid="ide-export-readiness-hero"]').first();
   assert(await visible(readinessHero), `${viewport.label}: Export readiness authority missing`);
-  const readinessDetails = page.locator('.ide-export-package-readiness-details').first();
-  if (!(await readinessDetails.getAttribute('open'))) {
-    await readinessDetails.locator('summary').first().click();
-  }
-  const checklist = page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first();
-  assert(await visible(checklist), `${viewport.label}: Export handoff checklist missing`);
+  const upstream = page.locator('[data-testid="ide-export-upstream-readiness"]').first();
+  const fileBrowser = page.locator('[data-testid="ide-export-file-browser"]').first();
+  assert(await visible(upstream), `${viewport.label}: Export upstream readiness ownership missing`);
+  assert(await visible(fileBrowser), `${viewport.label}: Export v3 package file browser missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
   assert(/E0/i.test(text), `${viewport.label}: Export must state E0 package boundary`);
   assert(/Verify|Compare/i.test(text), `${viewport.label}: Export must carry Verify state forward`);

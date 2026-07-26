@@ -44,25 +44,41 @@ async function assertPasteHdlRecovery(page, baseUrl, viewport) {
   await openFreshImport(page, baseUrl, `paste-hdl-${viewport.label}`);
   await assertBuildHash(page, viewport.label);
 
-  const startHero = page.locator('[data-testid="ide-import-start-hero"]').first();
+  const intakeStepper = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
+  const zipDropzone = page.locator('[data-testid="ide-import-zip-dropzone"]').first();
   const startSecondary = page.locator('[data-testid="ide-import-start-secondary"]').first();
-  assert(await visible(startHero), `${viewport.label}: first-look Import must keep the guided start hero`);
+  assert(await visible(intakeStepper), `${viewport.label}: first-look Import must show Upload, Review, Apply`);
+  assert(await visible(zipDropzone), `${viewport.label}: first-look Import must expose ZIP intake`);
   assert(await visible(startSecondary), `${viewport.label}: first-look Import must expose Paste HDL`);
 
   await startSecondary.click();
   await page.waitForSelector('[data-testid="ide-import-hdl-textarea"]', { timeout: 10000 });
   await page.waitForTimeout(120);
+  const editorControlFloor = await page.evaluate(() => {
+    const label = document.querySelector('.ide-import-v3__editor-bar label');
+    const select = document.querySelector('[data-testid="ide-import-language-select"]');
+    const textarea = document.querySelector('[data-testid="ide-import-hdl-textarea"]');
+    return {
+      labelFontSize: label instanceof HTMLElement ? Number.parseFloat(getComputedStyle(label).fontSize) : 0,
+      selectFontSize: select instanceof HTMLElement ? Number.parseFloat(getComputedStyle(select).fontSize) : 0,
+      selectHeight: select instanceof HTMLElement ? select.getBoundingClientRect().height : 0,
+      textareaFontSize: textarea instanceof HTMLElement ? Number.parseFloat(getComputedStyle(textarea).fontSize) : 0,
+    };
+  });
+  assert(editorControlFloor.labelFontSize >= 13.9, `${viewport.label}: Paste HDL editor label is below 14px ${JSON.stringify(editorControlFloor)}`);
+  assert(editorControlFloor.selectFontSize >= 13.9, `${viewport.label}: Paste HDL language control text is below 14px ${JSON.stringify(editorControlFloor)}`);
+  assert(editorControlFloor.selectHeight >= 35.5, `${viewport.label}: Paste HDL language control is below 36px ${JSON.stringify(editorControlFloor)}`);
+  assert(editorControlFloor.textareaFontSize >= 13.9, `${viewport.label}: Paste HDL editor text is below 14px ${JSON.stringify(editorControlFloor)}`);
   await capture(page, viewport, 'paste-hdl-active');
 
-  await assertActiveImportTaskPlane(page, viewport, 'Paste HDL');
-  await assertNoVisibleStartShell(page, viewport, 'Paste HDL');
+  assert(await visible(page.locator('[data-testid="ide-import-step-upload"]').first()), `${viewport.label}: Paste HDL must remain in the Upload step`);
   await assertVisibleRect(page, ['[data-testid="ide-import-workbench"]'], `${viewport.label}/Paste HDL workbench`, {
     maxTop: viewport.height === 768 ? 286 : 320,
     minWidth: Math.round(viewport.width * 0.48),
     minHeight: 260,
   });
   await assertVisibleRect(page, ['[data-testid="ide-import-hdl-textarea"]'], `${viewport.label}/Paste HDL editor`, {
-    maxTop: viewport.height === 768 ? 430 : 470,
+    maxTop: viewport.height === 768 ? 490 : 540,
     minWidth: Math.round(viewport.width * 0.42),
     minHeight: viewport.height === 768 ? 150 : 210,
   });
@@ -71,10 +87,6 @@ async function assertPasteHdlRecovery(page, baseUrl, viewport) {
 async function assertBlockedSampleRecovery(page, baseUrl, viewport) {
   await openFreshImport(page, baseUrl, `blocked-sample-${viewport.label}`);
 
-  const behavioralToggle = page.locator('[data-testid="ide-import-toggle-behavioral-samples"]').first();
-  assert(await visible(behavioralToggle), `${viewport.label}: unsupported examples toggle must be reachable`);
-  await behavioralToggle.click();
-
   const blockedSample = page.locator('[data-testid="ide-import-load-sample-edge-detect"]').first();
   assert(await visible(blockedSample), `${viewport.label}: blocked behavioral sample must be reachable`);
   await blockedSample.click();
@@ -82,8 +94,7 @@ async function assertBlockedSampleRecovery(page, baseUrl, viewport) {
   await page.waitForTimeout(120);
   await capture(page, viewport, 'blocked-sample-active');
 
-  await assertActiveImportTaskPlane(page, viewport, 'Unsupported HDL');
-  await assertNoVisibleStartShell(page, viewport, 'Unsupported HDL');
+  assert(await visible(page.locator('[data-testid="ide-import-step-upload"]').first()), `${viewport.label}: blocked HDL must remain in the Upload step`);
   await assertVisibleRect(page, ['[data-testid="ide-import-workbench"]'], `${viewport.label}/Blocked sample workbench`, {
     maxTop: viewport.height === 768 ? 286 : 320,
     minWidth: Math.round(viewport.width * 0.48),
@@ -114,27 +125,6 @@ async function openFreshImport(page, baseUrl, gateLabel) {
   });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 15000 });
-}
-
-async function assertActiveImportTaskPlane(page, viewport, expectedText) {
-  const activeTaskbar = page.locator('[data-testid="ide-import-active-taskbar"]').first();
-  assert(await visible(activeTaskbar), `${viewport.label}: active Import must show a compact task bar`);
-  const taskbarText = ((await activeTaskbar.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
-  assert(new RegExp(expectedText, 'i').test(taskbarText), `${viewport.label}: task bar must name "${expectedText}", got "${taskbarText}"`);
-  assert(/Parse HDL|Review Import|Apply Pins|Start fresh/i.test(taskbarText), `${viewport.label}: task bar must expose direct recovery actions`);
-}
-
-async function assertNoVisibleStartShell(page, viewport, label) {
-  const visibleStartShellCount = await page.evaluate(() => {
-    return Array.from(document.querySelectorAll('[data-testid="ide-import-start-shell"], [data-testid="ide-import-start-hero"]')).filter(
-      (element) => {
-        const bounds = element.getBoundingClientRect();
-        const style = window.getComputedStyle(element);
-        return bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
-      }
-    ).length;
-  });
-  assert(visibleStartShellCount === 0, `${viewport.label}/${label}: active recovery must not keep the intake start shell visible`);
 }
 
 async function capture(page, viewport, label) {

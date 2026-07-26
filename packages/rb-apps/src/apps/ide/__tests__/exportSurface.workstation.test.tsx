@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
@@ -122,6 +122,7 @@ function makeWorkflowAuthority(options: {
   verifyResult?: ProjectHealthVerifyResult;
   verifyQualification?: 'complete' | 'incomplete-mapping';
   hasSuccessfulExportBundle?: boolean;
+  hasBlockingDesignIssue?: boolean;
 } = {}) {
   const verifyResult = options.verifyResult;
   const verifyHash = verifyResult?.hash ?? null;
@@ -147,6 +148,10 @@ function makeWorkflowAuthority(options: {
       hasCircuit: true,
       hasIoMapping: true,
       hasVectors: true,
+      hasBlockingDesignIssue: options.hasBlockingDesignIssue,
+      blockingDesignIssueMessage: options.hasBlockingDesignIssue
+        ? 'Output LD2 has no Design driver.'
+        : undefined,
       verifyQualification:
         options.verifyQualification === 'incomplete-mapping' ? 'incomplete-mapping' : undefined,
     },
@@ -160,45 +165,107 @@ function makeWorkflowAuthority(options: {
 describe('ExportSurface workstation redesign', () => {
   afterEach(() => { cleanup(); });
 
-  it('starts with the export support dock collapsed and the console minimized so the handoff context is not hidden', () => {
+  it('starts as one unobstructed Export workspace without support docks or a console', () => {
     const { getByTestId, queryByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
-    expect(getByTestId('ide-export-command-strip').textContent).toContain('Export');
-    expect(getByTestId('ide-mode-export').getAttribute('data-right-dock-state')).toBe('collapsed');
+    expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Export');
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
+    expect(getByTestId('ide-mode-export').getAttribute('data-left-dock-state')).toBe('hidden');
+    expect(getByTestId('ide-mode-export').getAttribute('data-right-dock-state')).toBe('hidden');
+    expect(getByTestId('ide-mode-export').getAttribute('data-console-state')).toBe('hidden');
+    expect(getByTestId('ide-mode-body').getAttribute('aria-label')).toBe('export workspace');
     expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-    expect(getByTestId('ide-workbench-console').getAttribute('data-console-state')).toBe('collapsed');
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
-  it('shows the summary hero, grouped artifacts, key copy actions, and compact Vivado guidance', () => {
-    const { getByTestId, getByText } = render(
+  it('shows readiness-first package contents with a direct file browser and preview actions', () => {
+    const { getByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" />
     );
 
-    expect(getByTestId('ide-export-summary-card').textContent).toContain('Export handoff station');
-    expect(getByTestId('ide-export-design-summary').textContent).toContain('Mapped Pins');
-    expect(getByTestId('ide-export-design-summary').textContent).toContain('Artifacts');
+    expect(getByTestId('ide-export-package-inspector-v1').textContent).toContain('Draft export available');
+    expect(getByTestId('ide-export-package-contents').textContent).toContain('top.vhd');
+    expect(getByTestId('ide-export-package-contents').textContent).toContain('top.xdc');
+    expect(getByTestId('ide-export-package-contents').textContent).toContain('testbench.vhd');
+    expect(getByTestId('ide-export-e0-boundary-summary').textContent).toContain('Browser E0');
 
-    expect(getByTestId('ide-export-artifact-group-hdl')).toBeTruthy();
-    expect(getByTestId('ide-export-artifact-group-constraints')).toBeTruthy();
-    expect(getByTestId('ide-export-artifact-group-project')).toBeTruthy();
+    expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    expect(getByTestId('ide-export-file-top-vhd')).toBeTruthy();
+    expect(getByTestId('ide-export-file-top-xdc')).toBeTruthy();
+    expect(getByTestId('ide-export-file-vivado-import-tcl')).toBeTruthy();
 
-    expect(getByTestId('ide-export-copy-top-vhd')).toBeTruthy();
-    expect(getByTestId('ide-export-copy-top-xdc')).toBeTruthy();
-    expect(getByTestId('ide-export-copy-vivado-import')).toBeTruthy();
-    expect(getByTestId('ide-export-copy-current')).toBeTruthy();
-
-    const checklist = within(getByTestId('ide-export-vivado-checklist')).getAllByRole('listitem');
-    expect(checklist).toHaveLength(8);
-    expect(checklist[0].textContent).toContain('Download the current package');
-    expect(getByText('Advanced / full checklist')).toBeTruthy();
-    expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/top\.vhd/);
-    expect(getByTestId('ide-export-vivado-zip-contents').textContent).toMatch(/Ready for Vivado/);
+    fireEvent.click(getByTestId('ide-export-file-top-vhd'));
+    expect(getByTestId('ide-export-preview-path').textContent).toBe('top.vhd');
+    expect(getByTestId('ide-export-preview-code').textContent).toContain('entity top is');
+    expect(getByTestId('ide-export-copy-current-file')).toBeTruthy();
+    expect(getByTestId('ide-export-download-current-file')).toBeTruthy();
+    expect(getByTestId('ide-export-open-technical-evidence').textContent).toBe('Open technical evidence');
   });
 
-  it('keeps draft state, handoff summary, and Verify next action as distinct messages', () => {
+  it('keeps upstream ownership and the generated package workspace visible without opening a support drawer', () => {
+    const { getByTestId } = render(
+      <ExportSurface project={buildProject()} determinismHash="ide-hash" />
+    );
+
+    const readiness = getByTestId('ide-export-upstream-readiness');
+    expect(readiness.textContent).toContain('What owns this package state');
+    expect(getByTestId('ide-export-upstream-design').getAttribute('data-owner')).toBe('Design');
+    expect(getByTestId('ide-export-upstream-design').textContent).toContain('Ready');
+    expect(getByTestId('ide-export-upstream-verify').getAttribute('data-owner')).toBe('Verify');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Map Pins');
+    expect(getByTestId('ide-export-upstream-mapping').textContent).toContain('Ready');
+
+    const packageFiles = getByTestId('ide-export-package-files');
+    expect(packageFiles.tagName).toBe('DIV');
+    expect(getByTestId('ide-export-file-top-vhd').textContent).toContain('top.vhd');
+    expect(getByTestId('ide-export-file-top-xdc').textContent).toContain('top.xdc');
+    expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    expect(getByTestId('ide-export-selected-preview-v1')).toBeTruthy();
+  });
+
+  it('names Map Pins as the blocker owner and routes the one recovery action back to that workspace', () => {
+    const project = buildProject();
+    project.ioMapping!.outputs[0].pin = '';
+    const onGoToHardware = vi.fn();
+    const { getByTestId } = render(
+      <ExportSurface
+        project={project}
+        determinismHash="ide-hash"
+        onGoToHardware={onGoToHardware}
+      />
+    );
+
+    const mappingRow = getByTestId('ide-export-upstream-mapping');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Map Pins');
+    expect(mappingRow.textContent).toContain('1 required missing');
+    expect(mappingRow.textContent).toContain('Open Map Pins');
+    fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
+    expect(onGoToHardware).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps duplicate package-pin conflicts owned by Map Pins instead of reporting mapping as ready', () => {
+    const project = buildProject();
+    project.ioMapping!.outputs[0].pin = 'V17';
+    const { getByTestId } = render(
+      <ExportSurface
+        project={project}
+        determinismHash="ide-hash"
+        onGoToHardware={vi.fn()}
+      />
+    );
+
+    const mappingRow = getByTestId('ide-export-upstream-mapping');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Map Pins');
+    expect(mappingRow.textContent).toContain('Resolve mapping blocker');
+    expect(mappingRow.textContent).toMatch(/Duplicate pin assignment/i);
+    expect(getByTestId('ide-export-blocked-open-map-pins')).toBeTruthy();
+  });
+
+  it('keeps draft state, package inspection, and the Verify next action as distinct work objects', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildProject()}
@@ -207,44 +274,95 @@ describe('ExportSurface workstation redesign', () => {
       />
     );
 
-    const commandStrip = getByTestId('ide-export-command-strip');
-    const summaryCard = getByTestId('ide-export-summary-card');
-    const checksDock = getByTestId('ide-export-checks-dock');
-    const handoffSummary = getByTestId('ide-export-handoff-summary');
+    const inspector = getByTestId('ide-export-package-inspector-v1');
+    const packageContents = getByTestId('ide-export-package-contents');
+    const verifyReadiness = getByTestId('ide-export-upstream-verify');
 
-    expect(commandStrip.textContent).toContain('Draft export available');
-    expect(summaryCard.textContent).not.toContain('Draft export available');
-    expect(summaryCard.textContent).toContain('Vivado handoff package generated');
-    expect(checksDock.textContent).toContain('Open Verify to create trusted export evidence');
-    expect(handoffSummary.textContent).toContain('Pin mapping');
-    expect(handoffSummary.textContent).toContain('Verification');
-    expect(handoffSummary.textContent).toContain('Draft package available; trusted evidence still pending');
+    expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
+    expect(inspector.textContent).toContain('Draft export available');
+    expect(packageContents.textContent).not.toContain('Draft export available');
+    expect(packageContents.textContent).toContain('Inspect the generated handoff');
+    expect(verifyReadiness.textContent).toContain('Compare needed');
+    expect(verifyReadiness.textContent).toContain('Verify has not run yet');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(getByTestId('ide-export-e0-boundary-summary').textContent).toContain(
+      'Browser E0 confirms package generation only'
+    );
   });
 
-  it('keeps project export available when verify has not run yet', () => {
-    const { getByTestId, getByText, queryByTestId } = render(
+  it('publishes Design-blocked Compare evidence as inconclusive instead of a prior FAIL', () => {
+    const onGoToDesign = vi.fn();
+    const failedVerify: ProjectHealthVerifyResult = {
+      status: 'fail',
+      hash: 'verify-fail-hash',
+      ranAtIso: '2026-07-15T17:00:00.000Z',
+      failingTick: 0,
+    };
+    const view = render(
+      <ExportSurface
+        project={buildProject()}
+        determinismHash="ide-hash"
+        verifyResult={failedVerify}
+        designReady={false}
+        designBlockingIssue={{
+          title: 'Output LD2 is not driven',
+          message: 'Connect a Design driver to LD2 before checking behavior.',
+        }}
+        workflowAuthority={makeWorkflowAuthority({
+          verifyResult: failedVerify,
+          hasBlockingDesignIssue: true,
+        })}
+        onGoToDesign={onGoToDesign}
+      />
+    );
+
+    expect(view.getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('blocked');
+    const visibleVerifyAuthority = view.getByTestId('ide-export-upstream-verify');
+    expect(visibleVerifyAuthority.textContent).toContain(
+      'Inconclusive - Design blocked'
+    );
+    expect(visibleVerifyAuthority.textContent).toContain(
+      'no saved Compare PASS/FAIL is current'
+    );
+    expect(view.container.textContent).not.toContain('Compare FAIL');
+    expect(view.container.textContent).not.toContain('Checks differ');
+
+    fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
+    expect(view.getByTestId('ide-export-gate-verify').textContent).toContain(
+      'Inconclusive - Design blocked'
+    );
+    expect(view.getByTestId('ide-export-gate-verify').textContent).not.toContain('Outputs differ');
+
+    fireEvent.click(view.getByTestId('ide-export-blocked-open-design'));
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps draft package inspection available and offers Verify when Compare has not run yet', () => {
+    const onOpenVerify = vi.fn();
+    const { getByTestId } = render(
       <ExportSurface
         project={buildProject()}
         determinismHash="ide-hash"
         workflowAuthority={makeWorkflowAuthority()}
+        onOpenVerify={onOpenVerify}
       />
     );
 
-    expect(getByTestId('ide-export-dock-download').hasAttribute('disabled')).toBe(false);
-    expect(getByTestId('ide-export-vivado-unverified-callout').textContent).toContain(
-      'Run Verify before relying on this handoff'
-    );
-    expect(getByTestId('ide-export-blockers-callout')).toBeTruthy();
-    expect(getByTestId('ide-export-unverified-callout').textContent).toContain(
-      'Open Verify when you want to compare expected outputs against the live design'
-    );
-    expect(getByText('Export diagnostics')).toBeTruthy();
-    expect(queryByTestId('ide-export-vivado-blocked-callout')).toBeNull();
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
+    expect(getByTestId('ide-export-package-build-v1').hasAttribute('disabled')).toBe(false);
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    fireEvent.click(getByTestId('ide-export-package-build-v1'));
+    expect(onOpenVerify).toHaveBeenCalledTimes(1);
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    expect(getByTestId('ide-export-gate-verify').textContent).toContain('Not run yet');
+    expect(getByTestId('ide-export-blockers-list').textContent).toContain('No comparison run found');
   });
 
   // ─── Commit 1: pass-incomplete is not trusted ────────────────────────────
 
-  it('surfaces Vivado evidence diagnostics without treating E1 or E2 as E3 proof', () => {
+  it('keeps the browser-E0 package boundary explicit without claiming external hardware proof', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={buildProject()}
@@ -253,22 +371,15 @@ describe('ExportSurface workstation redesign', () => {
       />
     );
 
-    const diagnostics = getByTestId('ide-export-vivado-evidence-diagnostics');
-    expect(diagnostics.textContent).toContain('E0');
-    expect(diagnostics.textContent).toContain('Export package');
-    expect(diagnostics.textContent).toContain('E1');
-    expect(diagnostics.textContent).toContain('Vivado build / bitstream');
-    expect(diagnostics.textContent).toContain('E2');
-    expect(diagnostics.textContent).toContain('Board programming');
-    expect(diagnostics.textContent).toContain('E3');
-    expect(diagnostics.textContent).toContain('Observed board behavior');
-    expect(getByTestId('ide-export-evidence-row-e2').textContent).toContain('does not prove behavior');
-    expect(getByTestId('ide-export-evidence-row-e3').textContent).toContain('manual observation required');
-    expect(getByTestId('ide-export-vivado-warning-classes').textContent).toContain('expected/no-clock/combinational');
-    expect(getByTestId('ide-export-vivado-warning-classes').textContent).toContain('observation blocker');
-    expect(getByTestId('ide-export-bench-empty-state').textContent).toContain('No local bench classification is attached');
-    expect(getByTestId('ide-export-command-strip').textContent).toContain('Draft export available');
-    expect(getByTestId('ide-export-command-strip').textContent).not.toContain('Trusted export ready');
+    const boundary = getByTestId('ide-export-e0-boundary-summary');
+    expect(boundary.textContent).toContain('Browser E0 confirms package generation only');
+    expect(boundary.textContent).toContain('Vivado build');
+    expect(boundary.textContent).toContain('bitstream');
+    expect(boundary.textContent).toContain('programming');
+    expect(boundary.textContent).toContain('physical board behavior remain external');
+    expect(getByTestId('ide-export-package-inspector-v1').textContent).toContain('Draft export available');
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
+    expect(getByTestId('ide-export-package-inspector-v1').textContent).not.toContain('Trusted E0 package');
   });
 
   it('treats pass-with-incomplete-mapping as unverified: export is NOT trusted', () => {
@@ -312,10 +423,16 @@ describe('ExportSurface workstation redesign', () => {
       />
     );
 
-    // Handoff sidecard should NOT show READY — pass-incomplete is not a trusted export
-    const pill = getByTestId('ide-export-checks-dock').querySelector('[data-testid]');
-    const dockText = getByTestId('ide-export-checks-dock').textContent ?? '';
-    expect(dockText).not.toContain('READY');
+    // Readiness-first package state must remain a draft when Compare passed with incomplete mapping.
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
+    expect(getByTestId('ide-export-package-inspector-v1').textContent).toContain('mapping review pending');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Map Pins');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain(
+      'Checks match, but pin mapping still needs attention'
+    );
+    expect(getByTestId('ide-export-upstream-mapping').textContent).toContain('Ready');
+    expect(getByTestId('ide-export-readiness-hero').textContent).not.toContain('Trusted E0 package');
   });
 
   it('explains pass-with-incomplete-mapping as a mapping-trust problem, not a generic verify failure', () => {
@@ -359,33 +476,38 @@ describe('ExportSurface workstation redesign', () => {
       />
     );
 
-    expect(getByTestId('ide-export-trust-reason').textContent).toMatch(/mapping/i);
-    expect(getByTestId('ide-export-blockers-callout').textContent).toMatch(/compare|download now|advisory/i);
+    expect(getByTestId('ide-export-package-inspector-v1').textContent).toMatch(/mapping review pending/i);
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain(
+      'Checks match, but pin mapping still needs attention'
+    );
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Map Pins');
+    expect(getByTestId('ide-export-upstream-verify').textContent).not.toContain('Compare FAIL');
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    expect(getByTestId('ide-export-gate-verify').textContent).toContain('Pass incomplete - mapping');
     expect(getByTestId('ide-export-gate-verify').textContent).not.toContain('Outputs differ');
+    expect(getByTestId('ide-export-blockers-list').textContent).toContain(
+      'required output mapping was incomplete'
+    );
   });
 
-  it('hero has exactly one primary handoff CTA — no competing secondary download in the hero zone', () => {
+  it('readiness header keeps one primary repair CTA plus a clearly secondary draft download', () => {
     const onOpenVerify = vi.fn();
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId } = render(
       <ExportSurface project={buildProject()} determinismHash="ide-hash" onOpenVerify={onOpenVerify} />
     );
 
-    // The primary CTA wrapper must exist in the hero
-    expect(getByTestId('ide-export-primary-handoff-cta')).toBeTruthy();
-    // The primary handoff button inside the hero must be enabled (no structural blockers in this project)
-    expect(getByTestId('ide-export-rebuild-btn').hasAttribute('disabled')).toBe(false);
+    const primaryActions = getByTestId('ide-export-primary-actions');
+    const primaryButtons = within(primaryActions).getAllByRole('button');
+    expect(primaryButtons).toHaveLength(2);
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(getByTestId('ide-export-package-build-v1').hasAttribute('disabled')).toBe(false);
 
-    // The kit download is absent from the summary hero — it lives in the right-column
-    // "Other outputs" collapsed section so it never visually competes with the primary CTA.
-    const hero = getByTestId('ide-export-summary-card');
-    expect(hero.querySelector('[data-testid="ide-export-download-kit-btn"]')).toBeNull();
-    expect(hero.querySelector('[data-testid="ide-export-rebuild-btn"]')).toBeNull();
-    // The ghost Design-back button is also absent from the hero CTA zone
-    expect(hero.querySelector('[data-testid="ide-export-go-design-header"]')).toBeNull();
-
-    // The kit button still exists on the page — in the download block, collapsed under Other outputs
-    expect(getByTestId('ide-export-download-kit-btn')).toBeTruthy();
-    expect(getByTestId('ide-export-other-outputs')).toBeTruthy();
+    // File inspection remains a separate work object and does not compete in the readiness action slot.
+    expect(primaryActions.querySelector('[data-testid^="ide-export-file-"]')).toBeNull();
+    expect(getByTestId('ide-export-package-files').tagName).toBe('DIV');
+    expect(getByTestId('ide-export-file-browser')).toBeTruthy();
   });
 
   it('labels supported 4-NAND latches as latch-controlled and counts them as stateful', () => {
@@ -393,6 +515,8 @@ describe('ExportSurface workstation redesign', () => {
       <ExportSurface project={buildRawFourNandLatchProject()} determinismHash="ide-hash" />
     );
 
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
     expect(getByTestId('ide-export-gate-stack').textContent).toContain('Latch control');
+    expect(getByTestId('ide-export-deterministic-checks').textContent).toContain('Supported latch control');
   });
 });

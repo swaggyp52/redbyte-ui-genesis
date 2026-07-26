@@ -9,22 +9,17 @@ afterEach(() => {
   cleanup();
 });
 
-function enterImportWorkbench(view: ReturnType<typeof render>) {
-  fireEvent.click(view.getByTestId('ide-import-start-secondary'));
-}
-
 describe('ImportSurface workstation redesign', () => {
-  it('shows a workflow rail, promotes schematic review, and surfaces board detection after XDC parse', async () => {
+  it('shows the horizontal workflow, promotes schematic review, and surfaces board detection', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
 
-    const workflowRail = view.getByTestId('ide-import-workflow-rail');
-    expect(within(workflowRail).getByText('Upload ZIP')).toBeTruthy();
-    expect(within(workflowRail).getByText('Parse HDL')).toBeTruthy();
-    expect(within(workflowRail).getByText('Map ports')).toBeTruthy();
-    expect(within(workflowRail).getByText('Review schematic')).toBeTruthy();
-    expect(within(workflowRail).getByText('Apply import')).toBeTruthy();
+    const workflow = view.getByTestId('ide-import-horizontal-stepper');
+    expect(within(workflow).getByText('Upload')).toBeTruthy();
+    expect(within(workflow).getByText('Review')).toBeTruthy();
+    expect(within(workflow).getByText('Apply')).toBeTruthy();
+    expect(workflow.querySelectorAll('li')).toHaveLength(3);
+    expect(view.queryByTestId('ide-import-workflow-rail')).toBeNull();
 
-    enterImportWorkbench(view);
     fireEvent.click(view.getByTestId('ide-import-load-sample-and-gate'));
 
     await waitFor(() => {
@@ -34,9 +29,6 @@ describe('ImportSurface workstation redesign', () => {
     expect(view.getByTestId('ide-import-ports-table').textContent).toContain('Entity Port');
     expect(view.getByTestId('ide-import-ports-table').textContent).toContain('Board Pin');
     expect(view.getByTestId('ide-import-schematic-preview').textContent).toContain('top');
-
-    fireEvent.click(view.getByTestId('ide-import-parse-xdc'));
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
 
     await waitFor(() => {
       expect(view.getByTestId('ide-import-board-detection').textContent).toContain('Basys3');
@@ -49,8 +41,6 @@ describe('ImportSurface workstation redesign', () => {
     const onGoToExport = vi.fn();
     const view = render(<ImportSurface onImportProject={vi.fn()} onGoToExport={onGoToExport} />);
 
-    enterImportWorkbench(view);
-    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -59,5 +49,22 @@ describe('ImportSurface workstation redesign', () => {
 
     fireEvent.click(view.getByTestId('ide-import-go-to-export'));
     expect(onGoToExport).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives keyboard users a visible Escape path out of the pasted HDL editor', async () => {
+    const view = render(<ImportSurface onImportProject={vi.fn()} />);
+
+    fireEvent.click(view.getByTestId('ide-import-start-secondary'));
+    const editor = await view.findByTestId('ide-import-hdl-textarea');
+
+    expect(view.getByTestId('ide-import-hdl-editor-keyboard-help').textContent).toContain(
+      'Escape leaves the editor'
+    );
+
+    editor.focus();
+    expect(document.activeElement).toBe(editor);
+    fireEvent.keyDown(editor, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(view.getByTestId('ide-import-load-sample-and-gate'));
   });
 });

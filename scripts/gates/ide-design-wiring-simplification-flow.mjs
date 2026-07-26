@@ -215,8 +215,27 @@ async function clickNode(page, nodeId) {
 
 async function clickPort(page, nodeId, portName) {
   const port = page.locator(`[data-node-id="${nodeId}"] [data-port-id="${portName}"]`).first();
-  await port.waitFor({ state: 'visible', timeout: 8000 });
-  await port.click();
+  if (await port.isVisible().catch(() => false)) {
+    await port.click();
+    return;
+  }
+
+  const clusters = page.locator(`[data-node-id="${nodeId}"] [data-port-cluster]`);
+  const count = await clusters.count();
+  for (let index = 0; index < count; index += 1) {
+    const cluster = clusters.nth(index);
+    const portIds = ((await cluster.getAttribute('data-port-ids')) ?? '').split(/\s+/);
+    if (!portIds.includes(portName)) continue;
+    await cluster.click();
+    const choice = page.locator(
+      `[data-testid="logic-port-picker-choice-${nodeId}-${portName}"]`
+    ).first();
+    await choice.waitFor({ state: 'visible', timeout: 5000 });
+    await choice.click();
+    return;
+  }
+
+  throw new Error(`port ${nodeId}.${portName} was not visible as a direct target or dense-picker choice`);
 }
 
 async function connectPorts(page, fromNodeId, fromPort, toNodeId, toPort) {
@@ -284,16 +303,21 @@ async function moveNodeToCanvasFraction(page, nodeId, position) {
 
 async function readWirePortStates(page, nodes) {
   return page.evaluate((ids) => {
-    const state = (nodeId, port) =>
-      document
-        .querySelector(`[data-node-id="${nodeId}"] [data-port-id="${port}"]`)
-        ?.getAttribute('data-wire-port-state') ?? null;
+    const state = (nodeId, port, side) => {
+      const direct = document.querySelector(
+        `[data-node-id="${nodeId}"] [data-port-id="${port}"]`
+      );
+      const target = direct ?? document.querySelector(
+        `[data-node-id="${nodeId}"] [data-port-cluster="${side}"]`
+      );
+      return target?.getAttribute('data-wire-port-state') ?? null;
+    };
     return {
-      fullAdderA: state(ids.FA, 'A'),
-      fullAdderB: state(ids.FA, 'B'),
-      fullAdderCin: state(ids.FA, 'Cin'),
-      fullAdderSum: state(ids.FA, 'Sum'),
-      fullAdderCout: state(ids.FA, 'Cout'),
+      fullAdderA: state(ids.FA, 'A', 'input'),
+      fullAdderB: state(ids.FA, 'B', 'input'),
+      fullAdderCin: state(ids.FA, 'Cin', 'input'),
+      fullAdderSum: state(ids.FA, 'Sum', 'output'),
+      fullAdderCout: state(ids.FA, 'Cout', 'output'),
     };
   }, nodes);
 }

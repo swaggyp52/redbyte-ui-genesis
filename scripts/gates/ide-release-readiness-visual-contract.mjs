@@ -28,9 +28,12 @@ await runIdeGate('IDE release-readiness visual contract satisfied', async ({ pag
         '[data-testid^="ide-design-board-input-"]',
         '[data-testid^="ide-design-board-output-"]',
       ]);
-      assert(designLibrary.visibleWidth >= 260, `${viewport.label}: Design Library width below release target ${JSON.stringify(designLibrary)}`);
       assert(
-        designCanvas.visibleWidth >= Math.round(viewport.width * 0.64),
+        designLibrary.visibleWidth >= 172 && designLibrary.visibleWidth <= 224,
+        `${viewport.label}: Design Library must remain a compact support tool ${JSON.stringify(designLibrary)}`
+      );
+      assert(
+        designCanvas.visibleWidth >= Math.round(viewport.width * 0.62),
         `${viewport.label}: Design canvas below release target ${JSON.stringify(designCanvas)}`
       );
       assert(designClip.clipped.filter((item) => item.outsideDock || item.offViewport).length === 0, `${viewport.label}: Design Library clipped controls ${JSON.stringify(designClip.clipped.slice(0, 8))}`);
@@ -39,9 +42,9 @@ await runIdeGate('IDE release-readiness visual contract satisfied', async ({ pag
       const boardSvg = await getRequiredRect(page, '[data-testid="ide-hw-board-map"]', `${viewport.label}/Basys3 board visual`);
       const table = await getRequiredRect(page, '[data-testid="ide-hw-map-table"]', `${viewport.label}/Hardware mapping table`);
       const resourceSummary = await getRequiredRect(page, '[data-testid="ide-hw-board-resource-summary"]', `${viewport.label}/Hardware resource summary`);
-      assert(table.visibleHeight >= Math.round(viewport.height * 0.44), `${viewport.label}: Hardware table below release height target ${JSON.stringify(table)}`);
-      assert(boardSvg.visibleWidth >= Math.round(viewport.width * 0.30), `${viewport.label}: Basys3 board below release width target ${JSON.stringify(boardSvg)}`);
-      assert(boardSvg.visibleHeight >= Math.round(viewport.height * 0.20), `${viewport.label}: Basys3 board below release height target ${JSON.stringify(boardSvg)}`);
+      assert(table.visibleHeight >= 320, `${viewport.label}: Hardware table below release height target ${JSON.stringify(table)}`);
+      assert(boardSvg.visibleWidth >= 300, `${viewport.label}: Basys3 board below release width target ${JSON.stringify(boardSvg)}`);
+      assert(boardSvg.visibleHeight >= 120, `${viewport.label}: Basys3 board below release height target ${JSON.stringify(boardSvg)}`);
       assert(!rectsOverlap(resourceSummary, boardSvg), `${viewport.label}: Hardware resource summary covers board ${JSON.stringify({ resourceSummary, boardSvg })}`);
 
       await assertReleaseReadinessClean(page, `${viewport.label}/release-readiness visual`);

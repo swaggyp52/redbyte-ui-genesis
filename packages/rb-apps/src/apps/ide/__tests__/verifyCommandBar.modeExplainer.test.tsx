@@ -13,13 +13,6 @@ const BASE: VerifyCommandBarProps = {
   onRun: vi.fn(),
   runLabel: 'Run observe pass',
   runDisabled: false,
-  onGenerate: vi.fn(),
-  generateLabel: 'Seed stimulus',
-  showGenerate: false,
-  showSaveAsExpected: false,
-  statusLabel: 'Draft',
-  statusTone: 'idle',
-  isSequential: false,
 };
 
 afterEach(() => {
@@ -40,7 +33,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Observe: See what the circuit currently does and record observed outputs without comparison. No expected outputs are checked.'
+      'Record observed outputs without grading expected values.'
     );
     expect(getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('true');
     expect(getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('false');
@@ -61,7 +54,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Observe: See what the circuit currently does and record observed outputs without comparison. No expected outputs are checked.'
+      'Record observed outputs without grading expected values.'
     );
 
     view.rerender(
@@ -72,7 +65,7 @@ describe('VerifyCommandBar mode explainer contract', () => {
     );
 
     expect(view.getByTestId('ide-vcb-mode-explainer').textContent).toBe(
-      'Compare: Compare the run by checking expected outputs against observed outputs.'
+      'Check filled expected outputs against this run.'
     );
     expect(view.getByTestId('ide-vcb-observe-only').getAttribute('aria-pressed')).toBe('false');
     expect(view.getByTestId('ide-vcb-use-saved-checks').getAttribute('aria-pressed')).toBe('true');

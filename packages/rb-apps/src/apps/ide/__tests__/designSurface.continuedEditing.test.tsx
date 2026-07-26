@@ -242,6 +242,8 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
     });
 
     expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
   });
 
   it('shows the simulation strip when a verify signal is linked', () => {
@@ -266,7 +268,7 @@ describe('DesignSurface continued-editing focus (Slice 1)', () => {
 // ── Slice 3: Inspector continuity ────────────────────────────────────────────
 
 describe('DesignSurface inspector continuity (Slice 3)', () => {
-  it('shows circuit health summary in the inspector when no node is selected', () => {
+  it('keeps circuit health in the workspace header while the idle inspector stays direct', () => {
     const view = renderSurface({
       compilerStatus: {
         dirtySinceVerify: false,
@@ -277,11 +279,12 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
       },
     });
 
-    // No node selected — idle inspector must show health summary
+    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Blocking circuit issue');
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
   });
 
-  it('health summary reflects the compiler error count from compilerStatus', () => {
+  it('workspace health reflects the compiler error count from compilerStatus', () => {
     const view = renderSurface({
       compilerStatus: {
         dirtySinceVerify: false,
@@ -292,14 +295,14 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
       },
     });
 
-    const summary = view.getByTestId('ide-design-inspector-canvas-default');
-    expect(summary.textContent).toContain('3');
+    expect(view.getByTestId('ide-design-authoring-summary-status').textContent).toContain('Blocking circuit issue');
+    expect(view.getByTestId('ide-design-authoring-issues-errors').textContent).toContain('3 errors');
   });
 
-  it('health summary is hidden when a node is selected', async () => {
+  it('keeps header health visible when a selection opens the contextual inspector', async () => {
     const view = renderSurface();
 
-    // Initially visible
+    expect(view.getByTestId('ide-design-authoring-summary')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
 
     act(() => {
@@ -307,11 +310,12 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
     });
 
     await waitFor(() => {
-      expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
+    expect(view.getByTestId('ide-design-authoring-summary')).toBeTruthy();
   });
 
-  it('health summary reappears after deselecting a node', async () => {
+  it('returns the contextual inspector to the stable canvas overview after deselection', async () => {
     const view = renderSurface();
 
     act(() => {
@@ -319,7 +323,7 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
     });
 
     await waitFor(() => {
-      expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
 
     act(() => {
@@ -328,7 +332,9 @@ describe('DesignSurface inspector continuity (Slice 3)', () => {
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
+      expect(view.queryByTestId('ide-design-selection-inspector')).toBeNull();
     });
+    expect(view.getByTestId('ide-design-authoring-summary')).toBeTruthy();
   });
 });
 

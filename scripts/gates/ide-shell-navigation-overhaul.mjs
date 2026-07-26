@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
-
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -41,8 +39,9 @@ await runIdeGate('IDE shell navigation overhaul satisfied', async ({ page, baseU
       await loadStarterProject(page, { exactExampleId: 'logic-gates' });
       await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
+      const activation = viewport.label === '1440x900' ? 'keyboard' : 'click';
       for (const mode of MODES) {
-        await activateMode(page, mode);
+        await activateMode(page, mode, activation);
         await assertModeReachableAndFocused(page, viewport, mode);
       }
 
@@ -62,16 +61,22 @@ await runIdeGate('IDE shell navigation overhaul satisfied', async ({ page, baseU
   assert(failures.length === 0, `shell navigation overhaul failures:\n${failures.join('\n')}`);
 });
 
-async function activateMode(page, mode) {
+async function activateMode(page, mode, activation = 'click') {
   const button = page.locator(`[data-testid="mode-button-${mode}"]`).first();
   assert(await button.isVisible().catch(() => false), `${mode}: navigation button must be visible`);
-  await button.click();
+  if (activation === 'keyboard') {
+    await button.focus();
+    await page.keyboard.press('Enter');
+  } else {
+    await button.click();
+  }
   await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForTimeout(120);
 }
 
 async function assertShellChrome(page, viewport, label) {
+  await assertBuildHash(page, `${viewport.label}/${label}`);
   const state = await page.evaluate(() => {
     const rect = (selector) => {
       const element = document.querySelector(selector);
@@ -86,19 +91,28 @@ async function assertShellChrome(page, viewport, label) {
       };
     };
     return {
-      buildHash: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
       overflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth,
       topbar: rect('[data-testid="ide-top-bar"]'),
+      stageNav: rect('[data-testid="ide-stage-nav"]'),
+      stageTrack: rect('[data-testid="ide-stage-nav"] .ide-stage-nav'),
       ribbon: rect('[data-testid="ide-proof-ribbon"]'),
       statusBar: rect('[data-testid="ide-status-bar"]'),
-      leftRail: rect('[data-testid="ide-left-rail"]'),
-      surfaceColumn: rect('.ide-surface-column'),
-      stageLabels: Array.from(document.querySelectorAll('.ide-mode-button--step .ide-mode-label'))
+      layoutShell: rect('.ide-layout-shell'),
+      retiredRailCount: document.querySelectorAll(
+        '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
+      ).length,
+      retiredToggleCount: document.querySelectorAll(
+        '[data-testid^="ide-workbench-dock-toggle-"], [data-testid*="dock-collapse"], .ide-workbench-dock-toggle-rail'
+      ).length,
+      stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-label'))
         .filter((label) => label.getBoundingClientRect().width > 1 && label.getBoundingClientRect().height > 1)
         .map((label) => label.textContent?.trim() ?? ''),
-      importIsUtility: Boolean(
-        document.querySelector('[data-testid="mode-button-import"].ide-mode-button--utility')
-      ),
+      importIsUtility: (() => {
+        const topbar = document.querySelector('[data-testid="ide-top-bar"]');
+        const stageNav = document.querySelector('[data-testid="ide-stage-nav"]');
+        const importButton = document.querySelector('[data-testid="mode-button-import"]');
+        return Boolean(importButton && topbar?.contains(importButton) && !stageNav?.contains(importButton));
+      })(),
       productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]'))
         .filter((element) => element.getBoundingClientRect().width > 1 && element.getBoundingClientRect().height > 1)
         .length,
@@ -109,20 +123,28 @@ async function assertShellChrome(page, viewport, label) {
     };
   });
 
-  assert(state.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${state.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(state.overflowX <= 1, `${viewport.label}/${label}: root horizontal overflow ${state.overflowX}px`);
   assert(state.topbar.visible && state.topbar.height <= 56, `${viewport.label}/${label}: top bar too tall/missing ${JSON.stringify(state.topbar)}`);
   assert(!state.ribbon.visible, `${viewport.label}/${label}: proof ribbon must be retired ${JSON.stringify(state.ribbon)}`);
   assert(!state.statusBar.visible, `${viewport.label}/${label}: duplicate support footer must be retired ${JSON.stringify(state.statusBar)}`);
   assert(state.productSpineCount === 0, `${viewport.label}/${label}: duplicate page product spine is still visible`);
   assert(
-    state.leftRail.visible && state.leftRail.width >= 72 && state.leftRail.width <= 200,
-    `${viewport.label}/${label}: workflow rail must be readable and bounded (72..200px), got ${JSON.stringify(state.leftRail)}`
+    state.stageNav.visible && state.stageNav.height >= 40 && state.stageNav.height <= 60,
+    `${viewport.label}/${label}: horizontal stage navigation must be readable and bounded, got ${JSON.stringify(state.stageNav)}`
   );
   assert(
+    state.stageTrack.visible && state.stageTrack.width >= 620 && state.stageTrack.width <= viewport.width,
+    `${viewport.label}/${label}: five-stage track must be horizontally reachable, got ${JSON.stringify(state.stageTrack)}`
+  );
+  assert(state.retiredRailCount === 0, `${viewport.label}/${label}: retired workflow rail returned`);
+  assert(state.retiredToggleCount === 0, `${viewport.label}/${label}: retired dock restore control returned`);
+  assert(
     // Rounded bounding boxes can differ by a few pixels across the two classroom viewports.
-    state.surfaceColumn.top <= state.topbar.bottom + 4,
-    `${viewport.label}/${label}: workbench must begin directly under the top bar (${state.surfaceColumn.top}px)`
+    state.layoutShell.top >= state.stageNav.bottom - 4 && state.layoutShell.top <= state.stageNav.bottom + 4,
+    `${viewport.label}/${label}: workbench must begin directly under stage navigation (${JSON.stringify({
+      stageNav: state.stageNav,
+      layoutShell: state.layoutShell,
+    })})`
   );
   assert(
     JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
@@ -159,16 +181,12 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
       };
     };
     const primarySelectors = {
-      project: ['[data-testid="ide-project-command-center"]', '[data-testid="ide-project-landing"]'],
+      project: ['[data-testid="ide-project-professional-overview"]'],
       design: ['[data-testid="ide-design-live-canvas"]'],
-      verify: [
-        '[data-testid="ide-verify-no-circuit-task"]',
-        '[data-testid="ide-verify-lab-grid"]',
-        '[data-testid="ide-verify-workbench"]',
-      ],
-      hardware: ['[data-testid="ide-hw-board-workspace"]', '[data-testid="ide-hw-map-table"]'],
-      export: ['[data-testid="ide-export-package-inspector-v1"]', '[data-testid="ide-export-handoff-station"]', '[data-testid="ide-export-artifact-preview"]'],
-      import: ['[data-testid="ide-import-start-shell"]', '[data-testid="ide-import-workspace"]'],
+      verify: ['[data-testid="ide-verify-lab-grid"]'],
+      hardware: ['[data-testid="ide-hw-map-table"]'],
+      export: ['[data-testid="ide-export-package-inspector-v1"]'],
+      import: ['[data-testid="ide-import-workbench"]'],
     };
     let primary = { visible: false, width: 0, height: 0, top: 0, left: 0, visibleWidth: 0, visibleHeight: 0 };
     for (const selector of primarySelectors[expectedMode] ?? []) {
@@ -183,9 +201,7 @@ async function assertModeReachableAndFocused(page, viewport, mode) {
   }, mode);
 
   assert(state.activeMode === mode, `${viewport.label}/${mode}: active mode marker mismatch ${JSON.stringify(state)}`);
-  if (!UTILITY_MODES.includes(mode)) {
-    assert(state.activeButtonVisible, `${viewport.label}/${mode}: active navigation state is not visible`);
-  }
+  assert(state.activeButtonVisible, `${viewport.label}/${mode}: active navigation state is not visible`);
   assert(state.primary.visible, `${viewport.label}/${mode}: primary work object missing ${JSON.stringify(state.primary)}`);
   assert(state.primary.top < viewport.height * 0.72, `${viewport.label}/${mode}: primary work object starts too low ${JSON.stringify(state.primary)}`);
 }

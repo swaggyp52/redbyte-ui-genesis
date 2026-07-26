@@ -78,29 +78,39 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
       continue;
     }
     if (mode === 'hardware') {
+      const workbench = modeRoot.locator('[data-testid="ide-hw-board-workspace"]').first();
       const modeToggle = modeRoot.locator('[data-testid="ide-hw-mode-toggle"]').first();
       const blockedPrimary = modeRoot.locator('[data-testid="ide-hardware-blocked-primary"]').first();
       const blockedSecondary = modeRoot.locator('[data-testid="ide-hardware-blocked-secondary"]').first();
+      const workbenchVisible = await workbench.isVisible().catch(() => false);
       const modeToggleVisible = await modeToggle.isVisible().catch(() => false);
       const blockedPrimaryVisible = await blockedPrimary.isVisible().catch(() => false);
       const blockedSecondaryVisible = await blockedSecondary.isVisible().catch(() => false);
       assert(
-        modeToggleVisible || blockedPrimaryVisible || blockedSecondaryVisible,
-        'mode=hardware expected either the hardware mode toggle or a blocked-state CTA to be visible'
+        workbenchVisible || modeToggleVisible || blockedPrimaryVisible || blockedSecondaryVisible,
+        'mode=hardware expected the Map Pins workbench or a blocked-state CTA to be visible'
       );
       continue;
     }
     if (mode === 'export') {
+      const download = modeRoot.locator('[data-testid="ide-export-package-download-v1"]').first();
+      const build = modeRoot.locator('[data-testid="ide-export-package-build-v1"]').first();
+      const draft = modeRoot.locator('[data-testid="ide-export-draft-download-v1"]').first();
+      const recovery = modeRoot.locator('[data-testid^="ide-export-blocked-open-"]').first();
       const rebuild = modeRoot.locator('[data-testid="ide-export-rebuild-btn"]').first();
       const generic = modeRoot.locator('[data-testid="ide-primary-cta"]').first();
       const goDesign = modeRoot.locator('[data-testid="ide-export-trust-go-design"]').first();
       const goVerify = modeRoot.locator('[data-testid="ide-export-trust-go-verify"]').first();
+      const downloadVisible = await download.isVisible().catch(() => false);
+      const buildVisible = await build.isVisible().catch(() => false);
+      const draftVisible = await draft.isVisible().catch(() => false);
+      const recoveryVisible = await recovery.isVisible().catch(() => false);
       const rebuildVisible = await rebuild.isVisible().catch(() => false);
       const genericVisible = await generic.isVisible().catch(() => false);
       const goDesignVisible = await goDesign.isVisible().catch(() => false);
       const goVerifyVisible = await goVerify.isVisible().catch(() => false);
       assert(
-        rebuildVisible || genericVisible || goDesignVisible || goVerifyVisible,
+        downloadVisible || buildVisible || draftVisible || recoveryVisible || rebuildVisible || genericVisible || goDesignVisible || goVerifyVisible,
         'mode=export expected an export CTA or blank-state guidance CTA to be visible'
       );
       continue;
@@ -115,12 +125,16 @@ await runIdeGate('IDE primary CTA contract satisfied', async ({ page, baseUrl })
   await importLauncher.click();
   await page.waitForSelector('[data-testid="ide-mode-import"]', { timeout: 10000 });
   const importRoot = page.locator('[data-testid="ide-mode-import"]').first();
+  const zipBrowse = importRoot.locator('[data-testid="ide-import-zip-browse"]').first();
+  const pasteHdl = importRoot.locator('[data-testid="ide-import-start-secondary"]').first();
   const startPrimary = importRoot.locator('[data-testid="ide-import-start-primary"]').first();
   const process = importRoot.locator('[data-testid="ide-import-process-design"]').first();
+  const zipBrowseVisible = await zipBrowse.isVisible().catch(() => false);
+  const pasteHdlVisible = await pasteHdl.isVisible().catch(() => false);
   const startPrimaryVisible = await startPrimary.isVisible().catch(() => false);
   const processVisible = await process.isVisible().catch(() => false);
   assert(
-    startPrimaryVisible || processVisible,
-    'mode=import expected import start primary CTA or process-design CTA to be visible'
+    zipBrowseVisible || pasteHdlVisible || startPrimaryVisible || processVisible,
+    'mode=import expected ZIP intake, Paste HDL, or a recovery CTA to be visible'
   );
 });

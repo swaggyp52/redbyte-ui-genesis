@@ -74,31 +74,18 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
     'fresh verified export should expose Build Current Bundle before a successful package record exists'
   );
 
-  await openDetailsContaining(page, 'ide-export-handoff-checklist-v1');
-  const summaryMapping = await text(
-    page.locator('[data-testid="ide-export-handoff-checklist-v1"] > div').filter({ hasText: 'Pin mapping' }).first()
-  );
-  await openDetailsElement(page, 'ide-export-confidence-station', 'readiness details');
-  const factMapping = await text(page.locator('[data-testid="ide-export-confidence-mapping"]'));
-  assert(summaryMapping.length > 0, 'readiness checklist must include mapping completeness');
-  assert(factMapping.length > 0, 'readiness details must include mapping completeness');
-  assert(
-    extractMappedCount(summaryMapping) === extractMappedCount(factMapping),
-    `mapping checklist and readiness details must agree, got "${summaryMapping}" vs "${factMapping}"`
-  );
+  const summaryMapping = await text(page.locator('[data-testid="ide-export-upstream-mapping"]'));
+  assert(/Map Pins/i.test(summaryMapping), `upstream readiness must name Map Pins, got "${summaryMapping}"`);
+  extractMappedCount(summaryMapping);
 
-  await openDetailsElement(page, 'ide-export-evidence-boundary', 'external evidence boundary');
-  const evidenceRows = await text(page.locator('[data-testid="ide-export-vivado-evidence-rows"]'));
-  for (const tier of ['E0', 'E1', 'E2', 'E3']) {
-    assert(evidenceRows.includes(tier), `Vivado evidence rows must include ${tier}`);
-  }
-  assert(/external evidence required/i.test(evidenceRows), 'E1/E2 rows must require external evidence');
-  assert(/manual observation required/i.test(evidenceRows), 'E3 row must require manual observation');
-  assert(!/E1\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E1 success');
-  assert(!/E2\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E2 success');
-  assert(!/E3\s+(ready|passed|complete)/i.test(evidenceRows), 'browser Export must not claim E3 success');
+  const evidenceBoundary = await text(page.locator('[data-testid="ide-export-e0-boundary-summary"]'));
+  assert(/Browser E0/i.test(evidenceBoundary), 'Export must name the Browser E0 boundary');
+  assert(/Vivado.*bitstream.*external/i.test(evidenceBoundary), 'Vivado and bitstream proof must remain external');
+  assert(!/E1\s+(ready|passed|complete)/i.test(evidenceBoundary), 'browser Export must not claim E1 success');
+  assert(!/E2\s+(ready|passed|complete)/i.test(evidenceBoundary), 'browser Export must not claim E2 success');
+  assert(!/E3\s+(ready|passed|complete)/i.test(evidenceBoundary), 'browser Export must not claim E3 success');
 
-  await openGeneratedFiles(page, 'trust integrity', { expectCollapsed: true });
+  await openGeneratedFiles(page, 'trust integrity', { expectOpen: true });
   const topPreview = await readVisiblePreviewByPath(page, 'top.vhd');
   assert(topPreview.length > 0, 'top.vhd preview must be visible and non-empty');
 
@@ -150,13 +137,13 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   const programZipText = normalizeArtifactText(await readZipText(zip, programZipPath));
   const rbprojZipText = normalizeArtifactText(await readZipText(zip, rbprojZipPath));
 
-  assert(stripProvenanceHeader(topZipText).startsWith(topPreview), 'top.vhd visible preview must match downloaded ZIP body');
+  assert(stripProvenanceHeader(topZipText).startsWith(stripProvenanceHeader(topPreview)), 'top.vhd visible preview must match downloaded ZIP body');
   assert(
-    stripProvenanceHeader(xdcZipText).startsWith(await readVisiblePreviewByPath(page, 'top.xdc')),
+    stripProvenanceHeader(xdcZipText).startsWith(stripProvenanceHeader(await readVisiblePreviewByPath(page, 'top.xdc'))),
     'top.xdc visible preview must match downloaded ZIP body'
   );
   assert(
-    stripProvenanceHeader(testbenchZipText).startsWith(await readVisiblePreviewByPath(page, 'testbench.vhd')),
+    stripProvenanceHeader(testbenchZipText).startsWith(stripProvenanceHeader(await readVisiblePreviewByPath(page, 'testbench.vhd'))),
     'testbench.vhd visible preview must match downloaded ZIP body'
   );
   assert(
@@ -214,48 +201,11 @@ async function text(locator) {
   return (await locator.first().textContent().catch(() => ''))?.trim() ?? '';
 }
 
-async function openDetailsContaining(page, testId) {
-  const details = page.locator(`details:has([data-testid="${testId}"])`).first();
-  assert((await details.count().catch(() => 0)) > 0, `details containing ${testId} must exist`);
-  const isOpen = await details.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
-  if (!isOpen) {
-    await details.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }));
-    const summary = details.locator(':scope > summary').first();
-    if (await summary.isVisible().catch(() => false)) {
-      await summary.click();
-    } else {
-      await details.evaluate((element) => {
-        if (element instanceof HTMLDetailsElement) {
-          element.open = true;
-        }
-      });
-    }
-  }
-  await page.locator(`[data-testid="${testId}"]`).first().waitFor({ state: 'attached', timeout: 5000 });
-}
-
-async function openDetailsElement(page, testId, label) {
-  const details = page.locator(`[data-testid="${testId}"]`).first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  const isOpen = await details.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
-  if (!isOpen) {
-    await details.locator(':scope > summary').first().click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label} must expand`);
-}
-
 async function openGeneratedFiles(page, label, options = {}) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  const isOpen = (await details.getAttribute('open')) !== null;
-  if (options.expectCollapsed) {
-    assert(!isOpen, `${label}: generated files must begin collapsed`);
-  }
-  if (!isOpen) {
-    await details.locator(':scope > summary').first().click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const workspace = page.locator('[data-testid="ide-export-package-files"]').first();
+  await workspace.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await workspace.isVisible().catch(() => false), `${label}: generated files workspace must remain directly visible`);
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function readVisiblePreviewByPath(page, artifactPath) {

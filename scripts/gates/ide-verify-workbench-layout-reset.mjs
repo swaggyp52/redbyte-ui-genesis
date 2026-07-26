@@ -67,8 +67,7 @@ await runIdeGate('IDE Verify layout resets across pre-run, pass, fail, and repai
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected edit');
   status = await runAndReadStatus(page);
   assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
-  await openFailureDetails(page, 'edited expected output failure');
-  await page.waitForSelector('[data-testid="ide-verify-results-summary-open-fail"]', { timeout: 10000 });
+  await assertDirectFailureGuidance(page, 'edited expected output failure');
   await capture(page, '03-compare-fail');
 
   layout = await readLayoutState(page);
@@ -115,13 +114,36 @@ async function readLayoutState(page) {
   });
 }
 
-async function openFailureDetails(page, label) {
-  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
+async function assertDirectFailureGuidance(page, label) {
+  const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
+  const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
+  const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
+  const expectedPath = page.locator('[data-testid="ide-verify-repair-testbench-path"]').first();
+  const designPath = page.locator('[data-testid="ide-verify-repair-design-path"]').first();
+
+  await repairPanel.waitFor({ state: 'visible', timeout: 10000 });
+  for (const [name, control] of [
+    ['repair decision', repairDecision],
+    ['failed-case evidence control', failedCase],
+    ['expected-output repair path', expectedPath],
+    ['circuit/design repair path', designPath],
+  ]) {
+    assert(await control.isVisible().catch(() => false), `${label}: v3 direct ${name} must be visible`);
   }
-  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
+  assert(
+    /expected output wrong.*circuit wrong/i.test(await normalizedText(repairDecision)),
+    `${label}: direct repair guidance must distinguish expected-output repair from circuit repair`
+  );
+  assert(
+    (await page.locator('details[data-testid="ide-verify-advanced-failure"], [data-testid="ide-verify-advanced-failure"] > summary').count()) === 0,
+    `${label}: retired Failure details disclosure must be absent`
+  );
+
+  await failedCase.click();
+  assert(
+    await page.locator('[data-testid="ide-verify-fail-nav-summary"]').first().isVisible().catch(() => false),
+    `${label}: failed-case evidence control must keep the selected mismatch visible`
+  );
 }
 
 async function runAndReadStatus(page) {

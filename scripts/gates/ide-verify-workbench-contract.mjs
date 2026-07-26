@@ -80,8 +80,8 @@ await runIdeGate('IDE verify workbench contract satisfied', async ({ page, baseU
   }
   assert(editableExpectedCellVisible, 'verify must expose an editable expected-output cell after checks are saved');
   assert(
-    await hasVisibleExactText(page, 'Expected outputs'),
-    'verify student flow must label expected-output checks as Expected outputs'
+    await hasVisibleExactText(page, 'Expected · Unset = no check'),
+    'verify student flow must explain that an unset expected value creates no Compare check'
   );
   const verifyPanelText = ((await page.locator('[data-testid="ide-verify-panel"]').textContent()) ?? '').toLowerCase();
   for (const stalePhrase of ['manual assertions', 'output assertions (optional)', 'assertion-backed']) {

@@ -84,13 +84,10 @@ async function openExport(page) {
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-export-package-inspector-v1"]', { timeout: 10000 });
   const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
   await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await packageFiles.getAttribute('open')) === null) {
-    await packageFiles.locator('summary').click();
-  }
-  assert((await packageFiles.getAttribute('open')) !== null, 'Hardware export setup must expand Inspect generated files');
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function assertMapWorkbench(page, viewportName) {
@@ -99,18 +96,18 @@ async function assertMapWorkbench(page, viewportName) {
   const table = page.locator('[data-testid="ide-hw-map-table"]').first();
   const board = page.locator('[data-testid="ide-hw-map-board"]').first();
   const row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
+  const selectedMapping = page.locator('[data-testid="ide-hw-selected-mapping-editor"]').first();
 
-  const mapRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(await visible(mapRail), `${viewportName} Map Pins restore rail must be visible on entry`);
-  const railText = await normalizedText(mapRail);
-  assert(/show/i.test(railText) && /map/i.test(railText), `${viewportName} Map Pins rail must clearly restore map support, got "${railText}"`);
-  await mapRail.click();
-  assert(await visible(page.locator('[data-testid="ide-hw-map-dock"]').first()), `${viewportName} Map Pins dock must open from the restore rail`);
+  assert(
+    (await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').count()) === 0,
+    `${viewportName} Map Pins must keep its assignment workspace direct instead of restoring the retired rail`
+  );
   assert(await visible(workspace), `${viewportName} board workspace must be visible`);
   assert(await visible(summary), `${viewportName} Basys3 resource summary must be visible`);
   assert(await visible(table), `${viewportName} mapping table must be visible`);
   assert(await visible(board), `${viewportName} Basys3 board must be visible`);
   assert(await visible(row), `${viewportName} SW0 mapping row must be visible`);
+  assert(await visible(selectedMapping), `${viewportName} selected mapping editor must be available beside the table`);
   await assertVisibleInViewport(page, workspace, `${viewportName} board workspace`, { minVisibleAreaRatio: 0.55 });
   await assertVisibleInViewport(page, table, `${viewportName} mapping table`, { minVisibleHeight: 220, minVisibleAreaRatio: 0.55 });
   await assertVisibleInViewport(page, board, `${viewportName} Basys3 board`, { minVisibleHeight: 220, minVisibleAreaRatio: 0.55 });
@@ -120,6 +117,7 @@ async function assertSelectedBindingChain(page, viewportName) {
   await page.locator('[data-testid="ide-hw-map-row-sw0"]').click();
   const chain = page.locator('[data-testid="ide-hardware-basys3-binding-chain"]').first();
   assert(await visible(chain), `${viewportName} selected row must expose the Basys3 binding chain`);
+  await chain.scrollIntoViewIfNeeded();
   await assertVisibleInViewport(page, chain, `${viewportName} selected binding chain`, {
     minVisibleHeight: 44,
     minVisibleAreaRatio: 0.9,

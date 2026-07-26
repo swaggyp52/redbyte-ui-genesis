@@ -92,23 +92,23 @@ describe('VerifySurface panel ownership', () => {
     expect(getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
   });
 
-  it('keeps the signal legend in a collapsed shell rail by default', () => {
+  it('keeps the signal legend visible in a stable shell rail', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
-  it('opens the compact signal legend when the left rail toggle is used', () => {
+  it('does not require a toggle to expose the signal legend', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
 
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
     expect(getByTestId('ide-left-dock')).toBeTruthy();
     expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
   it('removes the right shell inspector rail from Verify', () => {

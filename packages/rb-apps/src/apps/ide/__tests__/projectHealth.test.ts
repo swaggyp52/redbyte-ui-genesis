@@ -413,4 +413,40 @@ describe('deriveStageCompletion — unified progress signal for all three nav sy
     const completion = deriveStageCompletion(health, { hasCircuit: true, hasIoMapping: true, hasVectors: true });
     expect(completion).toEqual({ design: true, verify: true, hardware: true, export: true });
   });
+
+  it('revokes every downstream completion marker when Design has a structural blocker', () => {
+    const readiness = {
+      hasCircuit: true,
+      hasIoMapping: true,
+      hasVectors: true,
+      hasBlockingDesignIssue: true,
+      blockingDesignIssueMessage: 'Output LD2 is not driven by the circuit.',
+    };
+    const health = deriveProjectHealth(
+      {
+        lastVerify: { status: 'pass', hash: 'h1', ranAtIso: '2026-04-01T00:00:00Z' },
+        lastExport: { status: 'ok', hash: 'e1', ranAtIso: '2026-04-01T00:05:00Z' },
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+      },
+      readiness
+    );
+
+    expect(health.blockingIssues).toContainEqual({
+      code: 'RBP1006',
+      message: 'Output LD2 is not driven by the circuit.',
+      fixPath: { mode: 'design', actionLabel: 'Open Design' },
+    });
+    expect(choosePrimaryProjectCta(health, readiness)).toEqual({
+      label: 'Open Design',
+      mode: 'design',
+      code: 'RBP1006',
+    });
+    expect(deriveStageCompletion(health, readiness)).toEqual({
+      design: false,
+      verify: false,
+      hardware: false,
+      export: false,
+    });
+  });
 });

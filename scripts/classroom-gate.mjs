@@ -369,7 +369,7 @@ const STEPS = [
       'packages/rb-lab-engine/src/__tests__/verifyTruthTable.schedule.test.ts',
       'packages/rb-apps/src/export/__tests__/ideSubmissionDeterminism.test.ts',
       'packages/rb-apps/src/__tests__/lab-submission-gates.test.ts',
-      'packages/rb-apps/src/__tests__/submission-inspector-submission-bundle.test.tsx',
+      'packages/rb-apps/src/__tests__/submission-bundle.test.ts',
       'packages/rb-apps/src/import/__tests__/fixture03-sequential-parity.test.ts',
       'packages/rb-apps/src/export/__tests__/parseIdeSubmission.test.ts',
     ],

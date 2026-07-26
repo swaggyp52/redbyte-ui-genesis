@@ -752,21 +752,11 @@ async function runCompareAndExpect(page, viewport, label, expectation) {
 
 async function mapRowToAlias(page, rowId, alias) {
   await clickVisible(page, `[data-testid="ide-hw-map-row-${rowId}"]`, `select map row ${rowId}`);
-  const normalized = alias.toLowerCase().replace(/([a-z]+)(\d+)/, '$1-$2');
-  const selectors = [
-    `[data-testid="ide-hw-map-${normalized}-hit"]`,
-    `[data-testid="ide-hw-map-${normalized}"]`,
-    `[data-testid="ide-hw-resource-${alias.toLowerCase()}"]`,
-  ];
-  for (const selector of selectors) {
-    const target = page.locator(selector).first();
-    if (await target.isVisible().catch(() => false)) {
-      await target.click();
-      await page.waitForTimeout(180);
-      return;
-    }
-  }
-  throw new Error(`board alias ${alias} was not clickable for row ${rowId}`);
+  const select = page.locator('[data-testid="ide-hw-direct-resource-select"]').first();
+  await select.waitFor({ state: 'visible', timeout: 10000 });
+  await select.selectOption(alias);
+  await page.locator('[data-testid="ide-hw-assign-selected-resource"]').first().click();
+  await page.waitForTimeout(180);
 }
 
 async function readPreviewByPath(page, artifactPath) {

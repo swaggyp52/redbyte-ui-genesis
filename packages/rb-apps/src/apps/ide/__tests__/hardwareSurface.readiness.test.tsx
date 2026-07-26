@@ -5,60 +5,47 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { ProjectHealth } from '../projectHealth';
 import {
-  deriveProjectWorkflowAuthority,
   deriveExportCurrent,
+  deriveProjectWorkflowAuthority,
   deriveVerifyCurrent,
 } from '../projectWorkflowAuthority';
 import { buildCurrentVerifyProjectHash } from '../verifyProjectHash';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
-import { deriveTimingGuidance } from '../timingGuidance';
 
 afterEach(() => {
   cleanup();
 });
 
-function openLeftSupportDock(getByTestId: (testId: string) => HTMLElement): void {
-  fireEvent.click(getByTestId('ide-workbench-dock-toggle-left'));
-}
+type HardwareSurfaceProps = React.ComponentProps<typeof HardwareSurface>;
 
-function openMapDock(getByTestId: (testId: string) => HTMLElement): HTMLElement {
-  openLeftSupportDock(getByTestId);
-  return getByTestId('ide-hw-map-dock');
-}
-
-function openInspector(getByTestId: (testId: string) => HTMLElement): void {
-  fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-}
-
-function makeVerifyRunWithRoles(
-  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'>
-) {
-  return {
-    scenarioId: 'hardware-semantic-roles',
-    scenarioName: 'Hardware semantic roles',
-    status: 'pass',
-    deterministicHash: 'det_hardware_semantic_roles',
-    reportHash: 'rep_hardware_semantic_roles',
-    firstFailingTick: null,
-    generatedAtIso: '2026-03-21T12:00:00.000Z',
-    schedule: 'clocked_macro',
-    meta: {
-      circuitKind: 'sequential',
-      clockingProtocol: 'clocked_macro',
-      samplePoint: 'post-rising-edge',
-      tick0Meaning: 'initial-state',
-      clockSignalName: 'phase_driver',
-    },
-    report: {
-      vectors: [],
-      inputsAtTick: {},
-      signalRoles,
-      rows: [],
-    },
-    waveform: [],
-  } as any;
-}
+const COMPLETE_MAPPING_ROWS: HardwareSurfaceProps['mappingRows'] = [
+  {
+    id: 'clk',
+    label: 'CLK100MHZ',
+    direction: 'in',
+    pin: 'W5',
+    required: true,
+    timingRole: 'clock',
+    boardResourceType: 'clock_pin',
+  },
+  {
+    id: 'sw0',
+    label: 'SW0',
+    direction: 'in',
+    pin: 'V17',
+    required: true,
+    boardResourceType: 'switch',
+  },
+  {
+    id: 'ld0',
+    label: 'LD0',
+    direction: 'out',
+    pin: 'U16',
+    required: true,
+    boardResourceType: 'led',
+  },
+];
 
 function makeHealth(overrides: Partial<ProjectHealth> = {}): ProjectHealth {
   return {
@@ -93,6 +80,8 @@ function makeHardwareWorkflowAuthority(
     currentExportHash?: string | null;
     hasIoMapping?: boolean;
     hasVectors?: boolean;
+    hasBlockingDesignIssue?: boolean;
+    blockingDesignIssueMessage?: string;
   } = {}
 ) {
   return deriveProjectWorkflowAuthority({
@@ -101,6 +90,8 @@ function makeHardwareWorkflowAuthority(
       hasCircuit: true,
       hasIoMapping: overrides.hasIoMapping ?? true,
       hasVectors: overrides.hasVectors ?? true,
+      hasBlockingDesignIssue: overrides.hasBlockingDesignIssue,
+      blockingDesignIssueMessage: overrides.blockingDesignIssueMessage,
       verifyQualification: health.lastVerify?.qualification,
     },
     verifyLastRun: health.lastVerify,
@@ -109,85 +100,130 @@ function makeHardwareWorkflowAuthority(
   });
 }
 
-describe('HardwareSurface readiness', () => {
-  it('places the verify/export/program workflow ribbon in the main workspace and hides the bottom console', () => {
-    const health = makeHealth({
-      blockingIssues: [],
-      dirtySinceExport: false,
-    });
-    const { getAllByTestId, getByTestId, queryByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Hardware Layout Defaults"
-          expectedBehavior="Map pins, then program the board."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={1}
-          health={health}
-          workflowAuthority={makeHardwareWorkflowAuthority(health, {
-            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
-            currentExportHash: health.lastExport?.hash ?? null,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
+function makeVerifyRun(
+  timingMode: 'synchronous_board_clock' | 'manual_event_driven_lab' | 'combinational',
+  signalRoles: Record<string, 'clock' | 'reset' | 'input' | 'output'> = {}
+) {
+  return {
+    scenarioId: `hardware-${timingMode}`,
+    scenarioName: `Hardware ${timingMode}`,
+    status: 'pass',
+    deterministicHash: `det-${timingMode}`,
+    reportHash: `rep-${timingMode}`,
+    firstFailingTick: null,
+    generatedAtIso: '2026-03-21T12:00:00.000Z',
+    schedule: timingMode === 'combinational' ? 'combinational' : 'clocked_macro',
+    scheduleContract: { timingMode },
+    meta: {
+      circuitKind: timingMode === 'combinational' ? 'combinational' : 'sequential',
+      clockingProtocol: timingMode === 'combinational' ? 'none' : 'clocked_macro',
+      samplePoint: 'post-rising-edge',
+      tick0Meaning: 'initial-state',
+      clockSignalName: Object.entries(signalRoles).find(([, role]) => role === 'clock')?.[0],
+    },
+    report: {
+      vectors: [],
+      inputsAtTick: {},
+      signalRoles,
+      rows: [],
+    },
+    waveform: [],
+  } as any;
+}
 
-    expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('Map required pins');
-    expect(getByTestId('ide-hw-stage-rail').textContent).toContain('pin binding is the main hardware job');
+function makeExportDiagnostic(
+  code: string,
+  title: string,
+  message: string,
+  actionLabel = 'Review diagnostic'
+) {
+  return {
+    id: `diag-${code}`,
+    code,
+    title,
+    message,
+    hint: [],
+    fix: message,
+    severity: 'error' as const,
+    owner: { kind: 'design' as const },
+    actions: [{ label: actionLabel }],
+    canonical: { id: `diag-${code}` } as any,
+  } as any;
+}
+
+function renderHardware(overrides: Partial<HardwareSurfaceProps> = {}) {
+  const health = overrides.health ?? makeHealth({ blockingIssues: [], dirtySinceExport: false });
+  const props: HardwareSurfaceProps = {
+    projectName: 'Hardware readiness fixture',
+    expectedBehavior: 'Map pins, verify the design, and inspect the export handoff.',
+    mappingRows: COMPLETE_MAPPING_ROWS,
+    expectedIoRows: [],
+    vectorsCount: 4,
+    health,
+    onGenerateBringUpVectors: vi.fn(),
+    onOpenExport: vi.fn(),
+    onOpenVerify: vi.fn(),
+    ...overrides,
+  };
+
+  return render(
+    <BoardSignalProvider>
+      <HardwareSurface {...props} />
+    </BoardSignalProvider>
+  );
+}
+
+describe('HardwareSurface readiness', () => {
+  it('renders the action-first mapping workspace without the superseded map rail or dock toggles', () => {
+    const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
+    const { getByTestId, queryByTestId } = renderHardware({
+      health,
+      workflowAuthority: makeHardwareWorkflowAuthority(health, {
+        currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+        currentExportHash: health.lastExport?.hash ?? null,
+      }),
+    });
+
+    const workspace = getByTestId('ide-hw-board-workspace');
+    expect(workspace.textContent).toContain('Bind project signals to Basys3 resources');
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(getByTestId('ide-hw-map-table')).toBeTruthy();
+    expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();
+    expect(getByTestId('ide-hw-map-board')).toBeTruthy();
+    expect(getByTestId('ide-hw-after-mapping-tools')).toBeTruthy();
     expect(getByTestId('ide-hw-workflow-ribbon')).toBeTruthy();
     expect(getByTestId('ide-hardware-dep-chain')).toBeTruthy();
     expect(getByTestId('ide-hardware-readiness-callout')).toBeTruthy();
-    expect(queryByTestId('ide-hw-callout')).toBeNull();
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-    expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('LD0');
-    expect(getByTestId('ide-hw-map-row-binding-ld0').textContent).toContain('pin U16');
+    expect(getByTestId('ide-hw-map-row-ld0').textContent).toContain('LD0');
+    expect(getByTestId('ide-hw-map-row-ld0').textContent).toContain('U16');
+    expect(queryByTestId('ide-hw-stage-rail')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
-  it('shows a stage rail, framed board workspace, and map caption when mapping is incomplete', () => {
-    const health = makeHealth({
-      blockingIssues: [],
-      dirtySinceExport: false,
+  it('makes mapping progress and the next unresolved signal immediately actionable', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true, boardResourceType: 'switch' },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+      ],
     });
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="HW Stage Shell"
-          expectedBehavior="Test expected copy."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: '', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={health}
-          workflowAuthority={makeHardwareWorkflowAuthority(health, {
-            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
-            currentExportHash: health.lastExport?.hash ?? null,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
 
-    expect(getByTestId('ide-hw-stage-rail')).toBeTruthy();
-    expect(getByTestId('ide-hw-stage-caption').textContent).toMatch(/required pin.*board assignments/i);
-    expect(getByTestId('ide-hw-board-workspace')).toBeTruthy();
-    expect(getByTestId('ide-hw-board-chrome-stage').textContent).toContain('Map Pins');
-    expect(getByTestId('ide-hw-mode-btn-map').getAttribute('aria-selected')).toBe('true');
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('1 / 2 REQUIRED MAPPED');
+    expect(getByTestId('ide-hw-mapping-overview-assigned').textContent).toContain('1/2');
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain('1');
+    expect(getByTestId('ide-hw-mapping-overview-conflicts').textContent).toContain('0');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Assign SW0');
+
+    fireEvent.click(getByTestId('ide-hw-select-next-mapping'));
+
+    expect(getByTestId('ide-hw-map-row-sw0').getAttribute('aria-selected')).toBe('true');
+    expect(getByTestId('ide-hw-selected-mapping-editor').textContent).toContain('SW0');
+    expect(getByTestId('ide-hw-selected-mapping-status').textContent).toBe('Missing required');
   });
 
-  it('treats export evidence as stale when the project changes after export but verification is rerun', () => {
+  it('treats export evidence as stale when mapping changes after export but verification is rerun', () => {
     const circuit = { nodes: [], connections: [] } as any;
     const vectors = [{ tick: 0, inputs: { in_a: '0' }, expected: { out_y: '0' } }] as any;
     const beforeRows = [
@@ -216,7 +252,7 @@ describe('HardwareSurface readiness', () => {
         hasVerifyRun: true,
         latestVerifyLedgerEntry: { projectHash: verifiedProjectHash },
         currentVerifyProjectHash: verifiedProjectHash,
-        dirtySinceVerify: true,
+        dirtySinceVerify: false,
       })
     ).toBe(true);
     expect(
@@ -232,826 +268,363 @@ describe('HardwareSurface readiness', () => {
     ).toBe(false);
   });
 
-  it('warns when verification is current but the export bundle is stale', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Fresh Verify, Stale Export"
-          expectedBehavior="LED0 follows SW0."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={4}
-          health={makeHealth()}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
-    openLeftSupportDock(getByTestId);
+  it('keeps current Verify evidence distinct from a stale export bundle', () => {
+    const { getByTestId } = renderHardware({ health: makeHealth() });
 
     expect(getByTestId('ide-hardware-readiness-callout').textContent).toContain(
       'no longer matches the current circuit'
     );
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Rebuild the current bundle');
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('STALE');
-    expect(getByTestId('ide-hardware-command-strip').textContent).not.toContain('BLOCKED');
-    expect(getByTestId('ide-hardware-next-primary').textContent).toContain('Rebuild Current Bundle');
-    expect(getByTestId('ide-hardware-build-export').textContent).toContain(
-      'Rebuild Current Bundle'
-    );
-    expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
+    expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Re-export needed');
+    expect(getByTestId('ide-hardware-readiness-callout').textContent).not.toContain('BLOCKED');
   });
 
-  it('does not claim outputs are mapped when a required output row is still missing a pin', () => {
-    const { getAllByText } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Partially Mapped Outputs"
-          expectedBehavior="Both LEDs should follow switches."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-            { id: 'ld1', label: 'ld1', direction: 'out', pin: '', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    expect(getAllByText('Outputs').at(-1)?.parentElement?.textContent).toContain('Missing');
-  });
-
-  it('opens in map mode and points back to Design when no boundary rows exist yet', () => {
-    const { getAllByTestId, getByTestId, queryByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Empty hardware flow"
-          expectedBehavior="Add boundary IO before mapping pins."
-          mappingRows={[]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({
-            lastVerify: undefined,
-            lastExport: undefined,
-            dirtySinceVerify: false,
-            dirtySinceExport: false,
-            blockingIssues: [],
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-          onGoToDesign={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    const mapDock = openMapDock(getByTestId);
-    expect(mapDock).toBeTruthy();
-    expect(queryByTestId('ide-hw-proof-dock')).toBeNull();
-    expect(getByTestId('ide-hardware-command-strip').textContent).toContain('Add boundary I/O in Design first');
-    expect(mapDock.textContent).not.toContain('0 left');
-    expect(getAllByTestId('ide-hw-map-empty').at(-1)?.textContent).toContain(
-      'Add inputs and outputs in Design'
-    );
-  });
-
-  it('treats combinational projects as timing-ready when no control signal is required', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Combinational Mapping"
-          expectedBehavior="LED0 follows SW0."
-          mappingRows={[
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-
-    expect(mapDock.textContent).toContain('Combinational');
-    expect(mapDock.textContent).toContain('Mapped');
-    expect(mapDock.textContent).toContain('Complete');
-  });
-
-  it('does not claim clock is mapped when a required clock row is still missing a pin', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Partially Mapped Clocks"
-          expectedBehavior="LED0 follows the clocked design."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'clk_aux', label: 'clock_aux', direction: 'in', pin: '', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-    expect(mapDock.textContent).toContain('Clock');
-    expect(mapDock.textContent).toContain('Needs clock pin');
-  });
-
-  it('claims clock is mapped when all required clock rows have pins', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Fully Mapped Clocks"
-          expectedBehavior="LED0 follows the fully mapped clocked design."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'clk_aux', label: 'clock_aux', direction: 'in', pin: 'V10', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-    expect(mapDock.textContent).toContain('Clock');
-    expect(mapDock.textContent).toContain('Mapped');
-  });
-
-  it('labels supported latch control explicitly instead of generic clock wording', () => {
-    const latchGuidance = deriveTimingGuidance({
-      schedule: 'clocked_macro',
-      reason: 'circuit-sequential',
-      analysis: {
-        hasClockedMacros: true,
-        hasClockNet: true,
-        sequentialNodes: [{ id: 'dl0', type: 'DLatch', clockPort: 'EN' }],
-        clockSource: 'circuit',
-        clockNetName: 'EN',
-      },
-      needsSimClockInjection: false,
-      clockSignalName: 'EN',
-      samplePoint: 'post-rising-edge',
-      tick0Meaning: 'initial-state',
-      hasUnsupportedTemporal: false,
-      temporalIssues: [],
+  it('does not call a required output assigned while its package pin is missing', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+        { id: 'ld1', label: 'LD1', direction: 'out', pin: '', required: true, boardResourceType: 'led' },
+      ],
     });
 
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Latch Hardware"
-          expectedBehavior="Q holds its last value when EN is low."
-          mappingRows={[
-            { id: 'd', label: 'D', direction: 'in', pin: 'V17', required: true },
-            { id: 'en', label: 'EN', direction: 'in', pin: 'W16', required: true },
-            { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={4}
-          health={makeHealth()}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-          signalRoles={{ d: 'input', en: 'clock', q: 'output' }}
-          timingGuidance={latchGuidance}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-live').at(-1)!);
-    openLeftSupportDock(getByTestId);
-    expect(getByTestId('ide-hw-live-dock').textContent).toContain('Latch control');
+    expect(getByTestId('ide-hw-map-row-status-ld0').textContent).toBe('Assigned');
+    expect(getByTestId('ide-hw-map-row-status-ld1').textContent).toBe('Unassigned');
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('1 / 2 REQUIRED MAPPED');
   });
 
-  it('uses semantic verify signal roles so non-regex clock labels still count as clock mapping', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Semantic Clock Role"
-          expectedBehavior="LED0 follows the sequential design."
-          mappingRows={[
-            { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: 'W5', required: true },
-            { id: 'data_in', label: 'data_in', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          verifyLastRun={makeVerifyRunWithRoles({
-            phase_driver: 'clock',
-            data_in: 'input',
-            ld0: 'output',
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-    expect(mapDock.textContent).toContain('Clock');
-    expect(mapDock.textContent).toContain('Mapped');
-  });
-
-  it('groups semantic clock rows into the Clock section in map mode even before a pin is assigned', () => {
-    const { getAllByTestId, getAllByText } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Semantic Clock Map Group"
-          expectedBehavior="Clock row should stay grouped semantically."
-          mappingRows={[
-            { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: '', required: true },
-            { id: 'data_in', label: 'data_in', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          signalRoles={{
-            phase_driver: 'clock',
-            data_in: 'input',
-            ld0: 'output',
-          }}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-
-    const clockGroup = getAllByText('Clock / reset').at(-1)?.closest('details');
-    expect(clockGroup?.textContent).toContain('PHASE_DRIVER');
-  });
-
-  it('keeps map mode blocked when export reports required unmapped ports', () => {
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Export mapping gap"
-          expectedBehavior="Map all required ports before handoff."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          missingRequiredPortsFromExport={1}
-          expectedIoRows={[]}
-          vectorsCount={2}
-          health={makeHealth({
-            dirtySinceVerify: true,
-            dirtySinceExport: true,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-
-    expect(mapDock.textContent).toContain('1 left');
-    expect(getByTestId('ide-hardware-map-export-gap').textContent).toContain('required port');
-  });
-
-  it('shows Map Pins Complete when only inputs are required (no output rows) and pins are set', () => {
-    const health = makeHealth({
-      blockingIssues: [],
-      dirtySinceExport: false,
+  it('routes an empty project boundary back to Design', () => {
+    const onGoToDesign = vi.fn();
+    const { getByTestId, queryByTestId } = renderHardware({
+      mappingRows: [],
+      vectorsCount: 0,
+      health: makeHealth({
+        lastVerify: undefined,
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+        blockingIssues: [],
+      }),
+      onGoToDesign,
     });
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Inputs-only boundary"
-          expectedBehavior="Combinational in-only fixture for mapping coherence."
-          mappingRows={[
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-          ]}
-          missingRequiredPortsFromExport={0}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={health}
-          workflowAuthority={makeHardwareWorkflowAuthority(health, {
-            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
-            currentExportHash: health.lastExport?.hash ?? null,
-          })}
-          timingGuidance={deriveTimingGuidance(undefined)}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
 
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const mapDock = openMapDock(getByTestId);
-    expect(mapDock.textContent).toContain('Complete');
-    expect(mapDock.textContent).not.toContain('0 left');
+    expect(getByTestId('ide-hw-map-empty').textContent).toContain('No signals to map yet');
+    expect(getByTestId('ide-hw-map-empty').textContent).toContain('Design');
+    expect(queryByTestId('ide-hw-map-table')).toBeNull();
+    fireEvent.click(getByTestId('ide-hardware-next-primary'));
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
   });
 
-  it('makes the default Map Pins row read as signal to board control to physical pin', () => {
+  it('treats a combinational project as mapping-complete without a clock row', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'sw0', label: 'SW0', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+      ],
+      verifyLastRun: makeVerifyRun('combinational', { sw0: 'input', ld0: 'output' }),
+    });
+
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain('0');
+  });
+
+  it('requires the board clock row for a synchronous board-clock project', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: '', required: true, timingRole: 'clock' },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+      ],
+      verifyLastRun: makeVerifyRun('synchronous_board_clock', {
+        phase_driver: 'clock',
+        ld0: 'output',
+      }),
+    });
+
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('1 / 2 REQUIRED MAPPED');
+    expect(getByTestId('ide-hw-map-row-status-phase_driver').textContent).toBe('Unassigned');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Assign PHASE_DRIVER');
+  });
+
+  it('does not require a board oscillator for a manual-event lab', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'step', label: 'STEP', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
+        { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+      ],
+      verifyLastRun: makeVerifyRun('manual_event_driven_lab', { step: 'input', q: 'output' }),
+    });
+
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Ready for export');
+  });
+
+  it('uses semantic Verify roles for non-regex clock signal names', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: 'W5', required: true },
+        { id: 'data_in', label: 'data_in', direction: 'in', pin: 'V17', required: true },
+        { id: 'ld0', label: 'LD0', direction: 'out', pin: 'U16', required: true },
+      ],
+      verifyLastRun: makeVerifyRun('synchronous_board_clock', {
+        phase_driver: 'clock',
+        data_in: 'input',
+        ld0: 'output',
+      }),
+    });
+
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(getByTestId('ide-hw-map-row-status-phase_driver').textContent).toBe('Assigned');
+  });
+
+  it('edits one selected signal through the direct Basys3 resource control', () => {
     const onSetMappingPin = vi.fn();
-    const { getByTestId, queryByText } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Student mapping loop"
-          expectedBehavior="IN0 drives LOCK."
-          mappingRows={[
-            { id: 'iom-in0', label: 'iom-in0', direction: 'in', pin: 'V17', required: true },
-            { id: 'lock', label: 'LOCK', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-          onSetMappingPin={onSetMappingPin}
-        />
-      </BoardSignalProvider>
-    );
+    const { getByTestId, queryByText } = renderHardware({
+      mappingRows: [
+        {
+          id: 'iom-in0',
+          label: 'IN0',
+          direction: 'in',
+          pin: 'V17',
+          required: true,
+          boardResourceType: 'switch',
+        },
+      ],
+      onSetMappingPin,
+    });
 
     const row = getByTestId('ide-hw-map-row-iom-in0');
     expect(row.textContent).toContain('IN0');
     expect(row.textContent).toContain('SW0');
     expect(row.textContent).toContain('V17');
     expect(queryByText('iom-in0')).toBeNull();
-    // Guide collapses when all required signals are mapped (F-H2) — check row action instead.
-    expect(getByTestId('ide-hw-map-row-action-iom-in0').textContent).toContain('Edit mapping');
 
-    fireEvent.click(row);
-    expect(row.getAttribute('aria-pressed')).toBe('true');
-    const chain = getByTestId('ide-hardware-basys3-binding-chain');
-    expect(chain.textContent).toContain('IN0');
-    expect(chain.textContent).toContain('SW0');
-    expect(chain.textContent).toContain('V17');
+    fireEvent.click(getByTestId('ide-hw-map-row-action-iom-in0'));
+    expect(row.getAttribute('aria-selected')).toBe('true');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('IN0');
+    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('SW0');
     expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN V17');
-    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('get_ports');
-    fireEvent.click(getByTestId('ide-hw-map-sw-1'));
 
+    fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'SW1' } });
+    expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('pin V16');
+    fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
     expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
   });
 
-  it('keeps mapped row identity, role, board binding, and status in distinct regions', () => {
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Readable mapped rows"
-          expectedBehavior="CLK advances the mapped LED counter."
-          mappingRows={[
-            { id: 'clk', label: 'CLK100MHZ', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
-            { id: 'rst', label: 'RST', direction: 'in', pin: 'U18', required: true, timingRole: 'reset', boardResourceType: 'button' },
-            { id: 'q0', label: 'LD0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
+  it('keeps signal identity, purpose, board resource, package pin, status, and action distinct', () => {
+    const { getByTestId } = renderHardware();
+    const row = getByTestId('ide-hw-map-row-clk');
 
-    expect(getByTestId('ide-hw-map-row-signal-clk').textContent).toContain('CLK100MHZ');
-    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Clock pin');
+    expect(getByTestId('ide-hw-map-row-signal-clk').textContent).toBe('CLK100MHZ');
+    expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Circuit input');
     expect(getByTestId('ide-hw-map-row-role-clk').textContent).toContain('Role: clock');
-    expect(getByTestId('ide-hw-map-row-status-clk').textContent).toContain('Mapped');
-    expect(getByTestId('ide-hw-map-row-binding-clk').textContent).toContain('Board: CLK100MHZ');
-    expect(getByTestId('ide-hw-map-row-action-clk').textContent).toContain('Edit mapping');
-
-    expect(getByTestId('ide-hw-map-row-signal-q0').textContent).toContain('LD0');
-    expect(getByTestId('ide-hw-map-row-role-q0').textContent).toContain('LED');
-    expect(getByTestId('ide-hw-map-row-status-q0').textContent).toContain('Mapped');
-    expect(getByTestId('ide-hw-map-row-binding-q0').textContent).toContain('pin U16');
+    expect(getByTestId('ide-hw-map-row-binding-clk').textContent).toContain('CLK100MHZ');
+    expect(row.textContent).toContain('W5');
+    expect(getByTestId('ide-hw-map-row-status-clk').textContent).toBe('Assigned');
+    expect(getByTestId('ide-hw-map-row-action-clk').textContent).toBe('Edit mapping');
   });
 
-  it('shows board planner clock truth, supported resources, and xdc preview in Hardware', () => {
-    const { getByTestId, getByText, queryByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Clock planner"
-          expectedBehavior="CLK drives the sequential design."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    // Inspector details are on demand; open them before checking inspector-specific copy.
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Ready to map');
-    fireEvent.click(getByTestId('ide-hw-clock-resource-card'));
-
-    expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('CLK100MHZ');
-    expect(getByTestId('ide-hw-clock-resource-card').textContent).toContain('W5');
-    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('SW0-SW15');
-    expect(getByTestId('ide-hw-selected-resource-card').textContent).toContain('100 MHz oscillator');
-    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('W5');
-    expect(getByTestId('ide-hw-clock-truth').textContent).toContain('10 ns');
-    fireEvent.click(getByText('Advanced XDC preview'));
-    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('PACKAGE_PIN W5');
-    expect(getByTestId('ide-hw-xdc-preview').textContent).toContain('create_clock -period 10.000');
-    expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Supported Basys3 resource catalog');
-    expect(getByTestId('ide-hw-resource-catalog').textContent).toContain('Expanded official XDC catalog');
-  });
-
-  it('keeps advanced map inspector sections collapsed by default', () => {
-    const { getByText, getByTestId, queryByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Collapsed map inspector"
-          expectedBehavior="Inspect advanced details only on demand."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true, timingRole: 'clock', boardResourceType: 'clock_pin' },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, boardResourceType: 'switch' },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-hw-map-inspector-help').textContent).toContain('Select a signal row');
-    expect(queryByTestId('ide-hw-xdc-preview')).toBeNull();
-    expect(queryByTestId('ide-hw-map-preflight-details')).toBeNull();
-
-    fireEvent.click(getByText('Advanced XDC preview'));
-    expect(getByTestId('ide-hw-xdc-preview')).toBeTruthy();
-  });
-
-  it('uses board workspace task copy to state next action by selection state', () => {
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Board framing"
-          expectedBehavior="Task copy should guide mapping flow."
-          mappingRows={[
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, boardResourceType: 'switch' },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('Select a signal row');
-    fireEvent.click(getByTestId('ide-hw-map-row-sw0'));
-    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('SW0');
-    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('Choose on board');
-    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('Not assigned');
-    fireEvent.click(getByTestId('ide-hw-map-row-ld0'));
-    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('LD0');
-    expect(getByTestId('ide-hardware-basys3-binding-chain').textContent).toContain('U16');
-    expect(getByTestId('ide-hardware-basys3-binding-xdc').textContent).toContain('PACKAGE_PIN U16');
-  });
-
-  it('keeps the structured mapping editor collapsed behind an advanced affordance', () => {
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Advanced contained"
-          expectedBehavior="Advanced data stays available but not dominant."
-          mappingRows={[
-            { id: 'reset', label: 'RESET', direction: 'in', pin: '', required: true, timingRole: 'reset' },
-          ]}
-          hardwareMappingV2={{
-            schemaVersion: '2.0',
-            boardId: 'basys3',
-            entries: [
-              {
-                kind: 'scalar',
-                id: 'reset',
-                direction: 'in',
-                width: 1,
-                portName: 'reset',
-                nodeId: 'reset_node',
-                port: 'out',
-                label: 'RESET',
-                timingRole: 'reset',
-                pin: '',
-              },
-            ],
-          }}
-          onApplyHardwareMappingEdit={vi.fn()}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ lastVerify: undefined, lastExport: undefined, blockingIssues: [] })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    const advanced = getByTestId('ide-hw-structured-editor') as HTMLDetailsElement;
-    expect(advanced.tagName.toLowerCase()).toBe('details');
-    expect(advanced.open).toBe(false);
-    expect(advanced.querySelector('summary')?.textContent).toContain('Advanced mapping editor');
-  });
-
-  it('points students to Verify first without calling a missing bundle blocked', () => {
-    const { getAllByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Needs Verify"
-          expectedBehavior="LED0 follows SW0."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({
-            lastExport: undefined,
-            lastVerify: undefined,
-            dirtySinceVerify: false,
-            dirtySinceExport: false,
-            blockingIssues: [],
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-          onGoToDesign={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    const hardwareText = getAllByTestId('ide-mode-hardware').at(-1)?.textContent ?? '';
-    expect(hardwareText).toContain('Map required pins');
-    expect(hardwareText).toContain('pin binding is the main hardware job');
-    expect(hardwareText).not.toContain('Build the current bundle');
-    expect(hardwareText).not.toContain('BLOCKED');
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Run Verify before relying on this handoff'
-    );
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).toContain(
-      'Open Verify before you rely on the hardware or export handoff'
-    );
-    expect(getAllByTestId('ide-hardware-readiness-callout').at(-1)?.textContent).not.toContain('BLOCKED');
-  });
-
-  it('shows program handoff CTA when export is current', () => {
-    const health = makeHealth({
-      blockingIssues: [],
-      dirtySinceExport: false,
+  it('surfaces duplicate package pins as conflicts before export', () => {
+    const { getByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'a', label: 'A', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
+        { id: 'b', label: 'B', direction: 'in', pin: 'V17', required: true, boardResourceType: 'switch' },
+        { id: 'y', label: 'Y', direction: 'out', pin: 'U16', required: true, boardResourceType: 'led' },
+      ],
     });
-    const { getAllByTestId, getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Ready to Program"
-          expectedBehavior="LED0 follows SW0."
-          mappingRows={[
-            { id: 'clk', label: 'clk', direction: 'in', pin: 'W5', required: true },
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: 'V17', required: true },
-            { id: 'ld0', label: 'ld0', direction: 'out', pin: 'U16', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={4}
-          health={health}
-          workflowAuthority={makeHardwareWorkflowAuthority(health, {
-            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
-            currentExportHash: health.lastExport?.hash ?? null,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
 
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-proof').at(-1)!);
-    openLeftSupportDock(getByTestId);
+    expect(getByTestId('ide-hw-mapping-overview-conflicts').textContent).toContain('2');
+    expect(getByTestId('ide-hw-map-row-status-a').textContent).toBe('Conflict');
+    expect(getByTestId('ide-hw-map-row-status-b').textContent).toBe('Conflict');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Resolve A');
 
-    // When export is current the program handoff CTA must be present and must not imply a .bit ships from RedByte.
-    const cta = getByTestId('ide-hardware-program-handoff-cta');
-    expect(cta).toBeDefined();
-    expect(cta.textContent).toContain('Vivado project ZIP');
-    expect(cta.textContent).toContain('Generate Bitstream');
-    expect(cta.textContent).toContain('Hardware Manager');
-    expect(cta.textContent).toContain('Program Device');
+    fireEvent.click(getByTestId('ide-hw-select-next-mapping'));
+    expect(getByTestId('ide-hw-selected-mapping-conflict')).toBeTruthy();
+  });
+
+  it('asks for Verify evidence without describing an unbuilt export bundle as blocked', () => {
+    const { getByTestId } = renderHardware({
+      health: makeHealth({
+        lastVerify: undefined,
+        lastExport: undefined,
+        dirtySinceVerify: false,
+        dirtySinceExport: false,
+        blockingIssues: [],
+      }),
+      vectorsCount: 0,
+    });
+
+    const readiness = getByTestId('ide-hardware-readiness-callout');
+    expect(readiness.textContent).toContain('Run Verify before relying on this handoff');
+    expect(readiness.textContent).toContain('Open Verify before you rely on the hardware or export handoff');
+    expect(readiness.textContent).not.toContain('BLOCKED');
+    expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Build needed');
+  });
+
+  it('keeps ready status at E0 and leaves Vivado, bitstream, and board proof external', () => {
+    const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
+    const { getByTestId } = renderHardware({
+      health,
+      workflowAuthority: makeHardwareWorkflowAuthority(health, {
+        currentVerifyProjectHash: health.lastVerify?.hash ?? null,
+        currentExportHash: health.lastExport?.hash ?? null,
+      }),
+    });
+
+    const readiness = getByTestId('ide-hardware-readiness-callout');
+    expect(readiness.textContent).toContain('E0 handoff ready');
+    expect(readiness.textContent).toContain('external E1/E2/E3 evidence');
+    expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Vivado proof pending');
+
+    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
+    const handoff = getByTestId('ide-hardware-program-handoff-cta');
+    expect(handoff.textContent).toContain('Vivado project ZIP');
+    expect(handoff.textContent).toContain('Generate Bitstream');
+    expect(handoff.textContent).toContain('Hardware Manager');
+    expect(handoff.textContent).toContain('Program Device');
     expect(getByTestId('ide-hardware-submission-hint').textContent).toContain('export ZIP');
   });
 
-  it('applies structured hardware mapping pin edits from map mode', () => {
-    const onApplyHardwareMappingEdit = vi.fn();
-    const { getByTestId, getAllByText } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Structured map editor"
-          expectedBehavior="Map structured entries"
-          mappingRows={[
-            { id: 'reset', label: 'reset', direction: 'in', pin: '', required: true, timingRole: 'reset' },
-          ]}
-          hardwareMappingV2={{
-            schemaVersion: '2.0',
-            boardId: 'basys3',
-            entries: [
-              {
-                kind: 'scalar',
-                id: 'reset',
-                direction: 'in',
-                width: 1,
-                portName: 'reset',
-                nodeId: 'reset_node',
-                port: 'out',
-                label: 'reset',
-                timingRole: 'reset',
-                pin: '',
-              },
-            ],
-          }}
-          onApplyHardwareMappingEdit={onApplyHardwareMappingEdit}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({
-            lastVerify: undefined,
-            lastExport: undefined,
-            dirtySinceVerify: false,
-            dirtySinceExport: false,
-            blockingIssues: [],
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
-    );
-
-    fireEvent.change(getByTestId('ide-hw-structured-pins-reset'), { target: { value: 'V17' } });
-    fireEvent.click(getAllByText('Apply pins')[0]!);
-
-    expect(onApplyHardwareMappingEdit).toHaveBeenCalledWith({
-      type: 'map_entry_pins',
-      entryId: 'reset',
-      pins: ['V17'],
+  it('routes a current structural Design blocker back to Design instead of Export', () => {
+    const onGoToDesign = vi.fn();
+    const health = makeHealth({
+      blockingIssues: [
+        {
+          code: 'RBP1006',
+          message: 'Output LD2 is not driven by the circuit.',
+          fixPath: { mode: 'design', actionLabel: 'Open Design' },
+        },
+      ],
+      dirtySinceExport: false,
     });
+    const { getByTestId, queryByTestId } = renderHardware({ health, onGoToDesign });
+
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Design blocked');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Repair the circuit in Design');
+    expect(queryByTestId('ide-hw-continue-export')).toBeNull();
+    fireEvent.click(getByTestId('ide-hw-open-design-blocker'));
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
   });
 
-  it('shows export repair callout when Basys3 validation errors are passed in', () => {
+  it('keeps mapping-owned Export diagnostics out of a duplicated technical wall', () => {
     const onOpenExport = vi.fn();
     const onGoToDesign = vi.fn();
-    const { getByTestId, getAllByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Export blocked"
-          expectedBehavior="Repair mapping"
-          mappingRows={[
-            { id: 'sw0', label: 'sw0', direction: 'in', pin: '', required: true, nodeId: 'n1', port: 'out' },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={makeHealth({ blockingIssues: [], dirtySinceExport: true })}
-          workflowAuthority={makeHardwareWorkflowAuthority(makeHealth({ blockingIssues: [] }), {
-            currentVerifyProjectHash: null,
-            currentExportHash: null,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={onOpenExport}
-          onOpenVerify={vi.fn()}
-          onGoToDesign={onGoToDesign}
-          exportViewStatus="blocked"
-          exportBlockingDiagnostics={[
-            {
-              id: 'exp-diag-1',
-              code: 'RBP_TEST',
-              title: 'Port mismatch',
-              message: 'Required input port "sw0" has no mapping.',
-              hint: ['Open Map Pins and assign a structured entry.'],
-              fix: 'Add or fix hardwareMappingV2 for sw0.',
-              port: 'sw0',
-              severity: 'error' as const,
-              owner: { kind: 'mapping' as const },
-              actions: [],
-              canonical: { id: 'exp-diag-1' } as any,
-            },
-          ]}
-        />
-      </BoardSignalProvider>,
-    );
+    const diagnostic = {
+      ...makeExportDiagnostic(
+        'RBEX1001',
+        'Port mismatch',
+        'Required input port SW0 has no mapping.',
+        'Review mapping'
+      ),
+      port: 'sw0',
+      owner: { kind: 'mapping' as const, portName: 'sw0' },
+    } as any;
+    const { getByTestId, queryByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true, nodeId: 'n1', port: 'out' },
+      ],
+      onOpenExport,
+      onGoToDesign,
+      exportViewStatus: 'blocked',
+      exportBlockingDiagnostics: [diagnostic],
+    });
 
-    fireEvent.click(getAllByTestId('ide-hw-mode-btn-map').at(-1)!);
-    const callout = getByTestId('ide-hw-export-repair-callout');
-    expect(callout.textContent).toContain('Port mismatch');
-    expect(callout.textContent).toContain('sw0');
-    fireEvent.click(getByTestId('ide-hw-export-repair-open-export'));
-    expect(onOpenExport).toHaveBeenCalled();
-    fireEvent.click(getByTestId('ide-hw-export-repair-open-design'));
-    expect(onGoToDesign).toHaveBeenCalled();
+    expect(queryByTestId('ide-hw-export-repair-callout')).toBeNull();
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Assign SW0');
+    fireEvent.click(getByTestId('ide-hw-select-next-mapping'));
+    expect(getByTestId('ide-hw-selected-mapping-editor').textContent).toContain('SW0');
+    expect(onOpenExport).not.toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
   });
 
-  it('shows mapping orientation header and guide above the board workspace, workflow ribbon below', () => {
-    const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
-    const { getByTestId } = render(
-      <BoardSignalProvider>
-        <HardwareSurface
-          projectName="Layout Structure"
-          expectedBehavior="Test"
-          mappingRows={[
-            { id: 'sw0', label: 'SW0', direction: 'in', pin: '', required: true },
-          ]}
-          expectedIoRows={[]}
-          vectorsCount={0}
-          health={health}
-          workflowAuthority={makeHardwareWorkflowAuthority(health, {
-            currentVerifyProjectHash: health.lastVerify?.hash ?? null,
-            currentExportHash: health.lastExport?.hash ?? null,
-          })}
-          onGenerateBringUpVectors={vi.fn()}
-          onOpenExport={vi.fn()}
-          onOpenVerify={vi.fn()}
-        />
-      </BoardSignalProvider>
+  it('treats RBEX4200 as a soft timing advisory for a manual-event lab', () => {
+    const onGoToDesign = vi.fn();
+    const onRepairExportDiagnostic = vi.fn();
+    const diagnostic = makeExportDiagnostic(
+      'RBEX4200',
+      'Board clock not selected',
+      'This lab advances state through a manual event input.',
+      'Review timing guidance'
     );
+    const { getByTestId, queryByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'step', label: 'STEP', direction: 'in', pin: 'V17', required: true },
+        { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true },
+      ],
+      verifyLastRun: makeVerifyRun('manual_event_driven_lab', { step: 'input', q: 'output' }),
+      exportViewStatus: 'blocked',
+      exportBlockingDiagnostics: [diagnostic],
+      onGoToDesign,
+      onRepairExportDiagnostic,
+    });
 
-    const header = getByTestId('ide-hw-mapping-header');
-    const guide = getByTestId('ide-hw-mapping-guide');
-    const workspace = getByTestId('ide-hw-board-workspace');
+    expect(queryByTestId('ide-hw-export-repair-callout')).toBeNull();
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).not.toContain('Design blocked');
+    expect(onRepairExportDiagnostic).not.toHaveBeenCalled();
+    expect(onGoToDesign).not.toHaveBeenCalled();
+  });
+
+  it('treats RBEX4200 as Design-owned for a synchronous board-clock project', () => {
+    const onGoToDesign = vi.fn();
+    const onRepairExportDiagnostic = vi.fn();
+    const diagnostic = makeExportDiagnostic(
+      'RBEX4200',
+      'Board clock is missing',
+      'A synchronous board-clock design requires an explicit clock source.',
+      'Review timing guidance'
+    );
+    const { getByTestId, queryByTestId } = renderHardware({
+      mappingRows: [
+        { id: 'phase_driver', label: 'phase_driver', direction: 'in', pin: '', required: true, timingRole: 'clock' },
+        { id: 'q', label: 'Q', direction: 'out', pin: 'U16', required: true },
+      ],
+      verifyLastRun: makeVerifyRun('synchronous_board_clock', {
+        phase_driver: 'clock',
+        q: 'output',
+      }),
+      exportViewStatus: 'blocked',
+      exportBlockingDiagnostics: [diagnostic],
+      onGoToDesign,
+      onRepairExportDiagnostic,
+    });
+
+    expect(queryByTestId('ide-hw-export-repair-callout')).toBeNull();
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Assign PHASE_DRIVER');
+    expect(onGoToDesign).not.toHaveBeenCalled();
+    expect(onRepairExportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it('routes a mapped but undriven output to Design instead of calling it a mapping issue', () => {
+    const onGoToDesign = vi.fn();
+    const onRepairExportDiagnostic = vi.fn();
+    const diagnostic = makeExportDiagnostic(
+      'RBEX4103',
+      'Floating output',
+      'Output port LD2 has no driver.',
+      'Review diagnostic'
+    );
+    const { getByTestId, queryByTestId } = renderHardware({
+      exportViewStatus: 'blocked',
+      exportBlockingDiagnostics: [diagnostic],
+      onGoToDesign,
+      onRepairExportDiagnostic,
+    });
+
+    expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
+    expect(queryByTestId('ide-hw-export-repair-callout')).toBeNull();
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Design blocked');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Repair the circuit in Design');
+    fireEvent.click(getByTestId('ide-hw-open-design-blocker'));
+    expect(onGoToDesign).toHaveBeenCalledTimes(1);
+    expect(onRepairExportDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it('orders mapping summary, assignment workspace, after-mapping tools, and handoff ribbon', () => {
+    const { getByTestId } = renderHardware();
+    const summary = getByTestId('ide-hw-board-resource-summary');
+    const table = getByTestId('ide-hw-map-table');
+    const afterMapping = getByTestId('ide-hw-after-mapping-tools');
     const ribbon = getByTestId('ide-hw-workflow-ribbon');
 
-    // Verify structural order: header → guide → workspace → ribbon
-    expect(header.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(guide.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(workspace.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(summary.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(table.compareDocumentPosition(afterMapping) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(afterMapping.compareDocumentPosition(ribbon) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -15,11 +15,11 @@ await runIdeGate('IDE export generates HDL contract satisfied', async ({ page, b
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-artifact-preview"]', { timeout: 10000 });
 
-  const tabs = page.locator('[data-testid^="ide-export-artifact-tab-"]');
+  const tabs = page.locator('[data-testid="ide-export-artifact-tabs"] button');
   const tabCount = await tabs.count();
   assert(tabCount >= 2, `expected at least two artifact tabs, got ${tabCount}`);
 
-  const vhdlTab = page.locator('[data-testid*="ide-export-artifact-tab-top-vhd"]').first();
+  const vhdlTab = page.locator('[data-testid="ide-export-file-top-vhd"]').first();
   if (await vhdlTab.isVisible().catch(() => false)) {
     await vhdlTab.click();
   }

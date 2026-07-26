@@ -40,35 +40,22 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
     await checkSurface(failures, page, viewport, 'design', async () => {
       await openMode(page, baseUrl, viewport, 'design');
       await assertNoHorizontalOverflow(page, viewport, 'design');
-      await collapseDesignLibraryForRailProof(page, viewport);
-      await assertCollapsedRail(page, 'left', { labelPattern: /\b(lib|library)\b/i });
-      await assertCollapsedRail(page, 'right', { labelPattern: /\b(info|inspector)\b/i });
+      await assertNoRetiredRails(page, viewport, 'design');
+      await assertStableDock(page, viewport, 'design', 'left', { min: 180, max: 240 });
+      await assertStableDock(page, viewport, 'design', 'right', { min: 220, max: 300 });
       await assertWorkObject(page, viewport, 'design canvas', ['[data-testid="ide-design-live-canvas"]'], {
-        minVisibleWidth: Math.min(980, viewport.width * 0.72),
+        minVisibleWidth: Math.min(820, viewport.width * 0.6),
         minVisibleHeight: Math.min(390, viewport.height * 0.49),
         maxTop: viewport.height * 0.46,
       });
-      await openRailAndAssertRecovery(page, viewport, 'design', 'left', async () => {
-        await assertWorkObject(page, viewport, 'design canvas with Library open', ['[data-testid="ide-design-live-canvas"]'], {
-          minVisibleWidth: Math.min(900, viewport.width * 0.64),
-          minVisibleHeight: 320,
-          maxTop: viewport.height * 0.5,
-        });
-      });
-      await openRailAndAssertRecovery(page, viewport, 'design', 'right', async () => {
-        await assertWorkObject(page, viewport, 'design canvas with Inspector open', ['[data-testid="ide-design-live-canvas"]'], {
-          minVisibleWidth: Math.min(860, viewport.width * 0.6),
-          minVisibleHeight: 320,
-          maxTop: viewport.height * 0.5,
-        });
-      });
-      await capture(page, viewport, 'design', 'collapsed');
+      await capture(page, viewport, 'design', 'stable-support');
     });
 
     await checkSurface(failures, page, viewport, 'verify', async () => {
       await openMode(page, baseUrl, viewport, 'verify');
       await assertNoHorizontalOverflow(page, viewport, 'verify');
-      await assertCollapsedRail(page, 'left', { labelPattern: /\b(sig|signals)\b/i });
+      await assertNoRetiredRails(page, viewport, 'verify');
+      await assertStableDock(page, viewport, 'verify', 'left', { min: 160, max: 320 });
       await assertVisiblePrimaryAction(page, viewport, 'Verify primary compare action', [
         '[data-testid="ide-vcb-run"]',
         '[data-testid="ide-verify-run"]',
@@ -87,45 +74,16 @@ await runIdeGate('IDE workbench obstruction usability satisfied', async ({ page,
           maxTop: viewport.height * 0.52,
         }
       );
-      await openRailAndAssertRecovery(page, viewport, 'verify', 'left', async () => {
-        await assertVisiblePrimaryAction(page, viewport, 'Verify action with Signals open', [
-          '[data-testid="ide-vcb-run"]',
-          '[data-testid="ide-verify-run"]',
-          '[data-testid="ide-verify-run-secondary"]',
-          '[data-testid="ide-verify-empty-run"]',
-          '[data-testid="ide-verify-stale-primary-rerun"]',
-        ]);
-        await assertWorkObject(
-          page,
-          viewport,
-          'Verify testbench/workbench with Signals open',
-          ['[data-testid="ide-verify-region-stimulus"]', '[data-testid="ide-verify-workbench"]'],
-          {
-            minVisibleWidth: Math.min(550, viewport.width * 0.38),
-            minVisibleHeight: 240,
-            maxTop: viewport.height * 0.54,
-          }
-        );
-      });
-      await capture(page, viewport, 'verify', 'collapsed');
+      await capture(page, viewport, 'verify', 'stable-support');
     });
 
     await checkSurface(failures, page, viewport, 'hardware', async () => {
       await openMode(page, baseUrl, viewport, 'hardware');
       await assertNoHorizontalOverflow(page, viewport, 'hardware');
       await assertHardwareStartsAsWorkbench(page, viewport);
-      await assertCollapsedRail(page, 'left', { labelPattern: /\b(map|pins)\b/i });
-      await assertCollapsedRail(page, 'right', { labelPattern: /\b(info|inspector)\b/i });
+      await assertNoRetiredRails(page, viewport, 'hardware');
       await assertHardwareWorkObject(page, viewport, 'initial');
-      await openRailAndAssertRecovery(page, viewport, 'hardware', 'right', async () => {
-        await assertOpenDockWidth(page, 'right', { min: 180, max: 260 });
-        await assertHardwareWorkObject(page, viewport, 'right inspector open');
-      });
-      await openRailAndAssertRecovery(page, viewport, 'hardware', 'left', async () => {
-        await assertOpenDockWidth(page, 'left', { min: 160, max: 220 });
-        await assertHardwareWorkObject(page, viewport, 'Map guide open');
-      });
-      await capture(page, viewport, 'hardware', 'collapsed');
+      await capture(page, viewport, 'hardware', 'direct-workbench');
     });
   }
 
@@ -220,90 +178,37 @@ async function assertHardwareWorkObject(page, viewport, stateLabel) {
     table.visibleWidth >= 300 && table.visibleHeight >= 220,
     `hardware/${stateLabel}: mapping table is not meaningfully visible (${table.visibleWidth}x${table.visibleHeight})`
   );
-  const minBoardWidth = isOpenSupportState
-    ? Math.min(320, viewport.width * 0.23)
-    : Math.min(400, viewport.width * 0.28);
+  const minBoardWidth = Math.min(320, viewport.width * 0.23);
   assert(
     board.visibleWidth >= minBoardWidth && board.visibleHeight >= 250,
     `hardware/${stateLabel}: secondary board reference is not meaningfully visible (${board.visibleWidth}x${board.visibleHeight})`
   );
 }
 
-async function collapseDesignLibraryForRailProof(page, viewport) {
-  const library = page.locator('[data-testid="ide-design-dock-palette"]').first();
-  assert(await library.isVisible().catch(() => false), `${viewport.label}/design: Library must be open on entry`);
-  const hide = page.locator('[data-testid="ide-design-library-collapse"]').first();
-  assert(await hide.isVisible().catch(() => false), `${viewport.label}/design: open Library must expose Hide`);
-  await hide.click();
-  await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
-}
-
-async function assertCollapsedRail(page, side, options = {}) {
-  const rail = await readRail(page, side);
-  assert(rail.visible, `${side} support rail is missing or clipped`);
-  assert(rail.width >= 36 && rail.width <= 52, `${side} support rail width ${rail.width}px is not targetable and compact`);
-  assert(rail.tagName === 'BUTTON' && rail.focusable, `${side} support rail must be a focusable button`);
-  assert(
-    /\bshow\b/i.test(rail.text) || /\bshow\b/i.test(rail.ariaLabel ?? '') || /\bshow\b/i.test(rail.title ?? ''),
-    `${side} support rail must clearly say it restores the dock (${JSON.stringify({
-      text: rail.text,
-      ariaLabel: rail.ariaLabel,
-      title: rail.title,
-    })})`
-  );
-  if (options.labelPattern) {
-    assert(
-      options.labelPattern.test(rail.text) || options.labelPattern.test(rail.ariaLabel ?? '') || options.labelPattern.test(rail.title ?? ''),
-      `${side} support rail has the wrong label for this surface (${JSON.stringify({
-        text: rail.text,
-        ariaLabel: rail.ariaLabel,
-        title: rail.title,
-      })})`
-    );
-  }
-  assert(
-    rail.labelWithinRail && rail.hintWithinRail,
-    `${side} support rail label/hint are clipped or overflowing (${JSON.stringify(rail)})`
+async function assertNoRetiredRails(page, viewport, mode) {
+  const visibleCount = await page.evaluate(() =>
+    [
+      '[data-testid="ide-workbench-dock-toggle-left"]',
+      '[data-testid="ide-workbench-dock-toggle-right"]',
+      '[data-testid="ide-workbench-dock-collapse-left"]',
+      '[data-testid="ide-workbench-dock-collapse-right"]',
+      '[data-testid="ide-design-library-collapse"]',
+    ].flatMap((selector) => Array.from(document.querySelectorAll(selector))).filter((element) => {
+      const bounds = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return bounds.width > 1 && bounds.height > 1 && style.display !== 'none' && style.visibility !== 'hidden';
+    }).length
   );
   assert(
-    !/vertical/i.test(rail.labelWritingMode) && !/vertical/i.test(rail.hintWritingMode),
-    `${side} support rail uses vertical text (${JSON.stringify(rail)})`
-  );
-
-  const focused = await page.locator(`[data-testid="${rail.testId}"]`).first().focus().then(() => true).catch(() => false);
-  assert(focused, `${side} support rail must accept keyboard focus`);
-}
-
-async function openRailAndAssertRecovery(page, viewport, mode, side, callback) {
-  const rail = page.locator(`[data-testid="ide-workbench-dock-toggle-${side}"]`).first();
-  assert(await rail.isVisible().catch(() => false), `${mode}: ${side} restore rail must be visible before opening`);
-  const beforeWorkspaceWidth = await readWorkspaceWidth(page);
-  await rail.click();
-  await page.waitForTimeout(140);
-  await assertNoHorizontalOverflow(page, viewport, `${mode}/${side}-open`);
-  await callback();
-  await capture(page, viewport, mode, `${side}-open`);
-
-  const collapse = page.locator(`[data-testid="ide-workbench-dock-collapse-${side}"]`).first();
-  assert(await collapse.isVisible().catch(() => false), `${mode}: ${side} dock needs a visible collapse control`);
-  await collapse.click();
-  await page.waitForTimeout(140);
-
-  const afterWorkspaceWidth = await readWorkspaceWidth(page);
-  assert(
-    afterWorkspaceWidth >= beforeWorkspaceWidth - 2,
-    `${mode}: closing ${side} support dock must restore workbench width (${beforeWorkspaceWidth}px -> ${afterWorkspaceWidth}px)`
-  );
-  assert(
-    await page.locator(`[data-testid="ide-workbench-dock-toggle-${side}"]`).first().isVisible().catch(() => false),
-    `${mode}: closing ${side} support dock must restore the collapsed rail`
+    visibleCount === 0,
+    `${viewport.label}/${mode}: retired Hide/Show rail controls obstruct the stable workbench (${visibleCount} visible)`
   );
 }
 
-async function assertOpenDockWidth(page, side, range) {
-  const dockTestId = side === 'left' ? 'ide-left-dock' : 'ide-inspector';
-  const state = await page.evaluate((testId) => {
-    const element = document.querySelector(`[data-testid="${testId}"]`);
+async function assertStableDock(page, viewport, mode, side, range) {
+  const testId = side === 'left' ? 'ide-left-dock' : 'ide-right-dock';
+  const state = await page.evaluate((dockTestId) => {
+    const element = document.querySelector(`[data-testid="${dockTestId}"]`);
     if (!element) return { visible: false, width: 0, textLength: 0 };
     const bounds = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
@@ -312,12 +217,12 @@ async function assertOpenDockWidth(page, side, range) {
       width: Math.round(bounds.width * 10) / 10,
       textLength: (element.textContent || '').replace(/\s+/g, ' ').trim().length,
     };
-  }, dockTestId);
-  assert(state.visible, `${side} dock did not open`);
-  assert(state.textLength >= 12, `${side} dock opened without meaningful content`);
+  }, testId);
+  assert(state.visible, `${viewport.label}/${mode}: stable ${side} support region is missing`);
+  assert(state.textLength >= 12, `${viewport.label}/${mode}: stable ${side} support region has no meaningful tools`);
   assert(
     state.width >= range.min && state.width <= range.max,
-    `${side} dock width ${state.width}px is outside ${range.min}-${range.max}px`
+    `${viewport.label}/${mode}: stable ${side} support width ${state.width}px is outside ${range.min}-${range.max}px`
   );
 }
 
@@ -341,54 +246,6 @@ async function assertNoHorizontalOverflow(page, viewport, label) {
     Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth
   );
   assert(overflow <= 1, `${viewport.label}/${label}: horizontal root overflow ${overflow}px`);
-}
-
-async function readWorkspaceWidth(page) {
-  return page.evaluate(() => {
-    const bounds = document.querySelector('[data-testid="ide-mode-body"]')?.getBoundingClientRect();
-    return Math.round((bounds?.width ?? 0) * 10) / 10;
-  });
-}
-
-async function readRail(page, side) {
-  return page.evaluate((railSide) => {
-    const element = document.querySelector(`[data-testid="ide-workbench-dock-toggle-${railSide}"]`);
-    if (!element) return { visible: false, side: railSide };
-    const bounds = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    const label = element.querySelector('.ide-workbench-dock-toggle-rail-label');
-    const hint = element.querySelector('.ide-workbench-dock-toggle-rail-hint');
-    const labelBounds = label?.getBoundingClientRect();
-    const hintBounds = hint?.getBoundingClientRect();
-    const within = (inner) =>
-      !inner ||
-      (inner.left >= bounds.left - 1 &&
-        inner.right <= bounds.right + 1 &&
-        inner.top >= bounds.top - 1 &&
-        inner.bottom <= bounds.bottom + 1);
-    return {
-      visible:
-        bounds.width > 1 &&
-        bounds.height > 1 &&
-        style.display !== 'none' &&
-        style.visibility !== 'hidden' &&
-        bounds.left >= -1 &&
-        bounds.right <= window.innerWidth + 1,
-      side: railSide,
-      testId: `ide-workbench-dock-toggle-${railSide}`,
-      tagName: element.tagName,
-      focusable: !element.hasAttribute('disabled') && element.tabIndex >= 0,
-      text: (element.textContent || '').replace(/\s+/g, ' ').trim(),
-      ariaLabel: element.getAttribute('aria-label'),
-      title: element.getAttribute('title'),
-      width: Math.round(bounds.width * 10) / 10,
-      height: Math.round(bounds.height * 10) / 10,
-      labelWithinRail: within(labelBounds),
-      hintWithinRail: within(hintBounds),
-      labelWritingMode: label ? window.getComputedStyle(label).writingMode : '',
-      hintWritingMode: hint ? window.getComputedStyle(hint).writingMode : '',
-    };
-  }, side);
 }
 
 async function readFirstVisibleRect(page, selectors) {

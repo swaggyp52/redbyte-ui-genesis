@@ -119,19 +119,20 @@ async function assertProfessionalShell(page, viewport) {
       const value = element.getBoundingClientRect();
       return { top: value.top, right: value.right, bottom: value.bottom, left: value.left, width: value.width, height: value.height };
     };
-    const stageButtons = Array.from(document.querySelectorAll('.ide-mode-button--step')).filter(visible);
+    const stageButtons = Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-button')).filter(visible);
     return {
       documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
       root: rect('[data-testid="ide-root"]'),
       topBar: rect('[data-testid="ide-top-bar"]'),
-      leftRail: rect('[data-testid="ide-left-rail"]'),
+      stageNav: rect('[data-testid="ide-stage-nav"]'),
       layout: rect('.ide-layout-shell'),
+      workflowRailCount: document.querySelectorAll('[data-testid="ide-left-rail"], .ide-left-rail').length,
       proofRibbonCount: Array.from(document.querySelectorAll('[data-testid="ide-proof-ribbon"]')).filter(visible).length,
       statusBarCount: Array.from(document.querySelectorAll('[data-testid="ide-status-bar"]')).filter(visible).length,
       productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter(visible).length,
-      stageLabels: stageButtons.map((button) => button.querySelector('.ide-mode-label')?.textContent?.trim() ?? ''),
-      importVisible: visible(document.querySelector('[data-testid="mode-button-import"]')),
-      importIsStep: document.querySelector('[data-testid="mode-button-import"]')?.classList.contains('ide-mode-button--step') ?? false,
+      stageLabels: stageButtons.map((button) => button.querySelector('.ide-stage-nav-label')?.textContent?.trim() ?? ''),
+      importVisible: visible(document.querySelector('[data-testid="ide-top-bar"] [data-testid="mode-button-import"]')),
+      importIsStep: Boolean(document.querySelector('[data-testid="ide-stage-nav"] [data-testid="mode-button-import"]')),
       scopeText: document.querySelector('[data-testid="ide-top-bar"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       topBarBackground: document.querySelector('[data-testid="ide-top-bar"]') instanceof HTMLElement
         ? getComputedStyle(document.querySelector('[data-testid="ide-top-bar"]')).backgroundImage
@@ -139,8 +140,9 @@ async function assertProfessionalShell(page, viewport) {
     };
   });
 
-  assert(shell.root && shell.topBar && shell.leftRail && shell.layout, `${viewport.label}: compact shell regions must be visible`);
+  assert(shell.root && shell.topBar && shell.stageNav && shell.layout, `${viewport.label}: compact shell regions must be visible`);
   assert(shell.documentWidth <= viewport.width + 2, `${viewport.label}: root overflow ${shell.documentWidth} > ${viewport.width}`);
+  assert(shell.workflowRailCount === 0, `${viewport.label}: obsolete workflow rail is still mounted`);
   assert(shell.proofRibbonCount === 0, `${viewport.label}: proof ribbon must not compete with the workflow rail`);
   assert(shell.statusBarCount === 0, `${viewport.label}: support footer must not repeat shell status`);
   assert(shell.productSpineCount === 0, `${viewport.label}: duplicate product-spine header is still visible`);
@@ -149,9 +151,12 @@ async function assertProfessionalShell(page, viewport) {
     `${viewport.label}: expected one five-stage workflow authority, got ${JSON.stringify(shell.stageLabels)}`,
   );
   assert(shell.importVisible && !shell.importIsStep, `${viewport.label}: Import must be a visible utility, not workflow step 6`);
-  assert(/Browser E0/i.test(shell.scopeText), `${viewport.label}: top bar must state the Browser E0 scope`);
+  for (const required of ['RedByte', 'Board', 'Save', 'Import', 'Help']) {
+    assert(shell.scopeText.includes(required), `${viewport.label}: top product bar is missing ${required}`);
+  }
   assert(shell.topBarBackground === 'none', `${viewport.label}: top bar must not use a decorative gradient`);
-  assert(shell.layout.top <= shell.topBar.bottom + 2, `${viewport.label}: workbench must begin directly under the top bar`);
+  assert(shell.stageNav.top >= shell.topBar.bottom - 2, `${viewport.label}: stage navigation must follow the top bar`);
+  assert(shell.layout.top <= shell.stageNav.bottom + 2, `${viewport.label}: workbench must begin directly under stage navigation`);
 }
 
 async function assertSurfaceBasics(page, viewport, mode) {
@@ -228,9 +233,9 @@ async function assertSurfaceBasics(page, viewport, mode) {
           .filter((value) => Number.isFinite(value) && value > 0)
       : [];
     const focusSelectors = {
-      project: ['[data-testid="ide-project-command-center"]', '.ide-project-start-card'],
-      design: ['[data-testid="ide-design-canvas"]'],
-      verify: ['[data-testid="ide-verify-stimulus-workbench"]', '[data-testid="ide-verify-add-vector-form"]', '.ide-verify-testbench-card'],
+      project: ['[data-testid="ide-project-professional-overview"]', '.ide-project-start-card'],
+      design: ['[data-testid="ide-design-live-canvas"]'],
+      verify: ['[data-testid="ide-verify-authoring-path"]', '[data-testid="ide-verify-add-vector-form"]'],
       hardware: ['[data-testid="ide-hw-map-table"]'],
       export: ['[data-testid="ide-export-readiness-hero"]'],
     };
@@ -287,20 +292,50 @@ async function assertSurfaceBasics(page, viewport, mode) {
 
 async function assertWorkObject(page, viewport, mode) {
   if (mode === 'project') {
-    await page.locator('[data-testid="ide-project-command-center"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('[data-testid="ide-project-professional-overview"]').first().waitFor({ state: 'visible', timeout: 10000 });
     return;
   }
 
   if (mode === 'design') {
-    const geometry = await relativeGeometry(page, '[data-testid="ide-design-canvas"]', '[data-testid="ide-mode-design"]');
-    assert(geometry, `${viewport.label}/Design: canvas must be visible`);
-    assert(geometry.widthShare >= 0.5, `${viewport.label}/Design: canvas width share ${geometry.widthShare.toFixed(2)} is not dominant`);
+    const geometry = await page.evaluate(() => {
+      const rect = (selector) => {
+        const element = document.querySelector(selector);
+        if (!(element instanceof HTMLElement)) return null;
+        const value = element.getBoundingClientRect();
+        return value.width > 1 && value.height > 1
+          ? { top: value.top, width: value.width, height: value.height }
+          : null;
+      };
+      const left = rect('[data-testid="ide-left-dock"]');
+      const canvas = rect('[data-testid="ide-design-live-canvas"]');
+      const right = rect('[data-testid="ide-right-dock"]');
+      const center = rect('[data-testid="ide-design-control-bar"]');
+      return {
+        left,
+        canvas,
+        right,
+        center,
+        policy: document.querySelector('[data-testid="ide-mode-design"]')?.getAttribute('data-support-dock-policy') ?? '',
+        share: (canvas?.width ?? 0) / Math.max(1, (left?.width ?? 0) + (canvas?.width ?? 0) + (right?.width ?? 0)),
+      };
+    });
+    assert(geometry.left && geometry.canvas && geometry.right && geometry.center, `${viewport.label}/Design: stable Library, canvas, and Inspector regions must be visible`);
+    assert(geometry.policy === 'stable', `${viewport.label}/Design: support docks must use the stable v3 policy`);
+    assert(geometry.left.width >= 180 && geometry.left.width <= 230, `${viewport.label}/Design: Library width ${geometry.left.width}px is unstable`);
+    if (viewport.width >= 1200) {
+      assert(geometry.right.width >= 210 && geometry.right.width <= 290, `${viewport.label}/Design: Inspector width ${geometry.right.width}px is unstable`);
+      const minimumShare = viewport.width >= 1800 ? 0.7 : viewport.width >= 1440 ? 0.66 : 0.64;
+      assert(geometry.share >= minimumShare, `${viewport.label}/Design: canvas share ${geometry.share.toFixed(3)} is not dominant`);
+    } else {
+      assert(geometry.right.top >= geometry.canvas.top + geometry.canvas.height - 8, `${viewport.label}/Design: responsive Inspector must follow the canvas`);
+    }
     return;
   }
 
   if (mode === 'verify') {
-    const testbench = page.locator('[data-testid="ide-verify-add-vector-form"]').first();
-    await testbench.waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('[data-testid="ide-testbench-documents"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('[data-testid="ide-verify-authoring-path"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('[data-testid="ide-verify-add-vector-form"]').first().waitFor({ state: 'visible', timeout: 10000 });
     const runCount = await page.locator('[data-testid="ide-vcb-run"]:visible').count();
     assert(runCount === 1, `${viewport.label}/Verify: expected one Run authority, got ${runCount}`);
     return;
@@ -317,8 +352,7 @@ async function assertWorkObject(page, viewport, mode) {
     await hero.waitFor({ state: 'visible', timeout: 10000 });
     const ordering = await page.evaluate(() => {
       const heroElement = document.querySelector('[data-testid="ide-export-readiness-hero"]');
-      const browserElement = document.querySelector('[data-testid="ide-export-file-browser-v1"]');
-      const blockedElement = document.querySelector('[data-testid="ide-export-blocked-empty-state"]');
+      const browserElement = document.querySelector('[data-testid="ide-export-file-browser"]');
       const isVisible = (element) => {
         if (!(element instanceof HTMLElement)) return false;
         const rect = element.getBoundingClientRect();
@@ -328,43 +362,29 @@ async function assertWorkObject(page, viewport, mode) {
         heroTop: isVisible(heroElement) ? heroElement.getBoundingClientRect().top : null,
         browserTop: isVisible(browserElement) ? browserElement.getBoundingClientRect().top : null,
         browserVisible: isVisible(browserElement),
-        blockedVisible: isVisible(blockedElement),
       };
     });
-    if (ordering.blockedVisible) {
-      assert(!ordering.browserVisible, `${viewport.label}/Export: blocked state must hide the package browser`);
-    } else if (ordering.browserVisible) {
-      assert(ordering.heroTop <= ordering.browserTop, `${viewport.label}/Export: readiness decision must precede file browsing`);
-    }
+    assert(ordering.browserVisible, `${viewport.label}/Export: v3 package file browser must remain inspectable in every package state`);
+    assert(ordering.heroTop <= ordering.browserTop, `${viewport.label}/Export: readiness decision must precede file browsing`);
+    const boundaryText = ((await page.getByTestId('ide-export-e0-boundary-summary').first().textContent()) ?? '').replace(/\s+/g, ' ');
+    assert(
+      /Browser E0.*Vivado build.*programming.*physical board behavior.*external/i.test(boundaryText),
+      `${viewport.label}/Export: browser-only proof boundary is missing`,
+    );
     return;
   }
 
   if (mode === 'import') {
-    const utilityCopy = page.getByTestId('ide-import-utility-copy').first();
-    await utilityCopy.waitFor({ state: 'visible', timeout: 10000 });
-    const utilityText = (await utilityCopy.textContent()) ?? '';
-    assert(/Import is for recovery and restore/i.test(utilityText), `${viewport.label}/Import: utility boundary is missing`);
-    assert(/never replaces current work until review and confirmation/i.test(utilityText), `${viewport.label}/Import: replacement boundary is missing`);
-    const cancelCopy = page.getByTestId('ide-import-cancel-preserves-copy').first();
-    await cancelCopy.waitFor({ state: 'visible', timeout: 10000 });
-    const cancelText = (await cancelCopy.textContent()) ?? '';
-    assert(/current project stays intact/i.test(cancelText), `${viewport.label}/Import: cancel preservation is missing`);
+    const stepper = page.getByTestId('ide-import-horizontal-stepper').first();
+    await stepper.waitFor({ state: 'visible', timeout: 10000 });
+    const steps = (await stepper.locator('li').allTextContents()).map((entry) => entry.replace(/\s+/g, ' ').trim());
+    assert(
+      steps.length === 3 && /upload/i.test(steps[0]) && /review/i.test(steps[1]) && /apply/i.test(steps[2]),
+      `${viewport.label}/Import: expected horizontal Upload -> Review -> Apply authority, got ${JSON.stringify(steps)}`,
+    );
+    const workbenchText = ((await page.getByTestId('ide-import-workbench').first().textContent()) ?? '').replace(/\s+/g, ' ');
+    assert(/without replacing current work early/i.test(workbenchText), `${viewport.label}/Import: no-early-replacement boundary is missing`);
   }
-}
-
-async function relativeGeometry(page, childSelector, parentSelector) {
-  return page.evaluate(({ childSelector: child, parentSelector: parent }) => {
-    const childElement = document.querySelector(child);
-    const parentElement = document.querySelector(parent);
-    if (!(childElement instanceof HTMLElement) || !(parentElement instanceof HTMLElement)) return null;
-    const childRect = childElement.getBoundingClientRect();
-    const parentRect = parentElement.getBoundingClientRect();
-    if (childRect.width <= 0 || childRect.height <= 0 || parentRect.width <= 0 || parentRect.height <= 0) return null;
-    return {
-      widthShare: childRect.width / parentRect.width,
-      heightShare: childRect.height / parentRect.height,
-    };
-  }, { childSelector, parentSelector });
 }
 
 async function capture(page, viewport, phase) {

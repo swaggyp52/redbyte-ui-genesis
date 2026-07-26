@@ -160,6 +160,210 @@ describe('projectRuntime verify authority', () => {
     useProjectRuntime.getState().loadFromProject(buildAuthorityFixture());
   });
 
+  it('keeps sequential execution intent isolated per scenario and stales generated Export', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+    runtime.recordExport({ status: 'ok', hash: 'portable-export-hash' });
+    runtime.updateScenarioSequentialPolicy({
+      overrideMode: 'auto',
+      runCycles: 6,
+      activeEdge: 'rising',
+      resetBehavior: 'none',
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      signalId: 'clk_node_out',
+      signalLabel: 'Board clock alias',
+      startLevel: 0,
+    });
+
+    const authored = useProjectRuntime.getState();
+    const originalId = authored.activeScenarioId;
+    expect(authored.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(authored.projectHealthCore.dirtySinceExport).toBe(true);
+    expect(authored.scenarios.find((scenario) => scenario.id === originalId)?.sequentialPolicy)
+      .toMatchObject({ signalId: 'clk', signalLabel: 'clk', runCycles: 6 });
+
+    runtime.duplicateScenario();
+    const duplicated = useProjectRuntime.getState();
+    const duplicateId = duplicated.activeScenarioId;
+    expect(duplicateId).not.toBe(originalId);
+    expect(duplicated.scenarios.find((scenario) => scenario.id === duplicateId)?.sequentialPolicy)
+      .toEqual(duplicated.scenarios.find((scenario) => scenario.id === originalId)?.sequentialPolicy);
+
+    runtime.renameScenario('Falling-transition debug');
+    runtime.updateScenarioSequentialPolicy({
+      ...useProjectRuntime.getState().scenarios.find((scenario) => scenario.id === duplicateId)!
+        .sequentialPolicy!,
+      overrideMode: 'manual-pulses',
+      runCycles: 3,
+      activeEdge: 'falling',
+      executionModel: 'manual',
+      sourceType: 'manual',
+    });
+    runtime.switchScenario(originalId);
+
+    const finalState = useProjectRuntime.getState();
+    expect(finalState.scenarios.find((scenario) => scenario.id === originalId)?.sequentialPolicy)
+      .toMatchObject({ overrideMode: 'auto', runCycles: 6, activeEdge: 'rising' });
+    expect(finalState.scenarios.find((scenario) => scenario.id === duplicateId)).toMatchObject({
+      name: 'Falling-transition debug',
+      sequentialPolicy: {
+        overrideMode: 'manual-pulses',
+        runCycles: 3,
+        activeEdge: 'rising',
+      },
+    });
+  });
+
+  it('canonicalizes authored aliases before vectors and report evidence are materialized', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+    runtime.setVectors([
+      {
+        tick: 0,
+        inputs: { d_node_out: 0, d: 1, clk_node_out: 0 },
+        expected: { q_node_in: 0, q: 1 },
+      },
+      {
+        tick: 1,
+        inputs: { d: 0, clk: 1 },
+        expected: { q: '' as unknown as 0 },
+      },
+    ]);
+
+    const [authoredVector, blankExpectedVector] = useProjectRuntime.getState().projectVectors;
+    expect(authoredVector?.inputs).toEqual({ d: 1, clk: 0 });
+    expect(authoredVector?.expected).toEqual({ q: 1 });
+    expect(blankExpectedVector?.expected).toEqual({});
+
+    const run = runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Canonical aliases',
+      deterministicHash: 'canonical-alias-report',
+      rows: [],
+      ranAtIso: '2026-07-22T12:00:00.000Z',
+    });
+    expect(run.report.vectors[0]?.inputs).toEqual({ d: 1, clk: 1 });
+    expect(run.report.vectors[0]?.expected).toEqual({ q: 1 });
+    expect(run.report.vectors[1]?.expected).toEqual({});
+    expect(run.report.rows.every((row) => row.signal === 'q')).toBe(true);
+  });
+
+  it('preserves high authored start state until an explicit rising transition', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+    const vectors = [
+      { tick: 0, inputs: { d: 1, clk: 1 }, expected: { q: 0 } },
+      { tick: 1, inputs: { d: 1 }, expected: { q: 0 } },
+      { tick: 2, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+      { tick: 3, inputs: { d: 1 }, expected: { q: 0 } },
+      { tick: 4, inputs: { d: 1, clk: 1 }, expected: { q: 1 } },
+    ];
+
+    const run = runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'High start authority',
+      deterministicHash: 'high-start-authority',
+      rows: [],
+      vectors,
+      clockPolicy: {
+        signalId: 'clk',
+        signalLabel: 'clk',
+        sourceType: 'manual',
+        executionModel: 'manual',
+        overrideMode: 'manual-pulses',
+        autoRunEnabled: false,
+        activeEdge: 'rising',
+        startLevel: 1,
+        dutyCycle: 0.5,
+        runCycles: 5,
+        resetBehavior: 'none',
+      },
+      ranAtIso: '2026-07-22T12:05:00.000Z',
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors.map((vector) => vector.inputs.clk)).toEqual([1, 1, 0, 0, 1]);
+    expect(run.report.rows.map((row) => row.actual)).toEqual(['0', '0', '0', '0', '1']);
+  });
+
+  it('sorts authored rows before carrying omitted manual clock values', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+
+    const run = runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Ordered manual clock carry',
+      deterministicHash: 'ordered-manual-clock-carry',
+      rows: [],
+      vectors: [
+        { tick: 2, inputs: { d: 1, clk: 1 }, expected: { q: 1 } },
+        { tick: 0, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+        { tick: 1, inputs: { d: 1 }, expected: { q: 0 } },
+      ],
+      clockPolicy: {
+        signalId: 'clk',
+        signalLabel: 'clk',
+        sourceType: 'manual',
+        executionModel: 'manual',
+        overrideMode: 'manual-pulses',
+        autoRunEnabled: false,
+        activeEdge: 'rising',
+        startLevel: 0,
+        dutyCycle: 0.5,
+        runCycles: 3,
+        resetBehavior: 'none',
+      },
+      ranAtIso: '2026-07-22T12:05:30.000Z',
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors.map((vector) => vector.tick)).toEqual([0, 1, 2]);
+    expect(run.report.vectors.map((vector) => vector.inputs.clk)).toEqual([0, 0, 1]);
+    expect(run.report.rows.map((row) => row.actual)).toEqual(['0', '0', '1']);
+  });
+
+  it('resolves label-only authored clock policy before carrying omitted clock rows', () => {
+    const runtime = useProjectRuntime.getState();
+    const project = buildSequentialAuthorityFixture();
+    project.ioMapping = {
+      ...project.ioMapping!,
+      inputs: project.ioMapping!.inputs.map((row) =>
+        row.id === 'clk' ? { ...row, label: 'Clock' } : row
+      ),
+    };
+    runtime.loadFromProject(project);
+
+    const run = runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Label-only clock carry',
+      deterministicHash: 'label-only-clock-carry',
+      rows: [],
+      vectors: [
+        { tick: 0, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+        { tick: 1, inputs: { d: 1 }, expected: { q: 0 } },
+        { tick: 2, inputs: { d: 1, clk: 1 }, expected: { q: 1 } },
+      ],
+      clockPolicy: {
+        signalLabel: 'Clock',
+        sourceType: 'manual',
+        executionModel: 'manual',
+        overrideMode: 'manual-pulses',
+        autoRunEnabled: false,
+        activeEdge: 'rising',
+        startLevel: 1,
+        dutyCycle: 0.5,
+        runCycles: 3,
+        resetBehavior: 'none',
+      },
+      ranAtIso: '2026-07-22T12:06:00.000Z',
+    });
+
+    expect(run.status).toBe('pass');
+    expect(run.report.vectors.map((vector) => vector.inputs.clk)).toEqual([0, 0, 1]);
+    expect(run.report.rows.map((row) => row.actual)).toEqual(['0', '0', '1']);
+  });
+
   it('keeps verify authority deterministic even after interactive sim state changes', () => {
     const runA = useProjectRuntime.getState().runVerification({
       scenarioId: 'project-verify-authority',
@@ -226,7 +430,7 @@ describe('projectRuntime verify authority', () => {
 
     expect(run.runKind).toBe('trace');
     expect(run.scenarioVersion).toBe(3);
-    expect(run.scenarioContentHash).toBe('scenario-hash-trace');
+    expect(run.scenarioContentHash).toBeUndefined();
     expect(state.verifyLastRun?.runKind).toBe('trace');
     expect(state.projectHealthCore.lastVerify?.runKind).toBe('trace');
     expect(
@@ -585,7 +789,8 @@ describe('projectRuntime verify authority', () => {
     expect(run.schedule).toBe('clocked_macro');
     expect(run.scheduleContract).toEqual(expectedContract);
     expect(run.meta.samplePoint).toBe(expectedContract.samplePoint);
-    expect(run.meta.tick0Meaning).toBe(expectedContract.tick0Meaning);
+    expect(expectedContract.tick0Meaning).toBe('initial-state');
+    expect(run.meta.tick0Meaning).toBeNull();
     expect(state.verifyLastRun?.scheduleContract).toEqual(expectedContract);
   });
 
@@ -898,7 +1103,138 @@ describe('projectRuntime verify authority', () => {
     expect(activeSteps.every((step, index) => step.order === index)).toBe(true);
   });
 
-  it('prunes removed outputs from project and custom vectors after a design mutation', () => {
+  it('keeps authored documents and current evidence intact for a layout-only node move', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.setVectors(structuredClone(useProjectRuntime.getState().projectVectors));
+    runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Layout-only baseline',
+      deterministicHash: 'layout-only-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-07-17T01:00:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    const before = useProjectRuntime.getState();
+    const scenarioBefore = structuredClone(
+      before.scenarios.find((scenario) => scenario.id === before.activeScenarioId)
+    );
+    const runBefore = structuredClone(before.verifyLastRun);
+    const healthBefore = structuredClone(before.projectHealthCore);
+    const movedCircuit = structuredClone(before.circuit);
+    const movedNode = movedCircuit.nodes.find((node) => node.id === 'ld0_node');
+    expect(movedNode).toBeDefined();
+    movedNode!.x = 310;
+    movedNode!.y = 145;
+    movedNode!.position = { x: 310, y: 145 };
+
+    runtime.applyCircuitMutation(movedCircuit);
+
+    const moved = useProjectRuntime.getState();
+    expect(moved.scenarios.find((scenario) => scenario.id === moved.activeScenarioId)).toEqual(
+      scenarioBefore
+    );
+    expect(moved.verifyLastRun).toEqual(runBefore);
+    expect(moved.projectHealthCore).toEqual(healthBefore);
+  });
+
+  it('keeps authored expectations but clears produced evidence when a gate is swapped', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+    runtime.setVectors(structuredClone(useProjectRuntime.getState().projectVectors));
+    runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Gate-swap baseline',
+      deterministicHash: 'gate-swap-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-07-17T01:05:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    const before = useProjectRuntime.getState();
+    const authoredVectors = structuredClone(before.projectVectors);
+    const authoredScenario = structuredClone(
+      before.scenarios.find((scenario) => scenario.id === before.activeScenarioId)
+    );
+    const swappedCircuit = structuredClone(before.circuit);
+    const xor = swappedCircuit.nodes.find((node) => node.id === 'xor_node');
+    expect(xor?.type).toBe('XOR');
+    xor!.type = 'OR';
+
+    runtime.applyCircuitMutation(swappedCircuit);
+
+    const swapped = useProjectRuntime.getState();
+    const swappedScenario = swapped.scenarios.find(
+      (scenario) => scenario.id === swapped.activeScenarioId
+    );
+    expect(swapped.projectVectors.map((vector) => vector.tick)).toEqual(
+      authoredVectors.map((vector) => vector.tick)
+    );
+    expect(swapped.projectVectors.map((vector) => Object.values(vector.inputs))).toEqual(
+      authoredVectors.map((vector) => Object.values(vector.inputs))
+    );
+    expect(swapped.projectVectors.map((vector) => Object.values(vector.expected ?? {}))).toEqual(
+      authoredVectors.map((vector) => Object.values(vector.expected ?? {}))
+    );
+    expect(swappedScenario?.id).toBe(authoredScenario?.id);
+    expect(swappedScenario?.name).toBe(authoredScenario?.name);
+    expect(swappedScenario?.version).toBe(authoredScenario?.version);
+    expect(swapped.verifyLastRun).toBeUndefined();
+    expect(swapped.projectHealthCore.lastVerify).toBeUndefined();
+    expect(swapped.verifyRunHistory.length).toBeGreaterThan(0);
+  });
+
+  it('preserves explicit sequential clock, reset, assertion, and note steps through a wire repair', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+    runtime.appendScenarioStep({
+      kind: 'apply_reset',
+      targetRef: 'reset_n',
+      value: 0,
+      durationTicks: 2,
+      label: 'Hold reset',
+      notes: 'Student-authored reset contract',
+    });
+    runtime.appendScenarioStep({
+      kind: 'pulse_step',
+      targetRef: 'clk',
+      value: 1,
+      durationTicks: 3,
+      pulseBehavior: 'rising',
+      label: 'Clock edge',
+      notes: 'Capture D on the rising edge',
+    });
+    runtime.appendScenarioStep({
+      kind: 'assert_scalar',
+      targetRef: 'q',
+      expectedValue: 1,
+      durationTicks: 1,
+      label: 'Expected Q',
+      notes: 'Keep this expected result after repair',
+    });
+
+    const before = useProjectRuntime.getState();
+    const stepsBefore = structuredClone(
+      before.scenarios.find((scenario) => scenario.id === before.activeScenarioId)?.steps
+    );
+    const disconnectedCircuit = structuredClone(before.circuit);
+    disconnectedCircuit.connections = disconnectedCircuit.connections.filter(
+      (connection) =>
+        !(
+          connection.from.nodeId === 'ff_node' &&
+          connection.to.nodeId === 'q_node'
+        )
+    );
+
+    runtime.applyCircuitMutation(disconnectedCircuit);
+
+    const after = useProjectRuntime.getState();
+    expect(after.scenarios.find((scenario) => scenario.id === after.activeScenarioId)?.steps).toEqual(
+      stepsBefore
+    );
+  });
+
+  it('preserves removed output references for authored testbench review after a design mutation', () => {
     useProjectRuntime.getState().setCustomVectors([
       { id: 'cv-01', tick: 0, inputs: { sw0: 1 }, expected: { ld0: 1 } },
     ]);
@@ -913,8 +1249,8 @@ describe('projectRuntime verify authority', () => {
 
     const state = useProjectRuntime.getState();
     expect(state.projectIoRows.some((row) => row.direction === 'out')).toBe(false);
-    expect(state.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 0)).toBe(true);
-    expect(state.customVectors[0]?.expected).toEqual({});
+    expect(state.projectVectors.every((vector) => 'ld0' in (vector.expected ?? {}))).toBe(true);
+    expect(state.customVectors[0]?.expected).toEqual({ ld0: 1 });
 
     const run = state.runVerification({
       scenarioId: 'removed-output-live-io',

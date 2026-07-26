@@ -2,12 +2,21 @@
 
 import { act } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { materializeIoMappingFromHardwareMappingV2 } from '@redbyte/rb-utils';
+import {
+  materializeIoMappingFromHardwareMappingV2,
+  migrateIoMappingToHardwareMappingV2,
+  type HardwareMappingDocumentV2,
+} from '@redbyte/rb-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RBProject } from '../../../export/projectFormat';
 import { getIdeExampleById } from '../examplesCatalog';
 import { useProjectRuntime } from '../projectRuntime';
 import { buildExportViewModel } from '../viewmodels/buildExportViewModel';
+import {
+  computeExecutionStimulusHash,
+  computeScenarioContentHash,
+  materializeScenarioVectors,
+} from '../verifyScenario';
 
 function buildExampleProject(exampleId = 'two-bit-counter'): RBProject {
   const example = getIdeExampleById(exampleId);
@@ -99,6 +108,39 @@ function renameClockBoundary(nextLabel: string): void {
   useProjectRuntime.getState().applyCircuitMutation(renamedCircuit);
 }
 
+function withStructuredOutputBus(project: RBProject): RBProject {
+  const ioMapping = project.ioMapping!;
+  const migrated = migrateIoMappingToHardwareMappingV2({
+    inputs: ioMapping.inputs,
+    outputs: [],
+  });
+  const outputBus: HardwareMappingDocumentV2['entries'][number] = {
+    kind: 'bus',
+    id: 'result_bus',
+    direction: 'out',
+    portName: 'result',
+    width: ioMapping.outputs.length,
+    label: 'Results',
+    bits: ioMapping.outputs.map((row, bitIndex) => ({
+      id: row.id,
+      bitIndex,
+      nodeId: row.nodeId,
+      port: row.port,
+      pin: row.pin,
+      label: row.label,
+    })),
+  };
+  const hardwareMappingV2: HardwareMappingDocumentV2 = {
+    ...migrated,
+    entries: [...migrated.entries, outputBus],
+  };
+  return {
+    ...project,
+    ioMapping: materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+    hardwareMappingV2,
+  };
+}
+
 describe('projectRuntime mapping authority', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -117,19 +159,21 @@ describe('projectRuntime mapping authority', () => {
 
     let state = useProjectRuntime.getState();
     const renamedClockRow = state.projectIoRows.find((row) => row.nodeId === 'clk_node');
-    expect(renamedClockRow?.id).toBe('enter_clk');
-    expect(renamedClockRow?.pin).toBe('W5');
+    expect(renamedClockRow).toBeDefined();
+    expect(renamedClockRow?.id).toBe('clk');
+    expect(renamedClockRow?.label).toBe('ENTER CLK');
+    expect(renamedClockRow?.pin).toBe('CLK100MHZ');
 
     act(() => {
-      useProjectRuntime.getState().setMappingPin('enter_clk', 'U18');
+      useProjectRuntime.getState().setMappingPin(renamedClockRow?.id ?? 'clk', 'U18');
     });
 
     state = useProjectRuntime.getState();
     expect(state.projectIoRows.find((row) => row.nodeId === 'clk_node')?.pin).toBe('U18');
 
     const materialized = materializeIoMappingFromHardwareMappingV2(state.hardwareMappingV2);
-    expect(materialized.inputs.some((entry) => entry.id === 'enter_clk' && entry.pin === 'U18')).toBe(true);
-    expect(materialized.inputs.some((entry) => entry.id === 'clk')).toBe(false);
+    expect(materialized.inputs.some((entry) => entry.id === 'clk' && entry.pin === 'U18')).toBe(true);
+    expect(materialized.inputs.some((entry) => entry.id === 'enter_clk')).toBe(false);
 
     const exportViewModel = buildExportViewModel(buildProjectFromRuntimeState());
     const renamedPortRows = exportViewModel.pinTable.filter((row) => row.port.toLowerCase().includes('enter'));
@@ -150,7 +194,9 @@ describe('projectRuntime mapping authority', () => {
 
     act(() => {
       renameClockBoundary('ENTER CLK');
-      useProjectRuntime.getState().setMappingPin('enter_clk', '');
+      const renamedClockRow = useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'clk_node');
+      expect(renamedClockRow).toBeDefined();
+      useProjectRuntime.getState().setMappingPin(renamedClockRow?.id ?? 'clk', '');
     });
 
     expect(
@@ -164,5 +210,65 @@ describe('projectRuntime mapping authority', () => {
     expect(
       useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'clk_node')?.pin
     ).toBe('CLK100MHZ');
+  });
+
+  it('keeps a fresh rerun Export-current after a structured V2 bit boundary rename', () => {
+    act(() => {
+      useProjectRuntime.getState().loadFromProject(
+        withStructuredOutputBus(buildExampleProject('logic-gates'))
+      );
+    });
+    const beforeRename = useProjectRuntime.getState();
+    const outputRow = beforeRename.projectIoRows.find((row) => row.direction === 'out')!;
+    const originalV2Label = materializeIoMappingFromHardwareMappingV2(
+      beforeRename.hardwareMappingV2
+    ).outputs.find((row) => row.id === outputRow.id)?.label;
+
+    act(() => {
+      const current = useProjectRuntime.getState();
+      useProjectRuntime.getState().applyCircuitMutation({
+        nodes: current.circuit.nodes.map((node) =>
+          node.id === outputRow.nodeId ? { ...node, label: 'RENAMED RESULT' } : node
+        ),
+        connections: structuredClone(current.circuit.connections),
+      });
+    });
+    const renamed = useProjectRuntime.getState();
+    expect(renamed.projectIoRows.find((row) => row.id === outputRow.id)?.label)
+      .toBe('RENAMED RESULT');
+    expect(
+      materializeIoMappingFromHardwareMappingV2(renamed.hardwareMappingV2).outputs.find(
+        (row) => row.id === outputRow.id
+      )?.label
+    ).toBe(originalV2Label);
+
+    const scenario = renamed.scenarios.find((entry) => entry.id === renamed.activeScenarioId)!;
+    const vectors = materializeScenarioVectors(scenario);
+    let run = renamed.runVerification({
+      scenarioId: scenario.id,
+      scenarioName: scenario.name,
+      scenarioVersion: scenario.version,
+      scenarioContentHash: computeScenarioContentHash(scenario),
+      scenarioStimulusHash: computeExecutionStimulusHash(vectors),
+      deterministicHash: 'structured-v2-rename-rerun',
+      assertionMode: true,
+      vectors,
+      rows: [],
+      ranAtIso: '2026-07-22T12:08:00.000Z',
+    });
+    const afterRun = useProjectRuntime.getState();
+    run = afterRun.verifyLastRun ?? run;
+    const exportViewModel = buildExportViewModel(
+      buildProjectFromRuntimeState(),
+      run,
+      afterRun.scenarios.find((entry) => entry.id === afterRun.activeScenarioId)
+    );
+    const expectedIo = JSON.parse(
+      exportViewModel.artifacts.find((artifact) => artifact.path === 'EXPECTED_IO.json')?.content ?? '{}'
+    ) as { source?: string; verifyHash?: string };
+
+    expect(expectedIo.source).toBe('verify-run');
+    expect(expectedIo.verifyHash).toBe(run.deterministicHash);
+    expect(exportViewModel.exportedScenario?.isStaleComparedToLastPass).toBe(false);
   });
 });

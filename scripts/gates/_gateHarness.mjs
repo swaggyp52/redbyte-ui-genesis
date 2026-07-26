@@ -108,10 +108,10 @@ async function loadExactExample(page, exampleId) {
 
 async function openStarterCatalogIfPresent(page) {
   const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
-  const loadedExamples = page.locator('[data-testid="ide-project-examples-disclosure"]').first();
+  const initialCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
   if (
     (await changeProject.isVisible().catch(() => false)) &&
-    !(await loadedExamples.count().catch(() => 0))
+    !(await initialCatalog.isVisible().catch(() => false))
   ) {
     await clickLocatorElement(changeProject);
     const courseStarter = page.locator('[data-testid="ide-project-path-course-starter"]').first();
@@ -123,7 +123,10 @@ async function openStarterCatalogIfPresent(page) {
   const catalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
   if (!(await catalog.count().catch(() => 0))) return;
 
-  const isOpen = await catalog.evaluate((element) => element instanceof HTMLDetailsElement && element.open);
+  const isOpen = await catalog.evaluate((element) => {
+    if (element instanceof HTMLDetailsElement) return element.open;
+    return !element.hasAttribute('hidden') && element.getAttribute('data-expanded') !== 'false';
+  });
   if (isOpen) return;
 
   const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
@@ -168,6 +171,7 @@ export async function ensureVerifyVectorsReady(page) {
   if (/\d+\s+vector/i.test(runBarText)) return 'existing';
 
   const selectors = [
+    '[data-testid="ide-vcb-generate"]',
     '[data-testid="ide-verify-generate-basic-vectors"]',
     '[data-testid="ide-verify-generate-basic-vectors-footer"]',
     '[data-testid="ide-verify-generate-all-combos"]',
@@ -187,10 +191,12 @@ export async function ensureVerifyVectorsReady(page) {
             const empty = document.querySelector('[data-testid="ide-verify-empty-state"]');
             const status = document.querySelector('[data-testid="ide-vcb-status"]');
             const run = document.querySelector('[data-testid="ide-vcb-run"]');
+            const stimulusCells = document.querySelectorAll('[data-testid^="ide-stimulus-cell-"]');
             return (
               (rb && /\d+\s+vector/i.test(rb.textContent || '')) ||
               (empty && /current vectors are ready|saved checks available/i.test(empty.textContent || '')) ||
-              (status && /ready/i.test(status.textContent || '') && run)
+              (status && /ready/i.test(status.textContent || '') && run) ||
+              (stimulusCells.length > 0 && run)
             );
           },
           { timeout: 10000 }
@@ -204,6 +210,10 @@ export async function ensureVerifyVectorsReady(page) {
 }
 
 async function hasCurrentVerifyVectors(page) {
+  const stimulusCellCount = await page.locator('[data-testid^="ide-stimulus-cell-"]').count().catch(() => 0);
+  const directRunVisible = await page.locator('[data-testid="ide-vcb-run"]').first().isVisible().catch(() => false);
+  if (stimulusCellCount > 0 && directRunVisible) return true;
+
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
   if (await vectorTable.isVisible().catch(() => false)) return true;
 

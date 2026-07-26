@@ -65,6 +65,18 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
     }
 
     const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
+    const bottomClippedButtons = Array.from(document.querySelectorAll('[data-testid="ide-verify-lab-grid"] button'))
+      .filter((button) => {
+        const rect = button.getBoundingClientRect();
+        return rect.width > 1 && rect.height > 1 && rect.bottom > window.innerHeight + 1;
+      });
+    const hasScrollableAncestor = (element) => {
+      for (let ancestor = element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor);
+        if (/(auto|scroll)/.test(style.overflowY) && ancestor.scrollHeight > ancestor.clientHeight + 1) return true;
+      }
+      return false;
+    };
     return {
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
@@ -75,18 +87,21 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
       waveform: box('[data-testid="ide-verify-region-waveform"]'),
       signals: box('[data-testid="ide-left-dock"]'),
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
-      bottomClippedActions: Array.from(document.querySelectorAll('[data-testid="ide-verify-lab-grid"] button'))
-        .filter((button) => {
-          const rect = button.getBoundingClientRect();
-          return rect.width > 1 && rect.height > 1 && rect.bottom > window.innerHeight + 1;
-        })
+      bottomClippedActions: bottomClippedButtons
+        .map((button) => button.textContent?.replace(/\s+/g, ' ').trim() || button.getAttribute('aria-label') || 'button')
+        .slice(0, 5),
+      bottomClippedActionsWithoutScrollAuthority: bottomClippedButtons
+        .filter((button) => !hasScrollableAncestor(button))
         .map((button) => button.textContent?.replace(/\s+/g, ' ').trim() || button.getAttribute('aria-label') || 'button')
         .slice(0, 5),
     };
   });
 
   assert(metrics.phase === 'post-run', `${viewport.label}: Verify should be in post-run phase for this proof`);
-  assert(metrics.signals?.visibleWidth >= 220, `${viewport.label}: Signals dock should be open and readable ${JSON.stringify(metrics.signals)}`);
+  assert(
+    metrics.signals?.visibleWidth >= 176 && metrics.signals?.visibleWidth <= 196,
+    `${viewport.label}: Signals dock should honor the compact 176-196px support-rail contract ${JSON.stringify(metrics.signals)}`
+  );
   assert(metrics.workspace?.extraX <= 1, `${viewport.label}: Verify workspace has internal horizontal overflow ${JSON.stringify(metrics.workspace)}`);
   assert(metrics.labFrame?.extraX <= 1, `${viewport.label}: Verify lab frame has internal horizontal overflow ${JSON.stringify(metrics.labFrame)}`);
   assert(metrics.labGrid?.extraX <= 1, `${viewport.label}: Verify lab grid has internal horizontal overflow ${JSON.stringify(metrics.labGrid)}`);
@@ -98,7 +113,10 @@ async function assertVerifySignalsDoNotStealWorkbench(page, baseUrl, viewport) {
     metrics.waveform?.visibleWidth >= Math.round(viewport.width * 0.335),
     `${viewport.label}: waveform lane too narrow with Signals open ${JSON.stringify(metrics.waveform)}`
   );
-  assert(metrics.bottomClippedActions.length === 0, `${viewport.label}: Verify actions clipped below viewport ${metrics.bottomClippedActions.join(', ')}`);
+  assert(
+    metrics.bottomClippedActionsWithoutScrollAuthority.length === 0,
+    `${viewport.label}: Verify actions below the first viewport must remain reachable through a direct scroll authority ${metrics.bottomClippedActionsWithoutScrollAuthority.join(', ')}`
+  );
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Verify created root overflow ${metrics.rootOverflowX}px`);
 
   await assertNoRootOverflow(page, `${viewport.label}/Verify signals`);
@@ -111,13 +129,11 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   await openMode(page, baseUrl, 'export', `release-solidification-export-${viewport.label}`);
   await assertBuildHash(page, `${viewport.label}/Export`);
 
-  const readinessDetails = page.locator('.ide-export-package-readiness-details').first();
-  if (!(await readinessDetails.getAttribute('open'))) {
-    await readinessDetails.locator('summary').first().click();
-  }
-  const checklist = page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first();
-  assert(await visible(checklist), `${viewport.label}: Export must expose a package handoff checklist`);
-  const checklistText = normalized(await checklist.textContent());
+  const checklist = page.locator('[data-testid="ide-export-upstream-readiness"]').first();
+  const e0Boundary = page.locator('[data-testid="ide-export-e0-boundary-summary"]').first();
+  assert(await visible(checklist), `${viewport.label}: Export must expose direct upstream readiness`);
+  assert(await visible(e0Boundary), `${viewport.label}: Export must expose the Browser E0 boundary directly`);
+  const checklistText = normalized(`${await checklist.textContent()} ${await e0Boundary.textContent()}`);
   assert(/package/i.test(checklistText), `${viewport.label}: Export checklist must name package readiness`);
   assert(/verify|compare/i.test(checklistText), `${viewport.label}: Export checklist must include Verify state`);
   assert(/pins|mapping/i.test(checklistText), `${viewport.label}: Export checklist must include pin mapping state`);
@@ -175,28 +191,28 @@ async function assertImportSourceReview(page, baseUrl, viewport) {
     }
     return {
       workbench: box('[data-testid="ide-import-workbench"]'),
-      review: box('[data-testid="ide-import-source-review-v1"]'),
+      review: box('[data-testid="ide-import-horizontal-stepper"]'),
       editor: box('[data-testid="ide-import-hdl-textarea"]'),
-      text: document.querySelector('[data-testid="ide-import-source-review-v1"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+      text: document.querySelector('[data-testid="ide-import-workbench"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       rootOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
     };
   });
 
   assert(
-    metrics.workbench?.visibleWidth >= Math.round(viewport.width * 0.68),
+    metrics.workbench?.visibleWidth >= Math.min(800, Math.round(viewport.width * 0.60)),
     `${viewport.label}: Import active workbench should use available width ${JSON.stringify(metrics.workbench)}`
   );
-  assert(metrics.review?.visibleWidth >= 240, `${viewport.label}: Import must expose a source review lane ${JSON.stringify(metrics.review)}`);
+  assert(metrics.review?.visibleWidth >= 520, `${viewport.label}: Import must expose the Upload / Review / Apply sequence ${JSON.stringify(metrics.review)}`);
   assert(metrics.editor?.visibleWidth >= 520, `${viewport.label}: Import editor must remain usable ${JSON.stringify(metrics.editor)}`);
-  assert(/source/i.test(metrics.text), `${viewport.label}: Import review lane must name the selected source`);
-  assert(/inspect|parse/i.test(metrics.text), `${viewport.label}: Import review lane must expose inspect/parse next step`);
-  assert(/review|replace|apply/i.test(metrics.text), `${viewport.label}: Import review lane must expose safe replacement boundary`);
+  assert(/source|upload/i.test(metrics.text), `${viewport.label}: Import workbench must name the selected source`);
+  assert(/inspect|parse|review/i.test(metrics.text), `${viewport.label}: Import workbench must expose inspect/parse next step`);
+  assert(/review|replace|apply/i.test(metrics.text), `${viewport.label}: Import workbench must expose safe replacement boundary`);
   assert(metrics.rootOverflowX <= 1, `${viewport.label}: Import created root overflow ${metrics.rootOverflowX}px`);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
-  const reviewAfterReload = page.locator('[data-testid="ide-import-source-review-v1"]').first();
-  assert(await visible(reviewAfterReload), `${viewport.label}: Import source review should survive reload continuity`);
+  const reviewAfterReload = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
+  assert(await visible(reviewAfterReload), `${viewport.label}: Import recovery sequence should survive reload continuity`);
   await assertNoRootOverflow(page, `${viewport.label}/Import source review`);
 }
 

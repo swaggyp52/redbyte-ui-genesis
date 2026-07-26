@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { Circuit } from '@redbyte/rb-logic-core';
 import { DesignSurface, connectionRejectedMessage } from '../surfaces/DesignSurface';
 import type { RuntimeSimState } from '../projectRuntime';
@@ -173,6 +173,46 @@ describe('DesignSurface — wire preview affordance', () => {
 });
 
 // ─── Wire endpoint hover affordance ─────────────────────────────────────────
+
+describe('DesignSurface wire-mode miss safety', () => {
+  it('keeps the camera and armed source stable when a click misses a port', async () => {
+    const view = renderSurface();
+    const camera = { x: 41, y: -22, zoom: 1.25 };
+
+    act(() => {
+      useLogicViewStore.setState({
+        camera,
+        toolMode: 'wire',
+        interactionMode: 'wiring',
+        editingState: {
+          isDragging: false,
+          wireStartPort: { nodeId: 'sw0_node', portName: 'out' },
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-live-canvas')).toHaveAttribute('data-wire-active', '1');
+    });
+
+    fireEvent.pointerDown(view.getByTestId('ide-design-live-canvas'), {
+      button: 0,
+      clientX: 420,
+      clientY: 280,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-wire-feedback').textContent).toContain(
+        'source is still active'
+      );
+    });
+    expect(useLogicViewStore.getState().camera).toEqual(camera);
+    expect(useLogicViewStore.getState().editingState.wireStartPort).toEqual({
+      nodeId: 'sw0_node',
+      portName: 'out',
+    });
+  });
+});
 
 const CONNECTED_CIRCUIT: Circuit = {
   nodes: [

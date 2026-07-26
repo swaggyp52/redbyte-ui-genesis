@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { assertBuildHash, CURRENT_SHA } from './_workbenchReconstructionHarness.mjs';
 
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 const ARTIFACT_ROOT = path.resolve(
   process.env.RB_DESIGN_NO_BRIDGE_SCREENSHOTS_DIR ||
     path.join(process.cwd(), '.redbyte', 'product-immersion', 'design-no-bridge-required')
@@ -71,12 +70,9 @@ await runIdeGate('IDE design no bridge required', async ({ page, baseUrl }) => {
     await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
     await page.waitForSelector('[data-node-id]', { timeout: 15000 });
     await page.waitForTimeout(500);
+    await assertBuildHash(page, viewport.label);
 
     const state = await readDesignNoBridgeState(page);
-    assert(
-      state.buildSha === CURRENT_SHA,
-      `${viewport.label}: visible build sha must match current git sha ${CURRENT_SHA}, got ${state.buildSha || 'missing'}`
-    );
     assert(state.mode === 'design', `${viewport.label}: expected Design mode, got ${state.mode}`);
     assert(!state.hasErrorBoundary, `${viewport.label}: error boundary fallback was visible`);
     assert(!state.hasBootCrash, `${viewport.label}: IDE boot crash marker was visible`);
@@ -112,7 +108,10 @@ async function readDesignNoBridgeState(page) {
     const bodyText = document.body.innerText || '';
     return {
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
-      buildSha: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
+      buildSha:
+        document.querySelector('[data-testid="ide-top-bar"]')?.getAttribute('data-build-sha')?.trim() ||
+        document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ||
+        '',
       hasErrorBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       hasBootCrash: Boolean(document.querySelector('[data-testid="rb-ide-boot-crash"]')),
       hasBridgeFatalText: /RedByte Bridge Unreachable|Bridge Unreachable|bridge agent/i.test(bodyText),

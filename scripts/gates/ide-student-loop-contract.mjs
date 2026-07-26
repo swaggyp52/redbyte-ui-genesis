@@ -38,24 +38,15 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
   }
 
-  const designInspector = page.locator('[data-testid="ide-design-inspector-empty"]').first();
+  const designInspector = page.locator('[data-testid="ide-design-inspector-canvas-default"]').first();
   const designSelectionInspector = page.locator('[data-testid="ide-design-selection-inspector"]').first();
-  let designInspectorVisible = await designInspector.isVisible().catch(() => false);
-  let designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
-  if (!designInspectorVisible && !designSelectionVisible) {
-    const inspectorToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-    assert(
-      await visible(inspectorToggle).catch(() => false),
-      'design surface must expose a restorable inspector rail after starter load',
-    );
-    await inspectorToggle.click();
-    await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
-    designInspectorVisible = await designInspector.isVisible().catch(() => false);
-    designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
-  }
+  const designContextInspector = page.locator('[data-testid="ide-design-context-inspector"]').first();
+  const designInspectorVisible = await designInspector.isVisible().catch(() => false);
+  const designSelectionVisible = await designSelectionInspector.isVisible().catch(() => false);
+  const designContextVisible = await designContextInspector.isVisible().catch(() => false);
   assert(
-    designInspectorVisible || designSelectionVisible,
-    'design surface must render inspector content after opening the restorable rail',
+    designInspectorVisible || designSelectionVisible || designContextVisible,
+    'design surface must render stable inspector content after starter load',
   );
 
   // 2. Verify: generate basics -> run -> PASS/FAIL banner
@@ -65,6 +56,12 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   await ensureVerifyVectorsReady(page);
   const vectorTable = page.locator('[data-testid="ide-verify-vectors-table"]').first();
   const vectorTableVisible = await visible(vectorTable).catch(() => false);
+  const vectorList = page.locator('[data-testid="ide-verify-vector-list-panel"]').first();
+  const vectorListVisible = await visible(vectorList).catch(() => false);
+  const vectorCountText = (
+    await page.locator('[data-testid="ide-verify-vector-list-count"]').first().textContent().catch(() => '')
+  )?.trim() ?? '';
+  const authoringFormVisible = await visible(page.locator('[data-testid="ide-verify-add-vector-form"]').first()).catch(() => false);
   const runFooter = page.locator('[data-testid="ide-verify-workstation-run-bar"]').first();
   const runFooterVisible = await visible(runFooter).catch(() => false);
   const runFooterText = runFooterVisible ? ((await runFooter.textContent()) ?? '').trim() : '';
@@ -89,6 +86,8 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
     .catch(() => false);
   assert(
     vectorTableVisible ||
+      (vectorListVisible && /\d+/.test(vectorCountText)) ||
+      authoringFormVisible ||
       /vector/i.test(runFooterText) ||
       /current vectors are ready|saved checks available/i.test(firstRunStateText) ||
       (/ready/i.test(commandStatusText) && headerRunVisible),
@@ -143,11 +142,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   if (packageState !== 'blocked') {
     const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
     await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
-    if ((await packageFiles.getAttribute('open')) === null) {
-      await packageFiles.locator('summary').click();
-    }
-    assert((await packageFiles.getAttribute('open')) !== null, 'Inspect generated files must expand');
-    await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
     const boundary = await page.locator('[data-testid="ide-export-e0-boundary-summary"]').first().textContent();
     assert(/Browser E0/i.test(boundary ?? ''), 'Export must retain its Browser E0 package boundary');
     assert(/external/i.test(boundary ?? ''), 'Export must keep Vivado and board proof external');
@@ -162,10 +157,6 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
 
   const afterMappingTools = page.locator('[data-testid="ide-hw-after-mapping-tools"]').first();
   await afterMappingTools.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await afterMappingTools.getAttribute('open')) === null) {
-    await afterMappingTools.locator(':scope > summary').first().click();
-  }
-  assert((await afterMappingTools.getAttribute('open')) !== null, 'After mapping tools must expand');
 
   const hardwareModeToggle = page.locator('[data-testid="ide-hw-mode-toggle"]').first();
   assert(
@@ -180,13 +171,7 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   //   ide-hardware-command-strip        — always present, encodes current status + next action
   // All three encode the Build → Verify → Export → Program trust chain.
   await page.locator('[data-testid="ide-hw-mode-btn-proof"]').click();
-  const leftSupportRail = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-  assert(
-    await visible(leftSupportRail).catch(() => false),
-    'hardware proof mode must expose a restorable left support rail before proof details are opened',
-  );
-  await leftSupportRail.click();
-  await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { timeout: 5000 });
+  await page.waitForSelector('[data-testid="ide-hw-proof-dock"]', { state: 'visible', timeout: 5000 });
 
   const hasProgramCta = await page
     .locator('[data-testid="ide-hardware-program-handoff-cta"]')

@@ -53,9 +53,9 @@ await runIdeGate('IDE export artifact direct preview satisfied', async ({ page, 
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openReadyToBuildExport(page, baseUrl, viewport.label);
 
-      const proofScope = await normalizedText(page.locator('[data-testid="ide-proof-scope"]').first());
+      const proofScope = await normalizedText(page.locator('[data-testid="ide-export-e0-boundary-summary"]').first());
       assert(
-        proofScope === 'Browser E0',
+        /Browser E0/i.test(proofScope),
         `${viewport.label}: compact Export chrome must expose Browser E0, got ${proofScope || 'missing'}`
       );
 
@@ -72,11 +72,12 @@ await runIdeGate('IDE export artifact direct preview satisfied', async ({ page, 
         role: element.getAttribute('role') ?? '',
         tabIndex: element instanceof HTMLElement ? element.tabIndex : null,
         ariaLabel: element.getAttribute('aria-label') ?? '',
+        text: (element.textContent ?? '').replace(/\s+/g, ' ').trim(),
         ariaPressed: element.getAttribute('aria-pressed') ?? '',
         cursor: window.getComputedStyle(element).cursor,
       }));
       assert(chipSemantics.tag === 'button', `${viewport.label}: top.vhd cue must be a button, got ${chipSemantics.tag}`);
-      assert(/preview top\.vhd/i.test(chipSemantics.ariaLabel), `${viewport.label}: top.vhd cue needs a preview aria-label`);
+      assert(/top\.vhd/i.test(chipSemantics.ariaLabel || chipSemantics.text), `${viewport.label}: top.vhd cue needs an accessible file name`);
       assert(chipSemantics.tabIndex === 0, `${viewport.label}: top.vhd button must be keyboard reachable`);
       assert(chipSemantics.cursor === 'pointer', `${viewport.label}: top.vhd button must advertise pointer affordance`);
 
@@ -162,14 +163,13 @@ async function waitForPreviewPath(page, artifactPath) {
 }
 
 async function openGeneratedFiles(page, label) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
-  const summary = details.locator('summary').first();
-  await assertWithinFirstViewport(page, summary, `${label}: Inspect generated files disclosure`);
-  await summary.click();
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const workspace = page.locator('[data-testid="ide-export-package-files"]').first();
+  await workspace.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await visible(workspace), `${label}: generated files workspace must remain directly visible`);
+  const browser = page.locator('[data-testid="ide-export-file-browser"]').first();
+  await browser.waitFor({ state: 'visible', timeout: 10000 });
+  await browser.scrollIntoViewIfNeeded();
+  await assertWithinFirstViewport(page, browser, `${label}: generated file controls`);
 }
 
 async function previewPath(page) {

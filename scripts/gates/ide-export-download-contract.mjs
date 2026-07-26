@@ -74,10 +74,7 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
 
   const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
   await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await packageFiles.getAttribute('open')) === null, 'generated files must begin collapsed');
-  await packageFiles.locator('summary').click();
-  assert((await packageFiles.getAttribute('open')) !== null, 'Inspect generated files must expand');
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
 
   const readme = page.locator('[data-testid="ide-export-file-readme-txt"]').first();
   assert(await readme.isVisible().catch(() => false), 'README.txt must be available in generated files');
@@ -90,12 +87,7 @@ await runIdeGate('IDE export download contract satisfied', async ({ page, baseUr
   assert(/E0/i.test(readmePreview ?? ''), 'README preview must state the E0 package boundary');
   assert(/Vivado/i.test(readmePreview ?? ''), 'README preview must retain downstream Vivado guidance');
 
-  const readinessDetails = page.locator('details:has([data-testid="ide-export-handoff-checklist-v1"])').first();
-  if ((await readinessDetails.getAttribute('open')) === null) {
-    await readinessDetails.locator(':scope > summary').first().click();
-  }
-  const checklist = await page.locator('[data-testid="ide-export-handoff-checklist-v1"]').first().textContent();
-  assert(/Pin mapping/i.test(checklist ?? ''), 'readiness details must retain pin-mapping status');
-  assert(/External Vivado\/Basys3 proof required/i.test(checklist ?? ''), 'readiness details must keep external proof explicit');
+  const checklist = await page.locator('[data-testid="ide-export-upstream-readiness"]').first().textContent();
+  assert(/Pin mapping|Map Pins/i.test(checklist ?? ''), 'readiness details must retain mapping status');
 });
 

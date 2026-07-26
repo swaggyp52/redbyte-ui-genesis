@@ -30,22 +30,6 @@ async function isVisible(page, selector) {
   return page.locator(selector).first().isVisible().catch(() => false);
 }
 
-async function hasVisibleExactText(page, value) {
-  return page.getByText(value, { exact: true }).evaluateAll((elements) =>
-    elements.some((element) => {
-      const rect = element.getBoundingClientRect();
-      const style = window.getComputedStyle(element);
-      return (
-        rect.width > 1 &&
-        rect.height > 1 &&
-        style.display !== 'none' &&
-        style.visibility !== 'hidden' &&
-        Number(style.opacity || '1') !== 0
-      );
-    })
-  );
-}
-
 async function requireVisible(page, selector, label) {
   assert(await isVisible(page, selector), `${label} must be visible (${selector})`);
 }
@@ -257,9 +241,14 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
     /observed outputs|expected outputs|comparison/i.test(modeCopy),
     `mode explainer must describe Observe versus Compare, got "${modeCopy}"`
   );
+  const expectedChecksLabel = page.locator('.ide-stimulus-group-header--asserted .ide-stimulus-group-label').first();
+  const expectedChecksText = await text(expectedChecksLabel);
+  const expectedChecksTitle = (await expectedChecksLabel.getAttribute('title')) ?? '';
   assert(
-    await hasVisibleExactText(page, 'Expected outputs'),
-    'visible workbench must label saved checks as Expected outputs'
+    await expectedChecksLabel.isVisible().catch(() => false) &&
+      expectedChecksText === 'Expected · Unset = no check' &&
+      expectedChecksTitle === 'Expected outputs; Unset means no check',
+    `visible workbench must label saved checks and explain unset cells, got text="${expectedChecksText}" title="${expectedChecksTitle}"`
   );
   assert(
     !(await isVisible(page, '[data-testid="ide-verify-first-run-collapsed-strip"]')),
@@ -309,7 +298,7 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   assert(await setVerifyRunMode(page, 'compare'), 'Compare checks must remain selectable after expected-output edit');
   status = await clickRunAndWaitForNewResult(page);
   assert(isVerifyFail(status), `edited expected output should FAIL Compare, got "${status}"`);
-  await openFailureDetails(page, 'Compare failure evidence');
+  await assertDirectFailureEvidence(page, 'Compare failure evidence');
   await requireVisible(page, '[data-testid="ide-verify-results-summary-open-fail"]', 'failure primary action');
   await requireVisible(page, '[data-testid="ide-verify-fail-nav-summary"]', 'first mismatch summary');
   const failNav = await text(page.locator('[data-testid="ide-verify-fail-nav-summary"]'));
@@ -326,11 +315,25 @@ await runIdeGate('IDE verify evidence workbench integrity satisfied', async ({ p
   await capture(page, '05-repaired-compare-pass-evidence-workbench.png');
 });
 
-async function openFailureDetails(page, label) {
-  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
+async function assertDirectFailureEvidence(page, label) {
+  const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
+  const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
+  const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]').first();
+
+  await repairPanel.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await repairDecision.isVisible().catch(() => false), `${label}: direct repair decision must be visible`);
+  assert(
+    /expected output wrong.*circuit wrong/i.test(await text(repairDecision)),
+    `${label}: direct repair decision must distinguish expected-output repair from circuit repair`
+  );
+  assert(
+    (await page.locator('details[data-testid="ide-verify-advanced-failure"], [data-testid="ide-verify-advanced-failure"] > summary').count()) === 0,
+    `${label}: retired Failure details summary disclosure must be absent`
+  );
+
+  await failedCase.click();
+  assert(
+    await page.locator('[data-testid="ide-verify-fail-nav-summary"]').first().isVisible().catch(() => false),
+    `${label}: direct failed-case evidence action must keep the selected mismatch visible`
+  );
 }

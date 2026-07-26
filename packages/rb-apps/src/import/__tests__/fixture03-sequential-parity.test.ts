@@ -92,7 +92,7 @@ describe('fixture03 sequential verify/export parity', () => {
 
     const stimulusBlock = generatedTestbench.split('stim: process')[1] ?? '';
     const risingEdgeMatches = stimulusBlock.match(/wait until rising_edge\(clk\);/g) ?? [];
-    expect(risingEdgeMatches.length).toBe(Math.max(0, vectors.length - 1));
+    expect(risingEdgeMatches.length).toBe(vectors.length);
     expect(stimulusBlock).not.toContain("clk <= '1';");
     expect(stimulusBlock).not.toContain("clk <= '0';");
 

@@ -34,37 +34,26 @@ await runIdeGate('IDE Design canvas direct workbench satisfied', async ({ page, 
     await loadStarterDesign(page, baseUrl, viewport.label);
     await capture(page, viewport, '01-loaded-design');
 
-    const compactMetrics = await readDirectCanvasMetrics(page);
-    assertDirectCanvas(compactMetrics, viewport, 'loaded starter compact tools');
+    const loadedMetrics = await readDirectCanvasMetrics(page);
+    assertDirectCanvas(loadedMetrics, viewport, 'loaded starter direct controls');
 
-    const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
-    await toggle.click();
-    await page.waitForFunction(() => {
-      const tools = document.querySelector('[data-testid="ide-design-canvas-view-tools"]');
-      return tools?.getAttribute('data-open') === 'true';
-    }, undefined, { timeout: 5000 });
-    await capture(page, viewport, '02-view-tools-open');
+    await page.locator('[data-testid="ide-design-zoom-reset"]').first().click();
+    await page.waitForTimeout(200);
+    const resetZoom = await readZoomIndicator(page);
 
-    const openMetrics = await readDirectCanvasMetrics(page);
-    assertOpenViewTools(openMetrics, viewport, 'expanded view tools');
+    await page.locator('[data-testid="ide-design-zoom-out"]').first().click();
+    const zoomedOut = await waitForZoomChange(page, resetZoom);
+    assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct zoom out');
 
-    await page.locator('[data-testid="ide-design-zoom-preset-125"]').first().click();
-    await page.waitForFunction(() => {
-      const text = document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent ?? '';
-      return /125/.test(text);
-    }, undefined, { timeout: 5000 });
-    await page.locator('[data-testid="ide-design-zoom-preset-fit"]').first().click();
+    await page.locator('[data-testid="ide-design-zoom-in"]').first().click();
+    await waitForZoomChange(page, zoomedOut);
+    await capture(page, viewport, '02-direct-controls-zoomed');
+    assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct zoom in');
+
+    await page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first().click();
     await page.waitForTimeout(250);
-
-    await toggle.click();
-    await page.waitForFunction(() => {
-      const tools = document.querySelector('[data-testid="ide-design-canvas-view-tools"]');
-      return tools?.getAttribute('data-open') === 'false';
-    }, undefined, { timeout: 5000 });
-    await capture(page, viewport, '03-view-tools-reclosed');
-
-    const reclosedMetrics = await readDirectCanvasMetrics(page);
-    assertDirectCanvas(reclosedMetrics, viewport, 'reclosed view tools');
+    await capture(page, viewport, '03-direct-controls-fitted');
+    assertDirectCanvas(await readDirectCanvasMetrics(page), viewport, 'direct fit');
   }
 
   assert(
@@ -100,37 +89,25 @@ function assertDirectCanvas(metrics, viewport, label) {
   );
   assert(metrics.visibleNodeCount >= 3, `${label}: loaded graph nodes disappeared (${metrics.visibleNodeCount})`);
   assert(metrics.visibleWireCount >= 1, `${label}: loaded graph wires disappeared (${metrics.visibleWireCount})`);
-  assert(metrics.toggle.visible, `${label}: compact view-tools toggle must be visible`);
-  assert(metrics.toggle.text.trim().length > 0, `${label}: compact view-tools toggle must expose a readable label`);
+  assert(!metrics.toggle.visible, `${label}: canvas controls must not be hidden behind a view-tools toggle`);
   assert(metrics.viewTools.visible, `${label}: view tools host must remain visible`);
-  assert(metrics.viewTools.open === false, `${label}: view tools must be collapsed by default`);
-  assert(metrics.viewTools.width <= 180, `${label}: collapsed view tools are too wide (${metrics.viewTools.width.toFixed(1)}px)`);
-  assert(metrics.viewTools.height <= 48, `${label}: collapsed view tools are too tall (${metrics.viewTools.height.toFixed(1)}px)`);
-  assert(!metrics.controls.visible, `${label}: Fit/Center controls must not be expanded before user request`);
-  assert(!metrics.presets.visible, `${label}: zoom presets must not be expanded before user request`);
+  assert(metrics.viewTools.open === true, `${label}: direct view tools host must remain open`);
+  assert(metrics.viewTools.insideToolbar, `${label}: direct view tools must remain inside the Design toolbar`);
+  assert(metrics.controls.visible, `${label}: direct canvas controls must remain visible`);
+  assert(!metrics.presets.visible, `${label}: obsolete zoom preset strip must remain absent`);
+  for (const [testId, visible] of Object.entries(metrics.directControls)) {
+    assert(visible, `${label}: direct canvas control ${testId} must remain visible`);
+  }
   assert(!metrics.minimap.visible, `${label}: minimap must not cover starter graph by default`);
   assert(
     metrics.overlap.visibleGraphNodeCount === 0,
-    `${label}: compact view tools overlap visible graph nodes (${metrics.overlap.visibleGraphNodeCount})`
+    `${label}: direct view tools overlap visible graph nodes (${metrics.overlap.visibleGraphNodeCount})`
   );
   assert(
     metrics.overlap.visibleWireCount === 0,
-    `${label}: compact view tools overlap visible wires (${metrics.overlap.visibleWireCount})`
+    `${label}: direct view tools overlap visible wires (${metrics.overlap.visibleWireCount})`
   );
   assert(metrics.toolbar.visible, `${label}: Design toolbar must remain visible`);
-}
-
-function assertOpenViewTools(metrics, viewport, label) {
-  assert(metrics.viewTools.open === true, `${label}: tools did not expand after toggle`);
-  assert(metrics.controls.visible, `${label}: expanded view tools must show Fit/Center controls`);
-  assert(metrics.presets.visible, `${label}: expanded view tools must show zoom presets`);
-  assert(metrics.viewTools.width <= 380, `${label}: expanded view tools are too wide (${metrics.viewTools.width.toFixed(1)}px)`);
-  assert(
-    metrics.viewTools.height <= Math.min(190, viewport.height * 0.24),
-    `${label}: expanded view tools are too tall (${metrics.viewTools.height.toFixed(1)}px)`
-  );
-  assert(metrics.toggle.ariaExpanded === 'true', `${label}: toggle aria-expanded must reflect open state`);
-  assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
 }
 
 async function readDirectCanvasMetrics(page) {
@@ -157,6 +134,7 @@ async function readDirectCanvasMetrics(page) {
     const root = document.querySelector('[data-testid="ide-root"]') ?? document.documentElement;
     const liveCanvas = getRect('[data-testid="ide-design-live-canvas"]');
     const viewToolsEl = getElement('[data-testid="ide-design-canvas-view-tools"]');
+    const toolbarEl = getElement('[data-testid="ide-design-toolbar"]');
     const controlsEl = getElement('[data-testid="ide-design-canvas-controls"]');
     const presetsEl = getElement('[data-testid="ide-design-zoom-presets"]');
     const toggleEl = getElement('[data-testid="ide-design-view-tools-toggle"]');
@@ -188,10 +166,20 @@ async function readDirectCanvasMetrics(page) {
       viewTools: {
         ...rectJson(viewTools, isVisible(viewToolsEl)),
         open: viewToolsEl?.getAttribute('data-open') === 'true',
+        insideToolbar: Boolean(toolbarEl && viewToolsEl && toolbarEl.contains(viewToolsEl)),
       },
       controls: rectJson(getRect('[data-testid="ide-design-canvas-controls"]'), isVisible(controlsEl)),
       presets: rectJson(getRect('[data-testid="ide-design-zoom-presets"]'), isVisible(presetsEl)),
       minimap: rectJson(getRect('.rb-minimap'), isVisible(minimapEl)),
+      directControls: Object.fromEntries(
+        [
+          'ide-design-zoom-out',
+          'ide-design-zoom-in',
+          'ide-design-fit-circuit-canvas',
+          'ide-design-zoom-reset',
+          'ide-design-center-selection-canvas',
+        ].map((testId) => [testId, isVisible(getElement(`[data-testid="${testId}"]`))])
+      ),
       visibleNodeCount: visibleNodes.length,
       visibleWireCount: visibleWires.length,
       overlap: {
@@ -200,6 +188,19 @@ async function readDirectCanvasMetrics(page) {
       },
     };
   });
+}
+
+async function readZoomIndicator(page) {
+  return (await page.locator('[data-testid="ide-design-canvas-stat-zoom"]').first().textContent())?.trim() ?? '';
+}
+
+async function waitForZoomChange(page, previous) {
+  await page.waitForFunction(
+    (prior) => (document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent?.trim() ?? '') !== prior,
+    previous,
+    { timeout: 5000 }
+  );
+  return readZoomIndicator(page);
 }
 
 async function capture(page, viewport, name) {

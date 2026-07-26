@@ -108,7 +108,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue Design');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Map Pins');
     // Reconciliation R2: ProjectWarningsPanel is the single blocker authority.
     const warningsLists = getAllByTestId('ide-project-warnings-list');
     expect(warningsLists[warningsLists.length - 1].textContent).toContain('Finish mapping before relying on hardware behavior');
@@ -151,19 +151,19 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    // Reconciliation R2: the session narrative owns the example name + summary.
-    // The command strip stays a stable launch point while warnings own blockers.
+    // The always-visible overview owns the example name + summary while the
+    // command strip follows workflow authority and warnings own blockers.
     // The Bridge owns the project-kind label.
     // NB: the Project surface renders twice in some test contexts (panel + shadow);
     // we read the last (live) instance to match existing test patterns.
-    const narratives = getAllByTestId('ide-project-session-narrative');
-    const narrative = narratives[narratives.length - 1];
-    expect(narrative.textContent).toContain('Signal Tour: Switches -> LEDs');
-    expect(narrative.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
+    const overviews = getAllByTestId('ide-project-professional-overview');
+    const overview = overviews[overviews.length - 1];
+    expect(overview.textContent).toContain('Signal Tour: Switches -> LEDs');
+    expect(overview.textContent).toContain('Flip switches and the matching LEDs follow immediately.');
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Continue Design');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Verify');
     const nextSteps = getAllByTestId('ide-project-command-strip-next-step-copy');
-    expect(nextSteps[nextSteps.length - 1].textContent).toContain('Open the circuit canvas');
+    expect(nextSteps[nextSteps.length - 1].textContent).toContain('comparison');
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-context')).toBeNull();
     const bridgeSubtitles = getAllByTestId('ide-project-bridge-subtitle');
@@ -304,8 +304,8 @@ describe('ProjectSurface workspace panels', () => {
     expect(missingPins.textContent).toContain('LD0');
   });
 
-  it('keeps mapping labels student-facing even when raw ports are generic', () => {
-    const { getAllByTestId, getByTestId } = render(
+  it('keeps mapping summary labels student-facing even when raw ports are generic', () => {
+    const { getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -332,15 +332,10 @@ describe('ProjectSurface workspace panels', () => {
       </BoardSignalProvider>
     );
 
-    fireEvent.click(getByTestId('ide-project-mapping-expand-btn'));
-
-    const portSw0List = getAllByTestId('ide-project-port-sw0');
-    expect(portSw0List[portSw0List.length - 1].textContent).toContain('SW0');
-    expect(portSw0List[portSw0List.length - 1].textContent).not.toContain('out');
-    
-    const portLd0List = getAllByTestId('ide-project-port-ld0');
-    expect(portLd0List[portLd0List.length - 1].textContent).toContain('LD0');
-    expect(portLd0List[portLd0List.length - 1].textContent).not.toContain('in');
+    const missing = getByTestId('ide-project-mapping-missing-list');
+    expect(missing.textContent).toContain('SW0');
+    expect(missing.textContent).toContain('LD0');
+    expect(missing.textContent).not.toMatch(/\bout\b|\bin\b/);
   });
 
   it('surfaces FPGA config, fidelity, and a Map Pins handoff for lab-day export prep', () => {
@@ -399,8 +394,8 @@ describe('ProjectSurface workspace panels', () => {
     expect(onOpenHardware).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the stable Project launch actions when Verify has not been trusted yet', () => {
-    const { getAllByTestId } = render(
+  it('routes the single Project primary action to Verify when proof is missing', () => {
+    const { getAllByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
           {...makeProps({
@@ -431,9 +426,8 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Continue Design');
-    const verifyCtas = getAllByTestId('ide-project-command-strip-secondary-cta');
-    expect(verifyCtas[verifyCtas.length - 1]?.textContent).toContain('Open Verify');
+    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
   });
 
   it('displays up to top 3 blocking issues with readable messages', () => {

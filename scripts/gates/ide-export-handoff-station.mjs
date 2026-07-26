@@ -5,7 +5,8 @@
  *
  * Contract:
  * 1) Export presents one visible handoff station at 1366x768.
- * 2) Draft/Needs Review does not look trusted and has a repair path.
+ * 2) Draft/Needs Review does not look trusted, has one primary repair/build path,
+ *    and may retain the contract-approved secondary draft download.
  * 3) Trusted/Ready keeps Export's primary action on build/download.
  * 4) Artifact previews, README E0 boundary, mapping, and Vivado next steps are visible.
  * 5) Browser Export never claims E1/E2/E3 success.
@@ -79,7 +80,7 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
     readyToBuildStatus === 'draft',
     `verified export should remain a buildable draft before download, got "${readyToBuildStatus}"`
   );
-  assertOneVisiblePrimary(page, /Build Current Bundle|Rebuild Current Bundle|Download/i, 'ready-to-build export');
+  await assertOneVisiblePrimary(page, /Build Current Bundle|Rebuild Current Bundle|Download/i, 'ready-to-build export');
 
   await assertArtifactWorkspace(page);
   await assertReadmeBoundary(page);
@@ -100,7 +101,7 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
   await assertStationBasics(page, 'trusted export');
   const trustedStatus = await page.locator('[data-testid="ide-export-package-inspector-v1"]').first().getAttribute('data-export-package-state');
   assert(trustedStatus === 'ready', `trusted readiness hero must show ready, got "${trustedStatus}"`);
-  assertOneVisiblePrimary(page, /Download|Re-download|Build|Bundle|Project ZIP/i, 'trusted export');
+  await assertOneVisiblePrimary(page, /Download|Re-download|Build|Bundle|Project ZIP/i, 'trusted export');
   const trustedPrimary = await normalizedText(currentExportAction(page));
   assert(
     !/Open Program Handoff/i.test(trustedPrimary),
@@ -134,20 +135,34 @@ async function assertStationBasics(page, label) {
 }
 
 async function assertOneVisiblePrimary(page, expectedLabel, label) {
-  const primaryActions = page.locator('[data-testid="ide-export-primary-actions"] button');
-  assert((await primaryActions.count()) === 1, `${label} must expose exactly one primary handoff action`);
-  const primary = primaryActions.first();
+  const actionButtons = page.locator('[data-testid="ide-export-primary-actions"] button');
+  const packageState = await page
+    .locator('[data-testid="ide-export-package-inspector-v1"]')
+    .getAttribute('data-export-package-state');
+  assert(
+    (await actionButtons.count()) >= 1 && (await actionButtons.count()) <= 2,
+    `${label} must expose one owning handoff action with at most one secondary draft download`
+  );
+  const primary = currentExportAction(page);
   assert(await visible(primary), `${label} primary handoff action must be visible`);
   const buttonText = await normalizedText(primary);
   assert(
     expectedLabel.test(buttonText),
     `${label} primary action must be build/download oriented, got "${buttonText}"`
   );
+  if (packageState === 'draft') {
+    const draftDownload = page.locator('[data-testid="ide-export-draft-download-v1"]');
+    assert((await draftDownload.count()) <= 1, `${label} must expose at most one secondary draft download`);
+    if ((await draftDownload.count()) === 1) {
+      assert(await visible(draftDownload), `${label} secondary draft download must be visible`);
+      assert(/Download draft/i.test(await normalizedText(draftDownload)), `${label} secondary action must be labeled as a draft download`);
+    }
+  }
 }
 
 async function assertArtifactWorkspace(page) {
   await openGeneratedFiles(page, 'artifact workspace');
-  const artifactWorkspace = page.locator('[data-testid="ide-export-file-browser-v1"]').first();
+  const artifactWorkspace = page.locator('[data-testid="ide-export-file-browser"]').first();
   await artifactWorkspace.scrollIntoViewIfNeeded();
   assert(await visible(artifactWorkspace), 'artifact workspace must be visible');
   const artifactText = (await normalizedText(artifactWorkspace)).toLowerCase();
@@ -176,31 +191,22 @@ async function assertReadmeBoundary(page) {
 }
 
 async function assertMappingSummary(page) {
-  await openDetailsContaining(page, 'ide-export-handoff-checklist-v1');
-  const compactMapping = await normalizedText(
-    page.locator('[data-testid="ide-export-handoff-checklist-v1"] > div').filter({ hasText: 'Pin mapping' }).first()
-  );
-  await openDetailsElement(page, 'ide-export-confidence-station', 'readiness details');
-  const factMapping = await normalizedText(page.locator('[data-testid="ide-export-confidence-mapping"]'));
-  assert(compactMapping.length > 0, 'readiness checklist must include a mapping summary');
-  assert(factMapping.length > 0, 'readiness details must include mapping completeness');
-  assert(
-    mappedCount(compactMapping) === mappedCount(factMapping),
-    `mapping summary must agree across readiness views, got "${compactMapping}" vs "${factMapping}"`
-  );
+  const mapping = page.locator('[data-testid="ide-export-upstream-mapping"]').first();
+  assert(await visible(mapping), 'upstream readiness must expose Map Pins status');
+  const mappingText = await normalizedText(mapping);
+  assert(/Map Pins/i.test(mappingText), `mapping summary must name its owning workspace, got "${mappingText}"`);
+  assert(/Ready|required missing|blocker|assign/i.test(mappingText), `mapping summary must expose readiness, got "${mappingText}"`);
 }
 
 async function assertEvidenceBoundary(page) {
-  const boundary = page.locator('[data-testid="ide-export-evidence-boundary"]').first();
-  await openDetailsElement(page, 'ide-export-evidence-boundary', 'external evidence boundary');
+  const boundary = page.locator('[data-testid="ide-export-e0-boundary-summary"]').first();
   await boundary.scrollIntoViewIfNeeded();
   assert(await visible(boundary), 'evidence boundary section must be visible');
   const boundaryText = await normalizedText(boundary);
-  for (const tier of ['E0', 'E1', 'E2', 'E3']) {
-    assert(boundaryText.includes(tier), `evidence boundary must include ${tier}`);
-  }
-  assert(/external evidence required/i.test(boundaryText), 'E1/E2 must require external evidence');
-  assert(/manual observation required/i.test(boundaryText), 'E3 must require manual observation');
+  assert(/Browser E0/i.test(boundaryText), 'evidence boundary must name Browser E0');
+  assert(/Vivado.*bitstream.*external/i.test(boundaryText), 'Vivado and bitstream proof must remain external');
+  const readmeText = await normalizedText(page.locator('[data-testid="ide-export-preview-code"]').first());
+  assert(/E1.*E2.*E3/i.test(readmeText), 'README must keep E1/E2/E3 evidence separate');
   assert(!/E1\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E1 success');
   assert(!/E2\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E2 success');
   assert(!/E3\s+(ready|passed|complete)/i.test(boundaryText), 'Export browser must not claim E3 success');
@@ -249,9 +255,9 @@ async function assertNoRootHorizontalOverflow(page) {
 
 async function assertNoKeyRegionOverlap(page) {
   const selectors = [
-    ['files', '[data-testid="ide-export-file-browser-v1"]'],
+    ['files', '[data-testid="ide-export-file-browser"]'],
     ['preview', '[data-testid="ide-export-selected-preview-v1"]'],
-    ['evidence', '[data-testid="ide-export-evidence-boundary"]'],
+    ['evidence', '[data-testid="ide-export-e0-boundary-summary"]'],
   ];
   const boxes = [];
   for (const [label, selector] of selectors) {
@@ -291,38 +297,10 @@ function currentExportAction(page) {
 }
 
 async function openGeneratedFiles(page, label) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator(':scope > summary').first().click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
-}
-
-async function openDetailsContaining(page, testId) {
-  const details = page.locator(`details:has([data-testid="${testId}"])`).first();
-  assert((await details.count()) > 0, `details containing ${testId} must exist`);
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator(':scope > summary').first().click();
-  }
-  assert((await details.getAttribute('open')) !== null, `details containing ${testId} must expand`);
-  await page.locator(`[data-testid="${testId}"]`).first().waitFor({ state: 'visible', timeout: 10000 });
-}
-
-async function openDetailsElement(page, testId, label) {
-  const details = page.locator(`[data-testid="${testId}"]`).first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator(':scope > summary').first().click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label} must expand`);
-}
-
-function mappedCount(value) {
-  const match = String(value).match(/(\d+)\s*(?:\/|of)\s*\d+|(\d+)\s+mapped/i);
-  assert(Boolean(match), `mapping summary must expose a count, got "${value}"`);
-  return Number(match[1] ?? match[2]);
+  const workspace = page.locator('[data-testid="ide-export-package-files"]').first();
+  await workspace.waitFor({ state: 'visible', timeout: 10000 });
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  assert(await visible(workspace), `${label}: generated files workspace must remain directly visible`);
 }
 
 function rectOverlapArea(a, b) {

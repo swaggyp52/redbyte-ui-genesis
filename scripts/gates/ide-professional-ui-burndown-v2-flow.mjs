@@ -97,10 +97,10 @@ async function runViewport(page, baseUrl, viewport, record) {
   record.phases.push({ phase: 'verify-fail-repair' });
 
   await openMode(page, baseUrl, 'hardware', `professional-ui-burndown-v2-${viewport.label}-hardware`);
-  await assertHardwareFailedCompareAction(page, viewport);
-  await assertNoRootOverflow(page, `${viewport.label}/Hardware failed compare action`);
-  await capture(page, viewport, '05-hardware-failed-compare');
-  record.phases.push({ phase: 'hardware-failed-compare' });
+  await assertHardwareKeepsMappingScope(page, viewport);
+  await assertNoRootOverflow(page, `${viewport.label}/Hardware mapping scope`);
+  await capture(page, viewport, '05-hardware-mapping-scope');
+  record.phases.push({ phase: 'hardware-mapping-scope' });
 
   await openMode(page, baseUrl, 'export', `professional-ui-burndown-v2-${viewport.label}-export`);
   await assertExportDraftLooksDraft(page, viewport);
@@ -202,7 +202,7 @@ async function assertVerifyFailRepairHierarchy(page, viewport, fieldId, tick) {
   await editedCell.waitFor({ state: 'visible', timeout: 10000 });
 }
 
-async function assertHardwareFailedCompareAction(page, viewport) {
+async function assertHardwareKeepsMappingScope(page, viewport) {
   const duplicateProductSpine = page.locator('[data-testid^="ide-product-spine-"]:visible');
   assert(
     (await duplicateProductSpine.count()) === 0,
@@ -210,14 +210,14 @@ async function assertHardwareFailedCompareAction(page, viewport) {
   );
   const commandStrip = page.getByTestId('ide-hardware-command-strip').first();
   await commandStrip.waitFor({ state: 'visible', timeout: 10000 });
-  const recoveryText = await text(commandStrip);
+  const mappingText = await text(commandStrip);
   assert(
-    /Compare run differs|Compare.*mismatch|assertions differ/i.test(recoveryText),
-    `${viewport.label}/Map Pins must name the failed-Compare blocker, got "${recoveryText}"`,
+    /Mapping complete|Every required signal|signals? mapped/i.test(mappingText),
+    `${viewport.label}/Map Pins must keep mapping readiness as its command-strip scope, got "${mappingText}"`,
   );
   assert(
-    /Open Verify|Verify.*inspect|return.*Verify/i.test(recoveryText),
-    `${viewport.label}/Map Pins must name Verify as the recovery path, got "${recoveryText}"`,
+    !/Compare run differs|Compare.*mismatch|assertions differ/i.test(mappingText),
+    `${viewport.label}/Map Pins must not absorb downstream Compare repair, got "${mappingText}"`,
   );
   assert(
     !(await page.getByTestId('ide-hardware-next-primary').first().isVisible().catch(() => false)),
@@ -243,8 +243,10 @@ async function assertExportDraftLooksDraft(page, viewport) {
   assert(!/E0 export package ready/i.test(inspectorText), `${viewport.label}/Export draft must not present the handoff as ready`);
   const packageFiles = page.getByTestId('ide-export-package-files').first();
   await packageFiles.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}/Generated files must begin as collapsed secondary detail`);
-  await packageFiles.locator('summary').click();
+  assert(
+    (await packageFiles.getAttribute('open')) !== null,
+    `${viewport.label}/Generated files must be open by default for direct draft inspection`
+  );
   await page.getByTestId('ide-export-file-browser-v1').first().waitFor({ state: 'visible', timeout: 10000 });
   const artifactStatuses = await page.evaluate(() =>
     Array.from(document.querySelectorAll('[data-testid^="ide-export-artifact-status-"], [data-testid^="ide-export-file-status-"]'))

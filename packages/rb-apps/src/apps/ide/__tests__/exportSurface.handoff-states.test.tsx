@@ -2,12 +2,12 @@
 /**
  * Export surface handoff-state tests.
  * Verifies that the four trust-condition states (trusted / advisory / blocked)
- * and the new primitive components (ExportReadinessHero, ExportVivadoInstructions,
- * ExportAdvancedDetails) render correctly via the full ExportSurface pipeline.
+ * and the Unified Workbench v3 decision, file preview, and technical-evidence
+ * dialog render correctly via the full ExportSurface pipeline.
  */
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
 import { ExportSurface } from '../surfaces/ExportSurface';
 import type { ProjectHealthVerifyResult } from '../projectHealth';
@@ -53,7 +53,7 @@ function baseMappedProject(): RBProject {
 
 const passVerify: ProjectHealthVerifyResult = {
   status: 'pass',
-  runKind: 'compare',
+  runKind: 'verify',
   hash: 'abc999',
   reportHash: 'rep999',
   ranAtIso: '2026-03-25T00:00:00.000Z',
@@ -61,7 +61,7 @@ const passVerify: ProjectHealthVerifyResult = {
 
 const failVerify: ProjectHealthVerifyResult = {
   status: 'fail',
-  runKind: 'compare',
+  runKind: 'verify',
   hash: 'abc888',
   reportHash: 'rep888',
   ranAtIso: '2026-03-25T00:00:00.000Z',
@@ -100,11 +100,14 @@ function makeAuthority(opts: {
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 describe('ExportSurface handoff states', () => {
-  afterEach(() => { cleanup(); });
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   // ── Trusted state ────────────────────────────────────────────────────────────
 
-  it('trusted: readiness hero owns the ready status and sole Download Package action', () => {
+  it('Compare PASS is downloadable but not package-ready until a trusted download receipt exists', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -116,10 +119,14 @@ describe('ExportSurface handoff states', () => {
     );
     const hero = getByTestId('ide-export-readiness-hero');
     expect(hero.textContent).toContain('E0 export package ready');
-    expect(hero.textContent).toContain('READY');
+    const inspector = getByTestId('ide-export-package-inspector-v1');
+    expect(inspector.getAttribute('data-export-package-state')).toBe('draft');
+    expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
     const actions = getByTestId('ide-export-primary-actions');
     expect(actions.querySelectorAll('button')).toHaveLength(1);
     expect(getByTestId('ide-export-package-download-v1').textContent).toBe('Download Package');
+    expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
+    expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
     expect(getByTestId('ide-export-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
   });
 
@@ -135,10 +142,17 @@ describe('ExportSurface handoff states', () => {
     );
     const hero = getByTestId('ide-export-readiness-hero');
     expect(hero.textContent).toContain('Draft export available');
-    expect(hero.textContent).toContain('No expected-output comparison');
+    expect(hero.textContent).toContain('Expected-output comparison has not run');
+    const inspector = getByTestId('ide-export-package-inspector-v1');
+    expect(inspector.getAttribute('data-export-structural-state')).toBe('downloadable');
+    expect(inspector.getAttribute('data-export-verification-trust')).toBe('unverified');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('not-downloaded');
+    expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-unverified');
+    expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
+    expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
   });
 
-  it('advisory: the sole readiness action routes to Verify when Verify has not run', () => {
+  it('advisory: Verify repair stays primary while a structurally valid draft remains downloadable', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <ExportSurface
@@ -149,8 +163,10 @@ describe('ExportSurface handoff states', () => {
       />
     );
     const actions = getByTestId('ide-export-primary-actions');
-    expect(actions.querySelectorAll('button')).toHaveLength(1);
+    expect(actions.querySelectorAll('button')).toHaveLength(2);
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect((getByTestId('ide-export-draft-download-v1') as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(getByTestId('ide-export-package-build-v1'));
     expect(onOpenVerify).toHaveBeenCalledTimes(1);
   });
@@ -166,10 +182,14 @@ describe('ExportSurface handoff states', () => {
       />
     );
     expect(getByTestId('ide-export-readiness-hero').textContent).toContain('Draft export available');
-    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Compare FAIL');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare FAIL');
+    expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-verification-trust')).toBe('draft');
+    expect(getByTestId('ide-export-file-browser').textContent).toContain('Downloadable');
+    expect(getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
   });
 
-  it('blocked: hides generated files and offers one truthful Map Pins repair', () => {
+  it('blocked: keeps generated files inspectable and offers one truthful Map Pins repair', () => {
     const project = baseMappedProject();
     project.ioMapping!.outputs[0] = { ...project.ioMapping!.outputs[0], pin: '' };
     const onGoToHardware = vi.fn();
@@ -184,7 +204,11 @@ describe('ExportSurface handoff states', () => {
     );
 
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('blocked');
-    expect(queryByTestId('ide-export-file-browser-v1')).toBeNull();
+    expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-structural-state')).toBe('blocked');
+    expect(queryByTestId('ide-export-file-browser')).toBeTruthy();
+    for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
+      expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
+    }
     const actions = getByTestId('ide-export-primary-actions');
     expect(actions.querySelectorAll('button')).toHaveLength(1);
     expect(getByTestId('ide-export-blocked-open-map-pins').textContent).toBe('Open Mapping');
@@ -202,7 +226,7 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Not run');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
   });
 
   it('readiness details show current Compare PASS when verify passed and not stale', () => {
@@ -215,7 +239,7 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'abc999' })}
       />
     );
-    expect(getByTestId('ide-export-confidence-verify').textContent).toContain('Current Compare PASS');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Current Compare PASS');
   });
 
   it('shows a truthful rebuild action when export hash predates the current design hash', () => {
@@ -234,7 +258,7 @@ describe('ExportSurface handoff states', () => {
 
   // ── ExportVivadoInstructions ──────────────────────────────────────────────────
 
-  it('ide-export-vivado-ready section renders (ExportVivadoInstructions)', () => {
+  it('keeps the generated file list and selected preview visible', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -242,10 +266,16 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    expect(getByTestId('ide-export-vivado-ready')).toBeTruthy();
+    expect(getByTestId('ide-export-file-browser')).toBeTruthy();
+    expect(getByTestId('ide-export-selected-preview-v1')).toBeTruthy();
+    expect(getByTestId('ide-export-preview-path').textContent).toBeTruthy();
+    for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
+      expect(getByTestId(`ide-export-artifact-role-${role}`)).toBeTruthy();
+      expect(getByTestId(`ide-export-submission-role-${role}`)).toBeTruthy();
+    }
   });
 
-  it('ide-export-vivado-checklist has 8 numbered steps', () => {
+  it('answers what to submit in the package decision while retaining the detailed role guide', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -253,24 +283,172 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    const checklist = getByTestId('ide-export-vivado-checklist');
-    expect(checklist.querySelectorAll('li')).toHaveLength(8);
+
+    const inspector = getByTestId('ide-export-package-inspector-v1');
+    const answer = within(inspector).getByTestId('ide-export-submission-answer');
+    expect(answer.textContent).toContain('What should I submit?');
+    expect(answer.textContent).toContain('top.vhd');
+    expect(answer.textContent).toContain('top.xdc');
+    expect(answer.textContent).toContain('testbench.vhd');
+
+    const detailedGuide = getByTestId('ide-export-submission-guidance');
+    expect(detailedGuide.textContent).toContain('Choose files by requested role');
+    for (const role of ['project', 'source', 'constraints', 'simulation', 'readme']) {
+      expect(within(detailedGuide).getByTestId(`ide-export-submission-role-${role}`)).toBeTruthy();
+    }
   });
 
-  // ── ExportAdvancedDetails ─────────────────────────────────────────────────────
-
-  it('ide-export-advanced-details renders (ExportAdvancedDetails)', () => {
-    const { getByTestId } = render(
+  it('records exact package bytes and preserves unverified trust after download', async () => {
+    if (!('createObjectURL' in URL)) {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(() => 'blob:export-package'),
+      });
+    } else {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export-package');
+    }
+    if (!('revokeObjectURL' in URL)) {
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(),
+      });
+    } else {
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    }
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const onExportResult = vi.fn();
+    const view = render(
       <ExportSurface
         project={baseMappedProject()}
-        determinismHash="h1"
+        determinismHash="project-source-hash"
         workflowAuthority={makeAuthority()}
+        onExportResult={onExportResult}
       />
     );
-    expect(getByTestId('ide-export-advanced-details')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(view.getByTestId('ide-export-draft-download-v1'));
+    });
+
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(1));
+    const result = onExportResult.mock.calls[0]?.[0];
+    expect(result).toEqual(expect.objectContaining({
+      status: 'ok',
+      verificationTrust: 'unverified',
+      downloadKind: 'project',
+      downloadedAtIso: expect.any(String),
+      packageHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      sourceHashes: expect.objectContaining({ project: 'project-source-hash' }),
+      sourceCurrentness: {
+        project: 'current',
+        export: 'current',
+        mapping: 'current',
+        verify: 'missing',
+      },
+    }));
+    expect(result.bundleHash).toBe(result.packageHash);
+
+    const inspector = view.getByTestId('ide-export-package-inspector-v1');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('downloaded');
+    expect(inspector.getAttribute('data-export-derived-state')).toBe('downloaded-unverified');
+    expect(view.getByTestId('ide-export-derived-state').textContent).toContain('Downloaded unverified');
+
+    fireEvent.click(view.getByTestId('ide-export-open-technical-evidence'));
+    expect(view.getByTestId('ide-export-download-evidence').textContent).toContain(result.packageHash);
+    expect(view.getByTestId('ide-export-download-evidence').textContent).toContain('Unverified');
   });
 
-  it('ide-export-determinism-checks is inside ide-export-advanced-details', () => {
+  it('does not promote a draft download after later Compare PASS without a new download', async () => {
+    if (!('createObjectURL' in URL)) {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(() => 'blob:export-package'),
+      });
+    } else {
+      vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:export-package');
+    }
+    if (!('revokeObjectURL' in URL)) {
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        writable: true,
+        value: vi.fn(),
+      });
+    } else {
+      vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    }
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    const onExportResult = vi.fn();
+    const view = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="transition-project-source"
+        workflowAuthority={makeAuthority()}
+        onExportResult={onExportResult}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(view.getByTestId('ide-export-draft-download-v1'));
+    });
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(1));
+    expect(view.getByTestId('ide-export-derived-state').textContent).toBe('Downloaded unverified');
+
+    const trustedRun: Parameters<typeof ExportSurface>[0]['verifyLastRun'] = {
+      scenarioId: 'trusted-scenario',
+      scenarioName: 'Trusted Scenario',
+      runKind: 'verify',
+      status: 'pass',
+      deterministicHash: passVerify.hash,
+      reportHash: passVerify.reportHash!,
+      generatedAtIso: passVerify.ranAtIso!,
+      schedule: 'combinational',
+      meta: {
+        circuitKind: 'combinational',
+        clockingProtocol: null,
+        samplePoint: 'steady-state',
+        tick0Meaning: null,
+        clockSignalName: null,
+      },
+      report: {
+        vectors: [],
+        inputsAtTick: {},
+        inputsByVectorId: {},
+        signalRoles: {},
+        rows: [],
+      } as NonNullable<Parameters<typeof ExportSurface>[0]['verifyLastRun']>['report'],
+      waveform: [],
+    };
+    view.rerender(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="transition-project-source"
+        verifyResult={passVerify}
+        verifyLastRun={trustedRun}
+        workflowAuthority={makeAuthority({ verifyResult: passVerify, exportHash: 'transition-current' })}
+        onExportResult={onExportResult}
+      />
+    );
+
+    const inspector = view.getByTestId('ide-export-package-inspector-v1');
+    expect(inspector.getAttribute('data-export-verification-trust')).toBe('trusted');
+    expect(inspector.getAttribute('data-export-action-state')).toBe('not-downloaded');
+    expect(inspector.getAttribute('data-export-derived-state')).toBe('downloadable-trusted');
+    expect(view.queryByTestId('ide-export-download-success')).toBeNull();
+    expect(view.getByTestId('ide-export-file-browser').textContent).not.toContain('Ready');
+
+    await act(async () => {
+      fireEvent.click(view.getByTestId('ide-export-package-download-v1'));
+    });
+    await waitFor(() => expect(onExportResult).toHaveBeenCalledTimes(2));
+    expect(inspector.getAttribute('data-export-derived-state')).toBe('downloaded-trusted');
+    expect(inspector.getAttribute('data-export-package-state')).toBe('ready');
+    expect(view.getByTestId('ide-export-file-browser').textContent).toContain('Ready');
+  });
+
+  it('states the package proof boundary once in the default workspace', () => {
     const { getByTestId } = render(
       <ExportSurface
         project={baseMappedProject()}
@@ -278,7 +456,35 @@ describe('ExportSurface handoff states', () => {
         workflowAuthority={makeAuthority()}
       />
     );
-    const advanced = getByTestId('ide-export-advanced-details');
-    expect(within(advanced).getByTestId('ide-export-determinism-checks')).toBeTruthy();
+    const hero = getByTestId('ide-export-readiness-hero');
+    expect(hero.querySelectorAll('[data-testid="ide-export-e0-boundary-summary"]')).toHaveLength(1);
+  });
+
+  it('keeps technical evidence out of the default flow until requested', () => {
+    const { getByTestId, queryByTestId } = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="h1"
+        workflowAuthority={makeAuthority()}
+      />
+    );
+    expect(queryByTestId('ide-export-technical-dialog')).toBeNull();
+    expect(getByTestId('ide-export-readiness-hero').querySelector('details, summary')).toBeNull();
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    expect(getByTestId('ide-export-technical-dialog')).toBeTruthy();
+  });
+
+  it('puts gates and deterministic checks inside the technical evidence dialog', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="h1"
+        workflowAuthority={makeAuthority()}
+      />
+    );
+    fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
+    const dialog = getByTestId('ide-export-technical-dialog');
+    expect(within(dialog).getByTestId('ide-export-gate-stack')).toBeTruthy();
+    expect(within(dialog).getByTestId('ide-export-deterministic-checks')).toBeTruthy();
   });
 });

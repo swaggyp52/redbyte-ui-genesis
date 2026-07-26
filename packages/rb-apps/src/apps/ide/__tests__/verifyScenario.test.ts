@@ -8,9 +8,11 @@ import {
   migrateProjectVectorsToScenario,
   getActiveScenario,
   materializeScenarioVectors,
+  normalizeScenarioSequentialPolicy,
   DEFAULT_SCENARIO_ID,
   DEFAULT_SCENARIO_NAME,
   type VerifyScenario,
+  type VerifyScenarioSequentialPolicy,
 } from '../verifyScenario';
 import type { TestVector } from '@redbyte/rb-utils';
 import { createScenarioStep } from '../verifyScenarioSteps';
@@ -20,6 +22,19 @@ const vec = (tick: number): TestVector => ({
   inputs: { a: 0 },
   expected: { y: 0 },
 });
+
+const sequentialPolicy: VerifyScenarioSequentialPolicy = {
+  overrideMode: 'auto',
+  runCycles: 8,
+  activeEdge: 'rising',
+  resetBehavior: 'auto-sequence',
+  sourceType: 'board-clock',
+  executionModel: 'external-input-auto-toggle',
+  signalId: 'clk',
+  signalLabel: 'CLK100MHZ',
+  resetSignalName: 'rst',
+  startLevel: 0,
+};
 
 describe('createDefaultScenario', () => {
   it('creates a scenario with correct shape and default id', () => {
@@ -42,6 +57,14 @@ describe('createDefaultScenario', () => {
     const s = createDefaultScenario(original);
     original[0].inputs.a = 1;
     expect(s.vectors[0].inputs.a).toBe(0);
+  });
+
+  it('clones browser-local sequential policy intent', () => {
+    const source = { ...sequentialPolicy };
+    const scenario = createDefaultScenario([], source);
+
+    source.runCycles = 99;
+    expect(scenario.sequentialPolicy).toEqual(sequentialPolicy);
   });
 });
 
@@ -74,6 +97,14 @@ describe('stampScenario', () => {
     const s2 = stampScenario(s);
     s2.vectors[0].inputs.a = 1;
     expect(s.vectors[0].inputs.a).toBe(0);
+  });
+
+  it('clones sequential policy in the stamped result', () => {
+    const scenario = createDefaultScenario([], sequentialPolicy);
+    const stamped = stampScenario(scenario);
+
+    stamped.sequentialPolicy!.runCycles = 3;
+    expect(scenario.sequentialPolicy?.runCycles).toBe(8);
   });
 });
 
@@ -123,6 +154,17 @@ describe('computeScenarioStimulusHash', () => {
       vectors: [{ tick: 0, inputs: { a: 1 }, expected: { y: 0 } }],
     };
 
+    expect(computeScenarioStimulusHash(updated)).not.toBe(computeScenarioStimulusHash(baseline));
+  });
+
+  it('changes when sequential execution intent changes', () => {
+    const baseline = createDefaultScenario([vec(0)], sequentialPolicy);
+    const updated = {
+      ...baseline,
+      sequentialPolicy: { ...sequentialPolicy, runCycles: 12 },
+    };
+
+    expect(computeScenarioContentHash(updated)).not.toBe(computeScenarioContentHash(baseline));
     expect(computeScenarioStimulusHash(updated)).not.toBe(computeScenarioStimulusHash(baseline));
   });
 });
@@ -187,6 +229,59 @@ describe('repairScenarioLibrary', () => {
     const s = createDefaultScenario();
     const { activeScenarioId } = repairScenarioLibrary([s], null);
     expect(activeScenarioId).toBe(s.id);
+  });
+
+  it('normalizes persisted sequential policy without trusting invalid cycle counts', () => {
+    const scenario = createDefaultScenario();
+    const { scenarios } = repairScenarioLibrary(
+      [
+        {
+          ...scenario,
+          sequentialPolicy: {
+            ...sequentialPolicy,
+            runCycles: 0,
+            signalId: '  clk  ',
+          },
+        },
+      ],
+      scenario.id
+    );
+
+    expect(scenarios[0]?.sequentialPolicy).toMatchObject({
+      runCycles: 1,
+      signalId: 'clk',
+      overrideMode: 'auto',
+    });
+    expect(normalizeScenarioSequentialPolicy({ ...sequentialPolicy, sourceType: 'invalid' })).toBeUndefined();
+  });
+
+  it('canonicalizes legacy falling-edge capture policy to the supported rising edge', () => {
+    expect(
+      normalizeScenarioSequentialPolicy({
+        ...sequentialPolicy,
+        activeEdge: 'falling',
+      })
+    ).toMatchObject({
+      activeEdge: 'rising',
+      overrideMode: sequentialPolicy.overrideMode,
+    });
+  });
+
+  it('canonicalizes contradictory authored execution and reset fields', () => {
+    expect(
+      normalizeScenarioSequentialPolicy({
+        ...sequentialPolicy,
+        overrideMode: 'manual-pulses',
+        executionModel: 'external-input-auto-toggle',
+        resetBehavior: 'auto-sequence',
+        resetSignalName: 'rst',
+      })
+    ).toMatchObject({
+      overrideMode: 'manual-pulses',
+      executionModel: 'manual',
+      resetBehavior: 'custom',
+      activeEdge: 'rising',
+    });
   });
 });
 

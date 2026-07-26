@@ -235,12 +235,14 @@ await runIdeGate('IDE design workbench contract satisfied', async ({ page, baseU
     await visible(modeRoot.locator('[data-testid="ide-workbench-dock-toggle-right"]').first()),
     'split mode should keep right dock collapsed behind rail toggle'
   );
-  assert(
-    await visible(modeRoot.locator('[data-testid="ide-design-split-compare-tools"]').first()),
-    'split mode should expose comparison-focused actions'
-  );
+  const retiredSplitToolbarCount = await modeRoot.locator('[data-testid="ide-design-split-compare-tools"]').count();
+  assert(retiredSplitToolbarCount === 0, 'split mode should not restore a duplicate comparison toolbar');
   const splitToolSegmentCount = await modeRoot.locator('[data-testid="ide-design-tool-segmented"]').count();
-  assert(splitToolSegmentCount === 0, 'split mode should remove the full canvas authoring toolbar');
+  assert(splitToolSegmentCount === 1, 'split mode should reuse the primary canvas authoring toolbar');
+  assert(
+    await visible(modeRoot.locator('[data-testid="ide-design-center-selection-canvas"]').first()),
+    'split mode should reuse the primary canvas selection control'
+  );
   const shortcutOverlayCount = await modeRoot.locator('[data-testid="ide-design-shortcut-strip"]').count();
   assert(shortcutOverlayCount === 0, 'split mode should hide the canvas shortcut overlay');
   assert(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { VerifyScheduleContract } from '../../../fpga/boards/basys3/verifySchedule';
-import { deriveTimingGuidance } from '../timingGuidance';
+import { deriveTimingGuidance, formatTimingProtocol } from '../timingGuidance';
 
 function makeSequentialContract(
   nodeType: 'DLatch' | 'DFlipFlop',
@@ -40,5 +40,37 @@ describe('timing guidance', () => {
     expect(guidance.kind).toBe('clock');
     expect(guidance.signalLabelSingular).toBe('Clock');
     expect(guidance.signalName).toBe('CLK');
+  });
+
+  it('describes Auto and authored clock execution without inventing one protocol', () => {
+    const guidance = deriveTimingGuidance(makeSequentialContract('DFlipFlop', 'CLK'));
+    const commonPolicy = {
+      signalId: 'clk',
+      signalLabel: 'CLK',
+      sourceType: 'manual' as const,
+      executionModel: 'manual' as const,
+      autoRunEnabled: false,
+      activeEdge: 'rising' as const,
+      startLevel: 0 as const,
+      dutyCycle: 0.5,
+      runCycles: 2,
+      resetBehavior: 'none' as const,
+    };
+
+    expect(
+      formatTimingProtocol(guidance, {
+        ...commonPolicy,
+        sourceType: 'board-clock',
+        executionModel: 'external-input-auto-toggle',
+        overrideMode: 'auto',
+        autoRunEnabled: true,
+      })
+    ).toContain('one rising edge and post-edge sample per case');
+    expect(
+      formatTimingProtocol(guidance, {
+        ...commonPolicy,
+        overrideMode: 'manual-pulses',
+      })
+    ).toContain('follows each authored row level');
   });
 });

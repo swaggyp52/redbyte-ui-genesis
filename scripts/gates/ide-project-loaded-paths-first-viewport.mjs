@@ -2,8 +2,8 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { assert, assertBuildFreshReplacementDialog, loadStarterProject, runIdeGate, visible } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: '1366x768', width: 1366, height: 768 },
@@ -13,9 +13,6 @@ const VIEWPORTS = [
 const SCREENSHOT_ROOT = process.env.RB_PROJECT_LOADED_PATHS_SCREENSHOTS_DIR
   ? path.resolve(process.env.RB_PROJECT_LOADED_PATHS_SCREENSHOTS_DIR)
   : '';
-
-const HEAD_SHORT = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-const BUILD_BADGE_HASH = HEAD_SHORT.slice(0, 7);
 
 await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, baseUrl }) => {
   const findings = [];
@@ -41,7 +38,7 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
 
     let metrics = await readMetrics(page);
     assert(metrics.mode === 'project', `${viewport.label}: expected Project mode, got "${metrics.mode}"`);
-    assert(metrics.buildText.includes(BUILD_BADGE_HASH), `${viewport.label}: build badge "${metrics.buildText}" must include ${BUILD_BADGE_HASH}`);
+    await assertBuildHash(page, `${viewport.label}/loaded Project`);
     assert(!metrics.hasBoundary, `${viewport.label}: error boundary must not be visible`);
     assert(metrics.rootOverflowX <= 2, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.commandBox, `${viewport.label}: loaded command center must be measurable`);
@@ -51,7 +48,15 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
       metrics.changeProjectBox.bottom <= viewport.height - 16,
       `${viewport.label}: Change Project must fit inside the first viewport (bottom=${metrics.changeProjectBox.bottom}, viewport=${viewport.height})`
     );
-    assert(metrics.continueBox, `${viewport.label}: Continue Design must remain the loaded Project primary`);
+    assert(metrics.primaryBox, `${viewport.label}: loaded Project must keep one primary next-stage action`);
+    assert(
+      metrics.primaryText.includes('verify'),
+      `${viewport.label}: loaded Logic Gates primary must name Verify as the next incomplete stage (${metrics.primaryText})`
+    );
+    assert(
+      metrics.hasVerifyPrimaryRoute,
+      `${viewport.label}: loaded Logic Gates primary must expose Verify routing truth`
+    );
     await revealChangePaths(page);
     await page.locator('[data-testid="ide-project-entry-paths"]').first().scrollIntoViewIfNeeded();
     metrics = await readMetrics(page);
@@ -69,12 +74,6 @@ await runIdeGate('IDE Project loaded paths own first viewport', async ({ page, b
     );
 
     await page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first().click();
-    await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
-
-    await page.locator('[data-testid="mode-button-project"]').first().click();
-    await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
-
-    await page.locator('[data-testid="ide-project-command-strip-secondary-cta"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
 
     await page.locator('[data-testid="mode-button-project"]').first().click();
@@ -140,7 +139,6 @@ async function readMetrics(page) {
     const entry = document.querySelector('[data-testid="ide-project-entry-paths"]');
     const entryButtons = Array.from(document.querySelectorAll('[data-testid^="ide-project-path-"]'));
     return {
-      buildText: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? '',
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       rootOverflowX: Math.max(
@@ -149,7 +147,16 @@ async function readMetrics(page) {
       ),
       commandBox: box('[data-testid="ide-project-command-center"]'),
       changeProjectBox: box('[data-testid="ide-project-change-project"]'),
-      continueBox: box('[data-testid="ide-project-command-strip-primary-cta"]'),
+      primaryBox: box('[data-testid="ide-project-command-strip-primary-cta"]'),
+      primaryText:
+        document
+          .querySelector('[data-testid="ide-project-command-strip-primary-cta"]')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase() ?? '',
+      hasVerifyPrimaryRoute: Boolean(
+        document.querySelector('[data-testid="ide-project-command-action-verify"]')
+      ),
       entryBox: box('[data-testid="ide-project-entry-paths"]'),
       visibleEntryPathCount: entryButtons.filter((button) => {
         if (!(button instanceof HTMLElement)) return false;

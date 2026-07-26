@@ -22,47 +22,38 @@ await runIdeGate('IDE Import guided recovery wizard satisfied', async ({ page, b
       await openFreshImport(page, baseUrl, `import-guided-recovery-wizard-${viewport.label}`);
       await assertBuildHash(page, viewport.label);
 
-      await assertVisibleRect(page, ['[data-testid="ide-import-guided-wizard-v1"]'], `${viewport.label}/Import wizard`, {
+      await assertVisibleRect(page, ['[data-testid="ide-import-workbench"]'], `${viewport.label}/Import workbench`, {
         maxTop: viewport.height === 768 ? 170 : 190,
-        minWidth: Math.round(viewport.width * 0.70),
+        minWidth: 840,
         minHeight: 360,
       });
-      await assertVisibleRect(page, ['[data-testid="ide-import-source-step"]'], `${viewport.label}/Import source step`, {
+      await assertVisibleRect(page, ['[data-testid="ide-import-zip-dropzone"]'], `${viewport.label}/Import ZIP intake`, {
         maxTop: viewport.height === 768 ? 430 : 460,
         minWidth: Math.round(viewport.width * 0.45),
-        minHeight: 140,
-      });
-      await assertVisibleRect(page, ['[data-testid="ide-import-safety-boundary-v1"]'], `${viewport.label}/Import safety boundary`, {
-        maxTop: viewport.height === 768 ? 730 : 760,
-        minWidth: Math.round(viewport.width * 0.30),
-        minHeight: 24,
+        minHeight: 120,
       });
 
-      const wizardText = await normalizedText(page.locator('[data-testid="ide-import-guided-wizard-v1"]').first());
-      assert(/choose source/i.test(wizardText), `${viewport.label}: wizard must name Step 1 source selection`);
-      assert(/inspect/i.test(wizardText), `${viewport.label}: wizard must name inspection`);
-      assert(/review/i.test(wizardText), `${viewport.label}: wizard must name review`);
-      assert(/nothing.*overwrite|no overwrite|confirm/i.test(wizardText), `${viewport.label}: wizard must expose no-overwrite boundary`);
+      const wizardText = await normalizedText(page.locator('[data-testid="ide-import-workbench"]').first());
+      assert(/upload/i.test(wizardText), `${viewport.label}: wizard must name Upload as the first recovery step`);
+      assert(/review/i.test(wizardText), `${viewport.label}: wizard must name Review`);
+      assert(/apply/i.test(wizardText), `${viewport.label}: wizard must name Apply as the explicit replacement step`);
+      assert(/without replacing|review.*apply|explicitly apply/i.test(wizardText), `${viewport.label}: Import must expose the review-before-replacement boundary`);
 
       const sourceActions = [
-        '[data-testid="ide-import-start-primary"]',
+        '[data-testid="ide-import-zip-browse"]',
         '[data-testid="ide-import-start-secondary"]',
         '[data-testid="ide-import-load-sample-and-gate"]',
-        '[data-testid="ide-import-toggle-behavioral-samples"]',
+        '[data-testid="ide-import-load-sample-edge-detect"]',
       ];
       for (const selector of sourceActions) {
         assert(await visible(page.locator(selector).first()), `${viewport.label}: ${selector} must be visible`);
       }
 
       await page.locator('[data-testid="ide-import-start-secondary"]').first().click();
-      await page.waitForSelector('[data-testid="ide-import-workbench"]', { timeout: 10000 });
-      await assertVisibleRect(page, ['[data-testid="ide-import-active-taskbar"]'], `${viewport.label}/Import active taskbar`, {
-        maxTop: viewport.height === 768 ? 250 : 280,
-        minWidth: Math.round(viewport.width * 0.50),
-        minHeight: 56,
-      });
+      await page.waitForSelector('[data-testid="ide-import-hdl-textarea"]', { timeout: 10000 });
+      assert(await visible(page.locator('[data-testid="ide-import-horizontal-stepper"]').first()), `${viewport.label}: Upload/Review/Apply stepper must remain visible while editing HDL`);
       await assertVisibleRect(page, ['[data-testid="ide-import-hdl-textarea"]'], `${viewport.label}/Import HDL editor`, {
-        maxTop: viewport.height === 768 ? 455 : 500,
+        maxTop: viewport.height === 768 ? 490 : 540,
         minWidth: Math.round(viewport.width * 0.40),
         minHeight: viewport.height === 768 ? 140 : 200,
       });
@@ -71,9 +62,9 @@ await runIdeGate('IDE Import guided recovery wizard satisfied', async ({ page, b
       const sample = page.locator('[data-testid="ide-import-load-sample-and-gate"]').first();
       await sample.focus();
       await page.keyboard.press('Enter');
-      await page.waitForSelector('[data-testid="ide-import-workbench"]', { timeout: 10000 });
-      const sampleText = await normalizedText(page.locator('[data-testid="ide-import-panel"]').first());
-      assert(/and_gate|AND gate|Ready to review|Needs mapping/i.test(sampleText), `${viewport.label}: keyboard source activation must load a sample workflow`);
+      await page.waitForSelector('[data-testid="ide-import-hdl-textarea"]', { timeout: 10000 });
+      const sampleHdl = await page.locator('[data-testid="ide-import-hdl-textarea"]').first().inputValue();
+      assert(/and_gate|entity|architecture/i.test(sampleHdl), `${viewport.label}: keyboard source activation must load structural sample HDL`);
 
       await assertNoRootOverflow(page, `${viewport.label}/Import wizard`);
     } catch (error) {

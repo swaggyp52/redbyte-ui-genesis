@@ -97,33 +97,36 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-workbench-console')).toBeNull();
   });
 
-  it('uses one loaded-project launch group with Continue Design as the primary action', () => {
+  it('uses one loaded-project primary action derived from workflow authority', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue building Test Project');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(getByTestId('ide-project-change-project').textContent).toContain('Change Project');
     expect(queryByTestId('ide-project-context')).toBeNull();
     expect(queryByTestId('ide-project-utility-region')).toBeNull();
   });
 
-  it('keeps engineering details collapsed while preserving their status copy', () => {
-    const { getByTestId } = render(
+  it('keeps engineering details visible in the workspace without disclosure chrome', () => {
+    const { container, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
       </BoardSignalProvider>
     );
 
     const commandStrip = getByTestId('ide-project-command-strip');
-    expect(commandStrip.textContent).toContain('Open the circuit canvas to keep building');
-    expect((getByTestId('ide-project-supporting-details') as HTMLDetailsElement).open).toBe(false);
+    expect(commandStrip.textContent).toContain('Next: Verify');
+    expect(getByTestId('ide-project-professional-overview')).toBeTruthy();
+    expect(getByTestId('ide-project-bridge')).toBeTruthy();
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.querySelector('summary')).toBeNull();
     expect(getByTestId('ide-project-map-export-alignment').textContent).toContain(
-      'No successful bundle in this project yet.'
+      'Draft handoff files are available in Export.'
     );
     expect(commandStrip.textContent).not.toContain('Ã');
   });
@@ -175,13 +178,15 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     expect(getByTestId('ide-project-open-existing').textContent).toContain('Open existing project');
+    expect(getByTestId('ide-project-launch-title').textContent).toBe('Start your digital-logic project');
     expect(getByTestId('ide-project-landing-example-signal-tour').textContent).toContain('Load & Design ->');
     expect(getByTestId('ide-project-build-fresh-primary').textContent).toContain('Build Fresh');
     expect(queryByTestId('ide-project-identity-strip')).toBeNull();
-    const starterCatalog = getByTestId('ide-project-starter-catalog') as HTMLDetailsElement;
-    expect(starterCatalog.open).toBe(false);
+    const starterCatalog = getByTestId('ide-project-starter-catalog');
+    expect(starterCatalog.getAttribute('data-expanded')).toBe('false');
     expect(starterCatalog.contains(getByTestId('ide-project-guided-full-adder-lab'))).toBe(true);
-    expect(container.querySelector('[data-testid^="ide-project-lab-card-"]')?.textContent).toContain('Start ->');
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.querySelector('summary')).toBeNull();
     expect(getByTestId('ide-project-landing').textContent).not.toContain('Ã');
   });
 
@@ -329,8 +334,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     // The old `ide-project-hero-blocker` duplicate in the hero was removed.
     expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).toContain('Build Submission Package');
     expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).not.toContain('Ã');
-    expect(getByTestId('ide-project-mapping-expand-btn').textContent).toContain('Mapping');
-    expect(getByTestId('ide-project-mapping-expand-btn').textContent).not.toContain('Ã');
+    expect(getByTestId('ide-project-mapping-overview').textContent).toContain('Map Pins summary');
+    expect(getByTestId('ide-project-mapping-overview').textContent).not.toContain('Ã');
   });
 
   it('unmapped output blocker (RBP1005) includes an action button pointing to Map Pins', () => {
@@ -492,9 +497,9 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-quick-stats')).toBeNull();
-    expect(getByTestId('ide-projectx-next-status').textContent).toBe('Project loaded');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(queryByTestId('ide-project-command-mode-actions')).toBeNull();
   });
 
@@ -524,8 +529,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Continue Design');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
   });
 
   it('removes blank-project framing from loaded blank-origin projects', () => {
@@ -543,14 +548,14 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     // Reconciliation R2: the Bridge owns the project-kind label (single authority).
-    // The session narrative owns the project summary/goal copy.
+    // The always-visible project overview owns the project summary/goal copy.
     const bridgeSubtitle = getByTestId('ide-project-bridge-subtitle');
     expect(bridgeSubtitle.textContent).toContain('Fresh Project');
     expect(bridgeSubtitle.textContent).not.toContain('Blank Project');
 
-    const narrative = getByTestId('ide-project-session-narrative');
-    expect(narrative.textContent).toContain('started from a blank canvas');
-    expect(narrative.textContent).not.toContain('Top module top is loaded and ready for setup.');
+    const overview = getByTestId('ide-project-professional-overview');
+    expect(overview.textContent).toContain('started from a blank canvas');
+    expect(overview.textContent).not.toContain('Top module top is loaded and ready for setup.');
   });
 
   it('removes starter framing from detached custom projects', () => {
@@ -582,12 +587,43 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    // Reconciliation R2: the Bridge owns kind framing; the session narrative owns name.
+    // The Bridge owns kind framing; the always-visible overview owns the student project name.
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).not.toContain('signal-tour');
-    expect(getByTestId('ide-project-session-narrative').textContent).toContain('Signal Tour: Switches â†’ LEDs');
-    expect(getByTestId('ide-project-command-strip-secondary-cta').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-project-professional-overview').textContent).toContain('Signal Tour: Switches â†’ LEDs');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
-    expect(queryByTestId('ide-project-examples-disclosure')).toBeNull();
+    expect((queryByTestId('ide-project-examples-disclosure') as HTMLElement | null)?.hidden).toBe(true);
+  });
+
+  it('keeps the student project name distinct from its starter source context', () => {
+    const { getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            projectName: 'Renamed Student Project',
+            projectKind: 'example',
+            sourceExampleId: 'signal-tour',
+            activeExampleId: 'signal-tour',
+            onRenameProject: vi.fn(),
+            examples: [
+              {
+                id: 'signal-tour',
+                name: 'Signal Tour Starter',
+                summary: 'Starter source context',
+                expectedBehavior: 'Observe the mapped outputs.',
+                tags: ['starter'],
+                concept: 'I/O mapping',
+              },
+            ],
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-identity-strip-title').textContent).toBe('Renamed Student Project');
+    expect(getByTestId('ide-project-workspace-context').textContent).toContain('Signal Tour Starter');
+    expect(getByTestId('ide-project-workspace-context').textContent).not.toContain('Renamed Student Project');
   });
 });

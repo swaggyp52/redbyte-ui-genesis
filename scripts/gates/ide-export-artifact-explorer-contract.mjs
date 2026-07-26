@@ -20,7 +20,7 @@ await runIdeGate('IDE export artifact explorer contract satisfied', async ({ pag
   assert(await visible(tree), 'export artifact tree must render');
   assert(await visible(preview), 'export artifact preview must render');
 
-  const treeItems = page.locator('[data-testid^="ide-export-artifact-tab-"]');
+  const treeItems = page.locator('[data-testid="ide-export-artifact-tabs"] button');
   const itemCount = await treeItems.count();
   assert(itemCount >= 2, `expected at least 2 artifact tree items, got ${itemCount}`);
 

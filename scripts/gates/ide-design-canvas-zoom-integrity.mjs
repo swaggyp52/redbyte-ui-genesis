@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { label: 'classroom', width: 1366, height: 768 },
@@ -10,16 +11,13 @@ const VIEWPORTS = [
 ];
 
 const ZOOM_SEQUENCE = [
-  'ide-design-zoom-preset-50',
-  'ide-design-zoom-preset-75',
-  'ide-design-zoom-preset-100',
-  'ide-design-zoom-preset-125',
-  'ide-design-zoom-preset-fit',
+  'ide-design-zoom-out',
+  'ide-design-zoom-in',
+  'ide-design-zoom-reset',
 ];
 
 const CANVAS_VIEW_TOOL_IDS = new Set([
   ...ZOOM_SEQUENCE,
-  'ide-design-presentation-zoom-toggle-canvas',
   'ide-design-center-selection-canvas',
 ]);
 
@@ -58,6 +56,7 @@ await runIdeGate('IDE design canvas zoom integrity satisfied', async ({ page, ba
   for (const viewport of VIEWPORTS) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loadLogicGatesDesign(page, baseUrl);
+    await assertBuildHash(page, `${viewport.label}: loaded`);
     await assertCanvasIntegrity(page, `${viewport.label}: loaded`);
     await maybeScreenshot(page, `${viewport.label}-loaded.png`);
 
@@ -67,12 +66,6 @@ await runIdeGate('IDE design canvas zoom integrity satisfied', async ({ page, ba
         await assertCanvasIntegrity(page, `${viewport.label}: cycle ${cycle} after ${testId}`);
       }
     }
-
-    await clickUniqueTestId(page, 'ide-design-presentation-zoom-toggle-canvas');
-    await assertCanvasIntegrity(page, `${viewport.label}: after dense/classroom toggle`);
-
-    await clickUniqueTestId(page, 'ide-design-zoom-preset-fit');
-    await assertCanvasIntegrity(page, `${viewport.label}: after post-toggle fit`);
 
     await selectFirstVisibleNode(page);
     await clickUniqueTestId(page, 'ide-design-center-selection-canvas');
@@ -93,6 +86,7 @@ await runIdeGate('IDE design canvas zoom integrity satisfied', async ({ page, ba
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
     await page.waitForSelector('[data-node-id]', { timeout: 15000 });
+    await assertBuildHash(page, `${viewport.label}: after direct Design reload`);
     await assertCanvasIntegrity(page, `${viewport.label}: after direct Design reload`);
     await maybeScreenshot(page, `${viewport.label}-final.png`);
   }
@@ -263,7 +257,10 @@ async function readDesignCanvasIntegrity(page, label) {
     return {
       label: checkpointLabel,
       href: location.href,
-      build: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? null,
+      build:
+        document.querySelector('[data-testid="ide-top-bar"]')?.getAttribute('data-build-sha')?.trim() ||
+        document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ||
+        null,
       mode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? null,
       zoomText: document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent?.trim() ?? null,
       camera: cameraSnapshot,

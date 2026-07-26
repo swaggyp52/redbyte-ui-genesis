@@ -44,19 +44,10 @@ function resolveViewport() {
   };
 }
 
-async function dismissOnboardingIfPresent(page) {
-  const skipButton = page.locator('[data-testid="ide-onboarding-skip"]').first();
-  const overlay = page.locator('[data-testid="ide-onboarding-overlay"]').first();
-  if (!(await skipButton.isVisible().catch(() => false))) return;
-  await skipButton.click();
-  await overlay.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => null);
-}
-
 async function openProject(page, baseUrl) {
   await page.goto(`${baseUrl}/?mode=project&e2e=1`, { waitUntil: 'domcontentloaded' });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await dismissOnboardingIfPresent(page);
 }
 
 async function openImportFromProject(page) {
@@ -86,10 +77,11 @@ async function openMode(page, mode) {
 }
 
 async function ensureUploadStage(page) {
-  const uploadTab = page.locator('[data-testid="ide-import-tab-upload"]').first();
-  if (await visible(uploadTab)) {
-    await uploadTab.click();
+  const zipSource = page.locator('[data-testid="ide-import-source-zip"]').first();
+  if (await visible(zipSource)) {
+    await zipSource.click();
   }
+  assert(await visible(page.locator('[data-testid="ide-import-zip-dropzone"]').first()), 'Import Upload stage must expose the ZIP dropzone');
 }
 
 async function buildManifestZip() {
@@ -246,21 +238,23 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openImportFromProject(page);
   const importSurface = page.locator('[data-testid="ide-mode-import"]').first();
   assert(await visible(importSurface), 'Import utility surface must open from Project');
-  const firstLook = page.locator('[data-testid="ide-import-start-shell"]').first();
-  assert(await visible(firstLook), 'Import must have one clear utility/recovery start surface');
+  const firstLook = page.locator('[data-testid="ide-import-workbench"]').first();
+  assert(await visible(firstLook), 'Import must have one clear utility/recovery workbench');
+  const stepper = page.locator('[data-testid="ide-import-horizontal-stepper"]').first();
+  assert(await visible(stepper), 'Import must expose the Upload -> Review -> Apply sequence');
   await screenshotIfRequested(page, 'import-empty-1366x768');
   const firstLookText = await text(firstLook);
   assert(
-    /redbyte project restore/i.test(firstLookText) && /highest[- ]fidelity|full[- ]fidelity/i.test(firstLookText),
-    `Import first look must identify RedByte project restore as highest fidelity; got "${firstLookText}"`
+    /upload/i.test(await text(stepper)) && /review/i.test(await text(stepper)) && /apply/i.test(await text(stepper)),
+    `Import workbench must present Upload, Review, and Apply; got "${await text(stepper)}"`
   );
   assert(
-    /(vivado zip|vhdl)/i.test(firstLookText) && /reconstruct|fidelity[- ]limited|partial/i.test(firstLookText),
-    `Import first look must identify Vivado/VHDL as reconstruction with fidelity limits; got "${firstLookText}"`
+    /manifest.*restore|manifest restores/i.test(firstLookText),
+    `Import Upload stage must explain manifest fidelity; got "${firstLookText}"`
   );
   assert(
-    /current project|nothing is overwritten|not overwritten/i.test(firstLookText),
-    'Import first look must say current work is safe until confirmation'
+    /without replacing current work early|explicitly apply the replacement/i.test(firstLookText),
+    'Import first look must say current work is safe until explicit Apply'
   );
   assertNoHardwareOverclaim(firstLookText);
 
@@ -297,7 +291,10 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   const zipError = page.locator('[data-testid="ide-import-zip-error"]').first();
   await zipError.waitFor({ state: 'visible', timeout: 30000 });
   const zipErrorText = await text(zipError);
-  assert(/could not open zip/i.test(zipErrorText), 'Corrupt ZIP must show a visible failure state');
+  assert(
+    /zip could not be read|archive could not be read|could not open zip/i.test(zipErrorText),
+    `Corrupt ZIP must show a visible failure state; got "${zipErrorText}"`
+  );
   assert(
     /no files were changed|paste hdl|re-export/i.test(zipErrorText),
     `Corrupt ZIP failure must provide safe recovery next action; got "${zipErrorText}"`
@@ -327,15 +324,66 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
     'RedByte manifest import must identify the embedded manifest as authoritative'
   );
   assert(/reference only|not used to build/i.test(zipAuthorityText), 'Manifest import must demote loose HDL/XDC');
+  const manifestReview = page.locator('[data-testid="ide-import-review-shell"]').first();
+  await manifestReview.waitFor({ state: 'visible', timeout: 30000 }).catch(async () => {
+    throw new Error(`Valid manifest did not expose Review: ${await text(page.locator('[data-testid="ide-import-workbench"]').first())}`);
+  });
+  assert(
+    (await page.locator('[data-testid="ide-import-step-review"]').getAttribute('aria-current')) === 'step',
+    'Valid manifest must advance the horizontal workflow to Review'
+  );
+  assert(
+    /manifest restore/i.test(await text(manifestReview)),
+    'Review must preserve manifest restore fidelity'
+  );
   await screenshotIfRequested(page, 'import-redbyte-manifest-inspection-1366x768');
 
-  await page.locator('[data-testid="ide-import-process-design"]').click();
+  await page.locator('[data-testid="ide-import-replace-project"]').click();
   await page.locator('[data-testid="ide-import-commit-preview"]').waitFor({ state: 'visible', timeout: 30000 });
-  await page.locator('[data-testid="ide-import-recon-manifest"]').waitFor({ state: 'visible', timeout: 30000 });
+  assert(
+    (await page.locator('[data-testid="ide-import-step-apply"]').getAttribute('aria-current')) === 'step',
+    'Review replacement must advance the horizontal workflow to Apply'
+  );
   await screenshotIfRequested(page, 'import-redbyte-manifest-review-1366x768');
 
+  await page.locator('[data-testid="ide-import-apply-cancel"]').click();
+  await page.locator('[data-testid="ide-import-review-shell"]').waitFor({ state: 'visible', timeout: 30000 });
+  assert(
+    !(await visible(page.locator('[data-testid="ide-import-commit-preview"]').first())),
+    'Cancel must return to Review without applying the candidate'
+  );
+  await openMode(page, 'hardware');
+  await page.locator('[data-testid="ide-hw-map-row-binding-sw0"]').first().waitFor({ state: 'visible', timeout: 30000 });
+  assert(
+    /SW0|V17/i.test(await text(page.locator('[data-testid="ide-hw-map-row-binding-sw0"]').first())),
+    'Cancel must keep the active Logic Gates project unchanged'
+  );
+  await openMode(page, 'project');
+  await openImportFromProject(page);
+  await ensureUploadStage(page);
+  await page.locator('[data-testid="ide-import-zip-input"]').setInputFiles(validZip);
+  await page.locator('[data-testid="ide-import-zip-inspection"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('[data-testid="ide-import-review-shell"]').waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator('[data-testid="ide-import-replace-project"]').click();
+  await page.locator('[data-testid="ide-import-commit-preview"]').waitFor({ state: 'visible', timeout: 30000 });
   page.once('dialog', (dialog) => dialog.accept());
   await page.locator('[data-testid="ide-import-apply-confirm"]').click();
+  await page.waitForFunction(
+    () => Boolean(
+      document.querySelector('[data-testid="ide-import-verify-reset-notice"]') ||
+      document.querySelector('[data-testid="ide-mode-design"]')
+    ),
+    null,
+    { timeout: 30000 }
+  );
+  const applyNotice = page.locator('[data-testid="ide-import-verify-reset-notice"]').first();
+  if (await visible(applyNotice)) {
+    assert(
+      /project replaced|run verify again/i.test(await text(applyNotice)),
+      'Apply must confirm replacement and reset prior Verify authority'
+    );
+    await page.locator('[data-testid="ide-import-open-design"]').click();
+  }
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 30000 });
   await screenshotIfRequested(page, 'imported-project-design-1366x768');
 

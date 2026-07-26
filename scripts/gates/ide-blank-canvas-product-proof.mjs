@@ -35,6 +35,22 @@ const REQUIRED_EXPORT_ARTIFACTS = [
   'project.rbproj.json',
 ];
 
+async function assignFirstCompatibleResource(page, row, label) {
+  await row.click();
+  await page.waitForTimeout(120);
+  const select = page.locator('[data-testid="ide-hw-direct-resource-select"]').first();
+  await select.waitFor({ state: 'visible', timeout: 10000 });
+  const optionValue = await select.locator('option').evaluateAll((options) => {
+    const candidate = options.find((option) => option instanceof HTMLOptionElement && !option.disabled && option.value.length > 0);
+    return candidate instanceof HTMLOptionElement ? candidate.value : '';
+  });
+  assert(optionValue.length > 0, `${label}: no compatible Basys3 resource is available`);
+  await select.selectOption(optionValue);
+  await page.locator('[data-testid="ide-hw-assign-selected-resource"]').first().click();
+  await page.waitForTimeout(120);
+  return optionValue;
+}
+
 await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, baseUrl }) => {
   // Bootstrap
   // Suppress onboarding overlay so it does not intercept pointer events.
@@ -237,52 +253,28 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   );
   console.log(`  PASS map table visible (${mapRowCount} IO rows)`);
 
-  // Attempt to assign the first row a switch pin and an LED pin.
-  // Rows for a blank-canvas IO + AND circuit are derived at runtime from
-  // node labels, so we use generic selectors rather than hardcoded row ids.
-  // Try to assign the first available row to SW0.
+  // Assign each derived boundary row through the selected-signal resource control.
+  // The compact board is intentionally reference-only because its SVG regions cannot
+  // provide non-overlapping 36px targets at laptop widths.
   const firstRow = allMapRows.nth(0);
   if (await firstRow.isVisible().catch(() => false)) {
-    await firstRow.click().catch(() => null);
-    // Give the selection state a moment to apply.
-    await page.waitForTimeout(300);
-    const sw0 = page.locator('[data-testid="ide-hw-map-sw-0"]').first();
-    if (await sw0.isVisible().catch(() => false)) {
-      await sw0.click({ force: true }).catch(() => null);
-      await page.waitForTimeout(300);
-      console.log('  PASS first map row assigned to SW0 (attempted)');
-    } else {
-      console.log('  ! ide-hw-map-sw-0 not visible; skipping switch assignment');
-    }
+    const resource = await assignFirstCompatibleResource(page, firstRow, 'first mapping row');
+    console.log(`  PASS first map row assigned through resource control (${resource})`);
   }
 
-  // If there is a second row, assign it to SW1.
   if (mapRowCount >= 2) {
     const secondRow = allMapRows.nth(1);
     if (await secondRow.isVisible().catch(() => false)) {
-      await secondRow.click().catch(() => null);
-      await page.waitForTimeout(300);
-      const sw1 = page.locator('[data-testid="ide-hw-map-sw-1"]').first();
-      if (await sw1.isVisible().catch(() => false)) {
-        await sw1.click({ force: true }).catch(() => null);
-        await page.waitForTimeout(300);
-        console.log('  PASS second map row assigned to SW1 (attempted)');
-      }
+      const resource = await assignFirstCompatibleResource(page, secondRow, 'second mapping row');
+      console.log(`  PASS second map row assigned through resource control (${resource})`);
     }
   }
 
-  // If there is a third row, assign it to LD0.
   if (mapRowCount >= 3) {
     const thirdRow = allMapRows.nth(2);
     if (await thirdRow.isVisible().catch(() => false)) {
-      await thirdRow.click().catch(() => null);
-      await page.waitForTimeout(300);
-      const ld0 = page.locator('[data-testid="ide-hw-map-ld-0"]').first();
-      if (await ld0.isVisible().catch(() => false)) {
-        await ld0.click({ force: true }).catch(() => null);
-        await page.waitForTimeout(300);
-        console.log('  PASS third map row assigned to LD0 (attempted)');
-      }
+      const resource = await assignFirstCompatibleResource(page, thirdRow, 'third mapping row');
+      console.log(`  PASS third map row assigned through resource control (${resource})`);
     }
   }
 
@@ -321,36 +313,22 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const exportPanel = page.locator('[data-testid="ide-export-panel"]').first();
   assert(await visible(exportPanel), 'Export panel must be visible after completing blank-canvas flow');
 
-  // Open gate details if available.
-  await page
-    .evaluate(() => {
-      const el = document.querySelector('[data-testid="ide-export-gate-details"]');
-      if (el && 'open' in el) el.open = true;
-    })
-    .catch(() => null);
-
-  // Gate stack should be accessible.
+  await page.locator('[data-testid="ide-export-open-technical-evidence"]').first().click();
+  await page.waitForSelector('[data-testid="ide-export-technical-dialog"]', { state: 'visible', timeout: 10000 });
   const gateStack = page.locator('[data-testid="ide-export-gate-stack"]').first();
-  const gateStackVisible = await visible(gateStack).catch(() => false);
-  if (!gateStackVisible) {
-    console.log('  ! gate stack not visible (may be behind a details toggle)');
-  } else {
-    console.log('  PASS export gate stack visible');
-  }
+  assert(await visible(gateStack), 'Export technical evidence must expose the readiness gate stack');
+  console.log('  PASS export gate stack visible');
+  const exportDiagnosticsText =
+    (await page.locator('[data-testid="ide-export-blockers-list"]').first().textContent().catch(() => '')) ?? '';
+  await page.locator('[data-testid="ide-export-close-technical-evidence"]').first().click();
+  await page.locator('[data-testid="ide-export-technical-dialog"]').waitFor({ state: 'detached', timeout: 10000 });
 
   async function readPreviewByPath(artifactPath) {
-    await page
-      .evaluate(() => {
-        const el = document.querySelector('[data-testid="ide-export-generated-previews"]');
-        if (el && 'open' in el) el.open = true;
-      })
-      .catch(() => null);
-
     const tab = page
-      .locator('[data-testid^="ide-export-artifact-tab-"]')
+      .locator('[data-testid="ide-export-artifact-tabs"] button')
       .filter({ hasText: artifactPath })
       .first();
-    assert(await tab.isVisible().catch(() => false), `artifact tab for "${artifactPath}" must be visible`);
+    assert(await tab.isVisible().catch(() => false), `package file for "${artifactPath}" must be visible`);
     await tab.click();
 
     await page.waitForFunction(
@@ -371,14 +349,10 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   assert(await visible(artifactPreview), 'Export artifact workspace must be visible');
 
   const artifactPaths = (await page
-    .locator('[data-testid^="ide-export-artifact-tab-"]')
+    .locator('[data-testid="ide-export-artifact-tabs"] button')
     .evaluateAll((elements) =>
       elements.map((element) =>
-        (
-          element.querySelector('.ide-export-artifact-tab-name')?.textContent ??
-          element.textContent ??
-          ''
-        ).trim().toLowerCase()
+        (element.querySelector('span')?.textContent ?? element.textContent ?? '').trim().toLowerCase()
       )
     ))
     .filter((entry) => entry.length > 0);
@@ -394,12 +368,6 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const readmeText = await readPreviewByPath('README.txt');
   console.log(`  export artifact tabs: ${artifactPaths.join(', ')}`);
   console.log(`  README preview length: ${readmeText.length}`);
-  const exportDiagnosticsText =
-    (await page
-      .locator('[data-testid="ide-export-blockers-list"]')
-      .first()
-      .textContent()
-      .catch(() => '')) ?? '';
   console.log(`  export diagnostics: ${exportDiagnosticsText.replace(/\s+/g, ' ').trim() || '(none visible)'}`);
   assert(
     !/\bERROR\b/.test(exportDiagnosticsText),
@@ -417,6 +385,7 @@ await runIdeGate('IDE blank-canvas product proof satisfied', async ({ page, base
   const downloadBtn = page
     .locator(
       [
+        '[data-testid="ide-export-package-download-v1"]',
         '[data-testid="ide-export-rebuild-btn"]',
         '[data-testid="ide-export-dock-download"]',
         '[data-testid="ide-export-download-kit-btn"]',

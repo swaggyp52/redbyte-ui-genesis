@@ -58,7 +58,7 @@ await runIdeGate('IDE Verify saved checks default to Compare satisfied', async (
       `${viewport.label}: primary Run label must name Compare checks when saved checks are armed, got "${before.runLabel}"`
     );
     assert(
-      /Compare the run/i.test(before.modeExplainer),
+      /compare.*run|check.*expected.*run/i.test(before.modeExplainer),
       `${viewport.label}: mode explainer must describe comparison before the first run, got "${before.modeExplainer}"`
     );
 

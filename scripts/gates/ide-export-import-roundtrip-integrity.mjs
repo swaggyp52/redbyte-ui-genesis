@@ -502,12 +502,10 @@ async function runtimeStillMatches(page, expected) {
 
 async function mapRowToAlias(page, rowId, alias) {
   await clickFirstVisible(page, [`[data-testid="ide-hw-map-row-${rowId}"]`], `mapping row ${rowId}`);
-  const normalized = alias.toLowerCase().replace(/([a-z]+)(\d+)/, '$1-$2');
-  await clickFirstVisible(page, [
-    `[data-testid="ide-hw-map-${normalized}-hit"]`,
-    `[data-testid="ide-hw-map-${normalized}"]`,
-    `[data-testid="ide-hw-resource-${alias.toLowerCase()}"]`,
-  ], `board alias ${alias}`);
+  const select = page.locator('[data-testid="ide-hw-direct-resource-select"]').first();
+  await select.waitFor({ state: 'visible', timeout: 10000 });
+  await select.selectOption(alias);
+  await page.locator('[data-testid="ide-hw-assign-selected-resource"]').first().click();
 }
 
 async function flipExpectedCell(page, fieldId, tick) {

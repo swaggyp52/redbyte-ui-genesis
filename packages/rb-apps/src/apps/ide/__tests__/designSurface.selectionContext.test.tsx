@@ -127,7 +127,7 @@ describe('DesignSurface — single-node selection context', () => {
     expect(typeEl.textContent).not.toContain('INPUT');
   });
 
-  it('shows identity heading with label and friendly type when node has a label', async () => {
+  it('keeps the student label primary and the friendly type in the identity subtitle', async () => {
     const view = renderSurface();
 
     act(() => { useLogicViewStore.getState().selectNode('sw0_node'); });
@@ -137,9 +137,8 @@ describe('DesignSurface — single-node selection context', () => {
     });
 
     const identity = view.getByTestId('ide-design-selection-identity');
-    // Should show label + friendly type
-    expect(identity.textContent).toContain('SW0');
-    expect(identity.textContent).toContain('Input');
+    expect(identity.textContent).toBe('SW0');
+    expect(view.getByTestId('ide-design-selection-type').textContent).toBe('Input');
   });
 
   it('shows identity heading with just friendly type when node has no label', async () => {

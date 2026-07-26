@@ -4,9 +4,10 @@
  * Export first-viewport artifact visibility gate.
  *
  * Contract:
- * 1) Ready-to-build Export keeps its readiness authority and generated-files disclosure visible at classroom viewports.
- * 2) Opening Inspect generated files exposes the core E0 artifacts students/professors inspect.
- * 3) The file browser and selected preview remain real; this gate does not change generated files or hardware proof claims.
+ * 1) Ready-to-build Export keeps its readiness authority and generated files visible at classroom viewports.
+ * 2) The directly visible file workspace exposes the core E0 artifacts students/professors inspect.
+ * 3) Package files remain available without a disclosure or hidden drawer.
+ * 4) The file browser and selected preview remain real; this gate does not change generated files or hardware proof claims.
  */
 
 import fs from 'node:fs/promises';
@@ -51,26 +52,20 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
       await openReadyToBuildExport(page, baseUrl, viewport.label);
       await capture(page, viewport.label);
 
-      const proofScope = await normalizedText(page.locator('[data-testid="ide-proof-scope"]').first());
+      const proofScope = await normalizedText(page.locator('[data-testid="ide-export-e0-boundary-summary"]').first());
       assert(
-        proofScope === 'Browser E0',
+        /Browser E0/i.test(proofScope),
         `${viewport.label}: compact Export chrome must expose Browser E0, got ${proofScope || 'missing'}`
       );
 
       const inspector = page.locator('[data-testid="ide-export-package-inspector-v1"]').first();
       const packageFiles = page.locator('[data-testid="ide-export-package-files"]').first();
-      const packageFilesSummary = packageFiles.locator('summary').first();
-      const fileBrowser = page.locator('[data-testid="ide-export-file-browser-v1"]').first();
+      const fileBrowser = page.locator('[data-testid="ide-export-file-browser"]').first();
       assert(await visible(inspector), `${viewport.label}: Export package inspector must be visible`);
-      assert(await visible(packageFiles), `${viewport.label}: Inspect generated files disclosure must be visible`);
-      assert((await packageFiles.getAttribute('open')) === null, `${viewport.label}: generated files must begin collapsed`);
-      await assertWithinFirstViewport(page, packageFilesSummary, `${viewport.label}: Inspect generated files disclosure`);
-      await packageFilesSummary.click();
-      assert((await packageFiles.getAttribute('open')) !== null, `${viewport.label}: Inspect generated files must expand`);
+      assert(await visible(packageFiles), `${viewport.label}: generated files workspace must be visible`);
+      const reachability = await assertArtifactReachability(page, viewport.label);
       await fileBrowser.waitFor({ state: 'visible', timeout: 10000 });
-      await fileBrowser.scrollIntoViewIfNeeded();
-      assert(await visible(fileBrowser), `${viewport.label}: expanded package inspector must expose artifact files`);
-      await assertWithinFirstViewport(page, fileBrowser, `${viewport.label}: expanded package file browser`);
+      assert(await visible(fileBrowser), `${viewport.label}: package workspace must expose artifact files`);
 
       const stripText = await normalizedText(fileBrowser);
       for (const artifactName of REQUIRED_ARTIFACTS) {
@@ -93,8 +88,9 @@ await runIdeGate('IDE export first-viewport artifacts visible', async ({ page, b
         viewport: viewport.label,
         inspector: await readRect(page, '[data-testid="ide-export-package-inspector-v1"]'),
         disclosure: await readRect(page, '[data-testid="ide-export-package-files"]'),
-        fileBrowser: await readRect(page, '[data-testid="ide-export-file-browser-v1"]'),
+        fileBrowser: await readRect(page, '[data-testid="ide-export-file-browser"]'),
         explorer: await readRect(page, '[data-testid="ide-export-selected-preview-v1"]'),
+        reachability,
         text: stripText,
       });
     } catch (error) {
@@ -128,16 +124,71 @@ async function openReadyToBuildExport(page, baseUrl, viewportLabel) {
   await page.waitForSelector('[data-testid="ide-export-readiness-hero"]', { timeout: 10000 });
 }
 
-async function assertWithinFirstViewport(page, locator, label) {
-  const box = await locator.boundingBox();
-  assert(box, `${label} must have a measurable box`);
-  const viewport = page.viewportSize();
-  assert(viewport, `${label} gate requires a viewport`);
-  assert(box.y >= 0, `${label} must not start above the viewport: y=${box.y.toFixed(1)}`);
+async function assertArtifactReachability(page, label) {
+  const scrollOwner = page.locator('[data-testid="ide-mode-body"]').first();
+  const ownerBox = await scrollOwner.boundingBox();
+  assert(ownerBox, `${label}: Export workspace must have a measurable scroll owner`);
+  const initialScrollTop = await scrollOwner.evaluate((element) => element.scrollTop);
+  await page.mouse.move(ownerBox.x + ownerBox.width / 2, ownerBox.y + Math.min(ownerBox.height / 2, 300));
+  await page.mouse.wheel(0, 640);
+  await page.waitForTimeout(80);
+  const userScrollTop = await scrollOwner.evaluate((element) => element.scrollTop);
+
+  const state = await page.evaluate(({ initialScrollTop, userScrollTop }) => {
+    const scrollOwner = document.querySelector('[data-testid="ide-mode-body"]');
+    const fileBrowser = document.querySelector('[data-testid="ide-export-file-browser"]');
+    const testbench = document.querySelector('[data-testid="ide-export-file-testbench-vhd"]');
+    if (
+      !(scrollOwner instanceof HTMLElement) ||
+      !(fileBrowser instanceof HTMLElement) ||
+      !(testbench instanceof HTMLElement)
+    ) {
+      return null;
+    }
+
+    scrollOwner.scrollTop = scrollOwner.scrollHeight;
+    fileBrowser.scrollTop = fileBrowser.scrollHeight;
+
+    const ownerRect = scrollOwner.getBoundingClientRect();
+    const targetRect = testbench.getBoundingClientRect();
+    return {
+      overflowY: getComputedStyle(scrollOwner).overflowY,
+      clientHeight: scrollOwner.clientHeight,
+      scrollHeight: scrollOwner.scrollHeight,
+      initialScrollTop,
+      userScrollTop,
+      finalScrollTop: scrollOwner.scrollTop,
+      fileBrowserScrollTop: fileBrowser.scrollTop,
+      targetTop: Number(targetRect.top.toFixed(1)),
+      targetBottom: Number(targetRect.bottom.toFixed(1)),
+      ownerTop: Number(ownerRect.top.toFixed(1)),
+      ownerBottom: Number(ownerRect.bottom.toFixed(1)),
+      targetVisible:
+        targetRect.width > 1 &&
+        targetRect.height > 1 &&
+        targetRect.top >= Math.max(0, ownerRect.top) - 1 &&
+        targetRect.bottom <= Math.min(innerHeight, ownerRect.bottom) + 1,
+    };
+  }, { initialScrollTop, userScrollTop });
+
+  assert(state, `${label}: Export scroll owner or testbench artifact is missing`);
   assert(
-    box.y + Math.min(box.height, 48) <= viewport.height,
-    `${label} must expose artifact names in the first viewport: bottom=${(box.y + Math.min(box.height, 48)).toFixed(1)} viewport=${viewport.height}`
+    /auto|scroll/.test(state.overflowY),
+    `${label}: Export workspace must advertise student-scrollable overflow: ${JSON.stringify(state)}`
   );
+  assert(
+    state.scrollHeight > state.clientHeight + 1,
+    `${label}: Export workspace must expose vertical overflow: ${JSON.stringify(state)}`
+  );
+  assert(
+    state.userScrollTop > state.initialScrollTop,
+    `${label}: Export workspace did not move after a real wheel gesture: ${JSON.stringify(state)}`
+  );
+  assert(
+    state.targetVisible,
+    `${label}: testbench.vhd is not reachable through the visible Export scroll containers: ${JSON.stringify(state)}`
+  );
+  return state;
 }
 
 async function capture(page, label) {

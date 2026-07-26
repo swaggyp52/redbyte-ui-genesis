@@ -10,7 +10,7 @@ import {
   saveObservedOutputs,
   setVerifyRunMode,
 } from './_gateHarness.mjs';
-import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
+import { isVerifyFail, isVerifyPass, isVerifyTrace, waitForVerifyResult } from './_verifyStatus.mjs';
 import {
   assertBuildHash,
   assertNoRootOverflow,
@@ -60,7 +60,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 
   await openMode(page, baseUrl, 'verify', 'testbench-editor-and-export-confidence-flow');
   await page.waitForSelector('[data-testid="ide-verify-panel"]', { timeout: 15000 });
-  await assertTestbenchSections(page, 'initial Verify');
+  await assertTestbenchWorkspace(page, 'initial Verify');
 
   const ioRows = await readIoRows(page);
   const inputIds = ioRows.filter((row) => row.direction === 'in').map((row) => row.id);
@@ -100,26 +100,38 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   );
   record.phases.push({ phase: 'cell-repair', target: targetA });
 
-  await page.getByTestId('ide-verify-repair-use-observed-row').click();
+  await runCompareAndExpect(page, 'peer failure after surgical cell repair', 'fail');
+  await assertDirectFailureEvidence(page, 'peer failure after surgical cell repair');
+  await page.getByTestId('ide-verify-repair-use-observed').click();
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
-  await clickRepairRerun(page);
-  await waitForVerifyResult(page, { timeout: 20000 });
-  let status = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-  assert(isVerifyPass(status), `row repair should restore Compare PASS, got "${status}"`);
-  await capture(page, '04-row-repair-pass.png');
+  await runCompareAndExpect(page, 'two surgical cell repairs', 'pass');
+  await capture(page, '04-cell-repair-pass.png');
+
+  await flipExpectedCell(page, targetA.fieldId, targetA.tick);
+  await flipExpectedCell(page, targetB.fieldId, targetB.tick);
+  await runCompareAndExpect(page, 'row repair setup', 'fail');
+  await assertFailureRepairPanel(page, { expectRowRepair: true, expectAllRepair: true });
+  assert(
+    await page.getByTestId('ide-verify-repair-use-observed-row').isEnabled().catch(() => false),
+    'row-scope repair must be enabled while the selected row has multiple failed outputs',
+  );
+  await page.getByTestId('ide-verify-repair-use-observed-row').click();
+  await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
+  await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
+  await runCompareAndExpect(page, 'row repair', 'pass');
+  record.phases.push({ phase: 'row-repair', tick: targetTick });
+  await capture(page, '05-row-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
   await runCompareAndExpect(page, 'all failed outputs repair setup', 'fail');
-  await openFailureDetails(page, 'all failed outputs repair setup');
+  await assertDirectFailureEvidence(page, 'all failed outputs repair setup');
   await page.getByTestId('ide-verify-repair-use-observed-all').click();
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
-  await clickRepairRerun(page);
-  await waitForVerifyResult(page, { timeout: 20000 });
-  status = await text(page.locator('[data-testid="ide-verify-summary-status"]'));
-  assert(isVerifyPass(status), `all failed repair should restore Compare PASS, got "${status}"`);
-  await capture(page, '05-all-failed-repair-pass.png');
+  await runCompareAndExpect(page, 'all failed repair', 'pass');
+  record.phases.push({ phase: 'all-failed-repair' });
+  await capture(page, '06-all-failed-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   const staleSummary = page.getByTestId('ide-verify-results-summary').first();
@@ -130,12 +142,12 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
     /Checks changed|Rerun Compare/i.test(staleText),
     `Verify must name stale testbench evidence after edit, got "${staleText}"`,
   );
-  await capture(page, '06-testbench-edit-stale.png');
+  await capture(page, '07-testbench-edit-stale.png');
 
   await openMode(page, baseUrl, 'export', 'testbench-editor-and-export-confidence-flow-stale-export');
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 15000 });
   await assertExportConfidence(page, { expectedPackage: 'draft', expectedVerify: 'stale' });
-  await capture(page, '07-export-confidence-stale-draft.png');
+  await capture(page, '08-export-confidence-stale-draft.png');
 
   await openMode(page, baseUrl, 'verify', 'testbench-editor-and-export-confidence-flow-final-compare');
   await setExpectedCell(page, targetA.fieldId, targetA.tick, originalA);
@@ -143,8 +155,8 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
 
   await openMode(page, baseUrl, 'export', 'testbench-editor-and-export-confidence-flow-current-export');
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 15000 });
-  await assertExportConfidence(page, { expectedPackage: 'ready-e0', expectedVerify: 'pass' });
-  await capture(page, '08-export-confidence-ready-e0.png');
+  await assertExportConfidence(page, { expectedPackage: 'buildable-e0', expectedVerify: 'pass' });
+  await capture(page, '09-export-confidence-ready-e0.png');
 
   record.phases.push({ phase: 'complete', outputsChecked: outputIds.slice(0, 2) });
   await writeFile(
@@ -154,19 +166,55 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   assert(browserProblems.length === 0, `Browser console/page errors: ${JSON.stringify(browserProblems.slice(0, 8))}`);
 });
 
-async function assertTestbenchSections(page, label) {
-  const expectations = [
-    ['ide-testbench-section-inputs', /Cases|One input combination to try|Inputs to try/i],
-    ['ide-testbench-section-expected', /Expected outputs/i],
-    ['ide-testbench-section-observed', /Observed outputs/i],
-    ['ide-testbench-section-status', /Status/i],
-  ];
-  for (const [testId, pattern] of expectations) {
-    const entry = page.getByTestId(testId).first();
-    assert(await entry.isVisible().catch(() => false), `${label}: ${testId} must be visible`);
-    const content = await text(entry);
-    assert(pattern.test(content), `${label}: ${testId} copy must match ${pattern}, got "${content}"`);
+async function assertTestbenchWorkspace(page, label) {
+  const workspace = page.getByTestId('ide-verify-add-vector-form').first();
+  const header = page.getByTestId('ide-verify-stimulus-header').first();
+  const authoringPath = page.getByTestId('ide-verify-authoring-path').first();
+  const toolbar = page.getByTestId('ide-stimulus-toolbar').first();
+  const grid = page.locator('.ide-stimulus-grid-scroll').first();
+  const expectedCell = page.locator('[data-testid^="ide-stimulus-expected-"]').first();
+  const runMode = page.getByTestId('ide-vcb-run-mode').first();
+  const status = page.getByTestId('ide-verify-context-state').first();
+  const waveformPlaceholder = page.getByTestId('ide-verify-waveform-placeholder').first();
+
+  for (const [name, locator] of [
+    ['case-table editor', workspace],
+    ['testbench header', header],
+    ['authoring path', authoringPath],
+    ['case actions', toolbar],
+    ['stimulus grid', grid],
+    ['expected-output cell', expectedCell],
+    ['Observe/Compare selector', runMode],
+    ['Verify status', status],
+    ['pre-run waveform evidence', waveformPlaceholder],
+  ]) {
+    assert(await locator.isVisible().catch(() => false), `${label}: ${name} must be visible`);
   }
+
+  assert(
+    /Combinational case table/i.test(await text(authoringPath)),
+    `${label}: starter project must expose the combinational case-table path`,
+  );
+  const headerCopy = await text(header);
+  assert(
+    /Testbench cases.*inputs.*expected/i.test(headerCopy),
+    `${label}: case-table header must explain input stimulus and expected-output ownership, got "${headerCopy}"`,
+  );
+  assert(/Cases/i.test(await text(toolbar)), `${label}: visible toolbar must expose case editing`);
+  assert(
+    await page.getByTestId('ide-stimulus-add-tick').first().isVisible().catch(() => false),
+    `${label}: Add case must be visible`,
+  );
+  const modeCopy = await text(page.getByTestId('ide-vcb-mode-explainer').first());
+  assert(
+    /observed outputs|expected outputs|expected values/i.test(modeCopy),
+    `${label}: run-mode copy must explain observed versus expected evidence, got "${modeCopy}"`,
+  );
+  assert(/Draft|Not started|Ready/i.test(await text(status)), `${label}: pre-run status must describe an unrun testbench`);
+  assert(
+    (await page.locator('[data-testid^="ide-testbench-section-"]').count()) === 0,
+    `${label}: retired four-section testbench scaffold must remain absent`,
+  );
 }
 
 async function assertObservedEvidenceVisible(page) {
@@ -174,6 +222,27 @@ async function assertObservedEvidenceVisible(page) {
   assert(/Waveform truth/i.test(scope), `Observe must expose waveform evidence, got "${scope}"`);
   const waveformVisible = await page.locator('[data-testid="ide-verify-waveform-preview"]').first().isVisible().catch(() => false);
   assert(waveformVisible, 'Observed waveform preview must be visible after Observe');
+  assert(
+    await page.getByTestId('ide-verify-waveform-svg').first().isVisible().catch(() => false),
+    'Observed waveform lanes must be visible after Observe',
+  );
+  assert(
+    await page.getByTestId('ide-stimulus-observed-group').first().isVisible().catch(() => false),
+    'Observed values must be visible beside the authored stimulus after Observe',
+  );
+  const status = await text(page.getByTestId('ide-verify-summary-status').first());
+  assert(isVerifyTrace(status), `Observe must report observation-only evidence, got "${status}"`);
+  assert(!isVerifyPass(status) && !isVerifyFail(status), `Observe must not report trusted PASS/FAIL, got "${status}"`);
+  assert(
+    /Observation only/i.test(await text(page.getByTestId('ide-verify-context-state').first())),
+    'Observe must expose Observation only as the current Verify state',
+  );
+  const summary = page.getByTestId('ide-verify-results-summary').first();
+  assert((await summary.getAttribute('data-kind')) === 'observe-done', 'Observe result authority must be observation-only');
+  assert(
+    /Observed outputs recorded.*no expected checks compared/i.test(await text(summary)),
+    'Observe summary must distinguish recorded output evidence from Compare proof',
+  );
 }
 
 async function assertFailureRepairPanel(page, options) {
@@ -184,7 +253,7 @@ async function assertFailureRepairPanel(page, options) {
   assert(/Expected value is incorrect/i.test(guidance), 'visible FAIL guidance must mention expected values');
   assert(/Circuit logic is incorrect/i.test(guidance), 'visible FAIL guidance must mention circuit logic');
   assert(/Output is disconnected/i.test(guidance), 'visible FAIL guidance must mention disconnected outputs');
-  await openFailureDetails(page, 'failed output repair');
+  await assertDirectFailureEvidence(page, 'failed output repair');
   const panelText = await text(page.locator('[data-testid="ide-verify-repair-panel"]').first());
   assert(/Compare failed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
   assert(/Expected|Observed/i.test(panelText), `repair panel must show expected and observed values, got "${panelText}"`);
@@ -199,23 +268,39 @@ async function assertFailureRepairPanel(page, options) {
   assert(/failed output|failed row|all failed/i.test(scopeText), `repair scope summary must be explicit, got "${scopeText}"`);
 }
 
-async function openFailureDetails(page, label) {
-  const details = page.getByTestId('ide-verify-advanced-failure').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
+async function assertDirectFailureEvidence(page, label) {
+  const repairPanel = page.getByTestId('ide-verify-repair-panel').first();
+  const repairDecision = page.getByTestId('ide-verify-repair-decision').first();
+  const failedCase = page.getByTestId('ide-verify-results-summary-open-fail').first();
+
+  await repairPanel.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await repairDecision.isVisible().catch(() => false), `${label}: direct repair decision must be visible`);
+  assert(
+    /expected output wrong.*circuit wrong/i.test(await text(repairDecision)),
+    `${label}: repair decision must distinguish expected-output repair from circuit repair`,
+  );
+  assert(
+    (await page.locator('details[data-testid="ide-verify-advanced-failure"], [data-testid="ide-verify-advanced-failure"] > summary').count()) === 0,
+    `${label}: retired Failure details disclosure must remain absent`,
+  );
+  assert(await failedCase.isVisible().catch(() => false), `${label}: first failed-case evidence control must be visible`);
+  await failedCase.click();
+  assert(
+    await page.getByTestId('ide-verify-fail-nav-summary').first().isVisible().catch(() => false),
+    `${label}: selected mismatch summary must remain visible`,
+  );
 }
 
 async function assertExportConfidence(page, { expectedPackage, expectedVerify }) {
-  const station = page.getByTestId('ide-export-confidence-station').first();
-  assert(await station.isVisible().catch(() => false), 'Export confidence station must be visible');
-  const verify = await text(page.getByTestId('ide-export-confidence-verify').first());
-  const mapping = await text(page.getByTestId('ide-export-confidence-mapping').first());
-  const pkg = await text(page.getByTestId('ide-export-confidence-package').first());
-  const vivado = await text(page.getByTestId('ide-export-confidence-vivado').first());
-  const board = await text(page.getByTestId('ide-export-confidence-board').first());
+  const packageDecision = page.getByTestId('ide-export-package-inspector-v1').first();
+  const upstream = page.getByTestId('ide-export-upstream-readiness').first();
+  const verify = await text(page.getByTestId('ide-export-upstream-verify').first());
+  const mapping = await text(page.getByTestId('ide-export-upstream-mapping').first());
+  const pkg = await text(packageDecision);
+  const boundary = await text(page.getByTestId('ide-export-e0-boundary-summary').first());
+
+  assert(await packageDecision.isVisible().catch(() => false), 'Export package decision must be visible');
+  assert(await upstream.isVisible().catch(() => false), 'Export upstream readiness must be visible');
 
   if (expectedVerify === 'pass') {
     assert(/Compare PASS|current/i.test(verify), `Export Verify confidence should be current PASS, got "${verify}"`);
@@ -223,14 +308,29 @@ async function assertExportConfidence(page, { expectedPackage, expectedVerify })
     assert(/stale|rerun compare|not trusted/i.test(verify), `Export Verify confidence should be stale, got "${verify}"`);
   }
   assert(/mapped|pin/i.test(mapping), `Export Mapping confidence should name mapping, got "${mapping}"`);
-  if (expectedPackage === 'ready-e0') {
-    assert(/Trusted E0|Ready to build E0|Ready E0|E0/i.test(pkg), `Export package confidence should be current E0, got "${pkg}"`);
+  const packageState = await packageDecision.getAttribute('data-export-package-state');
+  const primaryAction = page.getByTestId('ide-export-package-build-v1').first();
+  const primaryActionText = await text(primaryAction);
+  if (expectedPackage === 'buildable-e0') {
+    assert(packageState === 'draft', `current Compare PASS should produce a buildable draft before download, got "${packageState}"`);
+    assert(
+      /Build Current Bundle|Rebuild Current Bundle/i.test(primaryActionText),
+      `current Compare PASS should expose the package build authority, got "${primaryActionText}"`,
+    );
+    assert(await primaryAction.isEnabled().catch(() => false), 'current package build authority must be enabled');
   } else {
-    assert(/Draft|not trusted|needs review/i.test(pkg), `Export package confidence should be draft, got "${pkg}"`);
+    assert(packageState === 'draft', `Export package should be draft while Verify evidence is stale, got "${packageState}"`);
+    assert(/Draft/i.test(pkg), `Export package confidence should be draft, got "${pkg}"`);
+    assert(
+      /Open Verify|Verify|Compare|rerun|review/i.test(primaryActionText),
+      `stale export must route back to Verify instead of looking build-ready, got "${primaryActionText}"`,
+    );
   }
-  assert(/not run|external/i.test(vivado), `Vivado confidence must say not run/external, got "${vivado}"`);
-  assert(/not observed|manual/i.test(board), `Board confidence must say not observed/manual, got "${board}"`);
-  const allConfidence = `${verify} ${mapping} ${pkg} ${vivado} ${board}`;
+  assert(
+    /Browser E0.*Vivado.*bitstream.*programming.*board behavior.*external/i.test(boundary),
+    `Export confidence must preserve the E0 versus external Vivado/board boundary, got "${boundary}"`,
+  );
+  const allConfidence = `${verify} ${mapping} ${pkg} ${boundary}`;
   assert(
     !/\bE[123]\b\s*(?:pass|ready|complete)|Vivado build passed|Board behavior observed/i.test(allConfidence),
     `Export confidence must not overclaim E1/E2/E3: "${allConfidence}"`,
@@ -417,11 +517,6 @@ async function readProjectStats(page) {
       connections: circuit.connections?.length ?? 0,
     };
   });
-}
-
-async function clickRepairRerun(page) {
-  await page.getByTestId('ide-verify-repair-rerun').click();
-  await page.waitForTimeout(100);
 }
 
 async function text(locator) {

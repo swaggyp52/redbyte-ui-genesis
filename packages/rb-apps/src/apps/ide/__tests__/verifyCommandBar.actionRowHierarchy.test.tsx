@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor, within } from '@testing-library/react';
 import { VerifyCommandBar, type VerifyCommandBarProps } from '../surfaces/verify/VerifyCommandBar';
 
 const BASE: VerifyCommandBarProps = {
@@ -10,140 +10,161 @@ const BASE: VerifyCommandBarProps = {
   onSetCompare: vi.fn(),
   compareAvailable: false,
   onRun: vi.fn(),
-  runLabel: 'Run · observe only',
+  runLabel: 'Run Observe',
   runDisabled: false,
-  onGenerate: vi.fn(),
-  generateLabel: 'Seed stimulus',
-  showGenerate: false,
-  showSaveAsExpected: false,
-  statusLabel: 'Draft',
-  statusTone: 'idle',
-  isSequential: false,
 };
 
 afterEach(() => {
   cleanup();
 });
 
-describe('VerifyCommandBar session header hierarchy', () => {
-  it('keeps Run as the first primary action before the session summary cluster', () => {
-    const { getByTestId } = render(<VerifyCommandBar {...BASE} />);
-    const run = getByTestId('ide-vcb-run');
-    const sessionSummary = getByTestId('ide-vcb-session-summary');
-    expect(
-      run.compareDocumentPosition(sessionSummary) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+describe('VerifyCommandBar compact run-loop hierarchy', () => {
+  it('renders only the mode selector, one Run action, and one short explainer', () => {
+    const view = render(<VerifyCommandBar {...BASE} />);
+    const command = view.getByTestId('ide-verify-command-bar');
+    const buttons = within(command).getAllByRole('button');
+
+    expect(buttons).toHaveLength(3);
+    expect(within(view.getByTestId('ide-vcb-run-authority')).getAllByRole('button')).toHaveLength(1);
+    expect(view.getAllByTestId('ide-vcb-run')).toHaveLength(1);
+    expect(view.queryByTestId('ide-vcb-generate')).toBeNull();
+    expect(view.queryByTestId('ide-vcb-session-summary')).toBeNull();
+    expect(view.queryByTestId('ide-vcb-support-actions')).toBeNull();
+    expect(view.queryByTestId('ide-vcb-utilities-panel')).toBeNull();
+    expect(command.querySelector('details')).toBeNull();
   });
 
-  it('keeps the session summary compact when checks are available', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar {...BASE} compareAvailable={true} />
-    );
-    expect(getByTestId('ide-vcb-session-summary').textContent).not.toContain('Observe first');
+  it('orders the selector before Run and the explainer after Run', () => {
+    const view = render(<VerifyCommandBar {...BASE} />);
+    const mode = view.getByTestId('ide-vcb-run-mode');
+    const run = view.getByTestId('ide-vcb-run-authority');
+    const explainer = view.getByTestId('ide-vcb-mode-explainer');
+
+    expect(mode.compareDocumentPosition(run) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(run.compareDocumentPosition(explainer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps the next-run mode selector visible even when Tools is offered', () => {
-    const onSetCompare = vi.fn();
-    const { getByTestId, queryByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        compareAvailable={true}
-        onSetCompare={onSetCompare}
-        showSaveAsExpected={true}
-        onSaveAsExpected={vi.fn()}
-      />
-    );
+  it('keeps both mode choices visible and disables Compare until expected values exist', () => {
+    const view = render(<VerifyCommandBar {...BASE} compareAvailable={false} />);
 
-    expect(getByTestId('ide-vcb-run-mode')).toBeTruthy();
-    expect(queryByTestId('ide-vcb-run-plan-utility')).toBeNull();
-    fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
-    expect(onSetCompare).toHaveBeenCalledOnce();
+    expect(view.getByTestId('ide-vcb-observe-only').textContent).toBe('Observe');
+    expect(view.getByTestId('ide-vcb-use-saved-checks').textContent).toBe('Compare checks');
+    expect((view.getByTestId('ide-vcb-use-saved-checks') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('shows explicit observe and compare choices when checks are available', () => {
+  it('preserves Observe, Compare, and Run callback behavior', () => {
     const onSetCompare = vi.fn();
     const onSetObserve = vi.fn();
-    const { getByTestId, queryByTestId } = render(
+    const onRun = vi.fn();
+    const view = render(
       <VerifyCommandBar
         {...BASE}
         compareAvailable={true}
         onSetObserve={onSetObserve}
         onSetCompare={onSetCompare}
+        onRun={onRun}
       />
     );
 
-    expect(queryByTestId('ide-vcb-utilities-toggle')).toBeNull();
-    fireEvent.click(getByTestId('ide-vcb-observe-only'));
+    fireEvent.click(view.getByTestId('ide-vcb-observe-only'));
+    fireEvent.click(view.getByTestId('ide-vcb-use-saved-checks'));
+    fireEvent.click(view.getByTestId('ide-vcb-run'));
     expect(onSetObserve).toHaveBeenCalledOnce();
-    fireEvent.click(getByTestId('ide-vcb-use-saved-checks'));
     expect(onSetCompare).toHaveBeenCalledOnce();
+    expect(onRun).toHaveBeenCalledOnce();
   });
 
-  it('keeps utilities hidden until Tools opens', () => {
-    const { getByTestId, queryByTestId } = render(
+  it('restores keyboard focus to the updated Run command after completion', async () => {
+    const view = render(<VerifyCommandBar {...BASE} runLabel="Run Compare" />);
+    const run = view.getByTestId('ide-vcb-run');
+    run.focus();
+    fireEvent.click(run);
+
+    view.rerender(<VerifyCommandBar {...BASE} runLabel="Running Compare" runDisabled={true} />);
+    view.rerender(<VerifyCommandBar {...BASE} runLabel="Update Compare" runDisabled={false} />);
+
+    await waitFor(() => expect(document.activeElement).toBe(view.getByTestId('ide-vcb-run')));
+    expect(document.activeElement?.textContent).toContain('Update Compare');
+  });
+
+  it('restores Run focus when disabling it falls back to the document body', async () => {
+    const view = render(<VerifyCommandBar {...BASE} runLabel="Run Compare" />);
+    const run = view.getByTestId('ide-vcb-run');
+    run.focus();
+    fireEvent.click(run);
+
+    view.rerender(<VerifyCommandBar {...BASE} runLabel="Running Compare" runDisabled={true} />);
+    document.body.tabIndex = -1;
+    document.body.focus();
+    document.body.removeAttribute('tabindex');
+    expect([document.body, document.documentElement]).toContain(document.activeElement);
+
+    vi.mocked(window.requestAnimationFrame).mockImplementationOnce((callback) => {
+      callback(0);
+      return 1;
+    });
+    view.rerender(<VerifyCommandBar {...BASE} runLabel="Update Compare" runDisabled={false} />);
+
+    await waitFor(() => expect(document.activeElement).toBe(view.getByTestId('ide-vcb-run')));
+  });
+
+  it('preserves a deliberate focus move while Run is active', async () => {
+    const view = render(
+      <VerifyCommandBar {...BASE} compareAvailable={true} runLabel="Run Compare" />
+    );
+    const run = view.getByTestId('ide-vcb-run');
+    run.focus();
+    fireEvent.click(run);
+
+    view.rerender(
       <VerifyCommandBar
         {...BASE}
         compareAvailable={true}
+        runLabel="Running Compare"
+        runDisabled={true}
+      />
+    );
+    const observe = view.getByTestId('ide-vcb-observe-only');
+    observe.focus();
+    expect(document.activeElement).toBe(observe);
+
+    vi.mocked(window.requestAnimationFrame).mockImplementationOnce((callback) => {
+      callback(0);
+      return 1;
+    });
+    view.rerender(
+      <VerifyCommandBar
+        {...BASE}
+        compareAvailable={true}
+        runLabel="Update Compare"
+        runDisabled={false}
+      />
+    );
+
+    expect(document.activeElement).toBe(observe);
+  });
+
+  it('does not reintroduce legacy status, generation, or repair controls', () => {
+    const view = render(
+      <VerifyCommandBar
+        {...BASE}
+        compareAvailable={true}
+        showGenerate={true}
+        onGenerate={vi.fn()}
+        generateLabel="Seed stimulus"
         showSaveAsExpected={true}
         onSaveAsExpected={vi.fn()}
         showEditCases={true}
         onEditCases={vi.fn()}
-      />
-    );
-
-    expect(queryByTestId('ide-vcb-utilities-panel')).toBeNull();
-    fireEvent.click(getByTestId('ide-vcb-utilities-toggle'));
-    expect(getByTestId('ide-vcb-utilities-panel')).toBeTruthy();
-    expect(getByTestId('ide-vcb-save-expected')).toBeTruthy();
-    expect(getByTestId('ide-verify-run-proof-edit-vectors')).toBeTruthy();
-  });
-
-  it('keeps detail controls on the right without moving the run mode into Tools', () => {
-    const { getByTestId, container } = render(
-      <VerifyCommandBar
-        {...BASE}
-        compareAvailable={true}
         showAnalysisToggle={true}
         onToggleAnalysis={vi.fn()}
-      />
-    );
-
-    const statusGroup = container.querySelector('.ide-vcb-group--status');
-    expect(statusGroup).toBeTruthy();
-    expect(statusGroup!.contains(getByTestId('ide-verify-drawer-toggle'))).toBe(true);
-    expect(getByTestId('ide-vcb-run-mode')).toBeTruthy();
-  });
-
-  it('dedupes repeated session labels inside the session summary cluster', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        compareAvailable={true}
         statusLabel="Checks need review"
-        sessionStatusBadge="Checks need review"
-        sessionTitle="Checks need review"
-        sessionModeLabel="Checks armed"
-        evidenceLabel="3 observed rows"
-        coverageLabel="80% coverage"
-        sessionMetricsRow="inline"
       />
     );
 
-    const summary = within(getByTestId('ide-vcb-session-summary'));
-    expect(summary.getByTestId('ide-vcb-status')).toBeTruthy();
-    expect(summary.getByTestId('ide-vcb-evidence')).toBeTruthy();
-    expect(summary.getByTestId('ide-vcb-coverage')).toBeTruthy();
-    const fullText = getByTestId('ide-vcb-session-summary').textContent ?? '';
-    expect(fullText.match(/Checks need review/g)?.length ?? 0).toBe(1);
-  });
-
-  it('renders a visible failure recovery line when provided (before opening details)', () => {
-    const { getByTestId } = render(
-      <VerifyCommandBar
-        {...BASE}
-        failureRecoveryLine="Find the first mismatch on the waveform, then fix checks or the circuit."
-      />
-    );
-    expect(getByTestId('ide-vcb-failure-recovery').textContent).toContain('first mismatch');
+    expect(view.queryByText('Seed stimulus')).toBeNull();
+    expect(view.queryByText('Checks need review')).toBeNull();
+    expect(view.queryByText('Edit expected outputs')).toBeNull();
+    expect(view.queryByText('Inspect run')).toBeNull();
   });
 });

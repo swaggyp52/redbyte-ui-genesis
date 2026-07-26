@@ -45,8 +45,8 @@ await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ pag
     await capture(page, viewport, 'prerun-testbench-layout');
 
     assert(
-      metrics.proofScopeText === 'Browser E0',
-      `${viewport.label}: compact Verify chrome must expose the Browser E0 scope (${JSON.stringify(metrics.proofScopeText)})`
+      /Simulation Studio.*Author a testbench.*run the circuit.*compare waveform evidence.*expected behavior/i.test(metrics.verifyJobText),
+      `${viewport.label}: Verify must expose the v3 Simulation Studio job definition (${JSON.stringify(metrics.verifyJobText)})`
     );
     assert(metrics.rootOverflowX <= 1, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
     assert(metrics.expectedCells >= 12, `${viewport.label}: starter checks must expose all expected-output cells (${metrics.expectedCells})`);
@@ -59,6 +59,10 @@ await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ pag
     assert(
       metrics.phase === 'pre-run',
       `${viewport.label}: lab grid must expose pre-run phase for layout contracts, got "${metrics.phase}"`
+    );
+    assert(
+      metrics.stimulusLayout === 'stable',
+      `${viewport.label}: the v3 testbench editor must keep a stable stimulus layout, got "${metrics.stimulusLayout}"`
     );
 
     const requiredStimulusWidth = Math.min(860, metrics.labGrid.width * 0.68);
@@ -135,8 +139,12 @@ async function readPreRunMetrics(page) {
     const root = document.querySelector('[data-testid="ide-root"]');
     const gridScroll = box('.ide-stimulus-grid-scroll');
 
+    const runButton = document.querySelector('[data-testid="ide-vcb-run"]');
+    const runButtonRect = runButton?.getBoundingClientRect();
+
     return {
-      proofScopeText: document.querySelector('[data-testid="ide-proof-scope"]')?.textContent?.trim() ?? '',
+      verifyJobText:
+        document.querySelector('[data-testid="ide-verify-context-header"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       phase: labGridElement?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGridElement?.getAttribute('data-workspace-mode') ?? '',
       stimulusLayout: labGridElement?.getAttribute('data-stimulus-layout') ?? '',
@@ -150,7 +158,14 @@ async function readPreRunMetrics(page) {
       },
       expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
       visibleCaseHeaders,
-      runButtonVisible: Boolean(document.querySelector('[data-testid="ide-vcb-run"]')),
+      runButtonVisible: Boolean(
+        runButton &&
+          runButtonRect &&
+          runButtonRect.width > 0 &&
+          runButtonRect.height > 0 &&
+          runButtonRect.bottom > 0 &&
+          runButtonRect.top < window.innerHeight
+      ),
     };
   });
 }

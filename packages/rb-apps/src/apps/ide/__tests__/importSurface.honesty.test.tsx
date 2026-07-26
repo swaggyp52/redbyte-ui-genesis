@@ -13,15 +13,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ImportSurface } from '../surfaces/ImportSurface';
 
-function enterImportWorkbench(view: ReturnType<typeof render>) {
-  fireEvent.click(view.getByTestId('ide-import-start-secondary'));
-}
-
 describe('Import honesty — ports-only', () => {
   it('shows explicit ports-only message when behavioral HDL is loaded', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
 
-    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -30,13 +25,16 @@ describe('Import honesty — ports-only', () => {
 
     const warning = view.getByTestId('ide-import-ports-only-warning');
     expect(warning.textContent).toContain('Ports only');
-    expect(warning.textContent).toContain('no circuit reconstructed');
+    expect(warning.textContent).toContain('no internal circuit');
+    expect(view.getByTestId('ide-import-review-shell').textContent).toContain(
+      'Ready to review; replacement blocked'
+    );
+    expect(view.getByTestId('ide-import-step-apply').className).toContain('is-blocked');
   });
 
   it('ports-only warning explains what was not recovered', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
 
-    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -51,7 +49,6 @@ describe('Import honesty — ports-only', () => {
   it('ports-only warning includes next-step guidance', async () => {
     const view = render(<ImportSurface onImportProject={vi.fn()} />);
 
-    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -67,7 +64,6 @@ describe('Import honesty — ports-only', () => {
       <ImportSurface key="ports-only" onImportProject={vi.fn()} />
     );
 
-    fireEvent.click(portsOnlyView.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(portsOnlyView.getByTestId('ide-import-load-sample-edge-detect'));
 
     await waitFor(() => {
@@ -93,7 +89,7 @@ describe('Import honesty — full structural reconstruction', () => {
 
     const notice = view.getByTestId('ide-import-recon-full');
     expect(notice.textContent).toContain('Structural HDL');
-    expect(notice.textContent).toContain('gates and connections');
+    expect(notice.textContent?.toLowerCase()).toContain('gates and connections');
   });
 });
 
@@ -109,10 +105,7 @@ describe('Import honesty — blocker recovery routing', () => {
       />
     );
 
-    enterImportWorkbench(view);
-    fireEvent.click(view.getByTestId('ide-import-toggle-behavioral-samples'));
     fireEvent.click(view.getByTestId('ide-import-load-sample-edge-detect'));
-    fireEvent.click(view.getByTestId('ide-import-parse-xdc'));
 
     await waitFor(() => {
       expect((view.getByTestId('ide-import-replace-project') as HTMLButtonElement).disabled).toBe(false);

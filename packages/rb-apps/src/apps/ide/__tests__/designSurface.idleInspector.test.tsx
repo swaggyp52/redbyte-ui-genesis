@@ -160,8 +160,8 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
     expect(view.getByTestId('ide-design-inspector-idle-inputs').textContent).toBe('1');
@@ -185,8 +185,8 @@ describe('DesignSurface idle inspector contract', () => {
 
     const view = renderSurface();
 
-    expect(view.queryByTestId('ide-design-inspector-canvas-default')).toBeNull();
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Design overview');
     expect(view.getByTestId('ide-design-inspector-idle-card').textContent).toContain('Empty canvas.');

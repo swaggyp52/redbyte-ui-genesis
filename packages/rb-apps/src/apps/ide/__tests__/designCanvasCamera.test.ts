@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  centerDesignSelectionWithContext,
   readDesignCanvasViewport,
   reconcileDesignCanvasCamera,
 } from '../surfaces/designCanvasCamera';
@@ -107,5 +108,29 @@ describe('Design canvas camera resize contract', () => {
     expect(camera.zoom).toBe(initial.zoom);
     expect((wide.width / 2 - camera.x) / camera.zoom).toBeCloseTo(initialWorldCenter.x, 10);
     expect((wide.height / 2 - camera.y) / camera.zoom).toBeCloseTo(initialWorldCenter.y, 10);
+  });
+
+  it('keeps a selected edge node and useful circuit context visible in compact Split view', () => {
+    const viewport = { width: 366, height: 378 };
+    const graph = [
+      { x: 90, y: 120 },
+      { x: 90, y: 260 },
+      { x: 300, y: 80 },
+      { x: 300, y: 190 },
+      { x: 300, y: 300 },
+      { x: 500, y: 190 },
+    ];
+    const nextCamera = centerDesignSelectionWithContext(
+      { x: -186, y: -48, zoom: 1.25 },
+      viewport,
+      [graph[0]],
+      graph
+    );
+
+    expect(nextCamera).not.toBeNull();
+    expect(nextCamera?.zoom).toBe(1.25);
+    const screenX = (anchor: { x: number }) => anchor.x * nextCamera!.zoom + nextCamera!.x;
+    expect(screenX(graph[0])).toBeGreaterThanOrEqual(48);
+    expect(screenX(graph[2])).toBeLessThanOrEqual(viewport.width - 48);
   });
 });

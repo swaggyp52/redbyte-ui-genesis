@@ -44,18 +44,20 @@ await runIdeGate('IDE diagnostics jump contract satisfied', async ({ page, baseU
     );
   }
 
+  await page.evaluate(() => {
+    const runtime = window.__RB_PROJECT_RUNTIME__?.getState?.();
+    const row = runtime?.projectIoRows?.find((entry) => entry.required && String(entry.pin ?? '').trim().length > 0);
+    if (!runtime?.setMappingPin || !row) throw new Error('Unable to seed a mapping diagnostic.');
+    runtime.setMappingPin(row.id, '');
+  });
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  const exportAction = page.locator('[data-testid^="ide-export-diagnostic-action-"]').first();
-  const exportActionVisible = await exportAction.isVisible().catch(() => false);
-  if (exportActionVisible) {
-    await exportAction.click({ force: true });
-    await page.waitForFunction(
-      () =>
-        Boolean(document.querySelector('[data-testid="ide-mode-export"]')) ||
-        Boolean(document.querySelector('[data-testid="ide-mode-project"]')) ||
-        Boolean(document.querySelector('[data-testid="ide-mode-design"]')),
-      { timeout: 10000 }
-    );
-  }
+  const exportAction = page.locator('[data-testid="ide-export-blocked-open-map-pins"]').first();
+  assert(await exportAction.isVisible().catch(() => false), 'Export mapping diagnostic must expose a direct Map Pins recovery action');
+  await exportAction.click();
+  await page.waitForSelector('[data-testid="ide-mode-hardware"]', { timeout: 10000 });
+  assert(
+    await page.locator('[data-testid="ide-hw-map-table"]').first().isVisible().catch(() => false),
+    'Export mapping recovery must navigate to the Map Pins assignment table'
+  );
 });

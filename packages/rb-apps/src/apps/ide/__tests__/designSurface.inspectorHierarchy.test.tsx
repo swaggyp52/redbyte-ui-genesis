@@ -201,18 +201,11 @@ afterEach(() => {
 });
 
 describe('DesignSurface inspector hierarchy', () => {
-  it('keeps the idle inspector restorable, identity-first, and free of persistent rail dependency', async () => {
+  it('keeps the idle inspector direct, identity-first, and free of reveal controls', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
-    expect(view.queryByTestId('ide-inspector')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    });
-
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
 
     expect(view.queryByTestId('ide-design-inspector-health')).toBeNull();
@@ -293,7 +286,7 @@ describe('DesignSurface inspector hierarchy', () => {
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('groups primary actions ahead of signal/state context', async () => {
+  it('keeps direct signal naming in identity and primary actions ahead of signal/state', async () => {
     const view = renderSurface(BASE_CIRCUIT);
 
     act(() => {
@@ -304,11 +297,14 @@ describe('DesignSurface inspector hierarchy', () => {
       expect(view.getByTestId('ide-design-inspector-actions')).toBeTruthy();
     });
 
-    expect(view.getByTestId('ide-design-inspector-actions').textContent).toContain('Rename');
+    expect(view.getByTestId('ide-design-inspector-name-control').textContent).toContain('Signal name');
+    expect(view.getByTestId('ide-design-inspector-name-control').textContent).toContain('Rename');
     expect(view.getByTestId('ide-design-inspector-actions').textContent).toContain('Trace net');
 
+    const identity = view.getByTestId('ide-design-inspector-identity-card');
     const actions = view.getByTestId('ide-design-inspector-actions');
     const state = view.getByTestId('ide-design-context-inspector');
+    expect(identity.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     const position = actions.compareDocumentPosition(state);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -326,10 +322,12 @@ describe('DesignSurface inspector hierarchy', () => {
 
     expect(view.queryByTestId('ide-design-inspector-properties')).toBeNull();
 
-    const actions = view.getByTestId('ide-design-inspector-actions');
+    const identity = view.getByTestId('ide-design-inspector-identity-card');
+    const nameControl = view.getByTestId('ide-design-inspector-name-control');
     const state = view.getByTestId('ide-design-context-inspector');
-    expect(actions.textContent).toContain('Rename');
-    const position = actions.compareDocumentPosition(state);
+    expect(identity.contains(nameControl)).toBe(true);
+    expect(nameControl.textContent).toContain('Rename');
+    const position = identity.compareDocumentPosition(state);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

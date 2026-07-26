@@ -51,7 +51,7 @@ export async function openDesignInspector(page, baseUrl, gateLabel) {
     await rightToggle.click();
     await page.waitForTimeout(180);
   }
-  await page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 5000 });
+  await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 5000 });
 }
 
 export async function openHardwareMapPins(page, baseUrl, gateLabel) {

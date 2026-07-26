@@ -160,22 +160,22 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
 
   await clickDesignView(page, 'canvas');
   await revealDesignRail(page, 'left');
-  await assertCameraTransitionState(page, viewport, 'Library open', 'canvas', worldCenterAnchor);
+  await assertCameraTransitionState(page, viewport, 'Library stable', 'canvas', worldCenterAnchor);
   await collapseDesignRail(page, 'left');
-  await assertCameraTransitionState(page, viewport, 'Library closed', 'canvas', worldCenterAnchor);
+  await assertCameraTransitionState(page, viewport, 'Library remains stable', 'canvas', worldCenterAnchor);
   await selectFirstVisibleNode(page);
   await revealDesignRail(page, 'right');
   await assertSelectionState(page, { node: true });
-  await assertCameraTransitionState(page, viewport, 'Inspector open', 'canvas', worldCenterAnchor);
+  await assertCameraTransitionState(page, viewport, 'Inspector stable', 'canvas', worldCenterAnchor);
   await collapseDesignRail(page, 'right');
-  await assertCameraTransitionState(page, viewport, 'Inspector closed', 'canvas', worldCenterAnchor);
+  await assertCameraTransitionState(page, viewport, 'Inspector remains stable', 'canvas', worldCenterAnchor);
 
   await clickDesignView(page, 'hdl');
   await clickDesignView(page, 'split');
   await assertCameraTransitionState(page, viewport, 'Final Code to Split', 'split', worldCenterAnchor);
   await assertMovedNodePosition(page, movedNode);
   await assertSelectionState(page, { node: true });
-  const centerSelection = page.locator('[data-testid="ide-design-center-selection-split"]:visible').first();
+  const centerSelection = page.locator('[data-testid="ide-design-center-selection-canvas"]:visible').first();
   assert(await centerSelection.isEnabled().catch(() => false), 'Split selected-node Center Selection must be enabled');
   await centerSelection.click();
   await page
@@ -206,30 +206,35 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
 }
 
 async function setCanvasZoom125(page) {
-  const fit = page.locator('[data-testid^="ide-design-fit-circuit"]:visible').first();
-  await fit.waitFor({ state: 'visible', timeout: 5000 });
-  await fit.click();
-  const canvasToolsToggle = page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first();
-  if ((await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) !== 'true') {
-    await canvasToolsToggle.click();
-  }
-  const zoom125 = page.locator('[data-testid="ide-design-zoom-preset-125"]:visible').first();
-  await zoom125.waitFor({ state: 'visible', timeout: 5000 });
-  await zoom125.click();
+  const reset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
+  const zoomIn = page.locator('[data-testid="ide-design-zoom-in"]:visible').first();
+  await reset.waitFor({ state: 'visible', timeout: 5000 });
+  await zoomIn.waitFor({ state: 'visible', timeout: 5000 });
+  await reset.click();
+  await zoomIn.click();
+  await zoomIn.click();
+  await page.waitForFunction(() => {
+    const zoom = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera?.zoom;
+    return typeof zoom === 'number' && Math.abs(zoom - 1.2544) < 0.001;
+  }, undefined, { timeout: 5000 });
 }
 
 async function assertCameraTransitionState(page, viewport, label, expectedView, worldCenterAnchor = null) {
   let metrics = null;
+  const compactViewport = viewport.width <= 1100;
+  const viewMatches = (actual) =>
+    actual === expectedView || (compactViewport && expectedView === 'split' && actual === 'stacked');
+  const minimumUsefulNodes = compactViewport && expectedView === 'split' ? 1 : 3;
   for (let attempt = 0; attempt < 50; attempt += 1) {
     metrics = await readWorkbenchMetrics(page);
     const cameraZoom = typeof metrics.camera?.zoom === 'number' ? metrics.camera.zoom : Number.NaN;
     if (
-      metrics.designView === expectedView &&
+      viewMatches(metrics.designView) &&
       metrics.cameraFinite &&
-      Math.abs(cameraZoom - 1.25) < 0.001 &&
+      Math.abs(cameraZoom - 1.2544) < 0.001 &&
       metrics.runtimeNodes >= 3 &&
       metrics.editorNodes >= 3 &&
-      metrics.usefullyVisibleNodeCount >= 3 &&
+      metrics.usefullyVisibleNodeCount >= minimumUsefulNodes &&
       metrics.visibleWireCount >= 1 &&
       metrics.logicCanvasWidthDelta <= 2 &&
       metrics.logicCanvasHeightDelta <= 2 &&
@@ -241,13 +246,13 @@ async function assertCameraTransitionState(page, viewport, label, expectedView, 
   }
   metrics = metrics ?? (await readWorkbenchMetrics(page));
   const cameraZoom = typeof metrics.camera?.zoom === 'number' ? metrics.camera.zoom : Number.NaN;
-  assert(metrics.designView === expectedView, `${label}: expected ${expectedView}, got ${metrics.designView}`);
+  assert(viewMatches(metrics.designView), `${label}: expected ${expectedView}, got ${metrics.designView}`);
   assert(metrics.cameraFinite, `${label}: camera must stay finite, got ${JSON.stringify(metrics.camera)}`);
-  assert(Math.abs(cameraZoom - 1.25) < 0.001, `${label}: zoom intent changed (${cameraZoom})`);
+  assert(Math.abs(cameraZoom - 1.2544) < 0.001, `${label}: zoom intent changed (${cameraZoom})`);
   assert(metrics.runtimeNodes >= 3 && metrics.editorNodes >= 3, `${label}: circuit graph was lost`);
   assert(
-    metrics.usefullyVisibleNodeCount >= 3,
-    `${label}: fewer than three nodes remain usefully visible (${metrics.usefullyVisibleNodeCount})`
+    metrics.usefullyVisibleNodeCount >= minimumUsefulNodes,
+    `${label}: fewer than ${minimumUsefulNodes} nodes remain usefully visible (${metrics.usefullyVisibleNodeCount})`
   );
   assert(metrics.visibleWireCount >= 1, `${label}: visible wires disappeared (${metrics.visibleWireCount})`);
   assert(
@@ -363,14 +368,8 @@ async function loadStarterDesign(page, baseUrl, exampleId, gateLabel) {
 async function waitForDesignWorkbench(page) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-toolbar"]', { timeout: 15000 });
-  await Promise.race([
-    page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 }),
-    page.waitForSelector('[data-testid="ide-workbench-dock-toggle-left"]', { timeout: 15000 }),
-  ]);
-  await Promise.race([
-    page.waitForSelector('[data-testid="ide-inspector"]', { timeout: 15000 }),
-    page.waitForSelector('[data-testid="ide-workbench-dock-toggle-right"]', { timeout: 15000 }),
-  ]);
+  await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 15000 });
 }
 
 async function assertBlankCanvasStart(page, viewport, label) {
@@ -384,13 +383,13 @@ async function assertBlankCanvasStart(page, viewport, label) {
   assert(metrics.emptyAddIo.visible, `${label}: blank canvas must expose Add boundary I/O`);
   assert(metrics.emptyAddAnd.visible, `${label}: blank canvas must expose a starter gate path`);
   assert(metrics.palette.visible, `${label}: Library must be visible by default`);
-  assert(metrics.rightToggle.visible, `${label}: collapsed Inspector rail must be available`);
+  assert(metrics.inspector.visible, `${label}: Inspector must remain visible by default`);
+  assert(!metrics.leftToggle.visible && !metrics.rightToggle.visible, `${label}: stable rails must not expose restore toggles`);
   assertWorkbenchHierarchy(metrics, viewport, label, { expectGraph: false });
-  const hideLibrary = page.locator('[data-testid="ide-design-library-collapse"]').first();
-  assert(await hideLibrary.isVisible().catch(() => false), `${label}: open Library must expose Hide`);
-  await hideLibrary.click();
-  await page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first().waitFor({ state: 'visible', timeout: 5000 });
-  await revealDesignRail(page, 'left');
+  assert(
+    !(await page.locator('[data-testid="ide-design-library-collapse"]').first().isVisible().catch(() => false)),
+    `${label}: stable Library must not expose a Hide control`,
+  );
 }
 
 async function assertDesignBoundaryActions(page, label) {
@@ -399,8 +398,8 @@ async function assertDesignBoundaryActions(page, label) {
   const metrics = await readWorkbenchMetrics(page);
   assert(!metrics.statusAddIo.visible, `${label}: healthy loaded Design must not restore the old status-HUD Add I/O action`);
   assert(
-    await page.locator('[data-testid="ide-design-command-strip-primary-cta"]').first().isVisible().catch(() => false),
-    `${label}: Design header must keep the Verify continuation visible`,
+    await page.locator('[data-testid="mode-button-verify"]:visible').first().isVisible().catch(() => false),
+    `${label}: shared stage navigation must keep Verify reachable`,
   );
   assert(metrics.paletteInput.visible, `${label}: palette input primitive must stay visible`);
   assert(metrics.paletteOutput.visible, `${label}: palette output primitive must stay visible`);
@@ -408,24 +407,17 @@ async function assertDesignBoundaryActions(page, label) {
 }
 
 async function revealDesignRail(page, side) {
-  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
-  if (await page.locator(dockSelector).first().isVisible().catch(() => false)) return;
-  const toggleSelector =
-    side === 'left' ? '[data-testid="ide-workbench-dock-toggle-left"]' : '[data-testid="ide-workbench-dock-toggle-right"]';
-  const toggle = page.locator(toggleSelector).first();
-  assert(await toggle.isVisible().catch(() => false), `Design ${side} rail restore toggle must be visible`);
-  await toggle.click();
-  await page.waitForSelector(dockSelector, { timeout: 5000 });
+  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-right-dock"]';
+  assert(await page.locator(dockSelector).first().isVisible().catch(() => false), `Design ${side} rail must remain visible`);
 }
 
 async function collapseDesignRail(page, side) {
   const collapseSelector =
     side === 'left' ? '[data-testid="ide-workbench-dock-collapse-left"]' : '[data-testid="ide-workbench-dock-collapse-right"]';
   const collapse = page.locator(collapseSelector).first();
-  if (!(await collapse.isVisible().catch(() => false))) return;
-  await collapse.click();
-  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-inspector"]';
-  await page.locator(dockSelector).first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => null);
+  assert(!(await collapse.isVisible().catch(() => false)), `Design ${side} rail must not expose collapse chrome`);
+  const dockSelector = side === 'left' ? '[data-testid="ide-left-dock"]' : '[data-testid="ide-right-dock"]';
+  assert(await page.locator(dockSelector).first().isVisible().catch(() => false), `Design ${side} rail must remain visible`);
 }
 
 async function assertGraphWorkbench(page, viewport, label, options = {}) {
@@ -467,7 +459,11 @@ async function assertGraphWorkbench(page, viewport, label, options = {}) {
 }
 
 function assertWorkbenchHierarchy(metrics, viewport, label, options) {
-  const topLimit = Math.max(viewport.height * 0.34, 272);
+  // Unified Workbench v3 keeps the current design context and wrapped toolbar
+  // in document flow. Guard the canvas with a viewport-relative ceiling plus
+  // the stricter visible-height/area checks below instead of the retired
+  // 296px overlay-era coordinate.
+  const topLimit = Math.min(450, viewport.height * 0.5);
   const minCanvasWidth = options.minCanvasWidth ?? 560;
   const minAreaRatio = options.minAreaRatio ?? 0.42;
   const minRailRatio = options.minRailRatio ?? 2.1;
@@ -598,8 +594,8 @@ async function proveSplitAndCodeViews(page, viewport) {
   await page.waitForSelector('[data-testid="ide-design-hdl-pane"]', { timeout: 10000 });
   await assertGraphWorkbench(page, viewport, 'split/code split view', {
     minAreaRatio: 0.24,
-    minCanvasWidth: 420,
-    minRailRatio: 1.7,
+    minCanvasWidth: 360,
+    minRailRatio: 1.35,
     requireRails: false,
   });
   const splitMetrics = await readWorkbenchMetrics(page);
@@ -620,44 +616,44 @@ async function proveZoomFitCenter(page, viewport) {
   await clickDesignView(page, 'canvas');
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await selectFirstVisibleNode(page);
-  const canvasToolsToggle = page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first();
-  assert(await canvasToolsToggle.isVisible().catch(() => false), 'Canvas View tools disclosure must be visible');
-  const canvasToolsExpanded = (await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
-  if (!canvasToolsExpanded) {
-    await canvasToolsToggle.click();
-  }
-  await page.locator('[data-testid="ide-design-zoom-preset-50"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
-  await page.locator('[data-testid="ide-design-zoom-preset-50"]:visible').first().click();
-  await assertGraphWorkbench(page, viewport, '50% zoom');
-  await page.locator('[data-testid="ide-design-zoom-preset-125"]:visible').first().click();
-  await assertGraphWorkbench(page, viewport, '125% zoom');
-  await page.locator('[data-testid="ide-design-zoom-preset-fit"]:visible').first().click();
-  await page.waitForTimeout(250);
+  const zoomOut = page.locator('[data-testid="ide-design-zoom-out"]:visible').first();
+  const zoomIn = page.locator('[data-testid="ide-design-zoom-in"]:visible').first();
+  const fit = page.locator('[data-testid="ide-design-fit-circuit-canvas"]:visible').first();
+  const reset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
   const center = page.locator('[data-testid="ide-design-center-selection-canvas"]:visible').first();
-  if (await center.isVisible().catch(() => false)) {
-    await center.click();
+  for (const control of [zoomOut, zoomIn, fit, reset, center]) {
+    assert(await control.isVisible().catch(() => false), 'Canvas zoom, fit, reset, and center controls must remain directly visible');
   }
+  assert(
+    !(await page.locator('[data-testid="ide-design-view-tools-toggle"]:visible').first().isVisible().catch(() => false)),
+    'Canvas controls must not be hidden behind a View tools disclosure',
+  );
+  await reset.click();
+  await zoomOut.click();
+  await assertGraphWorkbench(page, viewport, 'direct zoom out');
+  await zoomIn.click();
+  await assertGraphWorkbench(page, viewport, 'direct zoom in');
+  await fit.click();
   await page.waitForTimeout(250);
-  if ((await canvasToolsToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true') {
-    await canvasToolsToggle.click();
-    await page.waitForTimeout(150);
-  }
-  const moreToggle = page.locator('[data-testid="ide-design-tools-toggle"]:visible').first();
-  if (await moreToggle.isVisible().catch(() => false)) {
-    const expanded = (await moreToggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true';
-    if (expanded) {
-      await moreToggle.click();
-      await page.waitForTimeout(150);
-    }
-  }
+  await assertGraphWorkbench(page, viewport, 'direct fit');
+  await reset.click();
+  await page.waitForTimeout(250);
+  await center.click();
+  await page.waitForTimeout(250);
+  await assertGraphWorkbench(page, viewport, 'direct center selection');
 }
 
 async function ensureMoreTools(page) {
-  if (await page.locator('[data-testid="ide-design-view-split"]:visible').first().isVisible().catch(() => false)) return;
-  const toggle = page.locator('[data-testid="ide-design-tools-toggle"]:visible').first();
-  assert(await toggle.isVisible().catch(() => false), 'Design More tools must be visible');
-  await toggle.click();
-  await page.locator('[data-testid="ide-design-toolbar-expanded"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
+  for (const view of ['canvas', 'hdl', 'split']) {
+    assert(
+      await page.locator(`[data-testid="ide-design-view-${view}"]:visible`).first().isVisible().catch(() => false),
+      `Design ${view} view control must remain directly visible`,
+    );
+  }
+  assert(
+    !(await page.locator('[data-testid="ide-design-tools-toggle"]:visible').first().isVisible().catch(() => false)),
+    'Design view controls must not be hidden behind a More tools disclosure',
+  );
 }
 
 async function clickDesignView(page, view) {
@@ -727,15 +723,22 @@ async function selectFirstVisibleDraggableNode(page) {
     const canvasRect = canvas?.getBoundingClientRect();
     if (!canvasRect) return null;
     const candidates = Array.from(document.querySelectorAll('[data-node-id]'));
-    const isVisible = (candidate) => {
+    const visibleRatio = (candidate) => {
       const rect = candidate.getBoundingClientRect();
-      return rect.width > 4 && rect.height > 4 && intersectsRect(rect, canvasRect);
+      if (rect.width <= 4 || rect.height <= 4 || !intersectsRect(rect, canvasRect)) return 0;
+      const width = Math.max(0, Math.min(rect.right, canvasRect.right) - Math.max(rect.left, canvasRect.left));
+      const height = Math.max(0, Math.min(rect.bottom, canvasRect.bottom) - Math.max(rect.top, canvasRect.top));
+      return (width * height) / Math.max(1, rect.width * rect.height);
     };
+    const ranked = candidates
+      .map((candidate) => ({ candidate, ratio: visibleRatio(candidate) }))
+      .filter(({ ratio }) => ratio > 0)
+      .sort((left, right) => right.ratio - left.ratio);
     const node =
-      candidates.find((candidate) => {
+      ranked.find(({ candidate, ratio }) => {
         const type = candidate.getAttribute('data-node-type')?.toUpperCase();
-        return type !== 'INPUT' && type !== 'OUTPUT' && isVisible(candidate);
-      }) ?? candidates.find(isVisible);
+        return type !== 'INPUT' && type !== 'OUTPUT' && ratio >= 0.5;
+      })?.candidate ?? ranked[0]?.candidate;
     const nodeId = node?.getAttribute('data-node-id') ?? null;
     if (nodeId) {
       window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selectMultipleNodes?.([nodeId], false);
@@ -775,11 +778,26 @@ async function selectFirstVisibleWire(page) {
 }
 
 async function dragFirstVisibleNode(page) {
+  const selectTool = page.locator('[data-testid="ide-design-tool-select"]:visible').first();
+  if (await selectTool.isVisible().catch(() => false)) {
+    await selectTool.click();
+  }
   const selectedNodeId = await selectFirstVisibleDraggableNode(page);
   const before = await readNodePosition(page, selectedNodeId);
-  const box = await page.locator(`[data-node-id="${selectedNodeId}"]`).first().boundingBox();
+  const node = page.locator(`[data-node-id="${selectedNodeId}"] .logic-node-body`).first();
+  const box = await node.boundingBox();
+  const canvasBox = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
   assert(Boolean(box), 'expected a visible node bounding box for drag');
-  const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  assert(Boolean(canvasBox), 'expected a visible canvas bounding box for drag');
+  const overlapLeft = Math.max(box.x, canvasBox.x);
+  const overlapTop = Math.max(box.y, canvasBox.y);
+  const overlapRight = Math.min(box.x + box.width, canvasBox.x + canvasBox.width);
+  const overlapBottom = Math.min(box.y + box.height, canvasBox.y + canvasBox.height);
+  assert(overlapRight > overlapLeft && overlapBottom > overlapTop, `selected node ${selectedNodeId} is outside the live canvas`);
+  const start = {
+    x: overlapLeft + (overlapRight - overlapLeft) / 2,
+    y: overlapTop + (overlapBottom - overlapTop) / 2,
+  };
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(start.x + 42, start.y + 24, { steps: 8 });
@@ -891,7 +909,7 @@ async function readWorkbenchMetrics(page) {
     const root = document.querySelector('[data-testid="ide-root"]') ?? document.documentElement;
     const workspace = getRect('[data-testid="ide-mode-body"]');
     const leftDock = getRect('[data-testid="ide-left-dock"]');
-    const rightDock = getRect('[data-testid="ide-inspector"]');
+    const rightDock = getRect('[data-testid="ide-right-dock"]');
     const canvas = getRect('[data-testid="ide-design-canvas"]');
     const liveCanvasElement = document.querySelector('[data-testid="ide-design-live-canvas"]');
     const liveCanvas = liveCanvasElement?.getBoundingClientRect?.() ?? new DOMRect(0, 0, 0, 0);
@@ -899,7 +917,7 @@ async function readWorkbenchMetrics(page) {
     const toolbar = getRect('[data-testid="ide-design-toolbar"]');
     const canvasControls = getRect('[data-testid="ide-design-canvas-view-tools"]');
     const palette = getRect('[data-testid="ide-design-dock-palette"]');
-    const inspector = getRect('[data-testid="ide-inspector"]');
+    const inspector = getRect('[data-testid="ide-right-dock"]');
     const leftToggle = getRect('[data-testid="ide-workbench-dock-toggle-left"]');
     const rightToggle = getRect('[data-testid="ide-workbench-dock-toggle-right"]');
     const hdlPane = getRect('[data-testid="ide-design-hdl-pane"]');

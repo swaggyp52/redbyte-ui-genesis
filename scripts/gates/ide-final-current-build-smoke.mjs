@@ -12,7 +12,6 @@ import {
   openMode,
 } from './_workbenchReconstructionHarness.mjs';
 
-const CURRENT_SHA = execSync('git rev-parse --short=7 HEAD', { encoding: 'utf8' }).trim();
 const CURRENT_SHA_LONG = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
 const OUT_DIR = process.env.RB_FINAL_BUILD_SMOKE_OUT_DIR ? path.resolve(process.env.RB_FINAL_BUILD_SMOKE_OUT_DIR) : null;
 
@@ -74,7 +73,6 @@ async function assertCurrentBuild(page, label) {
     const buildJson = (await fetchJson('./build.json')) || (await fetchJson('/os/build.json')) || (await fetchJson('/build.json'));
     const bodyText = document.body.textContent?.replace(/\s+/g, ' ').slice(0, 2000) ?? '';
     return {
-      badge: document.querySelector('.ide-build-badge-sha')?.textContent?.trim() ?? '',
       buildJson,
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       boundaryText: document.querySelector('[data-testid="error-boundary-fallback"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
@@ -82,7 +80,6 @@ async function assertCurrentBuild(page, label) {
       bodyText,
     };
   });
-  assert(state.badge === CURRENT_SHA, `${label}: visible build badge ${state.badge || 'missing'} != ${CURRENT_SHA}`);
   assert(state.buildJson, `${label}: build.json was not readable from the served app`);
   assert(
     typeof state.buildJson.sha === 'string' && CURRENT_SHA_LONG.startsWith(state.buildJson.sha.slice(0, 7)),

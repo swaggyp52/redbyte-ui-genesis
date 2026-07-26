@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
+import type { RBProject } from '../../../export/projectFormat';
+import {
+  decodePersistedIdeProject,
+  loadIdeProjectSnapshot,
+  saveIdeProjectSnapshot,
+} from '../projectPersistence';
 import { mergePersistedRuntimeState, useProjectRuntime } from '../projectRuntime';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { DEFAULT_SCENARIO_ID } from '../verifyScenario';
@@ -117,6 +123,47 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.sim.probes).toEqual([{ key: 'ld0.in', label: 'ld0.in' }]);
   });
 
+  it('persists exact Verify mapping evidence while migrating legacy runs without it', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+    const run = runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Mapping evidence persistence',
+      deterministicHash: 'mapping-evidence-persistence',
+      rows: [],
+      ranAtIso: '2026-07-22T12:07:00.000Z',
+    });
+
+    expect(run.mappingEvidenceHash).toMatch(/^[a-f0-9]+$/i);
+    const persistedEnvelope = JSON.parse(
+      localStorage.getItem('rb.ide.project-runtime.v1') ?? '{}'
+    ) as {
+      state?: {
+        verifyLastRun?: { mappingEvidenceHash?: string };
+        [key: string]: unknown;
+      };
+    };
+    expect(persistedEnvelope.state?.verifyLastRun?.mappingEvidenceHash).toBe(
+      run.mappingEvidenceHash
+    );
+
+    const restored = mergePersistedRuntimeState(
+      persistedEnvelope.state,
+      useProjectRuntime.getState()
+    );
+    expect(restored.verifyLastRun?.mappingEvidenceHash).toBe(run.mappingEvidenceHash);
+
+    const legacyState = structuredClone(persistedEnvelope.state);
+    if (legacyState?.verifyLastRun) {
+      delete legacyState.verifyLastRun.mappingEvidenceHash;
+    }
+    const migratedLegacy = mergePersistedRuntimeState(
+      legacyState,
+      useProjectRuntime.getState()
+    );
+    expect(migratedLegacy.verifyLastRun?.mappingEvidenceHash).toBeUndefined();
+  });
+
   it('migrates detached starter restores into custom identity and clears starter framing', () => {
     const current = useProjectRuntime.getState();
 
@@ -196,12 +243,12 @@ describe('mergePersistedRuntimeState', () => {
     expect(loaded.sourceExampleId).toBe('signal-tour');
     expect(loaded.projectName).toBe('Signal Tour: Switches → LEDs');
     expect(loaded.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
-    expect(loaded.scenarioAuthority).toBe('draft');
-    expect(loaded.projectVectors[0]?.expected).toEqual({});
-    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
+    expect(loaded.scenarioAuthority).toBe('authored');
+    expect(loaded.projectVectors[0]?.expected).toEqual({ ld0: 0, ld1: 1 });
+    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({ ld0: 0, ld1: 1 });
   });
 
-  it('resets inherited starter compare state for detached custom restores that already carry starter provenance', () => {
+  it('preserves authored compare state for detached custom restores that carry starter provenance', () => {
     useProjectRuntime.getState().loadFromProject({
       kind: 'rb-project',
       version: 1,
@@ -248,10 +295,10 @@ describe('mergePersistedRuntimeState', () => {
     expect(loaded.sourceExampleId).toBe('signal-tour');
     expect(loaded.projectName).toBe('Signal Tour: Switches → LEDs');
     expect(loaded.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
-    expect(loaded.scenarioAuthority).toBe('draft');
+    expect(loaded.scenarioAuthority).toBe('authored');
     expect(loaded.verifyLastRun).toBeUndefined();
-    expect(loaded.projectVectors[0]?.expected).toEqual({});
-    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({});
+    expect(loaded.projectVectors[0]?.expected).toEqual({ ld0: 1, ld1: 1 });
+    expect(loaded.scenarios[0]?.vectors[0]?.expected).toEqual({ ld0: 1, ld1: 1 });
   });
 
   it('keeps the starter name when the first design edit detaches example ownership', () => {
@@ -270,6 +317,203 @@ describe('mergePersistedRuntimeState', () => {
     expect(detached.sourceExampleId).toBe('signal-tour');
     expect(detached.projectName).toBe('Signal Tour: Switches → LEDs');
     expect(detached.projectDescription).toBe('Four-wire passthrough. Learn mapping, run Verify, and see the board light up.');
+  });
+
+  it('preserves an authored testbench when the first Design edit detaches a starter', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+
+    const starter = useProjectRuntime.getState();
+    const authoredVectors = starter.projectVectors.map((vector, index) => ({
+      ...vector,
+      expected: {
+        ...(vector.expected ?? {}),
+        ld0_node: index === 0 || index === 3 ? 1 : 0,
+      },
+    }));
+    runtime.setVectors(authoredVectors);
+
+    const authored = useProjectRuntime.getState();
+    const authoredScenario = authored.scenarios.find(
+      (scenario) => scenario.id === authored.activeScenarioId
+    );
+    expect(authored.scenarioAuthority).toBe('authored');
+    expect(authoredScenario?.version).toBeGreaterThan(1);
+
+    const circuitWithoutXorOutput = {
+      ...authored.circuit,
+      connections: authored.circuit.connections.filter(
+        (connection) => connection.to.nodeId !== 'ld2_node'
+      ),
+    };
+    runtime.applyCircuitMutation(circuitWithoutXorOutput);
+
+    const detached = useProjectRuntime.getState();
+    const detachedScenario = detached.scenarios.find(
+      (scenario) => scenario.id === detached.activeScenarioId
+    );
+    expect(detached.projectKind).toBe('custom');
+    expect(detached.activeExampleId).toBeNull();
+    expect(detached.scenarioAuthority).toBe('authored');
+    expect(detached.projectVectors.map((vector) => vector.tick)).toEqual(
+      authored.projectVectors.map((vector) => vector.tick)
+    );
+    expect(detached.projectVectors.map((vector) => Object.values(vector.inputs))).toEqual(
+      authored.projectVectors.map((vector) => Object.values(vector.inputs))
+    );
+    expect(detached.projectVectors.map((vector) => Object.values(vector.expected ?? {}))).toEqual(
+      authored.projectVectors.map((vector) => Object.values(vector.expected ?? {}))
+    );
+    expect(detached.projectVectors.every((vector) => Object.keys(vector.expected ?? {}).length === 3)).toBe(true);
+    expect(detachedScenario?.id).toBe(authoredScenario?.id);
+    expect(detachedScenario?.name).toBe(authoredScenario?.name);
+    expect(detachedScenario?.version).toBe(authoredScenario?.version);
+    expect(detachedScenario?.vectors).toEqual(detached.projectVectors);
+    expect(detached.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(detached.projectHealthCore.dirtySinceExport).toBe(true);
+  });
+
+  it('restores browser-local sequential policy without changing portable RBProject bytes', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadExample('logic-gates');
+    runtime.renameScenario('Student XOR Regression');
+    runtime.setVectors(structuredClone(useProjectRuntime.getState().projectVectors));
+    runtime.updateScenarioSequentialPolicy({
+      overrideMode: 'auto',
+      runCycles: 8,
+      activeEdge: 'rising',
+      resetBehavior: 'auto-sequence',
+      sourceType: 'board-clock',
+      executionModel: 'external-input-auto-toggle',
+      signalId: 'sw0',
+      signalLabel: 'SW0',
+      startLevel: 0,
+    });
+    runtime.runVerification({
+      scenarioId: useProjectRuntime.getState().activeScenarioId,
+      scenarioName: 'Student XOR Regression',
+      deterministicHash: 'persistence-baseline-hash',
+      rows: [],
+      ranAtIso: '2026-07-17T01:10:00.000Z',
+      useRuntimeTrace: false,
+    });
+
+    const beforeRepair = useProjectRuntime.getState();
+    const repairedCircuit = structuredClone(beforeRepair.circuit);
+    repairedCircuit.connections = repairedCircuit.connections.filter(
+      (connection) => connection.to.nodeId !== 'ld2_node'
+    );
+    runtime.applyCircuitMutation(repairedCircuit);
+
+    const invalidated = useProjectRuntime.getState();
+    expect(
+      invalidated.scenarios.find((scenario) => scenario.id === invalidated.activeScenarioId)
+        ?.sequentialPolicy
+    ).toMatchObject({ runCycles: 8, signalId: 'sw0' });
+    expect(invalidated.verifyLastRun).toBeUndefined();
+
+    const project: RBProject = {
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-07-17T01:10:00.000Z',
+      updatedAt: '2026-07-17T01:11:00.000Z',
+      name: invalidated.projectName,
+      description: invalidated.projectDescription,
+      circuit: invalidated.circuit,
+      ioMapping: {
+        inputs: invalidated.projectIoRows
+          .filter((row) => row.direction === 'in')
+          .map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            port: row.port,
+            label: row.label,
+            pin: row.pin,
+          })),
+        outputs: invalidated.projectIoRows
+          .filter((row) => row.direction === 'out')
+          .map((row) => ({
+            id: row.id,
+            nodeId: row.nodeId,
+            port: row.port,
+            label: row.label,
+            pin: row.pin,
+          })),
+      },
+      vectors: invalidated.projectVectors,
+      meta: {
+        projectId: invalidated.projectId,
+        projectKind: invalidated.projectKind,
+        sourceExampleId: invalidated.sourceExampleId ?? undefined,
+        scenarioAuthority: invalidated.scenarioAuthority,
+      },
+    };
+
+    const firstSnapshot = saveIdeProjectSnapshot({
+      projectId: invalidated.projectId,
+      projectName: invalidated.projectName,
+      projectHash: 'workspace-authorship-hash',
+      project,
+      scenarios: invalidated.scenarios,
+      activeScenarioId: invalidated.activeScenarioId,
+      savedAtIso: '2026-07-17T01:11:00.000Z',
+    });
+
+    runtime.updateScenarioSequentialPolicy({
+      overrideMode: 'manual-pulses',
+      runCycles: 12,
+      activeEdge: 'falling',
+      resetBehavior: 'custom',
+      sourceType: 'manual',
+      executionModel: 'manual',
+      signalId: 'sw0',
+      signalLabel: 'SW0',
+      startLevel: 1,
+    });
+    const resaved = useProjectRuntime.getState();
+    const authoredScenario = structuredClone(
+      resaved.scenarios.find((scenario) => scenario.id === resaved.activeScenarioId)
+    );
+    expect(authoredScenario?.sequentialPolicy).toMatchObject({
+      overrideMode: 'manual-pulses',
+      runCycles: 12,
+      activeEdge: 'rising',
+    });
+    const secondSnapshot = saveIdeProjectSnapshot({
+      projectId: resaved.projectId,
+      projectName: resaved.projectName,
+      projectHash: 'workspace-authorship-hash',
+      project,
+      scenarios: resaved.scenarios,
+      activeScenarioId: resaved.activeScenarioId,
+      savedAtIso: '2026-07-17T01:12:00.000Z',
+    });
+
+    expect(secondSnapshot?.rbprojJson).toBe(firstSnapshot?.rbprojJson);
+    expect(secondSnapshot?.rbprojJson).not.toContain('sequentialPolicy');
+    expect(secondSnapshot?.scenarios?.find((scenario) => scenario.id === resaved.activeScenarioId)?.sequentialPolicy)
+      .toEqual(authoredScenario?.sequentialPolicy);
+
+    const snapshot = loadIdeProjectSnapshot(resaved.projectId);
+    expect(snapshot).not.toBeNull();
+    const decoded = snapshot ? decodePersistedIdeProject(snapshot) : null;
+    expect(decoded).not.toBeNull();
+
+    runtime.resetToActiveExample();
+    runtime.loadFromProject(decoded!, {
+      scenarios: snapshot?.scenarios,
+      activeScenarioId: snapshot?.activeScenarioId,
+    });
+
+    const restored = useProjectRuntime.getState();
+    const restoredScenario = restored.scenarios.find(
+      (scenario) => scenario.id === restored.activeScenarioId
+    );
+    expect(restoredScenario).toEqual(authoredScenario);
+    expect(restored.scenarioAuthority).toBe('stale');
+    expect(restored.verifyLastRun).toBeUndefined();
+    expect(restored.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(restored.projectHealthCore.dirtySinceExport).toBe(true);
   });
 
   it('invalidates legacy runtime-backed verify trust on restore', () => {
@@ -715,6 +959,22 @@ describe('mergePersistedRuntimeState', () => {
           lastExport: {
             status: 'ok',
             hash: 'exp_hash_for_old_project_shape',
+            packageHash: 'pkg_sha256_1234',
+            bundleHash: 'pkg_sha256_1234',
+            verificationTrust: 'draft',
+            downloadKind: 'project',
+            downloadedAtIso: '2026-03-21T00:05:00.000Z',
+            sourceHashes: {
+              project: 'project_source_hash_1234',
+              export: 'exp_hash_for_old_project_shape',
+              verify: 'vrf_authoritative_hash_1234',
+            },
+            sourceCurrentness: {
+              project: 'current',
+              export: 'current',
+              mapping: 'current',
+              verify: 'stale',
+            },
             ranAtIso: '2026-03-21T00:05:00.000Z',
           },
           dirtySinceVerify: false,
@@ -735,6 +995,19 @@ describe('mergePersistedRuntimeState', () => {
       expect.objectContaining({
         status: 'ok',
         hash: 'exp_hash_for_old_project_shape',
+        packageHash: 'pkg_sha256_1234',
+        verificationTrust: 'draft',
+        sourceHashes: expect.objectContaining({
+          project: 'project_source_hash_1234',
+          export: 'exp_hash_for_old_project_shape',
+          verify: 'vrf_authoritative_hash_1234',
+        }),
+        sourceCurrentness: {
+          project: 'current',
+          export: 'current',
+          mapping: 'current',
+          verify: 'stale',
+        },
       })
     );
     expect(merged.projectHealthCore.dirtySinceExport).toBe(true);
@@ -1047,7 +1320,7 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.maxDesignHistory).toBe(500);
   });
 
-  it('normalizes persisted custom vectors against the restored live IO shape without inventing expected outputs', () => {
+  it('restores compatible custom vectors without silently deleting unresolved references', () => {
     const current = useProjectRuntime.getState();
 
     const merged = mergePersistedRuntimeState(
@@ -1099,8 +1372,8 @@ describe('mergePersistedRuntimeState', () => {
       {
         id: 'cv-01',
         tick: 0,
-        inputs: { sw0: 1 },
-        expected: {},
+        inputs: { sw0: 1, ghost_in: 1 },
+        expected: { ghost_out: 1, ld0: 0 },
       },
     ]);
   });
@@ -1152,9 +1425,9 @@ describe('mergePersistedRuntimeState', () => {
       expect(bus.bits[0]?.pin).toBe('V17');
     }
     const rowIds = merged.projectIoRows.map((row) => row.id);
-    expect(rowIds).toContain('switches_0');
-    expect(rowIds).toContain('switches_1');
-    expect(merged.projectIoRows.find((row) => row.id === 'switches_0')?.mappingKind).toBe('bus');
+    expect(rowIds).toContain('switches[0]');
+    expect(rowIds).toContain('switches[1]');
+    expect(merged.projectIoRows.find((row) => row.id === 'switches[0]')?.mappingKind).toBe('bus');
   });
 
   it('restores import provenance for imported projects so the Bridge survives reload', () => {

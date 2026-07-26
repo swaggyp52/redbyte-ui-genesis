@@ -111,7 +111,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface blank-state guidance', () => {
-  it('keeps a lighter blank-state onboarding card while hiding duplicate shortcut and inspector teaching', async () => {
+  it('keeps a lighter blank-state onboarding card inside the stable three-region workspace', async () => {
     const view = renderSurface();
 
     await waitFor(() => {
@@ -121,22 +121,10 @@ describe('DesignSurface blank-state guidance', () => {
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Start on canvas');
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Add inputs and outputs, place a part, then wire ports.');
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
-    expect(view.queryByTestId('ide-inspector')).toBeNull();
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-
-    fireEvent.click(view.getByTestId('ide-design-library-collapse'));
-
-    await waitFor(() => {
-      expect(view.queryByTestId('ide-left-dock')).toBeNull();
-      expect(view.getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
-    });
-
-    fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-right'));
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    });
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.queryByTestId('ide-design-library-collapse')).toBeNull();
 
     expect(view.getByTestId('ide-design-inspector-canvas-default')).toBeTruthy();
     expect(view.queryByTestId('ide-design-shortcut-strip')).toBeNull();

@@ -24,6 +24,13 @@ describe('basys3Pins board planner truth', () => {
     expect(plannerResources.filter((resource) => resource.category === 'seven_seg')).toHaveLength(12);
   });
 
+  it('keeps the first Basys3 switch aliases aligned with their official package pins', () => {
+    expect(resolveBasys3PackagePin('SW0')).toBe('V17');
+    expect(resolveBasys3PackagePin('SW1')).toBe('V16');
+    expect(getBasys3BoardResource('V17')).toMatchObject({ alias: 'SW0', packagePin: 'V17' });
+    expect(getBasys3BoardResource('V16')).toMatchObject({ alias: 'SW1', packagePin: 'V16' });
+  });
+
   it('keeps official catalog-only resources available for board reference', () => {
     const ja0 = getBasys3BoardResource('JA0');
     const vgaSync = getBasys3BoardResource('HSYNC');

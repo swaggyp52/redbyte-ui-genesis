@@ -46,14 +46,16 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getByTestId('ide-verify-summary-status').textContent).toMatch(/Checks failed|Checks need review/i);
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-workbench-dock-toggle-left')).toBeTruthy();
+    expect(getByTestId('ide-left-dock')).toBeTruthy();
+    expect(getByTestId('ide-verify-left-dock')).toHaveAttribute('data-collapsed', 'false');
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
     expect(queryByTestId('ide-verify-run-proof')).toBeNull();
     expect(queryByTestId('ide-verify-failure-explainer')).toBeNull();
     expect(queryByTestId('ide-verify-fail-summary-inline')).toBeNull();
   });
 
-  it('keeps detailed fail analysis collapsed by default while leaving the first mismatch jump visible', () => {
+  it('keeps the first mismatch and repair path visible without a disclosure', () => {
     const { getAllByTestId, queryByTestId, container } = render(
       <VerifySurface
         deterministicHash="abc123"
@@ -65,9 +67,11 @@ describe('VerifySurface FAIL state (PR14 regression guard)', () => {
     );
 
     expect(getAllByTestId('ide-verify-fail-nav-first').length).toBeGreaterThan(0);
-    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-expanded')).toBe('false');
+    expect(getAllByTestId('ide-verify-drawer-toggle')[0]?.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-testid="ide-verify-jump-to-failure-card"]')).toBeNull();
     expect(queryByTestId('ide-verify-jump-to-failure')).toBeNull();
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.querySelector('summary')).toBeNull();
   });
 
   it('keeps fail evidence visible after switching the next-run toggle back to trace intent', () => {

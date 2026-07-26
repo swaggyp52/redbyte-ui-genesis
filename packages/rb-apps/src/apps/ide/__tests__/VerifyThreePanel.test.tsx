@@ -16,6 +16,8 @@ describe('VerifyThreePanel', () => {
 
     expect(getByTestId('ide-verify-three-panel-left').contains(getByTestId('left-content'))).toBe(true);
     expect(getByTestId('ide-verify-three-panel-center').contains(getByTestId('center-content'))).toBe(true);
+    expect(getByTestId('ide-verify-three-panel-center').tagName).toBe('SECTION');
+    expect(getByTestId('ide-verify-three-panel-center')).toHaveAttribute('aria-label', 'Simulation results');
     expect(getByTestId('ide-verify-three-panel-right').contains(getByTestId('right-content'))).toBe(true);
   });
 });

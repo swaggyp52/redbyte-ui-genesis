@@ -60,6 +60,8 @@ describe('CanvasHost — click-to-focus model (RC-P5)', () => {
 
     const host = container.firstChild as HTMLElement;
     expect(host.getAttribute('tabindex')).toBe('0');
+    expect(host.getAttribute('role')).toBe('region');
+    expect(host.getAttribute('aria-label')).toBe('Interactive circuit canvas');
   });
 
   it('focus activates canvas', () => {

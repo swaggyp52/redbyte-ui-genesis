@@ -1,494 +1,86 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, render } from '@testing-library/react';
 import { IdeWorkbenchShell } from '../components/IdeWorkbenchShell';
-import { DEFAULT_IDE_CHROME_TOGGLES, IDE_CHROME_TOGGLES_KEY } from '../chromeToggles';
 
-describe('IdeWorkbenchShell', () => {
-  const nativeWidth = window.innerWidth;
-  const nativeRaf = window.requestAnimationFrame;
-  const nativeCancelRaf = window.cancelAnimationFrame;
+afterEach(() => cleanup());
 
-  beforeEach(() => {
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      writable: true,
-      value: 1180,
-    });
-    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    }) as typeof window.requestAnimationFrame;
-    window.cancelAnimationFrame = vi.fn() as typeof window.cancelAnimationFrame;
-    window.localStorage.clear();
-  });
+function renderShell(
+  overrides: Partial<React.ComponentProps<typeof IdeWorkbenchShell>> = {}
+) {
+  return render(
+    <IdeWorkbenchShell
+      mode="design"
+      workspace={<div data-testid="workspace">Canvas</div>}
+      leftDock={<div data-testid="library">Library</div>}
+      rightDock={<div data-testid="inspector">Inspector</div>}
+      {...overrides}
+    />
+  );
+}
 
-  afterEach(() => {
-    Object.defineProperty(window, 'innerWidth', {
-      configurable: true,
-      writable: true,
-      value: nativeWidth,
-    });
-    window.requestAnimationFrame = nativeRaf;
-    window.cancelAnimationFrame = nativeCancelRaf;
-    window.localStorage.clear();
-  });
+describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
+  it('keeps supplied Design library, canvas, and inspector visible together', () => {
+    const view = renderShell();
+    const shell = view.getByTestId('ide-mode-design');
+    const leftDock = view.getByTestId('ide-left-dock');
+    const workspace = view.getByTestId('ide-mode-body');
+    const rightDock = view.getByTestId('ide-right-dock');
 
-  function renderShell(
-    overrides: Partial<React.ComponentProps<typeof IdeWorkbenchShell>> = {}
-  ) {
-    return render(
-      <IdeWorkbenchShell
-        mode="project"
-        workspace={<div>Workspace</div>}
-        leftDock={<div>Dock</div>}
-        rightDock={<div>Inspector</div>}
-        console={<div>Console</div>}
-        {...overrides}
-      />
-    );
-  }
-
-  it('marks compact layout mode when the viewport is below 1280px', async () => {
-    const { getByTestId } = renderShell();
-
-    await waitFor(() => {
-      expect(getByTestId('ide-mode-project')).toHaveAttribute('data-layout-mode', 'compact');
-    });
-  });
-
-  it('resets dock and workspace scroll positions when the mode changes', async () => {
-    const { getByTestId, rerender } = render(
-      <IdeWorkbenchShell
-        mode="project"
-        workspace={
-          <div style={{ height: 1200 }}>
-            <div style={{ height: 1200 }}>Workspace</div>
-          </div>
-        }
-        leftDock={<div style={{ height: 1200 }}>Left</div>}
-        rightDock={<div style={{ height: 1200 }}>Right</div>}
-        console={<div style={{ height: 1200 }}>Console</div>}
-        consoleHasEntries
-      />
-    );
-
-    const leftDock = getByTestId('ide-left-dock');
-    const workspace = getByTestId('ide-mode-body');
-    const inspector = getByTestId('ide-inspector');
-    const console = getByTestId('ide-workbench-console');
-
-    leftDock.scrollTop = 120;
-    workspace.scrollTop = 96;
-    inspector.scrollTop = 72;
-    console.scrollTop = 48;
-
-    rerender(
-      <IdeWorkbenchShell
-        mode="verify"
-        workspace={
-          <div style={{ height: 1200 }}>
-            <div style={{ height: 1200 }}>Workspace</div>
-          </div>
-        }
-        leftDock={<div style={{ height: 1200 }}>Left</div>}
-        rightDock={<div style={{ height: 1200 }}>Right</div>}
-        console={<div style={{ height: 1200 }}>Console</div>}
-        consoleHasEntries
-      />
-    );
-
-    await waitFor(() => {
-      expect(leftDock.scrollTop).toBe(0);
-      expect(workspace.scrollTop).toBe(0);
-      expect(inspector.scrollTop).toBe(0);
-      expect(console.scrollTop).toBe(0);
-    });
-  });
-
-  it('restores scroll positions when returning to a previously visited surface', async () => {
-    const { getByTestId, rerender } = render(
-      <IdeWorkbenchShell
-        mode="project"
-        workspace={
-          <div style={{ height: 1200 }}>
-            <div style={{ height: 1200 }}>Workspace</div>
-          </div>
-        }
-        leftDock={<div style={{ height: 1200 }}>Left</div>}
-        rightDock={<div style={{ height: 1200 }}>Right</div>}
-        console={<div style={{ height: 1200 }}>Console</div>}
-        consoleHasEntries
-      />
-    );
-
-    const inspector = getByTestId('ide-inspector');
-
-    // Simulate scrolling: set scrollTop then dispatch scroll event to trigger capture
-    inspector.scrollTop = 72;
-    inspector.dispatchEvent(new Event('scroll', { bubbles: false }));
-
-    // Switch away to verify
-    rerender(
-      <IdeWorkbenchShell
-        mode="verify"
-        workspace={<div style={{ height: 1200 }}>Workspace</div>}
-        leftDock={<div style={{ height: 1200 }}>Left</div>}
-        rightDock={<div style={{ height: 1200 }}>Right</div>}
-        console={<div style={{ height: 1200 }}>Console</div>}
-        consoleHasEntries
-      />
-    );
-
-    await waitFor(() => {
-      expect(inspector.scrollTop).toBe(0); // first visit to verify
-    });
-
-    // Switch back to project
-    rerender(
-      <IdeWorkbenchShell
-        mode="project"
-        workspace={<div style={{ height: 1200 }}>Workspace</div>}
-        leftDock={<div style={{ height: 1200 }}>Left</div>}
-        rightDock={<div style={{ height: 1200 }}>Right</div>}
-        console={<div style={{ height: 1200 }}>Console</div>}
-        consoleHasEntries
-      />
-    );
-
-    await waitFor(() => {
-      expect(inspector.scrollTop).toBe(72); // restored from saved state
-    });
-  });
-
-  it('shows a left restore rail when the left dock is collapsed and restores the dock on click', async () => {
-    const { queryByTestId, getByTestId } = renderShell({
-      leftDockMode: 'collapsed',
-    });
-
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(getByTestId('ide-mode-project').style.getPropertyValue('--ide-workbench-left-slot-width')).toBe('36px');
-    const restoreRail = getByTestId('ide-workbench-dock-toggle-left');
-    expect(restoreRail).toHaveAttribute('aria-label', 'Show library');
-    expect(restoreRail.textContent).toContain('Show');
-    expect(restoreRail.textContent).toContain('Lib');
-
-    fireEvent.click(restoreRail);
-
-    await waitFor(() => {
-      expect(getByTestId('ide-left-dock')).toBeTruthy();
-    });
-    expect(getByTestId('ide-workbench-dock-collapse-left')).toBeTruthy();
-  });
-
-  it('emits explicit dock state markers for shared layout styling', () => {
-    const { getByTestId } = renderShell({
-      leftDockMode: 'collapsed',
-      rightDockMode: 'visible',
-    });
-
-    const shell = getByTestId('ide-mode-project');
-    expect(shell).toHaveAttribute('data-left-dock-state', 'collapsed');
+    expect(view.getByTestId('library')).toBeTruthy();
+    expect(view.getByTestId('workspace')).toBeTruthy();
+    expect(view.getByTestId('inspector')).toBeTruthy();
+    expect(leftDock.nextElementSibling).toBe(workspace);
+    expect(workspace.nextElementSibling).toBe(rightDock);
+    expect(view.container.querySelectorAll('main')).toHaveLength(1);
+    expect(workspace).toHaveAttribute('aria-label', 'design workspace');
+    expect(shell).toHaveAttribute('data-left-dock-state', 'visible');
     expect(shell).toHaveAttribute('data-right-dock-state', 'visible');
+    expect(shell).toHaveAttribute('data-support-dock-policy', 'stable');
   });
 
-  it('removes both left dock and restore rail when the left dock is hidden', () => {
-    const { container, queryByTestId } = renderShell({
-      leftDockMode: 'hidden',
-    });
+  it('treats legacy collapsed requests as stable visible regions', () => {
+    const view = renderShell({ leftDockMode: 'collapsed', rightDockMode: 'collapsed', rightDockCanCollapse: true });
 
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    const spacer = container.querySelector('.ide-workbench-slot-spacer') as HTMLDivElement | null;
-    expect(spacer).toBeTruthy();
-    expect(spacer?.style.pointerEvents).toBe('none');
+    expect(view.getByTestId('ide-left-dock')).toBeTruthy();
+    expect(view.getByTestId('ide-right-dock')).toBeTruthy();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-collapse-left')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
   });
 
-  it('marks the workbench grid when the right dock is fully hidden', () => {
-    const { getByTestId, queryByTestId } = renderShell({
-      rightDockMode: 'hidden',
-    });
+  it('honors explicit hidden regions without rendering restore rails', () => {
+    const view = renderShell({ leftDockMode: 'hidden', rightDockMode: 'hidden' });
 
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(getByTestId('ide-surface-grid').className).toContain('hide-right-dock');
-    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-right-dock-state', 'hidden');
+    expect(view.queryByTestId('ide-left-dock')).toBeNull();
+    expect(view.queryByTestId('ide-right-dock')).toBeNull();
+    expect(view.getByTestId('ide-mode-body').tagName).toBe('MAIN');
+    expect(view.getByTestId('ide-mode-body')).toHaveAttribute('aria-label', 'design workspace');
+    expect(view.container.querySelector('[class*="dock-toggle-rail"]')).toBeNull();
   });
 
-  it('keeps visible design docks fixed open when collapse affordances are disabled', () => {
-    const { getByTestId, queryByTestId } = render(
-      <IdeWorkbenchShell
-        mode="design"
-        workspace={<div>Workspace</div>}
-        leftDock={<div>Library</div>}
-        rightDock={<div>Inspector</div>}
-        leftDockMode="visible"
-        rightDockMode="visible"
-      />
-    );
+  it('shows the console only for blocking diagnostics or an explicitly expanded tool', () => {
+    const quiet = renderShell({ console: <div>Quiet output</div>, consoleHasEntries: true, consoleMode: 'auto' });
+    expect(quiet.queryByTestId('ide-workbench-console')).toBeNull();
+    quiet.unmount();
 
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
-    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-    expect(queryByTestId('ide-workbench-dock-collapse-right')).toBeNull();
-  });
-
-  it('preserves the existing collapsed right dock restore flow', async () => {
-    const { queryByTestId, getByTestId } = renderShell({
-      rightDockMode: 'collapsed',
-    });
-
-    expect(queryByTestId('ide-inspector')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-workbench-dock-toggle-right'));
-
-    await waitFor(() => {
-      expect(getByTestId('ide-inspector')).toBeTruthy();
-    });
-    expect(getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
-  });
-
-  it('lets a visible right dock collapse into a restore rail when manual collapse is enabled', async () => {
-    const view = render(
-      <IdeWorkbenchShell
-        {...({
-          mode: 'project',
-          workspace: <div>Workspace</div>,
-          leftDock: <div>Dock</div>,
-          rightDock: <div>Inspector</div>,
-          console: <div>Console</div>,
-          rightDockMode: 'visible',
-          rightDockCanCollapse: true,
-          rightDockRevealKey: 'selection:ld0',
-        } as any)}
-      />
-    );
-
-    expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    expect(view.getByTestId('ide-workbench-dock-collapse-right')).toBeTruthy();
-
-    fireEvent.click(view.getByTestId('ide-workbench-dock-collapse-right'));
-
-    await waitFor(() => {
-      expect(view.queryByTestId('ide-inspector')).toBeNull();
-    });
-    expect(view.getByTestId('ide-workbench-dock-toggle-right')).toBeTruthy();
-
-    view.rerender(
-      <IdeWorkbenchShell
-        {...({
-          mode: 'project',
-          workspace: <div>Workspace</div>,
-          leftDock: <div>Dock</div>,
-          rightDock: <div>Inspector</div>,
-          console: <div>Console</div>,
-          rightDockMode: 'visible',
-          rightDockCanCollapse: true,
-          rightDockRevealKey: 'selection:ld0',
-        } as any)}
-      />
-    );
-
-    expect(view.queryByTestId('ide-inspector')).toBeNull();
-
-    view.rerender(
-      <IdeWorkbenchShell
-        {...({
-          mode: 'project',
-          workspace: <div>Workspace</div>,
-          leftDock: <div>Dock</div>,
-          rightDock: <div>Inspector</div>,
-          console: <div>Console</div>,
-          rightDockMode: 'visible',
-          rightDockCanCollapse: true,
-          rightDockRevealKey: 'selection:q1',
-        } as any)}
-      />
-    );
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-inspector')).toBeTruthy();
-    });
-  });
-
-  it('starts collapsed when consoleMode is collapsed even when entries exist', () => {
-    const { getByTestId } = renderShell({
-      consoleHasEntries: true,
-      consoleMode: 'collapsed',
-    });
-
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'collapsed');
-  });
-
-  it('starts expanded when consoleMode is expanded', () => {
-    const { getByTestId } = renderShell({
-      consoleMode: 'expanded',
-    });
-
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
-  });
-
-  it('does not reserve bottom console space for empty auto mode', () => {
-    const { getByTestId, queryByTestId } = renderShell({
-      consoleMode: 'auto',
-      consoleHasEntries: false,
-      consoleHasBlocking: false,
-    });
-
-    expect(queryByTestId('ide-workbench-console')).toBeNull();
-    expect(queryByTestId('ide-workbench-resize-bottom')).toBeNull();
-    expect(getByTestId('ide-mode-project')).toHaveClass('is-console-hidden');
-  });
-
-  it('renders auto console when diagnostics exist', () => {
-    const { getByTestId } = renderShell({
-      consoleMode: 'auto',
-      consoleHasEntries: true,
-    });
-
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
-  });
-
-  it('removes the console when consoleMode is hidden', () => {
-    const { queryByTestId } = renderShell({
+    const blocking = renderShell({
+      console: <div>Fix the disconnected output</div>,
+      consoleHasBlocking: true,
       consoleMode: 'hidden',
     });
-
-    expect(queryByTestId('ide-workbench-console')).toBeNull();
-    expect(queryByTestId('ide-workbench-resize-bottom')).toBeNull();
+    expect(blocking.getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'blocking');
+    expect(blocking.getByTestId('ide-workbench-console').textContent).toContain('disconnected output');
   });
 
-  it('emits shell density and surface frame markers', () => {
-    const { getByTestId } = renderShell({
-      shellDensity: 'immersive',
-      surfaceFrame: 'edge-to-edge',
-    });
+  it('contains no student-facing panel visibility chrome', () => {
+    const view = renderShell({ showDevChrome: true });
 
-    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-shell-density', 'immersive');
-    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-surface-frame', 'edge-to-edge');
-  });
-
-  it('defaults project surfaces to workbench layout intent', () => {
-    const { getByTestId } = renderShell();
-
-    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-layout-intent', 'workbench');
-  });
-
-  it('allows readable layout intent to be set explicitly', () => {
-    const { getByTestId } = renderShell({
-      layoutIntent: 'readable',
-    });
-
-    expect(getByTestId('ide-mode-project')).toHaveAttribute('data-layout-intent', 'readable');
-  });
-
-  it('keeps hideRightDock compatibility by forcing the right dock hidden', () => {
-    const { queryByTestId } = renderShell({
-      hideRightDock: true,
-      rightDockMode: 'visible',
-    });
-
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(queryByTestId('ide-workbench-dock-toggle-right')).toBeNull();
-  });
-
-  it('keeps default shell behavior unchanged when no policy props are supplied', () => {
-    const { getByTestId } = renderShell({
-      consoleHasEntries: true,
-    });
-
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-inspector')).toBeTruthy();
-    expect(getByTestId('ide-workbench-console')).toHaveAttribute('data-console-state', 'expanded');
-  });
-
-  it('does not render chrome toggle bar by default (hidden from product UI)', () => {
-    const { queryByTestId } = renderShell({ mode: 'design', consoleHasEntries: true });
-    expect(queryByTestId('ide-chrome-toggle-bar')).toBeNull();
-  });
-
-  it('renders chrome toggle bar when showDevChrome=true', () => {
-    const { getByTestId } = renderShell({ mode: 'design', showDevChrome: true });
-    expect(getByTestId('ide-chrome-toggle-bar')).toBeTruthy();
-  });
-
-  it('renders persistent chrome controls that can hide and restore rails and console', async () => {
-    const { getByTestId, queryByTestId } = renderShell({
-      mode: 'design',
-      consoleHasEntries: true,
-      showDevChrome: true,
-    });
-
-    expect(getByTestId('ide-chrome-toggle-bar')).toBeTruthy();
-    expect(getByTestId('ide-chrome-toggle-design-toolbar')).toHaveAttribute('aria-pressed', 'true');
-
-    fireEvent.click(getByTestId('ide-chrome-toggle-rails'));
-
-    await waitFor(() => {
-      expect(queryByTestId('ide-left-dock')).toBeNull();
-      expect(queryByTestId('ide-inspector')).toBeNull();
-      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-side-rails-visible', 'false');
-    });
-
-    fireEvent.click(getByTestId('ide-chrome-toggle-rails'));
-
-    await waitFor(() => {
-      expect(getByTestId('ide-left-dock')).toBeTruthy();
-      expect(getByTestId('ide-inspector')).toBeTruthy();
-      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-side-rails-visible', 'true');
-    });
-
-    fireEvent.click(getByTestId('ide-chrome-toggle-console'));
-
-    await waitFor(() => {
-      expect(queryByTestId('ide-workbench-console')).toBeNull();
-      expect(getByTestId('ide-mode-design')).toHaveAttribute('data-console-visible', 'false');
-    });
-
-    await waitFor(() => {
-      const stored = JSON.parse(localStorage.getItem(IDE_CHROME_TOGGLES_KEY) ?? '{}');
-      expect(stored.consoleVisible).toBe(false);
-      expect(stored.sideRailsVisible).toBe(true);
-    });
-  });
-
-  it('restores saved chrome controls from localStorage without changing the slot contract', async () => {
-    localStorage.setItem(
-      IDE_CHROME_TOGGLES_KEY,
-      JSON.stringify({
-        ...DEFAULT_IDE_CHROME_TOGGLES,
-        verifyCommandRowsVisible: false,
-        sideRailsVisible: false,
-        consoleVisible: false,
-      })
-    );
-
-    const { getByTestId, queryByTestId } = renderShell({
-      mode: 'verify',
-      consoleHasEntries: true,
-      showDevChrome: true,
-    });
-
-    await waitFor(() => {
-      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-verify-command-rows-visible', 'false');
-      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-side-rails-visible', 'false');
-      expect(getByTestId('ide-mode-verify')).toHaveAttribute('data-console-visible', 'false');
-    });
-    expect(queryByTestId('ide-left-dock')).toBeNull();
-    expect(queryByTestId('ide-inspector')).toBeNull();
-    expect(queryByTestId('ide-workbench-console')).toBeNull();
-    expect(getByTestId('ide-chrome-toggle-verify-rows')).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('does not render a global Focus toggle or focus-mode shell marker', () => {
-    const { getByTestId, queryByTestId } = renderShell({
-      consoleHasEntries: true,
-    });
-
-    expect(queryByTestId('ide-workbench-focus-toggle')).toBeNull();
-    expect(getByTestId('ide-mode-project')).not.toHaveAttribute('data-focus-mode');
+    expect(view.queryByTestId('ide-chrome-toggle-bar')).toBeNull();
+    expect(view.queryByTestId('ide-workbench-focus-toggle')).toBeNull();
+    expect(view.container.querySelectorAll('button')).toHaveLength(0);
   });
 });

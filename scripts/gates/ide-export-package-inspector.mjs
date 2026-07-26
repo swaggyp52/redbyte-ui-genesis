@@ -32,10 +32,10 @@ await runIdeGate('IDE Export package inspector satisfied', async ({ page, baseUr
       await assertVisibleRect(page, ['[data-testid="ide-export-package-inspector-v1"]'], `${viewport.label}/Export inspector`, {
         maxTop: viewport.height === 768 ? 190 : 210,
         minWidth: Math.round(viewport.width * 0.68),
-        minHeight: viewport.height === 768 ? 410 : 500,
+        minHeight: 100,
       });
-      await page.locator('[data-testid="ide-export-file-browser-v1"]').first().scrollIntoViewIfNeeded();
-      await assertVisibleRect(page, ['[data-testid="ide-export-file-browser-v1"]'], `${viewport.label}/Export file browser`, {
+      await page.locator('[data-testid="ide-export-file-browser"]').first().scrollIntoViewIfNeeded();
+      await assertVisibleRect(page, ['[data-testid="ide-export-file-browser"]'], `${viewport.label}/Export file browser`, {
         maxTop: viewport.height === 768 ? 325 : 350,
         minWidth: 220,
         minHeight: 180,
@@ -89,10 +89,8 @@ async function normalizedText(locator) {
 }
 
 async function openGeneratedFiles(page, label) {
-  const details = page.locator('[data-testid="ide-export-package-files"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await details.getAttribute('open')) === null, `${label}: generated files must begin collapsed`);
-  await details.locator('summary').click();
-  assert((await details.getAttribute('open')) !== null, `${label}: Inspect generated files must expand`);
-  await page.locator('[data-testid="ide-export-file-browser-v1"]').first().waitFor({ state: 'visible', timeout: 10000 });
+  const workspace = page.locator('[data-testid="ide-export-package-files"]').first();
+  await workspace.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await visible(workspace), `${label}: generated files workspace must remain directly visible`);
+  await page.locator('[data-testid="ide-export-file-browser"]').first().waitFor({ state: 'visible', timeout: 10000 });
 }

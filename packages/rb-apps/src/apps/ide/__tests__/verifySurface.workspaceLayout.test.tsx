@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import type { RuntimeVerifyRun } from '../projectRuntime';
 import { VerifySurface } from '../surfaces/VerifySurface';
 
@@ -60,20 +60,14 @@ describe('VerifySurface workspace layout', () => {
     expect(getByTestId('ide-verify-workspace')).toBeTruthy();
   });
 
-  it('lets students collapse and expand the signal rail without leaving Verify', () => {
+  it('keeps the signal browser stable without collapse or edge toggles', () => {
     const { getByTestId, queryByTestId } = render(<VerifySurface {...BASE_PROPS} />);
-    const showSignalsToggle = queryByTestId('ide-workbench-dock-toggle-left');
-    if (showSignalsToggle && showSignalsToggle.getAttribute('title') === 'Show signals') {
-      fireEvent.click(showSignalsToggle);
-    }
     const dock = getByTestId('ide-verify-left-dock');
-    const toggle = getByTestId('ide-verify-signal-rail-toggle');
 
-    expect(dock.getAttribute('data-collapsed')).toBe('true');
-    fireEvent.click(toggle);
     expect(dock.getAttribute('data-collapsed')).toBe('false');
-    fireEvent.click(toggle);
-    expect(dock.getAttribute('data-collapsed')).toBe('true');
+    expect(queryByTestId('ide-verify-signal-rail-toggle')).toBeNull();
+    expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+    expect(getByTestId('ide-verify-signal-list')).toBeTruthy();
   });
 
   it('keeps the workspace container focused on the paired lab regions without a story banner', () => {
@@ -110,10 +104,10 @@ describe('VerifySurface workspace layout', () => {
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
 
-    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'expanded');
+    expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-stimulus-layout', 'stable');
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-verify-workflow-phase', 'post-run');
     expect(getByTestId('ide-verify-lab-grid')).toHaveAttribute('data-workspace-mode', 'split');
-    expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'expanded');
+    expect(getByTestId('ide-verify-region-stimulus')).toHaveAttribute('data-panel-state', 'stable');
     expect(getByTestId('ide-verify-workbench-body')).toBeTruthy();
     expect(queryByTestId('ide-verify-workbench-collapsed-strip')).toBeNull();
   });

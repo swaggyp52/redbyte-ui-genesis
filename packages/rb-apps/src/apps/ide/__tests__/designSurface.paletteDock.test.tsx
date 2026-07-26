@@ -202,7 +202,7 @@ describe('DesignSurface palette dock redesign', () => {
     expect(within(palette).getByTestId('ide-palette-group-custom')).toBeTruthy();
   });
 
-  it('board resources are open by default so students see board parts immediately; live inputs stays collapsed', () => {
+  it('keeps board resources and quick inputs directly available', () => {
     const view = renderSurface();
 
     // Core palette parts always visible
@@ -212,12 +212,12 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.getByTestId('ide-design-palette-input')).toBeTruthy();
 
     // Board Resources section is open on first load — board parts are the primary destination for FPGA work
-    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
     // Live Inputs is a runtime debug tool, not a primary authoring surface — stays collapsed
-    expect(view.getByTestId('ide-design-live-inputs-toggle')).toHaveAttribute('aria-expanded', 'false');
-    expect(view.queryByTestId('ide-design-input-toggle-sw0_node')).toBeNull();
+    expect(view.queryByTestId('ide-design-live-inputs-toggle')).toBeNull();
+    expect(view.getByTestId('ide-design-input-toggle-sw0_node')).toBeTruthy();
   });
 
   it('groups sequential palette into registers and legacy subsections', () => {
@@ -262,14 +262,14 @@ describe('DesignSurface palette dock redesign', () => {
   it('board resources remain visible when searching board inventory terms and surfaces the matched item', () => {
     const view = renderSurface();
 
-    // Board is already open on load
-    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    // Board inventory is a direct library section on load.
+    expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
 
-    // Searching for board terms keeps the section open and shows the matching item
+    // Searching for board terms keeps the direct section visible and shows the matching item.
     fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'led' } });
 
-    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-io-palette')).toBeTruthy();
     expect(view.getByTestId('ide-design-board-output-ld0')).toBeTruthy();
   });
@@ -283,7 +283,7 @@ describe('DesignSurface palette dock redesign', () => {
     // Searching by package pin W5 also surfaces CLK100MHZ via search
     fireEvent.change(view.getByTestId('ide-design-search'), { target: { value: 'w5' } });
 
-    expect(view.getByTestId('ide-design-palette-toggle-board')).toHaveAttribute('aria-expanded', 'true');
+    expect(view.getByTestId('ide-design-palette-section-board')).toHaveAttribute('data-collapsed', 'false');
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
   });
 

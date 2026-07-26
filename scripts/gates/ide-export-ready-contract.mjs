@@ -36,11 +36,8 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  // Readiness gates live in a <details> panel; open it so the stack is visible for the contract.
-  await page.evaluate(() => {
-    const el = document.querySelector('[data-testid="ide-export-gate-details"]');
-    if (el && 'open' in el) el.open = true;
-  });
+  await page.locator('[data-testid="ide-export-open-technical-evidence"]').first().click();
+  await page.waitForSelector('[data-testid="ide-export-technical-dialog"]', { state: 'visible', timeout: 10000 });
   await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'visible', timeout: 10000 });
 
   const statusStrip = await text(page.locator('[data-testid="ide-export-gate-stack"]'));
@@ -49,6 +46,8 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
     /PASS|READY|CURRENT|COMPLETE/i.test(statusStrip),
     `export status strip must report a ready verify state, got "${statusStrip}"`
   );
+  await page.locator('[data-testid="ide-export-close-technical-evidence"]').first().click();
+  await page.locator('[data-testid="ide-export-technical-dialog"]').waitFor({ state: 'detached', timeout: 10000 });
 
   const requiredArtifacts = [
     'top.vhd',
@@ -57,8 +56,8 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
     'readme.txt',
     'vivado_import.tcl',
   ];
-  const artifactPlan = page.locator('[data-testid="ide-export-artifact-preview"]').first();
-  assert(await visible(artifactPlan), 'artifact workspace (generated files list) must be visible');
+  const artifactPlan = page.locator('[data-testid="ide-export-file-browser"]').first();
+  assert(await visible(artifactPlan), 'package file browser must be visible');
   const artifactPlanText = ((await artifactPlan.textContent()) ?? '').toLowerCase();
   for (const fileName of requiredArtifacts) {
     assert(
@@ -67,15 +66,11 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
     );
   }
 
-  const summaryDownloadButton = page.locator('[data-testid="ide-export-rebuild-btn"]').first();
-  assert(await visible(summaryDownloadButton), 'summary download button must be visible in export hero');
+  const summaryDownloadButton = page.locator('[data-testid="ide-export-package-download-v1"]').first();
+  assert(await visible(summaryDownloadButton), 'trusted package download button must be visible in export hero');
   const summaryDownloadEnabled = await summaryDownloadButton.isEnabled().catch(() => false);
-  assert(summaryDownloadEnabled, 'summary primary button must be enabled once export has no blockers');
-
-  const secondaryDownloadButton = page.locator('[data-testid="ide-export-dock-download"]').first();
-  const downloadButton = await visible(secondaryDownloadButton).catch(() => false)
-    ? secondaryDownloadButton
-    : summaryDownloadButton;
+  assert(summaryDownloadEnabled, 'trusted package download must be enabled once export has no blockers');
+  const downloadButton = summaryDownloadButton;
 
   await downloadButton.scrollIntoViewIfNeeded();
 
@@ -88,7 +83,7 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   });
   assert(
     summaryButtonOwnsCenterHit,
-    'summary download button center hit-target must not be intercepted by overlapping export content'
+    'trusted package download center hit-target must not be intercepted by overlapping export content'
   );
 
   const [download] = await Promise.all([
@@ -98,6 +93,6 @@ await runIdeGate('IDE export ready contract satisfied', async ({ page, baseUrl }
   const suggestedName = (download.suggestedFilename?.() ?? '').toLowerCase();
   assert(
     suggestedName.endsWith('.zip'),
-    `summary download should emit a zip artifact, got "${suggestedName || 'unknown'}"`
+    `trusted package download should emit a zip artifact, got "${suggestedName || 'unknown'}"`
   );
 });

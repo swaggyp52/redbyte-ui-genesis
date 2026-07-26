@@ -18,7 +18,6 @@ function enterImportWorkbench(view: ReturnType<typeof render>) {
 
 beforeEach(() => {
   localStorage.clear();
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
   useProjectRuntime.getState().resetToActiveExample();
   useProjectRuntime.setState((state) => ({
     verifyLastRun: undefined,
@@ -72,8 +71,6 @@ describe('ImportSurface verify reset notice', () => {
     enterImportWorkbench(view);
     fireEvent.click(view.getByTestId('ide-import-load-sample-and-gate'));
 
-    fireEvent.click(view.getByTestId('ide-import-parse-xdc'));
-
     expect(useProjectRuntime.getState().verifyLastRun).toBeDefined();
 
     await waitFor(() => {
@@ -90,11 +87,38 @@ describe('ImportSurface verify reset notice', () => {
 
     await waitFor(() => {
       const notice = view.getByTestId('ide-import-verify-reset-notice');
-      expect(notice.textContent).toContain('Verification results are not restored during import.');
+      expect(notice.textContent).toContain('Run Verify again because prior evidence belongs to the replaced design.');
       expect(notice.textContent).toContain('Open Verify');
     });
 
     expect(useProjectRuntime.getState().verifyLastRun).toBeUndefined();
     expect(useProjectRuntime.getState().verifyRunHistory).toEqual([]);
+  });
+
+  it('keeps the active project unchanged until the in-workspace confirmation is accepted', async () => {
+    const onImportProject = vi.fn();
+    const view = render(
+      <ImportSurface
+        projectIoRows={[...MATCHING_PROJECT_IO_ROWS]}
+        onImportProject={onImportProject}
+      />
+    );
+
+    fireEvent.click(view.getByTestId('ide-import-load-sample-and-gate'));
+    await waitFor(() => {
+      expect((view.getByTestId('ide-import-replace-project') as HTMLButtonElement).disabled).toBe(false);
+    });
+
+    fireEvent.click(view.getByTestId('ide-import-replace-project'));
+    expect(await view.findByTestId('ide-import-commit-preview')).toBeTruthy();
+    expect(onImportProject).not.toHaveBeenCalled();
+
+    fireEvent.click(view.getByTestId('ide-import-apply-cancel'));
+    expect(await view.findByTestId('ide-import-review-shell')).toBeTruthy();
+    expect(onImportProject).not.toHaveBeenCalled();
+
+    fireEvent.click(view.getByTestId('ide-import-replace-project'));
+    fireEvent.click(await view.findByTestId('ide-import-apply-confirm'));
+    await waitFor(() => expect(onImportProject).toHaveBeenCalledTimes(1));
   });
 });

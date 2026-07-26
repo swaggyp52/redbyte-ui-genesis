@@ -23,28 +23,28 @@ await runIdeGate('IDE export blockers contract satisfied', async ({ page, baseUr
 
   await page.locator('[data-testid="mode-button-export"]').click();
   await page.waitForSelector('[data-testid="ide-mode-export"]', { timeout: 10000 });
-  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'attached', timeout: 10000 });
+  await page.locator('[data-testid="ide-export-open-technical-evidence"]').first().click();
+  await page.waitForSelector('[data-testid="ide-export-technical-dialog"]', { state: 'visible', timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-export-gate-stack"]', { state: 'visible', timeout: 10000 });
 
   const statusStrip = await text(page.locator('[data-testid="ide-export-gate-stack"]'));
   assert(statusStrip.toUpperCase().includes('MAPPING'), 'export status strip must include mapping gate');
 
   const blockersList = page.locator('[data-testid="ide-export-blockers-list"]');
   assert(await visible(blockersList), 'export blockers list must render');
+  assert(/mapping|pin|constraint/i.test(await text(blockersList)), 'technical evidence must explain the mapping blocker');
+  await page.locator('[data-testid="ide-export-close-technical-evidence"]').first().click();
+  await page.locator('[data-testid="ide-export-technical-dialog"]').waitFor({ state: 'detached', timeout: 10000 });
 
-  const mappingAction = page.locator('[data-testid^="ide-export-diagnostic-action-"]');
-  const mappingActionCount = await mappingAction.count();
-  assert(mappingActionCount >= 1, 'expected export mapping blocker with fix action');
-  await mappingAction.first().click();
-
-  const mapPinsFix = page.locator('[data-testid^="ide-export-fixpath-open-map-pins-"]').first();
-  assert(await visible(mapPinsFix), 'mapping blocker fix path must route to Map Pins');
+  const mapPinsFix = page.locator('[data-testid="ide-export-blocked-open-map-pins"]').first();
+  assert(await visible(mapPinsFix), 'blocked Export must expose the direct Map Pins recovery action');
   await mapPinsFix.click();
 
   const navigatedToHardware = await page.locator('[data-testid="ide-mode-hardware"]').first().isVisible().catch(() => false);
   const stayedOnExport = await page.locator('[data-testid="ide-mode-export"]').first().isVisible().catch(() => false);
   assert(
     navigatedToHardware || stayedOnExport,
-    'mapping fix path should keep app on Export details or navigate to Map Pins'
+    'mapping recovery should keep app on Export or navigate to Map Pins'
   );
   if (navigatedToHardware) {
     assert(

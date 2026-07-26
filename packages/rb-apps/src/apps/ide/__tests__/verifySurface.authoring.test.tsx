@@ -139,9 +139,7 @@ describe('VerifySurface authoring — Add Case expected outputs', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-reference-mode').textContent?.toLowerCase()).toContain(
-      'using project checks'
-    );
+    expect(getByTestId('ide-vcb-use-saved-checks')).toHaveAttribute('aria-pressed', 'true');
     expect(getByTestId('ide-stimulus-expected-ld0-t0').getAttribute('title')).toContain(
       '1'
     );

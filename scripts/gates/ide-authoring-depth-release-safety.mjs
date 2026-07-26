@@ -70,7 +70,7 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design reload`);
   await assertPartialBlankAuthoring(page, viewport, { expectAnd: true });
-  await clickVisible(page, '[data-testid="ide-design-command-strip-primary-cta"]', `${viewport.label}: Open Verify from Design`);
+  await clickVisible(page, '[data-testid="mode-button-verify"]', `${viewport.label}: Open Verify from Design`);
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 10000 });
   await page.locator('[data-testid="mode-button-design"]').first().click();
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 10000 });
@@ -156,7 +156,7 @@ async function assertPartialBlankAuthoring(page, viewport, options = {}) {
       quickstrip: rect('[data-testid="ide-design-authoring-quickstrip"]'),
       quickAddAndVisible: Boolean(document.querySelector('[data-testid="ide-design-quick-add-and"]')),
       quickWireVisible: Boolean(document.querySelector('[data-testid="ide-design-quick-wire"]')),
-      quickVerifyVisible: Boolean(document.querySelector('[data-testid="ide-design-command-strip-primary-cta"]')),
+      quickVerifyVisible: Boolean(document.querySelector('[data-testid="mode-button-verify"]')),
       statusAddAndVisible: Boolean(document.querySelector('[data-testid="ide-design-status-add-and"]')),
       canvas: rect('[data-testid="ide-design-live-canvas"]'),
     };
@@ -182,16 +182,27 @@ async function assertProjectContinuity(page, viewport) {
   await changeProject.click();
   await page.locator('[data-testid="ide-project-entry-paths"]').first().waitFor({ state: 'visible', timeout: 10000 });
   const state = await page.evaluate(() => ({
-    hasDirectDesign: Boolean(document.querySelector('[data-testid="ide-project-command-action-design"]')),
-    hasDirectVerify: Boolean(document.querySelector('[data-testid="ide-project-command-action-verify"]')),
-    hasDirectMap: Boolean(document.querySelector('[data-testid="mode-button-hardware"]')),
-    hasDirectExport: Boolean(document.querySelector('[data-testid="mode-button-export"]')),
+    stageRailCount: document.querySelectorAll(
+      '[data-testid="mode-button-project"], [data-testid="mode-button-design"], [data-testid="mode-button-verify"], [data-testid="mode-button-hardware"], [data-testid="mode-button-export"]'
+    ).length,
+    hasDesignRail: Boolean(document.querySelector('[data-testid="mode-button-design"]')),
+    hasVerifyRoute: Boolean(
+      document.querySelector('[data-testid="ide-project-command-action-verify"]') ??
+      document.querySelector('[data-testid="mode-button-verify"]')
+    ),
+    hasMapRail: Boolean(document.querySelector('[data-testid="mode-button-hardware"]')),
+    hasExportRail: Boolean(document.querySelector('[data-testid="mode-button-export"]')),
+    bodyPrimaryCount: document.querySelectorAll('[data-testid^="ide-project-command-action-"]').length,
     hasBuildFresh: Boolean(document.querySelector('[data-testid="ide-project-path-build-fresh"]')),
     hasCourseStarter: Boolean(document.querySelector('[data-testid="ide-project-path-course-starter"]')),
     hasContinue: Boolean(document.querySelector('[data-testid="ide-project-command-strip-primary-cta"]')),
     nextStep: document.querySelector('[data-testid="ide-project-command-strip-next-step-copy"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
   }));
-  assert(state.hasDirectDesign && state.hasDirectVerify && state.hasDirectMap && state.hasDirectExport, `${viewport.label}: Project lost direct five-stage continuity ${JSON.stringify(state)}`);
+  assert(
+    state.stageRailCount === 5 && state.hasDesignRail && state.hasVerifyRoute && state.hasMapRail && state.hasExportRail,
+    `${viewport.label}: Project lost five-stage rail continuity ${JSON.stringify(state)}`
+  );
+  assert(state.bodyPrimaryCount === 1, `${viewport.label}: Project must keep exactly one body next-stage action ${JSON.stringify(state)}`);
   assert(state.hasBuildFresh && state.hasCourseStarter && state.hasContinue, `${viewport.label}: Project lost repeated-use start paths ${JSON.stringify(state)}`);
 }
 
@@ -214,8 +225,7 @@ async function assertStarterDesignLoop(page, viewport) {
 
   await selectFirstWire(page);
   assert(await readSelectedWireCount(page) >= 1, `${viewport.label}: selecting a wire must update selection state`);
-  await clickVisible(page, '[data-testid="ide-design-tools-toggle"]', `${viewport.label}: open More tools`);
-  await clickVisible(page, '[data-testid="ide-design-tool-delete"]', `${viewport.label}: delete selected wire`);
+  await clickVisible(page, '[data-testid="ide-design-context-delete-wire"]', `${viewport.label}: delete selected wire`);
   await waitForFunctionLabeled(page,
     (minimumConnections) => (window.__RB_PROJECT_RUNTIME__?.getState?.()?.circuit?.connections?.length ?? 0) < minimumConnections,
     before.connections,

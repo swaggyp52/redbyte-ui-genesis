@@ -399,3 +399,30 @@ describe('DesignSurface label editing — ghost button regression', () => {
     });
   });
 });
+
+describe('DesignSurface output signal naming', () => {
+  it('persists an output signal name and shows it in the stable inspector', async () => {
+    const view = renderSurface();
+
+    act(() => {
+      useLogicViewStore.getState().selectNode('ld0_node');
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-inspector-name-control')).toBeTruthy();
+      expect(view.getByTestId('ide-design-label-edit-btn').textContent).toContain('Add label');
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-label-edit-btn'));
+    const input = view.getByTestId('ide-design-label-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'result' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => {
+      const output = useCircuitStore.getState().circuit.nodes.find((node) => node.id === 'ld0_node');
+      expect(output?.label).toBe('result');
+      expect(view.getByTestId('ide-design-inspector-identity-title').textContent).toBe('result');
+      expect(view.getByTestId('ide-design-label-edit-btn').textContent).toContain('result');
+    });
+  });
+});

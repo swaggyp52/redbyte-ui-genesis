@@ -187,7 +187,7 @@ describe('VerifySurface layout workflow architecture', () => {
       />
     );
 
-    expect(getByTestId('ide-verify-workbench-summary-copy').textContent?.toLowerCase()).not.toContain(
+    expect(getByTestId('ide-verify-stimulus-summary').textContent?.toLowerCase()).not.toContain(
       'waveform stays locked to the selected case'
     );
   });

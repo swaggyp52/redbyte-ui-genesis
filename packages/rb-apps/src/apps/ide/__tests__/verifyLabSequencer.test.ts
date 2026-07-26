@@ -118,4 +118,44 @@ describe('buildLabSequencerStepsFromScenarioSteps', () => {
     expect(steps[0]?.kind).toBe('set_bus');
     expect(steps[1]?.kind).toBe('inspect_register');
   });
+
+  it('keeps displayed ticks aligned with edge and level pulse materialization', () => {
+    const steps = buildLabSequencerStepsFromScenarioSteps([
+      {
+        id: 'rising',
+        order: 0,
+        kind: 'pulse_step',
+        targetRef: 'clk',
+        pulseBehavior: 'rising',
+        durationTicks: 3,
+        origin: 'explicit',
+      },
+      {
+        id: 'set',
+        order: 1,
+        kind: 'set_input',
+        targetRef: 'd',
+        value: 1,
+        durationTicks: 2,
+        origin: 'explicit',
+      },
+      {
+        id: 'high',
+        order: 2,
+        kind: 'pulse_step',
+        targetRef: 'clk',
+        pulseBehavior: 'high',
+        durationTicks: 2,
+        origin: 'explicit',
+      },
+      {
+        id: 'observe',
+        order: 3,
+        kind: 'observe',
+        origin: 'explicit',
+      },
+    ]);
+
+    expect(steps.map((step) => step.tick)).toEqual([0, 4, 6, 8]);
+  });
 });

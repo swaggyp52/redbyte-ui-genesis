@@ -10,45 +10,46 @@ const VIEWPORTS = [
 
 const PRIMARY_MODES = ['project', 'design', 'verify', 'hardware', 'export'];
 
-const FOCAL_SELECTORS = {
-  project: [
-    '[data-testid="ide-project-landing"]',
-    '[data-testid="ide-project-panel"]',
-    '[data-testid="ide-project-command-strip"]',
-    '[data-testid="ide-project-workspace-grid"]',
-    '[data-testid="ide-project-session"]',
-    '[data-testid="ide-project-continue-cta"]',
-    '[data-testid="ide-project-last-verify-status"]',
-    '[data-testid="ide-project-overview"]',
-  ],
-  design: [
-    '[data-testid="ide-design-live-canvas"]',
-    '[data-testid="ide-design-canvas"]',
-  ],
-  verify: [
-    '[data-testid="ide-verify-panel"]',
-    '[data-testid="ide-verify-workbench"]',
-    '[data-testid="ide-verify-lab-frame"]',
-    '[data-testid="ide-verify-lab-grid"]',
-    '[data-testid="ide-verify-three-panel"]',
-    '[data-testid="ide-verify-testbench-summary"]',
-    '[data-testid="ide-verify-workspace-waveform"]',
-    '[data-testid="ide-verify-session-hero"]',
-    '[data-testid="ide-stimulus-canvas"]',
-    '[data-testid="ide-verify-workstation-run-bar"]',
-  ],
-  hardware: [
-    '[data-testid="ide-hardware-panel"]',
-    '[data-testid="ide-hw-map-table"]',
-    '[data-testid="ide-hw-map-board"]',
-  ],
-  export: [
-    '[data-testid="ide-export-panel"]',
-    '[data-testid="ide-export-handoff-summary"]',
-    '[data-testid="ide-export-rebuild-btn"]',
-    '[data-testid="ide-export-generated-previews"]',
-    '[data-testid="ide-export-artifact-preview"]',
-  ],
+const MODE_REGIONS = {
+  project: {
+    primary: ['[data-testid="ide-project-professional-overview"]'],
+    support: [
+      ['[data-testid="ide-project-professional-facts"]'],
+      ['[data-testid="ide-project-workspace-grid"]'],
+    ],
+  },
+  design: {
+    primary: ['[data-testid="ide-design-live-canvas"]'],
+    support: [
+      ['[data-testid="ide-design-dock-palette"]'],
+      [
+        '[data-testid="ide-design-inspector-canvas-default"]',
+        '[data-testid="ide-design-inspector-selection-details"]',
+        '[data-testid="ide-design-inspector-actions"]',
+      ],
+    ],
+  },
+  verify: {
+    primary: ['[data-testid="ide-verify-lab-grid"]'],
+    support: [
+      ['[data-testid="ide-verify-left-dock"]'],
+      ['[data-testid="ide-verify-region-waveform"]'],
+    ],
+  },
+  hardware: {
+    primary: ['[data-testid="ide-hw-map-table"]'],
+    support: [
+      ['[data-testid="ide-hw-selected-mapping-editor"]'],
+      ['[data-testid="ide-hw-map-board"]'],
+    ],
+  },
+  export: {
+    primary: ['[data-testid="ide-export-package-inspector-v1"]'],
+    support: [
+      ['[data-testid="ide-export-upstream-readiness"]'],
+      ['[data-testid="ide-export-package-files"]'],
+    ],
+  },
 };
 
 await runIdeGate('IDE shell layout integrity satisfied', async ({ page, baseUrl }) => {
@@ -98,7 +99,10 @@ async function assertShellModeIntegrity(page, viewport, mode) {
     `${viewport.label}/${mode}: horizontal overflow ${state.scrollWidth} > ${state.clientWidth}`
   );
   assert(state.topBar.visible, `${viewport.label}/${mode}: top bar missing`);
-  assert(state.leftRail.visible, `${viewport.label}/${mode}: left rail missing`);
+  assert(state.stageNav.visible, `${viewport.label}/${mode}: stage navigation missing`);
+  assert(state.mainCount === 1, `${viewport.label}/${mode}: expected one main landmark, got ${state.mainCount}`);
+  assert(state.retiredRailCount === 0, `${viewport.label}/${mode}: retired workflow rail returned`);
+  assert(state.retiredToggleCount === 0, `${viewport.label}/${mode}: retired dock toggle returned`);
   assert(
     state.modeRoot.visible && state.modeRoot.width > 240 && state.modeRoot.height > 180,
     `${viewport.label}/${mode}: mode root collapsed ${JSON.stringify(state.modeRoot)}`
@@ -111,13 +115,12 @@ async function assertShellModeIntegrity(page, viewport, mode) {
     state.focal.left < viewport.width && state.focal.top < viewport.height,
     `${viewport.label}/${mode}: primary focal object starts outside first viewport ${JSON.stringify(state.focal)}`
   );
-  assert(
-    state.leftRail.right <= state.focal.left + 12 || mode === 'project',
-    `${viewport.label}/${mode}: left rail appears to obscure focal object (${JSON.stringify({
-      leftRail: state.leftRail,
-      focal: state.focal,
-    })})`
-  );
+  state.support.forEach((region, index) => {
+    assert(
+      region.visible && region.width > 120 && region.height > 48,
+      `${viewport.label}/${mode}: direct support region ${index + 1} missing/collapsed ${JSON.stringify(region)}`
+    );
+  });
 
   if (mode === 'design') {
     assert(state.designNodeCount >= 3, `${viewport.label}/design: rendered graph lost nodes (${state.designNodeCount})`);
@@ -127,7 +130,7 @@ async function assertShellModeIntegrity(page, viewport, mode) {
 
 async function readShellModeState(page, mode) {
   return page.evaluate(
-    ({ expectedMode, focalSelectors }) => {
+    ({ expectedMode, regions }) => {
       const rectJson = (rect) => rect
         ? {
             left: rect.left,
@@ -159,6 +162,17 @@ async function readShellModeState(page, mode) {
         }
         return { selector: null, ...rectJson(null) };
       };
+      const firstRenderedRect = (selectors) => {
+        for (const selector of selectors) {
+          const element = document.querySelector(selector);
+          if (!element) continue;
+          const rect = element.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            return { selector, ...rectJson(rect) };
+          }
+        }
+        return { selector: null, ...rectJson(null) };
+      };
       const intersects = (a, b) => a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom;
       const canvas = document.querySelector('[data-testid="ide-design-live-canvas"]');
       const canvasRect = canvas?.getBoundingClientRect();
@@ -175,13 +189,21 @@ async function readShellModeState(page, mode) {
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
         topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
-        leftRail: rectJson(document.querySelector('[data-testid="ide-left-rail"]')?.getBoundingClientRect?.()),
+        stageNav: rectJson(document.querySelector('[data-testid="ide-stage-nav"]')?.getBoundingClientRect?.()),
+        mainCount: document.querySelectorAll('main').length,
+        retiredRailCount: document.querySelectorAll(
+          '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
+        ).length,
+        retiredToggleCount: document.querySelectorAll(
+          '[data-testid^="ide-workbench-dock-toggle-"], [data-testid*="dock-collapse"], .ide-workbench-dock-toggle-rail'
+        ).length,
         modeRoot: rectJson(document.querySelector(`[data-testid="ide-mode-${expectedMode}"]`)?.getBoundingClientRect?.()),
-        focal: firstVisibleRect(focalSelectors),
+        focal: firstVisibleRect(regions.primary),
+        support: regions.support.map((selectors) => firstRenderedRect(selectors)),
         designNodeCount: nodes.length,
         designVisibleNodeCount: visibleNodes,
       };
     },
-    { expectedMode: mode, focalSelectors: FOCAL_SELECTORS[mode] }
+    { expectedMode: mode, regions: MODE_REGIONS[mode] }
   );
 }

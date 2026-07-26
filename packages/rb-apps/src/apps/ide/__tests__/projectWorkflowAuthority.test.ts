@@ -3,6 +3,7 @@ import type { ProjectHealthCore, ProjectReadinessState } from '../projectHealth'
 import {
   deriveHardwareExportFailureTruth,
   deriveProjectWorkflowAuthority,
+  isDesignOwnedExportDiagnostic,
 } from '../projectWorkflowAuthority';
 
 function deriveAuthority(input: {
@@ -265,6 +266,99 @@ describe('project workflow authority', () => {
       export: true,
     });
     expect(authority.statusBarGateStatus).toBe('pass');
+  });
+
+  it('makes a current Design blocker authoritative over earlier passing evidence', () => {
+    const authority = deriveAuthority({
+      core: {
+        lastVerify: {
+          status: 'pass',
+          hash: 'verify-pass-hash',
+          reportHash: 'verify-report-hash',
+          ranAtIso: '2026-04-06T10:00:00.000Z',
+        },
+        lastExport: {
+          status: 'ok',
+          hash: 'export-pass-hash',
+          ranAtIso: '2026-04-06T10:01:00.000Z',
+        },
+      },
+      readiness: {
+        hasBlockingDesignIssue: true,
+        blockingDesignIssueMessage: 'Output LD2 is not driven by the circuit.',
+      },
+      currentVerifyProjectHash: 'verify-pass-hash',
+      currentExportHash: 'export-pass-hash',
+      verifyRunHistory: [{ projectHash: 'verify-pass-hash' }],
+    });
+
+    expect(authority.designReady).toBe(false);
+    expect(authority.verifyBlockedByDesign).toBe(true);
+    expect(authority.verifyCurrent).toBe(false);
+    expect(authority.compareCurrent).toBe(false);
+    expect(authority.comparePassCurrent).toBe(false);
+    expect(authority.compareDiffers).toBe(false);
+    expect(authority.compareTraceOnly).toBe(false);
+    expect(authority.compareMatches).toBe(false);
+    expect(authority.trustedVerifyCurrent).toBe(false);
+    expect(authority.exportAvailable).toBe(false);
+    expect(authority.exportTrusted).toBe(false);
+    expect(authority.hardwareReady).toBe(false);
+    expect(authority.stageCompletion).toEqual({
+      design: false,
+      verify: false,
+      hardware: false,
+      export: false,
+    });
+    expect(authority.primaryCta).toEqual({
+      label: 'Open Design',
+      mode: 'design',
+      code: 'RBP1006',
+    });
+    expect(authority.statusBarGateStatus).toBe('fail');
+  });
+
+  it('revokes a prior failing Compare while preserving its stored history when Design is blocked', () => {
+    const previousFailure = {
+      status: 'fail' as const,
+      hash: 'verify-fail-hash',
+      reportHash: 'verify-fail-report',
+      failingTick: 2,
+      ranAtIso: '2026-07-15T12:00:00.000Z',
+    };
+    const core: ProjectHealthCore = {
+      lastVerify: previousFailure,
+      lastExport: undefined,
+      dirtySinceVerify: false,
+      dirtySinceExport: true,
+    };
+
+    const authority = deriveProjectWorkflowAuthority({
+      projectHealthCore: core,
+      readiness: {
+        hasCircuit: true,
+        hasIoMapping: true,
+        hasVectors: true,
+        hasBlockingDesignIssue: true,
+        blockingDesignIssueMessage: 'Output LD2 is not driven by the circuit.',
+      },
+      verifyLastRun: previousFailure,
+      verifyRunHistory: [{ projectHash: 'verify-fail-hash' }],
+      currentVerifyProjectHash: 'verify-fail-hash',
+    });
+
+    expect(core.lastVerify).toBe(previousFailure);
+    expect(authority.verifyBlockedByDesign).toBe(true);
+    expect(authority.verifyState).toBe('stale');
+    expect(authority.verifyCurrent).toBe(false);
+    expect(authority.compareCurrent).toBe(false);
+    expect(authority.comparePassCurrent).toBe(false);
+    expect(authority.comparePassIncomplete).toBe(false);
+    expect(authority.compareMatches).toBe(false);
+    expect(authority.compareDiffers).toBe(false);
+    expect(authority.compareTraceOnly).toBe(false);
+    expect(authority.trustedVerifyCurrent).toBe(false);
+    expect(authority.exportTrusted).toBe(false);
   });
 
   it('demotes verify to stale after mapping changes', () => {
@@ -554,5 +648,13 @@ describe('project workflow authority', () => {
         primaryCtaIntent: 'program-handoff',
       })
     );
+  });
+
+  it('keeps RBEX4200 advisory for manual-event labs but Design-owned for synchronous timing', () => {
+    expect(isDesignOwnedExportDiagnostic('RBEX4200', 'manual_event_driven_lab')).toBe(false);
+    expect(isDesignOwnedExportDiagnostic('RBEX4200', 'synchronous_board_clock')).toBe(true);
+    expect(isDesignOwnedExportDiagnostic('RBEX4200', 'combinational')).toBe(true);
+    expect(isDesignOwnedExportDiagnostic('RBEX4103', 'manual_event_driven_lab')).toBe(true);
+    expect(isDesignOwnedExportDiagnostic('RBEV1000', 'synchronous_board_clock')).toBe(false);
   });
 });

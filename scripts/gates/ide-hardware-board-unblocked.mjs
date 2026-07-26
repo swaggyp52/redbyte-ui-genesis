@@ -25,24 +25,36 @@ await runIdeGate('IDE Hardware board is unblocked', async ({ page, baseUrl }) =>
       const resourceSummary = await getRequiredRect(page, '[data-testid="ide-hw-board-resource-summary"]', `${viewport.label}/resource summary`);
 
       assert(table.visibleWidth >= Math.round(viewport.width * 0.38), `${viewport.label}: primary mapping table is too narrow ${JSON.stringify(table)}`);
-      assert(board.visibleWidth >= Math.round(viewport.width * 0.24), `${viewport.label}: board reference is too narrow ${JSON.stringify(board)}`);
+      assert(board.visibleWidth >= 320, `${viewport.label}: board reference is too narrow ${JSON.stringify(board)}`);
       assert(board.visibleWidth <= table.visibleWidth, `${viewport.label}: board reference must remain secondary to the mapping table ${JSON.stringify({ table, board })}`);
-      assert(boardSvg.visibleHeight >= Math.round(viewport.height * 0.18), `${viewport.label}: board visual is too short ${JSON.stringify(boardSvg)}`);
+      assert(boardSvg.visibleHeight >= 120, `${viewport.label}: secondary board reference is too short to remain legible ${JSON.stringify(boardSvg)}`);
       assert(table.right <= board.left + 2, `${viewport.label}: signal table and board should be clearly separated ${JSON.stringify({ table, board })}`);
       assert(!rectsOverlap(resourceSummary, boardSvg), `${viewport.label}: resource summary overlaps the Basys3 board visual ${JSON.stringify({ resourceSummary, boardSvg })}`);
 
       const sw0Row = page.locator('[data-testid="ide-hw-map-row-sw0"]').first();
       await sw0Row.click();
-      const sw0BoardTarget = page.locator('[data-testid="ide-hw-map-sw-0-hit"]').first();
-      await sw0BoardTarget.waitFor({ state: 'visible', timeout: 10000 });
-      const sw0TargetBox = await sw0BoardTarget.boundingBox();
+      const boardReference = page.locator('[data-testid="ide-hw-board-reference-graphic"]').first();
+      await boardReference.waitFor({ state: 'visible', timeout: 10000 });
+      const boardReferenceState = await boardReference.evaluate((element) => ({
+        role: element.getAttribute('role'),
+        label: element.getAttribute('aria-label'),
+        pointerEvents: getComputedStyle(element).pointerEvents,
+      }));
       assert(
-        sw0TargetBox && sw0TargetBox.width >= 18 && sw0TargetBox.height >= 18,
-        `${viewport.label}: secondary board reference must retain an interactive SW0 hit target ${JSON.stringify(sw0TargetBox)}`
+        boardReferenceState.role === 'img' && /reference/i.test(boardReferenceState.label ?? '') && boardReferenceState.pointerEvents === 'none',
+        `${viewport.label}: miniature board must be an accessible, non-interactive reference ${JSON.stringify(boardReferenceState)}`
       );
-      await sw0BoardTarget.click();
+      const resourceSelect = page.locator('[data-testid="ide-hw-direct-resource-select"]').first();
+      const resourceSelectState = await resourceSelect.evaluate((element) => ({
+        height: element.getBoundingClientRect().height,
+        fontSize: Number.parseFloat(getComputedStyle(element).fontSize),
+      }));
+      assert(
+        resourceSelectState.height >= 35.5 && resourceSelectState.fontSize >= 13.9,
+        `${viewport.label}: selected-signal resource control must own assignment at the 36px/14px floor ${JSON.stringify(resourceSelectState)}`
+      );
       const sw0Binding = await page.locator('[data-testid="ide-hw-map-row-binding-sw0"]').first().textContent();
-      assert(/SW0|V17/i.test(sw0Binding ?? ''), `${viewport.label}: board interaction must preserve the SW0/V17 mapping`);
+      assert(/SW0|V17/i.test(sw0Binding ?? ''), `${viewport.label}: selected-signal editor must preserve the SW0/V17 mapping`);
 
       await assertReleaseReadinessClean(page, `${viewport.label}/Hardware board`);
     } catch (error) {

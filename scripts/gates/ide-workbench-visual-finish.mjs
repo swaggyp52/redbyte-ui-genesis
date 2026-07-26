@@ -41,7 +41,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
 
     await checkSurface(failures, page, viewport, 'import-empty-no-project', async () => {
       await openFreshMode(page, baseUrl, viewport, 'import');
-      await page.waitForSelector('[data-testid="ide-import-start-shell"]', { timeout: 15000 });
+      await page.waitForSelector('[data-testid="ide-import-workbench"]', { timeout: 15000 });
       await capture(page, viewport, 'import-empty-no-project');
       await assertImportFirstLook(page, viewport);
     });
@@ -73,8 +73,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
       await assertNoHorizontalOverflow(page, viewport, 'Export no-project draft');
       await assertVisiblePrimary(page, viewport, 'Export no-project draft', [
         '[data-testid="ide-export-package-inspector-v1"]',
-        '[data-testid="ide-export-handoff-station"]',
-        '[data-testid="ide-export-panel"]',
+        '[data-testid="ide-export-readiness-hero"]',
       ]);
     });
 
@@ -97,8 +96,7 @@ await runIdeGate('IDE workbench visual finish satisfied', async ({ page, baseUrl
       await assertNoHorizontalOverflow(page, viewport, 'Export loaded starter');
       await assertVisiblePrimary(page, viewport, 'Export loaded starter', [
         '[data-testid="ide-export-package-inspector-v1"]',
-        '[data-testid="ide-export-handoff-station"]',
-        '[data-testid="ide-export-panel"]',
+        '[data-testid="ide-export-readiness-hero"]',
       ]);
     });
   }
@@ -155,45 +153,25 @@ async function assertImportFirstLook(page, viewport) {
     `${viewport.label}: Import first look must not repeat the restore message in a command strip`
   );
 
-  const restoreHeadlineCount = await page.evaluate(() => {
-    const phrase = 'Restore a RedByte project first';
-    return Array.from(document.querySelectorAll('body *')).filter((element) => {
-      const text = (element.textContent || '').replace(/\s+/g, ' ').trim();
-      if (text !== phrase) return false;
-      const rect = element.getBoundingClientRect();
-      const style = window.getComputedStyle(element);
-      return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
-    }).length;
-  });
-  assert(
-    restoreHeadlineCount === 1,
-    `${viewport.label}: Import first look should expose one restore headline, found ${restoreHeadlineCount}`
-  );
-
-  await assertRectInViewport(page, viewport, '[data-testid="ide-import-start-shell"]', 'Import start shell');
-  await assertRectInViewport(page, viewport, '[data-testid="ide-import-start-primary"]', 'Import RedByte ZIP CTA');
+  await assertRectInViewport(page, viewport, '[data-testid="ide-import-workbench"]', 'Import recovery workbench');
+  await assertRectInViewport(page, viewport, '[data-testid="ide-import-horizontal-stepper"]', 'Import Upload, Review, Apply stepper');
+  await assertRectInViewport(page, viewport, '[data-testid="ide-import-zip-dropzone"]', 'Import ZIP chooser', 88);
+  await assertRectInViewport(page, viewport, '[data-testid="ide-import-zip-browse"]', 'Import ZIP CTA');
   await assertRectInViewport(
     page,
     viewport,
-    '[data-testid="ide-import-start-alternatives"]',
-    'Import visible alternatives',
-    88
+    '[data-testid="ide-import-start-secondary"]',
+    'Import Paste HDL alternative'
   );
-  await assertRectInViewport(page, viewport, '[data-testid="ide-import-start-guidance"]', 'Import recovery guidance');
+  await assertRectInViewport(page, viewport, '[data-testid="ide-import-load-sample-and-gate"]', 'Import structural sample alternative');
 
-  const alternativesText = await normalizedText(page.locator('[data-testid="ide-import-start-alternatives"]').first());
-  for (const label of ['Paste HDL', 'Try structural sample', 'Show unsupported examples']) {
-    assert(
-      alternativesText.includes(label),
-      `${viewport.label}: Import visible alternatives must include "${label}" (${alternativesText})`
-    );
-  }
-
-  const shell = await rectForSelector(page, '[data-testid="ide-import-start-shell"]');
-  assert(shell.top < viewport.height * 0.32, `${viewport.label}: Import start shell begins too low (${shell.top}px)`);
+  const workbenchText = await normalizedText(page.locator('[data-testid="ide-import-workbench"]').first());
   assert(
-    shell.bottom <= viewport.height - 18,
-    `${viewport.label}: Import start shell should fit the first viewport (${Math.round(shell.bottom)}px > ${viewport.height}px)`
+    workbenchText.includes('Recover a project without replacing current work early') &&
+      workbenchText.includes('Upload') &&
+      workbenchText.includes('Review') &&
+      workbenchText.includes('Apply'),
+    `${viewport.label}: Import first look must explain the safe Upload, Review, Apply recovery flow (${workbenchText.slice(0, 240)})`
   );
 }
 
@@ -282,12 +260,13 @@ async function readVisualMetrics(page) {
       rects: {
         importPanel: readRect('[data-testid="ide-import-panel"]'),
         importCommandStrip: readRect('[data-testid="ide-import-command-strip"]'),
-        importStartShell: readRect('[data-testid="ide-import-start-shell"]'),
-        importAlternatives: readRect('[data-testid="ide-import-start-alternatives"]'),
-        importGuidance: readRect('[data-testid="ide-import-start-guidance"]'),
+        importWorkbench: readRect('[data-testid="ide-import-workbench"]'),
+        importStepper: readRect('[data-testid="ide-import-horizontal-stepper"]'),
+        importDropzone: readRect('[data-testid="ide-import-zip-dropzone"]'),
+        importPasteHdl: readRect('[data-testid="ide-import-start-secondary"]'),
         projectCommandCenter: readRect('[data-testid="ide-project-command-center"]'),
         designCanvas: readRect('[data-testid="ide-design-live-canvas"]'),
-        exportStation: readRect('[data-testid="ide-export-handoff-station"]'),
+        exportStation: readRect('[data-testid="ide-export-readiness-hero"]'),
       },
     };
   });

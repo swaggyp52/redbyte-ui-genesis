@@ -3,6 +3,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { assert, loadStarterProject, runIdeGate } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
   { width: 1366, height: 768, label: '1366x768' },
@@ -40,21 +41,26 @@ await runIdeGate('IDE workbench stability overhaul satisfied', async ({ page, ba
     await loadStarterProject(page, { exactExampleId: 'logic-gates' });
     await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
     await page.waitForSelector('[data-testid="ide-design-workspace"]', { timeout: 15000 });
-    await page.waitForSelector('[data-testid="ide-design-view-tools-toggle"]', { timeout: 15000 });
+    await page.waitForSelector('[data-testid="ide-design-canvas-view-tools"]', { timeout: 15000 });
     await capture(page, viewport, '02-design-loaded');
     await assertCleanWorkbench(page, viewport, 'Design after starter load');
+    await assertDirectDesignControls(page, viewport);
 
-    await page.locator('[data-testid="ide-design-view-tools-toggle"]').first().click();
-    await page.waitForFunction(() => {
-      return document.querySelector('[data-testid="ide-design-canvas-view-tools"]')?.getAttribute('data-open') === 'true';
-    }, undefined, { timeout: 5000 });
-    await page.locator('[data-testid="ide-design-zoom-preset-125"]').first().click();
-    await page.waitForFunction(() => {
-      return /125/.test(document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent ?? '');
-    }, undefined, { timeout: 5000 });
-    await page.locator('[data-testid="ide-design-zoom-preset-fit"]').first().click();
+    await page.locator('[data-testid="ide-design-zoom-reset"]').first().click();
     await page.waitForTimeout(200);
-    await assertCleanWorkbench(page, viewport, 'Design after zoom controls');
+    const resetZoom = await readZoomIndicator(page);
+
+    await page.locator('[data-testid="ide-design-zoom-out"]').first().click();
+    const zoomedOut = await waitForZoomChange(page, resetZoom);
+    await assertCleanWorkbench(page, viewport, 'Design after direct zoom out');
+
+    await page.locator('[data-testid="ide-design-zoom-in"]').first().click();
+    await waitForZoomChange(page, zoomedOut);
+    await assertCleanWorkbench(page, viewport, 'Design after direct zoom in');
+
+    await page.locator('[data-testid="ide-design-fit-circuit-canvas"]').first().click();
+    await page.waitForTimeout(200);
+    await assertCleanWorkbench(page, viewport, 'Design after direct fit');
 
     await page.locator('[data-testid="mode-button-verify"]').first().click();
     await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
@@ -84,6 +90,7 @@ await runIdeGate('IDE workbench stability overhaul satisfied', async ({ page, ba
 });
 
 async function assertCleanWorkbench(page, viewport, label) {
+  await assertBuildHash(page, `${viewport.label}/${label}`);
   const state = await page.evaluate(() => {
     const root = document.querySelector('[data-testid="ide-root"]') ?? document.documentElement;
     return {
@@ -91,7 +98,6 @@ async function assertCleanWorkbench(page, viewport, label) {
       urlMode: new URL(window.location.href).searchParams.get('mode'),
       hasBoundary: Boolean(document.querySelector('[data-testid="error-boundary-fallback"]')),
       loading: document.querySelector('[data-testid="ide-surface-loading"]')?.textContent?.trim() ?? '',
-      buildBadge: document.querySelector('[data-testid="ide-build-badge"]')?.textContent?.trim() ?? '',
       rootOverflowX: Math.max(
         0,
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
@@ -102,8 +108,61 @@ async function assertCleanWorkbench(page, viewport, label) {
   assert(!state.hasBoundary, `${viewport.label} ${label}: error boundary was visible`);
   assert(state.mode === state.urlMode, `${viewport.label} ${label}: URL mode ${state.urlMode} did not match active mode ${state.mode}`);
   assert(state.loading.length === 0, `${viewport.label} ${label}: surface stayed in loading state (${state.loading})`);
-  assert(state.buildBadge.length > 0, `${viewport.label} ${label}: build badge missing`);
   assert(state.rootOverflowX <= 2, `${viewport.label} ${label}: root has horizontal overflow (${state.rootOverflowX.toFixed(1)}px)`);
+}
+
+async function assertDirectDesignControls(page, viewport) {
+  const state = await page.evaluate(() => {
+    const isVisible = (element) => {
+      if (!(element instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 1 && rect.height > 1;
+    };
+    const byTestId = (testId) => document.querySelector(`[data-testid="${testId}"]`);
+    const host = byTestId('ide-design-canvas-view-tools');
+    const toolbar = byTestId('ide-design-toolbar');
+    return {
+      toggleVisible: isVisible(byTestId('ide-design-view-tools-toggle')),
+      presetsVisible: isVisible(byTestId('ide-design-zoom-presets')),
+      hostVisible: isVisible(host),
+      hostOpen: host?.getAttribute('data-open') === 'true',
+      hostInsideToolbar: Boolean(host && toolbar?.contains(host)),
+      controlsVisible: isVisible(byTestId('ide-design-canvas-controls')),
+      directControls: Object.fromEntries(
+        [
+          'ide-design-zoom-out',
+          'ide-design-zoom-in',
+          'ide-design-fit-circuit-canvas',
+          'ide-design-zoom-reset',
+          'ide-design-center-selection-canvas',
+        ].map((testId) => [testId, isVisible(byTestId(testId))])
+      ),
+    };
+  });
+
+  assert(!state.toggleVisible, `${viewport.label}: canvas controls must not be hidden behind a view-tools toggle`);
+  assert(!state.presetsVisible, `${viewport.label}: obsolete zoom preset strip must remain absent`);
+  assert(state.hostVisible, `${viewport.label}: direct canvas view-tools host must remain visible`);
+  assert(state.hostOpen, `${viewport.label}: direct canvas view-tools host must remain open`);
+  assert(state.hostInsideToolbar, `${viewport.label}: direct canvas view tools must remain inside the Design toolbar`);
+  assert(state.controlsVisible, `${viewport.label}: direct canvas controls must remain visible`);
+  for (const [testId, visible] of Object.entries(state.directControls)) {
+    assert(visible, `${viewport.label}: direct canvas control ${testId} must remain visible`);
+  }
+}
+
+async function readZoomIndicator(page) {
+  return (await page.locator('[data-testid="ide-design-canvas-stat-zoom"]').first().textContent())?.trim() ?? '';
+}
+
+async function waitForZoomChange(page, previous) {
+  await page.waitForFunction(
+    (prior) => (document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent?.trim() ?? '') !== prior,
+    previous,
+    { timeout: 5000 }
+  );
+  return readZoomIndicator(page);
 }
 
 async function capture(page, viewport, name) {

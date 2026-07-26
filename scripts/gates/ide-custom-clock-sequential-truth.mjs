@@ -117,7 +117,10 @@ async function proveBoardClockStarter(page, baseUrl, viewport) {
   await openMode(page, baseUrl, 'export', `custom-clock-sequential-truth-${viewport.label}-starter-export`);
   const exportText = await readText(page.getByTestId('ide-mode-export').first());
   assert(/E0/i.test(exportText), `${viewport.label}: starter Export must keep E0 boundary visible`);
-  assert(/External evidence required/i.test(exportText), `${viewport.label}: starter Export must not imply E1 is proven`);
+  assert(
+    /Vivado build, bitstream, programming, and physical board behavior remain external/i.test(exportText),
+    `${viewport.label}: starter Export must not imply E1 is proven`,
+  );
   await capture(page, viewport, 'starter-board-clock');
 
   return { status, policy };
@@ -166,15 +169,49 @@ async function proveManualSwitchClock(page, baseUrl, viewport) {
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: manual switch Compare mode must be selectable`);
   await clickVerifyRun(page);
   await waitForVerifyResult(page, { timeout: 30000 });
+  const status = await readText(page.getByTestId('ide-verify-summary-status').first());
+  assert(isVerifyPass(status), `${viewport.label}: default-manual switch-clock Compare should PASS, got "${status}"`);
   const policy = await readLastClockPolicy(page);
   assert(policy?.overrideMode === 'manual-pulses', `${viewport.label}: switch/button run must record manual-pulses policy, got ${JSON.stringify(policy)}`);
   assert(policy?.autoRunEnabled === false, `${viewport.label}: switch/button run must not auto-run clock`);
   assert(policy?.sourceType !== 'board-clock', `${viewport.label}: switch/button run must not record a board-clock source`);
-  await capture(page, viewport, 'manual-switch-clock');
+  await capture(page, viewport, 'manual-switch-clock-verify');
+
+  // This path deliberately never clicks a clock-mode control: detection must
+  // make the manual source authoritative before Compare and keep it through Export.
+  await openMode(page, baseUrl, 'export', `custom-clock-sequential-truth-${viewport.label}-manual-switch-export`);
+  const zip = await downloadZip(page, viewport, 'manual-switch-clock');
+  const testbench = readZipText(zip, /testbench\.vhd$/i);
+  assert(/-- sequence=authored-vectors/i.test(testbench), `${viewport.label}: default-manual Export must declare authored vectors`);
+  assert(!/clock_gen:\s*process/i.test(testbench), `${viewport.label}: default-manual Export must not invent a free-running clock`);
+  assert(!/CLK_HALF_PERIOD/i.test(testbench), `${viewport.label}: default-manual Export must not emit an auto-clock period`);
+  assert(!/wait until rising_edge/i.test(testbench), `${viewport.label}: default-manual Export must not wait on an independent edge`);
+  const authoredClockValues = Array.from(
+    // The fixture maps ENTER to Basys3 resource SW5. Generated testbenches use
+    // the canonical artifact port, not the student-facing logical label.
+    testbench.matchAll(/\bSW5(?:\(\d+\))?\s*<=\s*'([01])';/g),
+    (match) => Number(match[1]),
+  );
+  assert(
+    JSON.stringify(authoredClockValues) === JSON.stringify([0, 1, 0, 1]),
+    `${viewport.label}: authored clock assignments must preserve vector order [0,1,0,1], got ${JSON.stringify(authoredClockValues)}`,
+  );
+  const vectorMarkers = [0, 1, 2, 3].map((tick) => testbench.indexOf(`tick=${tick}`));
+  assert(
+    vectorMarkers.every((offset, index) => offset >= 0 && (index === 0 || offset > vectorMarkers[index - 1])),
+    `${viewport.label}: authored vector markers are missing or out of order: ${JSON.stringify(vectorMarkers)}`,
+  );
+  await capture(page, viewport, 'manual-switch-clock-export');
   return {
+    status,
     manualClockVisible: true,
     manualWarningVisible: /Manual clock source/i.test(verifyText),
     policy,
+    export: {
+      zipPath: zip.zipPath,
+      sequence: 'authored-vectors',
+      authoredClockValues,
+    },
   };
 }
 
@@ -282,8 +319,9 @@ async function downloadZip(page, viewport, label) {
   const [download] = await Promise.all([
     page.waitForEvent('download', { timeout: 30000 }),
     clickFirstVisible(page, [
+      '[data-testid="ide-export-package-build-v1"]',
       '[data-testid="ide-export-package-download-v1"]',
-      '[data-testid="ide-export-rebuild-btn"]',
+      '[data-testid="ide-export-draft-download-v1"]',
     ], `${viewport.label}: ${label} export download`),
   ]);
   const failure = await download.failure();

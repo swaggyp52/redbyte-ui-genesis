@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, within } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { ScenarioBuilderPanel } from '../surfaces/ScenarioBuilderPanel';
 
 type RenderPanelOptions = {
   authoringModeSummary?: string;
   authoringModeHint?: string;
   isFirstRun?: boolean;
+  isSequential?: boolean;
   clockLane?: {
     fieldId: string;
     badge: string;
@@ -60,6 +61,7 @@ function renderPanel(options: RenderPanelOptions = {}) {
       autoVectorBannerDismissed={true}
       onDismissAutoVectorBanner={vi.fn()}
       isFirstRun={options.isFirstRun ?? false}
+      isSequential={options.isSequential ?? false}
       initialExpanded={true}
       onVectorsChange={vi.fn()}
       authoringModeSummary={options.authoringModeSummary}
@@ -69,66 +71,65 @@ function renderPanel(options: RenderPanelOptions = {}) {
   );
 }
 
-describe('ScenarioBuilderPanel progressive disclosure', () => {
-  it('shows compact Test stimulus header with mode and quick stats', () => {
+describe('ScenarioBuilderPanel authoring workspace', () => {
+  it('shows one concise testbench authoring header without duplicate fact strips', () => {
     const { getByTestId, queryByTestId } = renderPanel({
       authoringModeSummary: 'Auto board clock',
       authoringModeHint:
         'CLK100MHZ runs automatically during Verify and stays out of the editable stimulus rows.',
     });
 
-    expect(getByTestId('ide-verify-stimulus-title').textContent).toBe('Test stimulus');
+    expect(getByTestId('ide-verify-stimulus-title').textContent).toBe('Testbench cases');
     expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain(
       'CLK100MHZ runs automatically'
     );
-    expect(getByTestId('ide-verify-stimulus-mode-summary').textContent).toContain(
-      'Auto board clock'
-    );
-    expect(getByTestId('ide-verify-stimulus-stat-inputs').textContent).toContain('Inputs:');
-    expect(getByTestId('ide-verify-stimulus-stat-checks').textContent).toContain('Checks:');
-    expect(getByTestId('ide-verify-stimulus-stat-cases').textContent).toContain('Cases:');
-    expect(getByTestId('ide-verify-stimulus-stat-ticks').textContent).toContain('Ticks:');
+    expect(queryByTestId('ide-verify-stimulus-mode-summary')).toBeNull();
+    expect(queryByTestId('ide-verify-stimulus-compact-stats')).toBeNull();
     expect(queryByTestId('ide-verify-stimulus-guidance')).toBeNull();
   });
 
-  it('keeps bulky instruction cards collapsed until How this works is opened', () => {
-    const { getByText, getByTestId, queryByTestId } = renderPanel();
+  it('shows the combinational case-table contract directly without a disclosure', () => {
+    const { getByTestId, queryByText } = renderPanel();
 
-    expect(queryByTestId('ide-verify-stimulus-guidance')).toBeNull();
-    fireEvent.click(getByText('How this works'));
-    const guidance = getByTestId('ide-verify-stimulus-guidance');
-    expect(within(guidance).getByTestId('ide-verify-stimulus-guide-clock').textContent).toContain(
-      'Clock / timing'
-    );
-    expect(within(guidance).getByTestId('ide-verify-stimulus-guide-advanced').textContent).toContain(
-      'Advanced tools'
-    );
+    const authoringPath = getByTestId('ide-verify-authoring-path');
+    expect(authoringPath.dataset.authoringPath).toBe('combinational-case-table');
+    expect(authoringPath.textContent).toContain('Combinational case table');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('Each row drives inputs');
+    expect(queryByText('How this works')).toBeNull();
+    expect(authoringPath.querySelector('details')).toBeNull();
   });
 
-  it('keeps advanced authoring helpers hidden until Advanced tools opens', () => {
+  it('shows the sequential timeline contract for clocked circuits', () => {
+    const { getByTestId } = renderPanel({
+      isSequential: true,
+      authoringModeSummary: 'Manual clock timeline',
+    });
+
+    const authoringPath = getByTestId('ide-verify-authoring-path');
+    expect(authoringPath.dataset.authoringPath).toBe('sequential-timeline');
+    expect(authoringPath.textContent).toContain('Sequential timeline');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('clock/reset');
+    expect(getByTestId('ide-verify-stimulus-summary').textContent).toContain('sample points');
+  });
+
+  it('removes the Advanced tools disclosure from normal Verify', () => {
     const { getByTestId, queryByTestId, queryByText } = renderPanel();
 
     expect(queryByText('More options')).toBeNull();
+    expect(queryByText('Show advanced tools')).toBeNull();
+    expect(queryByTestId('ide-stimulus-advanced-tools-toggle')).toBeNull();
+    expect(getByTestId('ide-stimulus-case-actions')).toBeTruthy();
     expect(queryByTestId('ide-stimulus-sweep-tools')).toBeNull();
     expect(queryByTestId('ide-stimulus-project-vectors-tools')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
-
-    expect(getByTestId('ide-stimulus-sweep-tools')).toBeTruthy();
-    expect(getByTestId('ide-stimulus-project-vectors-tools')).toBeTruthy();
   });
 
-  it('keeps the starter footer visible while project vectors and sweep stay in Advanced tools', () => {
-    const { getByTestId, queryByTestId } = renderPanel();
+  it('keeps exactly one case action row above the grid', () => {
+    const { getByTestId, queryAllByTestId, queryByTestId } = renderPanel();
 
     expect(getByTestId('ide-verify-add-vector-form')).toBeTruthy();
+    expect(queryAllByTestId('ide-stimulus-case-actions')).toHaveLength(1);
     expect(queryByTestId('ide-verify-open-project-vectors')).toBeNull();
-
-    fireEvent.click(getByTestId('ide-stimulus-advanced-tools-toggle'));
-
-    expect(getByTestId('ide-verify-open-project-vectors')).toBeTruthy();
-    expect(getByTestId('ide-verify-sweep-preset')).toBeTruthy();
-    expect(getByTestId('ide-verify-generate-sweep-vectors')).toBeTruthy();
+    expect(queryByTestId('ide-verify-sweep-preset')).toBeNull();
   });
 
   it('shows the first-run stimulus editor when ready vectors already exist', () => {

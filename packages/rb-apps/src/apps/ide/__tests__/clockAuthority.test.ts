@@ -42,7 +42,7 @@ describe('clockAuthority', () => {
     ).toEqual(liveContract);
   });
 
-  it('keeps the verify-authored contract when the last run still matches the design', () => {
+  it('keeps the live contract authoritative even when the last run hash matches', () => {
     const verifyRunContract = makeContract({ clockSignalName: 'verify_clk' });
     const liveContract = makeContract({ clockSignalName: 'phase_driver' });
 
@@ -55,7 +55,42 @@ describe('clockAuthority', () => {
           scheduleContract: verifyRunContract,
         },
       })
-    ).toEqual(verifyRunContract);
+    ).toEqual(liveContract);
+  });
+
+  it('does not let a poisoned matching run contract override live derivation', () => {
+    const poisonedRunContract = makeContract({
+      schedule: 'combinational',
+      clockSignalName: 'poison_clk',
+      needsSimClockInjection: true,
+    });
+    const liveContract = makeContract({ clockSignalName: 'phase_driver' });
+
+    expect(
+      resolveActiveScheduleContract({
+        deterministicHash: 'same-design-hash',
+        liveScheduleContract: liveContract,
+        lastRun: {
+          deterministicHash: 'same-design-hash',
+          scheduleContract: poisonedRunContract,
+        },
+      })
+    ).toEqual(liveContract);
+  });
+
+  it('uses the last run contract only when live derivation is unavailable', () => {
+    const priorRunContract = makeContract({ clockSignalName: 'prior_clk' });
+
+    expect(
+      resolveActiveScheduleContract({
+        deterministicHash: 'hash-live',
+        liveScheduleContract: null,
+        lastRun: {
+          deterministicHash: 'hash-old',
+          scheduleContract: priorRunContract,
+        },
+      })
+    ).toEqual(priorRunContract);
   });
 
   it('falls back to the live contract when both hashes are empty', () => {

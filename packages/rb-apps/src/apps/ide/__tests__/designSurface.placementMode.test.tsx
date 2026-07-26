@@ -86,8 +86,6 @@ function renderSurface(
 }
 
 async function openDesignLibrary(view: ReturnType<typeof renderSurface>) {
-  if (view.queryByTestId('ide-left-dock')) return;
-  fireEvent.click(view.getByTestId('ide-workbench-dock-toggle-left'));
   await waitFor(() => {
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
   });

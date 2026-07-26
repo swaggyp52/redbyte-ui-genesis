@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 import type { RBProject } from '../../../export/projectFormat';
 import { encodeRBProject } from '../../../export/projectFormat';
 import { importVivadoZipBytes } from '../zipImport';
+import { buildExportViewModel } from '../viewmodels/buildExportViewModel';
 
 function buildManifestProject(): RBProject {
   return {
@@ -46,6 +47,7 @@ function buildManifestProject(): RBProject {
     },
     fpga: {
       board: 'basys3',
+      part: 'xc7a35tcpg236-1',
       top: 'top',
       constraints: {
         type: 'xdc',
@@ -135,4 +137,42 @@ describe('zipImport manifest-first flow', () => {
       'No files were changed.'
     );
   });
+
+  it('re-exports the manifest projection byte-for-byte while conflicting siblings remain non-authoritative', async () => {
+    const project = buildManifestProject();
+    const firstExport = buildExportViewModel(project);
+    const firstManifestText = requireArtifact(firstExport, 'project.rbproj.json');
+    const firstTopText = requireArtifact(firstExport, 'top.vhd');
+    const firstXdcText = requireArtifact(firstExport, 'top.xdc');
+    const projectedManifest = JSON.parse(firstManifestText) as RBProject;
+
+    expect(firstExport.status).toBe('ok');
+    expect(projectedManifest.hdl?.sources.find((source) => source.path === 'top.vhd')?.text)
+      .not.toContain('out_y <= ;');
+    expect(projectedManifest.fpga?.constraints?.text).toContain(
+      'set_property PACKAGE_PIN V17 [get_ports {in_a}]'
+    );
+    expect(projectedManifest.fpga?.part).toBe('xc7a35tcpg236-1');
+
+    const bytes = await buildManifestZip(project, firstManifestText);
+    const imported = await importVivadoZipBytes(bytes, { sourceName: 'demo.zip' });
+    const secondExport = buildExportViewModel(imported.project);
+
+    expect(imported.importMode).toBe('manifest');
+    expect(imported.project).toEqual(projectedManifest);
+    expect(secondExport.mappingProjection).toEqual(firstExport.mappingProjection);
+    expect(secondExport.exportHash).toBe(firstExport.exportHash);
+    expect(requireArtifact(secondExport, 'top.vhd')).toBe(firstTopText);
+    expect(requireArtifact(secondExport, 'top.xdc')).toBe(firstXdcText);
+    expect(requireArtifact(secondExport, 'project.rbproj.json')).toBe(firstManifestText);
+  });
 });
+
+function requireArtifact(
+  viewModel: ReturnType<typeof buildExportViewModel>,
+  path: string,
+): string {
+  const artifact = viewModel.artifacts.find((entry) => entry.path === path);
+  expect(artifact?.content).toBeTruthy();
+  return artifact?.content ?? '';
+}

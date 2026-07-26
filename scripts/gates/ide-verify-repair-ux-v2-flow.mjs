@@ -27,7 +27,6 @@ const ARTIFACT_ROOT = path.join(
   'verify-repair-ux-v2-flow',
 );
 const SCREENSHOT_DIR = path.join(ARTIFACT_ROOT, 'screenshots');
-
 await mkdir(SCREENSHOT_DIR, { recursive: true });
 
 await runIdeGate('IDE Verify repair UX v2 flow satisfied', async ({ page, baseUrl }) => {
@@ -51,7 +50,7 @@ await runIdeGate('IDE Verify repair UX v2 flow satisfied', async ({ page, baseUr
       viewportRecord.paths.push(await runDisconnectedOutputFlow(page, baseUrl, viewport));
       record.viewports.push(viewportRecord);
     } catch (error) {
-      viewportRecord.error = error instanceof Error ? error.message : String(error);
+      viewportRecord.error = error instanceof Error ? (error.stack ?? error.message) : String(error);
       record.viewports.push(viewportRecord);
       failures.push(`${viewport.label}: ${viewportRecord.error}`);
     }
@@ -73,18 +72,22 @@ async function runPassStaleWrongExpected(page, baseUrl, viewport) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
 
   await openMode(page, baseUrl, 'verify', `verify-repair-ux-v2-pass-${viewport.label}`);
-  await page.waitForSelector('[data-testid="ide-testbench-custom-flow-steps"]', { timeout: 10000 });
-  const testbenchText = await text(page.getByTestId('ide-testbench-custom-flow-steps').first());
-  assert(/Add or select input cases/i.test(testbenchText), `${viewport.label}/Verify must keep custom testbench steps visible`);
-  assert(/Fill expected outputs/i.test(testbenchText), `${viewport.label}/Verify must explain expected outputs`);
-  assert(/Run Compare/i.test(testbenchText), `${viewport.label}/Verify must explain Compare`);
+  await page.waitForSelector('[data-testid="ide-testbench-documents"]', { timeout: 10000 });
+  await page.waitForSelector('[data-testid="ide-verify-authoring-path"]', { timeout: 10000 });
+  const documentText = await text(page.getByTestId('ide-testbench-documents').first());
+  const authoringPath = await text(page.getByTestId('ide-verify-authoring-path').first());
+  const stimulusSummary = await text(page.getByTestId('ide-verify-stimulus-summary').first());
+  assert(/Testbench documents/i.test(documentText), `${viewport.label}/Verify must expose explicit testbench documents`);
+  assert(/Combinational case table/i.test(authoringPath), `${viewport.label}/Verify must identify the active authoring model`);
+  assert(/drives inputs/i.test(stimulusSummary), `${viewport.label}/Verify must explain stimulus inputs`);
+  assert(/expected cells.*Compare check/i.test(stimulusSummary), `${viewport.label}/Verify must explain how expected outputs become Compare checks`);
 
   await runComparePass(page);
   await assertPassAuthority(page, viewport);
   await assertNoRootOverflow(page, `${viewport.label}/PASS authority`);
   await capture(page, viewport, '01-pass-authority');
 
-  const { fieldId, tick } = await pickExpectedOutputCell(page);
+  const { fieldId, tick, original } = await pickExpectedOutputCell(page);
   await flipExpectedCell(page, fieldId, tick);
   await assertStaleAuthority(page, viewport);
   await assertNoRootOverflow(page, `${viewport.label}/stale expected edit`);
@@ -99,10 +102,18 @@ async function runPassStaleWrongExpected(page, baseUrl, viewport) {
   }
   await waitForVerifyResult(page, { timeout: 20000 });
   await assertRepairDecisionPanel(page, viewport, 'wrong expected-output');
+  const repairReachability = await assertObservedRepairReachability(page, viewport, fieldId, tick, original);
+  await assertStaleAuthority(page, viewport);
+  await runCompare(page, `${viewport.label}/repaired expected-output`, 'pass');
+  await assertPassAuthority(page, viewport);
   await assertNoRootOverflow(page, `${viewport.label}/wrong expected-output repair`);
   await capture(page, viewport, '03-wrong-expected-repair');
 
-  return { path: 'A/B/C PASS stale wrong expected-output', editedCell: { fieldId, tick } };
+  return {
+    path: 'A/B/C PASS stale wrong expected-output repaired by observed evidence',
+    editedCell: { fieldId, tick, original },
+    repairReachability,
+  };
 }
 
 async function runWrongCircuitFlow(page, baseUrl, viewport) {
@@ -157,7 +168,7 @@ async function runDisconnectedOutputFlow(page, baseUrl, viewport) {
   ];
   await authorInputCases(page, cases);
   await authorExpectedCases(page, cases);
-  await runCompare(page, 'disconnected output', 'fail');
+  await runCompare(page, 'disconnected output', 'blocked');
 
   await openFailureDetails(page, `${viewport.label}/disconnected output`);
   const panel = page.getByTestId('ide-verify-structural-recovery-panel').first();
@@ -166,8 +177,13 @@ async function runDisconnectedOutputFlow(page, baseUrl, viewport) {
   assert(/OUT/i.test(structuralText), `${viewport.label}/structural recovery must name OUT, got "${structuralText}"`);
   assert(/not driven|connect a driver/i.test(structuralText), `${viewport.label}/structural recovery must say the output is not driven, got "${structuralText}"`);
   assert(/not an expected-output mismatch/i.test(structuralText), `${viewport.label}/structural recovery must not look like normal Compare mismatch, got "${structuralText}"`);
-  const commandSummary = await text(page.getByTestId('ide-vcb-session-summary').first());
-  assert(/Output not driven/i.test(commandSummary), `${viewport.label}/command summary must say Output not driven, got "${commandSummary}"`);
+  const resultAuthority = page.getByTestId('ide-verify-results-summary').first();
+  await resultAuthority.waitFor({ state: 'visible', timeout: 10000 });
+  const commandSummary = await text(resultAuthority);
+  assert(
+    /does not match|cannot verify|output/i.test(commandSummary),
+    `${viewport.label}/latest-run authority must describe the structural failure, got "${commandSummary}"`,
+  );
   assert(!/0\/0 match/i.test(`${structuralText} ${commandSummary}`), `${viewport.label}/structural recovery must not lead with 0/0 match`);
   assert(await page.getByTestId('ide-verify-structural-open-design').isVisible().catch(() => false), `${viewport.label}/structural recovery must expose Open Design`);
   await assertNoRootOverflow(page, `${viewport.label}/disconnected output recovery`);
@@ -190,6 +206,11 @@ async function assertPassAuthority(page, viewport) {
 }
 
 async function assertStaleAuthority(page, viewport) {
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') === 'stale',
+    undefined,
+    { timeout: 10000 },
+  );
   const summary = page.getByTestId('ide-verify-results-summary').first();
   await summary.waitFor({ state: 'visible', timeout: 10000 });
   assert((await summary.getAttribute('data-kind')) === 'stale', `${viewport.label}/latest-run authority must be marked stale`);
@@ -222,7 +243,6 @@ async function assertRepairDecisionPanel(page, viewport, label) {
   for (const testId of [
     'ide-verify-repair-edit-expected',
     'ide-verify-repair-use-observed',
-    'ide-verify-repair-use-observed-row',
     'ide-verify-repair-open-design',
     'ide-verify-repair-rerun',
   ]) {
@@ -230,13 +250,82 @@ async function assertRepairDecisionPanel(page, viewport, label) {
   }
 }
 
-async function openFailureDetails(page, label) {
-  const details = page.getByTestId('ide-verify-advanced-failure').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
+async function assertObservedRepairReachability(page, viewport, fieldId, tick, expectedObservedValue) {
+  const testId = 'ide-verify-repair-use-observed';
+  const button = page.getByTestId(testId).first();
+  const panel = page.getByTestId('ide-verify-repair-panel').first();
+  await button.waitFor({ state: 'visible', timeout: 10000 });
+  assert(await button.isEnabled(), `${viewport.label}/wrong expected-output: Use observed must be enabled`);
+  await button.scrollIntoViewIfNeeded();
+
+  const hitTest = await button.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    const hit = document.elementFromPoint(center.x, center.y);
+    return {
+      width: rect.width,
+      height: rect.height,
+      center,
+      hitTestId: hit?.getAttribute?.('data-testid') ?? null,
+      reachesButton: hit === element || Boolean(hit && element.contains(hit)),
+    };
+  });
+  assert(hitTest.width >= 36 && hitTest.height >= 32, `${viewport.label}/wrong expected-output: Use observed hit target is too small`);
+  assert(
+    hitTest.reachesButton,
+    `${viewport.label}/wrong expected-output: Use observed center is intercepted by ${hitTest.hitTestId ?? 'an unlabelled element'}`,
+  );
+  await button.click({ trial: true });
+
+  const panelGeometry = await panel.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    scrollLeft: element.scrollLeft,
+  }));
+  assert(
+    panelGeometry.scrollWidth <= panelGeometry.clientWidth,
+    `${viewport.label}/wrong expected-output: repair panel overflows horizontally (${panelGeometry.scrollWidth}/${panelGeometry.clientWidth})`,
+  );
+  assert(panelGeometry.scrollLeft === 0, `${viewport.label}/wrong expected-output: repair panel has horizontal scroll offset`);
+  await assertNoRootOverflow(page, `${viewport.label}/Use observed reachability`);
+
+  await button.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  const focusedTestId = await page.evaluate(() => document.activeElement?.getAttribute?.('data-testid') ?? null);
+  assert(focusedTestId === testId, `${viewport.label}/wrong expected-output: Tab must return focus to Use observed, got ${focusedTestId}`);
+  await page.keyboard.press('Enter');
+  const cellTestId = `ide-stimulus-expected-${fieldId}-t${tick}`;
+  let repairedValue = await readCellValue(page, cellTestId);
+  for (let attempt = 0; attempt < 30 && repairedValue !== expectedObservedValue; attempt += 1) {
+    await page.waitForTimeout(100);
+    repairedValue = await readCellValue(page, cellTestId);
   }
-  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
+  const activationState = await page.evaluate((targetTestId) => ({
+    activeTestId: document.activeElement?.getAttribute?.('data-testid') ?? null,
+    panelPresent: Boolean(document.querySelector('[data-testid="ide-verify-repair-panel"]')),
+    resultsKind: document.querySelector('[data-testid="ide-verify-results-summary"]')?.getAttribute('data-kind') ?? null,
+    cellTitle: document.querySelector(`[data-testid="${targetTestId}"]`)?.getAttribute('title') ?? null,
+  }), cellTestId);
+  assert(
+    repairedValue === expectedObservedValue,
+    `${viewport.label}/wrong expected-output: Enter did not apply observed value ${expectedObservedValue}; got ${repairedValue}; state=${JSON.stringify(activationState)}`,
+  );
+
+  return { hitTest, panelGeometry, focusedTestId, activation: 'Enter', activationState, repairedValue };
+}
+
+async function openFailureDetails(page, label) {
+  const failureRepair = page.getByTestId('ide-verify-advanced-failure').first();
+  await failureRepair.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    (await failureRepair.evaluate((element) => element.tagName.toLowerCase())) === 'section',
+    `${label}: failure repair must be an always-visible section`,
+  );
+  assert(
+    !(await failureRepair.locator('summary').isVisible().catch(() => false)),
+    `${label}: failure repair must not hide behind a disclosure`,
+  );
 }
 
 async function startBlankProject(page, baseUrl, gateLabel, projectName) {
@@ -266,6 +355,7 @@ async function buildTwoInputCircuit(page, gateType, outputLabel) {
     { x: 0.48, y: 0.46 },
   );
   nodes.out = await placeAndLabel(page, '[data-testid="ide-design-board-output-ld0"]', outputLabel, { x: 0.84, y: 0.46 });
+  await fitCenterZoom(page);
   await connectPorts(page, nodes.A, 'out', nodes.gate, 'a');
   await connectPorts(page, nodes.B, 'out', nodes.gate, 'b');
   await connectPorts(page, nodes.gate, 'out', nodes.out, 'in');
@@ -321,8 +411,14 @@ async function runCompare(page, label, expectation) {
   const statusText = await text(page.getByTestId('ide-verify-summary-status').first());
   if (expectation === 'pass') {
     assert(/PASS|Compare PASS|Checks aligned/i.test(statusText), `${label}: Compare should PASS, got "${statusText}"`);
-  } else {
+  } else if (expectation === 'fail') {
     assert(isVerifyFail(statusText), `${label}: Compare should FAIL, got "${statusText}"`);
+  } else {
+    assert(
+      /DESIGN BLOCKED|CANNOT VERIFY|INCONCLUSIVE/i.test(statusText),
+      `${label}: structural preflight should block Compare without reporting FAIL, got "${statusText}"`,
+    );
+    assert(!isVerifyFail(statusText), `${label}: structural preflight must remain distinct from Compare FAIL`);
   }
 }
 
@@ -480,10 +576,28 @@ async function connectPorts(page, fromNodeId, fromPort, toNodeId, toPort) {
 
 async function clickPort(page, nodeId, portName) {
   const port = page.locator(`[data-node-id="${nodeId}"] [data-port-id="${portName}"]`).first();
-  await port.waitFor({ state: 'visible', timeout: 8000 });
-  const box = await port.boundingBox();
-  if (!box) throw new Error(`port ${nodeId}.${portName} has no clickable box`);
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  if (await port.isVisible().catch(() => false)) {
+    const box = await port.boundingBox();
+    if (!box) throw new Error(`port ${nodeId}.${portName} has no clickable box`);
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    return;
+  }
+
+  const clusters = page.locator(`[data-node-id="${nodeId}"] [data-port-cluster]`);
+  for (let index = 0; index < await clusters.count(); index += 1) {
+    const cluster = clusters.nth(index);
+    const portIds = ((await cluster.getAttribute('data-port-ids')) ?? '').split(/\s+/);
+    if (!portIds.includes(portName)) continue;
+    await cluster.click();
+    const choice = page
+      .locator(`[data-testid="logic-port-picker-choice-${nodeId}-${portName}"]`)
+      .first();
+    await choice.waitFor({ state: 'visible', timeout: 5000 });
+    await choice.click();
+    return;
+  }
+
+  throw new Error(`port ${nodeId}.${portName} was not visible as a direct target or dense-picker choice`);
 }
 
 async function moveNodeToCanvasFraction(page, nodeId, position) {
@@ -555,15 +669,20 @@ async function renameProject(page, name) {
 }
 
 async function setDesignZoomPreset(page, preset) {
-  const button = page.locator(`[data-testid="ide-design-zoom-preset-${preset}"]`).first();
-  if (await button.isVisible().catch(() => false)) {
-    await button.click();
-    await page.waitForTimeout(120);
+  if (preset !== '50') return;
+  const reset = page.locator('[data-testid="ide-design-zoom-reset"]:visible').first();
+  const zoomOut = page.locator('[data-testid="ide-design-zoom-out"]:visible').first();
+  await reset.waitFor({ state: 'visible', timeout: 5000 });
+  await zoomOut.waitFor({ state: 'visible', timeout: 5000 });
+  await reset.click();
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await zoomOut.click();
   }
+  await page.waitForTimeout(120);
 }
 
 async function fitCenterZoom(page) {
-  const button = page.locator('[data-testid="ide-design-fit-view"], [data-testid="ide-design-toolbar-fit"]').first();
+  const button = page.locator('[data-testid="ide-design-fit-circuit-canvas"]:visible').first();
   if (await button.isVisible().catch(() => false)) {
     await button.click();
     await page.waitForTimeout(160);

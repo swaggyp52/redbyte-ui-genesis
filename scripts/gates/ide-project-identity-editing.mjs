@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-import { execSync } from 'node:child_process';
 import { assert, runIdeGate, visible } from './_gateHarness.mjs';
+import { assertBuildHash } from './_workbenchReconstructionHarness.mjs';
 
-const EXPECTED_HEAD = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
-const EXPECTED_UI_BUILD = EXPECTED_HEAD.slice(0, 7);
 const VIEWPORTS = [
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
@@ -92,13 +90,7 @@ async function loadLogicGatesStarter(page) {
 }
 
 async function assertBuildMatchesHead(page) {
-  const buildBadge = page.locator('[data-testid="ide-build-badge"]').first();
-  assert(await visible(buildBadge), 'build identity must be visible before browser proof');
-  const buildText = await text(buildBadge);
-  assert(
-    buildText.includes(EXPECTED_UI_BUILD),
-    `visible build hash must match local HEAD ${EXPECTED_UI_BUILD}, got "${buildText}"`
-  );
+  await assertBuildHash(page, 'Project identity editing');
 }
 
 async function renameFromTopBar(page, nextName, commitMode) {
@@ -204,10 +196,9 @@ async function runViewport(page, baseUrl, viewport) {
   await renameFromProjectStrip(page, savedName, 'enter');
   await assertTitleEverywhere(page, savedName);
 
-  const supportingDetails = page.locator('[data-testid="ide-project-supporting-details"]').first();
-  assert(await visible(supportingDetails), 'renamed starter project must keep supporting details reachable');
-  await supportingDetails.locator(':scope > summary').click();
-  const sourceText = await text(page.locator('[data-testid="ide-project-session"]').first());
+  const sourceOverview = page.locator('[data-testid="ide-project-workspace-context"]').first();
+  assert(await visible(sourceOverview), 'renamed starter project must keep its current project overview visible');
+  const sourceText = await text(sourceOverview);
   assert(
     sourceText.includes('Logic Gates: AND / OR / XOR') && !sourceText.includes(savedName),
     `starter source context must stay distinct from renamed project title, got "${sourceText}"`

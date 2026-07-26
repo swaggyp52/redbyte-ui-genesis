@@ -1,7 +1,7 @@
 /**
  * B3: Vivado export + re-import fidelity contract tests.
  *
- * Three fidelity levels are tested here (matching docs/ARCHITECTURE.md):
+ * Three fidelity paths are tested here (matching docs/ARCHITECTURE.md):
  *
  *   Full fidelity  — project.rbproj.json manifest round-trip:
  *     circuit → encode(RBProject) → decode → same circuit (node/conn count)
@@ -10,9 +10,11 @@
  *     hand-crafted structural VHDL → parseVhdl → parsedHdlToCircuit →
  *     reconstructionLevel === 'full', correct gate/connection count
  *
- *   Partial        — RedByte-exported VHDL (concurrent signal assignments)
- *     or behavioral process blocks → reconstructionLevel !== 'full'
- *     (documented limitation: use rbproj.json for round-trips)
+ *   Reconstructed  — RedByte-exported concurrent signal assignments:
+ *     the supported generated subset reconstructs with full graph fidelity
+ *
+ *   Partial        — arbitrary behavioral process blocks remain outside the
+ *     structural importer boundary; use rbproj.json for lossless round-trips
  */
 
 import { describe, expect, it } from 'vitest';
@@ -137,13 +139,10 @@ describe('Vivado export + re-import fidelity contract (B3)', () => {
     });
   });
 
-  // ── Fidelity Level 3: concurrent-assignment VHDL (RedByte export format) ──
+  // ── Fidelity Level 3: generated concurrent-assignment VHDL ───────────────
 
-  describe('Partial fidelity — concurrent-assignment VHDL (documented limitation)', () => {
-    it('RedByte exported VHDL produces non-full reconstruction — use rbproj.json for round-trips', () => {
-      // RedByte's vhdlFromNetlist emits concurrent signal assignments (and_0 <= A and B),
-      // not component instantiation. parseVhdl+parsedHdlToCircuit requires structural VHDL.
-      // Full fidelity round-trips must go through project.rbproj.json (the manifest).
+  describe('Generated concurrent-assignment VHDL reconstruction', () => {
+    it('reconstructs the RedByte-generated AND graph with full fidelity', () => {
       const { circuit, ioMapping } = buildAndGateCircuit();
       const bundle = exportBasys3Bundle(circuit, ioMapping, { entityName: 'top' });
       expect(bundle.topVhd).toBeTruthy();
@@ -151,8 +150,10 @@ describe('Vivado export + re-import fidelity contract (B3)', () => {
       const parsed = parseVhdl(bundle.topVhd);
       const result = parsedHdlToCircuit(parsed);
 
-      // Concurrent-assignment VHDL has no component instances — ports-only level expected
-      expect(result.reconstructionLevel).not.toBe('full');
+      expect(result.reconstructionLevel).toBe('full');
+      expect(result.unmappedComponents).toHaveLength(0);
+      expect(countGateNodes(result.circuit)).toBe(1);
+      expect(result.circuit.connections.length).toBeGreaterThan(0);
     });
 
     it('behavioral process-block VHDL also cannot be round-tripped', () => {

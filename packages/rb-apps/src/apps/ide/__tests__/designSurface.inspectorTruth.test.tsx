@@ -248,7 +248,7 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
     expect(diagnosticsEl.textContent).not.toContain('Compiler diagnostics');
   });
 
-  it('does not show "Dirty since verify" or "Dirty since export" in Details when expanded', async () => {
+  it('keeps raw properties, workspace internals, and dirty-state noise out of the inspector', async () => {
     const view = renderSurface(BASE_CIRCUIT, {
       compilerStatus: makeStatusWithIrDiagnostics(),
     });
@@ -257,25 +257,20 @@ describe('Inspector Truth — no developer internals exposed to students', () =>
       useLogicViewStore.getState().selectNode('and0_node');
     });
 
-    // Wait for the section to appear then expand it so children render
     await waitFor(() => {
-      expect(view.getByTestId('ide-design-inspector-details-toggle')).toBeTruthy();
+      expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
 
-    fireEvent.click(view.getByTestId('ide-design-inspector-details-toggle'));
-
-    await waitFor(() => {
-      const section = view.getByTestId('ide-design-inspector-details');
-      expect(section.getAttribute('data-open')).toBe('true');
-    });
-
-    const detailsSection = view.getByTestId('ide-design-inspector-details');
-    expect(detailsSection.textContent).not.toContain('Dirty since verify');
-    expect(detailsSection.textContent).not.toContain('Dirty since export');
+    expect(view.queryByTestId('ide-design-inspector-details')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-details-toggle')).toBeNull();
+    expect(view.queryByTestId('ide-design-selection-properties')).toBeNull();
+    expect(view.queryByTestId('ide-design-inspector-workspace-debug')).toBeNull();
+    expect(view.container.textContent).not.toContain('Dirty since verify');
+    expect(view.container.textContent).not.toContain('Dirty since export');
   });
 
   it('keeps simulation state in the story strip instead of toolbar transport buttons or an inspector disclosure', async () => {
-    const view = renderSurface(BASE_CIRCUIT);
+    const view = renderSurface(BASE_CIRCUIT, { sim: makeSimWithTrace() });
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-sim-story-strip')).toBeTruthy();

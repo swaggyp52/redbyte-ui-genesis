@@ -417,11 +417,11 @@ const EXAMPLE_PIN_CONTRACT: Record<string, Record<string, string>> = {
     q1: 'LD1',
   },
   'half-adder': {
-    sw0: 'V17', sw1: 'W16',
+    sw0: 'V17', sw1: 'V16',
     ld0: 'U16', ld1: 'E19',
   },
   'full-adder': {
-    sw0: 'V17', sw1: 'W16', sw2: 'W15',
+    sw0: 'V17', sw1: 'V16', sw2: 'W16',
     ld0: 'U16', ld1: 'E19',
   },
 };

@@ -4,10 +4,11 @@ import { join } from 'node:path';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import type { IoMapping, TestVector } from '@redbyte/rb-utils';
-import { encodeRBProject, type RBProject } from '../export/projectFormat';
+import { decodeRBProject, encodeRBProject, type RBProject } from '../export/projectFormat';
 import { parseVhdl } from '../import/vhdlImport';
 import { parsedHdlToCircuit } from '../import/hdlToCircuit';
 import { buildExportViewModel } from '../apps/ide/viewmodels/buildExportViewModel';
+import { exportProjectAsBasys3 } from '../fpga/boards/basys3/basys3ExportService';
 
 const FIXTURE_DIR = join(
   process.cwd(),
@@ -96,7 +97,14 @@ function sha256Hex(bytes: Uint8Array): string {
 describe('IDE export includes rbproj contract', () => {
   it('includes canonical project.rbproj.json in the export artifact set and ZIP', async () => {
     const project = buildFixtureProject(loadFixtureVhdl());
-    const encodedProject = encodeRBProject(project).replace(/\r\n/g, '\n').trim();
+    const staleAuthoredProjection = encodeRBProject(project).replace(/\r\n/g, '\n').trim();
+    const canonicalExport = exportProjectAsBasys3(project);
+    expect(canonicalExport.success).toBe(true);
+    expect(canonicalExport.bundle).toBeTruthy();
+    expect(canonicalExport.projectProjection).toBeTruthy();
+    const encodedProjection = encodeRBProject(canonicalExport.projectProjection!)
+      .replace(/\r\n/g, '\n')
+      .trim();
     const exportViewModel = buildExportViewModel(project);
 
     expect(exportViewModel.status).toBe('ok');
@@ -106,7 +114,19 @@ describe('IDE export includes rbproj contract', () => {
     );
     expect(rbprojArtifact).toBeTruthy();
     expect(rbprojArtifact?.status).toBe('ready');
-    expect(rbprojArtifact?.content.trim()).toBe(encodedProject);
+    expect(rbprojArtifact?.content.trim()).toBe(encodedProjection);
+    expect(rbprojArtifact?.content.trim()).not.toBe(staleAuthoredProjection);
+
+    const authoredProject = decodeRBProject(staleAuthoredProjection);
+    const projectedProject = decodeRBProject(rbprojArtifact!.content);
+    expect(projectedProject.circuit).toEqual(authoredProject.circuit);
+    expect(projectedProject.ioMapping).toEqual(authoredProject.ioMapping);
+    expect(projectedProject.vectors).toEqual(authoredProject.vectors);
+    expect(projectedProject.name).toBe(project.name);
+    expect(projectedProject.meta).toEqual(project.meta);
+    expect(projectedProject.hdl?.sources.find((source) => source.path === 'top.vhd')?.text)
+      .toBe(canonicalExport.bundle!.topVhd);
+    expect(projectedProject.fpga?.constraints?.text).toBe(canonicalExport.bundle!.topXdc);
 
     const zipA = await buildVivadoKitZip(exportViewModel.artifacts);
     const zipB = await buildVivadoKitZip(exportViewModel.artifacts);
@@ -117,7 +137,7 @@ describe('IDE export includes rbproj contract', () => {
     expect(rbprojZipEntry, 'project.rbproj.json should be present in export ZIP').toBeTruthy();
 
     const rbprojText = await rbprojZipEntry!.async('string');
-    expect(rbprojText.replace(/\r\n/g, '\n').trim()).toBe(encodedProject);
+    expect(rbprojText.replace(/\r\n/g, '\n').trim()).toBe(encodedProjection);
 
     const parsedProject = JSON.parse(rbprojText) as RBProject;
     expect(parsedProject.name).toBe('rbproj-export-contract');

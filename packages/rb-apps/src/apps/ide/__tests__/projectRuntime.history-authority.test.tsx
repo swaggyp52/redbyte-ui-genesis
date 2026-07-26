@@ -154,7 +154,7 @@ function assertHardwareStaleStatus(getByTestId: RenderResult['getByTestId']): vo
   expect(getByTestId('ide-hardware-export-status').textContent).toContain('Export: STALE');
   const readinessText = getByTestId('ide-hardware-readiness-callout').textContent ?? '';
   expect(readinessText).not.toContain('E0 handoff ready');
-  expect(readinessText).toMatch(/Verify evidence is stale|Complete required pin mapping/);
+  expect(readinessText).toMatch(/Verify evidence is stale|Complete required pin mapping|Run Verify before relying/);
 }
 
 function buildProjectFromRuntimeState(): RBProject {
@@ -661,7 +661,7 @@ describe('projectRuntime history authority', () => {
         currentVerifyProjectHash: undoneHash,
         dirtySinceVerify: true,
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       deriveExportCurrent({
         lastExport: {
@@ -672,7 +672,7 @@ describe('projectRuntime history authority', () => {
         currentExportHash: undoneHash,
         dirtySinceExport: true,
       })
-    ).toBe(true);
+    ).toBe(false);
 
     const run = useProjectRuntime.getState().runVerification({
       scenarioId: 'post-undo-canonical-state',
@@ -742,7 +742,7 @@ describe('projectRuntime history authority', () => {
         currentVerifyProjectHash: restoredHash,
         dirtySinceVerify: true,
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       deriveExportCurrent({
         lastExport: {
@@ -753,7 +753,7 @@ describe('projectRuntime history authority', () => {
         currentExportHash: restoredHash,
         dirtySinceExport: true,
       })
-    ).toBe(true);
+    ).toBe(false);
 
     act(() => {
       useProjectRuntime.getState().redoProjectEdit();
@@ -783,7 +783,7 @@ describe('projectRuntime history authority', () => {
     ).toBe(false);
   });
 
-  it('deleting an output after verify and export prunes stale expected outputs and keeps all surfaces aligned', () => {
+  it('deleting an output after verify and export preserves authored expectations and clears current evidence', () => {
     useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
 
     const originalHash = currentProjectHash();
@@ -844,7 +844,9 @@ describe('projectRuntime history authority', () => {
     const expectedIoRows = extractExpectedIoRowsForTest(exportViewModel.artifacts);
 
     expect(runtimeState.projectIoRows.some((row) => row.nodeId === 'ld1_node')).toBe(false);
-    expect(runtimeState.projectVectors.every((vector) => !('ld1' in (vector.expected ?? {})))).toBe(true);
+    expect(runtimeState.projectVectors.every((vector) => 'ld1' in (vector.expected ?? {}))).toBe(true);
+    expect(runtimeState.verifyLastRun).toBeUndefined();
+    expect(runtimeState.verifyRunHistory.length).toBeGreaterThan(0);
     expect(runtimeState.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(runtimeState.projectHealthCore.dirtySinceExport).toBe(true);
     expect(verifyCurrent).toBe(false);
@@ -1329,7 +1331,7 @@ describe('projectRuntime history authority', () => {
     expect(redoneState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
   });
 
-  it('deleting an input after verify and export prunes ghost input identity across vectors and scenarios', () => {
+  it('deleting an input after verify and export preserves authored references for review', () => {
     useProjectRuntime.getState().loadFromProject(buildTwoOutputHistoryFixture());
 
     const originalHash = currentProjectHash();
@@ -1388,12 +1390,14 @@ describe('projectRuntime history authority', () => {
     });
 
     expect(deletedState.projectIoRows.some((row) => row.nodeId === 'sw0_node')).toBe(false);
-    expect(deletedState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
+    expect(deletedState.projectVectors.every((vector) => 'sw0' in (vector.inputs ?? {}))).toBe(true);
     expect(
       deletedState.scenarios.every((scenario) =>
-        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})))
+        scenario.vectors.every((vector) => 'sw0' in (vector.inputs ?? {}))
       )
     ).toBe(true);
+    expect(deletedState.verifyLastRun).toBeUndefined();
+    expect(deletedState.verifyRunHistory.length).toBeGreaterThan(0);
     expect(deletedState.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(deletedState.projectHealthCore.dirtySinceExport).toBe(true);
     expect(verifyCurrent).toBe(false);
@@ -1449,10 +1453,10 @@ describe('projectRuntime history authority', () => {
 
     const redoneState = useProjectRuntime.getState();
     expect(redoneState.projectIoRows.some((row) => row.nodeId === 'sw0_node')).toBe(false);
-    expect(redoneState.projectVectors.every((vector) => !('sw0' in (vector.inputs ?? {})))).toBe(true);
+    expect(redoneState.projectVectors.every((vector) => 'sw0' in (vector.inputs ?? {}))).toBe(true);
     expect(
       redoneState.scenarios.every((scenario) =>
-        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})))
+        scenario.vectors.every((vector) => 'sw0' in (vector.inputs ?? {}))
       )
     ).toBe(true);
   });
@@ -1840,7 +1844,7 @@ describe('projectRuntime history authority', () => {
     act(() => {
       useProjectRuntime.getState().applyCircuitMutation(withDeletedInput);
     });
-    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('sw1' in (vector.inputs ?? {})))).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'sw1' in (vector.inputs ?? {}))).toBe(true);
     assertRuntimeStaleAlignment();
 
     const withAddedOutput: Circuit = {
@@ -1899,7 +1903,7 @@ describe('projectRuntime history authority', () => {
     act(() => {
       useProjectRuntime.getState().applyCircuitMutation(withDeletedOutput);
     });
-    expect(useProjectRuntime.getState().projectVectors.every((vector) => !('ld2' in (vector.expected ?? {})))).toBe(true);
+    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'ld2' in (vector.expected ?? {}))).toBe(true);
     assertRuntimeStaleAlignment();
 
     const renamedInputRow = useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node');
@@ -1984,7 +1988,7 @@ describe('projectRuntime history authority', () => {
     });
     expect(
       merged.scenarios.every((scenario) =>
-        scenario.vectors.every((vector) => !('sw0' in (vector.inputs ?? {})) && !('ld1' in (vector.expected ?? {})))
+        scenario.vectors.every((vector) => 'sw0' in (vector.inputs ?? {}) && 'ld1' in (vector.expected ?? {}))
       )
     ).toBe(true);
     expect(

@@ -10,7 +10,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getVerifyHint, type VerifyHintContext } from '../verifyHints';
+import {
+  deriveVerifyFailurePattern,
+  getVerifyHint,
+  type VerifyHintContext,
+} from '../verifyHints';
 
 const BASE: VerifyHintContext = {
   hasDff: false,
@@ -92,11 +96,33 @@ describe('getVerifyHint - legacy all-ticks and first-tick hints', () => {
 
   it('fires when onlyFirstTickFails is true', () => {
     const hint = getVerifyHint({ ...BASE, onlyFirstTickFails: true });
-    expect(hint).toContain('first tick fails');
+    expect(hint).toContain('first sampled case fails');
+    expect(hint).not.toContain('initial/reset');
   });
 });
 
 describe('getVerifyHint - pattern-aware hints', () => {
+  it('treats Auto tick 0 as the first sampled cycle, not pre-edge startup', () => {
+    const pattern = deriveVerifyFailurePattern({
+      totalRows: 2,
+      failCount: 1,
+      selectedFailure: { tick: 0, signal: 'q' },
+      selectedPeerFailCount: 0,
+      selectedSignalFailTickCount: 1,
+      selectedSignalFirstFailTick: 0,
+      firstFailureTick: 0,
+      firstRunTick: 0,
+      isSequentialRun: true,
+      hasResetSignalRole: true,
+      tick0Meaning: null,
+      samplePoint: 'post-rising-edge',
+    });
+
+    expect(pattern?.kind).toBe('selected-case');
+    expect(pattern?.summary).not.toContain('startup');
+    expect(pattern?.nextInspect).not.toContain('before the first clocked update');
+  });
+
   it('distinguishes repeated single-output failure from grouped peer failure', () => {
     const repeatedHint = getVerifyHint({
       ...BASE,

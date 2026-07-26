@@ -2,26 +2,13 @@
 
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
-async function openBridgeDisclosure(page) {
-  const disclosure = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
-  await disclosure.waitFor({ state: 'visible', timeout: 10000 });
-
-  const isOpen = await disclosure.evaluate((element) => {
-    if (!(element instanceof HTMLDetailsElement)) {
-      throw new Error('project bridge disclosure must be a details element');
-    }
-    return element.open;
-  });
-
-  if (!isOpen) {
-    await disclosure.evaluate((element) => {
-      if (!(element instanceof HTMLDetailsElement)) {
-        throw new Error('project bridge disclosure must be a details element');
-      }
-      element.open = true;
-    });
-  }
-
+async function assertProjectRecordVisible(page) {
+  const record = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
+  await record.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    await record.evaluate((element) => !(element instanceof HTMLDetailsElement)),
+    'project engineering record must be an ordinary visible section, not a disclosure',
+  );
   await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
 }
 
@@ -52,26 +39,23 @@ async function openExamplesBrowserIfCollapsed(page) {
 
 async function openLandingStarterCatalog(page) {
   const catalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-  await catalog.waitFor({ state: 'visible', timeout: 10000 });
-
   const isOpen = await catalog.evaluate((element) => {
-    if (!(element instanceof HTMLDetailsElement)) {
-      throw new Error('project starter catalog must be a details element');
-    }
-    return element.open;
-  });
+    if (element instanceof HTMLDetailsElement) return element.open;
+    return !element.hasAttribute('hidden') && element.getAttribute('data-expanded') !== 'false';
+  }).catch(() => false);
   if (isOpen) return;
 
   const openStarter = page.locator('[data-testid="ide-project-open-starter-primary"]').first();
   if (await openStarter.isVisible().catch(() => false)) {
     await openStarter.click();
-  } else {
+  } else if (await catalog.locator('summary').first().isVisible().catch(() => false)) {
     await catalog.locator('summary').first().click();
   }
 
   await page.waitForFunction(() => {
     const element = document.querySelector('[data-testid="ide-project-starter-catalog"]');
-    return element instanceof HTMLDetailsElement && element.open;
+    if (element instanceof HTMLDetailsElement) return element.open;
+    return Boolean(element && !element.hasAttribute('hidden') && element.getAttribute('data-expanded') !== 'false');
   });
 }
 
@@ -107,16 +91,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 10000 });
 
-  const bridgeDisclosure = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
-  await bridgeDisclosure.waitFor({ state: 'visible', timeout: 10000 });
-  const bridgeStartsCollapsed = await bridgeDisclosure.evaluate((element) => {
-    if (!(element instanceof HTMLDetailsElement)) {
-      throw new Error('project bridge disclosure must be a details element');
-    }
-    return !element.open;
-  });
-  assert(bridgeStartsCollapsed, 'project bridge internals must start tucked behind a closed disclosure');
-  await openBridgeDisclosure(page);
+  await assertProjectRecordVisible(page);
   await openExamplesBrowserIfCollapsed(page);
 
   const loadButtons = page.locator('[data-testid^="ide-project-load-start-"]');
@@ -168,7 +143,7 @@ await runIdeGate('IDE examples catalog and guarded open contract satisfied', asy
   }
 
   // After loading an example the surface is STATE B (bridge visible, not start dock).
-  await openBridgeDisclosure(page);
+  await assertProjectRecordVisible(page);
   await openExamplesBrowserIfCollapsed(page);
 
   const loadedButtonClass = await targetCard.getAttribute('class');

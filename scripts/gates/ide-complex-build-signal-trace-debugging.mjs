@@ -61,7 +61,7 @@ await runIdeGate('IDE complex-build signal trace debugging satisfied', async ({ 
 
     await renameProject(page, `RB Signal Trace Debug ${viewport.label}`);
     await revealDesignLibrary(page);
-    await setDesignZoomPreset(page, '50');
+    await exerciseDirectDesignCamera(page);
     const nodes = await buildWrongFullAdderSumCircuit(page);
     await capture(page, `${viewport.label}-01-two-stage-wrong-sum.png`);
 
@@ -161,9 +161,18 @@ async function buildFullAdderSumCases(page) {
 }
 
 async function assertWrongBuildRepairPanel(page, options) {
-  await openFailureDetails(page, 'wrong-build repair');
   await page.waitForSelector('[data-testid="ide-verify-repair-panel"]', { timeout: 10000 });
   const panel = page.locator('[data-testid="ide-verify-repair-panel"]').first();
+  const decision = page.locator('[data-testid="ide-verify-repair-decision"]').first();
+  assert(await decision.isVisible().catch(() => false), 'wrong-build repair decision must be directly visible');
+  assert(
+    /expected output wrong.*circuit wrong/i.test(await text(decision)),
+    'wrong-build repair must distinguish expected-output repair from circuit repair',
+  );
+  assert(
+    (await page.locator('details[data-testid="ide-verify-advanced-failure"], [data-testid="ide-verify-advanced-failure"] > summary').count()) === 0,
+    'retired Failure details disclosure must remain absent',
+  );
   const panelText = await text(panel);
   assert(/Compare failed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
   assert(/expected value is correct|circuit issue|design repair|gate or wire/i.test(panelText), `repair panel must route circuit debugging, got "${panelText}"`);
@@ -174,15 +183,6 @@ async function assertWrongBuildRepairPanel(page, options) {
     assert(panelText.includes(inputTerm), `repair panel must show input ${inputTerm}: "${panelText}"`);
   }
   assert(await page.getByTestId('ide-verify-repair-open-design').isVisible(), 'Inspect Design action must be visible');
-}
-
-async function openFailureDetails(page, label) {
-  const details = page.locator('[data-testid="ide-verify-advanced-failure"]').first();
-  await details.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-  assert((await details.getAttribute('open')) !== null, `${label}: Failure details must expand`);
 }
 
 async function assertComplexSignalTracePanel(page, nodes) {
@@ -491,42 +491,113 @@ async function clickVisible(page, selector, label) {
   await locator.click();
 }
 
-async function setDesignZoomPreset(page, preset) {
-  const toggle = page.locator('[data-testid="ide-design-view-tools-toggle"]').first();
-  if (
-    await toggle.isVisible().catch(() => false) &&
-    (await toggle.getAttribute('aria-expanded').catch(() => 'false')) !== 'true'
-  ) {
-    await toggle.click();
+async function exerciseDirectDesignCamera(page) {
+  const reset = page.getByTestId('ide-design-zoom-reset').first();
+  const zoomOut = page.getByTestId('ide-design-zoom-out').first();
+  const zoomIn = page.getByTestId('ide-design-zoom-in').first();
+  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
+
+  for (const [control, label] of [
+    [reset, 'Reset zoom'],
+    [zoomOut, 'Zoom out'],
+    [zoomIn, 'Zoom in'],
+    [fit, 'Fit circuit'],
+  ]) {
+    await control.waitFor({ state: 'visible', timeout: 5000 });
+    assert(await control.isEnabled(), `${label} camera control must be enabled`);
   }
-  const button = page.locator(`[data-testid="ide-design-zoom-preset-${preset}"]`).first();
-  await button.waitFor({ state: 'visible', timeout: 5000 });
-  await button.click();
-  const expectedZoom = Number(preset) / 100;
-  if (Number.isFinite(expectedZoom)) {
-    await page.waitForFunction(
-      (zoom) => Math.abs((window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera?.zoom ?? 0) - zoom) < 0.001,
-      expectedZoom,
-      { timeout: 5000 },
-    );
-  }
-  if (
-    await toggle.isVisible().catch(() => false) &&
-    (await toggle.getAttribute('aria-expanded').catch(() => 'false')) === 'true'
-  ) {
-    await toggle.click();
-  }
+  assert(
+    !(await page.getByTestId('ide-design-view-tools-toggle').first().isVisible().catch(() => false)),
+    'Design camera controls must remain directly available without a View tools disclosure',
+  );
+
+  await reset.click();
+  await page.waitForTimeout(180);
+  const resetCamera = await readDesignCamera(page, 'reset zoom');
+
+  await zoomOut.click();
+  const zoomedOut = await waitForDesignZoomChange(page, resetCamera.zoom, 'zoom out');
+  assert(
+    zoomedOut.zoom < resetCamera.zoom,
+    `Zoom out must reduce the live camera zoom (${resetCamera.zoom} -> ${zoomedOut.zoom})`,
+  );
+
+  await zoomIn.click();
+  const zoomedIn = await waitForDesignZoomChange(page, zoomedOut.zoom, 'zoom in');
+  assert(
+    zoomedIn.zoom > zoomedOut.zoom,
+    `Zoom in must increase the live camera zoom (${zoomedOut.zoom} -> ${zoomedIn.zoom})`,
+  );
+
+  await reset.click();
+  await page.waitForTimeout(180);
+  const readyCamera = await readDesignCamera(page, 'camera reset after direct controls');
+  assert(
+    Math.abs(readyCamera.zoom - resetCamera.zoom) < 0.001,
+    `Reset zoom must restore its live camera baseline (${resetCamera.zoom} vs ${readyCamera.zoom})`,
+  );
 }
 
 async function fitCenterZoom(page) {
-  for (const selector of ['[data-testid="ide-design-fit-view"]', '[data-testid="ide-design-toolbar-fit"]']) {
-    const button = page.locator(selector).first();
-    if (await button.isVisible().catch(() => false)) {
-      await button.click();
-      await page.waitForTimeout(160);
-      return;
-    }
-  }
+  const fit = page.getByTestId('ide-design-fit-circuit-canvas').first();
+  await fit.waitFor({ state: 'visible', timeout: 5000 });
+  const before = await readDesignCamera(page, 'before Fit circuit');
+  await fit.click();
+  await page.waitForFunction(
+    (previous) => {
+      const camera = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera;
+      return Boolean(
+        camera &&
+          Number.isFinite(camera.x) &&
+          Number.isFinite(camera.y) &&
+          Number.isFinite(camera.zoom) &&
+          (Math.abs(camera.x - previous.x) > 0.001 ||
+            Math.abs(camera.y - previous.y) > 0.001 ||
+            Math.abs(camera.zoom - previous.zoom) > 0.001),
+      );
+    },
+    before,
+    { timeout: 5000 },
+  );
+  await readDesignCamera(page, 'after Fit circuit');
+}
+
+async function waitForDesignZoomChange(page, previousZoom, label) {
+  await page.waitForFunction(
+    (previous) => {
+      const zoom = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera?.zoom;
+      return Number.isFinite(zoom) && Math.abs(zoom - previous) > 0.001;
+    },
+    previousZoom,
+    { timeout: 5000 },
+  );
+  return readDesignCamera(page, label);
+}
+
+async function readDesignCamera(page, label) {
+  const snapshot = await page.evaluate(() => {
+    const camera = window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.camera ?? null;
+    return {
+      camera: camera ? { x: camera.x, y: camera.y, zoom: camera.zoom } : null,
+      readback:
+        document.querySelector('[data-testid="ide-design-canvas-stat-zoom"]')?.textContent?.trim() ?? '',
+    };
+  });
+  assert(
+    snapshot.camera &&
+      Number.isFinite(snapshot.camera.x) &&
+      Number.isFinite(snapshot.camera.y) &&
+      Number.isFinite(snapshot.camera.zoom) &&
+      snapshot.camera.zoom > 0,
+    `${label}: camera state must remain finite, got ${JSON.stringify(snapshot.camera)}`,
+  );
+  const readbackPercent = Number(/([0-9]+(?:\.[0-9]+)?)\s*%/.exec(snapshot.readback)?.[1] ?? Number.NaN);
+  assert(Number.isFinite(readbackPercent), `${label}: zoom readback must expose a percentage, got "${snapshot.readback}"`);
+  assert(
+    Math.abs(readbackPercent - snapshot.camera.zoom * 100) <= 1.5,
+    `${label}: zoom readback must match live camera state (${snapshot.readback} vs ${snapshot.camera.zoom})`,
+  );
+  return snapshot.camera;
 }
 
 async function assertSurfaceSafe(page, label) {

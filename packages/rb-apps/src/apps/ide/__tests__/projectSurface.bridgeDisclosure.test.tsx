@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { ProjectSurface, type ProjectSurfaceProps } from '../surfaces/ProjectSurface';
 import { BoardSignalProvider } from '../BoardSignalContext';
 
@@ -62,8 +62,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
   };
 }
 
-describe('ProjectSurface bridge disclosure contract', () => {
-  it('keeps the launch point primary while tucking bridge internals behind a closed disclosure', () => {
+describe('ProjectSurface engineering record contract', () => {
+  it('keeps one launch point primary while presenting the engineering record without disclosure chrome', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps({ projectKind: 'custom' })} />
@@ -71,29 +71,29 @@ describe('ProjectSurface bridge disclosure contract', () => {
     );
 
     expect(getByTestId('ide-project-identity-strip-title').textContent).toContain('Test Project');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Continue Design');
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Open Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
+    expect(getByTestId('ide-project-professional-overview')).toBeTruthy();
     expect(queryByTestId('ide-projectx-metrics')).toBeNull();
 
-    const disclosure = getByTestId('ide-project-bridge-disclosure') as HTMLDetailsElement;
-    expect(disclosure).toBeTruthy();
-    expect(disclosure.open).toBe(false);
+    const record = getByTestId('ide-project-bridge-disclosure');
+    expect(record).toBeTruthy();
+    expect(record.querySelector('details')).toBeNull();
+    expect(record.querySelector('summary')).toBeNull();
+    expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
   });
 
-  it('reveals the stable bridge content after the disclosure is opened', () => {
-    const { getByTestId } = render(
+  it('keeps the stable engineering identity visible without another click', () => {
+    const { container, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps({ projectKind: 'custom' })} />
       </BoardSignalProvider>
     );
 
-    const disclosure = getByTestId('ide-project-bridge-disclosure') as HTMLDetailsElement;
-    const summary = disclosure.querySelector('summary');
-    expect(summary?.textContent).toContain('Project bridge');
-
-    fireEvent.click(summary as HTMLElement);
-
-    expect(disclosure.open).toBe(true);
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.querySelector('summary')).toBeNull();
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
+    expect(getByTestId('ide-project-hash-short').textContent).toContain('abc123def456');
   });
 });

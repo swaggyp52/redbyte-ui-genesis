@@ -35,7 +35,7 @@ test.describe('IDE mapping pipeline coherence (student journey)', () => {
     await expect(page.locator('[data-testid="ide-project-open-map-pins"]')).toBeVisible();
     await expect(page.locator('[data-testid="ide-project-map-input-sw0"]')).toHaveCount(0);
 
-    // Hardware / Map Pins — select the signal row, then click a board region to assign it.
+    // Hardware / Map Pins — select the signal row, then assign through the resource control.
     await page.locator('[data-testid="mode-button-hardware"]').click();
     await expect(page.locator('[data-testid="ide-mode-hardware"]')).toBeVisible({ timeout: 15000 });
     const mapModeButton = page.getByTestId('ide-hw-mode-btn-map');
@@ -47,7 +47,8 @@ test.describe('IDE mapping pipeline coherence (student journey)', () => {
     const hwRow = page.locator('[data-testid="ide-hw-map-row-sw0"]');
     await expect(hwRow).toBeVisible();
     await hwRow.click();
-    await page.getByTestId('ide-hw-map-sw-4').click({ force: true });
+    await page.getByTestId('ide-hw-direct-resource-select').selectOption('SW4');
+    await page.getByTestId('ide-hw-assign-selected-resource').click();
     await expect(page.locator('[data-testid="ide-hw-map-row-binding-sw0"]')).toContainText('SW4');
     await expect(page.locator('[data-testid="ide-hw-map-row-binding-sw0"]')).toContainText('W15');
 

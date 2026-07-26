@@ -122,7 +122,8 @@ describe('projectRuntime board-clock auto verify', () => {
       packagePin: 'W5',
       frequencyMHz: 100,
     });
-    expect(run.report.vectors.slice(0, 4).map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1]);
+    // One Auto row is the post-rising-edge sample for one generated cycle.
+    expect(run.report.vectors.slice(0, 4).map((vector) => vector.inputs.clk)).toEqual([1, 1, 1, 1]);
     expect(run.report.rows.every((row) => row.status === 'pass')).toBe(true);
     expect(qRows.map((row) => row.actual)).toEqual(['1', '1', '0', '0']);
   });
@@ -156,7 +157,9 @@ describe('projectRuntime board-clock auto verify', () => {
     }
 
     expect(run.status, JSON.stringify(run.report.rows, null, 2)).toBe('pass');
-    expect(run.report.vectors.slice(0, 8).map((vector) => vector.inputs.clk)).toEqual([0, 1, 0, 1, 0, 1, 0, 1]);
+    expect(run.report.vectors.slice(0, 8).map((vector) => vector.inputs.clk)).toEqual([
+      1, 1, 1, 1, 1, 1, 1, 1,
+    ]);
     expect(Array.from({ length: 8 }, (_, tick) => perTickOutputs.get(tick))).toEqual([
       { ld0: '0', ld1: '0' },
       { ld0: '0', ld1: '0' },

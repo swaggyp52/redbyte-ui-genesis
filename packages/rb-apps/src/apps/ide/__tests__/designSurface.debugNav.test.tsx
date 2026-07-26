@@ -220,11 +220,6 @@ describe('DesignSurface debug nav — banner visibility', () => {
       debugTickCount: 2,
     });
 
-    const inspectorToggle = view.queryByTestId('ide-workbench-dock-toggle-right');
-    if (inspectorToggle) {
-      fireEvent.click(inspectorToggle);
-    }
-
     act(() => {
       useLogicViewStore.getState().selectNode('ld0_node');
     });

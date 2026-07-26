@@ -11,53 +11,55 @@ const VIEWPORTS = [
 const MODES = [
   {
     id: 'project',
-    focalSelectors: [
-      '[data-testid="ide-project-landing"]',
-      '[data-testid="ide-project-command-strip"]',
-      '[data-testid="ide-project-workspace-grid"]',
-      '[data-testid="ide-project-continue-cta"]',
-      '[data-testid="ide-project-overview"]',
+    primary: ['[data-testid="ide-project-professional-overview"]'],
+    support: [
+      ['[data-testid="ide-project-professional-facts"]'],
+      ['[data-testid="ide-project-workspace-grid"]'],
     ],
   },
   {
     id: 'design',
-    focalSelectors: [
-      '[data-testid="ide-design-live-canvas"]',
-      '[data-testid="ide-design-canvas"]',
+    primary: ['[data-testid="ide-design-live-canvas"]'],
+    support: [
+      ['[data-testid="ide-design-dock-palette"]'],
+      [
+        '[data-testid="ide-design-inspector-canvas-default"]',
+        '[data-testid="ide-design-inspector-selection-details"]',
+        '[data-testid="ide-design-inspector-actions"]',
+      ],
     ],
   },
   {
     id: 'verify',
-    focalSelectors: [
-      '[data-testid="ide-verify-workbench"]',
-      '[data-testid="ide-verify-panel"]',
-      '[data-testid="ide-verify-workspace-waveform"]',
-      '[data-testid="ide-verify-workstation-run-bar"]',
+    primary: ['[data-testid="ide-verify-lab-grid"]'],
+    support: [
+      ['[data-testid="ide-verify-left-dock"]'],
+      ['[data-testid="ide-verify-region-waveform"]'],
     ],
   },
   {
     id: 'hardware',
-    focalSelectors: [
-      '[data-testid="ide-hw-map-table"]',
-      '[data-testid="ide-hw-map-board"]',
-      '[data-testid="ide-hardware-panel"]',
+    primary: ['[data-testid="ide-hw-map-table"]'],
+    support: [
+      ['[data-testid="ide-hw-selected-mapping-editor"]'],
+      ['[data-testid="ide-hw-map-board"]'],
     ],
   },
   {
     id: 'export',
-    focalSelectors: [
-      '[data-testid="ide-export-panel"]',
-      '[data-testid="ide-export-handoff-summary"]',
-      '[data-testid="ide-export-rebuild-btn"]',
-      '[data-testid="ide-export-generated-previews"]',
+    primary: ['[data-testid="ide-export-package-inspector-v1"]'],
+    support: [
+      ['[data-testid="ide-export-upstream-readiness"]'],
+      ['[data-testid="ide-export-package-files"]'],
     ],
   },
   {
     id: 'import',
     routeOnly: true,
-    focalSelectors: [
-      '[data-testid="ide-import-workspace"]',
-      '[data-testid="ide-mode-import"]',
+    primary: ['[data-testid="ide-import-workbench"]'],
+    support: [
+      ['[data-testid="ide-import-horizontal-stepper"]'],
+      ['[data-testid="ide-import-zip-dropzone"]'],
     ],
   },
 ];
@@ -117,7 +119,7 @@ async function activateMode(page, baseUrl, mode, routeOnly) {
 }
 
 async function assertShellHierarchy(page, viewport, mode) {
-  const state = await readHierarchyState(page, mode.id, mode.focalSelectors);
+  const state = await readHierarchyState(page, mode);
 
   assert(state.currentMode === mode.id, `${viewport.label}/${mode.id}: expected mode ${mode.id}, got ${state.currentMode}`);
   assert(
@@ -125,32 +127,47 @@ async function assertShellHierarchy(page, viewport, mode) {
     `${viewport.label}/${mode.id}: horizontal root overflow ${state.documentWidth} > ${viewport.width}`
   );
   assert(state.topBar.visible, `${viewport.label}/${mode.id}: top bar missing`);
-  assert(state.leftRail.visible, `${viewport.label}/${mode.id}: left rail missing`);
+  assert(state.stageNav.visible, `${viewport.label}/${mode.id}: stage navigation missing`);
   assert(state.layoutShell.visible, `${viewport.label}/${mode.id}: workbench shell missing`);
-  assert(state.focal.visible, `${viewport.label}/${mode.id}: focal work object missing ${JSON.stringify(state.focal)}`);
+  assert(state.mainCount === 1, `${viewport.label}/${mode.id}: expected one main landmark, got ${state.mainCount}`);
+  assert(state.retiredRailCount === 0, `${viewport.label}/${mode.id}: retired workflow rail returned`);
+  assert(state.retiredToggleCount === 0, `${viewport.label}/${mode.id}: retired dock toggle returned`);
+  assert(
+    state.focal.visible && state.focal.width > 180 && state.focal.height > 80,
+    `${viewport.label}/${mode.id}: focal work object missing/collapsed ${JSON.stringify(state.focal)}`
+  );
+  state.support.forEach((region, index) => {
+    assert(
+      region.visible && region.width > 120 && region.height > 48,
+      `${viewport.label}/${mode.id}: direct support region ${index + 1} missing/collapsed ${JSON.stringify(region)}`
+    );
+  });
   assert(!state.proofRibbon.visible, `${viewport.label}/${mode.id}: retired proof ribbon is still visible`);
   assert(!state.statusBar.visible, `${viewport.label}/${mode.id}: retired support footer is still visible`);
   assert(state.productSpineCount === 0, `${viewport.label}/${mode.id}: duplicate page product spine is visible`);
   assert(
-    state.layoutShell.top <= state.topBar.bottom + 2,
-    `${viewport.label}/${mode.id}: workbench shell must begin under the top bar (${JSON.stringify(state.layoutShell)})`
+    state.layoutShell.top >= state.stageNav.bottom - 2 && state.layoutShell.top <= state.stageNav.bottom + 2,
+    `${viewport.label}/${mode.id}: workbench shell must begin directly under stage navigation (${JSON.stringify({
+      stageNav: state.stageNav,
+      layoutShell: state.layoutShell,
+    })})`
   );
   assert(
-    state.layoutShell.top <= 58,
+    state.layoutShell.top <= 112,
     `${viewport.label}/${mode.id}: workbench starts too low in first viewport (${state.layoutShell.top}px)`
   );
   assert(
-    JSON.stringify(state.railStepLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
-    `${viewport.label}/${mode.id}: rail must be the one five-stage authority, got ${JSON.stringify(state.railStepLabels)}`
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    `${viewport.label}/${mode.id}: stage navigation must be the one five-stage authority, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${mode.id}: Import must be a utility, not step 6`);
   assert(state.pageCommandHeaderCount <= 1, `${viewport.label}/${mode.id}: duplicate page command headers are visible`);
   assert(state.primaryActionCount <= 1, `${viewport.label}/${mode.id}: ${state.primaryActionCount} competing primary actions are visible`);
 }
 
-async function readHierarchyState(page, mode, focalSelectors) {
+async function readHierarchyState(page, mode) {
   return page.evaluate(
-    ({ expectedMode, selectors }) => {
+    ({ expectedMode, regions }) => {
       const rectJson = (rect) => rect
         ? {
             left: rect.left,
@@ -180,6 +197,17 @@ async function readHierarchyState(page, mode, focalSelectors) {
         }
         return { selector: null, ...rectJson(null) };
       };
+      const firstRenderedRect = (candidateSelectors) => {
+        for (const selector of candidateSelectors) {
+          const element = document.querySelector(selector);
+          if (!element) continue;
+          const rect = element.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            return { selector, ...rectJson(rect) };
+          }
+        }
+        return { selector: null, ...rectJson(null) };
+      };
       const visible = (element) => {
         if (!(element instanceof HTMLElement)) return false;
         const rect = element.getBoundingClientRect();
@@ -188,21 +216,32 @@ async function readHierarchyState(page, mode, focalSelectors) {
       };
       const surface = document.querySelector(`[data-ide-mode-marker="${expectedMode}"]`)
         ?? document.querySelector(`[data-testid="ide-mode-${expectedMode}"]`);
+      const topBar = document.querySelector('[data-testid="ide-top-bar"]');
+      const stageNav = document.querySelector('[data-testid="ide-stage-nav"]');
+      const importButton = document.querySelector('[data-testid="mode-button-import"]');
 
       return {
         currentMode: document.querySelector('[data-ide-mode-marker]')?.getAttribute('data-ide-mode-marker') ?? expectedMode,
         documentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
-        topBar: rectJson(document.querySelector('[data-testid="ide-top-bar"]')?.getBoundingClientRect?.()),
+        topBar: rectJson(topBar?.getBoundingClientRect?.()),
+        stageNav: rectJson(stageNav?.getBoundingClientRect?.()),
+        mainCount: document.querySelectorAll('main').length,
+        retiredRailCount: document.querySelectorAll(
+          '[data-testid="ide-left-rail"], [data-testid="ide-right-rail"], .ide-left-rail, .ide-right-rail'
+        ).length,
+        retiredToggleCount: document.querySelectorAll(
+          '[data-testid^="ide-workbench-dock-toggle-"], [data-testid*="dock-collapse"], .ide-workbench-dock-toggle-rail'
+        ).length,
         proofRibbon: rectJson(document.querySelector('[data-testid="ide-proof-ribbon"]')?.getBoundingClientRect?.()),
-        leftRail: rectJson(document.querySelector('[data-testid="ide-left-rail"]')?.getBoundingClientRect?.()),
         statusBar: rectJson(document.querySelector('[data-testid="ide-status-bar"]')?.getBoundingClientRect?.()),
         layoutShell: rectJson(document.querySelector('.ide-layout-shell')?.getBoundingClientRect?.()),
-        focal: firstVisibleRect(selectors),
+        focal: firstVisibleRect(regions.primary),
+        support: regions.support.map((selectors) => firstRenderedRect(selectors)),
         productSpineCount: Array.from(document.querySelectorAll('[data-testid^="ide-product-spine-"]')).filter(visible).length,
-        railStepLabels: Array.from(document.querySelectorAll('.ide-mode-button--step .ide-mode-label'))
+        stageLabels: Array.from(document.querySelectorAll('[data-testid="ide-stage-nav"] .ide-stage-nav-label'))
           .filter(visible)
           .map((element) => element.textContent?.replace(/\s+/g, ' ').trim() ?? ''),
-        importIsUtility: Boolean(document.querySelector('[data-testid="mode-button-import"].ide-mode-button--utility')),
+        importIsUtility: Boolean(importButton && topBar?.contains(importButton) && !stageNav?.contains(importButton)),
         pageCommandHeaderCount: surface
           ? Array.from(surface.querySelectorAll('.ide-surface-command-strip, .ide-workbench-page-header')).filter(visible).length
           : 0,
@@ -211,6 +250,6 @@ async function readHierarchyState(page, mode, focalSelectors) {
           : 0,
       };
     },
-    { expectedMode: mode, selectors: focalSelectors }
+    { expectedMode: mode.id, regions: { primary: mode.primary, support: mode.support } }
   );
 }

@@ -47,12 +47,13 @@ async function assertFitsViewport(page, locator, label) {
 }
 
 async function assertLaunchStarterDensity(page, label) {
-  const disclosure = page.locator('[data-testid="ide-project-lab-gallery-disclosure"]').first();
-  assert(await visible(disclosure), `${label} must keep the all-labs starter catalog reachable`);
-  assert((await disclosure.getAttribute('open')) === null, `${label} all-labs starter catalog must begin collapsed`);
-  await disclosure.locator('summary').click();
-  const gallery = page.locator('[data-testid="ide-project-lab-gallery"]').first();
-  assert(await visible(gallery), `${label} must expose the all-labs starter grid through its disclosure`);
+  const gallery = page.locator('[data-testid="ide-project-starter-catalog"]').first();
+  assert(await visible(gallery), `${label} must expose the starter catalog after the student requests it`);
+  assert((await gallery.getAttribute('data-expanded')) === 'true', `${label} starter catalog must report its open state`);
+  assert(
+    (await gallery.locator('details, summary').count()) === 0,
+    `${label} starter catalog must use direct workspace controls instead of disclosure chrome`,
+  );
 
   const visibleCards = page.locator('[data-testid^="ide-project-lab-card-"]:visible');
   const visibleCardCount = await visibleCards.count();
@@ -93,8 +94,14 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
     await assertFitsViewport(page, launchCenter, launchLabel);
     await assertNoPrematureDownstreamWarnings(launchCenter, launchLabel);
 
-    const launchText = await text(launchCenter);
-    assert(/start your circuit/i.test(launchText), `Project launch title must name the starting task, got "${launchText}"`);
+    const launchHub = page.locator('[data-testid="ide-project-start-hub"]').first();
+    const launchTitle = page.locator('[data-testid="ide-project-launch-title"]').first();
+    assert(await visible(launchHub), 'Project first launch must expose the start workspace');
+    assert(
+      /^Start your digital-logic project$/i.test(await text(launchTitle)),
+      `Project launch title must name the starting task, got "${await text(launchTitle)}"`,
+    );
+    const launchText = await text(launchHub);
     assert(/build fresh/i.test(launchText), 'Project command center must expose Build Fresh');
     assert(/course starter|starter/i.test(launchText), 'Project command center must expose a starter path');
     assert(/import|recover/i.test(launchText), 'Project command center must expose import/recovery');
@@ -109,9 +116,11 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
       'Project command center must keep Import / recovery as a first-class action'
     );
     const starterCatalog = page.locator('[data-testid="ide-project-starter-catalog"]').first();
-    assert(await visible(starterCatalog), 'Project command center must keep its starter catalog disclosure reachable');
-    assert((await starterCatalog.getAttribute('open')) === null, 'Project starter catalog must begin collapsed');
+    assert(!(await visible(starterCatalog)), 'Project starter catalog must stay out of the first viewport until requested');
+    assert((await starterCatalog.getAttribute('data-expanded')) === 'false', 'Project starter catalog must report its closed state');
     await page.locator('[data-testid="ide-project-open-starter-primary"]').first().click();
+    assert(await visible(starterCatalog), 'Open Starter must reveal the starter catalog');
+    assert((await starterCatalog.getAttribute('data-expanded')) === 'true', 'Open Starter must update catalog state');
     assert(
       await visible(page.locator('[data-testid="ide-project-landing-example-logic-gates"]').first()),
       'Open Starter must reveal the Logic Gates starter'
@@ -137,7 +146,15 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
   );
 
   const continueAction = page.locator('[data-testid="ide-project-command-strip-primary-cta"]').first();
-  assert(/continue design/i.test(await text(continueAction)), 'Loaded Project primary must continue to Design');
+  assert(/verify/i.test(await text(continueAction)), 'Loaded Logic Gates primary must continue to the next incomplete stage, Verify');
+  assert(
+    await visible(page.locator('[data-testid="ide-project-command-action-verify"]').first()),
+    'Loaded Logic Gates primary must expose Verify routing truth'
+  );
+  await continueAction.click();
+  await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
+  await page.locator('[data-testid="mode-button-project"]').click();
+  await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
   await page.locator('[data-testid="ide-project-change-project"]').first().click();
   assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'Change Project must reveal peer entry paths');
 
