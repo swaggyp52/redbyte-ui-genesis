@@ -19,7 +19,7 @@ function isTextEntryElement(el) {
     const closest = el.closest?.('input, textarea, [contenteditable="true"], [role="textbox"]');
     return Boolean(closest);
 }
-export const CanvasHost = ({ id, children, onActive, onInactive, onWheelActive, onKeyDownActive, onKeyUpActive, preventPageScroll = true, className = '', }) => {
+export const CanvasHost = ({ id, ariaLabel = 'Interactive circuit canvas', children, onActive, onInactive, onWheelActive, onKeyDownActive, onKeyUpActive, preventPageScroll = true, className = '', }) => {
     const containerRef = useRef(null);
     // Keep latest callbacks without re-binding global listeners
     const wheelCbRef = useRef(onWheelActive);
@@ -118,5 +118,5 @@ export const CanvasHost = ({ id, children, onActive, onInactive, onWheelActive, 
             clearIfActive(id);
         };
     }, [id, deactivate]);
-    return (_jsx("div", { ref: containerRef, tabIndex: 0, onPointerDown: handlePointerDown, onFocus: handleFocus, onBlur: handleBlurContainer, className: className, style: { position: 'relative', width: '100%', height: '100%', outline: 'none' }, children: children }));
+    return (_jsx("div", { ref: containerRef, role: "region", "aria-label": ariaLabel, tabIndex: 0, onPointerDown: handlePointerDown, onFocus: handleFocus, onBlur: handleBlurContainer, className: className, style: { position: 'relative', width: '100%', height: '100%', outline: 'none' }, children: children }));
 };

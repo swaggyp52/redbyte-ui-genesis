@@ -23,6 +23,11 @@ export interface ChipMetadata {
   layer?: number;
 }
 
+export interface PortClusterChoice {
+  id: string;
+  name: string;
+}
+
 export interface NodeIoPresentation {
   kind: 'switch' | 'button' | 'clock' | 'led' | 'generic';
   label?: string;
@@ -40,6 +45,12 @@ export interface NodeViewProps {
   onSelect: (nodeId: string, addToSelection: boolean) => void;
   onMove: (nodeId: string, x: number, y: number) => void;
   onPortClick?: (nodeId: string, portName: string) => void;
+  onPortClusterClick?: (
+    nodeId: string,
+    side: 'input' | 'output',
+    ports: PortClusterChoice[],
+    anchor: { x: number; y: number }
+  ) => void;
   onToggleSwitch?: (nodeId: string) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
@@ -102,6 +113,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onSelect,
   onMove,
   onPortClick,
+  onPortClusterClick,
   onNodeDoubleClick,
   onProbeToggle,
   signals,
@@ -343,8 +355,41 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     const chipColor = chipMetadata.color || '#1e293b'; // Dark slate for chips
     const chipHeight = size * 1.5; // Taller for chips with multiple ports
     const portSpacing = chipHeight / (Math.max(chipMetadata.inputs.length, chipMetadata.outputs.length) + 1);
-    const chipPortHitSize = Math.max(12, Math.min(32, portSpacing * 0.8));
-    const chipPortHitHalf = chipPortHitSize / 2;
+    const isDenseInputSide = chipMetadata.inputs.length > 1 && portSpacing < 24;
+    const isDenseOutputSide = chipMetadata.outputs.length > 1 && portSpacing < 24;
+    const directHitSizeFor = (count: number) =>
+      count <= 1 ? 32 : Math.max(24, Math.min(32, portSpacing));
+    const inputPortHitSize = directHitSizeFor(chipMetadata.inputs.length);
+    const outputPortHitSize = directHitSizeFor(chipMetadata.outputs.length);
+    const inputPortHitHalf = inputPortHitSize / 2;
+    const outputPortHitHalf = outputPortHitSize / 2;
+    const clusterPadding = 12;
+    const inputClusterTop = -chipHeight / 2 + portSpacing - clusterPadding;
+    const inputClusterHeight =
+      portSpacing * Math.max(0, chipMetadata.inputs.length - 1) + clusterPadding * 2;
+    const outputClusterTop = -chipHeight / 2 + portSpacing - clusterPadding;
+    const outputClusterHeight =
+      portSpacing * Math.max(0, chipMetadata.outputs.length - 1) + clusterPadding * 2;
+    const openPortCluster = (
+      side: 'input' | 'output',
+      ports: PortClusterChoice[],
+      anchorX: number
+    ) => {
+      onPortClusterClick?.(node.id, side, ports, {
+        x: screenX + anchorX,
+        y: screenY,
+      });
+    };
+    const clusterWireState = (ports: PortClusterChoice[]) => {
+      const states = ports.map((port) =>
+        wirePortState(wireStartPort, node.id, port.id, validWireTargets)
+      );
+      if (states.includes('source')) return 'source';
+      if (states.includes('valid-target')) return 'valid-target';
+      return wireStartPort ? 'invalid-target' : 'idle';
+    };
+    const inputClusterWireState = clusterWireState(chipMetadata.inputs);
+    const outputClusterWireState = clusterWireState(chipMetadata.outputs);
     return (
       <g
         transform={nodeTransform}
@@ -612,14 +657,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               {renderMismatchRing(-size / 2, yPos, input.id)}
               {/* Invisible hit area scales with pin spacing and stays biased outside the chip body. */}
               <rect
-                x={-size / 2 - (chipPortHitSize - 4)}
-                y={yPos - chipPortHitHalf}
-                width={chipPortHitSize}
-                height={chipPortHitSize}
+                x={-size / 2 - (inputPortHitSize - 4)}
+                y={yPos - inputPortHitHalf}
+                width={inputPortHitSize}
+                height={inputPortHitSize}
                 fill="transparent"
-                data-port-id={input.id}
+                data-port-id={isDenseInputSide ? undefined : input.id}
+                data-port-density={isDenseInputSide ? 'dense' : 'sparse'}
                 data-wire-port-state={portWireState}
-                style={{ cursor: 'crosshair' }}
+                style={{ cursor: 'crosshair', pointerEvents: isDenseInputSide ? 'none' : 'auto' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   // P-click to toggle probe
@@ -818,14 +864,15 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               {/* Invisible hit area scales with pin spacing and stays biased outside the chip body. */}
               <rect
                 x={size / 2 - 4}
-                y={yPos - chipPortHitHalf}
-                width={chipPortHitSize}
-                height={chipPortHitSize}
-                rx={chipPortHitHalf}
+                y={yPos - outputPortHitHalf}
+                width={outputPortHitSize}
+                height={outputPortHitSize}
+                rx={outputPortHitHalf}
                 fill="transparent"
-                data-port-id={output.id}
+                data-port-id={isDenseOutputSide ? undefined : output.id}
+                data-port-density={isDenseOutputSide ? 'dense' : 'sparse'}
                 data-wire-port-state={portWireState}
-                style={{ cursor: 'crosshair' }}
+                style={{ cursor: 'crosshair', pointerEvents: isDenseOutputSide ? 'none' : 'auto' }}
                 onClick={(e) => {
                   e.stopPropagation();
                   // P-click to toggle probe
@@ -928,6 +975,72 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             </g>
           );
         })}
+        {isDenseInputSide ? (
+          <rect
+            x={-size / 2 - 28}
+            y={inputClusterTop}
+            width={32}
+            height={inputClusterHeight}
+            rx={6}
+            fill="rgba(14, 165, 233, 0.08)"
+            stroke="rgba(125, 211, 252, 0.5)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            role="button"
+            tabIndex={0}
+            aria-label={`Choose one of ${chipMetadata.inputs.length} input ports on ${chipMetadata.name}${inputClusterWireState === 'valid-target' ? '; compatible wire targets available' : ''}`}
+            data-port-cluster="input"
+            data-port-ids={chipMetadata.inputs.map((port) => port.id).join(' ')}
+            data-port-density="dense"
+            data-wire-port-state={inputClusterWireState}
+            data-testid={`logic-port-cluster-${node.id}-input`}
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              openPortCluster('input', chipMetadata.inputs, -size / 2 - 12);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              openPortCluster('input', chipMetadata.inputs, -size / 2 - 12);
+            }}
+          />
+        ) : null}
+        {isDenseOutputSide ? (
+          <rect
+            x={size / 2 - 4}
+            y={outputClusterTop}
+            width={32}
+            height={outputClusterHeight}
+            rx={6}
+            fill="rgba(14, 165, 233, 0.08)"
+            stroke="rgba(125, 211, 252, 0.5)"
+            strokeWidth={1}
+            strokeDasharray="3 3"
+            role="button"
+            tabIndex={0}
+            aria-label={`Choose one of ${chipMetadata.outputs.length} output ports on ${chipMetadata.name}${outputClusterWireState === 'valid-target' ? '; compatible wire targets available' : ''}`}
+            data-port-cluster="output"
+            data-port-ids={chipMetadata.outputs.map((port) => port.id).join(' ')}
+            data-port-density="dense"
+            data-wire-port-state={outputClusterWireState}
+            data-testid={`logic-port-cluster-${node.id}-output`}
+            style={{ cursor: 'pointer' }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => {
+              event.stopPropagation();
+              openPortCluster('output', chipMetadata.outputs, size / 2 + 12);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              openPortCluster('output', chipMetadata.outputs, size / 2 + 12);
+            }}
+          />
+        ) : null}
       </g>
     );
   }
@@ -1479,6 +1592,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
     prevProps.ioPresentation?.pinAlias === nextProps.ioPresentation?.pinAlias &&
     prevProps.issueGlow === nextProps.issueGlow &&
     prevProps.issuePortSeverities === nextProps.issuePortSeverities &&
+    prevProps.onPortClusterClick === nextProps.onPortClusterClick &&
     prevProps.isMismatchHighlighted === nextProps.isMismatchHighlighted &&
     prevProps.mismatchPortKeys === nextProps.mismatchPortKeys &&
     prevProps.highlightedPort?.nodeId === nextProps.highlightedPort?.nodeId &&

@@ -34,7 +34,10 @@ export interface DesignWorkspacePreset {
   showSimulationStrip: boolean;
 }
 
-export const DEFAULT_DESIGN_SPLIT_RATIO = 0.44;
+// Keep code slightly favored while giving the circuit enough useful area at
+// the 1366px classroom baseline. This also leaves both panes above their
+// minimum interaction widths before the layout intentionally stacks.
+export const DEFAULT_DESIGN_SPLIT_RATIO = 0.45;
 
 export const DESIGN_ARTIFACT_DESCRIPTORS: Record<DesignArtifact, DesignArtifactDescriptor> = {
   vhdl: {
@@ -62,9 +65,11 @@ export function resolveDesignWorkspacePreset(input: {
   return {
     mode: input.mode,
     effectiveMode: input.effectiveMode,
-    leftDockMode: isCanvas ? 'visible' : 'collapsed',
-    rightDockMode: 'collapsed',
-    consoleMode: 'collapsed',
+    // Unified Workbench v3 keeps the component library and inspector stable.
+    // Changing the center artifact must never make students manage page geometry.
+    leftDockMode: 'visible',
+    rightDockMode: 'visible',
+    consoleMode: 'hidden',
     shellDensity: 'immersive',
     surfaceFrame: 'edge-to-edge',
     showCanvasPane: !isCode,

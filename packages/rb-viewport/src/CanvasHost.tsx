@@ -4,6 +4,7 @@ import { setActiveCanvas, isCanvasActive, clearIfActive } from './activeCanvas.j
 
 export interface CanvasHostProps {
   id: string; // REQUIRED: ensures global singleton activation
+  ariaLabel?: string;
   children?: React.ReactNode;
   onActive?: () => void;
   onInactive?: () => void;
@@ -32,6 +33,7 @@ function isTextEntryElement(el: Element | null): boolean {
 
 export const CanvasHost: React.FC<CanvasHostProps> = ({
   id,
+  ariaLabel = 'Interactive circuit canvas',
   children,
   onActive,
   onInactive,
@@ -159,6 +161,8 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
   return (
     <div
       ref={containerRef}
+      role="region"
+      aria-label={ariaLabel}
       tabIndex={0}
       onPointerDown={handlePointerDown}
       onFocus={handleFocus}

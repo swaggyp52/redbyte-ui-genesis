@@ -2,64 +2,57 @@ import type { Node } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
 
 export const GRID_SIZE = 16;
-export const NODE_SIZE = 48; // Standard node size
-export const SPAWN_OFFSET = GRID_SIZE * 2; // Offset for each step
+export const NODE_SIZE = 48; // Standard node body size in world-space pixels
+export const NODE_CLEARANCE = GRID_SIZE; // Keep one visible grid cell between bodies
+export const SPAWN_OFFSET = NODE_SIZE + NODE_CLEARANCE;
 
 /**
- * Calculates a smart spawn position for a new node to avoid exact overlaps.
- * Uses a grid-based spiral or linear offset strategy around the center.
+ * Calculates a smart spawn position for a new node without overlapping the
+ * rendered footprint of an existing standard node. Placement is evaluated in
+ * world space, so camera zoom and pan do not change the clearance contract.
  */
 export function findSmartSpawnPosition(
     existingNodes: Node[],
     center: { x: number; y: number },
     gridSize: number = GRID_SIZE
 ): { x: number; y: number } {
-    // Snap center to grid first
-    let baseX = Math.round(center.x / gridSize) * gridSize;
-    let baseY = Math.round(center.y / gridSize) * gridSize;
+    const safeGridSize = Number.isFinite(gridSize) && gridSize > 0 ? gridSize : GRID_SIZE;
+    const safeCenterX = Number.isFinite(center.x) ? center.x : 0;
+    const safeCenterY = Number.isFinite(center.y) ? center.y : 0;
+    const baseX = Math.round(safeCenterX / safeGridSize) * safeGridSize;
+    const baseY = Math.round(safeCenterY / safeGridSize) * safeGridSize;
+    const minimumCenterSeparation = NODE_SIZE + safeGridSize;
+    const spawnOffset =
+        Math.ceil(minimumCenterSeparation / safeGridSize) * safeGridSize;
+    const occupiedPositions = existingNodes
+        .map((node) => node.position)
+        .filter(
+            (position): position is { x: number; y: number } =>
+                position != null &&
+                Number.isFinite(position.x) &&
+                Number.isFinite(position.y)
+        );
 
-    // Simple heuristic: check if specific spots are occupied
-    // We'll check a few spots in a diagonal line first, then maybe spiral?
-    // Let's keep it deterministic and simple:
-    // Check (0,0), (+1, +1), (+2, +2)... up to some limit.
-    // Or better: just scan existing nodes to find ones that are "too close".
-
-    const occupied = new Set<string>();
-    for (const node of existingNodes) {
-        if (!node.position) continue;
-        const nx = Math.round(node.position.x / gridSize);
-        const ny = Math.round(node.position.y / gridSize);
-        occupied.add(`${nx},${ny}`);
+    // A point can block at most two candidates on this evenly spaced diagonal,
+    // so 2n + 1 candidates guarantees a free footprint for n finite nodes.
+    const candidateCount = occupiedPositions.length * 2 + 1;
+    for (let step = 0; step < candidateCount; step += 1) {
+        const candidate = {
+            x: baseX + step * spawnOffset,
+            y: baseY + step * spawnOffset,
+        };
+        const isFree = occupiedPositions.every(
+            (position) =>
+                Math.abs(candidate.x - position.x) >= minimumCenterSeparation ||
+                Math.abs(candidate.y - position.y) >= minimumCenterSeparation
+        );
+        if (isFree) return candidate;
     }
 
-    // Try positions in a diagonal line first (down-right)
-    // This mimics standard "window cascading" behavior which is intuitive
-    for (let step = 0; step < 10; step++) {
-        const offsetX = baseX + (step * SPAWN_OFFSET);
-        const offsetY = baseY + (step * SPAWN_OFFSET);
-
-        // Check if this spot is roughly occupied
-        const gx = Math.round(offsetX / gridSize);
-        const gy = Math.round(offsetY / gridSize);
-
-        // We check a small radius around the spot to avoid "visual" overlap
-        let isFree = true;
-        for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-                if (occupied.has(`${gx + dx},${gy + dy}`)) {
-                    isFree = false;
-                    break;
-                }
-            }
-            if (!isFree) break;
-        }
-
-        if (isFree) {
-            return { x: offsetX, y: offsetY };
-        }
-    }
-
-    // Fallback: Just return the center if everything is full, 
-    // users will have to move manually.
-    return { x: baseX, y: baseY };
+    // The candidate bound above is exhaustive; retain a deterministic fallback
+    // for defensive completeness if the footprint rule changes in the future.
+    return {
+        x: baseX + candidateCount * spawnOffset,
+        y: baseY + candidateCount * spawnOffset,
+    };
 }

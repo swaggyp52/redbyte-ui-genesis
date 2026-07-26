@@ -124,3 +124,82 @@ export function reconcileDesignCanvasCamera(
 
   return { x, y, zoom: camera.zoom };
 }
+
+/**
+ * Focuses a selection without throwing the rest of a compact circuit away.
+ *
+ * The selected bounds stay inside a safe viewport inset. Within that budget,
+ * the camera moves toward the full graph center so a narrow Split view retains
+ * enough surrounding logic for the student to understand what was selected.
+ */
+export function centerDesignSelectionWithContext(
+  camera: DesignCanvasCamera,
+  viewport: DesignCanvasViewport,
+  selectionAnchors: readonly DesignCanvasGraphAnchor[],
+  graphAnchors: readonly DesignCanvasGraphAnchor[],
+  safeInset = 48
+): DesignCanvasCamera | null {
+  if (!isFiniteCamera(camera)) return null;
+  if (
+    !Number.isFinite(viewport.width) ||
+    !Number.isFinite(viewport.height) ||
+    viewport.width <= 0 ||
+    viewport.height <= 0
+  ) {
+    return null;
+  }
+
+  const selected = selectionAnchors.filter(isFiniteGraphAnchor);
+  if (selected.length === 0) return null;
+  const graph = graphAnchors.filter(isFiniteGraphAnchor);
+  const context = graph.length > 0 ? graph : selected;
+
+  const bounds = (anchors: readonly DesignCanvasGraphAnchor[]) => {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const anchor of anchors) {
+      minX = Math.min(minX, anchor.x);
+      maxX = Math.max(maxX, anchor.x);
+      minY = Math.min(minY, anchor.y);
+      maxY = Math.max(maxY, anchor.y);
+    }
+    return { minX, maxX, minY, maxY };
+  };
+
+  const selectionBounds = bounds(selected);
+  const graphBounds = bounds(context);
+  const selectionCenterX = (selectionBounds.minX + selectionBounds.maxX) / 2;
+  const selectionCenterY = (selectionBounds.minY + selectionBounds.maxY) / 2;
+  const graphCenterX = (graphBounds.minX + graphBounds.maxX) / 2;
+  const graphCenterY = (graphBounds.minY + graphBounds.maxY) / 2;
+  const selectionHalfWidth = (selectionBounds.maxX - selectionBounds.minX) / 2;
+  const selectionHalfHeight = (selectionBounds.maxY - selectionBounds.minY) / 2;
+  const horizontalInset = Math.min(safeInset, viewport.width / 4) / camera.zoom;
+  const verticalInset = Math.min(safeInset, viewport.height / 4) / camera.zoom;
+  const horizontalContextBudget = Math.max(
+    0,
+    viewport.width / (2 * camera.zoom) - horizontalInset - selectionHalfWidth
+  );
+  const verticalContextBudget = Math.max(
+    0,
+    viewport.height / (2 * camera.zoom) - verticalInset - selectionHalfHeight
+  );
+  const worldCenterX = clamp(
+    graphCenterX,
+    selectionCenterX - horizontalContextBudget,
+    selectionCenterX + horizontalContextBudget
+  );
+  const worldCenterY = clamp(
+    graphCenterY,
+    selectionCenterY - verticalContextBudget,
+    selectionCenterY + verticalContextBudget
+  );
+
+  return {
+    x: viewport.width / 2 - worldCenterX * camera.zoom,
+    y: viewport.height / 2 - worldCenterY * camera.zoom,
+    zoom: camera.zoom,
+  };
+}

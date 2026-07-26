@@ -6,7 +6,12 @@ import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { TickEngine, Node, Connection, Circuit, PortRef } from '@redbyte/rb-logic-core';
 import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from './useLogicViewStore';
-import { NodeView, type ChipMetadata, type NodeIoPresentation } from './components/NodeView';
+import {
+  NodeView,
+  type ChipMetadata,
+  type NodeIoPresentation,
+  type PortClusterChoice,
+} from './components/NodeView';
 import { WireView } from './components/WireView';
 import { Minimap } from './components/Minimap';
 import { Toolbar } from './components/Toolbar';
@@ -80,6 +85,15 @@ export interface LogicCanvasProps {
   nodeIssueSeverities?: Map<string, 'error' | 'warn'>;
   /** Batch 1: explicit per-port issue severity for authoring feedback. */
   issuePortSeverities?: Map<string, 'error' | 'warn'> | null;
+}
+
+interface PortClusterPickerState {
+  nodeId: string;
+  side: 'input' | 'output';
+  ports: PortClusterChoice[];
+  left: number;
+  top: number;
+  height: number;
 }
 
 const BUILTIN_PORT_NAMES: Record<string, string[]> = {
@@ -500,6 +514,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const [hoveredPort, setHoveredPort] = React.useState<{ nodeId: string; portName: string } | null>(null);
   const [showFirstWireToast, setShowFirstWireToast] = React.useState(false);
   const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
+  const [portClusterPicker, setPortClusterPicker] = React.useState<PortClusterPickerState | null>(null);
   const [wireRewireDraft, setWireRewireDraft] = React.useState<{
     wireId: string;
     anchor: { nodeId: string; portName: string };
@@ -823,6 +838,45 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     // Notify parent after internal handling (used for fanin path tracing)
     onPortClick?.(nodeId, portName);
   }, [circuit, circuitForValidation, editingState.wireStartPort, commitCircuit, endWire, startWire, getChipMetadata, isReplayMode, interactionMode, wireRewireDraft, onPortClick, onConnectionRejected]);
+
+  const handlePortClusterClick = React.useCallback(
+    (
+      nodeId: string,
+      side: 'input' | 'output',
+      ports: PortClusterChoice[],
+      anchor: { x: number; y: number }
+    ) => {
+      if (isReplayMode || ports.length === 0) return;
+
+      const pickerWidth = 224;
+      const availableHeight = Math.max(80, height - 16);
+      const pickerHeight = Math.min(availableHeight, 118 + ports.length * 46);
+      const preferredLeft = side === 'input'
+        ? anchor.x - pickerWidth - 12
+        : anchor.x + 12;
+
+      setPortClusterPicker({
+        nodeId,
+        side,
+        ports,
+        left: clampValue(preferredLeft, 8, width - pickerWidth - 8),
+        top: clampValue(anchor.y - pickerHeight / 2, 8, height - pickerHeight - 8),
+        height: pickerHeight,
+      });
+    },
+    [height, isReplayMode, width]
+  );
+
+  React.useEffect(() => {
+    setPortClusterPicker((current) => {
+      if (!current) return null;
+      return circuit.nodes.some((node) => node.id === current.nodeId) ? current : null;
+    });
+  }, [circuit.nodes]);
+
+  React.useEffect(() => {
+    setPortClusterPicker(null);
+  }, [camera.x, camera.y, camera.zoom, height, width]);
 
   const beginWireReconnect = React.useCallback(
     (wireId: string, endpoint: 'from' | 'to') => {
@@ -1381,6 +1435,91 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         </div>
       )}
 
+      {portClusterPicker && (() => {
+        const clusterNode = circuit.nodes.find((node) => node.id === portClusterPicker.nodeId);
+        const firstEnabledIndex = portClusterPicker.ports.findIndex((port) =>
+          editingState.wireStartPort
+            ? validWireTargetKeys?.has(`${portClusterPicker.nodeId}:${port.id}`) === true
+            : portClusterPicker.side === 'output'
+        );
+
+        return (
+          <div
+            className="logic-port-picker"
+            role="dialog"
+            aria-modal="false"
+            aria-label={`Choose a ${portClusterPicker.side} port on ${clusterNode?.label || clusterNode?.type || portClusterPicker.nodeId}`}
+            data-testid="logic-port-picker"
+            data-port-picker-side={portClusterPicker.side}
+            data-port-picker-compact={portClusterPicker.height < 190 ? 'true' : 'false'}
+            style={{
+              position: 'absolute',
+              left: portClusterPicker.left,
+              top: portClusterPicker.top,
+              width: 224,
+              height: portClusterPicker.height,
+              zIndex: 40,
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key !== 'Escape') return;
+              event.preventDefault();
+              event.stopPropagation();
+              setPortClusterPicker(null);
+            }}
+          >
+            <div className="logic-port-picker__header">
+              <div>
+                <span>Endpoint picker</span>
+                <strong>{clusterNode?.label || clusterNode?.type || portClusterPicker.nodeId}</strong>
+              </div>
+              <button
+                type="button"
+                className="logic-port-picker__close"
+                aria-label="Close endpoint picker"
+                data-testid="logic-port-picker-close"
+                onClick={() => setPortClusterPicker(null)}
+              >
+                Close
+              </button>
+            </div>
+            <p className="logic-port-picker__hint">
+              {editingState.wireStartPort
+                ? 'Choose a compatible destination. Unavailable endpoints stay disabled.'
+                : portClusterPicker.side === 'output'
+                  ? 'Choose the output that should start this wire.'
+                  : 'Start from an output, then choose this input group.'}
+            </p>
+            <div className="logic-port-picker__choices">
+              {portClusterPicker.ports.map((port, index) => {
+                const enabled = editingState.wireStartPort
+                  ? validWireTargetKeys?.has(`${portClusterPicker.nodeId}:${port.id}`) === true
+                  : portClusterPicker.side === 'output';
+                return (
+                  <button
+                    key={port.id}
+                    type="button"
+                    className="logic-port-picker__choice"
+                    disabled={!enabled}
+                    autoFocus={index === firstEnabledIndex}
+                    data-testid={`logic-port-picker-choice-${portClusterPicker.nodeId}-${port.id}`}
+                    data-port-choice={port.id}
+                    onClick={() => {
+                      handlePortClick(portClusterPicker.nodeId, port.id);
+                      setPortClusterPicker(null);
+                    }}
+                  >
+                    <span>{port.name}</span>
+                    <code>{port.id}</code>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       <svg
         ref={svgRef}
         className="rb-logic-canvas-svg"
@@ -1682,6 +1821,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onSelect={selectNode}
               onMove={handleNodeMove}
               onPortClick={handlePortClick}
+              onPortClusterClick={handlePortClusterClick}
               onToggleSwitch={handleToggleSwitch}
               onNodeDoubleClick={onNodeDoubleClick}
               onProbeToggle={onProbeToggle}
