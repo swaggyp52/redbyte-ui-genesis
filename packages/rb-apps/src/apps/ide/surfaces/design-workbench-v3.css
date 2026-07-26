@@ -442,6 +442,37 @@
   overflow: visible !important;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 8px;
+  border-right: 1px solid rgba(120, 149, 179, 0.18);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-toolbar-group.is-utils {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  border-right: 0;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-group-label {
+  color: #71869b;
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar .ide-button,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-tool-segment,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-view-btn {
@@ -451,6 +482,36 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] [data-testid='ide-design-logical-io-explainer'] {
   font-size: 13px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty {
+  top: 16px;
+  left: 16px;
+  width: min(390px, calc(100% - 32px));
+  max-width: 390px;
+  gap: 7px;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button {
+  pointer-events: auto;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary {
+  margin: 0;
+  color: #7f93a8;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* First-use guidance is instructional content, not microcopy. Keep it readable

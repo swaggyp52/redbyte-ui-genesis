@@ -1244,7 +1244,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       {/* Toggle is rendered in LogicCanvas.tsx <g id="rb-switch-overlay"> above all nodes */}
 
       {/* Node label */}
-      {lod !== 'minimal' && (
+      {lod !== 'minimal' &&
+      node.type !== 'INPUT' &&
+      node.type !== 'Switch' &&
+      node.type !== 'Clock' &&
+      node.type !== 'OUTPUT' &&
+      node.type !== 'Lamp' && (
         <text
           className="logic-node-label"
           data-node-label="1"

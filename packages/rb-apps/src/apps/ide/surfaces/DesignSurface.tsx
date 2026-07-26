@@ -22,6 +22,7 @@ import {
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
 import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
+import { arrangeCircuitByDependency, hasRunnableBoundaryPath } from '../designGraphLayout';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
   IdeButton,
@@ -2423,6 +2424,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousDesignViewRef = useRef(designView);
   useEffect(() => { fitToCircuitRef.current = fitToCircuit; }, [fitToCircuit]);
 
+  const handleArrangeCircuit = useCallback(() => {
+    if (editorCircuit.nodes.length < 2) {
+      setActionToast('Place at least two parts before arranging.');
+      return;
+    }
+    const next = arrangeCircuitByDependency(editorCircuit);
+    updateCircuit(next, { skipHistory: true, enforceLimits: true });
+    clearSelection();
+    clearTrace();
+    emitCircuitMutation(next);
+    setActionToast(`Arranged ${next.nodes.length} parts by signal flow. Undo restores the previous layout.`);
+    window.requestAnimationFrame(() => fitToCircuitRef.current());
+  }, [clearSelection, clearTrace, editorCircuit, emitCircuitMutation, updateCircuit]);
+
   const cameraGraphAnchors = useMemo<DesignCanvasGraphAnchor[]>(
     () => editorCircuit.nodes.map((node) => ({
       x: node.position?.x ?? node.x ?? 0,
@@ -3130,6 +3145,32 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ? 'Wire Mode'
       : 'Select Mode';
   const showBlankStateCard = editorCircuit.nodes.length === 0 && !isPlacementMode;
+  const hasRunnablePath = useMemo(
+    () => hasRunnableBoundaryPath(editorCircuit),
+    [editorCircuit]
+  );
+  const blankWorkflowResetAppliedRef = useRef(false);
+  useEffect(() => {
+    if (editorCircuit.nodes.length !== 0) {
+      blankWorkflowResetAppliedRef.current = false;
+      return;
+    }
+    if (blankWorkflowResetAppliedRef.current) return;
+    blankWorkflowResetAppliedRef.current = true;
+    clearSelection();
+    clearTrace();
+    onRuntimeSimSetSelectedSignal?.(null);
+    onClearVerifyFocus?.();
+    onClearExternalDebug?.();
+    setDesignLearningMode('edit');
+  }, [
+    clearSelection,
+    clearTrace,
+    editorCircuit.nodes.length,
+    onClearExternalDebug,
+    onClearVerifyFocus,
+    onRuntimeSimSetSelectedSignal,
+  ]);
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
   const wireSourceLabel = wireStartPort
@@ -4162,6 +4203,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   }, [handlePortClick, preferredNodeTracePort, primarySelectedWireId, selectedNode, traceSelectedWire]);
 
+  const focusSelectedPath = useCallback(() => {
+    const nodeId = selectedNode?.id ?? selectedWireContext?.targetNodeId ?? null;
+    if (!nodeId) return;
+    const fanin = getFaninCone(editorCircuit, nodeId);
+    const fanout = getFanoutCone(editorCircuit, nodeId);
+    const nodeIds = new Set([...fanin.nodeIds, ...fanout.nodeIds, nodeId]);
+    const wireIds = new Set([...fanin.wireIds, ...fanout.wireIds]);
+    if (selectedWireContext) wireIds.add(selectedWireContext.wireId);
+    const wireHighlights = new Map<string, string[]>();
+    wireIds.forEach((wireId) => wireHighlights.set(wireId, ['#fbbf24']));
+    setTraceState({
+      kind: 'fanin-port',
+      sourceKey: `path:${nodeId}`,
+      label: `Focused path · ${
+        selectedNode
+          ? describeEndpointLabel(nodeId, selectedNode, ioRowByNodeId.get(nodeId))
+          : selectedWireContext?.targetLabel ?? nodeId
+      }`,
+      signalKey: selectedWireContext?.signalKey ?? `${nodeId}.${preferredNodeTracePort ?? 'out'}`,
+      wireHighlights,
+      nodeIds,
+      portKeys: buildTracePortKeySet(wireIds),
+    });
+    setWireContextMenu(null);
+    setActionToast('Focused the selected signal path. Unrelated logic is dimmed.');
+  }, [
+    editorCircuit,
+    ioRowByNodeId,
+    preferredNodeTracePort,
+    selectedNode,
+    selectedWireContext,
+  ]);
+
   useEffect(() => {
     if (!wireContextMenu) return;
     const handlePointerDown = () => setWireContextMenu(null);
@@ -4930,8 +5004,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   Focus issue
                 </IdeButton>
               ) : null}
-              <IdeButton tone="ghost" onClick={traceSelectedContext} disabled={!preferredNodeTracePort} testId="ide-design-context-trace">
-                Trace net
+              <IdeButton tone="secondary" onClick={focusSelectedPath} disabled={!selectedNode} testId="ide-design-context-focus-path">
+                Focus path
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
                 Trace {'->'}
@@ -5103,8 +5177,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
             <span className="ide-design-inspector-group-label">Net tracing</span>
             <div className="ide-design-inspector-action-grid">
-              <IdeButton tone="secondary" onClick={() => traceSelectedWire(selectedWireContext.wireId)} testId="ide-design-context-trace">
-                Trace net
+              <IdeButton tone="secondary" onClick={focusSelectedPath} testId="ide-design-context-focus-path">
+                Focus path
               </IdeButton>
               <IdeButton tone="secondary" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
                 {isActiveInspectorSignalPinned ? 'Unpin signal' : 'Pin signal'}
@@ -5113,7 +5187,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 Clear trace
               </IdeButton>
               <IdeButton tone="danger" onClick={deleteSelection} testId="ide-design-context-delete-wire">
-                Delete wire
+                Disconnect
               </IdeButton>
             </div>
           </div>
@@ -6264,6 +6338,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           type="button"
                           className={effectiveLearningMode === 'live' ? 'is-active' : ''}
                           aria-pressed={effectiveLearningMode === 'live'}
+                          disabled={!hasRunnablePath}
+                          title={
+                            hasRunnablePath
+                              ? 'Explore current circuit values.'
+                              : 'Connect at least one input to one output through supported logic.'
+                          }
                           onClick={() => {
                             onClearExternalDebug?.();
                             setDesignLearningMode('live');
@@ -6277,6 +6357,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           className={effectiveLearningMode === 'replay' ? 'is-active' : ''}
                           aria-pressed={effectiveLearningMode === 'replay'}
                           disabled={!replaySession || replayTrace.length === 0}
+                          title={
+                            replaySession && replayTrace.length > 0
+                              ? 'Inspect the current Verify run without changing the circuit.'
+                              : 'Run a scenario in Verify to create a replay.'
+                          }
                           onClick={() => onSelectDebugTickIndex?.(0)}
                           data-testid="ide-design-learning-mode-replay"
                         >
@@ -6371,6 +6456,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <>
                   {/* Group 1: Mode — primary weight */}
                   <div className="ide-toolbar-group is-mode">
+                    <span className="ide-design-toolbar-group-label">Mode</span>
                     <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
                       <button
                         type="button"
@@ -6399,6 +6485,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
                   {/* Group 2: Edit operations */}
                   <div className="ide-toolbar-group is-edit">
+                    <span className="ide-design-toolbar-group-label">History</span>
                     <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
                       Undo
                     </IdeButton>
@@ -6411,6 +6498,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
               {/* Group 3: Utilities — floated right */}
               <div className="ide-toolbar-group is-utils">
+                <span className="ide-design-toolbar-group-label">View</span>
                 <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
                   {(['canvas', 'hdl', 'split'] as const).map((v) => (
                     <button
@@ -6434,6 +6522,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     role="group"
                     aria-label="Canvas view controls"
                   >
+                    <span className="ide-design-toolbar-group-label">Camera</span>
                     <div className="ide-design-toolbar-view-meta">
                       <span
                         className="ide-design-canvas-zoom-indicator"
@@ -6488,6 +6577,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-tool-snap">
                     Snap {snapToGrid ? 'On' : 'Off'}
                   </IdeButton>
+                ) : null}
+                {workspacePreset.showCanvasTools ? (
+                  <div className="ide-design-toolbar-layout" role="group" aria-label="Circuit layout">
+                    <span className="ide-design-toolbar-group-label">Layout</span>
+                    <IdeButton
+                      tone="secondary"
+                      onClick={handleArrangeCircuit}
+                      disabled={editorCircuit.nodes.length < 2 || isReplayMode}
+                      testId="ide-design-arrange"
+                    >
+                      Arrange
+                    </IdeButton>
+                  </div>
                 ) : null}
               </div>
               </div>
@@ -7302,41 +7404,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     ) : null}
                     {showBlankStateCard && (
                       <div className="ide-design-overlay-empty" data-testid="ide-design-empty-state">
-                        <span className="ide-design-empty-eyebrow">Start on canvas</span>
-                        <h3>{PROFESSIONAL_CLASSROOM_COPY.designBlankAction}</h3>
-                        <p className="ide-design-empty-summary">
-                          Use the library for gates and registers. {SIGNAL_LANGUAGE.designLogicalIo}
-                        </p>
-                        <p
-                          className="ide-design-logical-io-note"
-                          data-testid="ide-design-logical-io-explainer"
-                        >
-                          Labels name logical signals in RedByte. Mapping later binds those signals to a board resource and package pin.
-                        </p>
-                        <ol className="ide-design-empty-steps" data-testid="ide-design-empty-checklist">
-                          <li>
-                            <span>1. Add logical inputs and outputs</span>
-                          </li>
-                          <li>
-                            <span>2. Place a gate or register</span>
-                          </li>
-                          <li>
-                            <span>3. Wire source ports to destination ports</span>
-                          </li>
-                        </ol>
+                        <span className="ide-design-empty-eyebrow">Blank circuit</span>
+                        <h3>Start a circuit</h3>
                         <div className="ide-design-empty-actions">
-                          <IdeButton tone="secondary" onClick={addIoPins} testId="ide-design-empty-add-io">
-                            Add boundary I/O
+                          <IdeButton tone="secondary" onClick={() => beginNodePlacement('INPUT')} testId="ide-design-empty-add-input">
+                            Add input
                           </IdeButton>
-                          <IdeButton tone="ghost" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
-                            Drop starter gate
+                          <IdeButton tone="secondary" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
+                            Add output
                           </IdeButton>
-                          {onGoToProject && (
-                            <IdeButton tone="ghost" onClick={onGoToProject} testId="ide-design-empty-go-to-project">
-                              Examples
-                            </IdeButton>
-                          )}
+                          <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
+                            Place gate
+                          </IdeButton>
                         </div>
+                        <p className="ide-design-empty-summary">The Component Library stays available for every supported gate and register.</p>
                       </div>
                     )}
                     {showPartialBlankAuthoring ? (
