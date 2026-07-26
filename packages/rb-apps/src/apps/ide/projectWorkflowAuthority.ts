@@ -16,10 +16,28 @@ import {
 } from './projectTruth';
 import type { IdeWorkflowRouteMode } from './workflowStages';
 
+export type DesignAuthorityTimingMode =
+  | 'synchronous_board_clock'
+  | 'manual_event_driven_lab'
+  | 'combinational';
+
+/**
+ * RBEX4xxx diagnostics belong to Design authority, except the intentional
+ * no-board-oscillator advisory used by manual-event/explicit-Clock labs.
+ */
+export function isDesignOwnedExportDiagnostic(
+  code: string,
+  timingMode?: DesignAuthorityTimingMode
+): boolean {
+  if (!/^RBEX4/.test(code)) return false;
+  return !(code === 'RBEX4200' && timingMode === 'manual_event_driven_lab');
+}
+
 export interface ProjectWorkflowAuthority {
   truth: ProjectTruthSnapshot;
   truthState: ProjectTruthState;
   verifyState: ProjectVerifyState;
+  verifyBlockedByDesign: boolean;
   verifyCurrent: boolean;
   trustedVerifyCurrent: boolean;
   compareCurrent: boolean;
@@ -106,10 +124,11 @@ export function deriveVerifyCurrent(input: {
   dirtySinceVerify: boolean;
 }): boolean {
   if (!input.hasVerifyRun) return false;
+  if (input.dirtySinceVerify) return false;
   if (input.latestVerifyLedgerEntry && input.currentVerifyProjectHash) {
     return input.latestVerifyLedgerEntry.projectHash === input.currentVerifyProjectHash;
   }
-  return !input.dirtySinceVerify;
+  return true;
 }
 
 export function deriveExportCurrent(input: {
@@ -118,10 +137,11 @@ export function deriveExportCurrent(input: {
   dirtySinceExport: boolean;
 }): boolean {
   if (input.lastExport?.status !== 'ok') return false;
+  if (input.dirtySinceExport) return false;
   if (input.lastExport.hash && input.currentExportHash) {
     return input.lastExport.hash === input.currentExportHash;
   }
-  return !input.dirtySinceExport;
+  return true;
 }
 
 export function deriveHardwareExportFailureTruth(
@@ -281,12 +301,17 @@ export function deriveProjectWorkflowAuthority(
 ): ProjectWorkflowAuthority {
   const projectHealth = deriveProjectHealth(input.projectHealthCore, input.readiness);
   const latestVerifyLedgerEntry = input.verifyRunHistory?.[input.verifyRunHistory.length - 1];
-  const verifyCurrent = deriveVerifyCurrent({
+  const verifyBlockedByDesign = Boolean(input.readiness.hasBlockingDesignIssue);
+  const rawVerifyCurrent = deriveVerifyCurrent({
     hasVerifyRun: Boolean(input.verifyLastRun ?? input.projectHealthCore.lastVerify),
     latestVerifyLedgerEntry,
     currentVerifyProjectHash: input.currentVerifyProjectHash,
     dirtySinceVerify: input.projectHealthCore.dirtySinceVerify,
   });
+  // A stored run remains part of project history, but it cannot grade a circuit
+  // whose current structure is invalid. Surfaces may still describe the prior
+  // run as historical evidence; every current Compare authority is revoked.
+  const verifyCurrent = rawVerifyCurrent && !verifyBlockedByDesign;
   const rawVerifyState = deriveProjectVerifyState(input.projectHealthCore);
   const verifyState =
     !verifyCurrent && input.projectHealthCore.lastVerify
@@ -295,12 +320,18 @@ export function deriveProjectWorkflowAuthority(
   const comparePassCurrent = verifyCurrent && verifyState === 'assertions-match';
   const comparePassIncomplete =
     comparePassCurrent && input.readiness.verifyQualification === 'incomplete-mapping';
-  const compareMatches = comparePassCurrent && !comparePassIncomplete;
+  const compareMatches =
+    comparePassCurrent &&
+    !comparePassIncomplete &&
+    !input.readiness.hasBlockingDesignIssue;
   const compareDiffers =
     verifyCurrent && (verifyState === 'assertions-differ' || verifyState === 'verify-error');
   const compareTraceOnly = verifyCurrent && verifyState === 'trace';
   const compareCurrent = verifyCurrent && (comparePassCurrent || compareDiffers);
-  const designReady = input.readiness.hasCircuit && input.readiness.hasIoMapping;
+  const designReady =
+    input.readiness.hasCircuit &&
+    input.readiness.hasIoMapping &&
+    !input.readiness.hasBlockingDesignIssue;
   const exportCurrent = deriveExportCurrent({
     lastExport: input.projectHealthCore.lastExport,
     currentExportHash: input.currentExportHash,
@@ -320,6 +351,7 @@ export function deriveProjectWorkflowAuthority(
   const stageCompletion = {
     ...baseStageCompletion,
     verify: trustedVerifyCurrent,
+    hardware: baseStageCompletion.hardware && !input.readiness.hasBlockingDesignIssue,
     export: exportTrusted,
   };
   const primaryCta = choosePrimaryProjectCta(projectHealth, input.readiness);
@@ -351,6 +383,7 @@ export function deriveProjectWorkflowAuthority(
     truth,
     truthState: truth.state,
     verifyState,
+    verifyBlockedByDesign,
     verifyCurrent,
     trustedVerifyCurrent,
     compareCurrent,

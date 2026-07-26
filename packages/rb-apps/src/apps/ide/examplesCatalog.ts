@@ -452,8 +452,8 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
     ],
     ioRows: [
       { id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'SW0 (A)',   direction: 'in',  pin: 'V17', required: true },
-      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1 (B)',   direction: 'in',  pin: 'W16', required: true },
-      { id: 'sw2', nodeId: 'sw2_node', port: 'out', label: 'SW2 (CIN)', direction: 'in',  pin: 'W15', required: true },
+      { id: 'sw1', nodeId: 'sw1_node', port: 'out', label: 'SW1 (B)',   direction: 'in',  pin: 'V16', required: true },
+      { id: 'sw2', nodeId: 'sw2_node', port: 'out', label: 'SW2 (CIN)', direction: 'in',  pin: 'W16', required: true },
       { id: 'ld0', nodeId: 'ld0_node', port: 'in',  label: 'LD0 (CARRY)', direction: 'out', pin: 'U16', required: true },
       { id: 'ld1', nodeId: 'ld1_node', port: 'in',  label: 'LD1 (SUM)',   direction: 'out', pin: 'E19', required: true },
     ],
