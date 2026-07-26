@@ -2788,15 +2788,17 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               ) : null}
 
               {tab === 'upload' && !zipInspection ? (
-                <div className="ide-import-v3__samples">
-                  <span>No ZIP available?</span>
-                  <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
-                    Load structural sample
-                  </IdeButton>
-                  <IdeButton tone="ghost" onClick={() => loadImportSample('edge-detect')} testId="ide-import-load-sample-edge-detect">
-                    Load blocked behavioral sample
-                  </IdeButton>
-                </div>
+                <details className="ide-import-v3__samples">
+                  <summary>No ZIP available? Try an example</summary>
+                  <div>
+                    <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">
+                      Load structural sample
+                    </IdeButton>
+                    <IdeButton tone="ghost" onClick={() => loadImportSample('edge-detect')} testId="ide-import-load-sample-edge-detect">
+                      Load blocked behavioral sample
+                    </IdeButton>
+                  </div>
+                </details>
               ) : null}
 
               {zipImportError ? (

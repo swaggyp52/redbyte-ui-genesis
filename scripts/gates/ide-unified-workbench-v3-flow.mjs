@@ -26,7 +26,7 @@ const STAGES = [
   { mode: 'hardware', label: 'Map Pins' },
   { mode: 'export', label: 'Export' },
 ];
-const EVIDENCE_ROOT = resolve('.redbyte/product-immersion/unified-workbench-v3/after/gate');
+const EVIDENCE_ROOT = resolve('.redbyte/product-immersion/student-workbench-finish/after/gate');
 
 assert(
   VIEWPORTS.length > 0,
@@ -89,7 +89,7 @@ async function runViewport(page, baseUrl, viewport) {
     await assertSharedShell(page, viewport);
     const surfaceObject = await assertSurfaceObject(page, viewport, stage.mode);
     const metrics = await collectSurfaceMetrics(page, stage.mode);
-    assert(metrics.coreDetailsCount === 0, `${viewport.label}/${stage.label}: ${metrics.coreDetailsCount} core details controls remain`);
+    assert(metrics.openDetailsCount === 0, `${viewport.label}/${stage.label}: ${metrics.openDetailsCount} secondary disclosures are open by default`);
     assert(metrics.railToggleCount === 0, `${viewport.label}/${stage.label}: ${metrics.railToggleCount} floating rail controls remain`);
     assert(metrics.hideShowCount === 0, `${viewport.label}/${stage.label}: ${metrics.hideShowCount} Hide/Show controls remain`);
     assert(metrics.primaryCount <= 1, `${viewport.label}/${stage.label}: ${metrics.primaryCount} primary actions compete`);
@@ -107,7 +107,7 @@ async function runViewport(page, baseUrl, viewport) {
   await assertSharedShell(page, viewport);
   const importSurfaceObject = await assertSurfaceObject(page, viewport, 'import');
   const importMetrics = await collectSurfaceMetrics(page, 'import');
-  assert(importMetrics.coreDetailsCount === 0, `${viewport.label}/Import: core details controls remain`);
+  assert(importMetrics.openDetailsCount === 0, `${viewport.label}/Import: ${importMetrics.openDetailsCount} secondary disclosures are open by default`);
   assert(importMetrics.railToggleCount === 0, `${viewport.label}/Import: floating rail controls remain`);
   assert(importMetrics.hideShowCount === 0, `${viewport.label}/Import: Hide/Show controls remain`);
   assert(importMetrics.primaryCount <= 1, `${viewport.label}/Import: ${importMetrics.primaryCount} primary actions compete`);
@@ -338,13 +338,17 @@ async function assertSurfaceObject(page, viewport, mode) {
         share: (canvas?.width ?? 0) / Math.max(1, (left?.width ?? 0) + (canvas?.width ?? 0) + (right?.width ?? 0)),
       };
     });
-    assert(geometry.left && geometry.canvas && geometry.right && geometry.center, `${viewport.label}/Design: one or more stable work regions are missing`);
+    assert(geometry.left && geometry.canvas && geometry.center, `${viewport.label}/Design: one or more primary work regions are missing`);
     assert(geometry.left.width >= 180 && geometry.left.width <= 230, `${viewport.label}/Design: library width ${geometry.left.width}px is unstable`);
     if (viewport.width >= 1200) {
-      assert(geometry.right.width >= 210 && geometry.right.width <= 290, `${viewport.label}/Design: inspector width ${geometry.right.width}px is unstable`);
       assert(Math.abs(geometry.left.top - geometry.center.top) <= 8, `${viewport.label}/Design: library is not aligned with the center workspace ${JSON.stringify(geometry)}`);
-      assert(Math.abs(geometry.right.top - geometry.center.top) <= 8, `${viewport.label}/Design: inspector is not aligned with the center workspace ${JSON.stringify(geometry)}`);
-      const minimumShare = viewport.width >= 1800 ? 0.70 : viewport.width >= 1440 ? 0.66 : 0.64;
+      if (geometry.right) {
+        assert(geometry.right.width >= 210 && geometry.right.width <= 290, `${viewport.label}/Design: contextual inspector width ${geometry.right.width}px is unstable`);
+        assert(Math.abs(geometry.right.top - geometry.center.top) <= 8, `${viewport.label}/Design: contextual inspector is not aligned with the center workspace ${JSON.stringify(geometry)}`);
+      }
+      const minimumShare = geometry.right
+        ? viewport.width >= 1800 ? 0.70 : viewport.width >= 1440 ? 0.66 : 0.64
+        : 0.78;
       assert(geometry.share >= minimumShare, `${viewport.label}/Design: canvas share ${geometry.share.toFixed(3)} is not dominant`);
     } else {
       assert(
@@ -434,6 +438,7 @@ async function collectSurfaceMetrics(page, mode) {
     };
     return {
       coreDetailsCount: root?.querySelectorAll('details, summary').length ?? 0,
+      openDetailsCount: root?.querySelectorAll('details[open]').length ?? 0,
       railToggleCount: root?.querySelectorAll('[class*="dock-toggle-rail"], [data-testid*="dock-toggle"], [data-testid*="dock-collapse"]').length ?? 0,
       hideShowCount: hideShow.length,
       primaryCount: primaries.length,

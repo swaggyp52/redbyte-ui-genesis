@@ -27,7 +27,9 @@ describe('ImportSurface first look', () => {
     expect(queryByTestId('ide-import-replace-project')).toBeNull();
     expect(queryByTestId('ide-import-workflow-rail')).toBeNull();
     expect(queryByTestId('ide-import-toggle-behavioral-samples')).toBeNull();
-    expect(getByTestId('ide-import-workbench').querySelector('details, summary')).toBeNull();
+    const samples = getByTestId('ide-import-workbench').querySelector('details');
+    expect(samples?.querySelector('summary')?.textContent).toBe('No ZIP available? Try an example');
+    expect((samples as HTMLDetailsElement).open).toBe(false);
   });
 
   it('offers the blocked behavioral example directly, without an unsupported-example toggle', async () => {

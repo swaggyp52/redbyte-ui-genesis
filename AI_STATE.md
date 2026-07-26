@@ -1,5 +1,15 @@
 # AI State
 
+## Change Log 2026-07-26 (local product finish: make the student workbench task-first)
+
+**Subsystem:** Unified Workbench v3 shared shell and the Project, Design, Verify, Map Pins, Export, and Import student workspaces.
+
+**Product repair:** The local `product/redbyte-student-workbench-finish` branch starts from `origin/release/unified-workbench-v3-rc` at `9f3b488f0`. Project now leads with project identity, starter source, one recommended action, and a compact five-stage workflow while moving project utilities and technical evidence behind closed disclosures. Design returns unused inspector width to the circuit canvas, reveals the inspector only for a selected object, narrows both support columns, and prioritizes I/O and logic before board resources. Verify uses direct testbench language, one visible run authority, grouped document management, and collapsed clock settings while keeping stimulus and expected-output repair in the primary task plane. Map Pins keeps the assignment table and board consequence visible with clean logical signal identities. Export raises generated files and the live file preview above upstream diagnostic detail. Import follows Upload -> Review -> Apply, keeps examples secondary, blocks unsupported behavioral reconstruction, and provides a cancel-safe replacement review.
+
+**Validation and evidence:** Pinned Node `20.19.0` passes workspace typecheck, the IDE CSS audit with zero warnings or errors, the unified build (`324` modules), and `24` focused component files / `190` tests covering the changed student surfaces. Manual Browser-E0 replay proved Compare PASS -> intentional FAIL -> expected-output repair -> PASS, Map Pins incomplete -> repaired complete, blocked and structural Import review, and cancellation that preserved the active project. Ignored before/after evidence, including exact `1366x768` and `1440x900` captures for all six surfaces, is under `.redbyte/product-immersion/student-workbench-finish/`. The one bounded cross-surface gate emitted no browser errors and captured Project/Design at every configured viewport, but stopped because its pre-sprint assertion required an idle Design inspector; that future assertion now accepts the contextual inspector and was not rerun under the one-run cap. An older Export readiness-structure test remains stale because it expects dashboard sections already absent at this RC base; current Export workstation/handoff tests pass `28/28`.
+
+**Boundary:** Local Browser-E0 product implementation only. The stopped experiment is preserved separately on `rescue/redbyte-stopped-rc-2026-07-26` at `ccdf1c0fb`. PR #79, remote branches, `main`, production, generated HDL/XDC/testbench/Tcl/ZIP semantics, Vivado execution, bitstreams, Basys3 observation, and E1/E2/E3 authority are unchanged. Nothing in this product-finish branch is pushed, merged, deployed, or release-certified.
+
 ## Change Log 2026-07-26 (fix: preserve Verify Compare readability on Linux)
 
 **Subsystem:** Unified Workbench v3 Verify command deck, cross-platform label readability, and required remote release proof.
