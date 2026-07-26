@@ -3100,8 +3100,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         <IdeButton
                           tone="secondary"
                           onClick={() => {
-                            if (!selectedBoardResourceAlias || !onSetMappingPin) return;
-                            onSetMappingPin(selectedMappingRow.id, selectedBoardResourceAlias);
+                            if (!selectedBoardResource || !onSetMappingPin) return;
+                            onSetMappingPin(selectedMappingRow.id, selectedBoardResource.packagePin);
                           }}
                           disabled={!selectedResourceNeedsApply || !onSetMappingPin}
                           testId="ide-hw-assign-selected-resource"

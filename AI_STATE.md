@@ -7693,6 +7693,31 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-07-26 (Blank-project Map Pins authority repair)
+
+**Subsystem**
+
+- IDE Map Pins and project runtime hardware mapping
+
+**What changed**
+
+- Made live scalar boundary rows materialize into the canonical hardware mapping document even when a blank project began with no mapping entries.
+- Changed the direct board-resource editor to persist the selected package pin, while continuing to display the student-facing Basys3 control alias.
+- Preserved visible duplicate-pin conflict diagnostics with both participating signal names and one-action repair.
+
+**Validation**
+
+- Browser mapping from a scratch-authored Full Adder progressed from `0 / 5` to `MAPPING COMPLETE`.
+- Browser conflict rehearsal reported `CARRY and SUM` sharing `LD0 (package pin U16)`.
+- Focused runtime blank-project mapping regression passed.
+- Existing Hardware direct-editor and mapping-workflow suites passed (`40` tests).
+
+**Boundary**
+
+- Browser simulation and mapping evidence only; no Vivado, bitstream, programming, or physical-board behavior was claimed.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Simulation & Replay Studio v1 local candidate)
 
 **Subsystem**

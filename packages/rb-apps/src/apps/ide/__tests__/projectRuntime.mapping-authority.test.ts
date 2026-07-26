@@ -148,6 +148,43 @@ describe('projectRuntime mapping authority', () => {
     useProjectRuntime.getState().resetToActiveExample();
   });
 
+  it('maps boundary rows authored after starting from a blank project', () => {
+    act(() => {
+      useProjectRuntime.getState().replaceWithBlankProject();
+      useProjectRuntime.getState().applyCircuitMutation({
+        nodes: [
+          { id: 'input-a', type: 'INPUT', x: 0, y: 0, label: 'A' },
+          { id: 'output-sum', type: 'OUTPUT', x: 200, y: 0, label: 'SUM' },
+        ],
+        connections: [
+          {
+            from: { nodeId: 'input-a', portName: 'out' },
+            to: { nodeId: 'output-sum', portName: 'in' },
+          },
+        ],
+      });
+    });
+
+    const inputRow = useProjectRuntime
+      .getState()
+      .projectIoRows.find((row) => row.nodeId === 'input-a');
+    expect(inputRow?.pin).toBe('');
+
+    act(() => {
+      useProjectRuntime.getState().setMappingPin(inputRow?.id ?? 'a', 'V17');
+    });
+
+    const mappedState = useProjectRuntime.getState();
+    expect(
+      mappedState.projectIoRows.find((row) => row.nodeId === 'input-a')?.pin
+    ).toBe('V17');
+    expect(
+      materializeIoMappingFromHardwareMappingV2(mappedState.hardwareMappingV2).inputs.find(
+        (row) => row.nodeId === 'input-a'
+      )?.pin
+    ).toBe('V17');
+  });
+
   it('keeps renamed boundary mapping edits aligned with export authority', () => {
     act(() => {
       useProjectRuntime.getState().loadFromProject(buildExampleProject());

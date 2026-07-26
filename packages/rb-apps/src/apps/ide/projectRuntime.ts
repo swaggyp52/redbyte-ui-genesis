@@ -824,8 +824,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setMappingPin: (rowId, pin) => {
         set((state) => {
+          const { hardwareMappingV2: synchronizedCurrentDoc } =
+            deriveAuthoritativeHardwareState(state.circuit, state.hardwareMappingV2);
           const nextDoc = applyMaterializedPinToHardwareMappingV2(
-            structuredClone(state.hardwareMappingV2),
+            structuredClone(synchronizedCurrentDoc),
             rowId,
             pin
           );

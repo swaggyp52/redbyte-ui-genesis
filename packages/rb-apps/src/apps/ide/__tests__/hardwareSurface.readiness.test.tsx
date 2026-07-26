@@ -405,7 +405,7 @@ describe('HardwareSurface readiness', () => {
     fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'SW1' } });
     expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('pin V16');
     fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
-    expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'SW1');
+    expect(onSetMappingPin).toHaveBeenCalledWith('iom-in0', 'V16');
   });
 
   it('keeps signal identity, purpose, board resource, package pin, status, and action distinct', () => {

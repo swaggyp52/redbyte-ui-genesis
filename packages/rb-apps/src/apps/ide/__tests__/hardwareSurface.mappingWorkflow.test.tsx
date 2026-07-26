@@ -424,7 +424,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(getByTestId('ide-hw-selected-mapping-status').textContent).toBe('Missing required');
     fireEvent.change(getByTestId('ide-hw-direct-resource-select'), { target: { value: 'LD1' } });
     fireEvent.click(getByTestId('ide-hw-assign-selected-resource'));
-    expect(onSetMappingPin).toHaveBeenCalledWith('ld0', 'LD1');
+    expect(onSetMappingPin).toHaveBeenCalledWith('ld0', 'E19');
     expect(getByTestId('ide-hw-selected-mapping-consequence').textContent).toContain('package pin E19');
   });
 
