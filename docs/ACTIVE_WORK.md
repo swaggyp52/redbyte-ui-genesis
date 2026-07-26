@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-07-26
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -8,12 +8,12 @@ imported_by: CLAUDE.md
 
 # RedByte - Active Work Cockpit
 
-**Working source branch:** `product/redbyte-unified-workbench-v3-rc-integrated` at `0788044cbdf2699520d90a3428f2e5034dc73cab` (local integrated RC source; documentation/manual regeneration and final reconstructed release SHA certification pending)
+**Working source branch:** `product/redbyte-learning-workbench-v1` from local Simulation & Replay Studio source `d53418393` (learning-workbench implementation and documentation are local-only; release certification remains pending)
 **Canonical worktree:** `C:\Users\conno\redbyte-ui-genesis-main`
 **Historical/local source clone:** `C:\Users\conno\OneDrive\Documents\RedByte FPGA`
 **Remote:** `https://github.com/swaggyp52/redbyte-ui-genesis.git`
 **Preserved local checkpoint:** `14429ed61f5a1bc90a796b0bdf646633668381c3` (completed Professional Workflow Completion docs checkpoint; itself local-only above `origin/main` `315649f35b2e0f7f696a51e2a55c5104c531be1f`)
-**Latest product/control slice:** Unified Workbench v3 RC authority hardening. Current integrated source is `0788044cb`; sequential rescue `048b32e06` and narrow hardening `15da95fc9` remain preserved, as do original v3 branch `d82c379eb0` and earlier recovery checkpoint `0cb43eca7`. Remote `origin/main` remains `315649f35b2e0f7f696a51e2a55c5104c531be1f`. The curated release branch, final exact-SHA aggregate/human proof, push, pull request, and required remote checks are not complete.
+**Latest product/control slice:** Learning Workbench Completion v1 on top of the integrated RC, Graphite visual system, and Simulation & Replay Studio source. Design now distinguishes Edit, exploratory Live, and recorded read-only Replay; Verify scenario cards expose stimulus/check/timing shape; and compatible Design history preserves truly stimulus-only documents without manufacturing expected outputs. The prior RC branches/checkpoints remain preserved. The curated release branch, final exact-SHA aggregate/human proof, push, pull request, and required remote checks are not complete.
 **Target hardware:** Basys3 (`xc7a35tcpg236-1`)
 **Vivado target:** 2024.2
 
@@ -24,6 +24,14 @@ Project -> Design -> Verify -> Map Pins -> Export
 ```
 
 Import is a utility. Vivado build, board programming, and board observation are external proof tiers after Export.
+
+## Current Learning Workbench Completion v1 Candidate (2026-07-26)
+
+- **Branch and boundary:** `product/redbyte-learning-workbench-v1` in the isolated `redbyte-student-workbench-finish` worktree, based on `d53418393`. Local commits and ignored evidence only; no remote or release action.
+- **Design learning model:** Edit changes structure, Live shows exploratory propagation without creating Verify evidence, and Replay opens only from a recorded Verify run and remains read-only. The Common palette puts AND/OR/XOR/NOT/Register1/INPUT/OUTPUT first.
+- **Verify learning model:** Scenario cards expose type, events, optional checks, timing cycles, and signal preview. A `0 checks` scenario remains stimulus-only through compatible Design edit/undo/redo. Simulation, optional checks, waveform, failure repair, and circuit Replay remain visibly distinct.
+- **Observed browser proof:** Sequential no-check simulation, checked PASS, deliberate FAIL, expected-value repair, Design Replay, Full Adder Live propagation, Project live snapshot/status, semantic mapping selection, structural Import candidate review, draft simulated Export, and trusted validated package download.
+- **Known gaps:** The bounded replay did not complete a fresh blank-canvas authoring flow, a manual-clock sequential path, a normal-use mapping conflict fixture, or physical-board/Vivado proof. A Change Project -> Build Fresh native confirmation can stall browser automation and remains an interaction-proof defect.
 
 ## Current Local Simulation & Replay Studio v1 Candidate (2026-07-26)
 

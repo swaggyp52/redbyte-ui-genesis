@@ -1,5 +1,15 @@
 # AI State
 
+## Change Log 2026-07-26 (local learning workbench: clarify simulation, replay, and scenario authorship)
+
+**Subsystem:** Unified Workbench v3 Project orientation, Design canvas modes and palette hierarchy, Verify scenario library, Map Pins simulation wording, and browser-local testbench authorship.
+
+**Product change:** The local `product/redbyte-learning-workbench-v1` branch starts from Simulation & Replay Studio commit `d53418393`. Project keeps a live read-only graph and human relative saved times. Design now labels one canvas as **Edit** for structural authoring, **Live** for exploratory propagation that is not saved evidence, and **Replay** for a recorded read-only Verify run. The component library starts with AND, OR, XOR, NOT, Register1, INPUT, and OUTPUT. Verify replaces text-only testbench tabs with scenario cards that expose combinational/sequential kind, event count, optional check count, timing cycles, and signal preview. Hardware calls its secondary board view **Open simulated board** and states that it is exploratory, not hardware evidence.
+
+**Defect and repair:** Browser replay found that a new `7 events / 0 checks` sequential scenario gained 14 expected-output checks after a compatible Design edit plus undo/redo. `preserveCompatibleVectorAuthorship` had unconditionally filled output coverage from the edited circuit. It now preserves an empty expected-output map when the student authored no checks, while still reconciling output coverage for scenarios that already contain checks. A focused history-authority regression covers edit, undo, and redo.
+
+**Evidence and boundary:** Local Browser-E0 replay proves Full Adder Live propagation, a sequential stimulus-only simulation and circuit Replay, a deliberate one-cell Compare failure with visible waveform/repair context, restoration to 14 passing checks, semantic Map Pins selection, simulated-versus-validated Export tiers, trusted local package download, and structural Import candidate review without apply. Ignored evidence is stored under `.redbyte/product-immersion/learning-workbench-v1/`. This is local product implementation and documentation evidence only: no push, PR, merge, deployment, classroom aggregate, remote check, Vivado execution, bitstream, Basys3 observation, or E1/E2/E3 claim applies.
+
 ## Change Log 2026-07-26 (local product finish: make the student workbench task-first)
 
 **Subsystem:** Unified Workbench v3 shared shell and the Project, Design, Verify, Map Pins, Export, and Import student workspaces.

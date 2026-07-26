@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-22
+last_validated: 2026-07-26
 owner: Connor Angiel
 used_by_claude: true
 role: compact current-truth control layer for RedByte product and agent sessions
@@ -9,6 +9,14 @@ role: compact current-truth control layer for RedByte product and agent sessions
 # RedByte Current Truth
 
 Use this doc to stop source drift before work starts. It is a control layer, not a product spec.
+
+## Current Local Learning Workbench Candidate
+
+- Source is local branch `product/redbyte-learning-workbench-v1`, based on Simulation & Replay Studio commit `d53418393`; it is not pushed, merged, deployed, or release-certified.
+- Design uses one circuit canvas with explicit **Edit** authoring, exploratory **Live**, and recorded read-only **Replay** modes. Live state is not saved Verify evidence.
+- Verify presents named documents as scenario cards with event/check/timing/signal summaries. A scenario with no expected-output checks remains stimulus-only through compatible Design edit, undo, and redo.
+- Browser-E0 evidence covers Full Adder Live propagation, sequential no-check simulation and Replay, deliberate mismatch and repair, passing checks, mapping selection, simulated and trusted Export states, and Import review without apply.
+- Blank-canvas authoring, manual-clock sequential replay, mapping-conflict browser proof, Vivado, bitstream, and physical Basys3 behavior remain unproven by this slice.
 
 ## 1. Source Hierarchy
 

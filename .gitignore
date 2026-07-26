@@ -40,6 +40,7 @@ yarn-error.log*
 .redbyte/logs/
 .redbyte/pi-session-room/
 .redbyte/product-immersion/
+.redbyte/runtime/
 .redbyte/session/
 .redbyte/**/rooms.json
 .redbyte/**/registry.json

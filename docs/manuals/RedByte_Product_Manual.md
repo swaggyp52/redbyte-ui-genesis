@@ -407,7 +407,7 @@ Pills are reserved for a small number of semantic states such as PASS, FAIL, sta
 
 **Outputs.** Updated project metadata. Readiness assessment for downstream surfaces.
 
-**Student-Facing Content.** Students see project/lab identity, board target, saved state, design size, current testbench evidence, mapping progress, package state, and one next action. Manifest hashes and low-level developer diagnostics do not occupy the normal workspace.
+**Student-Facing Content.** Students see project/lab identity, board target, saved state, a read-only live circuit snapshot, design size, current testbench evidence, mapping progress, package state, and one next action. Manifest hashes and low-level developer diagnostics do not occupy the normal workspace.
 
 **Common Mistakes.**
 
@@ -428,6 +428,7 @@ Pills are reserved for a small number of semantic states such as PASS, FAIL, sta
 
 - *Main center:* The Circuit canvas, which owns the majority of the workbench.
 - *Core toolbar:* Select, Wire, Undo, Redo, Fit, Zoom, and View remain directly reachable.
+- *Workspace mode:* **Edit**, **Live**, and **Replay** describe the same canvas without implying that exploratory switching is saved verification evidence. Edit owns structural authoring, Live is exploratory simulation, and Replay is enabled only for a recorded Verify run and is read-only.
 - *Left library:* Stable `200-220px` searchable component library with compact categories and distinct board resources.
 - *Right inspector:* Stable `240-280px` selection inspector; with no selection it shows a concise circuit overview. At constrained widths selected details move below the canvas automatically.
 
@@ -442,7 +443,7 @@ At the RC laptop viewports, the circuit grid occupies 63.1% of the 1366px viewpo
 - **Undo/Redo:** Standard keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z). History supports up to 100 levels.
 - **Target a port directly:** Node ports expose explicit wiring targets. Sparse layouts use at least 24×24px targets; dense layouts use at least 32×24px targets (the current dense target is 32×36px). Port targeting and wiring remain keyboard reachable.
 
-**Available Components.** The component palette contains the following categories:
+**Available Components.** The palette starts with a compact Common group containing AND, OR, XOR, NOT, Register1, INPUT, and OUTPUT, followed by the complete categorized library:
 
 | Category | Components |
 |----------|-----------|
@@ -490,7 +491,7 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Major UI Regions.**
 
-- *Scenario workspace:* Named testbench documents plus explicit combinational cases or a sequential timeline for clock/reset/input stimulus. The default Scenario view does not require expected values.
+- *Scenario workspace:* Named testbench documents appear as visual scenario cards showing combinational/sequential type, event count, optional check count, timing cycles when present, and a compact signal preview. Each card opens explicit combinational cases or a sequential clock/reset/input timeline. The default Scenario view does not require expected values.
 - *Run controls:* One stable **Run simulation** authority. Scenario, Replay, and Checks are workspace lenses rather than competing run modes.
 - *Replay / results:* Quiet before a run; after a run it shows selected case/time, observed values, readable waveform evidence, circuit-replay handoff, and a separate assertion state.
 
@@ -508,7 +509,7 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Per-document sequential policy.** Every named Verify document may retain its own execution override, run-cycle count, active edge, reset behavior, clock source type, and execution model, together with the resolved signal identity/label and starting level when available. Save, autosave, reload, duplicate, rename, compatible Design repair, and Import recovery must preserve or explicitly repair this policy with the document. Automatic board clock, manual pulses, and custom pattern are distinct authored choices; changing documents changes the policy and authored rows from which the shared runtime/bring-up/testbench execution vectors are materialized.
 
-**Authorship and Design repair.** The named document identity, active document, cases, stimulus, expected values, and sequential steps are authored workspace state. Moving nodes without changing circuit behavior preserves both the authored document and current run evidence. A compatible truth-affecting Design edit preserves or rekeys the same authored document but revokes current Compare observations and PASS/FAIL authority; references to removed signals remain visible so the student can review or repair them. A structural break reports **DESIGN BLOCKED** until the circuit is repaired. The student then reruns the same document. Prior runs remain available as history, not current proof.
+**Authorship and Design repair.** The named document identity, active document, cases, stimulus, expected values, and sequential steps are authored workspace state. A stimulus-only document with no expected-output checks remains stimulus-only through compatible Design edits, undo, and redo; RedByte does not manufacture checks from the circuit's observed outputs. Moving nodes without changing circuit behavior preserves both the authored document and current run evidence. A compatible truth-affecting Design edit preserves or rekeys the same authored document but revokes current Compare observations and PASS/FAIL authority; references to removed signals remain visible so the student can review or repair them. A structural break reports **DESIGN BLOCKED** until the circuit is repaired. The student then reruns the same document. Prior runs remain available as history, not current proof.
 
 **Clock / timing guidance.** Sequential designs show an inline clock/timing banner above the grid. It names the active clock or latch-control signal, reports whether the source is auto board clock, manual pulses, or a custom pattern, and highlights the authoritative lane only when manual authoring is actually required. If the active clock is the Basys 3 oscillator, RedByte treats `CLK100MHZ` on `W5` as an auto board clock source by default rather than as a manual switch-style input.
 
@@ -762,7 +763,7 @@ Projects are auto-saved to browser local storage. The save state indicator in th
 
 The Verify surface uses a tick-based scenario. Each row is one authored step. Inputs are edited in Scenario; optional expected-output assertions are edited in Checks.
 
-Navigate to the Verify surface and choose or create a named testbench document. The Build testbench grid displays one row per authored tick. For each row:
+Navigate to the Verify surface and choose or create a named testbench document. Scenario cards summarize the document type, authored events, optional checks, timing cycles, and signal preview before selection. The Build testbench grid then displays one row per authored tick. For each row:
 
 1. Set the input values (0 or 1) for each input signal.
 2. Run the scenario and inspect waveform or circuit replay.

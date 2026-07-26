@@ -374,6 +374,19 @@ Each claim is rated:
 
 ---
 
+### 28. Learning Workbench Modes, Scenario Cards, and Stimulus-only Preservation
+
+| Field | Value |
+|-------|-------|
+| **Claim** | Design distinguishes structural Edit, exploratory Live, and read-only recorded Replay on one circuit canvas; Verify presents named documents as scenario cards; a document with no expected-output checks remains stimulus-only through compatible Design edits, undo, and redo. |
+| **Sections** | §7.1-§7.3, §9 |
+| **Status** | **VERIFIED LOCALLY** |
+| **Source** | `DesignSurface.tsx`, `TestbenchDocumentTabs.tsx`, `projectRuntime.ts`, and the related Design/Verify CSS. |
+| **Tests** | Focused Design mode/common-palette assertions, the scenario-card assertion, and the stimulus-only history-authority regression. Browser-E0 replay also proved a sequential `7 events / 0 checks` document, no-check simulation, circuit Replay, deliberate FAIL, repair, passing checks, and trusted local package download. |
+| **Correction** | Added explicit mode/evidence boundaries, scenario-card summaries, and the rule that compatible circuit edits must not manufacture checks from observed outputs. |
+
+---
+
 ## Summary
 
 | Status | Findings |

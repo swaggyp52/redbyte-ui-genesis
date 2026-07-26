@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-25
+last_validated: 2026-07-26
 owner: Connor Angiel
 used_by_claude: true
 role: ordered near-term RedByte V1 work queue for agents and maintainers
@@ -9,6 +9,16 @@ role: ordered near-term RedByte V1 work queue for agents and maintainers
 # RedByte Work Queue
 
 This is the ordered near-term queue after the V1 product contract reset and later browser-first hardening. Current local integrated RC source is `product/redbyte-unified-workbench-v3-rc-integrated` at pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab`; sequential rescue `048b32e06`, narrow hardening `15da95fc9`, original v3 `d82c379eb0`, and earlier recovery `0cb43eca7` remain preserved. **Verdict: integrated RC source authority repaired; final exact-SHA release certification pending.** The touched authority matrix passes `20/20` files and `258/258` tests under Node `20.19.0`; typecheck, unified build, and the focused release gates pass, but docs change the tree and exact-SHA human/aggregate evidence remains pending. No release reconstruction, final classroom aggregate, professor GO, QA PASS, push, PR, deployment, production, Vivado, Basys3, or remote-green claim applies.
+
+## Learning Workbench Completion Queue
+
+| Order | Slice | Current truth / done criteria |
+|---|---|---|
+| LW-1 | Design and Verify learning modes | Implemented locally: Edit/Live/Replay labels and Common palette; visual scenario cards; stimulus-only history regression. |
+| LW-2 | Browser flow closure | Partially proven: Full Adder Live propagation and sequential no-check/PASS/FAIL/repair/Replay/Export. Still require deterministic blank-canvas authoring and manual-clock sequential replay. |
+| LW-3 | Mapping edge visualization | Selected semantic binding and simulated-board entry are proven. Add a stable browser fixture for row-local conflict creation/repair and trace-driven simulated-board values. |
+| LW-4 | Manual and evidence reconciliation | Manual source/print, claim audit, traceability, current truth, active work, and ignored truth packet must describe the local boundary; render and visually inspect the PDF. |
+| LW-5 | Release handoff | Out of scope for this local sprint. Only after source review: reconstruct one approved exact tree and run the existing RC certification program. |
 
 ## Active RC Completion Queue
 

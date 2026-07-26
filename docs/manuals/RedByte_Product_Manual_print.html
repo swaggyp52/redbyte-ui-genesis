@@ -830,7 +830,7 @@ pnpm dev</code></pre>
     <tr><td><strong>Main Area</strong></td><td>Textual engineering overview: identity, Design, Verify, Map Pins, Export, blocker, and one recommendation.</td></tr>
     <tr><td><strong>Controls</strong></td><td>Edit identity, follow one recommended next action, open the owning Design/Verify/Map Pins/Export row, or use Change Project with replacement guards.</td></tr>
     <tr><td><strong>Outputs</strong></td><td>Updated metadata and authoritative workflow summaries; Project does not duplicate mapping or package editors.</td></tr>
-    <tr><td><strong>Student View</strong></td><td>Project identity, Design/Verify/Map Pins/Export summaries, one recommendation, and state-owned actions such as <strong>Open Export</strong>. Export's technical evidence dialog contains secondary hashes/provenance.</td></tr>
+    <tr><td><strong>Student View</strong></td><td>Project identity, a read-only live circuit snapshot, Design/Verify/Map Pins/Export summaries, one recommendation, and state-owned actions such as <strong>Open Export</strong>. Export's technical evidence dialog contains secondary hashes/provenance.</td></tr>
   </tbody>
 </table>
 
@@ -842,9 +842,10 @@ pnpm dev</code></pre>
     <tr><td><strong>Purpose</strong></td><td>Circuit construction via drag-and-drop gate placement and wiring.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>Whenever the circuit needs to be created or modified.</td></tr>
     <tr><td><strong>Main Area</strong></td><td>Stable 200–220px library, dominant circuit canvas with direct Select/Wire/Undo/Redo/Fit/Zoom/View controls, and stable 240–280px inspector.</td></tr>
+    <tr><td><strong>Canvas modes</strong></td><td><strong>Edit</strong> owns structural authoring, <strong>Live</strong> shows exploratory propagation without creating saved Verify evidence, and read-only <strong>Replay</strong> is enabled only for a recorded Verify run.</td></tr>
     <tr><td><strong>Controls</strong></td><td>Place components, wire explicit ports, select/move/delete, undo/redo (100 levels), and use keyboard-reachable port targets.</td></tr>
     <tr><td><strong>Geometry</strong></td><td>Circuit grid: 63.1% at 1366px and 65.0% at 1440px; 62% floor passed, strategic 70% target unmet. Sparse port targets are at least 24×24px; dense targets are at least 32×24px (current 32×36px).</td></tr>
-    <tr><td><strong>Palette</strong></td><td>AND/OR/NOT/NAND/NOR/XOR/XNOR, five 3-input gates, Register1/RegisterBus/StateBank, legacy/theory sequential elements, INPUT/OUTPUT/Ground, FullAdder, custom components, and separate Basys3 board resources. Generic Clock is not a current palette card.</td></tr>
+    <tr><td><strong>Palette</strong></td><td>A Common group starts with AND/OR/XOR/NOT/Register1/INPUT/OUTPUT, followed by AND/OR/NOT/NAND/NOR/XOR/XNOR, five 3-input gates, Register1/RegisterBus/StateBank, legacy/theory sequential elements, INPUT/OUTPUT/Ground, FullAdder, custom components, and separate Basys3 board resources. Generic Clock is not a current palette card.</td></tr>
     <tr><td><strong>Registry boundary</strong></td><td>27 direct primitive registrations plus 4 composite registrations = 31 runtime registry additions. Runtime registration does not guarantee student-palette visibility.</td></tr>
     <tr><td><strong>Wiring Rules</strong></td><td>Output→Input valid. Fan-out allowed. Self-loops rejected. One connection per input port.</td></tr>
     <tr><td><strong>Health Indicator</strong></td><td>"Circuit OK" or "Issues found" (floating outputs, missing I/O).</td></tr>
@@ -861,10 +862,10 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
   <tbody>
-    <tr><td><strong>Purpose</strong></td><td>Run truth table verification, present pass/fail verdicts, enable failure analysis.</td></tr>
+    <tr><td><strong>Purpose</strong></td><td>Author stimulus, run deterministic simulation, inspect waveform or circuit replay, and add optional expected-output checks.</td></tr>
     <tr><td><strong>When to Use</strong></td><td>After building or modifying a circuit, before hardware mapping or export.</td></tr>
-    <tr><td><strong>Main Area</strong></td><td>Named testbench editor, one Observe/Compare command authority, and waveform/results workspace.</td></tr>
-    <tr><td><strong>Controls</strong></td><td>Run Observe/Compare, edit combinational rows or sequential timeline cells, inspect mismatch, choose <strong>Edit expected</strong>, <strong>Inspect Design</strong>, or structural <strong>Open Design</strong>, then rerun.</td></tr>
+    <tr><td><strong>Main Area</strong></td><td>Visual scenario cards summarize document type, event count, optional check count, timing cycles, and signal preview; Scenario, Replay, and Checks remain lenses around one run authority.</td></tr>
+    <tr><td><strong>Controls</strong></td><td>Use <strong>Run simulation</strong>, edit combinational rows or sequential timeline cells, inspect mismatch, choose <strong>Edit expected</strong>, <strong>Inspect Design</strong>, or structural <strong>Open Design</strong>, then rerun.</td></tr>
     <tr><td><strong>Sequential policy</strong></td><td>Each named document owns execution override, run cycles, active edge, reset behavior, source type, execution model, resolved signal identity, and starting level where available. Auto board clock, manual pulses, and custom pattern are distinct choices.</td></tr>
     <tr><td><strong>Sequential execution</strong></td><td>One materialized vector sequence drives runtime, bring-up expectations, and testbench generation. Manual/custom captures only on authored low-to-high; Auto materializes cycle 0/run cycles/reset and samples every row post-rising-edge. No hidden runtime reset prelude is added.</td></tr>
     <tr><td><strong>Verify evidence currentness</strong></td><td><code>current</code>, <code>missing</code>, <code>stale</code>, and <code>failed</code> are distinct upstream evidence states, not Export <code>verificationTrust</code> values. Observe-only traces do not support trusted classification.</td></tr>
@@ -876,7 +877,7 @@ pnpm dev</code></pre>
 
 <div class="callout callout-note">
   <span class="callout-label">Authorship and Design repair</span>
-  Named testbench identity, active document, cases, stimulus, expected values, sequential steps, and sequential execution policy are authored browser-workspace state. An Unset expected cell means no Compare check for that output on that row; Observe may still record it. Layout-only node moves preserve authorship and current evidence. Compatible truth-affecting Design edits preserve or rekey the same document but clear current Compare/waveform authority; structural breaks report <strong>DESIGN BLOCKED</strong> until repaired and rerun. Browser-local save/autosave/restore stores named <code>scenarios</code> and the active document beside portable <code>RBProject</code> JSON; this sidecar is not a new portable project field or proof of cross-browser/archive transfer. Its authored rows and policy can still change the shared materialized execution vectors and resolved clock/schedule projection used by generated <code>testbench.vhd</code>, package freshness, and receipt authority.
+  Named testbench identity, active document, cases, stimulus, expected values, sequential steps, and sequential execution policy are authored browser-workspace state. An Unset expected cell means no check for that output on that row; simulation may still record it. A stimulus-only document remains stimulus-only through compatible Design edits, undo, and redo; RedByte does not manufacture checks from observed outputs. Layout-only node moves preserve authorship and current evidence. Compatible truth-affecting Design edits preserve or rekey the same document but clear current Compare/waveform authority; structural breaks report <strong>DESIGN BLOCKED</strong> until repaired and rerun. Browser-local save/autosave/restore stores named <code>scenarios</code> and the active document beside portable <code>RBProject</code> JSON; this sidecar is not a new portable project field or proof of cross-browser/archive transfer. Its authored rows and policy can still change the shared materialized execution vectors and resolved clock/schedule projection used by generated <code>testbench.vhd</code>, package freshness, and receipt authority.
 </div>
 
 <h2 id="s7-4">7.4 Map Pins Surface</h2>

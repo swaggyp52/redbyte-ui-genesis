@@ -79,6 +79,8 @@
 | Runtime-only/compatibility registrations do not imply palette cards | `componentSupportRegistry.ts` | capability matrix | component support tests | CORRECTED |
 | Runtime registry performs 27 direct primitive registrations plus 4 composite registrations = 31 additions | `index.ts` | direct `NodeRegistry.register` calls + `registerCompositeNode` calls | registry tests | CORRECTED |
 | Port targets meet 24×24px sparse and 32×24px dense floors (current dense 32×36px), with keyboard-reachable wiring targets | `NodeView.tsx`, `design-workbench-v3.css` | port target geometry and keyboard handlers | `NodeView.portTargets.test.tsx`, `ide:gate:design-port-target-authority` | VERIFIED |
+| One canvas exposes Edit authoring, exploratory Live, and recorded read-only Replay with explicit evidence labels | `DesignSurface.tsx`, `design-workbench-v3.css` | mode control and truth label | `designSurface.idleInspector.test.tsx`; Browser-E0 Full Adder Live and recorded Replay | VERIFIED LOCALLY |
+| Common palette starts with AND, OR, XOR, NOT, Register1, INPUT, and OUTPUT | `DesignSurface.tsx` | common-palette ordering | `designSurface.idleInspector.test.tsx` | VERIFIED LOCALLY |
 
 #### §7.3 Verify Surface
 
@@ -94,6 +96,8 @@
 | Shared materialization preserves manual/custom authored clock values and materializes Auto cycle 0, selected `runCycles`, and any automatic reset sequence; manual captures only low-to-high while Auto rows are post-rising-edge; no hidden reset prelude is injected | `verifyClockPolicy.ts`, `projectRuntime.ts`, `sim/simEngineCore.ts` | policy-to-materialized-vector execution and settled/post-edge sampling | runtime authority inventory; standalone `ide:gate:sequential-testbench-authority` | RESULT-DEPENDENT |
 | Runtime Verify, bring-up expectations, and generated `testbench.vhd` consume the same materialized execution vectors plus resolved clock/schedule projection; Auto `runCycles` and reset behavior may change package bytes and old-receipt authority | `verifyClockPolicy.ts`, `buildExportViewModel.ts`, `testbenchGenerator.ts`, `exportTrustState.ts` | shared vectors, Auto/manual testbench branches, package fingerprint/current receipt | generated-testbench/freshness inventory; standalone `ide:gate:sequential-testbench-authority` | RESULT-DEPENDENT |
 | Waveform lanes use 36×36px targets and labels remain at least 13px | `VerifySurface.tsx`, Verify workbench styles | post-run waveform layout | `ide:gate:verify-postrun-workbench-usability` | VERIFIED |
+| Named documents render as scenario cards with type, event count, optional check count, timing cycles, and signal preview | `TestbenchDocumentTabs.tsx`, `simulation-studio-v3.css` | scenario-card projection and styles | `verifyProfessionalTestbench.test.tsx`; Browser-E0 scenario-library replay | VERIFIED LOCALLY |
+| Stimulus-only documents remain without expected-output checks through compatible Design edit, undo, and redo | `projectRuntime.ts` | compatible-vector authorship preservation | `projectRuntime.history-authority.test.tsx` stimulus-only regression | VERIFIED LOCALLY |
 
 #### §7.4 Map Pins Surface
 
