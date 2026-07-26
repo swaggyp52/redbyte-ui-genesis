@@ -24,6 +24,7 @@ const NODE: Node = {
 
 function renderNode(options: {
   zoom: number;
+  node?: Node;
   onPortClick?: (nodeId: string, portName: string) => void;
   onPortClusterClick?: (
     nodeId: string,
@@ -37,7 +38,7 @@ function renderNode(options: {
   return render(
     <svg>
       <NodeView
-        node={NODE}
+        node={options.node ?? NODE}
         camera={{ x: 0, y: 0, zoom: options.zoom }}
         isSelected={false}
         onSelect={() => {}}
@@ -60,6 +61,16 @@ function numericAttribute(element: Element, name: string): number {
 }
 
 describe('NodeView port target authority', () => {
+  it('uses an authored logical name as the primary chip label', () => {
+    const { container } = renderNode({
+      zoom: 1,
+      node: { ...NODE, label: 'A XOR B' },
+    });
+
+    expect(container.querySelector('[data-node-label="1"]')?.textContent).toBe('A XOR B');
+    expect(container.querySelector('title')?.textContent).toBe('A XOR B · AND');
+  });
+
   it('uses one 32x36 dense input cluster and exposes click, Enter, and Space through one callback', () => {
     const onPortClick = vi.fn();
     const onPortClusterClick = vi.fn();

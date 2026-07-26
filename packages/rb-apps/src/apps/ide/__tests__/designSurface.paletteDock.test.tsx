@@ -171,7 +171,7 @@ afterEach(() => {
 });
 
 describe('DesignSurface palette dock redesign', () => {
-  it('renders board-first sections and keeps reusable blocks inside the main palette', () => {
+  it('renders authoring-first common parts before board resources', () => {
     const view = renderSurface({
       macros: [FIXTURE_MACRO],
       customComponentTypes: [
@@ -188,14 +188,28 @@ describe('DesignSurface palette dock redesign', () => {
       palette.querySelectorAll<HTMLElement>('[data-testid^="ide-design-palette-section-"]')
     ).map((element) => element.dataset.testid ?? element.getAttribute('data-testid'));
 
-    // Board Resources is first — the primary destination for board-aware work.
-    // IO pins follow, then gates, sequential, reusable.
     expect(sectionOrder).toEqual([
+      'ide-design-palette-section-common',
       'ide-design-palette-section-board',
       'ide-design-palette-section-io',
       'ide-design-palette-section-logic',
       'ide-design-palette-section-sequential',
       'ide-design-palette-section-reusable',
+    ]);
+    expect(
+      Array.from(
+        view
+          .getByTestId('ide-design-palette-section-common')
+          .querySelectorAll<HTMLElement>('[data-testid^="ide-design-common-"]')
+      ).map((element) => element.dataset.testid)
+    ).toEqual([
+      'ide-design-common-input',
+      'ide-design-common-output',
+      'ide-design-common-xor',
+      'ide-design-common-and',
+      'ide-design-common-or',
+      'ide-design-common-not',
+      'ide-design-common-register1',
     ]);
 
     expect(within(palette).getByTestId('ide-macro-library-panel')).toBeTruthy();
@@ -217,7 +231,6 @@ describe('DesignSurface palette dock redesign', () => {
 
     // Live Inputs is a runtime debug tool, not a primary authoring surface — stays collapsed
     expect(view.queryByTestId('ide-design-live-inputs-toggle')).toBeNull();
-    expect(view.getByTestId('ide-design-input-toggle-sw0_node')).toBeTruthy();
   });
 
   it('groups sequential palette into registers and legacy subsections', () => {

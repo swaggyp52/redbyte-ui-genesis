@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (local core learning loop: strengthen Full Adder authoring)
+
+**Subsystem:** Design component palette, authored gate names, manual canvas placement/wiring, and Live combinational feedback.
+
+**Product repair:** The Common palette now presents Input, Output, XOR, AND, and OR before board inventory. Authored names are the primary text on built-in gate nodes while gate type and evaluation layer remain supporting context. This keeps logical intent visible on a dense circuit instead of reducing every internal node to a generic type label.
+
+**Evidence and boundary:** A local Browser-E0 flow built a Full Adder from the blank canvas through visible placement, naming, and port-to-port wiring: 3 inputs, 2 outputs, 2 XOR, 2 AND, 1 OR, and 12 connections. Design undo/redo preserved the 10-node/12-wire circuit. Live mode produced the correct SUM/CARRY values for all eight input vectors and exposed the first XOR value as internal-state evidence. Focused palette, label, and port-target tests pass `24/24`. This remains local browser simulation; no Verify run, exported HDL, Vivado, bitstream, Basys3 observation, or E1/E2/E3 claim is implied.
+
 ## Change Log 2026-07-26 (local core learning loop: make Build Fresh deterministic)
 
 **Subsystem:** Unified Workbench v3 Project replacement dialog and blank-project runtime transition.

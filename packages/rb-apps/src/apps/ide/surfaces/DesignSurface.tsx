@@ -1909,10 +1909,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [paletteQueryTerms]);
   const commonPaletteItems = useMemo(() => {
     if (paletteQueryTerms.length > 0) return [];
-    const commonTypes = new Set(['INPUT', 'OUTPUT', 'AND', 'OR', 'XOR', 'NOT', 'Register1']);
-    return [...PALETTE_ITEMS, ...COMPOSITE_PALETTE_ITEMS].filter((item) =>
-      commonTypes.has(item.type)
-    );
+    const commonOrder = ['INPUT', 'OUTPUT', 'XOR', 'AND', 'OR', 'NOT', 'Register1'];
+    const orderByType = new Map(commonOrder.map((type, index) => [type, index]));
+    return [...PALETTE_ITEMS, ...COMPOSITE_PALETTE_ITEMS]
+      .filter((item) => orderByType.has(item.type))
+      .sort(
+        (left, right) =>
+          (orderByType.get(left.type) ?? Number.MAX_SAFE_INTEGER) -
+          (orderByType.get(right.type) ?? Number.MAX_SAFE_INTEGER)
+      );
   }, [paletteQueryTerms]);
   const filteredCustomComponents = useMemo(() => {
     if (!customComponentTypes || customComponentTypes.length === 0) return [];

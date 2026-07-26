@@ -311,6 +311,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     node.type !== 'Lamp' &&
     node.type !== 'Clock';
   const isChip = !!chipMetadata;
+  const authoredChipLabel = isChip ? node.label?.trim() : '';
+  const chipDisplayLabel =
+    authoredChipLabel && authoredChipLabel.length > 0
+      ? authoredChipLabel.length > 11
+        ? `${authoredChipLabel.slice(0, 10)}…`
+        : authoredChipLabel
+      : chipMetadata?.name ?? node.type;
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =
     (diagnosticBadge?.error ?? 0) > 0
@@ -404,6 +411,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
       >
+        {authoredChipLabel ? <title>{`${authoredChipLabel} · ${chipMetadata.name}`}</title> : null}
         {/* Highlight ring */}
         {isHighlighted && (
           <>
@@ -527,6 +535,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         {lod !== 'minimal' && (
           <text
             className="logic-node-label"
+            data-node-label="1"
             x={0}
             y={-chipHeight / 2 + chipHeaderHeight / 2}
             dominantBaseline="middle"
@@ -536,7 +545,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             fontWeight="600"
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
-            {chipMetadata.name}
+            {chipDisplayLabel}
           </text>
         )}
 
@@ -552,7 +561,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             fontSize={Math.max(7, 8 * camera.zoom)}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
-            L{chipMetadata.layer}
+            {authoredChipLabel ? `${chipMetadata.name} · L${chipMetadata.layer}` : `L${chipMetadata.layer}`}
           </text>
         )}
 
