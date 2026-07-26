@@ -1188,6 +1188,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const lastViewportSeedRef = useRef<string | undefined>(undefined);
   const pendingDebugToggleRef = useRef<DesignDebugToggleSample | null>(null);
   const [staleReplayBreadcrumb, setStaleReplayBreadcrumb] = useState<StaleReplayBreadcrumb | null>(null);
+  const [replayPlaying, setReplayPlaying] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1);
   const runtimeSimTick = runtimeSim.tick;
   const simSpeed = runtimeSim.speedHz;
   const runtimeLiveSignals = useMemo(() => {
@@ -3299,6 +3301,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     debugTickCount != null &&
     debugTickCount > 1 &&
     onSelectDebugTickIndex !== undefined;
+  useEffect(() => {
+    if (!replayPlaying || !canRenderReplayScrubber || !onSelectDebugTickIndex) return;
+    const interval = window.setInterval(() => {
+      if (debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1) {
+        setReplayPlaying(false);
+        return;
+      }
+      onSelectDebugTickIndex(debugTickIndex + 1);
+    }, Math.round(700 / replaySpeed));
+    return () => window.clearInterval(interval);
+  }, [
+    canRenderReplayScrubber,
+    debugTickCount,
+    debugTickIndex,
+    onSelectDebugTickIndex,
+    replayPlaying,
+    replaySpeed,
+  ]);
+  useEffect(() => {
+    if (!isReplayMode) setReplayPlaying(false);
+  }, [isReplayMode]);
   const staleReplaySelectionLabel = useMemo(
     () =>
       staleReplayBreadcrumb
@@ -6446,7 +6469,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
 
             {showWorkspaceStatusBar ? (
-              <div className="ide-design-workspace-status-bar" data-testid="ide-design-workspace-status-bar">
+              <div
+                className={`ide-design-workspace-status-bar${isReplayMode ? ' is-replay-mode' : ''}`}
+                data-testid="ide-design-workspace-status-bar"
+              >
                 <div
                   className={`ide-design-workspace-health ${authoringStatusToneClass}`}
                   data-testid="ide-design-authoring-issues"
@@ -6554,8 +6580,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </p>
                     ) : null}
                     {canRenderReplayScrubber && (
-                      <div className="ide-design-replay-transport" data-testid="ide-design-replay-transport">
+                      <div
+                        className="ide-design-replay-transport"
+                        data-testid="ide-design-replay-transport"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === ' ') {
+                            event.preventDefault();
+                            setReplayPlaying((playing) => !playing);
+                          } else if (event.key === 'ArrowLeft') {
+                            event.preventDefault();
+                            onPrevDebugTick?.();
+                          } else if (event.key === 'ArrowRight') {
+                            event.preventDefault();
+                            onNextDebugTick?.();
+                          }
+                        }}
+                      >
+                        <div className="ide-design-replay-transport-heading">
+                          <strong>Circuit replay</strong>
+                          <span>Recorded simulator ticks · read-only canvas</span>
+                        </div>
                         <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => {
+                              setReplayPlaying(false);
+                              onSelectDebugTickIndex?.(0);
+                            }}
+                            disabled={debugTickIndex === 0}
+                            testId="ide-design-replay-first"
+                          >
+                            First
+                          </IdeButton>
                           {onPrevDebugTick ? (
                             <IdeButton
                               tone="ghost"
@@ -6566,6 +6623,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               Prev
                             </IdeButton>
                           ) : null}
+                          <IdeButton
+                            tone="primary"
+                            onClick={() => setReplayPlaying((playing) => !playing)}
+                            testId="ide-design-replay-play"
+                          >
+                            {replayPlaying ? 'Pause' : 'Play'}
+                          </IdeButton>
                           {canRenderReplayScrubber ? (
                             <div className="ide-design-replay-scrubber-track">
                               <input
@@ -6591,6 +6655,29 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               Next
                             </IdeButton>
                           ) : null}
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => {
+                              setReplayPlaying(false);
+                              if (debugTickCount != null) onSelectDebugTickIndex?.(debugTickCount - 1);
+                            }}
+                            disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
+                            testId="ide-design-replay-last"
+                          >
+                            Last
+                          </IdeButton>
+                          <label className="ide-design-replay-speed">
+                            Speed
+                            <select
+                              value={replaySpeed}
+                              onChange={(event) => setReplaySpeed(Number(event.target.value) as 0.5 | 1 | 2)}
+                              data-testid="ide-design-replay-speed"
+                            >
+                              <option value={0.5}>0.5×</option>
+                              <option value={1}>1×</option>
+                              <option value={2}>2×</option>
+                            </select>
+                          </label>
                           {debugTickIndex != null && debugTickCount != null ? (
                             <span
                               className="ide-design-replay-scrubber-readout"

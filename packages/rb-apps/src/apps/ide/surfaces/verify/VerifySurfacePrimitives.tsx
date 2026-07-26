@@ -47,7 +47,7 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
         <div className="ide-verify-job-copy">
           <span className="ide-verify-job-kicker">Verify</span>
           <h2>Simulation Studio</h2>
-          <p>Author expected behavior, run the circuit, and compare observed evidence.</p>
+          <p>Author stimulus, run the circuit, inspect the replay, and add checks when useful.</p>
         </div>
       </div>
       <div className="ide-verify-context-details" aria-label="Simulation session context">
@@ -132,7 +132,7 @@ export interface VerifyResultsSummaryProps {
 const RESULT_KIND_LABEL: Record<VerifyResultsKind, string> = {
   'not-run': 'Not run',
   running: 'Running',
-  'observe-done': 'Observation only',
+  'observe-done': 'Simulated',
   pass: 'Pass',
   fail: 'Fail',
   stale: 'Stale',

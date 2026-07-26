@@ -25,6 +25,14 @@ Project -> Design -> Verify -> Map Pins -> Export
 
 Import is a utility. Vivado build, board programming, and board observation are external proof tiers after Export.
 
+## Current Local Simulation & Replay Studio v1 Candidate (2026-07-26)
+
+- **Branch and boundary:** `product/redbyte-simulation-replay-v1` in the isolated `redbyte-student-workbench-finish` worktree. This is a local browser-E0 candidate only; it has not been pushed, merged, deployed, or certified through Vivado/classroom/remote gates.
+- **Student model:** Verify now follows `Scenario -> Run simulation -> Inspect replay -> Optional checks`. New testbenches retain useful stimulus/policy context but begin without inherited expected-output assertions.
+- **Evidence truth:** Runtime simulation status is independent from assertion status. A runnable no-check scenario reports **Simulation complete** and **No checks configured**, never FAIL. Project and Export project behavioral evidence as **Draft**, **Simulated**, or **Validated**; only current passing assertions produce Validated/trusted handoff authority.
+- **Replay authority:** Waveform and circuit replay use the deterministic runtime trace. `Open circuit replay` hands the recorded ticks to the existing Design `replaySession`, locks mutation, and provides first/previous/play/next/last, scrub, speed, and keyboard transport on the real canvas.
+- **Focused product proof:** Exact PNG evidence covers no-check Full Adder authoring at `1366x768` and `1440x900`, Full Adder waveform and Design replay, propagation stepping, optional-check failure, sequential 2-bit counter replay, stale-after-Design-edit truth, Project tier, and Export tier. Evidence remains ignored under `.redbyte/product-immersion/simulation-replay-v1/`.
+
 ## Current Unified Workbench v3 RC Source (2026-07-22)
 
 - **Flow authority:** The full RedByte-owned student flow is `Project -> Design -> Verify -> Map Pins -> Export`. Import is a reviewed Upload -> Review -> Apply recovery utility, not a sixth stage.

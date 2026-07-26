@@ -172,6 +172,37 @@ beforeEach(() => {
   });
 });
 
+describe('DesignSurface circuit replay transport', () => {
+  it('routes first and last controls across the recorded trace', async () => {
+    const onSelectDebugTickIndex = vi.fn();
+    const view = renderSurface({
+      externalDebugTick: 1,
+      externalDebugSignals: makeDebugSignals(),
+      replaySession: makeReplaySession([
+        { tick: 0, signals: { 'sw0_node.out': '0', 'ld0_node.in': '0' } },
+        { tick: 1, signals: { 'sw0_node.out': '1', 'ld0_node.in': '1' } },
+        { tick: 2, signals: { 'sw0_node.out': '0', 'ld0_node.in': '0' } },
+      ]),
+      onPrevDebugTick: vi.fn(),
+      onNextDebugTick: vi.fn(),
+      onSelectDebugTickIndex,
+      debugTickIndex: 1,
+      debugTickCount: 3,
+    });
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-replay-play')).toBeTruthy();
+      expect(view.getByTestId('ide-design-replay-speed')).toBeTruthy();
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-replay-first'));
+    expect(onSelectDebugTickIndex).toHaveBeenCalledWith(0);
+    fireEvent.click(view.getByTestId('ide-design-replay-last'));
+    expect(onSelectDebugTickIndex).toHaveBeenCalledWith(2);
+    expect(view.getByTestId('ide-design-replay-transport').textContent).toContain('read-only canvas');
+  });
+});
+
 afterEach(() => {
   cleanup();
 });

@@ -311,11 +311,11 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-signal-ld0'));
+    fireEvent.click(getByTestId('ide-verify-shelf-signal-ld0'));
     fireEvent.change(getByTestId('ide-verify-tick-scrubber'), { target: { value: '2' } });
     expect(getByTestId('ide-verify-selected-tick').textContent).toContain('t2');
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
@@ -417,7 +417,7 @@ describe('VerifySurface observe-first model', () => {
       />
     );
 
-    fireEvent.click(getByTestId('ide-verify-inspect-design'));
+    fireEvent.click(getByTestId('ide-verify-open-circuit-replay'));
 
     expect(onDebugTickSelected).toHaveBeenCalledOnce();
     expect(onDebugTickSelected).toHaveBeenCalledWith(

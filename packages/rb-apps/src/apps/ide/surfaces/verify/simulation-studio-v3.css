@@ -1807,6 +1807,79 @@
   background: rgba(255, 107, 122, 0.07);
 }
 
+/* Simulation & Replay Studio v1: one primary workspace at a time. */
+.ide-root .ide-verify-lab-grid[data-studio-mode='replay'] .ide-verify-region--stimulus,
+.ide-root .ide-verify-lab-grid[data-studio-mode='scenario'] .ide-verify-region--waveform,
+.ide-root .ide-verify-lab-grid[data-studio-mode='checks'] .ide-verify-region--waveform {
+  display: none;
+}
+
+.ide-root .ide-verify-lab-grid[data-studio-mode='scenario'],
+.ide-root .ide-verify-lab-grid[data-studio-mode='checks'],
+.ide-root .ide-verify-lab-grid[data-studio-mode='replay'] {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.ide-root .ide-verify-lab-grid[data-studio-mode='replay']
+  .ide-verify-region--waveform {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+}
+
+.ide-root .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure) {
+  display: grid !important;
+  grid-template-columns: minmax(390px, 0.78fr) minmax(0, 1.22fr) !important;
+  grid-template-areas:
+    "summary summary"
+    "failure waveform"
+    "actions waveform";
+  align-items: start !important;
+  gap: 8px !important;
+}
+
+.ide-root .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure)
+  .ide-verify-results-summary {
+  grid-area: summary;
+}
+
+.ide-root .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure)
+  .ide-verify-advanced-failure {
+  grid-area: failure;
+  min-width: 0;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.ide-root .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure)
+  .ide-verify-results-actions {
+  grid-area: actions;
+}
+
+.ide-root .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure)
+  .ide-verify-oscilloscope-stage {
+  grid-area: waveform;
+  min-width: 0;
+  min-height: 500px;
+}
+
+.ide-root .ide-verify-command-bar[data-run-mode='simulation'] {
+  border-color: rgba(212, 116, 245, 0.28);
+  background: linear-gradient(90deg, rgba(212, 116, 245, 0.08), rgba(53, 199, 244, 0.03));
+}
+
+.ide-root .ide-verify-command-bar[data-run-mode='simulation'] .ide-vcb-mode-toggle {
+  min-width: min(100%, 390px);
+}
+
+.ide-root .ide-verify-command-bar[data-run-mode='simulation'] .ide-vcb-mode-btn {
+  min-width: 108px;
+}
+
+.ide-root .ide-verify-results-summary[data-kind='observe-done'] {
+  border-color: rgba(67, 213, 154, 0.38);
+  background: rgba(67, 213, 154, 0.07);
+}
+
 @media (max-width: 900px) {
   .ide-verify-signal-shelf {
     grid-template-columns: 1fr;
@@ -1839,4 +1912,85 @@
     .ide-verify-signal-shelf {
     grid-area: signals !important;
   }
+}
+
+/* Studio modes own one work surface at a time. Prevent the legacy fixed-height
+   panel grid from stretching the signal shelf and collapsing the authoring
+   table into zero-height rows after a run. */
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-panel
+  > .ide-panel-body:has(.ide-verify-lab-grid[data-studio-mode]) {
+  align-content: start !important;
+  grid-template-rows: auto auto auto auto auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  [data-testid='ide-verify-panel'][data-testid='ide-verify-panel']
+  > .ide-panel-body:has(.ide-verify-lab-grid[data-studio-mode]) {
+  grid-template-rows: auto auto auto auto auto !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-workspace:has(.ide-verify-lab-grid[data-studio-mode='scenario']),
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-workspace:has(.ide-verify-lab-grid[data-studio-mode='checks']),
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-frame:has(.ide-verify-lab-grid[data-studio-mode='scenario']),
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-frame:has(.ide-verify-lab-grid[data-studio-mode='checks']) {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  grid-template-rows: auto !important;
+  overflow: visible !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-signal-shelf {
+  align-self: start;
+  min-height: 0;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario'],
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks'] {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  grid-template-rows: auto !important;
+  align-content: start !important;
+  overflow: visible !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario']
+  .ide-verify-region--stimulus,
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks']
+  .ide-verify-region--stimulus,
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario']
+  .ide-verify-scenario-builder-details--postrun,
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks']
+  .ide-verify-scenario-builder-details--postrun {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario']
+  :where(.ide-verify-workbench-body, .ide-verify-vector-form--canvas-only, .ide-stimulus-canvas, .ide-stimulus-grid-scroll),
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks']
+  :where(.ide-verify-workbench-body, .ide-verify-vector-form--canvas-only, .ide-stimulus-canvas, .ide-stimulus-grid-scroll) {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: visible !important;
 }

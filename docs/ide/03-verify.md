@@ -13,21 +13,36 @@ Mode ID: `verify`
 
 ## Purpose
 
-Run deterministic testbench verification and present clear pass/fail proof for downstream Hardware and Export trust.
+Provide a simulation-first workspace: author a scenario, run deterministic simulation, inspect waveform or circuit replay, and add expected-output assertions when useful.
+
+## Simulation & Replay Studio v1 current contract (2026-07-26)
+
+This section supersedes older Observe/Compare chrome descriptions below where wording conflicts. The current student loop is:
+
+```text
+Scenario -> Run simulation -> Inspect replay -> Optional checks
+```
+
+- **Scenario** owns stimulus. A new testbench preserves useful stimulus/policy context but begins with no expected-output checks.
+- **Run simulation** always executes the current scenario and records deterministic ticks when the design is runnable.
+- **Replay** exposes the waveform and opens the same trace through the existing read-only Design `replaySession`; it does not create a second schematic renderer or editable simulation canvas.
+- **Checks** are optional expected-output assertions. No-check runs report `Simulation complete` plus `No checks configured` and never FAIL.
+- Runtime simulation status and assertion status are independent. A failed assertion does not erase or downgrade the completed simulation or its replay.
+- Behavioral evidence tiers are **Draft** (no current usable run), **Simulated** (current completed run without all checks passing), and **Validated** (current run with all configured checks passing). Only Validated can support trusted Export.
 
 ## Primary Actions (max 3)
 
-1. Execute vector run.
-2. Author clock/stimulus cases for the current design.
-3. Use the visible failure summary, then open `Failure details` for granular diffs, repair scopes, signal traces, and deterministic hashes.
+1. Run simulation for the current scenario.
+2. Author clock/stimulus cases and inspect waveform or circuit replay.
+3. Optionally add checks; on mismatch, use the visible repair summary and detailed diffs.
 
 ## Layout
 
-0. **Guide rail**: Compact `What do I do next?` copy tells students to run Observe, edit expected outputs, and then Compare until saved checks pass.
+0. **Studio procedure**: Scenario, Replay, and Checks lenses keep stimulus authoring, recorded evidence, and optional assertions distinct.
 
 1. **Command deck** (`VerifyCommandBar`): a primary command band — **Run** plus a **Stimulus / Checks** procedure lens, framed **Experiment** block (scenario name from active scenario or last run or vector bucket label; **Case tN** readout; timing / lab mode line), explicit **Observe only** vs **Compare checks** selector with inline explainer (`ide-vcb-mode-explainer`), then utilities (**Tools**, **Details**, **Open in Design**) — plus a second **session** summary row (status, meta, evidence). At compact/stress widths of `<=1200px`, the primary band reflows into a two-column / two-row grid so both mode labels remain full and status/truth content cannot overlap the mode selector. See `docs/IDE_SYSTEM_MAP.md` § Verify chrome.
 
-2. **Workspace**: **Build testbench** (scenario library, clock/timing guidance, unified stimulus/check grid) and **waveform** instrument in a lab grid. The first-run starter path keeps the stimulus and expected-output editor visible and names the four student concepts: Inputs to try, Expected outputs, Observed outputs, and Status. After a run, the left setup area stays editable but removes first-run teaching chrome so stimulus/check edits and waveform evidence remain readable together.
+2. **Workspace**: Scenario keeps the named document library, clock/timing guidance, and stimulus grid primary. Replay keeps waveform/observed evidence primary after a run. Checks exposes the optional expected-output lanes without forcing them into first-run stimulus authoring.
 
 3. **Clock / timing panel**: sequential designs surface a detected clock policy, not just a raw lane. A Basys3 board clock such as `CLK100MHZ` / `W5` defaults to **Auto board clock** with run-cycle control, edge/reset summary, and explicit manual-override actions. Non-board inferred clock rows, including switch/button-clocked labs, stay in **Manual pulses** rather than auto-running as a board oscillator.
 
@@ -35,7 +50,7 @@ Run deterministic testbench verification and present clear pass/fail proof for d
 
 5. **Analysis / failure**: A failing Compare keeps a compact visible result summary beside waveform evidence: FAIL state, passed/failed counts, high-level cause guidance, `Open Design`, and `Review expected outputs`. `Failure details` is an explicit disclosure beneath that summary. Opening it reveals the first failed case, failed signal, expected bit, observed bit, input vector, repair scope, and granular expected/testbench versus design-repair actions. Students may then edit expected values, use observed for one cell / the selected row / all failed outputs, inspect Design, or rerun Compare. A selected failed case also produces a compact `VerifyDebugContext` for Design: raw signal key, student label, expected/observed bits, tick/case context, input snapshot, pattern summary, and next-inspection hint. Design may then show direct-driver facts plus a bounded upstream signal trace; Verify must still require a fresh Compare before treating the repair as current evidence.
 
-6. **Run summary**: the setup column carries a compact summary of driven inputs, checked outputs, case/tick count, clock activity, and whether Compare checks are armed before the first run. After a run, that summary is demoted so PASS/FAIL state, first mismatch, expected/observed values, and waveform evidence are the first-order objects.
+6. **Run summary**: before a run, show driven inputs, optional checked outputs, case/tick count, and timing policy. After a run, show simulation completion first, assertion status second, then the selected tick, observed values, and replay evidence.
 
 Rows and cases in Verify are authored **ticks/testbench steps**. In **auto board clock** mode, Verify starts the shared vector sequence at cycle 0 and materializes `max(runCycles, authored-row count, 1)` rows; every visible Auto result row is sampled post-rising-edge. When automatic reset applies, its assertion is materialized in cycle 0 and its later deassertion remains in the same sequence—there is no hidden runtime reset prelude. In **manual** or **custom pattern** mode, each authored row is one settled sample and drives the actual resolved clock input from the authored value. Only a low-to-high transition advances the supported rising-edge state model; repeated high, high-to-low, repeated low, and flat-low rows hold state. Manual/custom execution also injects no hidden reset.
 
@@ -49,7 +64,7 @@ Each named testbench is one browser-local authored document. The document owns:
 4. version/content hashes used for freshness
 5. when sequential, its own execution policy: override mode, run cycles, active edge, reset behavior, detected source/execution type, optional signal/reset identity, and starting level
 
-The policy is not a global Verify preference. Switching testbenches switches policy. New/duplicate documents inherit the active document's policy intentionally, then receive their own ID and proof lifecycle. Rename, duplicate, saved-project reload, previous-session recovery, scenario-library repair, and manifest recovery preserve valid document intent. Compatible Design edits reconcile live signal identity while keeping the document; removed references remain reviewable and current proof is revoked until repair/rerun.
+The policy is not a global Verify preference. Switching testbenches switches policy. A new document intentionally inherits compatible stimulus and policy context but clears expected-output assertions so it begins as a simulation scenario, not a prevalidated oracle. Duplicate preserves the full authored document. Rename, duplicate, saved-project reload, previous-session recovery, scenario-library repair, and manifest recovery preserve valid document intent. Compatible Design edits reconcile live signal identity while keeping the document; removed references remain reviewable and current proof is revoked until repair/rerun.
 
 Sequential steps preserve four distinct pulse behaviors: `rising`, `falling`, `high`, and `low`. A rising pulse must create the low-to-high transition that advances rising-edge state, even when a hold duration follows it. A falling pulse is supported authored stimulus that creates a high-to-low transition and must hold rising-edge state; it does not enable falling-edge-triggered capture. The runtime records the resolved clock policy with the run and includes policy in the scenario stimulus/content authority. Runtime summary, waveform, expected-check sampling, PASS/FAIL classification, and their count domains must project the same execution sequence.
 
@@ -69,12 +84,12 @@ Secondary action: `Open Project vectors`
 
 ## Success State
 
-`Verification PASS` with:
+`Simulation complete` with:
 
-1. Stable hash.
-2. Zero failing rows.
-3. Timestamp-free deterministic run metadata.
-4. Current Compare PASS with saved checks that can authorize trusted Hardware/Export handoff.
+1. Stable hash and deterministic run metadata.
+2. Readable waveform and circuit replay.
+3. Independent check status: no checks, passing, or failing.
+4. Current passing assertions only when the run can authorize trusted Hardware/Export handoff.
 
 Verify evidence currentness must keep four student-relevant states distinct:
 

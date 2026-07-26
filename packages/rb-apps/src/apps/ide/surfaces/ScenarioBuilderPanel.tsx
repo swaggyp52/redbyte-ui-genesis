@@ -75,6 +75,7 @@ export interface ScenarioBuilderPanelProps {
   authoringModeHint?: string;
   observedValuesByTick?: Readonly<Record<number, Readonly<Record<string, string>>>>;
   caseEvidenceByTick?: Readonly<Record<number, StimulusCaseEvidenceState>>;
+  showExpectedLanes?: boolean;
 }
 
 export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
@@ -101,6 +102,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
   authoringModeHint,
   observedValuesByTick,
   caseEvidenceByTick,
+  showExpectedLanes = true,
 }) => {
   const effectiveVectorCount = totalVectorCount ?? authoredVectors.length;
   const hasVectors = effectiveVectorCount > 0;
@@ -126,9 +128,13 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           Testbench cases
         </h3>
         <p className="ide-verify-stimulus-header-copy" data-testid="ide-verify-stimulus-summary">
-          {isSequential
-            ? 'Edit clock/reset, input stimulus, sample points, and expected state in one timeline.'
-            : 'Each row drives inputs; filled expected cells turn that case into a Compare check. Unset cells are not compared; click one to cycle Unset, 0, and 1.'}
+          {showExpectedLanes
+            ? isSequential
+              ? 'Add optional expected state to the same clock/reset and input timeline. Unset cells are not checked.'
+              : 'Add optional expected outputs. Unset cells are not checked; click one to cycle Unset, 0, and 1.'
+            : isSequential
+              ? 'Author clock/reset and input stimulus as a timeline, then run and inspect the recorded state.'
+              : 'Each case drives the circuit inputs. Run the scenario to record observed outputs and a replay.'}
           {authoringModeHint ? ` ${authoringModeHint}` : ''}
         </p>
       </div>
@@ -165,6 +171,7 @@ export const ScenarioBuilderPanel: React.FC<ScenarioBuilderPanelProps> = ({
           density="compact"
           observedValuesByTick={observedValuesByTick}
           caseEvidenceByTick={caseEvidenceByTick}
+          showExpectedLanes={showExpectedLanes}
         />
       ) : (
         <p className="ide-verify-section-subheader" style={{ padding: '12px' }}>

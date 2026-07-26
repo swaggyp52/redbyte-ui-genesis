@@ -213,6 +213,10 @@ export interface RuntimeVerifyRun {
   /** Exact effective IO/pin mapping used by this run. Legacy runs omit it and are stale for Export. */
   mappingEvidenceHash?: string;
   status: 'pass' | 'fail';
+  /** Whether the deterministic simulation itself completed. Independent from checks. */
+  simulationStatus?: 'complete' | 'blocked';
+  /** Outcome of optional expected-output checks. A trace-only run has no configured checks. */
+  assertionStatus?: 'not-configured' | 'passing' | 'failing' | 'not-evaluated';
   /** Set when status is 'pass' but the result has a known limitation.
    *  'incomplete-mapping': some output IO rows have no FPGA pin assigned.
    *  The logic is correct, but hardware tests may fail until mapping is complete. */
@@ -1038,7 +1042,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
           const newScenario = createScenario(
             'New Scenario',
-            resolveActiveScenarioVectors(state),
+            resolveActiveScenarioVectors(state).map((vector) => ({
+              ...vector,
+              expected: {},
+            })),
             activeScenario?.sequentialPolicy
           );
           return commitScenarioSelection(state, [...state.scenarios, newScenario], newScenario.id);
@@ -1604,6 +1611,15 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const preflightIssues = deterministicResult?.evidence.preflight ?? [];
           const status: 'pass' | 'fail' =
             failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
+          const simulationStatus: 'complete' = 'complete';
+          const assertionStatus: NonNullable<RuntimeVerifyRun['assertionStatus']> =
+            runKind === 'trace'
+              ? 'not-configured'
+              : preflightIssues.length > 0 && normalizedRows.length === 0
+                ? 'not-evaluated'
+                : failedRows.length > 0
+                  ? 'failing'
+                  : 'passing';
           const ranAtIso = input.ranAtIso ?? new Date().toISOString();
           const vectors = toVerifyVectors(runtimeVectors);
           const signalRoles = deriveIoSignalRoles(state.projectIoRows, scheduleContract);
@@ -1637,6 +1653,8 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             scenarioStimulusHash,
             mappingEvidenceHash,
             status: report.status,
+            simulationStatus,
+            assertionStatus,
             qualification: detectIncompleteMappingQualification(state.projectIoRows, report.status),
             deterministicHash: report.deterministicHash,
             reportHash: report.reportHash,
@@ -1753,6 +1771,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               ? input.scenarioStimulusHash.trim()
               : undefined,
           status: 'fail',
+          simulationStatus: 'blocked',
+          assertionStatus:
+            input.runKind === 'trace' || input.assertionMode === false
+              ? 'not-configured'
+              : 'not-evaluated',
           deterministicHash: input.deterministicHash,
           reportHash: 'pending',
           generatedAtIso: input.ranAtIso ?? new Date().toISOString(),

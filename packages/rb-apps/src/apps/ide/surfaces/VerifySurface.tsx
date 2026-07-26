@@ -137,6 +137,7 @@ import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
 import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
 import { TestbenchDocumentTabs } from './verify/TestbenchDocumentTabs';
+import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
 
 export const CHROME_CONTRACT = {
@@ -565,6 +566,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
+  const [studioMode, setStudioMode] = useState<'scenario' | 'replay' | 'checks'>(
+    () => lastRun ? 'replay' : 'scenario'
+  );
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -1439,6 +1443,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   useEffect(() => {
     if (lastRun) {
       setRunState('complete');
+      setStudioMode('replay');
     }
   }, [lastRunWorkbenchKey]);
 
@@ -3166,8 +3171,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
 
   const runVerification = useCallback(() => {
-    handleRunWithPreflight(nextRunUsesAssertions);
-  }, [nextRunUsesAssertions, handleRunWithPreflight]);
+    handleRunWithPreflight(totalExpectedCaseCount > 0 && !gradingBlockedByDesign);
+  }, [gradingBlockedByDesign, handleRunWithPreflight, totalExpectedCaseCount]);
 
   const handleSetObserveMode = useCallback(() => {
     runModeTouchedByStudentRef.current = true;
@@ -4120,6 +4125,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ]
   );
   const runProofIsStale = runEvidenceIsStale;
+  const simulationEvidenceSummary = useMemo(
+    () => lastRun ? buildSimulationEvidenceSummary(lastRun, runProofIsStale) : null,
+    [lastRun, runProofIsStale]
+  );
   useEffect(() => {
     if (!lastRun) {
       lastAnnouncedRunRef.current = null;
@@ -4133,18 +4142,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     runAnnouncementOrdinalRef.current += 1;
     const ordinal = runAnnouncementOrdinalRef.current;
     const runKind = getRuntimeVerifyRunKind(lastRun);
-    const outcome =
-      runKind === 'trace'
-        ? 'Observation complete.'
-        : lastRun.status === 'pass'
-          ? 'Compare passed.'
-          : 'Compare failed.';
+    const summary = buildSimulationEvidenceSummary(lastRun);
+    const outcome = `${summary.simulationLabel}. ${summary.assertionLabel}.`;
     const comparedChecks = lastRun.report.rows.length;
     const detail =
       runKind === 'verify'
         ? ` ${comparedChecks} saved check${comparedChecks === 1 ? '' : 's'} compared.`
         : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
-    setRunAnnouncement(`Verification run ${ordinal}. ${outcome}${detail}`);
+    setRunAnnouncement(`Simulation run ${ordinal}. ${outcome}${detail}`);
   }, [lastRun]);
   const verifyLayoutPolicy = useMemo(
     () => ({
@@ -4924,31 +4929,29 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           ? 'No circuit'
           : gradingBlockedByDesign
             ? 'Design blocked'
-            : sessionStatusBadgeLabel,
-        statusTone: isNoCircuitTaskFirst || gradingBlockedByDesign ? 'warn' : sessionStatusTone,
+            : runProofIsStale
+              ? 'Simulation stale'
+              : simulationEvidenceSummary?.simulationLabel ?? 'Scenario ready',
+        statusTone: isNoCircuitTaskFirst || gradingBlockedByDesign || runProofIsStale ? 'warn' : simulationEvidenceSummary ? 'ok' : 'idle',
         detail: isNoCircuitTaskFirst
           ? 'Open Design, load a starter, or import a project before authoring test cases.'
           : gradingBlockedByDesign
-            ? 'Compare is unavailable and prior grading is inconclusive until the structural Design issue is repaired. Observe remains ungraded.'
-          : needsExpectedOutputs
-            ? 'Expected-output cells are Unset. Add at least one 0 or 1 check to unlock Compare; Observe remains available for ungraded output capture.'
-            : verifySession.summary,
+            ? 'Repair the structural Design issue before relying on a simulation or optional checks.'
+            : simulationEvidenceSummary
+              ? `${simulationEvidenceSummary.assertionLabel}. ${lastRun?.waveform.length ?? 0} recorded waveform samples are available for replay.`
+              : 'Author stimulus, run the circuit, then inspect the waveform or add optional checks.',
         primaryLabel: isNoCircuitTaskFirst || gradingBlockedByDesign
           ? 'Open Design'
-          : needsExpectedOutputs
-            ? 'Add expected outputs'
-            : verifySession.runLabel,
+          : 'Run simulation',
         onPrimary: isNoCircuitTaskFirst || gradingBlockedByDesign
           ? onGoToDesign
-          : needsExpectedOutputs
-            ? handleEditExpectedOutputs
-            : runVerification,
+          : runVerification,
         primaryDisabled: !isNoCircuitTaskFirst && !gradingBlockedByDesign && runState === 'running',
         recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
         onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
-        doneLabel: sessionShowsAssertionMatch
-          ? 'Compare PASS is current for the saved checks.'
-          : 'Current expected outputs are authored and compared against observed outputs.',
+        doneLabel: simulationEvidenceSummary
+          ? `${simulationEvidenceSummary.simulationLabel}. ${simulationEvidenceSummary.assertionLabel}.`
+          : 'The scenario is ready to simulate.',
         blockedLabel: isNoCircuitTaskFirst
           ? 'No circuit boundary is available to verify.'
           : gradingBlockedByDesign
@@ -4957,11 +4960,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             ? `${failingRows.length} failing output check${failingRows.length === 1 ? '' : 's'} need repair.`
             : sessionStatus === 'stale'
               ? 'Evidence is stale after project or testbench changes.'
-              : totalVectorCount === 0
-                ? 'No stimulus cases authored yet.'
-                : needsExpectedOutputs
-                  ? 'No expected-output checks are saved. Unset cells are not compared.'
-                : 'No blocking Verify failure selected.',
+                : totalVectorCount === 0
+                  ? 'No stimulus cases authored yet.'
+                : totalAssertedCheckCount === 0
+                  ? 'No checks configured. Simulation and replay remain available.'
+                  : 'No blocking simulation issue selected.',
       }}
       dock={
         <section
@@ -5086,7 +5089,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ? 'Blocked'
                   : isNoCircuitTaskFirst
                     ? 'No circuit'
-                    : sessionStatusBadgeLabel
+                    : runProofIsStale
+                      ? 'Simulation stale'
+                      : simulationEvidenceSummary?.simulationLabel ?? 'Scenario ready'
             }
             stateTone={
               gradingBlockedByDesign
@@ -5097,15 +5102,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ? 'stale'
                   : isNoCircuitTaskFirst
                     ? 'attention'
-                  : sessionShowsAssertionMatch
+                  : simulationEvidenceSummary
                     ? 'pass'
-                    : sessionSignalsAssertionFailure
-                      ? 'fail'
-                      : sessionShowsTraceEvidence
-                        ? 'idle'
-                        : isDraftSession && totalVectorCount === 0
-                          ? 'attention'
-                          : 'idle'
+                    : isDraftSession && totalVectorCount === 0
+                      ? 'attention'
+                      : 'idle'
             }
             scenarioName={
               activeScenario?.name?.trim()
@@ -5127,12 +5128,16 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               ? 'Repair the structural Design issue before running Compare.'
               : undefined
           }
-          onRun={() => handleRunWithPreflight(gradingBlockedByDesign ? false : undefined)}
+          onRun={runVerification}
           runLabel={gradingBlockedByDesign ? 'Run Observe' : compactCommandRunLabel}
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
           needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
           onAuthorExpectedOutputs={handleEditExpectedOutputs}
+          workspaceMode={studioMode}
+          onWorkspaceModeChange={setStudioMode}
+          configuredCheckCount={totalAssertedCheckCount}
+          hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
         />
         )}
         {primaryStatus && !compactPrimaryStatusAction ? (
@@ -5395,6 +5400,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-stimulus-layout="stable"
           data-verify-workflow-phase={verifyWorkflowPhase}
           data-workspace-mode={verifyWorkspaceMode}
+          data-studio-mode={studioMode}
         >
         <VerifyStimulusRegion
           className="ide-verify-testbench-primary"
@@ -5618,6 +5624,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           stimulusAssist={stimulusAssist}
           observedValuesByTick={testbenchObservedValuesByTick}
           caseEvidenceByTick={testbenchCaseEvidenceByTick}
+          showExpectedLanes={studioMode === 'checks'}
         />
         </VerifyStimulusRegion>
 
@@ -5672,51 +5679,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 kind={
                   runProofIsStale
                     ? 'stale'
-                    : sessionShowsAssertionMatch
-                      ? 'pass'
-                      : sessionSignalsAssertionFailure
-                        ? 'fail'
-                        : sessionShowsTraceEvidence
-                          ? 'observe-done'
-                          : 'not-run'
+                    : 'observe-done'
                 }
                 headline={
                   runProofIsStale
-                    ? isWrongScenario
-                      ? 'Results belong to another testbench - rerun the active testbench.'
-                      : lastRunKind === 'trace'
-                        ? 'Design or stimulus changed - run Observe again before using this waveform.'
-                        : isRunStale
-                          ? 'Design changed - rerun Compare before trusting PASS/FAIL.'
-                          : 'Checks changed - rerun Compare before trusting PASS/FAIL.'
-                    : sessionShowsAssertionMatch
-                      ? `All ${runRows.length} asserted check${runRows.length === 1 ? '' : 's'} across ${lastRun.report.vectors.length} case${lastRun.report.vectors.length === 1 ? '' : 's'} matched.`
-                      : sessionSignalsAssertionFailure
-                        ? 'Your circuit output does not match the expected result.'
-                        : sessionShowsTraceEvidence
-                          ? 'Observed outputs recorded - no expected checks compared.'
-                          : 'Run recorded.'
+                    ? 'Simulation evidence is stale'
+                    : simulationEvidenceSummary?.simulationLabel ?? 'Simulation complete'
                 }
                 subline={
                   runProofIsStale
-                    ? isWrongScenario
-                      ? `Last run: ${lastRun.scenarioName}. Active testbench: ${activeScenario?.name ?? 'another testbench'}.`
-                      : 'Previous evidence remains visible for reference only; it cannot change current expected values.'
-                    : sessionSignalsAssertionFailure
-                    ? 'Check these causes before changing the testbench or circuit.'
-                    : lastRun.qualification === 'incomplete-mapping'
-                      ? 'The behavior matched; finish pin mapping before hardware handoff.'
-                      : lastRun.scenarioName
-                        ? `Scenario: ${lastRun.scenarioName}`
-                        : undefined
+                    ? 'The circuit, scenario, or checks changed. Run the current scenario before using this trace.'
+                    : `${simulationEvidenceSummary?.assertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
                 }
                 guidanceItems={
                   !runProofIsStale && sessionSignalsAssertionFailure
-                    ? [
-                        'Expected value is incorrect.',
-                        'Circuit logic is incorrect.',
-                        'Output is disconnected.',
-                      ]
+                    ? ['The waveform is still valid simulation evidence. Open Checks or inspect the first mismatch without losing the replay.']
                     : undefined
                 }
                 metrics={(() => {
@@ -5763,17 +5740,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   }
                   return list;
                 })()}
-                primaryActionLabel={
-                  !runProofIsStale && sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
-                    ? 'Open Design'
-                    : undefined
-                }
-                onPrimaryAction={
-                  !runProofIsStale && sessionSignalsAssertionFailure && (onGoToDesign || onGoToDesignWithInputs)
-                    ? handleGoToDesignFromVerify
-                    : undefined
-                }
-                primaryActionTestId="ide-verify-inspect-design"
+                primaryActionLabel={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? 'Open circuit replay' : undefined}
+                onPrimaryAction={!runProofIsStale && (onGoToDesign || onGoToDesignWithInputs) ? handleGoToDesignFromVerify : undefined}
+                primaryActionTestId="ide-verify-open-circuit-replay"
               />
             ) : null}
             {structuralRecoveryPanel || repairPanel ? (

@@ -26,6 +26,10 @@ import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { Circuit } from '@redbyte/rb-logic-core';
+import {
+  deriveBehavioralEvidenceTierFromResult,
+  formatBehavioralEvidenceTier,
+} from '../simulationEvidence';
 import './ProjectSurface.v3.css';
 
 export const CHROME_CONTRACT = {
@@ -720,6 +724,10 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   const lastVerifyStatus = health.lastVerify
     ? health.lastVerify.status.toUpperCase()
     : 'NONE';
+  const behavioralEvidenceTier = deriveBehavioralEvidenceTierFromResult(
+    health.lastVerify,
+    health.dirtySinceVerify
+  );
   const primaryButtonLabel = activePrimaryCta.mode === 'verify' && !/^continue\b/i.test(activePrimaryCtaLabel)
     ? `Continue to ${activePrimaryCtaLabel}`
     : activePrimaryCtaLabel;
@@ -910,6 +918,20 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <h2>Your project at a glance</h2>
           </div>
           <p>Continue the recommended step above, or open the stage that needs attention.</p>
+          <div
+            className={`ide-project-evidence-tier is-${behavioralEvidenceTier}`}
+            data-testid="ide-project-simulation-evidence-tier"
+          >
+            <span>Behavioral evidence</span>
+            <strong>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</strong>
+            <small>
+              {behavioralEvidenceTier === 'validated'
+                ? 'Current simulation with passing optional checks'
+                : behavioralEvidenceTier === 'simulated'
+                  ? 'Current simulation trace; checks are absent or not all passing'
+                  : 'No current simulation evidence'}
+            </small>
+          </div>
         </header>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
@@ -940,7 +962,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
 
           <ProjectStageRow
             label="Verification"
-            state={compareMatches ? 'Compare passed' : formatVerifyState(projectVerifyState)}
+            state={formatBehavioralEvidenceTier(behavioralEvidenceTier)}
             summary={verifySummary}
             actionLabel="Open Verify"
             onAction={onOpenVerify}
@@ -1607,17 +1629,6 @@ function getExportSummary(
       : 'Build a successful package from the current project.';
   }
   return 'The current package is available to inspect, rebuild, or download.';
-}
-
-function formatVerifyState(state: ProjectVerifyState): string {
-  switch (state) {
-    case 'stale': return 'Stale';
-    case 'trace': return 'Observation only';
-    case 'verify-error': return 'Run error';
-    case 'assertions-differ': return 'Compare failed';
-    case 'assertions-match': return 'Compare passed';
-    default: return 'Not run';
-  }
 }
 
 function formatSavedAt(value: string): string {

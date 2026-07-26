@@ -136,11 +136,11 @@ The shell must provide a stable workflow spine, unambiguous active surface indic
 **Screenshot-worthy when:** Wiring is clean, selection is clear, inspector is useful, a moderately complex circuit (8+ nodes) looks professional.
 
 ### 4.4 Verify Surface
-**Promise:** Truthful simulation results with clear pass/fail semantics.
+**Promise:** A truthful Simulation & Replay Studio where students can run behavior first, inspect what happened, and add assertions when useful.
 
-**Must do:** Run scenarios and display pass/fail with evidence. Show waveforms that match simulation reality. Explain failures with actionable hints. Distinguish combinational from sequential verification. Never show "PASS" when the circuit is wrong.
+**Must do:** Let a scenario run without expected values. Report simulation completion separately from assertion status, including an explicit `No checks configured` state that is never rendered as failure. Show waveforms and read-only circuit replay backed by the same recorded simulator ticks. Let students add optional expected-output assertions, then show passing/failing checks and actionable repair paths without hiding the successful simulation evidence. Distinguish combinational from sequential behavior. Never show assertion PASS when checks are missing, stale, or wrong.
 
-**Screenshot-worthy when:** Waveforms are readable, pass/fail is unambiguous, failure explanation is genuinely helpful.
+**Screenshot-worthy when:** Scenario authoring is obvious, waveform and circuit replay are readable, simulation/check status is unambiguous, and a failing assertion remains inspectable beside the recorded evidence.
 
 ### 4.5 Hardware Surface
 **Promise:** Confident mapping from schematic to physical Basys3 board.

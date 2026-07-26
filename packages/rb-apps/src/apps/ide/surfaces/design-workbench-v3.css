@@ -42,12 +42,16 @@
   grid-column: 2;
   grid-row: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
   grid-column: 3;
   grid-row: 1;
   width: auto;
+  position: relative;
+  z-index: 4;
+  opacity: 1;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette,
@@ -771,8 +775,8 @@
 
 /* Visual System v1: preserve the circuit canvas as the dominant work object. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: clamp(188px, 14vw, 214px);
-  --ide-workbench-right-width: clamp(210px, 16vw, 238px);
+  --ide-workbench-left-width: clamp(188px, 13vw, 204px);
+  --ide-workbench-right-width: clamp(196px, 14vw, 216px);
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
@@ -821,4 +825,144 @@
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
   border-left-color: rgba(77, 208, 225, 0.18);
   background: #10161f;
+}
+/* Trace-backed circuit replay transport. */
+.ide-root .ide-design-replay-transport {
+  display: grid;
+  grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.ide-root .ide-design-replay-transport-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.ide-root .ide-design-replay-transport-heading strong {
+  color: var(--rb-text);
+  font-size: 13px;
+}
+
+.ide-root .ide-design-replay-transport-heading span,
+.ide-root .ide-design-replay-speed {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+}
+
+.ide-root .ide-design-replay-speed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ide-root .ide-design-replay-speed select {
+  min-height: 30px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text);
+}
+
+/* Replay is a canvas mode, not an inspector card. Keep its transport in one
+   compact workspace row so it cannot widen the grid or push the circuit below
+   the first viewport. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar.is-replay-mode {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  padding: 4px 8px !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar.is-replay-mode
+  .ide-design-workspace-health,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar.is-replay-mode
+  .ide-design-sim-story-strip.is-replay-mode {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar.is-replay-mode
+  .ide-design-workspace-health {
+  min-height: 28px !important;
+  padding: 3px 7px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1.58fr) !important;
+  grid-template-areas: "context transport";
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 58px !important;
+  padding: 6px 8px !important;
+  overflow: hidden !important;
+  border-radius: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-status-bar.is-replay-mode
+  .ide-design-workspace-status-actions {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-sim-story-topline {
+  grid-area: context;
+  min-width: 0;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-sim-story-summary {
+  display: none !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-replay-transport {
+  grid-area: transport;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr) !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 4px 6px !important;
+  border-radius: 8px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-debug-nav {
+  display: grid !important;
+  grid-template-columns: auto auto auto minmax(72px, 1fr) auto auto auto auto;
+  align-items: center !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-debug-nav
+  .ide-button {
+  width: auto !important;
+  max-width: max-content !important;
+  flex: 0 0 auto !important;
+  justify-self: start !important;
+  min-height: 30px !important;
+  padding: 4px 7px !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-sim-story-strip.is-replay-mode
+  .ide-design-replay-scrubber-readout {
+  min-width: 46px !important;
+  padding: 3px 5px !important;
 }

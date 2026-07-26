@@ -502,7 +502,12 @@ describe('projectRuntime verify authority', () => {
 
     expect(state.scenarios).toHaveLength(2);
     expect(createdScenario).toBeTruthy();
-    expect(createdScenario?.vectors).toEqual(defaultScenario?.vectors);
+    expect(createdScenario?.vectors).toEqual(
+      defaultScenario?.vectors.map((vector) => ({
+        ...vector,
+        expected: {},
+      }))
+    );
     expect(state.projectVectors).toEqual(createdScenario?.vectors);
 
     useProjectRuntime.getState().setVectors([

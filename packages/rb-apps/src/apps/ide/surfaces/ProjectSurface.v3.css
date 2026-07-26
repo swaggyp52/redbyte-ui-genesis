@@ -979,3 +979,28 @@
     grid-template-columns: 1fr;
   }
 }
+.ide-root .ide-project-evidence-tier {
+  display: grid;
+  grid-template-columns: auto auto minmax(200px, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  margin-left: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-project-evidence-tier span,
+.ide-root .ide-project-evidence-tier small {
+  color: var(--rb-text-muted);
+  font-size: 11px;
+}
+
+.ide-root .ide-project-evidence-tier.is-simulated strong {
+  color: var(--rb-verify);
+}
+
+.ide-root .ide-project-evidence-tier.is-validated strong {
+  color: var(--rb-success);
+}

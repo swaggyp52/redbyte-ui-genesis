@@ -73,6 +73,10 @@ import {
   type ExportDebugCopyState,
 } from './export/ExportSurfacePrimitives';
 import './export-handoff-workspace-v3.css';
+import {
+  deriveBehavioralEvidenceTier,
+  formatBehavioralEvidenceTier,
+} from '../simulationEvidence';
 
 export const CHROME_CONTRACT = {
   surfaceId: 'export',
@@ -519,6 +523,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const isNoRunYet = verifyState === 'not-run';
   const isVerifyStale = verifyState === 'stale';
   const isTraceOnly = resolvedWorkflowAuthority.compareTraceOnly;
+  const behavioralEvidenceTier = deriveBehavioralEvidenceTier(
+    verifyLastRun,
+    isVerifyStale || dirtySinceVerify
+  );
   /** True when the previous verify run passed but the circuit has since changed (STALE).
    *  Download is allowed but labeled as previous sealed build - not blocked. */
   const isStaleButPassBefore =
@@ -1589,19 +1597,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
     {
       id: 'verify',
       owner: 'Verify',
-      ready: verifyStageReady,
+      ready: behavioralEvidenceTier === 'validated',
       status: verifyBlockedByDesign
         ? 'Inconclusive - Design blocked'
-        : verifyStageReady
-          ? 'Current Compare PASS'
-        : isVerifyStale
-          ? 'Stale'
-          : resolvedWorkflowAuthority.compareDiffers
-            ? 'Compare FAIL'
-            : isTraceOnly
-              ? 'Observe only'
-              : 'Compare needed',
-      detail: verifyPlain,
+        : formatBehavioralEvidenceTier(behavioralEvidenceTier),
+      detail:
+        behavioralEvidenceTier === 'validated'
+          ? 'The current simulation completed and all configured optional checks passed.'
+          : behavioralEvidenceTier === 'simulated'
+            ? 'A current simulation trace exists. Optional checks are absent or not all passing.'
+            : 'Run the current scenario in Verify to create behavioral evidence.',
     },
     {
       id: 'mapping',
@@ -1696,8 +1701,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <dd>{exportTrustAxes.structural === 'downloadable' ? 'Downloadable' : 'Blocked'}</dd>
                 </div>
                 <div data-testid="ide-export-verification-axis">
-                  <dt>Verify trust</dt>
-                  <dd>{formatExportVerificationTrust(exportTrustAxes.verificationTrust)}</dd>
+                  <dt>Behavioral evidence</dt>
+                  <dd data-testid="ide-export-simulation-evidence-tier">
+                    {formatBehavioralEvidenceTier(behavioralEvidenceTier)}
+                  </dd>
                 </div>
                 <div data-testid="ide-export-action-axis">
                   <dt>Action</dt>

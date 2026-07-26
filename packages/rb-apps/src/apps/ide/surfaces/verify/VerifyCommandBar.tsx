@@ -90,27 +90,25 @@ export interface VerifyCommandBarProps {
    * (first recovery move + where detail lives).
    */
   readonly failureRecoveryLine?: string;
+  readonly workspaceMode?: 'scenario' | 'replay' | 'checks';
+  readonly onWorkspaceModeChange?: (mode: 'scenario' | 'replay' | 'checks') => void;
+  readonly configuredCheckCount?: number;
+  readonly hasReplay?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
-  isCompareMode,
-  onSetObserve,
-  onSetCompare,
-  compareAvailable,
-  compareUnavailableReason,
   onRun,
-  runLabel,
   runDisabled,
   runPulsing,
-  needsExpectedOutputs = false,
-  onAuthorExpectedOutputs,
+  workspaceMode = 'scenario',
+  onWorkspaceModeChange,
+  configuredCheckCount = 0,
+  hasReplay = false,
 }) => {
   const commandBarRef = React.useRef<HTMLDivElement>(null);
   const restoreRunFocusRef = React.useRef(false);
-  const observeModeActive = !isCompareMode;
-  const compareModeDisabled = !compareAvailable;
 
   React.useEffect(() => {
     if (!runDisabled || !restoreRunFocusRef.current) return;
@@ -163,7 +161,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [runDisabled, runLabel]);
+  }, [runDisabled]);
 
   const handleRun = () => {
     restoreRunFocusRef.current =
@@ -176,37 +174,33 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       ref={commandBarRef}
       className="ide-verify-command-bar"
       data-testid="ide-verify-command-bar"
-      data-run-mode={isCompareMode ? 'compare' : 'observe'}
+      data-run-mode="simulation"
+      data-workspace-mode={workspaceMode}
       data-hierarchy-surface="verify"
       data-hierarchy-role="primary"
     >
       <div className="ide-vcb-row ide-vcb-row--primary">
         <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
-          <div className="ide-vcb-mode-toggle" role="group" aria-label="Verification mode">
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${observeModeActive ? ' is-active' : ''}`}
-              onClick={onSetObserve}
-              data-testid="ide-vcb-observe-only"
-              aria-pressed={observeModeActive ? 'true' : 'false'}
-            >
-              Observe
-            </button>
-            <button
-              type="button"
-              className={`ide-vcb-mode-btn${isCompareMode ? ' is-active' : ''}`}
-              onClick={onSetCompare}
-              data-testid="ide-vcb-use-saved-checks"
-              aria-pressed={isCompareMode ? 'true' : 'false'}
-              disabled={compareModeDisabled}
-              title={
-                compareModeDisabled
-                  ? compareUnavailableReason ?? 'Add at least one expected output to enable Compare.'
-                  : undefined
-              }
-            >
-              Compare expected output
-            </button>
+          <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
+            {(['scenario', 'replay', 'checks'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                className={`ide-vcb-mode-btn${workspaceMode === mode ? ' is-active' : ''}`}
+                onClick={() => onWorkspaceModeChange?.(mode)}
+                data-testid={`ide-vcb-workspace-${mode}`}
+                aria-selected={workspaceMode === mode}
+                disabled={mode === 'replay' && !hasReplay}
+                title={mode === 'replay' && !hasReplay ? 'Run the simulation to create a replay.' : undefined}
+              >
+                {mode === 'scenario'
+                  ? 'Scenario'
+                  : mode === 'replay'
+                    ? 'Replay'
+                    : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -214,50 +208,23 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
           className="ide-vcb-group ide-vcb-group--actions ide-vcb-run-authority"
           data-testid="ide-vcb-run-authority"
         >
-          {needsExpectedOutputs ? (
-            <>
-              <IdeButton
-                tone="primary"
-                onClick={onAuthorExpectedOutputs}
-                disabled={runDisabled || !onAuthorExpectedOutputs}
-                testId="ide-vcb-author-expected"
-                hierarchySurface="verify"
-                hierarchyRole="next"
-              >
-                Add expected outputs
-              </IdeButton>
-              <IdeButton
-                tone="secondary"
-                onClick={handleRun}
-                disabled={runDisabled}
-                testId="ide-vcb-run"
-                hierarchySurface="verify"
-                hierarchyRole="utility"
-              >
-                Run Observe
-              </IdeButton>
-            </>
-          ) : (
-            <IdeButton
-              tone="primary"
-              onClick={handleRun}
-              disabled={runDisabled}
-              testId="ide-vcb-run"
-              className={runPulsing ? 'is-pulsing' : undefined}
-              hierarchySurface="verify"
-              hierarchyRole="next"
-            >
-              {runLabel}
-            </IdeButton>
-          )}
+          <IdeButton
+            tone="primary"
+            onClick={handleRun}
+            disabled={runDisabled}
+            testId="ide-vcb-run"
+            className={runPulsing ? 'is-pulsing' : undefined}
+            hierarchySurface="verify"
+            hierarchyRole="next"
+          >
+            Run simulation
+          </IdeButton>
         </div>
 
         <p className="ide-vcb-mode-explainer" data-testid="ide-vcb-mode-explainer">
-          {needsExpectedOutputs
-            ? 'Record observed outputs without grading expected values. Expected cells marked Unset are not checks; add at least one to unlock Compare.'
-            : observeModeActive
-            ? 'Record observed outputs without grading expected values.'
-            : 'Check filled expected outputs against this run.'}
+          {configuredCheckCount > 0
+            ? `Runs the circuit and evaluates ${configuredCheckCount} optional check${configuredCheckCount === 1 ? '' : 's'}.`
+            : 'Runs the circuit and records observed values. No checks are required.'}
         </p>
       </div>
     </div>

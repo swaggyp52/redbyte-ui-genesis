@@ -73,12 +73,13 @@ V1 invariant: E0 can support a Vivado handoff, but E0 never proves E1, E2, or E3
 |---|---|
 | No circuit | There is no design boundary to verify, map, or export. Do not show mapping failure copy. |
 | Draft design | A circuit exists, but downstream proof may be missing or stale. |
-| Observe run | Runtime outputs were recorded. This teaches behavior but is not a pass/fail proof. |
-| Compare PASS | Current observed outputs match current expected outputs for the current design/testbench authority. |
-| Compare FAIL | At least one expected output check differs from observed output. The first mismatch must be inspectable. |
+| Simulation complete | Runtime outputs and replay ticks were recorded for the current design/scenario. This is useful behavioral evidence, not an assertion-pass claim. |
+| No checks configured | Simulation completed with no expected-output assertions. This is never a failure and does not authorize trusted Export. |
+| Assertions passing | Current observed outputs match all configured expected outputs for the current design/testbench authority. |
+| Assertions failing | At least one expected-output assertion differs from observed output. The first mismatch must be inspectable while simulation evidence remains available. |
 | Pins mapped | Required top-level signals have board resource/package pin assignments. |
 | Draft export | A package can be generated or inspected, but trusted proof is missing or stale. |
-| E0 ready export | Design, mapping, Verify Compare, and export state are coherent for browser/package handoff. |
+| E0 ready export | Design, mapping, current passing assertions, and export state are coherent for browser/package handoff. |
 | Hardware proof pending | Vivado build, board programming, or board observation remains external. |
 
 ## Surface Contracts
@@ -138,15 +139,18 @@ Verify is the evidence and repair loop.
 
 Must:
 
-- Keep Observe and Compare distinct.
-- Show stimulus, expected outputs, observed outputs, pass/fail, first mismatch, and repair path as the primary hierarchy.
-- Keep waveform/tick evidence readable and tied to the selected case.
-- Let a student edit expected outputs, rerun, and reach terminal PASS/FAIL.
+- Use the student loop `Scenario -> Run simulation -> Inspect replay -> Optional checks`.
+- Keep simulation status and assertion status distinct; a completed run with no checks must say `No checks configured`, never FAIL.
+- Show stimulus, observed outputs, replay controls, optional expected outputs, first mismatch, and repair path in that hierarchy.
+- Keep waveform/tick evidence readable, tied to the selected case, and available after a failed assertion.
+- Open recorded ticks on the real Design canvas as a read-only circuit replay.
+- Let a student add or edit expected outputs, rerun, and reach assertion PASS/FAIL without changing the meaning of simulation completion.
 
 Must not:
 
 - Present a dense control panel where the evidence is secondary.
-- Show PASS when current evidence is stale or mismatched.
+- Show assertion PASS when checks are absent, stale, or mismatched.
+- Treat a failing optional assertion as a failed or missing simulation.
 
 ### Hardware / Basys3 Workbench
 

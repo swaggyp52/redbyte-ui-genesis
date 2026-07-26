@@ -41,6 +41,7 @@ export interface StimulusCanvasProps {
   /** Verify v3 keeps the core case grid flat; other consumers may opt into the legacy tools tray. */
   showAdvancedTools?: boolean;
   initialScrollTarget?: 'top' | 'expected';
+  showExpectedLanes?: boolean;
   selectedTick?: number;
   onSelectedTickChange?: (tick: number) => void;
   density?: 'normal' | 'compact';
@@ -299,6 +300,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
   secondaryTools,
   showAdvancedTools = true,
   initialScrollTarget = 'top',
+  showExpectedLanes = true,
   selectedTick: controlledSelectedTick,
   onSelectedTickChange,
   density = 'normal',
@@ -905,7 +907,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
             <div style={{ width: addColW, flexShrink: 0 }} />
           </div>
         ))}
-        {outputFields.length > 0 ? (
+        {showExpectedLanes && outputFields.length > 0 ? (
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
               <div className="ide-stimulus-group-label" title="Expected outputs; empty cells are not compared" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>

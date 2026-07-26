@@ -187,7 +187,7 @@ The workflow proceeds as follows:
 
 1. **Project.** The user creates or opens a project, reviews its metadata, and selects a starter example if desired.
 2. **Design.** The user constructs a digital circuit on the visual canvas by placing logic primitives and wiring them together.
-3. **Verify.** The user runs the circuit against test vectors. The verification engine reports pass or fail for each vector row and highlights failures.
+3. **Verify.** The user authors stimulus, runs the circuit, and inspects waveform or circuit replay. Expected-output assertions are optional; when present, the engine evaluates them independently and highlights mismatches.
 4. **Map Pins.** The user maps each circuit input and output port to a physical Basys 3 board resource and package pin (switches, LEDs, buttons, clock).
 5. **Export.** The system generates synthesizable VHDL, pin constraints, a testbench, Tcl, README/bring-up files, and the project manifest. The user downloads a ZIP file for use in Vivado.
 6. **Vivado.** The user opens/builds the exported project in Vivado; synthesis, implementation, and bitstream generation are Vivado responsibilities.
@@ -203,12 +203,12 @@ RedByte intentionally separates readiness levels:
 | State | What it means |
 |-------|---------------|
 | **Draft design** | A circuit exists, but it may not have current testbench, mapping, or export proof. |
-| **Simulated** | The design has been observed in RedByte simulation; this is useful inspection, not a pass/fail claim. |
+| **Simulated** | The current design/scenario has a completed RedByte run with waveform and replay evidence. Assertions may be absent or failing; this tier is not a validation claim. |
 | **Testbench configured** | Stimulus and expected output checks exist for the current design intent. |
-| **Compare passed** | Current observed outputs match current expected outputs. This is the Verify proof needed for trusted handoff. |
+| **Validated** | Current observed outputs match all configured expected outputs. This is the Verify proof needed for trusted handoff. |
 | **Pins mapped** | Required top-level ports are assigned to board resources/package pins. |
 | **Draft export** | A structurally valid Vivado package can be generated or downloaded, but proof is missing or stale. |
-| **Trusted export** | Current Compare PASS, current mapping, and current export bundle all describe the same project state. |
+| **Trusted export** | Current passing assertions, current mapping, and the current export bundle all describe the same project state. |
 | **Vivado built** | Vivado synth/implementation/bitstream completed for the exported project. |
 | **Board programmed** | A Basys 3 board was programmed with the generated bitstream. |
 | **Board observed** | Physical behavior was recorded against an agreed observation procedure. |
@@ -237,7 +237,7 @@ In manual/custom mode, each authored row is one settled sample and drives the re
 
 ### 4.4 Verification Model
 
-Verification compares the circuit's actual outputs against expected outputs defined in an authored testbench. Each authored row specifies a set of input values and the corresponding expected output values for one tick or test step.
+Simulation always executes the authored stimulus and records observed outputs. Expected outputs are optional assertions attached to authored rows. A run with no assertions completes as **Simulation complete / No checks configured** and never reports FAIL. When assertions exist, RedByte compares them with observed outputs and reports assertion PASS or FAIL independently from the completed simulation.
 
 RedByte supports two verification schedules:
 
@@ -340,8 +340,8 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 5. Wire the output of each Switch to one input of the AND gate.
 6. Wire the output of the AND gate to the input of the Lamp.
 7. Navigate to the **Verify** surface.
-8. Build a small testbench or load the starter rows for AND logic.
-9. Click **Run Compare**. Observe PASS/FAIL results per row.
+8. Build a small stimulus scenario or load the starter rows for AND logic.
+9. Click **Run simulation** and inspect the replay. Add expected-output checks if a trusted handoff is required, then rerun and confirm that all assertions pass.
 10. Navigate to **Map Pins**.
 11. Assign each Switch port to a Basys 3 slide switch (e.g., SW0, SW1).
 12. Assign the Lamp port to an LED (e.g., LD0).
@@ -350,7 +350,7 @@ This walkthrough produces a working AND gate, verifies it, maps it to hardware, 
 15. Click **Download Package**.
 16. Extract the downloaded ZIP. It contains `top.vhd`, `top.xdc`, `testbench.vhd`, automation scripts, and documentation files (see Section 11.2 for the complete file list).
 
-Result: A draft or trusted Vivado-ready project, depending on whether Compare and mapping proof are current. See Section 11 for instructions on importing these files into Vivado and programming the board.
+Result: A draft or trusted Vivado-ready project, depending on whether assertion and mapping proof are current. See Section 11 for instructions on importing these files into Vivado and programming the board.
 
 ---
 
@@ -484,25 +484,27 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Mode ID:** `verify`
 
-**Purpose.** The Verify surface runs the student's circuit against an authored testbench and presents a clear pass/fail verdict with detailed failure analysis.
+**Purpose.** The Verify surface is a Simulation & Replay Studio: author stimulus, run the circuit, inspect waveform or circuit replay, and add expected-output assertions when useful.
 
-**When to Use.** After building or modifying a circuit, before proceeding to hardware mapping or export. Verification confirms that the circuit produces the correct outputs for all test inputs.
+**When to Use.** After building or modifying a circuit. Simulation helps students understand behavior immediately; optional assertions validate that behavior before a trusted export.
 
 **Major UI Regions.**
 
-- *Testbench editor:* Named testbench tabs plus explicit combinational case rows or a sequential timeline for clock/reset/input stimulus and expected sample values.
-- *Run controls:* One stable Observe/Compare command authority whose primary action reads Run Observe, Run Compare, Update Compare, or Rerun according to state.
-- *Waveform / results:* Quiet before a run; after a run it shows selected case/time, expected and observed values, readable waveform evidence, and PASS/stale/FAIL diagnosis.
+- *Scenario workspace:* Named testbench documents plus explicit combinational cases or a sequential timeline for clock/reset/input stimulus. The default Scenario view does not require expected values.
+- *Run controls:* One stable **Run simulation** authority. Scenario, Replay, and Checks are workspace lenses rather than competing run modes.
+- *Replay / results:* Quiet before a run; after a run it shows selected case/time, observed values, readable waveform evidence, circuit-replay handoff, and a separate assertion state.
 
 **Primary Controls.**
 
-- **Run:** Execute the current testbench in the selected mode. Observe only records trace evidence but does not prove expected outputs; Compare checks evaluates the authored expected outputs. After an Observe run, selecting Compare remains the active next-run choice.
+- **Run simulation:** Execute the current scenario and record deterministic ticks. With no expected values the result is **Simulation complete** and **No checks configured**. With checks, the same run also evaluates them and reports assertion PASS or FAIL separately.
+- **Open circuit replay:** Open the recorded run on the real Design canvas. Playback is read-only and provides first/previous/play/next/last controls, a scrubber, speed choices, and keyboard transport.
+- **Checks:** Add or edit optional expected-output assertions without obscuring the stimulus-first Scenario view.
 - **Choose a repair lane:** Use **Edit expected** when the saved expected value is wrong. Use **Inspect Design** when the expected value is correct and the circuit needs inspection. Structural preflight failures expose **Open Design** so the missing connection can be repaired before Compare runs.
 - **Inspect failure diffs:** View expected versus actual values for each failing signal.
 - **Edit testbench:** Click directly in the unified grid to change stimulus inputs or expected outputs.
 - **Edit the clock lane:** In sequential manual/custom modes, use the dedicated actions **Rows**, **Alternating**, **Rising edge**, **Falling edge**, **Hold high**, and **Hold low**, or hand-edit cells directly. Board-clocked designs default to auto mode instead of requiring an authored pulse row.
 
-**Testbench Authoring Model.** Verify rows are authored ticks or steps, not whole clock cycles. For sequential circuits, Basys3 board clocks may be auto-driven by policy while data inputs stay authored in the grid. Manual/custom clock modes expose the clock/control lane inside the same grid as the other inputs; each row drives the authored clock value and is sampled after settling. Only low-to-high transitions advance rising-edge state. Falling, repeated-high, repeated-low, and flat-low steps hold it. Expected output cells are always visible in the lower half of the grid. Leaving an expected-output cell Unset means no Compare check for that output on that row; Observe may still record it.
+**Testbench Authoring Model.** Verify rows are authored ticks or steps, not whole clock cycles. For sequential circuits, Basys3 board clocks may be auto-driven by policy while data inputs stay authored in the grid. Manual/custom clock modes expose the clock/control lane inside the same grid as the other inputs; each row drives the authored clock value and is sampled after settling. Only low-to-high transitions advance rising-edge state. Falling, repeated-high, repeated-low, and flat-low steps hold it. Expected output cells live in the optional Checks lens. Leaving an expected-output cell Unset means no assertion for that output on that row; simulation and replay remain available.
 
 **Per-document sequential policy.** Every named Verify document may retain its own execution override, run-cycle count, active edge, reset behavior, clock source type, and execution model, together with the resolved signal identity/label and starting level when available. Save, autosave, reload, duplicate, rename, compatible Design repair, and Import recovery must preserve or explicitly repair this policy with the document. Automatic board clock, manual pulses, and custom pattern are distinct authored choices; changing documents changes the policy and authored rows from which the shared runtime/bring-up/testbench execution vectors are materialized.
 
@@ -758,27 +760,28 @@ Projects are auto-saved to browser local storage. The save state indicator in th
 
 ### 9.1 Building The Testbench
 
-The Verify surface uses a tick-based testbench. Each row is one authored step. Inputs are edited in the top half of the grid and expected output checks are edited in the lower half of the same grid.
+The Verify surface uses a tick-based scenario. Each row is one authored step. Inputs are edited in Scenario; optional expected-output assertions are edited in Checks.
 
 Navigate to the Verify surface and choose or create a named testbench document. The Build testbench grid displays one row per authored tick. For each row:
 
 1. Set the input values (0 or 1) for each input signal.
-2. Set the expected output values for each output signal. Leave a cell blank to skip checking that signal on that row.
-3. For sequential circuits, author data inputs per tick, then review the document-owned execution policy: automatic/manual/custom mode, run cycles, active edge, reset behavior, source type, execution model, resolved clock identity, and starting level. If Verify detects the Basys3 `CLK100MHZ` / `W5` board clock, RedByte can auto-run it. If the design intentionally clocks from a switch or button, choose manual pulses or a custom pattern and author the required clock/control activity in the highlighted lane. In manual/custom mode, only low-to-high transitions advance rising-edge state; flat or falling steps hold it.
+2. Run the scenario and inspect waveform or circuit replay.
+3. If the lab needs validation, open Checks and set expected output values. Leave a cell blank to skip asserting that signal on that row.
+4. For sequential circuits, author data inputs per tick, then review the document-owned execution policy: automatic/manual/custom mode, run cycles, active edge, reset behavior, source type, execution model, resolved clock identity, and starting level. If Verify detects the Basys3 `CLK100MHZ` / `W5` board clock, RedByte can auto-run it. If the design intentionally clocks from a switch or button, choose manual pulses or a custom pattern and author the required clock/control activity in the highlighted lane. In manual/custom mode, only low-to-high transitions advance rising-edge state; flat or falling steps hold it.
 
 Starter examples include pre-defined testbench rows. For custom circuits, the user authors rows directly in the grid or uses the advanced starter and sweep tools.
 
-### 9.2 Running Verification
+### 9.2 Running Simulation
 
 1. Navigate to the Verify surface.
-2. Choose **Observe only** or **Compare checks**.
-3. Click **Run**.
-4. The engine runs the current testbench against the circuit.
-5. Results appear in the waveform and evidence panels. Each row shows the authored inputs, the saved expected outputs, the observed outputs, and a pass/fail indicator where checks were saved.
+2. Choose the named scenario and author stimulus.
+3. Click **Run simulation**.
+4. The engine runs the current scenario against the circuit and records deterministic ticks.
+5. Results appear in Replay. Each row shows authored inputs and observed outputs; configured assertions, if any, receive a separate pass/fail result.
 
 The active named document determines both the authored rows and the sequential execution policy used by the run. Switching documents must not leak policy from another testbench. Runtime summary, waveform, expected-check sampling, PASS/FAIL, and counts must all describe the same execution sequence.
 
-Result: A current PASS verdict if all saved checks match the current design/testbench state. Missing, stale, and failed evidence remain distinct and cannot support Export `verificationTrust: trusted`.
+Result: **Simulation complete** whenever the scenario runs successfully. With no assertions, the check status is **No checks configured** and the behavioral tier is Simulated. Current passing assertions raise the tier to Validated; missing, stale, and failed assertion evidence cannot support Export `verificationTrust: trusted`.
 
 ### 9.3 Interpreting Results
 
@@ -788,7 +791,7 @@ Result: A current PASS verdict if all saved checks match the current design/test
 
 ### 9.4 Navigating from Failure to Design
 
-When Compare fails, first decide whether the authored expectation or the circuit is wrong. Choose **Edit expected** for an incorrect saved check. Choose **Inspect Design** for a suspected circuit error; RedByte carries the failed signal, tick, expected/observed bits, and available driver context into Design. Structural failures that prevent comparison expose **Open Design** to repair the missing connection. Return to Verify and rerun Compare after either repair.
+When an assertion fails, first decide whether the authored expectation or the circuit is wrong. Choose **Edit expected** for an incorrect saved check. Choose **Inspect Design** for a suspected circuit error; RedByte carries the failed signal, tick, expected/observed bits, and available driver context into Design. Structural failures that prevent simulation expose **Open Design** to repair the missing connection. Return to Verify and rerun the simulation after either repair.
 
 ### 9.5 Verification Determinism
 
@@ -1100,9 +1103,9 @@ submission.rbproj.zip
 |---------|-------|------------|
 | All vectors fail | Circuit not wired correctly | Return to Design and trace signal paths from inputs to outputs. |
 | Sequential circuit fails unexpectedly | Missing clock activity in the authored testbench | Ensure the active clock/control lane contains the required edge or enable activity before checking outputs. |
-| Outputs advance while a manual/custom clock lane stays flat | Invalid execution evidence: rising-edge state advanced without an authored low-to-high transition | Treat the run as non-authoritative, repair the clock stimulus or product regression, rerun Compare, and do not use the prior result to authorize Export. |
+| Outputs advance while a manual/custom clock lane stays flat | Invalid execution evidence: rising-edge state advanced without an authored low-to-high transition | Treat the run as non-authoritative, repair the clock stimulus or product regression, rerun simulation, and do not use the prior result to authorize Export. |
 | Stale verification indicator | Circuit modified after last verify | Re-run verification to update results. |
-| Testbench is still present after a Design edit but PASS/waveform disappeared | Design behavior changed, so prior evidence is no longer current | Repair any Design blocker and rerun Compare; authored cases were retained and previous evidence is archival only. |
+| Testbench is still present after a Design edit but validation/waveform disappeared | Design behavior changed, so prior evidence is no longer current | Repair any Design blocker and rerun simulation; authored cases were retained and previous evidence is archival only. |
 
 ### 15.4 Hardware Mapping
 

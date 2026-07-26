@@ -7642,6 +7642,46 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-07-26 (Simulation & Replay Studio v1 local candidate)
+
+**Subsystem**
+
+- IDE Verify simulation/testbench workspace
+- Design trace replay
+- Project/Export behavioral evidence projection
+
+**Problem**
+
+- Verify still made expected-output comparison feel like the prerequisite for running a circuit, which obscured the simpler student loop of supplying stimulus and observing behavior.
+- A no-check run could read like incomplete verification instead of a successful simulation with intentionally absent assertions.
+- Recorded waveform evidence did not have a first-class, read-only replay path on the real Design canvas.
+
+**What changed**
+
+- Reframed the current student procedure as `Scenario -> Run simulation -> Inspect replay -> Optional checks`.
+- Added independent runtime `simulationStatus` and `assertionStatus` projections while preserving the legacy run status for compatibility.
+- Made newly created testbench documents retain useful stimulus/policy context while clearing expected-output assertions.
+- Added Draft / Simulated / Validated behavioral evidence helpers and surfaced those tiers in Project and Export. Simulated includes current no-check or failing-check runs; only current passing assertions produce Validated.
+- Reworked Verify into Scenario, Replay, and Checks lenses with one `Run simulation` action. A no-check run reports `Simulation complete` and `No checks configured`, never FAIL; a failing assertion keeps the completed simulation and waveform visible.
+- Added `Open circuit replay`, which sends the deterministic recorded ticks to the existing Design `replaySession`. Design replay is read-only and provides first/previous/play/next/last, scrub, speed, and keyboard transport on the real circuit canvas.
+- Added focused runtime/surface/replay coverage and synchronized the current product contract, manual, system map, surface conformance, Verify spec, and active-work cockpit.
+
+**Validation**
+
+- `corepack pnpm -s vitest run packages/rb-apps/src/apps/ide/__tests__/simulationEvidence.test.ts packages/rb-apps/src/apps/ide/__tests__/verifySurface.simulationStudio.test.tsx packages/rb-apps/src/apps/ide/__tests__/verifySurface.observeFirst.test.tsx packages/rb-apps/src/apps/ide/__tests__/projectRuntime.verify-authority.test.ts` -> PASS (`4` files, `53` tests).
+- `corepack pnpm -s vitest run packages/rb-apps/src/apps/ide/__tests__/designSurface.debugNav.test.tsx -t "routes first and last controls across the recorded trace"` -> PASS (`1` focused test; `23` skipped by filter).
+- `corepack pnpm -s typecheck` -> PASS.
+- `corepack pnpm -s css:audit:ide` -> PASS with zero diagnostics warnings/errors and zero broad substring selectors.
+- `corepack pnpm -s build:unified` -> PASS, including static `dist/` verification.
+- Exact browser PNG proof covers both required viewports and the Full Adder/no-check, Full Adder replay/propagation, optional-check failure, 2-bit counter replay, stale-after-edit, Project tier, and Export tier paths under ignored `.redbyte/product-immersion/simulation-replay-v1/`.
+
+**Boundary**
+
+- Validation ran under Node `24.15.0`; the repository pin remains Node `20.19.0`, so the runtime mismatch is labeled rather than treated as exact release-environment proof.
+- This is a local browser-E0 candidate. The full test suite, uninterrupted classroom gate, Vivado, remote CI, push, merge, deploy, and physical-board proof were intentionally not run or claimed.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Visual System v1 — Graphite Spectrum workbench)
 
 **Subsystem**
