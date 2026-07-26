@@ -759,8 +759,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         inputFields,
         outputFields,
         mappedSignals,
+        circuitNodes: circuitGraph?.nodes,
       }),
-    [inputFields, lastRun, mappedSignals, outputFields]
+    [circuitGraph?.nodes, inputFields, lastRun, mappedSignals, outputFields]
   );
   const runRows = useMemo(
     () =>
@@ -6995,11 +6996,14 @@ function expectedRecordToDraftState(
   }, {});
 }
 
-function buildCanonicalWaveformSignalAliases(input: {
+export function buildCanonicalWaveformSignalAliases(input: {
   lastRun?: RuntimeVerifyRun;
   inputFields: VerifyVectorDraftInput[];
   outputFields: VerifyVectorDraftInput[];
   mappedSignals?: VerifyMappedSignal[];
+  circuitNodes?: VerifySurfaceProps['circuitGraph'] extends { readonly nodes: infer Nodes }
+    ? Nodes
+    : ReadonlyArray<{ readonly id: string; readonly type: string; readonly label?: string }>;
 }): Map<string, string> {
   const ownersByAlias = new Map<string, Set<string>>();
   const registerAliases = (
@@ -7042,6 +7046,20 @@ function buildCanonicalWaveformSignalAliases(input: {
       signal.nodeId ? `${signal.nodeId}_out` : '',
       signal.nodeId ? `${signal.nodeId}:in` : '',
       signal.nodeId ? `${signal.nodeId}:out` : ''
+    );
+  }
+
+  const boundaryNodeTypes = new Set(['input', 'output', 'switch', 'lamp', 'clock']);
+  for (const node of input.circuitNodes ?? []) {
+    const nodeType = node.type.trim().toLowerCase();
+    const logicalLabel = node.label?.trim();
+    if (!logicalLabel || boundaryNodeTypes.has(nodeType)) continue;
+    registerAliases(
+      logicalLabel,
+      node.id,
+      `${node.id}.out`,
+      `${node.id}_out`,
+      `${node.id}:out`
     );
   }
 

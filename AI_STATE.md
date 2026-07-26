@@ -7668,6 +7668,31 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-07-26 (Core learning loop Verify readability)
+
+**Subsystem**
+
+- IDE Verify stimulus table and waveform signal naming
+
+**What changed**
+
+- Rendered explicit `0` / `1` text and accessible names in every stimulus input cell so authored values are not communicated by color alone.
+- Replaced ambiguous empty-state marks with `Unset` for optional checks and `Not run` for observed outputs.
+- Labeled internal waveform rows with the student's authored logical node names while preserving canonical boundary I/O names.
+
+**Validation**
+
+- Browser-authored eight-case Full Adder scenario recorded correct boundary and internal signal traces.
+- Replay transport proved first, previous, play/pause, next, last, keyboard scrubber, speed, and return-to-Verify behavior.
+- Focused waveform-alias test passed.
+- Focused empty-state/readability test passed.
+
+**Boundary**
+
+- Local branch only. No push, pull request, merge, deployment, Vivado, bitstream, or physical-board claim.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Simulation & Replay Studio v1 local candidate)
 
 **Subsystem**

@@ -16,6 +16,24 @@ afterEach(() => {
 });
 
 describe('StimulusCanvas row authoring clarity', () => {
+  it('renders input values as text and accessible names instead of color-only cells', () => {
+    const { getByTestId } = render(
+      <StimulusCanvas
+        inputFields={INPUTS}
+        outputFields={OUTPUTS}
+        authoredVectors={VECTORS}
+        onVectorsChange={vi.fn()}
+      />
+    );
+
+    const lowCell = getByTestId('ide-stimulus-cell-sw0-t0');
+    const highCell = getByTestId('ide-stimulus-cell-sw0-t1');
+    expect(lowCell.textContent).toBe('0');
+    expect(highCell.textContent).toBe('1');
+    expect(lowCell.getAttribute('aria-label')).toContain('SW0 in Case 1 (t0): 0');
+    expect(highCell.getAttribute('aria-label')).toContain('SW0 in Case 2 (t1): 1');
+  });
+
   it('has a Cases toolbar group with data-testid ide-stimulus-case-actions', () => {
     const { getByTestId } = render(
       <StimulusCanvas

@@ -899,8 +899,10 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                   selectTick(tick);
                   setSelectedLaneKey(`input:${field.id}`);
                   commitVectors((vectors) => setInputValue(vectors, inputFields, tick, field.id, paintSession.value as 0 | 1));
-                }} data-testid={inputCellTestId} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowHeight, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
-                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: tickW - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-stimulus-input, var(--rb-accent))' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }} />
+                }} data-testid={inputCellTestId} aria-label={`${field.label} in ${describeCase(tick)}: ${value}`} title={`${field.label} in ${describeCase(tick)}: ${value} - drag to paint`} style={{ width: tickW, flexShrink: 0, height: rowHeight, border: 'none', borderLeft: '1px solid var(--rb-border)', cursor: 'pointer', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, position: 'relative', zIndex: 2 }}>
+                  <div className={`ide-stimulus-cell${value === 1 ? ' ide-stimulus-cell--hi' : ' ide-stimulus-cell--lo'}${clockLane?.fieldId === field.id ? ' is-clock' : ''}`} style={{ width: tickW - 8, height: rowHeight - 10, borderRadius: 3, background: value === 1 ? 'var(--rb-stimulus-input, var(--rb-accent))' : 'transparent', border: value === 0 ? '1px solid var(--rb-border)' : 'none' }}>
+                    <span className="ide-stimulus-cell__value">{value}</span>
+                  </div>
                 </button>
               );
             })}
@@ -911,7 +913,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
           <>
             <div ref={expectedGroupRef} className="ide-stimulus-group-header ide-stimulus-group-header--asserted" style={{ display: 'flex', height: groupH, alignItems: 'center', background: 'var(--rb-surface-2, transparent)' }}>
               <div className="ide-stimulus-group-label" title="Expected outputs; empty cells are not compared" style={{ width: labelW, flexShrink: 0, paddingLeft: 8, color: 'var(--rb-text-secondary)', fontFamily: 'var(--rb-font-sans, sans-serif)' }}>
-                Expected · click to set
+                Expected · Unset = no check
               </div>
               {ticks.map((tick) => <div key={tick} style={{ width: tickW, flexShrink: 0, height: '100%', borderLeft: '1px solid var(--rb-border)' }} />)}
               <div style={{ width: addColW, flexShrink: 0 }} />
@@ -949,7 +951,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                         >
                           <span className="ide-stimulus-cell__value">{value}</span>
                         </div>
-                      ) : <span className="ide-stimulus-cell__unset">Set</span>}
+                      ) : <span className="ide-stimulus-cell__unset">Unset</span>}
                     </button>
                   );
                 })}
@@ -979,7 +981,7 @@ export const StimulusCanvas: React.FC<StimulusCanvasProps> = ({
                 {ticks.map((tick) => {
                   const observedValue = observedValuesByTick?.[tick]?.[field.id];
                   const hasObservedValue = observedValue === '0' || observedValue === '1';
-                  const visibleValue = hasObservedValue ? observedValue : '—';
+                  const visibleValue = hasObservedValue ? observedValue : 'Not run';
                   return (
                     <output
                       key={tick}
