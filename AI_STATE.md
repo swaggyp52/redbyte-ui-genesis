@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (fix: preserve Verify Compare readability on Linux)
+
+**Subsystem:** Unified Workbench v3 Verify command deck, cross-platform label readability, and required remote release proof.
+
+**Defect and repair:** Required `Classroom Truth Gates` run `30197686206` reached exact release SHA `53e00d9d1`, passed setup, the Lab 4 solution guard, and the classroom aggregate through Verify recovery, then failed `ide:gate:verify-postrun-workbench-usability`. Ubuntu Chromium resolved the visible `Compare checks` segment to `152px` while its measured label and safety padding required `153px` at both `1366x768` and the `1093x614` 125%-equivalent viewport. The Verify sizing token now reserves `160px` for Compare, and the existing responsive toggle floor derives from that token, leaving seven pixels of runner-font margin without weakening the browser assertion.
+
+**Validation and boundary:** Pinned Node `20.19.0` / pnpm `10.24.0` passes the rebuilt unified artifact, focused `ide:gate:verify-postrun-workbench-usability`, the combined `ide:gate:verify-task-plane-usability` sequence, workspace typecheck, and the IDE CSS audit with zero warnings or errors. This is Browser-E0 command-label capacity only. It does not change stimulus, expected-output, simulation, project, mapping, generated artifacts, Vivado, bitstream, Basys3, or E1/E2/E3 authority. The failed remote run remains failed evidence; a new reconstructed release SHA and terminal required-check result are still required.
+
 ## Change Log 2026-07-26 (ci: let Classroom Truth Gates reach a verdict)
 
 **Subsystem:** Required GitHub `Classroom Truth Gates` job timeout and exact-SHA release verification.

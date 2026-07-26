@@ -3592,7 +3592,7 @@
 
 .ide-root [data-ide-mode-marker='verify'] .ide-vcb-row--primary {
   --rb-verify-observe-mode-min: 112px;
-  --rb-verify-compare-mode-min: 152px;
+  --rb-verify-compare-mode-min: 160px;
   --rb-verify-mode-toggle-min: calc(
     var(--rb-verify-observe-mode-min) + var(--rb-verify-compare-mode-min) + var(--rb-space-2)
   );
