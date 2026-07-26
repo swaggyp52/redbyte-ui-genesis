@@ -96,38 +96,41 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
           })}
         </div>
 
-        <div className="ide-testbench-document-actions" aria-label="Active testbench actions">
-          <button
-            type="button"
-            onClick={onDuplicate}
-            data-testid="ide-scenario-duplicate-btn"
-          >
-            Duplicate
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setRenameValue(activeScenario.name);
-              setRenaming(true);
-              setDeletePending(false);
-            }}
-            data-testid="ide-scenario-rename-btn"
-          >
-            Rename
-          </button>
-          <button
-            type="button"
-            className="is-danger"
-            disabled={scenarios.length <= 1}
-            onClick={() => {
-              setDeletePending(true);
-              setRenaming(false);
-            }}
-            data-testid="ide-scenario-delete-btn"
-          >
-            Delete
-          </button>
-        </div>
+        <details className="ide-testbench-document-manage">
+          <summary>Manage testbench</summary>
+          <div className="ide-testbench-document-actions" aria-label="Active testbench actions">
+            <button
+              type="button"
+              onClick={onDuplicate}
+              data-testid="ide-scenario-duplicate-btn"
+            >
+              Duplicate
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setRenameValue(activeScenario.name);
+                setRenaming(true);
+                setDeletePending(false);
+              }}
+              data-testid="ide-scenario-rename-btn"
+            >
+              Rename
+            </button>
+            <button
+              type="button"
+              className="is-danger"
+              disabled={scenarios.length <= 1}
+              onClick={() => {
+                setDeletePending(true);
+                setRenaming(false);
+              }}
+              data-testid="ide-scenario-delete-btn"
+            >
+              Delete
+            </button>
+          </div>
+        </details>
       </div>
 
       {renaming ? (

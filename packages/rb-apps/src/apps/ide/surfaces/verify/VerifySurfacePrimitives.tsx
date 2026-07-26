@@ -46,8 +46,8 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
       <div className="ide-verify-job-header-main">
         <div className="ide-verify-job-copy">
           <span className="ide-verify-job-kicker">Verify</span>
-          <h2>Simulation Studio</h2>
-          <p>Author a testbench, run the circuit, and compare waveform evidence with your expected behavior.</p>
+          <h2>Test your circuit</h2>
+          <p>Edit the testbench, run it, and compare the actual output with what you expected.</p>
         </div>
       </div>
       <div className="ide-verify-context-details" aria-label="Simulation session context">

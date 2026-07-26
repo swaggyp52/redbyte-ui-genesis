@@ -204,8 +204,8 @@
 
 .ide-verify-region--header {
   display: grid;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
   background: #0c131f;
 }
@@ -214,8 +214,8 @@
   display: grid;
   grid-template-columns: minmax(300px, 1fr) minmax(340px, auto);
   align-items: center;
-  gap: 20px;
-  min-height: 64px;
+  gap: 14px;
+  min-height: 48px;
 }
 
 .ide-verify-job-copy {
@@ -236,7 +236,7 @@
 .ide-verify-job-copy h2 {
   margin: 0;
   color: #f8fafc;
-  font-size: clamp(20px, 1.8vw, 27px);
+  font-size: clamp(19px, 1.5vw, 23px);
   line-height: 1.1;
 }
 
@@ -245,7 +245,7 @@
   max-width: 760px;
   color: #aebed1;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .ide-verify-context-details {
@@ -293,8 +293,8 @@
 
 .ide-verify-command-bar {
   display: grid;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 7px;
   background: #101925;
@@ -305,7 +305,7 @@
   display: grid;
   grid-template-columns: auto auto minmax(240px, 1fr);
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .ide-vcb-run-authority {
@@ -501,6 +501,31 @@
   padding-bottom: 3px;
 }
 
+.ide-testbench-document-manage {
+  position: relative;
+}
+
+.ide-testbench-document-manage > summary,
+.ide-verify-clock-policy-panel > summary {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 6px;
+  color: #c6d3e1;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.ide-testbench-document-manage[open] > .ide-testbench-document-actions {
+  margin-top: 6px;
+}
+
+.ide-verify-clock-policy-panel > summary {
+  width: max-content;
+  max-width: 100%;
+}
+
 .ide-testbench-document-actions button,
 .ide-testbench-document-editline button,
 .ide-testbench-document-delete button {
@@ -571,6 +596,17 @@
   padding: 12px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.16);
   background: #101925;
+}
+
+/* The legacy pre-run flex deck shrinks this heading below its padded content
+   when a long sequential testbench is loaded. Keep the task heading readable
+   and let the actual case grid own scrolling instead. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-scenario-builder-details
+  > .ide-verify-stimulus-header {
+  flex: 0 0 auto !important;
+  min-height: 40px !important;
+  height: auto !important;
 }
 
 .ide-verify-stimulus-header-main {

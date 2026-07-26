@@ -27,8 +27,8 @@ const SCENARIOS: VerifyScenario[] = [
   },
 ];
 
-describe('Simulation Studio v3 contracts', () => {
-  it('names the surface Simulation Studio and keeps session context visible without details', () => {
+describe('Testbench-first Verify contracts', () => {
+  it('names the student task directly and keeps session context visible without details', () => {
     const { getByRole, getByTestId, container } = render(
       <VerifyContextHeader
         projectName="Half Adder"
@@ -38,7 +38,7 @@ describe('Simulation Studio v3 contracts', () => {
       />
     );
 
-    expect(getByRole('heading', { name: 'Simulation Studio' })).toBeTruthy();
+    expect(getByRole('heading', { name: 'Test your circuit' })).toBeTruthy();
     expect(getByTestId('ide-verify-context-project').textContent).toBe('Half Adder');
     expect(getByTestId('ide-verify-context-state').textContent).toContain('Stale');
     expect(getByTestId('ide-verify-context-scenario').textContent).toContain('Half Adder Cases');
@@ -48,7 +48,7 @@ describe('Simulation Studio v3 contracts', () => {
     expect(container.querySelector('summary')).toBeNull();
   });
 
-  it('renders scenarios as explicit tabs with direct lifecycle actions', () => {
+  it('renders scenarios as explicit tabs with secondary lifecycle actions grouped', () => {
     const onSwitch = vi.fn();
     const onCreate = vi.fn();
     const onDuplicate = vi.fn();
@@ -74,11 +74,12 @@ describe('Simulation Studio v3 contracts', () => {
     expect(onSwitch).toHaveBeenCalledWith('edge-cases');
 
     fireEvent.click(view.getByTestId('ide-scenario-create-btn'));
+    fireEvent.click(view.getByText('Manage testbench'));
     fireEvent.click(view.getByTestId('ide-scenario-duplicate-btn'));
     expect(onCreate).toHaveBeenCalledOnce();
     expect(onDuplicate).toHaveBeenCalledOnce();
-    expect(view.container.querySelector('details')).toBeNull();
-    expect(view.queryByText('Manage testbenches')).toBeNull();
+    expect(view.container.querySelector('details')).toBeTruthy();
+    expect(view.getByText('Manage testbench')).toBeTruthy();
   });
 
   it('renames and delete-confirms the active testbench inline', () => {
@@ -96,6 +97,7 @@ describe('Simulation Studio v3 contracts', () => {
       />
     );
 
+    fireEvent.click(view.getByText('Manage testbench'));
     fireEvent.click(view.getByTestId('ide-scenario-rename-btn'));
     const nameInput = view.getByTestId('ide-scenario-rename-input') as HTMLInputElement;
     fireEvent.change(nameInput, { target: { value: 'Primary truth table' } });

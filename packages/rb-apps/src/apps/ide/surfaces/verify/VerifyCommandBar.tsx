@@ -205,7 +205,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                   : undefined
               }
             >
-              Compare checks
+              Compare expected output
             </button>
           </div>
         </div>

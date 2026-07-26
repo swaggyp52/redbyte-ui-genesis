@@ -4454,7 +4454,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             {clockSummaryText}
           </span>
           {effectiveClockPolicy ? (
-            <div className="ide-verify-clock-policy-panel" data-testid="ide-verify-clock-policy-panel">
+            <details
+              className="ide-verify-clock-policy-panel"
+              data-testid="ide-verify-clock-policy-panel"
+              defaultOpen={clockOverrideMode !== 'auto' || isWarn}
+            >
+              <summary>
+                Clock settings · {effectiveClockPolicy.overrideMode === 'auto'
+                  ? effectiveClockPolicy.sourceType === 'board-clock'
+                    ? 'Auto board clock'
+                    : 'Auto clock'
+                  : effectiveClockPolicy.overrideMode === 'manual-pulses'
+                    ? 'Manual pulses'
+                    : 'Custom pattern'}
+              </summary>
               <span className="ide-verify-clock-policy-line" data-testid="ide-verify-clock-detected">
                 Detected clock: {effectiveClockPolicy.signalLabel}
                 {effectiveClockPolicy.boardAlias ? ` · ${effectiveClockPolicy.boardAlias}` : ''}
@@ -4543,7 +4556,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   </span>
                 ) : null}
               </div>
-            </div>
+            </details>
           ) : null}
           {clockActivitySummary.preview.length > 0 ? (
             <span className="ide-verify-clock-preview" data-testid="ide-verify-clock-pattern-preview">
