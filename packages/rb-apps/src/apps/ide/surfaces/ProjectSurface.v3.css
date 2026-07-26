@@ -755,3 +755,227 @@
     padding-left: 12px;
   }
 }
+
+/* Visual System v1: Project is a visual command center, not a status report. */
+.ide-project-v3 {
+  gap: 16px;
+  width: min(100%, 1500px);
+  padding: 16px clamp(16px, 2vw, 28px) 32px;
+}
+
+.ide-project-v3-header {
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.86fr);
+  gap: 16px;
+  align-items: stretch;
+  padding: 0;
+  border: 0;
+}
+
+.ide-project-v3-identity {
+  display: grid;
+  align-content: start;
+  padding: 20px 22px 18px;
+  overflow: hidden;
+  border: 1px solid var(--rb-border);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 88% 18%, rgba(139, 124, 255, 0.12), transparent 30%),
+    var(--rb-surface-1);
+  box-shadow: var(--rb-shadow-elevated);
+}
+
+.ide-project-v3-description {
+  font-size: 15px;
+}
+
+.ide-project-v3-student-field {
+  width: min(100%, 430px);
+  margin-top: 12px;
+}
+
+.ide-project-v3-student-field input,
+.ide-project-v3-meta input {
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+}
+
+.ide-project-v3-next {
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 22px;
+  border: 1px solid rgba(139, 124, 255, 0.36);
+  border-radius: 12px;
+  background:
+    linear-gradient(150deg, rgba(139, 124, 255, 0.16), transparent 54%),
+    var(--rb-surface-2);
+  box-shadow: var(--rb-shadow-elevated);
+}
+
+.ide-project-v3-next-state {
+  color: var(--rb-project);
+  font-size: 12px;
+}
+
+.ide-project-v3-next h2 {
+  font-size: clamp(20px, 1.8vw, 25px);
+}
+
+.ide-project-v3-next .ide-project-v3-next-reason {
+  grid-column: 1;
+  font-size: 14px;
+}
+
+.ide-project-v3-next .ide-button {
+  grid-column: 1;
+  grid-row: auto;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  border-color: var(--rb-project);
+  background: var(--rb-project);
+  color: #0a0b11;
+}
+
+.ide-project-v3-circuit-preview {
+  display: grid;
+  margin: 16px 0 0;
+  overflow: hidden;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background:
+    linear-gradient(rgba(180, 192, 212, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(180, 192, 212, 0.045) 1px, transparent 1px),
+    #0b1018;
+  background-size: 24px 24px;
+}
+
+.ide-project-v3-circuit-preview figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--rb-border);
+  background: rgba(20, 26, 36, 0.9);
+}
+
+.ide-project-v3-circuit-preview figcaption > div {
+  display: grid;
+  gap: 2px;
+}
+
+.ide-project-v3-circuit-preview figcaption span {
+  color: var(--rb-text-muted);
+  font-size: 12px;
+}
+
+.ide-project-v3-circuit-preview figcaption strong {
+  color: var(--rb-text);
+  font-size: 13px;
+}
+
+.ide-project-v3-circuit-preview svg {
+  width: 100%;
+  height: 150px;
+}
+
+.ide-project-v3-preview-wire {
+  fill: none;
+  stroke: rgba(182, 192, 208, 0.34);
+  stroke-width: 1.5;
+}
+
+.ide-project-v3-preview-node rect {
+  fill: var(--rb-surface-2);
+  stroke: var(--rb-border-strong);
+  stroke-width: 1.5;
+}
+
+.ide-project-v3-preview-node text {
+  fill: var(--rb-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.ide-project-v3-preview-node.is-input rect { stroke: var(--rb-design); }
+.ide-project-v3-preview-node.is-output rect { stroke: var(--rb-export); }
+.ide-project-v3-preview-node.is-sequential rect { stroke: var(--rb-project); }
+
+.ide-project-v3-toolbar {
+  justify-content: space-between;
+  padding-inline: 2px;
+}
+
+.ide-project-v3-workspace {
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--rb-border);
+  border-radius: 12px;
+  background: rgba(20, 26, 36, 0.72);
+}
+
+.ide-project-v3-stage-table {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  border: 0;
+}
+
+.ide-project-v3-readiness-anchor {
+  display: none;
+}
+
+.ide-project-v3-stage-row {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(56px, 1fr) auto;
+  gap: 10px;
+  min-height: 168px;
+  padding: 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-1);
+}
+
+.ide-project-v3-stage-name {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ide-project-v3-stage-name > strong {
+  text-align: right;
+}
+
+.ide-project-v3-stage-action {
+  align-self: end;
+}
+
+.ide-project-v3-stage-action .ide-button {
+  width: 100%;
+}
+
+.ide-project-v3-recent,
+.ide-project-v3-record {
+  border-color: var(--rb-border);
+}
+
+@media (max-width: 1100px) {
+  .ide-project-v3-header {
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.8fr);
+  }
+
+  .ide-project-v3-stage-table {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .ide-project-v3-header,
+  .ide-project-v3-stage-table {
+    grid-template-columns: 1fr;
+  }
+}

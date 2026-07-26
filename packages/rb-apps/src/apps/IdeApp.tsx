@@ -18,6 +18,7 @@ import './ide/ide-polish-pass.css';
 import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
 import './ide/unified-workbench-v3.css';
+import './ide/visual-system-v1.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
@@ -1947,7 +1948,12 @@ export const IdeApp: React.FC = () => {
 
   return (
     <BoardSignalProvider>
-    <div className="ide-root" data-testid="ide-root" data-redbyte-mode="ide">
+    <div
+      className="ide-root"
+      data-testid="ide-root"
+      data-redbyte-mode="ide"
+      data-ide-stage={activeMode}
+    >
       {autosaveAvailable && projectKind === 'home' && !hasCircuit && (
         <div className="ide-autosave-banner" data-testid="ide-autosave-banner">
           <span><strong>Restore previous session?</strong> A circuit from your last session is available. Restore it or start fresh.</span>
@@ -2054,6 +2060,7 @@ export const IdeApp: React.FC = () => {
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}
+              circuit={circuit}
               onFocusMacro={(macroId, macroName) => {
                 setDesignFocusRequest(
                   createDesignFocusRequest('macro', macroId, macroName)

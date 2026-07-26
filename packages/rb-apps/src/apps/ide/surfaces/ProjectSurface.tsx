@@ -25,6 +25,7 @@ import type { ProjectIoMappingKind } from '../examplesCatalog';
 import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
+import type { Circuit } from '@redbyte/rb-logic-core';
 import './ProjectSurface.v3.css';
 
 export const CHROME_CONTRACT = {
@@ -118,6 +119,7 @@ export interface ProjectSurfaceProps {
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
   outline?: ProjectOutlineSummary | null;
+  circuit?: Circuit;
   onFocusMacro?: (macroId: string, macroName: string) => void;
   onFocusCustomComponent?: (componentName: string) => void;
   ioSignalRolesByLabel?: Record<string, IoSignalRole>;
@@ -169,6 +171,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   importFidelity,
   onFpgaConfigChange,
   outline = null,
+  circuit,
   onFocusMacro,
   onFocusCustomComponent,
 }) => {
@@ -483,6 +486,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               importFidelity={importFidelity}
               onFpgaConfigChange={onFpgaConfigChange}
               outline={outline}
+              circuit={circuit}
               inputRows={inputRows}
               outputRows={outputRows}
               onOpenDesign={onOpenDesign}
@@ -588,6 +592,7 @@ interface LoadedProjectOverviewProps {
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
   outline: ProjectOutlineSummary | null;
+  circuit?: Circuit;
   inputRows: ProjectMappingRow[];
   outputRows: ProjectMappingRow[];
   onOpenDesign: () => void;
@@ -663,6 +668,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   importFidelity,
   onFpgaConfigChange,
   outline,
+  circuit,
   inputRows,
   outputRows,
   onOpenDesign,
@@ -763,6 +769,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
           <p className="ide-project-v3-description" data-testid="ide-project-overview-summary">
             {projectSummary}
           </p>
+          {circuit && circuit.nodes.length > 0 ? (
+            <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} />
+          ) : null}
           {starterName && starterName !== projectName ? (
             <p className="ide-project-v3-source" data-testid="ide-project-workspace-context">
               Started from <strong>{starterName}</strong>
@@ -781,6 +790,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                 value={studentName}
                 onChange={(event) => onStudentNameChange(event.target.value)}
                 aria-label="Student name"
+                placeholder="Optional student name"
               />
             </label>
           ) : studentName ? (
@@ -1133,6 +1143,94 @@ const IoSummary: React.FC<{
     </div>
   </div>
 );
+
+const ProjectCircuitPreview: React.FC<{
+  circuit: Circuit;
+  inputRows: ProjectMappingRow[];
+  outputRows: ProjectMappingRow[];
+}> = ({ circuit, inputRows, outputRows }) => {
+  const preview = useMemo(() => {
+    const nodes = circuit.nodes.slice(0, 24);
+    const xs = nodes.map((node, index) => node.position?.x ?? node.x ?? index * 90);
+    const ys = nodes.map((node, index) => node.position?.y ?? node.y ?? (index % 4) * 72);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const positionById = new Map(
+      nodes.map((node, index) => {
+        const x = node.position?.x ?? node.x ?? index * 90;
+        const y = node.position?.y ?? node.y ?? (index % 4) * 72;
+        return [
+          node.id,
+          {
+            x: 54 + ((x - minX) / Math.max(1, maxX - minX)) * 492,
+            y: 34 + ((y - minY) / Math.max(1, maxY - minY)) * 132,
+          },
+        ] as const;
+      })
+    );
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    const edges = circuit.connections
+      .map((connection) => ({
+        from: typeof connection.from === 'string' ? connection.from.split(/[.:/]/)[0] : connection.from.nodeId,
+        to: typeof connection.to === 'string' ? connection.to.split(/[.:/]/)[0] : connection.to.nodeId,
+      }))
+      .filter((edge) => nodeIds.has(edge.from) && nodeIds.has(edge.to));
+    return { nodes, positionById, edges };
+  }, [circuit]);
+
+  const inputLabels = new Map(inputRows.map((row) => [row.nodeId ?? row.id, getStudentFacingIoLabel(row)]));
+  const outputLabels = new Map(outputRows.map((row) => [row.nodeId ?? row.id, getStudentFacingIoLabel(row)]));
+
+  return (
+    <figure className="ide-project-v3-circuit-preview" data-testid="ide-project-circuit-preview">
+      <figcaption>
+        <div>
+          <span>Live circuit snapshot</span>
+          <strong>{circuit.nodes.length} components · {circuit.connections.length} wires</strong>
+        </div>
+        <span>Read-only</span>
+      </figcaption>
+      <svg viewBox="0 0 600 200" role="img" aria-label="Read-only preview of the current circuit graph">
+        {preview.edges.map((edge, index) => {
+          const from = preview.positionById.get(edge.from);
+          const to = preview.positionById.get(edge.to);
+          if (!from || !to) return null;
+          const mid = (from.x + to.x) / 2;
+          return (
+            <path
+              key={`${edge.from}-${edge.to}-${index}`}
+              className="ide-project-v3-preview-wire"
+              d={`M ${from.x + 24} ${from.y} C ${mid} ${from.y}, ${mid} ${to.y}, ${to.x - 24} ${to.y}`}
+            />
+          );
+        })}
+        {preview.nodes.map((node) => {
+          const point = preview.positionById.get(node.id);
+          if (!point) return null;
+          const logicalLabel = inputLabels.get(node.id) ?? outputLabels.get(node.id);
+          const type = String(node.type).replace(/Node$/i, '');
+          const category = inputLabels.has(node.id)
+            ? 'input'
+            : outputLabels.has(node.id)
+              ? 'output'
+              : /flip|latch|counter|clock/i.test(type)
+                ? 'sequential'
+                : 'logic';
+          return (
+            <g key={node.id} className={`ide-project-v3-preview-node is-${category}`}>
+              <rect x={point.x - 24} y={point.y - 17} width="48" height="34" rx="7" />
+              <text x={point.x} y={point.y + 4}>
+                {(logicalLabel ?? node.label ?? type).slice(0, 9)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </figure>
+  );
+};
 
 const ProjectInventory: React.FC<{
   outline: ProjectOutlineSummary;
