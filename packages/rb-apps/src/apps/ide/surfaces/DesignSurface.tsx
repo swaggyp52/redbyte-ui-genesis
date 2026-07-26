@@ -1262,8 +1262,33 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       if (!key) continue;
       index.set(key, row);
     }
+    for (const node of editorCircuit.nodes) {
+      if (index.has(node.id)) continue;
+      const direction =
+        node.type === 'INPUT' || node.type === 'Switch' || node.type === 'Clock'
+          ? 'in'
+          : node.type === 'OUTPUT' || node.type === 'Lamp'
+            ? 'out'
+            : null;
+      if (!direction) continue;
+      const nodeKeys = [node.id, node.label]
+        .filter((value): value is string => typeof value === 'string')
+        .map(normalizeIoPresentationMatchKey)
+        .filter((value) => value.length >= 3);
+      const inferredRow = ioRows.find((row) => {
+        if (row.direction !== direction) return false;
+        const rowKeys = [row.id, row.label]
+          .filter((value): value is string => typeof value === 'string')
+          .map(normalizeIoPresentationMatchKey)
+          .filter((value) => value.length >= 3);
+        return nodeKeys.some((nodeKey) =>
+          rowKeys.some((rowKey) => nodeKey === rowKey || nodeKey.includes(rowKey) || rowKey.includes(nodeKey))
+        );
+      });
+      if (inferredRow) index.set(node.id, inferredRow);
+    }
     return index;
-  }, [ioRows]);
+  }, [editorCircuit.nodes, ioRows]);
 
   const handlePortClick = useCallback(
     (nodeId: string, portName: string) => {
@@ -5890,35 +5915,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
           </SurfacePanel>
 
-          {allLiveInputRows.length > 0 && (
-            <SurfacePanel className="ide-design-input-panel" testId="ide-design-input-panel">
-              <header className="ide-design-subheader ide-design-input-panel-header">
-                <div className="ide-design-input-panel-title-row">
-                  <h3>Quick Inputs</h3>
-                  <span className="ide-palette-section-count">{allLiveInputRows.length}</span>
-                </div>
-              </header>
-              <div className="ide-design-input-toggle-list">
-                  {allLiveInputRows.map((entry) => (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      className={`ide-design-input-control ${entry.value === 1 ? 'is-on' : 'is-off'}`}
-                      data-testid={`ide-design-input-toggle-${entry.id}`}
-                      aria-pressed={entry.value === 1}
-                      onClick={() => {
-                        const next = entry.value === 1 ? 0 : 1;
-                        queueDesignDebugToggleSample(entry.id, next, 'dock');
-                        onRuntimeSimSetInput?.(entry.id, next);
-                      }}
-                    >
-                      <span className="ide-design-input-toggle-label">{entry.label}</span>
-                      <span className="ide-design-input-toggle-value">{entry.value}</span>
-                    </button>
-                  ))}
-              </div>
-            </SurfacePanel>
-          )}
         </>
       }
       inspector={
@@ -7625,8 +7621,8 @@ function resolveNodeIoPresentation(
     if (resourceKind) {
       return {
         kind: resourceKind,
-        label: boardBinding.alias,
-        pinAlias: boardBinding.packagePin,
+        label: getLogicalIoPresentationLabel(ioRow, node),
+        pinAlias: boardBinding.alias,
       };
     }
   }
@@ -7670,6 +7666,19 @@ function resolveNodeIoPresentation(
 function extractAlias(source: string, pattern: RegExp): string {
   const match = pattern.exec(source);
   return (match?.[1] ?? source).toUpperCase();
+}
+
+function getLogicalIoPresentationLabel(ioRow: DesignIoRow | undefined, node: Node): string {
+  const authoredLabel = ioRow?.label?.trim() ?? '';
+  const parenthetical = authoredLabel.match(/\(([^)]+)\)/);
+  if (parenthetical?.[1]?.trim()) {
+    return parenthetical[1].trim().toUpperCase();
+  }
+  return getStudentFacingIoLabel(ioRow, String(node.label ?? node.id)).toUpperCase();
+}
+
+function normalizeIoPresentationMatchKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function normalizeAlias(value: string): string {

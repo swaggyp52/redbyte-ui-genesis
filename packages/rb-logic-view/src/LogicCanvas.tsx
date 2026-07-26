@@ -2186,6 +2186,67 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               );
             })}
         </g>
+
+        {/* Logical output identity stays adjacent to the node while the physical
+            LED alias remains secondary. This mirrors the input overlay and
+            prevents generic OUTPUT headers from becoming the circuit's label. */}
+        <g id="rb-output-label-overlay" style={{ pointerEvents: 'none' }}>
+          {visibleNodes
+            .filter((node) => node.type === 'OUTPUT' || node.type === 'Lamp')
+            .filter((node) => node.position)
+            .map((node) => {
+              const ioPresentation = ioPresentationMap?.[node.id] ?? inferNodeIoPresentation(node);
+              const ioLabel = (ioPresentation.label?.trim() || node.label || node.id).toUpperCase();
+              const pinAlias = ioPresentation.pinAlias?.trim().toUpperCase() || '';
+              const screenX = node.position!.x * camera.zoom + camera.x;
+              const screenY = node.position!.y * camera.zoom + camera.y;
+              const size = 48 * camera.zoom;
+              const labelWidth = Math.max(46, ioLabel.length * 8 * camera.zoom);
+              return (
+                <g
+                  key={`output-label-${node.id}`}
+                  data-testid={`output-label-${node.id}`}
+                  transform={`translate(${screenX}, ${screenY})`}
+                >
+                  <rect
+                    x={-labelWidth / 2}
+                    y={-size / 2 - 34}
+                    width={labelWidth}
+                    height={20}
+                    rx={6}
+                    fill="rgba(9, 13, 19, 0.94)"
+                    stroke="rgba(127, 221, 181, 0.42)"
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={0}
+                    y={-size / 2 - 24}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fill="#9af0c9"
+                    fontSize={Math.max(10, 11 * camera.zoom)}
+                    fontWeight="750"
+                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                  >
+                    {ioLabel}
+                  </text>
+                  {pinAlias && pinAlias !== ioLabel ? (
+                    <text
+                      x={0}
+                      y={size / 2 + 19}
+                      textAnchor="middle"
+                      fill="#7f8b9e"
+                      fontSize={Math.max(7, 8 * camera.zoom)}
+                      fontWeight="600"
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    >
+                      {pinAlias}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+        </g>
       </svg>
       {circuit && circuit.nodes.length > 0 && (
         <Minimap

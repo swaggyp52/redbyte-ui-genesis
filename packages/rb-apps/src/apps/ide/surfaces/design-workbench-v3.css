@@ -86,15 +86,15 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--board {
-  order: 3;
+  order: 5;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--sequential {
-  order: 4;
+  order: 3;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--reusable {
-  order: 5;
+  order: 4;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy,
@@ -767,4 +767,58 @@
     grid-row: 3;
     max-height: 260px;
   }
+}
+
+/* Visual System v1: preserve the circuit canvas as the dominant work object. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: clamp(188px, 14vw, 214px);
+  --ide-workbench-right-width: clamp(210px, 16vw, 238px);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+  grid-template-columns:
+    minmax(188px, var(--ide-workbench-left-width))
+    minmax(0, 1fr)
+    minmax(210px, var(--ide-workbench-right-width)) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-workbench-main.hide-right-dock {
+  grid-template-columns:
+    minmax(188px, var(--ide-workbench-left-width))
+    minmax(0, 1fr) !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette {
+  border-right-color: rgba(77, 208, 225, 0.2);
+  background: #10161f;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette-header {
+  border-top: 3px solid var(--rb-design);
+  background:
+    linear-gradient(100deg, rgba(77, 208, 225, 0.08), transparent 72%),
+    var(--rb-surface-1);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-search:focus {
+  border-color: var(--rb-design);
+  box-shadow: 0 0 0 3px rgba(77, 208, 225, 0.12);
+  outline: none;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section--board {
+  margin-top: 4px;
+  border-top: 1px solid var(--rb-border);
+  opacity: 0.9;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-live {
+  border-color: rgba(77, 208, 225, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(77, 208, 225, 0.04);
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  border-left-color: rgba(77, 208, 225, 0.18);
+  background: #10161f;
 }
