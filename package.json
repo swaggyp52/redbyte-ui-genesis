@@ -26,7 +26,7 @@
         "start:local": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1",
         "start:production": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1 -Production",
         "start:smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File ./Start-RedByte.ps1 -SmokeTest -NoOpen -SkipInstall -Port 5197",
-        "dev": "corepack pnpm --filter @redbyte/playground dev",
+        "dev": "node scripts/print-dev-identity.mjs && corepack pnpm --filter @redbyte/playground dev",
         "dev:lab3": "corepack pnpm --filter @redbyte/lab3-webapp dev",
         "dev:manual": "corepack pnpm --filter @redbyte/manual-site dev",
         "dev:playground": "corepack pnpm --filter @redbyte/playground dev",
