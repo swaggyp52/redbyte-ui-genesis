@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (local classroom lock v2A.2: finish Design and Verify acceptance)
+
+**Subsystem:** Exact-viewport Design/Verify classroom acceptance, browser reload continuity, semantic Verify evidence identity, reduced-motion behavior, and waveform control accessibility.
+
+**Product repair:** Arranging a circuit no longer invalidates current Verify evidence because the verification hash excludes canvas geometry while retaining structural and project authority. A browser reload now retains the prior waveform as explicitly stale history with one direct rerun action; the rerun restores current evidence and Export classifies Verify as validated. Design palette search uses a short classroom-readable prompt. Logic-canvas signal particles, wire previews, and edge flashes stop when the operating system requests reduced motion. Verify waveform zoom and row-size controls now expose descriptive accessible names and tooltips.
+
+**Evidence and boundary:** One bounded browser flow at exact inner viewports `1366x768` and `1440x900` proved a blank-to-Full-Adder Design loop, arrange/undo/redo, all eight truth-table combinations, wire deletion and repair, keyboard placement and replay, zero-check observation, cancel-safe and confirmed check creation, deliberate mismatch and repair, disconnected-CARRY `X` diagnosis, reload-stale continuity, direct rerun, and stale/current Export classification. Both viewports had zero document-level horizontal overflow; reduced-motion emulation left active signal truth visible with zero SVG motion elements. Pinned Node `20.19.0` / pnpm `10.24.0` passes focused reduced-motion, deterministic-hash, Verify workstation/reload, and scenario/history persistence tests, workspace typecheck, the IDE CSS audit with zero warnings or errors, the unified build, and `git diff --check`. Ignored captures and their manifest are under `.redbyte/product-immersion/classroom-lock-v2a2/`. This is local Browser-E0 evidence only: no push, PR #79 work, release branch, `main`, merge, deployment, full classroom aggregate, broad Vitest/Playwright suite, Vivado execution, bitstream, Basys3 observation, or E1/E2/E3 authority is claimed.
+
 ## Change Log 2026-07-26 (local core learning loop: complete Design and Verify learning workbenches)
 
 **Subsystem:** Design canvas hierarchy and path inspection; Verify scenario probes, waveform evidence, per-cell check authorship, and non-blocking structural diagnostics.

@@ -5779,7 +5779,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 className="ide-design-search"
                 value={paletteQuery}
                 onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search logic, dff, clock, macro, led..."
+                placeholder="Search gates or pins..."
                 data-testid="ide-design-search"
               />
               {paletteHasQuery && (

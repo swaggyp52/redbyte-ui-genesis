@@ -213,6 +213,8 @@ export interface VerifySurfaceProps {
   hasVectors: boolean;
   vectors?: TestVector[];
   lastRun?: RuntimeVerifyRun;
+  /** A restored browser-session run is replayable history, but requires one direct rerun. */
+  forceRunStale?: boolean;
   /** Structural Design authority. Checked runs are inconclusive while present. */
   designBlockingIssue?: {
     title: string;
@@ -355,6 +357,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   hasVectors,
   vectors,
   lastRun: persistedLastRun,
+  forceRunStale = false,
   designBlockingIssue,
   mappingComplete = true,
   hasFloatingOutputWarning = false,
@@ -1751,9 +1754,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const isRunStale =
     lastRun !== undefined &&
-    lastRun.deterministicHash !== '' &&
-    deterministicHash !== '' &&
-    lastRun.deterministicHash !== deterministicHash;
+    (
+      forceRunStale ||
+      (
+        lastRun.deterministicHash !== '' &&
+        deterministicHash !== '' &&
+        lastRun.deterministicHash !== deterministicHash
+      )
+    );
 
   const activeScheduleContract = useMemo(
     () =>
@@ -4266,6 +4274,23 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       };
     }
 
+    if (forceRunStale) {
+      return {
+        tone: 'warn',
+        title: 'Browser reloaded — rerun simulation',
+        message:
+          'The previous waveform remains available as stale history. Rerun the saved scenario before trusting it as current evidence.',
+        actions: [
+          {
+            label: 'Rerun simulation',
+            onClick: runVerification,
+            tone: 'primary',
+            testId: 'ide-verify-primary-status-rerun-reloaded',
+          },
+        ],
+      };
+    }
+
     if (hasStaleAuthoredReference) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
@@ -4369,6 +4394,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     handleResetToStimulusOnly,
     handleStaleRecapture,
     hasStaleAuthoredReference,
+    forceRunStale,
     isNoCircuitTaskFirst,
     isRunStale,
     isTestbenchStale,
@@ -5214,7 +5240,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         />
         )}
         {primaryStatus && !compactPrimaryStatusAction ? (
-          <div className="ide-verify-session-guidance" data-testid="ide-verify-session-guidance">
+          <div
+            className={`ide-verify-session-guidance${forceRunStale ? ' ide-verify-session-guidance--reload' : ''}`}
+            data-testid="ide-verify-session-guidance"
+          >
             <VerifyPrimaryStatusArea
               {...primaryStatus}
               density="embedded"
@@ -6075,6 +6104,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev - 8))}
                       data-testid="ide-verify-zoom-out"
                       title="Zoom out (narrower ticks)"
+                      aria-label="Zoom out waveform"
                     >
                       −
                     </button>
@@ -6084,6 +6114,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       onClick={() => setTickWidth((prev) => clampTickWidth(prev + 8))}
                       data-testid="ide-verify-zoom-in"
                       title="Zoom in (wider ticks)"
+                      aria-label="Zoom in waveform"
                     >
                       +
                     </button>
@@ -6104,6 +6135,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                         className={`ide-verify-zoom-btn ${waveformDensity === d ? 'is-active' : ''}`}
                         onClick={() => setWaveformDensity(d)}
                         data-testid={`ide-verify-density-${d}`}
+                        aria-label={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
+                        title={`${d === 'small' ? 'Small' : d === 'normal' ? 'Medium' : 'Large'} waveform rows`}
                       >
                         {d === 'small' ? 'S' : d === 'normal' ? 'M' : 'L'}
                       </button>

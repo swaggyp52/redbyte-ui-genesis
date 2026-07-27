@@ -1889,6 +1889,11 @@ describe('VerifySurface workstation controls', () => {
     expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('expected');
     expect(getByTestId('ide-verify-drawer-hint').textContent).not.toContain('observed');
     expect(getByTestId('ide-verify-waveform-tools-panel')).toBeTruthy();
+    expect(getByTestId('ide-verify-zoom-out').getAttribute('aria-label')).toBe('Zoom out waveform');
+    expect(getByTestId('ide-verify-zoom-in').getAttribute('aria-label')).toBe('Zoom in waveform');
+    expect(getByTestId('ide-verify-density-small').getAttribute('aria-label')).toBe('Small waveform rows');
+    expect(getByTestId('ide-verify-density-normal').getAttribute('aria-label')).toBe('Medium waveform rows');
+    expect(getByTestId('ide-verify-density-large').getAttribute('aria-label')).toBe('Large waveform rows');
     expect(getByTestId('ide-verify-set-cursor-a')).toBeTruthy();
     expect(getByTestId('ide-verify-set-cursor-b')).toBeTruthy();
     expect(queryByTestId('ide-verify-cursor-readout')).toBeNull();
@@ -1914,8 +1919,7 @@ describe('VerifySurface workstation controls', () => {
     onSignalSelected.mockClear();
     fireEvent.click(getByTestId('ide-verify-explainer-show-mismatches'));
     expect(onSignalSelected).toHaveBeenLastCalledWith('ld0');
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-signal-filter-state').textContent).toContain('flagged');
+    expect(getByTestId('ide-mode-verify').getAttribute('data-left-dock-state')).toBe('hidden');
   });
 
   it('folds workbench actions and signal-rail controls into their header rows', () => {
@@ -2756,6 +2760,49 @@ describe('VerifySurface workstation controls', () => {
     expect(staleDesign.getByTestId('ide-verify-primary-status').textContent).toContain(
       'Design changed - rerun Compare'
     );
+  });
+
+  it('labels restored browser-session evidence stale even when its hashes still match', () => {
+    const passRun = makePassRun();
+    const rerun = vi.fn();
+    const activeScenario = {
+      id: passRun.scenarioId,
+      name: passRun.scenarioName,
+      vectors: passRun.report.vectors,
+      version: 1,
+      createdAt: '2026-07-27T00:00:00.000Z',
+      updatedAt: '2026-07-27T00:00:00.000Z',
+    };
+    const view = render(
+      <VerifySurface
+        deterministicHash={passRun.deterministicHash}
+        forceRunStale={true}
+        hasVectors={true}
+        lastRun={passRun}
+        vectors={passRun.report.vectors}
+        mappedInputs={[{ id: 'sw0', label: 'SW0' }]}
+        mappedSignals={[
+          { id: 'sw0', direction: 'in', label: 'SW0' },
+          { id: 'ld0', direction: 'out', label: 'LD0' },
+        ]}
+        activeScenario={activeScenario}
+        activeScenarioId={activeScenario.id}
+        scenarios={[activeScenario]}
+        onRunVerification={rerun}
+        onVectorsChange={vi.fn()}
+        onOpenProjectVectors={vi.fn()}
+      />
+    );
+
+    expect(view.getByTestId('ide-verify-primary-status').textContent).toContain(
+      'Browser reloaded — rerun simulation'
+    );
+    expect(view.getByTestId('ide-verify-workspace-waveform')).toHaveAttribute(
+      'data-state',
+      'stale'
+    );
+    fireEvent.click(view.getByRole('button', { name: 'Rerun simulation' }));
+    expect(rerun).toHaveBeenCalledTimes(1);
   });
 
   it('shows disconnected-output recovery when Compare fails without row mismatches', () => {

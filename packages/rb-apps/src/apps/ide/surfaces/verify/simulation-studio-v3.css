@@ -2284,6 +2284,12 @@
   display: none !important;
 }
 
+.ide-root.ide-root
+  .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-session-guidance.ide-verify-session-guidance--reload {
+  display: block !important;
+}
+
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-instrument-deck,
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure) {
