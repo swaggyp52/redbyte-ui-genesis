@@ -1,5 +1,13 @@
 # AI State
 
+## Change Log 2026-07-26 (local core learning loop: complete Design and Verify learning workbenches)
+
+**Subsystem:** Design canvas hierarchy and path inspection; Verify scenario probes, waveform evidence, per-cell check authorship, and non-blocking structural diagnostics.
+
+**Product repair:** Design now gives the circuit graph the dominant work area, groups authoring controls by task, arranges graphs deterministically by dependency, keeps blank projects genuinely blank, and lets students focus a complete causal path without unrelated gates competing for attention. Verify now treats scenarios as persistent documents, lets each scenario watch internal signals, fills the waveform viewport, creates one expected-output check only after a confirmation dialog, and keeps the waveform primary during diagnosis. A disconnected output is a non-blocking wiring warning: runnable paths continue, the affected Design output and Verify waveform show a labeled `X`, and repair returns the same scenario to a passing run.
+
+**Evidence and boundary:** Focused runtime, interaction, waveform, layout, and elaboration regressions plus pinned Node `20.19.0` typecheck, CSS audit, unified build, documentation validation, and `git diff --check` cover this local slice. One bounded Design flow and one bounded Verify flow proved blank authority, Full Adder arrangement, Live path focus, scenario-local probes, cancel-safe per-cell check creation, intentional failure tracing into Design Replay, disconnected-CARRY `X` evidence, visible repair, and a final passing check. Actual browser captures are `1874x1232` because the connected browser viewport could not be forced to the requested exact classroom sizes. Evidence is ignored under `.redbyte/product-immersion/design-verify-finish-v2a1/`. PR #79, remotes, `main`, production, generated HDL/XDC/testbench/Tcl/ZIP semantics, Vivado execution, bitstreams, Basys3 observation, and E1/E2/E3 authority are unchanged; nothing in this slice is pushed, merged, deployed, or release-certified.
+
 ## Change Log 2026-07-26 (local core learning loop: preserve blank-project authority)
 
 **Subsystem:** Blank/custom project identity, generated top authority, Map Pins persistence, and Verify-driven simulated-board replay.
