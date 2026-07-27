@@ -889,7 +889,7 @@ describe('projectRuntime history authority', () => {
 
     expect(runtimeState.projectIoRows.some((row) => row.nodeId === 'ld1_node')).toBe(false);
     expect(runtimeState.projectVectors.every((vector) => 'ld1' in (vector.expected ?? {}))).toBe(true);
-    expect(runtimeState.verifyLastRun).toBeUndefined();
+    expect(runtimeState.verifyLastRun).toBeDefined();
     expect(runtimeState.verifyRunHistory.length).toBeGreaterThan(0);
     expect(runtimeState.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(runtimeState.projectHealthCore.dirtySinceExport).toBe(true);
@@ -1434,7 +1434,7 @@ describe('projectRuntime history authority', () => {
         scenario.vectors.every((vector) => 'sw0' in (vector.inputs ?? {}))
       )
     ).toBe(true);
-    expect(deletedState.verifyLastRun).toBeUndefined();
+    expect(deletedState.verifyLastRun).toBeDefined();
     expect(deletedState.verifyRunHistory.length).toBeGreaterThan(0);
     expect(deletedState.projectHealthCore.dirtySinceVerify).toBe(true);
     expect(deletedState.projectHealthCore.dirtySinceExport).toBe(true);
@@ -1911,7 +1911,9 @@ describe('projectRuntime history authority', () => {
     act(() => {
       useProjectRuntime.getState().applyCircuitMutation(withAddedOutput);
     });
-    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'ld2' in (vector.expected ?? {}))).toBe(true);
+    expect(
+      useProjectRuntime.getState().projectVectors.every((vector) => !('ld2' in (vector.expected ?? {})))
+    ).toBe(true);
     assertRuntimeStaleAlignment();
 
     const withRenamedOutput: Circuit = {
@@ -1941,7 +1943,9 @@ describe('projectRuntime history authority', () => {
     act(() => {
       useProjectRuntime.getState().applyCircuitMutation(withDeletedOutput);
     });
-    expect(useProjectRuntime.getState().projectVectors.every((vector) => 'ld2' in (vector.expected ?? {}))).toBe(true);
+    expect(
+      useProjectRuntime.getState().projectVectors.every((vector) => !('ld2' in (vector.expected ?? {})))
+    ).toBe(true);
     assertRuntimeStaleAlignment();
 
     const renamedInputRow = useProjectRuntime.getState().projectIoRows.find((row) => row.nodeId === 'sw0_node');

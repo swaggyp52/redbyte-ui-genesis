@@ -190,6 +190,7 @@ describe('materializeScenarioVectors', () => {
 
     const vectors = materializeScenarioVectors(scenario);
     expect(vectors[0]?.inputs).toEqual({ a: 1 });
+    expect(vectors[0]?.expected).toEqual({});
     expect(vectors[1]?.expected).toEqual({ y: 1 });
   });
 

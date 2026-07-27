@@ -565,6 +565,17 @@ describe('projectRuntime verify authority', () => {
     const before = structuredClone(useProjectRuntime.getState().sim);
     const invalidCircuit = structuredClone(useProjectRuntime.getState().circuit);
     invalidCircuit.connections = [];
+    invalidCircuit.nodes.push({
+      id: 'unclocked_ff',
+      type: 'DFlipFlop',
+      label: 'Unclocked FF',
+      position: { x: 80, y: 120 },
+      x: 80,
+      y: 120,
+      rotation: 0,
+      config: {},
+      state: {},
+    });
 
     useProjectRuntime.getState().markDesignMutated(invalidCircuit);
 
@@ -585,6 +596,17 @@ describe('projectRuntime verify authority', () => {
 
     const invalidCircuit = structuredClone(useProjectRuntime.getState().circuit);
     invalidCircuit.connections = [];
+    invalidCircuit.nodes.push({
+      id: 'unclocked_ff',
+      type: 'DFlipFlop',
+      label: 'Unclocked FF',
+      position: { x: 80, y: 120 },
+      x: 80,
+      y: 120,
+      rotation: 0,
+      config: {},
+      state: {},
+    });
     useProjectRuntime.getState().markDesignMutated(invalidCircuit);
 
     sim.setInput('sw0_node', 0);
@@ -595,6 +617,7 @@ describe('projectRuntime verify authority', () => {
     expect(invalidAfterInput.signals).toEqual({ 'sw0_node.out': 0 });
 
     const rewiredCircuit = structuredClone(useProjectRuntime.getState().circuit);
+    rewiredCircuit.nodes = rewiredCircuit.nodes.filter((node) => node.id !== 'unclocked_ff');
     rewiredCircuit.connections = [
       {
         from: { nodeId: 'sw0_node', portName: 'out' },

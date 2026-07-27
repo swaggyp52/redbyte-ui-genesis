@@ -120,7 +120,7 @@ describe('mergePersistedRuntimeState', () => {
     expect(merged.sim.inputs).toEqual({ sw0: 1 });
     expect(merged.sim.signals).toEqual({ ld0: 0 });
     expect(merged.sim.speedHz).toBe(120);
-    expect(merged.sim.probes).toEqual([{ key: 'ld0.in', label: 'ld0.in' }]);
+    expect(merged.sim.probes).toEqual([]);
   });
 
   it('persists exact Verify mapping evidence while migrating legacy runs without it', () => {
@@ -410,7 +410,8 @@ describe('mergePersistedRuntimeState', () => {
       invalidated.scenarios.find((scenario) => scenario.id === invalidated.activeScenarioId)
         ?.sequentialPolicy
     ).toMatchObject({ runCycles: 8, signalId: 'sw0' });
-    expect(invalidated.verifyLastRun).toBeUndefined();
+    expect(invalidated.verifyLastRun).toBeDefined();
+    expect(invalidated.projectHealthCore.dirtySinceVerify).toBe(true);
 
     const project: RBProject = {
       kind: 'rb-project',
@@ -1373,7 +1374,7 @@ describe('mergePersistedRuntimeState', () => {
         id: 'cv-01',
         tick: 0,
         inputs: { sw0: 1, ghost_in: 1 },
-        expected: { ghost_out: 1, ld0: 0 },
+        expected: { ghost_out: 1 },
       },
     ]);
   });

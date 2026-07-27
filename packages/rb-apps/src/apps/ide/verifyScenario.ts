@@ -211,6 +211,11 @@ export function materializeScenarioVectors(scenario: VerifyScenario): TestVector
   const materialized = materializeVectorsFromScenarioSteps(scenario.steps, scenario.vectors);
   if (!scenario.steps || scenario.steps.length === 0) return materialized;
 
+  const hasExplicitChecks = scenario.steps.some(
+    (step) =>
+      step.origin !== 'derived' &&
+      (step.kind === 'assert_scalar' || step.kind === 'assert_bus')
+  );
   const storedByTick = new Map(
     scenario.vectors.map((vector) => [vector.tick, vector] as const)
   );
@@ -221,10 +226,12 @@ export function materializeScenarioVectors(scenario: VerifyScenario): TestVector
       ...stored,
       ...vector,
       inputs: { ...vector.inputs },
-      expected: {
-        ...(vector.expected ?? {}),
-        ...(stored.expected ?? {}),
-      },
+      expected: hasExplicitChecks
+        ? { ...(vector.expected ?? {}) }
+        : {
+            ...(vector.expected ?? {}),
+            ...(stored.expected ?? {}),
+          },
     };
   });
 }
