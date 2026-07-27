@@ -2,8 +2,10 @@ import type { IdeDiagnostic } from '../diagnostics';
 
 export interface RuntimeSimTraceSample {
   tick: number;
-  signals: Record<string, 0 | 1>;
+  signals: Record<string, RuntimeLogicValue>;
 }
+
+export type RuntimeLogicValue = 0 | 1 | 'X' | 'Z';
 
 export interface RuntimeSignalProbe {
   key: string;
@@ -27,7 +29,7 @@ export interface RuntimeSimState {
   irHash: string;
   traceHash: string;
   inputs: Record<string, 0 | 1>;
-  signals: Record<string, 0 | 1>;
+  signals: Record<string, RuntimeLogicValue>;
   trace: RuntimeSimTraceSample[];
   selectedSignalKey: string | null;
   probes: RuntimeSignalProbe[];

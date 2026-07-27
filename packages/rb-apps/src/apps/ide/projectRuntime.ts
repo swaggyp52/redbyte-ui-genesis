@@ -75,7 +75,7 @@ import {
   toRuntimeSimGuard,
   type SimEngineResult,
 } from './sim/simEngine';
-import type { RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
+import type { RuntimeLogicValue, RuntimeSignalProbe, RuntimeSimState, RuntimeSimTraceSample } from './sim/simTypes';
 import { buildCanonicalVerifyWaveSamples } from './sim/traceContract';
 import {
   DEFAULT_SCENARIO_ID,
@@ -87,10 +87,13 @@ import {
   getActiveScenario,
   materializeScenarioVectors,
   migrateProjectVectorsToScenario,
+  normalizeScenarioProbes,
   normalizeScenarioSequentialPolicy,
   repairScenarioLibrary,
   stampScenario,
+  toggleScenarioProbe,
   type VerifyScenario,
+  type VerifyScenarioProbe,
   type VerifyScenarioSequentialPolicy,
 } from './verifyScenario';
 import {
@@ -353,6 +356,7 @@ export interface ProjectRuntimeState {
   renameScenario: (name: string) => void;
   deleteScenario: (scenarioId: string) => void;
   switchScenario: (scenarioId: string) => void;
+  toggleScenarioProbe: (probe: VerifyScenarioProbe) => void;
   updateScenarioSequentialPolicy: (policy: VerifyScenarioSequentialPolicy) => void;
   appendScenarioStep: (draft: ScenarioStepDraft) => void;
   updateScenarioStep: (
@@ -1064,6 +1068,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
               activeScenario.sequentialPolicy
             ),
             steps: activeScenario.steps?.map(cloneScenarioStep),
+            probes: normalizeScenarioProbes(activeScenario.probes),
           };
           return commitScenarioSelection(state, [...state.scenarios, duplicate], duplicate.id);
         });
@@ -1109,6 +1114,27 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             return state;
           }
           return commitScenarioSelection(state, state.scenarios, activeScenario.id);
+        });
+      },
+      toggleScenarioProbe: (probe) => {
+        set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          if (!activeScenario) return state;
+          const probes = toggleScenarioProbe(activeScenario.probes, probe);
+          return {
+            scenarios: state.scenarios.map((scenario) =>
+              scenario.id === activeScenario.id
+                ? { ...scenario, probes, updatedAt: new Date().toISOString() }
+                : scenario
+            ),
+            sim: {
+              ...state.sim,
+              probes: probes.map((entry) => ({
+                key: entry.key,
+                label: entry.label ?? entry.key,
+              })),
+            },
+          };
         });
       },
       updateScenarioSequentialPolicy: (policy) => {
@@ -1611,13 +1637,14 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           const normalizedRows = deterministicResult?.rows ?? normalizeVerifyRows(input.rows);
           const failedRows = normalizedRows.filter((row) => row.expected !== row.actual);
           const preflightIssues = deterministicResult?.evidence.preflight ?? [];
+          const blockingPreflightIssues = preflightIssues.filter((issue) => issue.blocking !== false);
           const status: 'pass' | 'fail' =
-            failedRows.length > 0 || preflightIssues.length > 0 ? 'fail' : 'pass';
+            failedRows.length > 0 || blockingPreflightIssues.length > 0 ? 'fail' : 'pass';
           const simulationStatus: 'complete' = 'complete';
           const assertionStatus: NonNullable<RuntimeVerifyRun['assertionStatus']> =
             runKind === 'trace'
               ? 'not-configured'
-              : preflightIssues.length > 0 && normalizedRows.length === 0
+              : blockingPreflightIssues.length > 0 && normalizedRows.length === 0
                 ? 'not-evaluated'
                 : failedRows.length > 0
                   ? 'failing'
@@ -2104,6 +2131,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           vectors: s.vectors.map((v) => ({ ...v, inputs: { ...v.inputs }, expected: { ...(v.expected ?? {}) } })),
           steps: s.steps?.map(cloneScenarioStep),
           sequentialPolicy: cloneScenarioSequentialPolicy(s.sequentialPolicy),
+          probes: normalizeScenarioProbes(s.probes),
         })),
         activeScenarioId: state.activeScenarioId,
         customVectors: [...(state.customVectors ?? [])],
@@ -2276,6 +2304,7 @@ export function mergePersistedRuntimeState(
       legacyProjectIoRows,
       projectIoRows
     ),
+    probes: normalizeScenarioProbes(scenario.probes),
     vectors: preserveCompatibleVectorAuthorship(
       cloneVectors(scenario.vectors),
       legacyProjectIoRows,
@@ -2408,7 +2437,12 @@ export function mergePersistedRuntimeState(
     designRevision,
     verifyLastRun: detachedVerifyLastRun,
     verifyRunHistory: detachedVerifyRunHistory,
-    sim,
+    sim: {
+      ...sim,
+      probes: normalizeScenarioProbes(
+        detachedScenarios.find((scenario) => scenario.id === activeScenarioId)?.probes
+      ).map((entry) => ({ key: entry.key, label: entry.label ?? entry.key })),
+    },
     projectHealthCore:
       hasRestoredVerifyTrustWithoutLedger ||
       hasRestoredVerifyProjectHashMismatch ||
@@ -2671,11 +2705,11 @@ function resolveActiveScenarioVectors(
 function commitScenarioSelection(
   state: Pick<
     ProjectRuntimeState,
-    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId'
+    'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim'
   >,
   scenarios: VerifyScenario[],
   activeScenarioId: string
-): Pick<ProjectRuntimeState, 'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId'> {
+): Pick<ProjectRuntimeState, 'projectVectors' | 'projectHealthCore' | 'scenarios' | 'activeScenarioId' | 'sim'> {
   const resolvedActiveScenario =
     getActiveScenario(scenarios, activeScenarioId) ??
     (scenarios.length > 0 ? scenarios[0] : createDefaultScenario(state.projectVectors));
@@ -2684,6 +2718,13 @@ function commitScenarioSelection(
     projectVectors: cloneVectors(compatibilityVectors),
     scenarios,
     activeScenarioId: resolvedActiveScenario.id,
+    sim: {
+      ...state.sim,
+      probes: normalizeScenarioProbes(resolvedActiveScenario.probes).map((entry) => ({
+        key: entry.key,
+        label: entry.label ?? entry.key,
+      })),
+    },
     projectHealthCore: {
       ...state.projectHealthCore,
       dirtySinceVerify: true,
@@ -4041,7 +4082,7 @@ function normalizePersistedSimState(
     irHash: typeof candidate.irHash === 'string' ? candidate.irHash : fallback.irHash,
     traceHash: typeof candidate.traceHash === 'string' ? candidate.traceHash : fallback.traceHash,
     inputs: normalizeBitRecord(candidate.inputs as Record<string, unknown> | undefined),
-    signals: normalizeBitRecord(candidate.signals as Record<string, unknown> | undefined),
+    signals: normalizeLogicRecord(candidate.signals as Record<string, unknown> | undefined),
     trace: Array.isArray(candidate.trace)
       ? candidate.trace
           .map((entry, index) => normalizePersistedTraceSample(entry, index))
@@ -4157,7 +4198,7 @@ function normalizePersistedTraceSample(
   const candidate = value as RuntimeSimState['trace'][number];
   return {
     tick: Number.isFinite(candidate.tick) ? Math.max(0, Math.floor(Number(candidate.tick))) : index,
-    signals: normalizeBitRecord(candidate.signals as Record<string, unknown> | undefined),
+    signals: normalizeLogicRecord(candidate.signals as Record<string, unknown> | undefined),
   };
 }
 
@@ -4454,6 +4495,25 @@ function normalizeBitRecord(
   const normalized: Record<string, 0 | 1> = {};
   for (const key of Object.keys(source).sort()) {
     normalized[key] = source[key] === true || source[key] === 1 || source[key] === '1' ? 1 : 0;
+  }
+  return normalized;
+}
+
+function normalizeLogicRecord(
+  record: Record<string, unknown> | undefined
+): Record<string, RuntimeLogicValue> {
+  const source = record ?? {};
+  const normalized: Record<string, RuntimeLogicValue> = {};
+  for (const key of Object.keys(source).sort()) {
+    const value = source[key];
+    normalized[key] =
+      value === true || value === 1 || value === '1'
+        ? 1
+        : value === 'X' || value === 'x'
+          ? 'X'
+          : value === 'Z' || value === 'z'
+            ? 'Z'
+            : 0;
   }
   return normalized;
 }

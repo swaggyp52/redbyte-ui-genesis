@@ -34,6 +34,7 @@ import {
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
+import type { RuntimeLogicValue } from '../sim/simTypes';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { TimingGuidance } from '../timingGuidance';
@@ -225,7 +226,7 @@ export interface DesignSurfaceProps {
     position: { x: number; y: number }
   ) => MacroInstantiationResult | null;
   // C-5: External debug state from verification bridge
-  externalDebugSignals?: Map<string, 0 | 1> | null;
+  externalDebugSignals?: Map<string, RuntimeLogicValue> | null;
   externalDebugTick?: number | null;
   externalDebugContext?: VerifyDebugContext | null;
   replaySession?: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
@@ -784,8 +785,8 @@ interface DesignMacroDialogState {
 }
 
 interface DesignSignalSnapshot {
-  currentValue: 0 | 1 | null;
-  previousValue: 0 | 1 | null;
+  currentValue: RuntimeLogicValue | null;
+  previousValue: RuntimeLogicValue | null;
   transition: 'rising' | 'falling' | 'stable' | '—';
   samples: number;
   lastTransitionTick: number | null;
@@ -801,7 +802,7 @@ interface DesignLiveIoValueRow {
   id: string;
   label: string;
   pinAlias?: string;
-  value: 0 | 1;
+  value: RuntimeLogicValue;
   signalKey: string;
   kind: 'input' | 'output';
   matchKeys: string[];
@@ -1196,10 +1197,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const simSpeed = runtimeSim.speedHz;
   const runtimeLiveSignals = useMemo(() => {
     const entries = Object.entries(runtimeSim.signals)
-      .map(([key, value]) => [key, value === 1 ? 1 : 0] as const)
+      .map(([key, value]) => [key, value] as const)
       .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0));
-    return new Map<string, 0 | 1>(entries);
-  }, [runtimeSim.signals]);
+    const signals = new Map<string, RuntimeLogicValue>(entries);
+    const connectedTargetNodeIds = new Set(
+      editorCircuit.connections.map((connection) =>
+        typeof connection.to === 'string' ? connection.to : connection.to.nodeId
+      )
+    );
+    for (const node of editorCircuit.nodes) {
+      if ((node.type === 'OUTPUT' || node.type === 'Lamp') && !connectedTargetNodeIds.has(node.id)) {
+        signals.set(`${node.id}.in`, 'X');
+        signals.set(`${node.id}.out`, 'X');
+      }
+    }
+    return signals;
+  }, [editorCircuit.connections, editorCircuit.nodes, runtimeSim.signals]);
   const replayTrace = useMemo(
     () => normalizeReplayWaveformTrace(replaySession?.waveform ?? []),
     [replaySession?.waveform]
@@ -1228,7 +1241,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [replayTickTraceIndex, replayTrace]);
   const replaySignals = useMemo(() => {
     if (effectiveExternalDebugTick == null) return null;
-    const mergedSignals = new Map<string, 0 | 1>(runtimeLiveSignals);
+    const mergedSignals = new Map<string, RuntimeLogicValue>(runtimeLiveSignals);
     if (effectiveExternalDebugSignals) {
       // Prefer the explicit Verify-selected snapshot for current values.
       for (const [signalKey, value] of effectiveExternalDebugSignals.entries()) {
@@ -1240,7 +1253,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const replaySample = replayTrace[replayTickTraceIndex];
     if (!replaySample) return mergedSignals;
     for (const [signalKey, value] of Object.entries(replaySample.signals)) {
-      mergedSignals.set(signalKey, value === 1 ? 1 : 0);
+      mergedSignals.set(signalKey, value);
     }
     return mergedSignals;
   }, [effectiveExternalDebugSignals, effectiveExternalDebugTick, replayTickTraceIndex, replayTrace, runtimeLiveSignals]);
@@ -8165,8 +8178,8 @@ function resolveDirectSignalDriverLabels(
 function resolveVerifyLinkedSignalKey(
   activeVerifySignal: string | null | undefined,
   ioRows: DesignIoRow[],
-  liveSignals: Map<string, 0 | 1>,
-  runtimeSignals: Record<string, 0 | 1>
+  liveSignals: Map<string, RuntimeLogicValue>,
+  runtimeSignals: Record<string, RuntimeLogicValue>
 ): string | null {
   const raw = (activeVerifySignal ?? '').trim();
   if (raw.length === 0) return null;
@@ -8225,8 +8238,8 @@ function normalizeCircuitForCanvas(circuit: Circuit): Circuit {
 function pickPrimaryNodeSignalKey(
   node: Node,
   pins: string[],
-  runtimeSignals: Record<string, 0 | 1>,
-  liveSignals: Map<string, 0 | 1>
+  runtimeSignals: Record<string, RuntimeLogicValue>,
+  liveSignals: Map<string, RuntimeLogicValue>
 ): string | null {
   const preferredPins: string[] = [];
   const pushPin = (pin: string | null | undefined) => {
@@ -8265,8 +8278,8 @@ function pickPrimaryNodeSignalKey(
 function describeSignalSnapshot(
   signalKey: string | null,
   trace: RuntimeSimState['trace'],
-  runtimeSignals: Record<string, 0 | 1>,
-  liveSignals: Map<string, 0 | 1>,
+  runtimeSignals: Record<string, RuntimeLogicValue>,
+  liveSignals: Map<string, RuntimeLogicValue>,
   fallbackTrace?: RuntimeSimState['trace']
 ): DesignSignalSnapshot | null {
   if (!signalKey) return null;
@@ -8284,7 +8297,10 @@ function describeSignalSnapshot(
   const previousValue = previousTraceValue ?? currentValue ?? null;
 
   let transition: DesignSignalSnapshot['transition'] = '—';
-  if (currentValue != null && previousValue != null) {
+  if (
+    (currentValue === 0 || currentValue === 1) &&
+    (previousValue === 0 || previousValue === 1)
+  ) {
     if (previousValue === currentValue) transition = 'stable';
     else transition = currentValue > previousValue ? 'rising' : 'falling';
   }
@@ -8317,9 +8333,9 @@ function normalizeReplayWaveformTrace(
       signals: Object.fromEntries(
         Object.entries(sample.signals ?? {}).map(([signalKey, value]) => [
           signalKey,
-          value === '1' ? 1 : 0,
+          value === '1' ? 1 : value === '0' ? 0 : value === 'Z' ? 'Z' : 'X',
         ])
-      ) as Record<string, 0 | 1>,
+      ) as Record<string, RuntimeLogicValue>,
     }))
     .sort((left, right) => left.tick - right.tick);
 }
@@ -8596,15 +8612,15 @@ function describeNodeForStudents(node: Node | undefined, ioRow?: DesignIoRow | n
 
 function buildSequentialInspectorContext(input: {
   node: Node | undefined;
-  nodeSignals: Map<string, 0 | 1 | null>;
+  nodeSignals: Map<string, RuntimeLogicValue | null>;
   ioRow: DesignIoRow | null;
   connectionSummary: DesignNodeConnectionSummary | null;
   circuit: Circuit;
   ioRowByNodeId: Map<string, DesignIoRow>;
   trace: RuntimeSimState['trace'];
   fallbackTrace?: RuntimeSimState['trace'];
-  runtimeSignals: Record<string, 0 | 1>;
-  liveSignals: Map<string, 0 | 1>;
+  runtimeSignals: Record<string, RuntimeLogicValue>;
+  liveSignals: Map<string, RuntimeLogicValue>;
 }): DesignSequentialInspectorContext | null {
   const { node, nodeSignals, ioRow, connectionSummary, circuit, ioRowByNodeId, trace, fallbackTrace, runtimeSignals, liveSignals } = input;
   if (!node) return null;
@@ -8868,8 +8884,8 @@ function summarizeRegisterBusOutputs(nodeSignals: Map<string, 0 | 1 | null>, wid
   return `Packed Q=${packedLabel}${more} · ${bitSummaries.join(', ')}`;
 }
 
-function formatInspectorBinaryValue(value: 0 | 1 | null | undefined): string {
-  return value === 1 ? '1' : value === 0 ? '0' : '?';
+function formatInspectorBinaryValue(value: RuntimeLogicValue | null | undefined): string {
+  return value === 1 ? '1' : value === 0 ? '0' : value === 'X' ? 'X' : value === 'Z' ? 'Z' : '?';
 }
 
 function describeSequentialActivity(snapshot: DesignSignalSnapshot | null): string {

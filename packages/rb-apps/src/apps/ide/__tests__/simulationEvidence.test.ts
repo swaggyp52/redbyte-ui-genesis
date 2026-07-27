@@ -68,6 +68,28 @@ describe('simulation evidence semantics', () => {
     expect(deriveBehavioralEvidenceTier(run, true)).toBe('draft');
   });
 
+  it('does not call a checked run validated while a disconnected output is unknown', () => {
+    const run = makeRun({
+      runKind: 'verify',
+      assertionStatus: 'passing',
+      evidence: {
+        ioRows: [],
+        vectors: [],
+        normalizationMap: [],
+        failures: [],
+        preflight: [{
+          kind: 'floating-output',
+          signal: 'carry',
+          severity: 'warning',
+          blocking: false,
+          message: 'CARRY is disconnected and reports X.',
+        }],
+      },
+    });
+
+    expect(deriveBehavioralEvidenceTier(run)).toBe('simulated');
+  });
+
   it('normalizes legacy trace runs without inventing check evidence', () => {
     const legacy = makeRun({
       simulationStatus: undefined,

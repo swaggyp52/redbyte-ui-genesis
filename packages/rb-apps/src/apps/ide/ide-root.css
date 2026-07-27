@@ -36050,3 +36050,34 @@ button:disabled,
 .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage[data-state='fail'] .ide-verify-fail-nav-waveform-hint {
   display: none !important;
 }
+
+/* v2A.1: keep replay diagnosis compact so the circuit remains the teaching surface. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-debug-context-banner {
+  width: min(820px, calc(100% - 28px));
+  grid-template-columns: minmax(220px, 1fr) minmax(190px, 0.8fr) auto;
+  gap: 6px 8px;
+  padding: 8px 10px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-debug-context-main > span:last-child,
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-debug-trace-header > span:last-child {
+  display: none;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-debug-trace-panel {
+  gap: 4px;
+  padding-top: 5px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-debug-trace-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-height: 104px;
+  gap: 4px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-debug-trace-row {
+  grid-template-columns: minmax(64px, auto) minmax(80px, 1fr) auto;
+  padding: 4px 5px;
+}

@@ -240,11 +240,11 @@ describe('IR Elaborator', () => {
   it('OUTPUT node with no incoming driver emits IR003 and sets hasFloatingOutputs', () => {
     const { ir } = elaborateCircuit(makeFloatingOutputCircuit());
 
-    expect(ir.isValid).toBe(false);
+    expect(ir.isValid).toBe(true);
 
     const ir003 = ir.diagnostics.find(d => d.code === 'IR003');
     expect(ir003).toBeDefined();
-    expect(ir003!.severity).toBe('error');
+    expect(ir003!.severity).toBe('warning');
     expect(ir003!.nodeId).toBe('out1');
 
     expect(ir.features.hasFloatingOutputs).toBe(true);

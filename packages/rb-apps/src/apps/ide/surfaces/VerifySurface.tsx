@@ -20,6 +20,7 @@ import {
   IdeButton,
   IdeCallout,
   IdeDataTable,
+  IdeModal,
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
@@ -221,6 +222,7 @@ export interface VerifySurfaceProps {
   mappingComplete?: boolean;
   hasFloatingOutputWarning?: boolean;
   probeSignals?: Array<{ key: string; label?: string }>;
+  onToggleProbe?: (probe: { key: string; label?: string }) => void;
   mappedInputs?: VerifyMappedInput[];
   mappedSignals?: VerifyMappedSignal[];
   onVectorsChange?: (vectors: VerifyAuthorVector[]) => void;
@@ -357,6 +359,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   mappingComplete = true,
   hasFloatingOutputWarning = false,
   probeSignals = [],
+  onToggleProbe,
   mappedInputs,
   mappedSignals,
   onVectorsChange,
@@ -559,6 +562,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
   const [selectedTick, setSelectedTick] = useState<number | null>(null);
   const [selectedSignal, setSelectedSignal] = useState<string | null>(null);
+  const [createCheckDialogOpen, setCreateCheckDialogOpen] = useState(false);
+  const createCheckTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const handleSignalSelect = useCallback((signal: string | null) => {
     setSelectedSignal(signal);
@@ -926,6 +931,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => verifyPreflightIssues.map((issue) => adaptVerifyPreflightIssue(issue)),
     [verifyPreflightIssues]
   );
+  const hasBlockingVerifyPreflightIssue = verifyPreflightIssues.some(
+    (issue) => issue.blocking !== false
+  );
   const studentVerifyModel = useMemo(
     () =>
       buildVerifyStudentViewModel({
@@ -1034,6 +1042,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return keys;
   }, [probeSignals]);
+  const selectedSignalIsProbed = selectedSignal
+    ? probeSignalKeys.has(normalizeFieldId(selectedSignal))
+    : false;
   const mappedSignalDirectionKeys = useMemo(() => {
     const keys = new Map<string, 'in' | 'out'>();
     for (const field of inputFields) {
@@ -1468,8 +1479,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
     // Auto-density from signal count: compress rows when many signals
     const sigCount = Object.keys(lastRun.report?.signalRoles ?? {}).length;
-    if (sigCount > 6) {
+    if (sigCount > 12) {
       setWaveformDensity('small');
+    } else if (sigCount <= 6) {
+      setWaveformDensity('large');
     } else {
       setWaveformDensity('normal');
     }
@@ -2178,7 +2191,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   );
   const truthTableEmptyReason = useMemo(() => {
     if (!lastRun) return 'Run the current stimulus to populate tick-by-tick observed values and saved checks.';
-    if (verifyPreflightIssues.length > 0) {
+    if (verifyPreflightIssues.some((issue) => issue.blocking !== false)) {
       return 'Verification is blocked by missing mapped or undriven outputs. Fix the listed issues, then run again.';
     }
     if (runRows.length > 0) return '';
@@ -2189,7 +2202,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       return 'No evaluable rows yet. Add stimulus rows with saved checks for this sequential circuit.';
     }
     return 'No output rows were produced. Check that your stimulus rows include any saved checks you expect to evaluate, then run again.';
-  }, [isSequentialRun, lastRun, runRows.length, verifyPreflightIssues.length, waveformTicks.length]);
+  }, [isSequentialRun, lastRun, runRows.length, verifyPreflightIssues, waveformTicks.length]);
   const firstFailureTick = firstFailure?.tick ?? lastRun?.firstFailingTick;
   const selectedFailureInputs = useMemo(() => {
     if (!selectedFailureCase) return null;
@@ -4027,6 +4040,65 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return Object.keys(sample).length > 0 ? sample : null;
   }, [selectedTick, signalTimeline]);
+  const selectedCheckSignal = useMemo(() => {
+    if (!selectedSignal) return null;
+    return canonicalWaveformSignalByRawKey.get(normalizeFieldId(selectedSignal)) ?? selectedSignal;
+  }, [canonicalWaveformSignalByRawKey, selectedSignal]);
+  const selectedCheckObservedValue = useMemo(() => {
+    if (!selectedTickSignalSample || !selectedSignal || !selectedCheckSignal) return null;
+    const value =
+      selectedTickSignalSample[selectedSignal] ??
+      selectedTickSignalSample[selectedCheckSignal] ??
+      Object.entries(selectedTickSignalSample).find(
+        ([key]) => normalizeFieldId(key) === normalizeFieldId(selectedCheckSignal)
+      )?.[1];
+    return value === '0' || value === '1' ? value : null;
+  }, [selectedCheckSignal, selectedSignal, selectedTickSignalSample]);
+  const selectedCheckIsOutput = useMemo(() => {
+    if (!selectedCheckSignal) return false;
+    const normalized = normalizeFieldId(selectedCheckSignal);
+    return outputFields.some(
+      (field) =>
+        normalizeFieldId(field.id) === normalized ||
+        normalizeFieldId(field.label) === normalized
+    );
+  }, [outputFields, selectedCheckSignal]);
+  const selectedCheckVectorId = useMemo(
+    () => selectedTick == null
+      ? undefined
+      : lastRun?.report.vectors.find((vector) => vector.tick === selectedTick)?.id,
+    [lastRun?.report.vectors, selectedTick]
+  );
+  const canCreateCheckFromSelection =
+    canApplyRunDerivedRepair &&
+    selectedTick != null &&
+    selectedCheckIsOutput &&
+    selectedCheckObservedValue != null;
+  const closeCreateCheckDialog = useCallback(() => {
+    setCreateCheckDialogOpen(false);
+    window.requestAnimationFrame(() => createCheckTriggerRef.current?.focus());
+  }, []);
+  const confirmCreateCheck = useCallback(() => {
+    if (
+      selectedTick == null ||
+      !selectedCheckSignal ||
+      selectedCheckObservedValue == null
+    ) return;
+    applyExpectedCellValue({
+      tick: selectedTick,
+      signal: selectedCheckSignal,
+      vectorId: selectedCheckVectorId,
+      nextValue: selectedCheckObservedValue === '1' ? 1 : 0,
+    });
+    closeCreateCheckDialog();
+  }, [
+    applyExpectedCellValue,
+    closeCreateCheckDialog,
+    selectedCheckObservedValue,
+    selectedCheckSignal,
+    selectedCheckVectorId,
+    selectedTick,
+  ]);
   const stateObservationSummary = useMemo(
     () =>
       summarizeStateObservation(
@@ -5793,15 +5865,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     Edit expected outputs
                   </IdeButton>
                 ) : null}
-                {canSetOracle && !isFirstRunState ? (
-                  <IdeButton
-                    tone="secondary"
-                    onClick={handleSetOracleExpected}
-                    testId="ide-vcb-save-expected"
-                  >
-                    Use observed as expected
-                  </IdeButton>
-                ) : null}
                 {compactPrimaryStatusAction ? (
                   <IdeButton
                     tone={compactPrimaryStatusAction.tone === 'primary' ? 'secondary' : compactPrimaryStatusAction.tone}
@@ -5843,6 +5906,39 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       {selectedSignal}
                     </span>
                   ) : null}
+                  <button
+                    ref={createCheckTriggerRef}
+                    type="button"
+                    className="ide-verify-create-check-trigger"
+                    disabled={!canCreateCheckFromSelection}
+                    onClick={() => setCreateCheckDialogOpen(true)}
+                    data-testid="ide-verify-create-check-from-value"
+                    title={
+                      canCreateCheckFromSelection
+                        ? 'Create one optional check from the selected output value.'
+                        : 'Select an output lane and an event with an observed 0 or 1.'
+                    }
+                  >
+                    Create check from this value…
+                  </button>
+                  <button
+                    type="button"
+                    className="ide-verify-probe-trigger"
+                    disabled={!selectedSignal || !onToggleProbe}
+                    onClick={() => {
+                      if (!selectedSignal) return;
+                      onToggleProbe?.({ key: selectedSignal, label: selectedSignal });
+                    }}
+                    data-testid="ide-verify-toggle-selected-probe"
+                    aria-pressed={selectedSignalIsProbed}
+                    title={
+                      selectedSignal
+                        ? `${selectedSignalIsProbed ? 'Remove' : 'Add'} ${selectedSignal} ${selectedSignalIsProbed ? 'from' : 'to'} this scenario's watched lanes.`
+                        : 'Select a signal lane to watch it in this scenario.'
+                    }
+                  >
+                    {selectedSignalIsProbed ? 'Unwatch signal' : 'Watch signal'}
+                  </button>
                   {isSequentialRun && (
                     <span className="ide-verify-scope-seq-badge" data-testid="ide-verify-seq-badge">
                       Sequential
@@ -6080,9 +6176,19 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
               {/* No-trace diagnostic — shown when run produced no waveform data */}
               {verifyPreflightDiagnostics.length > 0 && (
-                <IdeCallout tone="error" title="Cannot verify current expectations" testId="ide-verify-preflight-guard">
+                <IdeCallout
+                  tone={hasBlockingVerifyPreflightIssue ? 'error' : 'warn'}
+                  title={
+                    hasBlockingVerifyPreflightIssue
+                      ? 'Cannot verify current expectations'
+                      : 'Simulation completed with a wiring warning'
+                  }
+                  testId="ide-verify-preflight-guard"
+                >
                   <p className="ide-copy">
-                    Fix these structural issues before treating this as a logic mismatch.
+                    {hasBlockingVerifyPreflightIssue
+                      ? 'Fix these structural issues before treating this as a logic mismatch.'
+                      : 'The runnable paths remain observable. Disconnected outputs stay X until you repair their wiring.'}
                   </p>
                   <ul className="ide-list">
                     {verifyPreflightDiagnostics.slice(0, 4).map((diagnostic, index) => (
@@ -6291,11 +6397,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                       <span>Outputs don't match the expected values. If the expected values are wrong, update them below. If the circuit is wrong, fix it in Design.</span>
                       <div className="ide-inline-actions">
                         <IdeButton tone="secondary" onClick={handleEditExpectedOutputs} testId="ide-verify-mismatch-edit-vectors">
-                          Open checks
+                          Edit check
                         </IdeButton>
                         {(onGoToDesign || onGoToDesignWithInputs || onDebugTickSelected) && (
                           <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} testId="ide-verify-mismatch-goto-design">
-                            Open in Design
+                            Trace in Design
                           </IdeButton>
                         )}
                       </div>
@@ -6320,7 +6426,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={() => openFailureInDesign(selectedFailureCase)}
                           testId="ide-verify-jump-to-failure-card"
                         >
-                          Open in Design
+                          Trace in Design
                         </IdeButton>
                       )}
                     </div>
@@ -6437,7 +6543,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                           onClick={() => applyFailureSelection(selectedFailureCase)}
                           testId="ide-verify-explainer-jump"
                         >
-                          Jump to tick
+                          Show at cursor
                         </IdeButton>
                         <IdeButton
                           tone="secondary"
@@ -6779,6 +6885,42 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         </div>
         </div>
         </VerifyWorkspaceRegion>
+        {createCheckDialogOpen &&
+        selectedTick != null &&
+        selectedCheckSignal &&
+        selectedCheckObservedValue != null ? (
+          <IdeModal
+            title="Create a check?"
+            testId="ide-verify-create-check-dialog"
+            onClose={closeCreateCheckDialog}
+            body={
+              <section className="ide-verify-create-check-dialog">
+                <p className="ide-verify-create-check-event">At Event {selectedTick + 1}:</p>
+                <div className="ide-verify-create-check-value" data-testid="ide-verify-create-check-preview">
+                  <strong>{selectedCheckSignal}</strong>
+                  <span>observed</span>
+                  <code>{selectedCheckObservedValue}</code>
+                </div>
+                <p>
+                  RedByte will expect {selectedCheckSignal} = {selectedCheckObservedValue} at Event {selectedTick + 1}.
+                </p>
+                <IdeCallout tone="info" title="Optional check">
+                  This turns observed behavior into one expectation. It changes only this signal at this event.
+                </IdeCallout>
+              </section>
+            }
+            actions={
+              <>
+                <IdeButton tone="ghost" onClick={closeCreateCheckDialog} testId="ide-verify-create-check-cancel">
+                  Cancel
+                </IdeButton>
+                <IdeButton tone="primary" onClick={confirmCreateCheck} testId="ide-verify-create-check-confirm">
+                  Create check
+                </IdeButton>
+              </>
+            }
+          />
+        ) : null}
       </IdePanel>
     </IdeSurfaceLayout>
   );
@@ -7343,7 +7485,7 @@ function applyCaptureScopeToVectorSets(input: {
   };
 }
 
-function updateExpectedCellInVectorSets(input: {
+export function updateExpectedCellInVectorSets(input: {
   projectVectors: VerifyAuthorVector[];
   customVectors: CustomTestVector[];
   tick: number;

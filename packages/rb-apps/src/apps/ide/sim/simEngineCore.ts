@@ -32,6 +32,7 @@ import type {
 } from '../verifyReport';
 import type {
   RuntimeSimGuard,
+  RuntimeLogicValue,
   RuntimeSimState,
   RuntimeSimTraceSample,
   RuntimeVerifyTraceRow,
@@ -368,6 +369,24 @@ export function runDeterministicVerifyFromModel(
   const normalizationMap: VerifyEvidenceResolutionEntry[] = [];
   const preflight = new Map<string, VerifyEvidencePreflightIssue>();
   const failures: VerifyEvidenceFailure[] = [];
+
+  for (const outputRow of outputRows) {
+    const modelPort = resolveModelPortForRow(outputRow, model.outputs);
+    if (!modelPort) continue;
+    const binding = model.outputBindings.find((entry) => entry.outputPortId === modelPort.portId);
+    if (binding?.driverSourceNodeId) continue;
+    const signal = normalizeIoSignalKey(outputRow.label || outputRow.id);
+    preflight.set(`floating-output:${modelPort.sourceNodeId}`, {
+      kind: 'floating-output',
+      code: 'VPRE1005',
+      severity: 'warning',
+      blocking: false,
+      signal,
+      nodeId: modelPort.sourceNodeId,
+      port: 'in',
+      message: `${outputRow.label || outputRow.id} is disconnected. Simulation continues and reports this output as X (unknown).`,
+    });
+  }
 
   for (const entry of cases) {
     for (const rawKey of Object.keys(entry.inputs)) {
@@ -1092,9 +1111,9 @@ function resolveOutputSymbolFromTraceDetailed(
   for (const candidate of candidates) {
     if (!candidate) continue;
     const direct = sample.signals[candidate];
-    if (direct === 0 || direct === 1) {
+    if (direct === 0 || direct === 1 || direct === 'X' || direct === 'Z') {
       return {
-        symbol: direct === 1 ? '1' : '0',
+        symbol: direct === 1 ? '1' : direct === 0 ? '0' : direct,
         sourceKey: candidate,
         reason: 'matched',
       };
@@ -1103,7 +1122,7 @@ function resolveOutputSymbolFromTraceDetailed(
     for (const [key, value] of Object.entries(sample.signals)) {
       if (normalizeIoSignalKey(key) === normalizedCandidate) {
         return {
-          symbol: value === 1 ? '1' : '0',
+          symbol: value === 1 ? '1' : value === 0 ? '0' : value,
           sourceKey: key,
           reason: 'matched',
         };
@@ -1253,15 +1272,23 @@ function applyInputsToEngine(engine: CircuitEngine, inputs: Record<string, 0 | 1
 function normalizeSignalMap(
   engine: CircuitEngine,
   model: SimulationModel
-): Record<string, 0 | 1> {
+): Record<string, RuntimeLogicValue> {
   const signalMap = engine.getAllSignals();
-  const next: Record<string, 0 | 1> = {};
+  const next: Record<string, RuntimeLogicValue> = {};
   const keys = Array.from(signalMap.keys()).sort(compareText);
   for (const key of keys) {
     next[key] = normalizeBit(signalMap.get(key));
   }
 
   for (const output of model.outputs) {
+    const outputBinding = model.outputBindings.find(
+      (binding) => binding.outputPortId === output.portId
+    );
+    if (!outputBinding?.driverSourceNodeId) {
+      next[`${output.sourceNodeId}.in`] = 'X';
+      next[`${output.sourceNodeId}.out`] = 'X';
+      continue;
+    }
     const nodeState = engine.getNodeState(output.sourceNodeId);
     const value = normalizeBit(
       nodeState?.isOn ?? next[`${output.sourceNodeId}.in`] ?? next[`${output.sourceNodeId}.out`] ?? 0
@@ -1271,7 +1298,7 @@ function normalizeSignalMap(
   }
 
   const orderedEntries = Object.entries(next).sort(([left], [right]) => compareText(left, right));
-  return Object.fromEntries(orderedEntries) as Record<string, 0 | 1>;
+  return Object.fromEntries(orderedEntries) as Record<string, RuntimeLogicValue>;
 }
 
 function computeTraceHash(irHash: string, trace: RuntimeSimTraceSample[]): string {

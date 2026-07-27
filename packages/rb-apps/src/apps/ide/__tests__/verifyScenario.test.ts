@@ -9,6 +9,8 @@ import {
   getActiveScenario,
   materializeScenarioVectors,
   normalizeScenarioSequentialPolicy,
+  normalizeScenarioProbes,
+  toggleScenarioProbe,
   DEFAULT_SCENARIO_ID,
   DEFAULT_SCENARIO_NAME,
   type VerifyScenario,
@@ -166,6 +168,15 @@ describe('computeScenarioStimulusHash', () => {
 
     expect(computeScenarioContentHash(updated)).not.toBe(computeScenarioContentHash(baseline));
     expect(computeScenarioStimulusHash(updated)).not.toBe(computeScenarioStimulusHash(baseline));
+  });
+});
+
+describe('scenario probes', () => {
+  it('persists normalized watched lanes independently per scenario', () => {
+    const watched = toggleScenarioProbe([], { key: 'xor_ab', label: 'A XOR B' });
+    expect(watched).toEqual([{ key: 'xor_ab', label: 'A XOR B' }]);
+    expect(normalizeScenarioProbes(watched)).toEqual(watched);
+    expect(toggleScenarioProbe(watched, { key: 'xor_ab' })).toEqual([]);
   });
 });
 

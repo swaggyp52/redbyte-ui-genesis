@@ -34,6 +34,8 @@ export interface NodeIoPresentation {
   pinAlias?: string;
 }
 
+export type LogicDisplayValue = 0 | 1 | 'X' | 'Z';
+
 export interface NodeViewProps {
   node: Node;
   camera: Camera;
@@ -54,7 +56,7 @@ export interface NodeViewProps {
   onToggleSwitch?: (nodeId: string) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
-  signals?: Map<string, 0 | 1>;
+  signals?: Map<string, LogicDisplayValue>;
   chipMetadata?: ChipMetadata;
   wireStartPort?: PortRef;
   onPortHover?: (portName: string) => void;
@@ -143,12 +145,12 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const [isHovered, setIsHovered] = React.useState(false);
   const [hoveredProbePort, setHoveredProbePort] = React.useState<{ portName: string; x: number; y: number } | null>(null);
   const [flashState, setFlashState] = React.useState<{ key: number; color: string } | null>(null);
-  const prevOutputRef = React.useRef<number>(-1);
+  const prevOutputRef = React.useRef<LogicDisplayValue | -1>(-1);
 
   const getPortValue = React.useCallback(
     (portName: string) => {
       if (!signals) return 0;
-      return (signals.get(`${node.id}.${portName}`) ?? 0) as 0 | 1;
+      return signals.get(`${node.id}.${portName}`) ?? 0;
     },
     [signals, node.id]
   );
@@ -287,12 +289,18 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const isActive =
     node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal === 1 : outputSignal === 1;
   const nodeOutputValue = node.type === 'OUTPUT' || node.type === 'Lamp' ? inputSignal : outputSignal;
+  const nodeOutputIsUnknown = nodeOutputValue === 'X' || nodeOutputValue === 'Z';
 
   // Gate flash: briefly overlay green on rising edge, orange on falling edge
   React.useEffect(() => {
     const prev = prevOutputRef.current;
     const curr = nodeOutputValue;
-    if (prev !== -1 && prev !== curr) {
+    if (
+      prev !== -1 &&
+      prev !== curr &&
+      (prev === 0 || prev === 1) &&
+      (curr === 0 || curr === 1)
+    ) {
       setFlashState({
         key: Date.now(),
         color: curr === 1 ? 'rgba(34,197,94,0.55)' : 'rgba(249,115,22,0.4)',
@@ -512,8 +520,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               cx={-size / 2 + 10}
               cy={-chipHeight / 2 + 10}
               r={8}
-              fill={nodeOutputValue === 1 ? '#166534' : '#1e293b'}
-              stroke={nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
+              fill={nodeOutputIsUnknown ? '#5b4512' : nodeOutputValue === 1 ? '#166534' : '#1e293b'}
+              stroke={nodeOutputIsUnknown ? '#fbbf24' : nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
               strokeWidth={1.4}
             />
             <text
@@ -521,7 +529,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               y={-chipHeight / 2 + 10}
               textAnchor="middle"
               dominantBaseline="middle"
-              fill={nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
+              fill={nodeOutputIsUnknown ? '#fde68a' : nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
               fontSize={8}
               fontWeight="700"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -561,7 +569,11 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             fontSize={Math.max(7, 8 * camera.zoom)}
             style={{ pointerEvents: 'none', userSelect: 'none' }}
           >
-            {authoredChipLabel ? `${chipMetadata.name} · L${chipMetadata.layer}` : `L${chipMetadata.layer}`}
+            {nodeOutputIsUnknown && (node.type === 'OUTPUT' || node.type === 'Lamp')
+              ? `${chipMetadata.name} · ${nodeOutputValue}`
+              : authoredChipLabel
+                ? `${chipMetadata.name} · L${chipMetadata.layer}`
+                : `L${chipMetadata.layer}`}
           </text>
         )}
 
@@ -1185,8 +1197,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             cx={-size / 2 + 10}
             cy={-size / 2 + 10}
             r={8}
-            fill={nodeOutputValue === 1 ? '#166534' : '#1e293b'}
-            stroke={nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
+            fill={nodeOutputIsUnknown ? '#5b4512' : nodeOutputValue === 1 ? '#166534' : '#1e293b'}
+            stroke={nodeOutputIsUnknown ? '#fbbf24' : nodeOutputValue === 1 ? '#86efac' : '#94a3b8'}
             strokeWidth={1.4}
           />
           <text
@@ -1194,7 +1206,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             y={-size / 2 + 10}
             textAnchor="middle"
             dominantBaseline="middle"
-            fill={nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
+            fill={nodeOutputIsUnknown ? '#fde68a' : nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
             fontSize={8}
             fontWeight="700"
             style={{ pointerEvents: 'none', userSelect: 'none' }}
@@ -1210,8 +1222,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
             cx={0}
             cy={size * 0.08}
             r={Math.max(5, size * 0.11)}
-            fill={isActive ? '#22c55e' : '#1e293b'}
-            stroke={isActive ? '#a7f3d0' : '#64748b'}
+            fill={nodeOutputIsUnknown ? '#5b4512' : isActive ? '#22c55e' : '#1e293b'}
+            stroke={nodeOutputIsUnknown ? '#fbbf24' : isActive ? '#a7f3d0' : '#64748b'}
             strokeWidth={1.4}
           />
           {isActive ? (

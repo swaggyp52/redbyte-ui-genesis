@@ -9,6 +9,7 @@ import { useLogicViewStore, getGlobalViewStateStore, type LogicViewState } from 
 import {
   NodeView,
   type ChipMetadata,
+  type LogicDisplayValue,
   type NodeIoPresentation,
   type PortClusterChoice,
 } from './components/NodeView';
@@ -48,7 +49,7 @@ export interface LogicCanvasProps {
   mismatchWireHighlights?: Map<string, string[]> | null;
   mismatchNodeIds?: Set<string> | null;
   mismatchPortKeys?: Set<string> | null;
-  debugSignals?: Map<string, 0 | 1> | null;
+  debugSignals?: Map<string, LogicDisplayValue> | null;
   debugTick?: number | null;
   highlightedPort?: { nodeId: string; portName: string } | null;
   highlightedPortKeys?: Set<string> | null;
@@ -2354,7 +2355,7 @@ function extractAlias(source: string, pattern: RegExp): string {
   return match?.[1] ?? source;
 }
 
-function resolveInputOverlayState(node: Node, renderSignals: Map<string, 0 | 1>): 0 | 1 {
+function resolveInputOverlayState(node: Node, renderSignals: Map<string, LogicDisplayValue>): 0 | 1 {
   const persistedState = node.state?.isOn ? 1 : 0;
   const directOutputSignal = renderSignals.get(`${node.id}.out`);
   if (directOutputSignal === 0 || directOutputSignal === 1) return directOutputSignal;

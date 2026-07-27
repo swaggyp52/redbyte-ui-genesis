@@ -37,7 +37,10 @@ export function getAssertionRunStatus(run: EvidenceRun): AssertionRunStatus {
     return run.assertionStatus;
   }
   if (getRuntimeVerifyRunKind(run) === 'trace') return 'not-configured';
-  if ((run.evidence?.preflight?.length ?? 0) > 0 && run.report.rows.length === 0) {
+  if (
+    (run.evidence?.preflight?.some((issue) => issue.blocking !== false) ?? false) &&
+    run.report.rows.length === 0
+  ) {
     return 'not-evaluated';
   }
   return run.status === 'pass' ? 'passing' : 'failing';
@@ -48,6 +51,7 @@ export function deriveBehavioralEvidenceTier(
   stale = false
 ): BehavioralEvidenceTier {
   if (!run || stale || getSimulationRunStatus(run) !== 'complete') return 'draft';
+  if (run.evidence?.preflight?.some((issue) => issue.kind === 'floating-output')) return 'simulated';
   return getAssertionRunStatus(run) === 'passing' ? 'validated' : 'simulated';
 }
 

@@ -32,6 +32,11 @@ export interface VerifyScenarioSequentialPolicy {
   startLevel?: 0 | 1;
 }
 
+export interface VerifyScenarioProbe {
+  key: string;
+  label?: string;
+}
+
 export interface VerifyScenario {
   /** Stable identifier — survives renames and vector edits. */
   id: string;
@@ -43,6 +48,8 @@ export interface VerifyScenario {
   steps?: VerifyScenarioStep[];
   /** Per-scenario sequential execution intent. Browser-local; never part of RBProject. */
   sequentialPolicy?: VerifyScenarioSequentialPolicy;
+  /** Signal lanes watched in this scenario. Browser-local and independent of run freshness. */
+  probes?: VerifyScenarioProbe[];
   /**
    * Monotonic version counter — incremented on every save.
    * Stored in run metadata so result-to-scenario drift is machine-checkable.
@@ -111,9 +118,36 @@ export function stampScenario(scenario: VerifyScenario): VerifyScenario {
     vectors: materializeScenarioVectors(scenario),
     steps: scenario.steps?.map(cloneStep),
     sequentialPolicy: cloneScenarioSequentialPolicy(scenario.sequentialPolicy),
+    probes: normalizeScenarioProbes(scenario.probes),
     version: scenario.version + 1,
     updatedAt: new Date().toISOString(),
   };
+}
+
+export function normalizeScenarioProbes(
+  probes: ReadonlyArray<VerifyScenarioProbe> | null | undefined
+): VerifyScenarioProbe[] {
+  const normalized = new Map<string, VerifyScenarioProbe>();
+  for (const probe of probes ?? []) {
+    const key = typeof probe?.key === 'string' ? probe.key.trim() : '';
+    if (!key) continue;
+    const label = typeof probe.label === 'string' ? probe.label.trim() : '';
+    normalized.set(key, label && label !== key ? { key, label } : { key });
+  }
+  return [...normalized.values()].sort((left, right) => left.key.localeCompare(right.key));
+}
+
+export function toggleScenarioProbe(
+  probes: ReadonlyArray<VerifyScenarioProbe> | null | undefined,
+  probe: VerifyScenarioProbe
+): VerifyScenarioProbe[] {
+  const normalized = normalizeScenarioProbes(probes);
+  const key = probe.key.trim();
+  if (!key) return normalized;
+  if (normalized.some((entry) => entry.key === key)) {
+    return normalized.filter((entry) => entry.key !== key);
+  }
+  return normalizeScenarioProbes([...normalized, probe]);
 }
 
 /**

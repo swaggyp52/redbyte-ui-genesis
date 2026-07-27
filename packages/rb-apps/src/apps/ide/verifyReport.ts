@@ -38,6 +38,7 @@ export interface VerifyEvidencePreflightIssue {
     | 'missing-output-node'
     | 'missing-expected-binding'
     | 'missing-output-sample'
+    | 'floating-output'
     | 'unsupported-temporal'
     | 'invalid-ir';
   code?: string;

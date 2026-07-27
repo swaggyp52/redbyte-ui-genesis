@@ -357,6 +357,7 @@ export const IdeApp: React.FC = () => {
   const renameVerifyScenario = useProjectRuntime((state) => state.renameScenario);
   const deleteVerifyScenario = useProjectRuntime((state) => state.deleteScenario);
   const switchVerifyScenario = useProjectRuntime((state) => state.switchScenario);
+  const toggleVerifyScenarioProbe = useProjectRuntime((state) => state.toggleScenarioProbe);
   const updateVerifyScenarioSequentialPolicy = useProjectRuntime(
     (state) => state.updateScenarioSequentialPolicy
   );
@@ -2236,6 +2237,7 @@ export const IdeApp: React.FC = () => {
               unmappedOutputLabels={unmappedOutputLabels}
               hasFloatingOutputWarning={verifyHasFloatingOutputWarning}
               probeSignals={runtimeSim.probes}
+              onToggleProbe={toggleVerifyScenarioProbe}
               mappedInputs={verifyInputSignals}
               mappedSignals={verifySignals}
               onVectorsChange={handleVectorsChange}

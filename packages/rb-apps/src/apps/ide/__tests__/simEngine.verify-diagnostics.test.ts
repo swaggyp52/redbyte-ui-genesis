@@ -44,6 +44,47 @@ function buildPassthroughCircuit(): Circuit {
 }
 
 describe('simEngine verify diagnostics', () => {
+  it('keeps a valid SUM path runnable while a disconnected CARRY is reported as X', () => {
+    const circuit: Circuit = {
+      nodes: [
+        { id: 'a', type: 'INPUT', label: 'A', x: 0, y: 0, config: {}, state: {} },
+        { id: 'sum', type: 'OUTPUT', label: 'SUM', x: 200, y: 0, config: {}, state: {} },
+        { id: 'carry', type: 'OUTPUT', label: 'CARRY', x: 200, y: 100, config: {}, state: {} },
+      ],
+      connections: [
+        { from: { nodeId: 'a', portName: 'out' }, to: { nodeId: 'sum', portName: 'in' } },
+      ],
+    };
+    const ioRows: SimulationIoRow[] = [
+      { id: 'a', label: 'A', direction: 'in', nodeId: 'a' },
+      { id: 'sum', label: 'SUM', direction: 'out', nodeId: 'sum' },
+      { id: 'carry', label: 'CARRY', direction: 'out', nodeId: 'carry' },
+    ];
+    const model = buildSimulationModel(elaborateCircuit(circuit).ir);
+    const result = runDeterministicVerifyFromModel(
+      circuit,
+      model,
+      ioRows,
+      [{ tick: 0, inputs: { a: 1 }, expected: { sum: 1, carry: 0 } }]
+    );
+
+    expect(model.isRunnable).toBe(true);
+    expect(result.rows.find((row) => row.signal === 'sum')?.actual).toBe('1');
+    expect(result.rows.find((row) => row.signal === 'carry')?.actual).toBe('X');
+    expect(result.trace[0]?.signals['carry.in']).toBe('X');
+    expect(result.trace[0]?.signals['sum.in']).toBe(1);
+    expect(result.evidence.preflight).toEqual([
+      expect.objectContaining({
+        kind: 'floating-output',
+        signal: 'carry',
+        severity: 'warning',
+        blocking: false,
+      }),
+    ]);
+    expect(result.evidence.preflight[0]?.message).toContain('CARRY');
+    expect(result.evidence.preflight[0]?.message).not.toContain('SUM');
+  });
+
   it('evaluates repeated-tick combinational vectors as distinct cases', () => {
     const ioRows: SimulationIoRow[] = [
       { id: 'sw0', label: 'SW0', direction: 'in', nodeId: 'sw0_node' },
@@ -196,7 +237,8 @@ describe('simEngine verify diagnostics', () => {
     expect(result.evidence.preflight).toEqual([]);
     expect(result.rows).toHaveLength(4);
     expect(result.rows.every((row) => row.expected === row.actual)).toBe(true);
-    expect(clockValues).toEqual([0, 0, 0, 0]);
+    // Clocked-macro evidence is sampled at the declared post-rising-edge point.
+    expect(clockValues).toEqual([1, 1, 1, 1]);
     expect(qRows.map((row) => row.actual)).toEqual(['0', '1', '0', '0']);
   });
 

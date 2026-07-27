@@ -1,10 +1,12 @@
 import type { VerifyReport, VerifyWaveSample } from '../verifyReport';
 import { buildVerifyWaveSamples } from '../verifyReport';
-import type { RuntimeSimTraceSample } from './simTypes';
+import type { RuntimeLogicValue, RuntimeSimTraceSample } from './simTypes';
+
+type CanonicalLogicSymbol = '0' | '1' | 'X' | 'Z';
 
 export interface CanonicalTraceFrame {
   tick: number;
-  signals: Record<string, '0' | '1'>;
+  signals: Record<string, CanonicalLogicSymbol>;
 }
 
 export interface CanonicalSimulationTrace {
@@ -17,7 +19,7 @@ export interface CanonicalSimulationTrace {
 export function normalizeSimulationTrace(
   trace: RuntimeSimTraceSample[]
 ): CanonicalSimulationTrace {
-  const framesByTick = new Map<number, Record<string, '0' | '1'>>();
+  const framesByTick = new Map<number, Record<string, CanonicalLogicSymbol>>();
   for (const sample of trace) {
     const tick = normalizeTick(sample.tick);
     const current = framesByTick.get(tick) ?? {};
@@ -125,21 +127,21 @@ function normalizeTick(value: number): number {
 }
 
 function normalizeSignalRecord(
-  value: Record<string, 0 | 1>
-): Record<string, '0' | '1'> {
-  const normalized: Record<string, '0' | '1'> = {};
+  value: Record<string, RuntimeLogicValue>
+): Record<string, CanonicalLogicSymbol> {
+  const normalized: Record<string, CanonicalLogicSymbol> = {};
   for (const [key, bitValue] of Object.entries(value ?? {})) {
-    normalized[key] = bitValue === 1 ? '1' : '0';
+    normalized[key] = bitValue === 1 ? '1' : bitValue === 0 ? '0' : bitValue;
   }
   return sortSignalRecord(normalized);
 }
 
 function sortSignalRecord(
-  value: Record<string, '0' | '1'>
-): Record<string, '0' | '1'> {
+  value: Record<string, CanonicalLogicSymbol>
+): Record<string, CanonicalLogicSymbol> {
   return Object.fromEntries(
     Object.entries(value).sort(([left], [right]) => compareText(left, right))
-  ) as Record<string, '0' | '1'>;
+  ) as Record<string, CanonicalLogicSymbol>;
 }
 
 function sortStringSignalRecord(value: Record<string, string>): Record<string, string> {

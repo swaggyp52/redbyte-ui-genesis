@@ -29,7 +29,7 @@
  * Reserved diagnostic codes:
  *   IR001: unknown primitive type        (error)
  *   IR002: multiple drivers on net       (error)
- *   IR003: floating output port          (error)
+ *   IR003: floating output port          (warning; represented as unknown)
  *   IR004: sequential missing clock      (error)
  *   IR005: disconnected required input   (warning)
  *   IR006: ambiguous reset binding       (reserved)

@@ -96,4 +96,16 @@ describe('WaveformViewer signal-group visual differentiation', () => {
     expect(getByTestId('ide-verify-waveform-group-inputs')).toBeTruthy();
     expect(getByTestId('ide-verify-waveform-group-outputs')).toBeTruthy();
   });
+
+  it('renders an unknown value as a labeled dashed center rail instead of LOW', () => {
+    const unknownSignals = [
+      makeSignalRow('ld0', [{ tick: 0, value: 'X' }]),
+    ];
+    const { container, getByText } = render(
+      <WaveformViewer {...BASE_PROPS} signals={unknownSignals} ticks={[0]} signalGroups={signalGroups} />
+    );
+
+    expect(getByText('X')).toBeTruthy();
+    expect(container.querySelector('line[stroke-dasharray="5 4"]')).toBeTruthy();
+  });
 });

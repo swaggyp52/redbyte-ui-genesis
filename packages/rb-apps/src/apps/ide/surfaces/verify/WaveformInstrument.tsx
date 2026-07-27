@@ -112,8 +112,17 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
     };
     measure();
     if (typeof window === 'undefined') return;
+    const container = waveformRef.current?.parentElement;
+    const resizeObserver =
+      container && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(measure)
+        : null;
+    resizeObserver?.observe(container);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, [signals.length, ticks.length, LABEL_W]);
 
   const trackWidth = ticks.length > 0
@@ -441,11 +450,15 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
             {/* Signal trace */}
             {signalRow.values.map((point, i) => {
               const isHigh = point.value === '1';
+              const isUnknown = point.value === 'X' || point.value === 'Z';
               const tickX = LABEL_W + i * TICK_W;
               const isFail = failTicks.has(point.tick);
               const isSelected = point.tick === selectedTick;
               const prevValue = i > 0 ? signalRow.values[i - 1]?.value : null;
-              const hasTransition = prevValue !== null && prevValue !== point.value;
+              const hasBinaryTransition =
+                (prevValue === '0' || prevValue === '1') &&
+                (point.value === '0' || point.value === '1') &&
+                prevValue !== point.value;
 
               return (
                 <g key={`${signalRow.signal}-${point.tick}`}>
@@ -466,7 +479,7 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                   )}
 
                   {/* Signal rail — 3px horizontal line at hi or lo position */}
-                  {point.value !== '-' && (
+                  {point.value !== '-' && !isUnknown && (
                     <line
                       x1={tickX + 2}          y1={isHigh ? y + ROW_HI : y + ROW_LO}
                       x2={tickX + TICK_W - 2} y2={isHigh ? y + ROW_HI : y + ROW_LO}
@@ -483,8 +496,35 @@ export const WaveformViewer: React.FC<WaveformViewerProps> = ({
                     />
                   )}
 
+                  {/* Unknown/high-impedance values use a labeled center rail so they cannot be mistaken for LOW. */}
+                  {isUnknown && (
+                    <>
+                      <line
+                        x1={tickX + 2}
+                        y1={y + ROW_H / 2}
+                        x2={tickX + TICK_W - 2}
+                        y2={y + ROW_H / 2}
+                        stroke="#fbbf24"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray="5 4"
+                      />
+                      <text
+                        x={tickX + TICK_W / 2}
+                        y={y + ROW_H / 2 + 4}
+                        textAnchor="middle"
+                        fill="#fff7d6"
+                        fontSize="11"
+                        fontWeight="800"
+                        aria-hidden="true"
+                      >
+                        {point.value}
+                      </text>
+                    </>
+                  )}
+
                   {/* Transition vertical line connecting rail positions */}
-                  {hasTransition && (
+                  {hasBinaryTransition && (
                     <line
                       x1={tickX} y1={y + ROW_HI} x2={tickX} y2={y + ROW_LO}
                       stroke={isFail ? '#ff6b6b' : isClockSignal ? 'rgba(251,191,36,0.82)' : isInputSignal ? 'rgba(56,189,248,0.7)' : 'rgba(46,196,182,0.75)'}

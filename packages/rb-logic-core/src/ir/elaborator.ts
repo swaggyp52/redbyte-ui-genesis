@@ -534,7 +534,7 @@ export function elaborateCircuit(
     if (!drivenSinks.has(sinkKey)) {
       diagnostics.push({
         code: 'IR003',
-        severity: 'error',
+        severity: 'warning',
         message: `Output port '${port.name}' (node '${port.sourceNodeId}') has no driver`,
         nodeId: port.sourceNodeId,
         port: 'in',
