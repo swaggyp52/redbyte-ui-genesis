@@ -1,5 +1,44 @@
 # AI State
 
+## Change Log 2026-07-27 (Stable Preview - Browser-E0 consolidation)
+
+**Subsystem:** canonical source, scenario authority, root development entrypoint,
+product/manual truth, remote handoff, and repository topology.
+
+**Consolidation:** The complete local v2B candidate
+`a5b67274f3c43820e89d538cbf2171256fef3759` was fast-forwarded from fresh
+`origin/main` onto the single temporary
+`integration/redbyte-stable-preview-closeout` branch. The integrated product
+baseline after the bounded closeout repair is
+`66f901ff13b6ddd0a0a73a4328a95c4df5274886`. Root
+`corepack pnpm run dev` owns the current `@redbyte/playground` source and Vite
+build identity. The required final operating branch is `main`; do not resume
+work from historical RC or product worktrees.
+
+**Defect repair:** Two stale invalid-IR fixtures had treated a disconnected
+output as a blocking compiler error even though the current learning contract
+keeps the runnable path active and displays that output as `X`. The fixtures now
+use an actually invalid unclocked sequential element. Explicit authored
+assertion steps now override stale compatibility-vector expectations, while
+derived timelines can still accept optional per-event checks without expanding
+their timing.
+
+**Product boundary:** The current student flow is
+`Project -> Design Edit / Live -> Verify Scenario / Replay / Optional Checks -> Map Pins -> Export`;
+Import / Recover remains separate. The supported sequential boundary is
+Register1, one clock, rising-edge capture, active-high asynchronous reset, and
+supported enable semantics. RegisterBus, StateBank, falling-edge capture,
+multi-clock designs, and unsupported register modes remain blocked. This stage
+is **Stable Preview - Browser-E0** only; it does not claim Vivado execution,
+bitstream generation, Basys3 programming, physical observation, or unsupervised
+classroom reliability.
+
+**Recovery:** Pre-consolidation refs, ignored product-immersion evidence, and
+manual artifacts are archived under
+`C:\Users\conno\RedByteArchive\2026-07-27\`. The verified bundle is
+`redbyte-pre-consolidation.bundle`; the annotated preservation tag is
+`redbyte-stable-preview-preconsolidation-2026-07-27`.
+
 ## Change Log 2026-07-27 (local v2B: complete the supported sequential learning loop)
 
 **Subsystem:** Blank-project Register1 authoring, manual clock/reset operation, sequential Verify scenarios, Design Replay, semantic evidence identity, Basys3 mapping, and Browser-E0 Export inspection.

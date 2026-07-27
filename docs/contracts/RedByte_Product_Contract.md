@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-04-28
+last_validated: 2026-07-27
 owner: Connor Angiel
 used_by_claude: true
 role: target-state product blueprint
@@ -21,6 +21,12 @@ role: target-state product blueprint
 > `docs/contracts/RED_BYTE_V1_PRODUCT_CONTRACT.md`. Use this older contract as broad
 > target-state context only when it does not conflict with the V1 reset, current code,
 > or current proof docs.
+
+> **Stable Preview note (2026-07-27):** Current browser truth follows
+> `Scenario -> Run simulation -> Inspect Replay -> Optional Checks`. Expected
+> outputs are not required to run. Trusted Export still requires current passing
+> checks. The supported sequential boundary is Register1, one clock,
+> rising-edge capture, and active-high asynchronous reset.
 
 ---
 

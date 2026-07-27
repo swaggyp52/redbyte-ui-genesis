@@ -65,6 +65,7 @@ When docs conflict:
 | [../CLAUDE.md](../CLAUDE.md) | Agent operating manual |
 | [product/RED_BYTE_CURRENT_TRUTH.md](./product/RED_BYTE_CURRENT_TRUTH.md) | Compact source hierarchy, product thesis, current risks, closed items |
 | [product/RED_BYTE_WORK_QUEUE.md](./product/RED_BYTE_WORK_QUEUE.md) | Ordered near-term work queue |
+| [product/RED_BYTE_STABLE_PREVIEW_CLOSEOUT.md](./product/RED_BYTE_STABLE_PREVIEW_CLOSEOUT.md) | Stable Preview - Browser-E0 identity, startup, recovery, supported workflows, and proof boundary |
 | [product/RED_BYTE_UNIFIED_WORKBENCH_V3.md](./product/RED_BYTE_UNIFIED_WORKBENCH_V3.md) | Unified Workbench v3 product contract plus current RC authority addendum |
 | [handoff/GANNON_REDBYTE_V3_RC_README.md](./handoff/GANNON_REDBYTE_V3_RC_README.md) | Gannon RC source handoff, exact evidence boundary, exclusions, and final-certification checklist |
 | [product/GANNON_PILOT_READINESS.md](./product/GANNON_PILOT_READINESS.md) | Gannon pilot readiness boundary: browser-E0 pilot target vs not-sell-ready claims |

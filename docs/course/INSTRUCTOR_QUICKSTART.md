@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-07-27
 owner: Connor Angiel
 used_by_claude: true
 role: instructor setup and assignment quickstart
@@ -18,13 +18,18 @@ Project -> Design -> Verify -> Map Pins -> Export
 
 Vivado build, board programming, and board observation are downstream proof steps. RedByte is not a Vivado replacement, not a universal HDL IDE, not a broad board abstraction, and not a SaaS classroom-management product.
 
+The current release posture is **Stable Preview - Browser-E0**. It is suitable
+for supervised evaluation of the supported browser workflow, not an
+unsupervised-classroom reliability claim.
+
 ## 1. Choose The Assignment Scope
 
 Start with labs that match current support:
 
 - basic combinational logic such as AND, OR, XOR, and half adder work
 - small Basys3 switch-to-LED mappings
-- single-clock rising-edge sequential examples only when your proof requirement is clear
+- Register1 sequential examples with one clock, rising-edge capture,
+  active-high asynchronous reset, and supported enable semantics only
 - built-in lab profiles for Logic Gates, Half Adder, 2-Bit Counter, and the Lab 8 scaffold as E0 course metadata, not a full course-pack authoring system
 
 Before assigning hardware requirements, check:
@@ -73,7 +78,7 @@ Students should use:
 
 1. Project: open a blank project, starter, saved project, or Import / Recover utility.
 2. Design: build or inspect the circuit graph.
-3. Verify: use Compare checks for pass/fail proof.
+3. Verify: run a Scenario, inspect Replay, and add optional checks when pass/fail proof is required.
 4. Hardware: map project signals to Basys3 resources and package pins.
 5. Export: build or download a RedByte E0 package.
 6. Vivado: run synthesis, implementation, bitstream generation, and board programming only when required.

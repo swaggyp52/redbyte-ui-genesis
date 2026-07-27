@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-07-27
 owner: Connor Angiel
 used_by_claude: true
 role: student first-lab quickstart
@@ -11,6 +11,10 @@ role: student first-lab quickstart
 Use this when your instructor assigns a RedByte lab.
 
 RedByte is a browser IDE for supported Basys3 digital-logic projects. It helps you build a circuit, verify behavior, map signals to Basys3 resources, and export a Vivado-ready package. It does not replace Vivado. Vivado still builds the bitstream, programs the board, and produces hardware logs when your lab requires them.
+
+This guide describes the **Stable Preview - Browser-E0** workflow. Browser-E0
+means the browser workflow and generated package were exercised; it does not
+mean Vivado or a physical board was run.
 
 ## 1. Open RedByte
 
@@ -58,16 +62,25 @@ RedByte owns Project through Export. Vivado build, board programming, and board 
 ### Design
 
 - Build or inspect the actual circuit graph on the canvas.
+- Use **Edit** to change the circuit, **Live** to explore propagation, and
+  **Replay** to inspect a recorded Verify run without changing the design.
 - Use Board, IO, Logic, Sequential, and Reusable palette sections as your assignment allows.
 - Fix visible design issues before moving on.
 - If you loaded a scaffold, it is starter material, not proof that your assignment is solved.
 
 ### Verify
 
-- Use Observe to inspect behavior.
-- Use Compare checks for pass/fail proof.
-- A current Compare PASS is the browser proof RedByte uses before trusted Export.
+- Choose or author a Scenario, run simulation, and inspect waveform or circuit Replay.
+- Expected-output checks are optional. A zero-check run records observed behavior
+  as Simulated without claiming PASS.
+- Add checks only when the assignment needs validation. Current passing checks
+  are the browser proof RedByte uses before trusted Export.
 - If a case fails, inspect the first mismatch, return to Design or the expected-output cells, repair, and rerun Compare.
+
+Supported sequential work is limited to Register1 with one clock, rising-edge
+capture, active-high asynchronous reset, and supported enable semantics.
+RegisterBus, StateBank, falling-edge capture, multi-clock designs, and
+unsupported register modes are blocked.
 
 ### Map Pins
 

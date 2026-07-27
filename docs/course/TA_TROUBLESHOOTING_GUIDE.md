@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-14
+last_validated: 2026-07-27
 owner: Connor Angiel
 used_by_claude: true
 role: TA troubleshooting and support triage guide
@@ -20,7 +20,7 @@ Ask for:
 - operating system and browser
 - whether this is hosted RedByte or a local repo/folder
 - project name or starter/profile used
-- current surface: Project, Design, Verify, Hardware, Export, Import, Vivado, or board
+- current surface: Project, Design, Verify, Map Pins, Export, Import, Vivado, or board
 - screenshot of the visible error/state
 - exported ZIP if the issue involves Export, Vivado, or Import
 - Vivado logs if the issue is E1 or E2
@@ -68,6 +68,18 @@ Actions:
 4. Run `.\doctor.ps1` and save the result.
 
 Do not require Vivado or a Basys3 board for browser-only E0 work.
+
+For a repo checkout, the canonical development start is:
+
+```powershell
+cd C:\Users\conno\redbyte-ui-genesis-main
+git switch main
+git pull --ff-only
+corepack pnpm run dev
+```
+
+Open `http://localhost:5173`. Confirm the top bar exposes the current build SHA
+before diagnosing a report against a different branch or worktree.
 
 ### Project
 

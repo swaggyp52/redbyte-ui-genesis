@@ -2,6 +2,11 @@
 
 **A deterministic FPGA educational IDE for digital logic design and Basys3 deployment**
 
+**Stable Preview - Browser-E0** (2026-07-27). The canonical source is `main`.
+Browser simulation and generated-package workflows are validated locally; this
+label does not claim Vivado execution, a generated bitstream, board programming,
+or classroom reliability.
+
 ---
 
 ## What is RedByte?
@@ -52,10 +57,9 @@ pnpm start
 Developer shortcuts:
 
 ```bash
-pnpm dev                 # Vite dev server
-pnpm start:production    # Build and preview the /os/ production bundle
-pnpm build:unified       # Full production build path
-pnpm rb:marcus:start     # Start standalone local Marcus companion runtime
+corepack pnpm run dev              # Canonical current RedByte at http://localhost:5173
+corepack pnpm start:production     # Build and preview the /os/ production bundle
+corepack pnpm build:unified        # Full production build path
 ```
 
 Run tests:

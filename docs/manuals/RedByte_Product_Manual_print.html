@@ -494,7 +494,7 @@ ul li { margin-bottom: 0.3rem; }
   <div class="cover-subtitle">FPGA Educational IDE</div>
   <div class="cover-divider"></div>
   <div class="cover-title">Product Manual</div>
-  <div class="cover-edition">Version 1.2 · July 2026</div>
+  <div class="cover-edition">Version 1.3 - July 2026</div>
   <div class="cover-meta">
     Target Platform: Digilent Basys 3 (Artix-7 XC7A35T)<br>
     Toolchain: AMD Vivado ML Standard Edition<br>
@@ -508,10 +508,10 @@ ul li { margin-bottom: 0.3rem; }
   <table>
     <tbody>
       <tr><td>Document ID</td><td>RB-MAN-001</td></tr>
-      <tr><td>Version</td><td>1.2</td></tr>
-      <tr><td>Date</td><td>2026-07-22</td></tr>
-      <tr><td>Release posture</td><td>Candidate documentation; final reconstructed exact-SHA certification pending</td></tr>
-      <tr><td>PDF artifact</td><td>Previous edition; regenerate and visually inspect from this source on the final exact SHA</td></tr>
+      <tr><td>Version</td><td>1.3</td></tr>
+      <tr><td>Date</td><td>2026-07-27</td></tr>
+      <tr><td>Release posture</td><td>Stable Preview - Browser-E0; no Vivado, bitstream, board, or classroom-reliability claim</td></tr>
+      <tr><td>PDF artifact</td><td>Generated and visually inspected from this synchronized print source during stable-preview closeout</td></tr>
       <tr><td>Classification</td><td>Product Reference</td></tr>
       <tr><td>Repository</td><td><code>redbyte-ui</code> monorepo</td></tr>
       <tr><td>Primary Package</td><td><code>packages/rb-apps</code></td></tr>
@@ -540,7 +540,7 @@ ul li { margin-bottom: 0.3rem; }
     <li class="toc-sub"><a href="#s2-2">2.2 The Problem RedByte Solves</a></li>
     <li class="toc-sub"><a href="#s2-3">2.3 Core Capabilities</a></li>
     <li class="toc-sub"><a href="#s2-4">2.4 Design Philosophy</a></li>
-    <li class="toc-sub"><a href="#s2-5">2.5 Unified Workbench v3 RC Authority</a></li>
+    <li class="toc-sub"><a href="#s2-5">2.5 Stable Preview Authority</a></li>
     <li class="toc-section"><a href="#s3">3. Intended Users and Usage Contexts</a></li>
     <li class="toc-section"><a href="#s4">4. Core Concepts and Operating Model</a></li>
     <li class="toc-sub"><a href="#s4-1">4.1 The Canonical Workflow</a></li>
@@ -628,15 +628,15 @@ ul li { margin-bottom: 0.3rem; }
 </table>
 </div>
 
-<h2 id="s2-5">2.5 Unified Workbench v3 RC Authority</h2>
+<h2 id="s2-5">2.5 Stable Preview Authority</h2>
 
-<p>The current candidate source unifies the student flow as <strong>Project -&gt; Design -&gt; Verify -&gt; Map Pins -&gt; Export</strong>, with <strong>Import / Recover</strong> as a separate recovery utility. The pre-doc authority for this revision is local commit <code>0788044cbdf2699520d90a3428f2e5034dc73cab</code>. Project explains the loaded work; Design keeps the circuit grid dominant; Verify owns named testbench documents and per-document sequential policy; Map Pins owns the semantic signal-to-resource projection; Export separates structural <code>blocked</code>/<code>downloadable</code>, <code>verificationTrust</code> <code>unverified</code>/<code>draft</code>/<code>trusted</code>, and action <code>not-downloaded</code>/<code>downloaded</code>; Import is manifest-first and preserves exact scalar/vector-bit identities.</p>
+<p>The stable-preview source unifies the student flow as <strong>Project -&gt; Design Edit / Live -&gt; Verify Scenario / Replay / Optional Checks -&gt; Map Pins -&gt; Export</strong>, with <strong>Import / Recover</strong> as a separate recovery utility. The preserved v2B candidate is <code>a5b67274f3c43820e89d538cbf2171256fef3759</code>; the integrated product baseline for this manual is <code>66f901ff13b6ddd0a0a73a4328a95c4df5274886</code>. Project explains the loaded work; Design keeps the circuit grid dominant; Verify owns named scenarios, authored stimulus, optional checks, sequential policy, waveform evidence, and Replay; Map Pins owns the semantic signal-to-resource projection; Export separates structural, verification-trust, and download state; Import is manifest-first and preserves exact scalar/vector-bit identities.</p>
 
 <p>Named sequential policy remains browser-local and outside portable <code>RBProject</code>, but it is not package-neutral. Authored rows and policy are materialized into one shared execution-vector sequence consumed by runtime Verify, bring-up expectations, and generated <code>testbench.vhd</code> together with the resolved clock/schedule projection. Auto <code>runCycles</code>, automatic reset behavior, resolved clock data, starting level, and authored stimulus may change package bytes, stale Export, and invalidate a prior receipt. UI status, waveform, and Compare-result objects do not generate bytes. This is Browser-E0/software-artifact behavior, not Vivado or board proof.</p>
 
 <div class="callout callout-warning">
-  <span class="callout-label">Candidate boundary</span>
-  Integrated pre-doc checkpoint <code>0788044cb</code> passes the touched 20-file/258-test authority matrix, workspace typecheck, unified build, and focused sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates under Node 20.19.0 / pnpm 10.24.0. Historical pre-sequential <code>f4f7ca8f3</code> passed the earlier 36-file/477-test matrix. This is Browser-E0 source evidence only. Final reconstructed exact-SHA certification and human release disposition remain pending; Guided 4-bit and Mapping Assistant v2 are excluded. Design grid occupancy is 63.1% at 1366px and 65.0% at 1440px: above the 62% floor, below the strategic 70% target.
+  <span class="callout-label">Stable-preview boundary</span>
+  The completed v2B evidence includes 157 focused tests plus workspace typecheck, IDE CSS audit, unified build, and browser evidence at 1366x768 and 1440x900 under Node 20.19.0 / pnpm 10.24.0. Stable-preview closeout additionally repaired stale invalid-IR fixtures and explicit-scenario authority. This is Browser-E0/local package evidence, not Vivado execution, bitstream generation, board programming, physical observation, or unsupervised classroom reliability. Guided 4-bit, Mapping Assistant v2, RegisterBus, and StateBank execution remain deferred.
 </div>
 </div>
 
@@ -761,9 +761,9 @@ ul li { margin-bottom: 0.3rem; }
 
 <h2>5.2 Development Installation</h2>
 <pre><code>git clone &lt;repository-url&gt;
-cd redbyte-ui
-pnpm install
-pnpm dev</code></pre>
+  cd redbyte-ui-genesis-main
+  corepack pnpm install --frozen-lockfile
+  corepack pnpm run dev</code></pre>
 <p>The development server starts at <code>http://localhost:5173</code>.</p>
 
 <h2>5.3 Starter Examples</h2>
@@ -955,10 +955,10 @@ pnpm dev</code></pre>
 
 <h2>8.3 Sequential Elements</h2>
 
-<p>When building circuits with flip-flops:</p>
+<p>For the supported stable-preview sequential path:</p>
 
 <ol class="procedure">
-  <li>Place the flip-flop (e.g., D Flip-Flop) on the canvas.</li>
+  <li>Place <strong>Register1</strong> on the canvas.</li>
   <li>Connect the <strong>D</strong> (data) port to the source signal.</li>
   <li>For FPGA intent, connect <strong>CLK</strong> to a top-level clock input created from the Basys3 <code>CLK100MHZ</code> board resource. Pure simulation can use RedByte's automatic internal simulation clock; the current Design palette has no generic Clock card.</li>
   <li>Optionally connect <strong>EN</strong> (enable) and <strong>RST</strong> (reset) ports.</li>
@@ -967,8 +967,9 @@ pnpm dev</code></pre>
 
 <div class="callout callout-note">
   <span class="callout-label">Note</span>
-  The D flip-flop captures input on the <strong>rising edge</strong> (0→1 transition) of the clock. Between edges, output Q holds its value. The complementary output Q̄ is also available.
+  Register1 captures input on the <strong>rising edge</strong> of the clock. Between rising edges, output Q holds its value.
 </div>
+<p><strong>Stable-preview boundary.</strong> Register1 captures D on the rising clock transition and holds Q between rising edges. An authored high-to-low transition is valid stimulus but must hold rising-edge state. RegisterBus, StateBank, falling-edge capture, multi-clock designs, active-low reset, and unsupported register modes remain blocked.</p>
 </div>
 
 <!-- ═══════════════════════ SECTION 9 ═══════════════════════ -->
@@ -977,15 +978,16 @@ pnpm dev</code></pre>
 
 <ol class="procedure">
   <li>Navigate to the <strong>Verify</strong> surface.</li>
-  <li>Choose or create the named testbench document, then review or author rows. Each row specifies inputs and expected outputs.</li>
+  <li>Choose or create the named scenario, then review or author stimulus rows. Expected-output checks are optional.</li>
   <li>For a sequential document, review its saved execution mode, run cycles, active edge, reset behavior, source type, execution model, resolved clock identity, and starting level. Choose automatic board clock, manual pulses, or custom pattern deliberately. In manual/custom mode, only low-to-high advances rising-edge state; falling and flat/repeated levels hold it.</li>
-  <li>Select Compare and click <strong>Run Compare</strong>.</li>
+  <li>Click <strong>Run simulation</strong> and inspect waveform or circuit Replay.</li>
+  <li>If validation is required, add expected-output checks and rerun. Blank check cells are not assertions.</li>
   <li>Review results: ✓ per passing row, ✗ per failing row.</li>
   <li>For failures, choose <strong>Edit expected</strong> when the saved check is wrong or <strong>Inspect Design</strong> when the circuit is wrong. Structural preflight failures expose <strong>Open Design</strong>.</li>
-  <li>Apply the correct repair and rerun Compare.</li>
+  <li>Apply the correct repair and rerun the scenario.</li>
 </ol>
 
-<div class="result-box"><strong>Result:</strong> A current <span class="badge badge-pass">PASS</span> applies only to the same current design and testbench state. Missing, stale, and <span class="badge badge-fail">FAIL</span> evidence remain distinct and cannot support Export <code>verificationTrust: trusted</code>. Runtime summary, waveform, checks, verdict, and counts describe the same execution.</div>
+<div class="result-box"><strong>Result:</strong> A successful zero-check run reports <strong>Simulation complete</strong> and <strong>No checks configured</strong>; it does not claim PASS. A current <span class="badge badge-pass">PASS</span> applies only when configured checks pass for the same current design and scenario. Missing, stale, and <span class="badge badge-fail">FAIL</span> evidence cannot support Export <code>verificationTrust: trusted</code>.</div>
 
 <h2>Verification Determinism</h2>
 <p>Results are deterministic. Running the same circuit with the same vectors produces the same results every time, on every machine. The Verify surface displays a deterministic run hash to confirm reproducibility.</p>
@@ -1296,9 +1298,9 @@ pnpm dev</code></pre>
 <table>
   <thead><tr><th>Primitive</th><th>Inputs</th><th>Outputs</th><th>Behavior</th></tr></thead>
   <tbody>
-    <tr><td>Register1</td><td>D, CLK, optional EN/RST</td><td>Q</td><td>Native one-bit register. This RC verifies/exports only rising-edge, active-high asynchronous clear, and active-high enable semantics; other configurations block explicitly.</td></tr>
-    <tr><td>RegisterBus</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas native bus register; Verify and Export are intentionally blocked in this RC until runtime/VHDL parity is complete.</td></tr>
-    <tr><td>StateBank</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas grouped state abstraction; Verify and Export are intentionally blocked in this RC until runtime/VHDL parity is complete.</td></tr>
+    <tr><td>Register1</td><td>D, CLK, optional EN/RST</td><td>Q</td><td>Supported one-bit register: one clock, rising-edge capture, active-high asynchronous clear, and supported active-high enable semantics. Other configurations block explicitly.</td></tr>
+    <tr><td>RegisterBus</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas bus register; Verify and Export are intentionally blocked in this stable preview because runtime/VHDL parity is incomplete.</td></tr>
+    <tr><td>StateBank</td><td>D[i], CLK, optional EN/RST</td><td>Q[i]</td><td>Design-canvas grouped state abstraction; Verify and Export are intentionally blocked in this stable preview because runtime/VHDL parity is incomplete.</td></tr>
     <tr><td>D Flip-Flop</td><td>D, CLK, EN, RST</td><td>Q, Q̄</td><td>Captures D on rising CLK edge. RST=1 forces Q=0. EN gates capture.</td></tr>
     <tr><td>T Flip-Flop</td><td>T, CLK, CLR</td><td>Q, Q̄</td><td>T=1 toggles Q on rising edge. T=0 holds.</td></tr>
     <tr><td>JK Flip-Flop</td><td>J, K, CLK, CLR</td><td>Q, Q̄</td><td>J=1,K=0: set. J=0,K=1: reset. J=K=1: toggle. J=K=0: hold.</td></tr>
@@ -1402,7 +1404,7 @@ pnpm dev</code></pre>
   <div style="margin-bottom: 1rem;">
     <span style="font-size: 1.5rem; font-weight: 900; color: var(--rb-slate-900);"><span style="color: var(--rb-red);">Red</span>Byte</span>
   </div>
-  <p>Product Manual · Version 1.2 · July 2026</p>
+  <p>Product Manual - Version 1.3 - July 2026</p>
   <p>Attribution: Connor Angiel</p>
   <p>RedByte Proprietary License (RPL-1.0)</p>
 </div>

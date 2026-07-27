@@ -1,7 +1,7 @@
 # RedByte Product Manual
 
-**Version 1.2** · July 2026
-**Platform Version:** RedByte IDE v1 / Unified Workbench v3 RC source
+**Version 1.3** - July 2026
+**Platform Version:** RedByte Stable Preview - Browser-E0
 **Attribution:** Connor Angiel
 **License:** RedByte Proprietary License (RPL-1.0)
 
@@ -12,10 +12,10 @@
 | Field | Value |
 |-------|-------|
 | Document ID | RB-MAN-001 |
-| Version | 1.2 |
-| Date | 2026-07-22 |
-| Release posture | Candidate documentation; final reconstructed exact-SHA certification pending |
-| PDF artifact | Existing PDF is the previous edition; regenerate and visually inspect from this print source on the final exact SHA |
+| Version | 1.3 |
+| Date | 2026-07-27 |
+| Release posture | Stable Preview - Browser-E0; no Vivado, bitstream, board, or classroom-reliability claim |
+| PDF artifact | Generated and visually inspected from the synchronized print source during stable-preview closeout |
 | Classification | Product Reference |
 | Repository | `redbyte-ui` monorepo |
 | Primary Package | `packages/rb-apps` |
@@ -123,20 +123,20 @@ RedByte operates under several core principles that shape its behavior:
 
 **Local-first operation.** All computation happens in the browser. No server is required, no account is needed, and no data leaves the user's machine unless explicitly exported. RedByte works offline after the initial page load.
 
-### 2.5 Unified Workbench v3 RC Authority Summary
+### 2.5 Stable Preview Authority Summary
 
-The current candidate source unifies the student flow as **Project -> Design -> Verify -> Map Pins -> Export**, with **Import / Recover** as a separate recovery utility. The pre-doc source authority for this manual revision is local commit `0788044cbdf2699520d90a3428f2e5034dc73cab`.
+The stable-preview source unifies the student flow as **Project -> Design Edit / Live -> Verify Scenario / Replay / Optional Checks -> Map Pins -> Export**, with **Import / Recover** as a separate recovery utility. The preserved v2B candidate is `a5b67274f3c43820e89d538cbf2171256fef3759`; the integrated product baseline for this manual is `66f901ff13b6ddd0a0a73a4328a95c4df5274886`.
 
 - Project explains the loaded student's design, proof, mapping, package state, and one recommended next action.
 - Design keeps the circuit grid dominant and gives ports direct, keyboard-reachable wiring targets.
-- Verify owns named testbench documents, authored cases/checks, per-document sequential execution policy, run transport, waveform evidence, and current-versus-stale Compare authority.
+- Verify owns named scenarios, authored stimulus, optional checks, per-document sequential execution policy, run transport, waveform evidence, Replay, and current-versus-stale validation authority.
 - Map Pins owns a semantic signal-to-resource projection that must agree with generated XDC and Export.
 - Export separates structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded`; the current download receipt identifies the exact package.
 - Import is manifest-first for RedByte ZIPs and preserves exact scalar/vector-bit identities through recovery.
 
 Named sequential policy remains browser-local and outside portable `RBProject`, but it is not package-neutral. RedByte materializes authored rows and policy into one shared execution-vector sequence consumed by runtime Verify, bring-up expectations, and generated `testbench.vhd` together with the resolved clock/schedule projection. Auto `runCycles`, automatic reset behavior, resolved clock data, starting level, and authored stimulus may therefore change package bytes, stale Export, and invalidate a prior receipt. UI status, waveform, and Compare-result objects do not generate bytes. This remains Browser-E0/software-artifact behavior; it is not Vivado or board proof.
 
-The integrated pre-doc checkpoint passes the touched 20-file/258-test authority matrix, workspace typecheck, unified build, and the focused sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates under Node 20.19.0 / pnpm 10.24.0. Historical pre-sequential checkpoint `f4f7ca8f3` passed the earlier 36-file/477-test matrix. This is Browser-E0 source evidence, not a release disposition or a Vivado/bitstream/board claim. Final reconstructed exact-SHA automation and human release disposition remain pending. Guided 4-bit and Mapping Assistant v2 are excluded from this candidate. Design's circuit-grid occupancy is 63.1% at 1366px and 65.0% at 1440px, above the 62% release floor but below the strategic 70% laptop target.
+The completed v2B evidence includes 157 focused tests plus workspace typecheck, IDE CSS audit, unified build, and browser evidence at `1366x768` and `1440x900` under Node 20.19.0 / pnpm 10.24.0. Stable-preview closeout additionally repaired stale invalid-IR fixtures and explicit-scenario authority. This is Browser-E0/local package evidence, not Vivado execution, bitstream generation, board programming, physical observation, or unsupervised classroom reliability. Guided 4-bit, Mapping Assistant v2, RegisterBus, and StateBank execution remain deferred.
 
 ---
 
@@ -304,11 +304,11 @@ RedByte itself requires no installation and no server. It runs entirely client-s
 
 For development or local hosting:
 
-```bash
+```powershell
 git clone <repository-url>
-cd redbyte-ui
-pnpm install
-pnpm dev
+cd redbyte-ui-genesis-main
+corepack pnpm install --frozen-lockfile
+corepack pnpm run dev
 ```
 
 The development server starts on `http://localhost:5173` by default.
@@ -725,9 +725,9 @@ The system validates connections in real time:
 
 ### 8.4 Working with Sequential Elements
 
-When building circuits that include flip-flops:
+For the supported stable-preview sequential path:
 
-1. Place the flip-flop (e.g., D Flip-Flop) on the canvas.
+1. Place **Register1** on the canvas.
 2. Connect the data input (D port) to the source signal.
 3. For an FPGA design, connect the clock input (CLK port) to a top-level clock input created from the Basys3 `CLK100MHZ` board resource. For simulation-only work, RedByte can inject an internal simulation clock automatically; the current Design palette does not expose a generic Clock block.
 4. Optionally connect the enable (EN) and reset (RST) ports.
@@ -739,7 +739,11 @@ For T flip-flops, the T input controls toggling: T=1 toggles Q on each clock edg
 
 For JK flip-flops: J=1,K=0 sets Q to 1; J=0,K=1 resets Q to 0; J=1,K=1 toggles Q; J=0,K=0 holds Q.
 
-**Sequential Support Boundary.** RedByte v1 supports a single-clock, rising-edge, active-high-reset sequential model. The following patterns are explicitly not supported and will be blocked by the Verify and Export surfaces:
+**Sequential Support Boundary.** The stable preview supports Register1 with one clock, rising-edge capture, active-high asynchronous reset, and supported enable semantics. RegisterBus, StateBank, falling-edge capture, multi-clock designs, active-low reset, and unsupported register modes are explicitly blocked by Verify and Export.
+
+Register1 captures D on the rising clock transition and holds Q between rising
+edges. An authored high-to-low transition is valid stimulus but must hold
+rising-edge state.
 
 - Falling-edge clock triggers
 - Multiple clock domains (more than one clock source)
@@ -1086,7 +1090,7 @@ submission.rbproj.zip
 
 | Symptom | Cause | Resolution |
 |---------|-------|------------|
-| `pnpm install` fails | Node.js version mismatch | Ensure Node.js 18 or later and pnpm 8 or later are installed. |
+| `corepack pnpm install --frozen-lockfile` fails | Runtime version mismatch | Use the repo-pinned Node 20.19.0 and pnpm 10.24.0. |
 | Dev server does not start | Port 5173 in use | Terminate the process occupying the port or start with `--port 5174`. |
 | TypeScript errors in test output | React 19 compatibility issue | Known pre-existing condition. Does not affect runtime behavior. |
 
@@ -1245,9 +1249,9 @@ submission.rbproj.zip
 
 | Primitive | Inputs | Outputs | Behavior |
 |-----------|--------|---------|----------|
-| Register1 | D, CLK, optional EN/RST | Q | Native one-bit register. This RC verifies/exports only rising-edge, active-high asynchronous clear, and active-high enable semantics; other configurations block explicitly. |
-| RegisterBus | D[i], CLK, optional EN/RST | Q[i] | Design-canvas native bus register; Verify and Export are intentionally blocked in this RC because generated runtime/VHDL parity is not complete. |
-| StateBank | D[i], CLK, optional EN/RST | Q[i] | Design-canvas grouped state abstraction; Verify and Export are intentionally blocked in this RC because generated runtime/VHDL parity is not complete. |
+| Register1 | D, CLK, optional EN/RST | Q | Supported one-bit register: one clock, rising-edge capture, active-high asynchronous clear, and supported active-high enable semantics. Other configurations block explicitly. |
+| RegisterBus | D[i], CLK, optional EN/RST | Q[i] | Design-canvas bus register; Verify and Export are intentionally blocked in this stable preview because runtime/VHDL parity is incomplete. |
+| StateBank | D[i], CLK, optional EN/RST | Q[i] | Design-canvas grouped state abstraction; Verify and Export are intentionally blocked in this stable preview because runtime/VHDL parity is incomplete. |
 | D Flip-Flop | D, CLK, EN (optional), RST (optional) | Q, Q̄ | Captures D on rising edge of CLK. RST forces Q=0 asynchronously. EN gates the capture. |
 | T Flip-Flop | T, CLK, CLR | Q, Q̄ | T=1 toggles Q on rising CLK edge. T=0 holds Q. CLR resets Q=0. |
 | JK Flip-Flop | J, K, CLK, CLR | Q, Q̄ | J=1,K=0: set. J=0,K=1: reset. J=K=1: toggle. J=K=0: hold. |

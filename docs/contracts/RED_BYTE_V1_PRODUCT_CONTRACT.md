@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-06-13
+last_validated: 2026-07-27
 owner: Connor Angiel
 used_by_claude: true
 role: V1 product contract reset for RedByte
@@ -18,7 +18,7 @@ It helps a student:
 
 1. Start a blank, starter, saved, or instructor-defined lab project.
 2. Build a supported digital-logic circuit visually.
-3. Verify behavior with observable stimulus, expected outputs, compare results, and repair evidence.
+3. Run authored stimulus, inspect waveform/circuit Replay, and add optional expected-output checks when validation is required.
 4. Map project signals to Digilent Basys3 board resources and package pins.
 5. Export a coherent Vivado-ready package.
 6. Continue in Vivado for synthesis, implementation, bitstream generation, programming, and observation when those proof tiers are required.
@@ -55,6 +55,11 @@ Export -> Vivado build -> Program Basys3 -> Observe board behavior
 ```
 
 Import is a utility entry point. It is not part of the primary student spine.
+
+The current supported sequential boundary is Register1 with one clock,
+rising-edge capture, active-high asynchronous reset, and supported enable
+semantics. RegisterBus, StateBank, falling-edge capture, multi-clock designs,
+and unsupported register modes remain blocked.
 
 ## V1 Proof Tiers
 
