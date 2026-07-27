@@ -25,6 +25,7 @@ import { computeAlignmentGuides } from './tools/alignmentGuides';
 import { trackRender, useUiTickStore } from '@redbyte/rb-utils';
 import { CanvasHost, snapToGrid as snapPointToGrid, fitToBounds, clientToLocal } from '@redbyte/rb-viewport';
 import { useCanvasInput } from './useCanvasInput';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion';
 
 export interface LogicCanvasProps {
   engine: TickEngine;
@@ -209,6 +210,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onDeleteFeedback,
 }) => {
   trackRender('LogicCanvas');
+  const prefersReducedMotion = usePrefersReducedMotion();
   const uiTick = useUiTickStore((state) => state.uiTick);
 
   const camera = useLogicViewStore(useShallow((state) => state.camera));
@@ -1667,13 +1669,15 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   opacity="0.78"
                   pointerEvents="none"
                 >
-                  <animate
-                    attributeName="stroke-dashoffset"
-                    from="0"
-                    to="28"
-                    dur="0.42s"
-                    repeatCount="indefinite"
-                  />
+                  {!prefersReducedMotion ? (
+                    <animate
+                      attributeName="stroke-dashoffset"
+                      from="0"
+                      to="28"
+                      dur="0.42s"
+                      repeatCount="indefinite"
+                    />
+                  ) : null}
                 </line>
                 <circle
                   data-testid="logic-wire-preview-tip"
@@ -1684,8 +1688,12 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   opacity="0.72"
                   pointerEvents="none"
                 >
-                  <animate attributeName="r" values="2.2;4.8;2.2" dur="0.42s" repeatCount="indefinite" />
-                  <animate attributeName="opacity" values="0.52;0.95;0.52" dur="0.42s" repeatCount="indefinite" />
+                  {!prefersReducedMotion ? (
+                    <>
+                      <animate attributeName="r" values="2.2;4.8;2.2" dur="0.42s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="0.52;0.95;0.52" dur="0.42s" repeatCount="indefinite" />
+                    </>
+                  ) : null}
                 </circle>
                 {!isValid && rejectionReason && (() => {
                   const shortReason = rejectionReason.includes('itself') ? 'Same node'

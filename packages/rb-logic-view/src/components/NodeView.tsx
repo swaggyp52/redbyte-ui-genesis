@@ -6,6 +6,7 @@ import React from 'react';
 import type { Node, PortRef } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
 import { wirePortState } from '../tools/wireGuidance';
+import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 
 type NodeLodBand = 'full' | 'compact' | 'minimal';
 
@@ -137,6 +138,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   issueGlow,
   issuePortSeverities = null,
 }) => {
+  const prefersReducedMotion = usePrefersReducedMotion();
   // Safe rotation: default to 0 if undefined to prevent rotate(undefined) SVG errors
   const safeRotation = Number.isFinite(node.rotation) ? node.rotation : 0;
 
@@ -472,7 +474,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           rx={nodeCornerRadius}
         />
         {/* Edge-triggered flash overlay */}
-        {flashState && (
+        {flashState && !prefersReducedMotion && (
           <rect
             key={flashState.key}
             x={-size / 2}
@@ -1149,7 +1151,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         rx={nodeCornerRadius}
       />
       {/* Edge-triggered flash overlay */}
-      {flashState && (
+      {flashState && !prefersReducedMotion && (
         <rect
           key={flashState.key}
           x={-size / 2}

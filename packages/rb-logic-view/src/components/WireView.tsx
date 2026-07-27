@@ -5,6 +5,7 @@
 import React from 'react';
 import type { Connection, Node } from '@redbyte/rb-logic-core';
 import type { Camera } from '../useLogicViewStore';
+import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 
 const getConnectionKey = (connection: Connection) => {
   const fromIsString = typeof connection.from === 'string';
@@ -126,6 +127,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
   mismatchColors,
   unrelatedInTraceScope = false,
 }) => {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const { fromNodeId, toNodeId, fromPortName, toPortName, wireId } = getConnectionKey(connection);
 
   const fromNode = nodes.find((n) => n.id === fromNodeId);
@@ -325,7 +327,7 @@ const WireViewComponent: React.FC<WireViewProps> = ({
 
       {/* Animated signal flow particles - stable group */}
       <g key={`${wireId}-particles`}>
-        {isActive && (
+        {isActive && !prefersReducedMotion && (
           <>
             <circle key="particle-1" r="3" fill={strokeColor} opacity={0.9}>
               <animateMotion dur="1.5s" repeatCount="indefinite" path={path} />
