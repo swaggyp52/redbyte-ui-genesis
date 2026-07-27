@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { HardwareMappingDocumentV2 } from '@redbyte/rb-utils';
 import { applyMaterializedPinToHardwareMappingV2 } from '@redbyte/rb-utils';
 import {
+  applyScalarResourceMetadata,
   buildHardwareMappingV2FromProjectIoRows,
   deriveMappingCompleteness,
   enrichProjectIoRowsWithV2Metadata,
   materializedIoRowsFromHardwareMappingV2,
+  synchronizeScalarHardwareMappingV2WithProjectIoRows,
 } from '../hardwareMappingBridge';
 
 describe('hardwareMappingBridge', () => {
@@ -113,5 +115,71 @@ describe('hardwareMappingBridge', () => {
         expect(scalar.boardResourceType).toBe('clock_pin');
       }
     });
+  });
+
+  it('does not copy clock metadata onto an unrelated duplicated input', () => {
+    const source: HardwareMappingDocumentV2 = {
+      schemaVersion: '2.0',
+      boardId: 'basys3',
+      entries: [{
+        kind: 'scalar',
+        width: 1,
+        id: 'clk',
+        direction: 'in',
+        nodeId: 'clock-node',
+        port: 'out',
+        portName: 'CLK',
+        label: 'CLK',
+        pin: '',
+        timingRole: 'clock',
+        boardResourceType: 'clock_pin',
+      }],
+    };
+
+    const synchronized = synchronizeScalarHardwareMappingV2WithProjectIoRows(source, [{
+      id: 'reset',
+      nodeId: 'reset-node',
+      port: 'out',
+      label: 'RESET',
+      direction: 'in',
+      pin: '',
+      required: true,
+    }]);
+    const reset = synchronized.entries[0];
+
+    expect(reset?.kind).toBe('scalar');
+    if (reset?.kind === 'scalar') {
+      expect(reset.boardResourceType).toBeUndefined();
+      expect(reset.timingRole).toBeUndefined();
+    }
+  });
+
+  it('replaces stale clock metadata when RESET is assigned to a button', () => {
+    const source: HardwareMappingDocumentV2 = {
+      schemaVersion: '2.0',
+      boardId: 'basys3',
+      entries: [{
+        kind: 'scalar',
+        width: 1,
+        id: 'reset',
+        direction: 'in',
+        nodeId: 'reset-node',
+        port: 'out',
+        portName: 'RESET',
+        label: 'RESET',
+        pin: 'U18',
+        timingRole: 'clock',
+        boardResourceType: 'clock_pin',
+      }],
+    };
+
+    const repaired = applyScalarResourceMetadata(source, 'reset', 'U18');
+    const reset = repaired.entries[0];
+
+    expect(reset?.kind).toBe('scalar');
+    if (reset?.kind === 'scalar') {
+      expect(reset.boardResourceType).toBe('button');
+      expect(reset.timingRole).toBe('reset');
+    }
   });
 });

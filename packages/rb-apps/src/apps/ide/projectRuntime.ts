@@ -41,6 +41,7 @@ import {
 import { defaultNodeConfig } from './defaultNodeConfig';
 import {
   buildHardwareMappingV2FromProjectIoRows,
+  applyScalarResourceMetadata,
   cloneHardwareMappingDocumentV2,
   enrichProjectIoRowsWithV2Metadata,
   materializedIoRowsFromHardwareMappingV2,
@@ -830,8 +831,12 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         set((state) => {
           const { hardwareMappingV2: synchronizedCurrentDoc } =
             deriveAuthoritativeHardwareState(state.circuit, state.hardwareMappingV2);
-          const nextDoc = applyMaterializedPinToHardwareMappingV2(
-            structuredClone(synchronizedCurrentDoc),
+          const nextDoc = applyScalarResourceMetadata(
+            applyMaterializedPinToHardwareMappingV2(
+              structuredClone(synchronizedCurrentDoc),
+              rowId,
+              pin
+            ),
             rowId,
             pin
           );
@@ -930,11 +935,20 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       },
       setVectors: (vectors) => {
         set((state) => {
+          const activeScenario = getActiveScenario(state.scenarios, state.activeScenarioId);
+          const normalizedCurrentVectors = normalizeVectorsForLiveIo(
+            cloneVectors(activeScenario?.vectors ?? state.projectVectors),
+            state.projectIoRows
+          );
           const projectVectors = normalizeVectorsForLiveIo(cloneVectors(vectors), state.projectIoRows);
+          const preserveExplicitSteps =
+            stableSerialize(vectorStimulusOnly(normalizedCurrentVectors)) ===
+            stableSerialize(vectorStimulusOnly(projectVectors));
           const nextScenarioState = syncActiveScenarioVectors(
             state.scenarios,
             state.activeScenarioId,
-            projectVectors
+            projectVectors,
+            preserveExplicitSteps
           );
           return {
             projectVectors,
@@ -2657,7 +2671,8 @@ function stateFromExample(
 function syncActiveScenarioVectors(
   scenarios: VerifyScenario[],
   activeScenarioId: string,
-  vectors: TestVector[]
+  vectors: TestVector[],
+  preserveExplicitSteps = false
 ): { scenarios: VerifyScenario[]; activeScenarioId: string } {
   const nextVectors = cloneVectors(vectors);
   if (scenarios.length === 0) {
@@ -2678,20 +2693,39 @@ function syncActiveScenarioVectors(
     scenarios: scenarios.map((scenario) => {
       if (scenario.id !== resolvedActiveScenarioId) return scenario;
       const currentVectors = cloneVectors(Array.isArray(scenario.vectors) ? scenario.vectors : []);
+      const preservesExplicitStimulus =
+        Boolean(scenario.steps?.length) &&
+        (
+          preserveExplicitSteps ||
+          stableSerialize(vectorStimulusOnly(materializeScenarioVectors(scenario))) ===
+            stableSerialize(vectorStimulusOnly(nextVectors))
+        );
+      const nextSteps = scenario.steps
+        ? preservesExplicitStimulus
+          ? scenario.steps.map(cloneScenarioStep)
+          : deriveScenarioStepsFromVectors(nextVectors)
+        : undefined;
       if (stableSerialize(currentVectors) === nextVectorsSignature) {
         return {
           ...scenario,
           vectors: nextVectors,
-          steps: scenario.steps ? deriveScenarioStepsFromVectors(nextVectors) : undefined,
+          steps: nextSteps,
         };
       }
       return stampScenario({
         ...scenario,
         vectors: nextVectors,
-        steps: scenario.steps ? deriveScenarioStepsFromVectors(nextVectors) : undefined,
+        steps: nextSteps,
       });
     }),
   };
+}
+
+function vectorStimulusOnly(vectors: TestVector[]): Array<Pick<TestVector, 'tick' | 'inputs'>> {
+  return vectors.map((vector) => ({
+    tick: vector.tick,
+    inputs: { ...(vector.inputs ?? {}) },
+  }));
 }
 
 function resolveActiveScenarioVectors(
@@ -3812,16 +3846,12 @@ function commitDesignSnapshot(
     scenarioAuthority: reconciledTestbench.scenarioAuthority,
     activeExampleId: nextActiveExampleId,
     // A behavioral edit invalidates produced evidence, never authored intent.
-    // The archived run remains in verifyRunHistory for review, while current
-    // PASS/FAIL, waveform, mismatch, hash, and timestamp authority are cleared.
-    verifyLastRun: designBehaviorChanged
-      ? undefined
-      : state.verifyLastRun
-        ? cloneVerifyRun(state.verifyLastRun)
-        : undefined,
+    // Preserve the previous run as an inspectable stale reference while
+    // dirtySinceVerify prevents it from carrying current PASS/FAIL authority.
+    verifyLastRun: state.verifyLastRun ? cloneVerifyRun(state.verifyLastRun) : undefined,
     projectHealthCore: {
       ...state.projectHealthCore,
-      lastVerify: designBehaviorChanged ? undefined : state.projectHealthCore.lastVerify,
+      lastVerify: state.projectHealthCore.lastVerify,
       dirtySinceVerify: designBehaviorChanged ? true : state.projectHealthCore.dirtySinceVerify,
       dirtySinceExport: designBehaviorChanged ? true : state.projectHealthCore.dirtySinceExport,
     },

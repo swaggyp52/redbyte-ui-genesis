@@ -20,7 +20,9 @@ export function buildVerifyCircuitEvidenceHash(circuit: Circuit): string {
 function normalizeVerifySemanticCircuit(circuit: Circuit) {
   const normalized = normalizeCircuit(circuit);
   return {
-    nodes: normalized.nodes.map(({ state: _state, ...node }) => node),
+    nodes: normalized.nodes.map(
+      ({ state: _state, position: _position, x: _x, y: _y, ...node }) => node
+    ),
     connections: normalized.connections,
   };
 }

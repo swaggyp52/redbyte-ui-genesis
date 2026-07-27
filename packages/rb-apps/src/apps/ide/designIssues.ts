@@ -97,7 +97,7 @@ export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
     const semantics = getDesignIssueSemantics(node.type);
     if (!semantics) continue;
 
-    const inputPorts = semantics.inputPorts;
+    const inputPorts = getRequiredInputPorts(node, semantics.inputPorts);
 
     for (const portName of inputPorts) {
       const portKey = `${node.id}.${portName}`;
@@ -163,6 +163,27 @@ export function computeDesignIssues(circuit: Circuit): DesignIssueMap {
   }
 
   return issueMap;
+}
+
+function getRequiredInputPorts(
+  node: Circuit['nodes'][number],
+  declaredPorts: string[]
+): string[] {
+  if (node.type !== 'Register1' && node.type !== 'RegisterBus' && node.type !== 'StateBank') {
+    return declaredPorts;
+  }
+
+  const hasEnable = node.config?.hasEnable === true;
+  const resetKind =
+    typeof node.config?.resetKind === 'string'
+      ? node.config.resetKind
+      : 'none';
+
+  return declaredPorts.filter((portName) => {
+    if (portName === 'EN') return hasEnable;
+    if (portName === 'RST') return resetKind !== 'none';
+    return true;
+  });
 }
 
 export function nodeIssueSeverity(

@@ -208,7 +208,25 @@ export function computeScenarioStimulusHash(scenario: VerifyScenario): string {
  * Returns vectors from explicit steps when present; falls back to stored vectors.
  */
 export function materializeScenarioVectors(scenario: VerifyScenario): TestVector[] {
-  return materializeVectorsFromScenarioSteps(scenario.steps, scenario.vectors);
+  const materialized = materializeVectorsFromScenarioSteps(scenario.steps, scenario.vectors);
+  if (!scenario.steps || scenario.steps.length === 0) return materialized;
+
+  const storedByTick = new Map(
+    scenario.vectors.map((vector) => [vector.tick, vector] as const)
+  );
+  return materialized.map((vector) => {
+    const stored = storedByTick.get(vector.tick);
+    if (!stored) return vector;
+    return {
+      ...stored,
+      ...vector,
+      inputs: { ...vector.inputs },
+      expected: {
+        ...(vector.expected ?? {}),
+        ...(stored.expected ?? {}),
+      },
+    };
+  });
 }
 
 /**

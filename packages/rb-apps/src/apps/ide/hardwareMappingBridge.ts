@@ -13,8 +13,60 @@ import {
   type HardwareMappingScalarV2,
 } from '@redbyte/rb-utils';
 import type { IdeExampleIoRow } from './examplesCatalog';
+import { getBasys3BoardResource } from '../../fpga/boards/basys3/basys3Pins';
 
 export { cloneHardwareMappingDocumentV2 };
+
+/**
+ * Reconciles scalar metadata with the physical resource the student just chose.
+ * This prevents an old clock classification from surviving when that logical
+ * row is deliberately rebound to a button or switch.
+ */
+export function applyScalarResourceMetadata(
+  doc: HardwareMappingDocumentV2,
+  rowId: string,
+  pin: string
+): HardwareMappingDocumentV2 {
+  const next = cloneHardwareMappingDocumentV2(doc);
+  const entry = next.entries.find(
+    (candidate): candidate is HardwareMappingScalarV2 =>
+      candidate.kind === 'scalar' && candidate.id === rowId
+  );
+  if (!entry) return next;
+
+  const resource = getBasys3BoardResource(pin);
+  const logicalToken = normalizeMappingToken(entry.label ?? entry.id);
+  const isLogicalReset = /^(reset|rst|clear|clr)/.test(logicalToken);
+  if (!resource) {
+    entry.boardResourceType = inferBoardResourceFromLabel(entry.label ?? entry.id);
+    entry.timingRole = isLogicalReset
+      ? 'reset'
+      : entry.boardResourceType === 'clock_pin'
+        ? 'clock'
+        : undefined;
+    return next;
+  }
+
+  entry.boardResourceType =
+    resource.category === 'clock'
+      ? 'clock_pin'
+      : resource.category === 'switch'
+        ? 'switch'
+        : resource.category === 'button'
+          ? 'button'
+          : resource.category === 'led'
+            ? 'led'
+            : resource.category === 'seven_seg'
+              ? 'seven_seg'
+              : 'generic';
+  entry.timingRole =
+    isLogicalReset
+      ? 'reset'
+      : resource.category === 'clock'
+        ? 'clock'
+        : undefined;
+  return next;
+}
 
 /** Insert or update a scalar boundary entry (Design / board IO flows). */
 export function upsertScalarMappingEntry(
@@ -324,9 +376,12 @@ export function synchronizeScalarHardwareMappingV2WithProjectIoRows(
       }
     }
 
+    // Direction is only a compatibility hint. It must not, by itself, transfer
+    // a clock/reset resource role onto a newly duplicated boundary signal.
+    const hasMeaningfulMatch = bestIndex >= 0 && bestScore > 50;
     const matchedEntry =
-      bestIndex >= 0 && bestScore > 0 ? scalarEntries[bestIndex] : undefined;
-    if (bestIndex >= 0 && bestScore > 0) {
+      hasMeaningfulMatch ? scalarEntries[bestIndex] : undefined;
+    if (hasMeaningfulMatch) {
       usedScalarIndexes.add(bestIndex);
       const previousId = normalizeMappingToken(matchedEntry?.id);
       const nextId = row.id.trim();

@@ -158,6 +158,43 @@ describe('circuitProjection', () => {
     );
   });
 
+  it('keeps Verify authority current when only canvas positions change', () => {
+    const circuit = buildCircuit('layout');
+    const moved = structuredClone(circuit);
+    moved.nodes[0]!.position = { x: 320, y: 240 };
+    moved.nodes[0]!.x = 320;
+    moved.nodes[0]!.y = 240;
+    const projectIoRows = useProjectRuntime.getState().projectIoRows;
+    const vectors = [{ tick: 0, inputs: { sw0: 0 }, expected: { ld0: 0 } }];
+
+    expect(
+      buildCurrentVerifyProjectHash({
+        circuit,
+        projectVectors: vectors,
+        projectIoRows,
+      })
+    ).toBe(
+      buildCurrentVerifyProjectHash({
+        circuit: moved,
+        projectVectors: vectors,
+        projectIoRows,
+      })
+    );
+    expect(
+      buildCurrentVerifyReplayHash({
+        circuit,
+        projectVectors: vectors,
+        projectIoRows,
+      })
+    ).toBe(
+      buildCurrentVerifyReplayHash({
+        circuit: moved,
+        projectVectors: vectors,
+        projectIoRows,
+      })
+    );
+  });
+
   it('treats starter input labels and canonical ids as the same replay stimulus', () => {
     const circuit = buildCircuit('verify');
     const projectIoRows = [

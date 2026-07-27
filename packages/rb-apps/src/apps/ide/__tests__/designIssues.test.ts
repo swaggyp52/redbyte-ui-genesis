@@ -82,6 +82,25 @@ describe('computeDesignIssues', () => {
     expect(portKeys).not.toContain('dff0.clk');
   });
 
+  it('only requires enabled Register1 control ports', () => {
+    const circuit = makeCircuit([{
+      id: 'reg0',
+      type: 'Register1',
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      config: {
+        hasEnable: false,
+        resetKind: 'async_clear',
+      },
+      state: {},
+    }]);
+
+    const portKeys = Array.from(computeDesignIssues(circuit).byPort.keys()).sort();
+
+    expect(portKeys).toEqual(['reg0.CLK', 'reg0.D', 'reg0.RST']);
+    expect(portKeys).not.toContain('reg0.EN');
+  });
+
   it('derives issue ports from metadata and skips unknown custom nodes', () => {
     const circuit = makeCircuit([
       { id: 'fa0', type: 'FullAdder', position: { x: 0, y: 0 }, rotation: 0, config: {}, state: {} },

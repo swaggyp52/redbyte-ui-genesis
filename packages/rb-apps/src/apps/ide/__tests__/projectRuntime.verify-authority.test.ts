@@ -5,7 +5,7 @@ import { useCircuitStore } from '../../../stores/circuitStore';
 import { deriveVerifySchedule } from '../../../fpga/boards/basys3/verifySchedule';
 import { choosePrimaryProjectCta, deriveProjectHealth } from '../projectHealth';
 import { useProjectRuntime } from '../projectRuntime';
-import { computeScenarioContentHash } from '../verifyScenario';
+import { computeScenarioContentHash, materializeScenarioVectors } from '../verifyScenario';
 import { createScenarioStep } from '../verifyScenarioSteps';
 
 function buildAuthorityFixture(): RBProject {
@@ -1143,7 +1143,7 @@ describe('projectRuntime verify authority', () => {
     expect(moved.projectHealthCore).toEqual(healthBefore);
   });
 
-  it('keeps authored expectations but clears produced evidence when a gate is swapped', () => {
+  it('keeps authored expectations and exposes produced evidence as stale when a gate is swapped', () => {
     const runtime = useProjectRuntime.getState();
     runtime.loadExample('logic-gates');
     runtime.setVectors(structuredClone(useProjectRuntime.getState().projectVectors));
@@ -1161,6 +1161,8 @@ describe('projectRuntime verify authority', () => {
     const authoredScenario = structuredClone(
       before.scenarios.find((scenario) => scenario.id === before.activeScenarioId)
     );
+    const runBefore = structuredClone(before.verifyLastRun);
+    const healthBefore = structuredClone(before.projectHealthCore);
     const swappedCircuit = structuredClone(before.circuit);
     const xor = swappedCircuit.nodes.find((node) => node.id === 'xor_node');
     expect(xor?.type).toBe('XOR');
@@ -1184,8 +1186,10 @@ describe('projectRuntime verify authority', () => {
     expect(swappedScenario?.id).toBe(authoredScenario?.id);
     expect(swappedScenario?.name).toBe(authoredScenario?.name);
     expect(swappedScenario?.version).toBe(authoredScenario?.version);
-    expect(swapped.verifyLastRun).toBeUndefined();
-    expect(swapped.projectHealthCore.lastVerify).toBeUndefined();
+    expect(swapped.verifyLastRun).toEqual(runBefore);
+    expect(swapped.projectHealthCore.lastVerify).toEqual(healthBefore.lastVerify);
+    expect(swapped.projectHealthCore.dirtySinceVerify).toBe(true);
+    expect(swapped.projectHealthCore.dirtySinceExport).toBe(true);
     expect(swapped.verifyRunHistory.length).toBeGreaterThan(0);
   });
 
@@ -1237,6 +1241,41 @@ describe('projectRuntime verify authority', () => {
     expect(after.scenarios.find((scenario) => scenario.id === after.activeScenarioId)?.steps).toEqual(
       stepsBefore
     );
+  });
+
+  it('adds one optional check without expanding an explicit sequential timeline', () => {
+    const runtime = useProjectRuntime.getState();
+    runtime.loadFromProject(buildSequentialAuthorityFixture());
+    runtime.appendScenarioStep({
+      kind: 'observe',
+      durationTicks: 1,
+      label: 'Keep explicit timing authority',
+    });
+
+    const before = useProjectRuntime.getState();
+    const scenarioBefore = before.scenarios.find(
+      (scenario) => scenario.id === before.activeScenarioId
+    );
+    expect(scenarioBefore?.steps?.length).toBeGreaterThan(0);
+    const stepsBefore = structuredClone(scenarioBefore!.steps);
+    const vectorsBefore = materializeScenarioVectors(scenarioBefore!);
+    const targetTick = vectorsBefore[1]!.tick;
+    const withOneCheck = vectorsBefore.map((vector) =>
+      vector.tick === targetTick
+        ? { ...vector, expected: { ...(vector.expected ?? {}), q: 1 as const } }
+        : vector
+    );
+
+    runtime.setVectors(withOneCheck);
+
+    const after = useProjectRuntime.getState();
+    const scenarioAfter = after.scenarios.find(
+      (scenario) => scenario.id === after.activeScenarioId
+    );
+    expect(scenarioAfter?.steps).toEqual(stepsBefore);
+    const vectorsAfter = materializeScenarioVectors(scenarioAfter!);
+    expect(vectorsAfter).toHaveLength(vectorsBefore.length);
+    expect(vectorsAfter.find((vector) => vector.tick === targetTick)?.expected.q).toBe(1);
   });
 
   it('preserves removed output references for authored testbench review after a design mutation', () => {

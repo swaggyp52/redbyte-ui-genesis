@@ -34,21 +34,11 @@ export function deriveIoSignalRoles(
       boardResourceType: row.boardResourceType,
     });
 
-    if (boardBinding?.role === 'clock') {
-      roles[label] = 'clock';
-    } else if (boardBinding?.role === 'reset') {
-      roles[label] = 'reset';
-    } else if (
-      clockName &&
-      (lower === clockName ||
-        lower === 'clk' ||
-        lower === 'clock' ||
-        lower === 'clk100mhz' ||
-        lower.startsWith('clk_') ||
-        lower.startsWith('clock_'))
-    ) {
-      roles[label] = 'clock';
-    } else if (resetName && lower === resetName) {
+    // Logical reset intent owns the learning/simulation role even when a stale
+    // or conflicting board binding still points at a clock resource. Map Pins
+    // can then expose and repair the physical conflict without turning RESET
+    // into a second clock in Verify.
+    if (resetName && lower === resetName) {
       roles[label] = 'reset';
     } else if (
       lower === 'rst' ||
@@ -62,6 +52,20 @@ export function deriveIoSignalRoles(
       lower.startsWith('clear_')
     ) {
       roles[label] = 'reset';
+    } else if (boardBinding?.role === 'clock') {
+      roles[label] = 'clock';
+    } else if (boardBinding?.role === 'reset') {
+      roles[label] = 'reset';
+    } else if (
+      clockName &&
+      (lower === clockName ||
+        lower === 'clk' ||
+        lower === 'clock' ||
+        lower === 'clk100mhz' ||
+        lower.startsWith('clk_') ||
+        lower.startsWith('clock_'))
+    ) {
+      roles[label] = 'clock';
     } else if (row.direction === 'in') {
       roles[label] = 'input';
     } else {

@@ -858,7 +858,10 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       Array.from(signalValueMap.keys(), (signal) => normalizeFieldId(signal))
     );
     for (const field of [...inputFields, ...outputFields]) {
-      const signal = field.id;
+      const signal =
+        canonicalWaveformSignalByRawKey.get(normalizeFieldId(field.id)) ??
+        field.label?.trim() ??
+        field.id;
       const normalized = normalizeFieldId(signal);
       if (!normalized || knownSignals.has(normalized)) continue;
       signalValueMap.set(signal, new Map<number, string>());
@@ -4561,7 +4564,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             <details
               className="ide-verify-clock-policy-panel"
               data-testid="ide-verify-clock-policy-panel"
-              defaultOpen={clockOverrideMode !== 'auto' || isWarn}
+              open={clockOverrideMode !== 'auto' || isWarn ? true : undefined}
             >
               <summary>
                 Clock settings · {effectiveClockPolicy.overrideMode === 'auto'
@@ -5575,7 +5578,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onDelete={(id) => onDeleteScenario?.(id)}
           />
         )}
-        {activeScheduleContract?.timingMode === 'manual_event_driven_lab' && (
+        {(activeScheduleContract?.timingMode === 'manual_event_driven_lab' ||
+          effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
+          effectiveClockPolicy?.overrideMode === 'custom-pattern') && (
           <VerifyLabSequencerPanel
             modeLabel={sequencerModeLabel}
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
@@ -7205,11 +7210,60 @@ export function buildCanonicalWaveformSignalAliases(input: {
     return null;
   };
 
+  const evidenceRows = input.lastRun?.evidence?.ioRows ?? [];
+  const boundarySeeds =
+    evidenceRows.length > 0
+      ? evidenceRows
+      : [...input.inputFields, ...input.outputFields];
+  const boundaryLabelCounts = new Map<string, number>();
+  for (const row of boundarySeeds) {
+    const normalizedLabel = normalizeFieldId(normalizeSignalKey(row.label ?? ''));
+    if (!normalizedLabel) continue;
+    boundaryLabelCounts.set(
+      normalizedLabel,
+      (boundaryLabelCounts.get(normalizedLabel) ?? 0) + 1
+    );
+  }
+  const preferredBoundaryName = (
+    id: string | null | undefined,
+    label: string | null | undefined
+  ) => {
+    const trimmedLabel = label?.trim() ?? '';
+    const normalizedLabel = normalizeFieldId(normalizeSignalKey(trimmedLabel));
+    if (trimmedLabel && boundaryLabelCounts.get(normalizedLabel) === 1) {
+      return trimmedLabel;
+    }
+    return id?.trim() || trimmedLabel;
+  };
+
+  // Run evidence is the most precise bridge between raw simulator keys and the
+  // authored boundary contract. Register it first so waveform lanes say
+  // D / CLK / RESET / Q instead of generated ids such as d_2.
+  for (const row of evidenceRows) {
+    registerAliases(
+      preferredBoundaryName(row.id, row.label),
+      row.id,
+      row.label,
+      row.nodeId,
+      row.nodeId ? `${row.nodeId}.in` : '',
+      row.nodeId ? `${row.nodeId}.out` : '',
+      row.nodeId ? `${row.nodeId}_in` : '',
+      row.nodeId ? `${row.nodeId}_out` : '',
+      row.nodeId ? `${row.nodeId}:in` : '',
+      row.nodeId ? `${row.nodeId}:out` : ''
+    );
+  }
+
   for (const field of [...input.inputFields, ...input.outputFields]) {
-    registerAliases(field.id, field.label);
+    const canonical =
+      resolveCanonical(field.id, field.label) ??
+      preferredBoundaryName(field.id, field.label);
+    registerAliases(canonical, field.id, field.label);
   }
   for (const signal of input.mappedSignals ?? []) {
-    const canonical = resolveCanonical(signal.id, signal.label) ?? signal.id;
+    const canonical =
+      resolveCanonical(signal.id, signal.label) ??
+      preferredBoundaryName(signal.id, signal.label);
     registerAliases(
       canonical,
       signal.id,
@@ -7235,24 +7289,6 @@ export function buildCanonicalWaveformSignalAliases(input: {
       `${node.id}.out`,
       `${node.id}_out`,
       `${node.id}:out`
-    );
-  }
-
-  for (const row of input.lastRun?.evidence?.ioRows ?? []) {
-    const canonical =
-      resolveCanonical(row.id, row.label) ??
-      (row.id.trim() || row.label.trim());
-    registerAliases(
-      canonical,
-      row.id,
-      row.label,
-      row.nodeId,
-      row.nodeId ? `${row.nodeId}.in` : '',
-      row.nodeId ? `${row.nodeId}.out` : '',
-      row.nodeId ? `${row.nodeId}_in` : '',
-      row.nodeId ? `${row.nodeId}_out` : '',
-      row.nodeId ? `${row.nodeId}:in` : '',
-      row.nodeId ? `${row.nodeId}:out` : ''
     );
   }
 
@@ -7919,18 +7955,29 @@ function getVerifySignalPresentation(
   fields: VerifyVectorDraftInput[]
 ): { logicalName: string; physicalName: string | null } {
   const signalKey = normalizeFieldId(signal);
-  const matchedField = fields.find((field) => {
+  const getFieldKeys = (field: VerifyVectorDraftInput) => {
     const idKey = normalizeFieldId(field.id);
     const label = field.label?.trim() ?? '';
     const physicalLabel = label.replace(/\s*\([^()]+\)\s*$/, '').trim();
     const physicalKey = normalizeFieldId(physicalLabel);
-    return (
-      idKey === signalKey ||
-      idKey.startsWith(signalKey) ||
-      signalKey.startsWith(idKey) ||
-      physicalKey === signalKey
-    );
-  });
+    return { idKey, physicalKey };
+  };
+  // Exact identity must win before any compatibility prefix fallback. Without
+  // this, generated siblings such as d and d_2 both render as the first D lane.
+  const matchedField =
+    fields.find((field) => {
+      const { idKey, physicalKey } = getFieldKeys(field);
+      return idKey === signalKey || physicalKey === signalKey;
+    }) ??
+    fields
+      .filter((field) => {
+        const { idKey } = getFieldKeys(field);
+        return idKey.startsWith(`${signalKey}_`) || signalKey.startsWith(`${idKey}_`);
+      })
+      .sort(
+        (left, right) =>
+          getFieldKeys(right).idKey.length - getFieldKeys(left).idKey.length
+      )[0];
   const authoredLabel = matchedField?.label?.trim() || signal.trim();
   const parenthetical = authoredLabel.match(/\(([^()]+)\)\s*$/);
   const logicalName = (parenthetical?.[1] ?? authoredLabel).trim();

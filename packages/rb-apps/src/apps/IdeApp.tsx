@@ -44,7 +44,11 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ThrowOnce } from '../components/ThrowOnce';
 import { buildExportViewModel } from './ide/viewmodels/buildExportViewModel';
 import { buildProjectExportPackageSourceHash } from './ide/exportTrustState';
-import { buildCurrentVerifyProjectHash, toProjectIoMapping } from './ide/verifyProjectHash';
+import {
+  buildCurrentVerifyProjectHash,
+  buildVerifyCircuitEvidenceHash,
+  toProjectIoMapping,
+} from './ide/verifyProjectHash';
 import {
   choosePrimaryDiagnosticAction,
   type IdeDiagnostic,
@@ -430,6 +434,11 @@ export const IdeApp: React.FC = () => {
   const activeScenario = useMemo(
     () => getActiveScenario(scenarios, activeScenarioId),
     [activeScenarioId, scenarios]
+  );
+  const replayScenarioSteps = useMemo(
+    () =>
+      scenarios.find((scenario) => scenario.id === verifyLastRun?.scenarioId)?.steps ?? null,
+    [scenarios, verifyLastRun?.scenarioId]
   );
   const authoritativeProjectVectors = activeScenario?.vectors ?? [];
   const hasVectors = authoritativeProjectVectors.length > 0 || customVectors.length > 0;
@@ -2231,6 +2240,7 @@ export const IdeApp: React.FC = () => {
               externalDebugTick={debugState?.tick ?? null}
               externalDebugContext={debugState?.context ?? null}
               replaySession={verifyLastRun ?? null}
+              replaySteps={replayScenarioSteps}
               onClearExternalDebug={handleClearDebugState}
               onClearVerifyFocus={() => {
                 setVerifySelectedSignal(null);
@@ -2770,7 +2780,7 @@ export function buildCurrentVerifyReplayHash(input: {
 }): string {
   return digestValue(
     stableSerialize({
-      circuit: input.circuit,
+      circuitEvidenceHash: buildVerifyCircuitEvidenceHash(input.circuit),
       stimulusHash: computeVectorStimulusHash([
         ...input.projectVectors,
         ...(input.customVectors ?? []),

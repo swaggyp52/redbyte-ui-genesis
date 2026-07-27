@@ -199,6 +199,29 @@ describe('materializeScenarioVectors', () => {
 
     expect(materializeScenarioVectors(scenario)).toEqual(scenario.vectors);
   });
+
+  it('layers per-event optional checks onto explicit sequential stimulus without changing its timing', () => {
+    const scenario = createDefaultScenario([
+      { id: 'event-0', tick: 0, inputs: { d: 0, clk: 0 }, expected: {} },
+      { id: 'event-1', tick: 1, inputs: { d: 1, clk: 0 }, expected: { q: 0 } },
+      { id: 'event-2', tick: 2, inputs: { d: 1, clk: 1 }, expected: {} },
+    ]);
+    scenario.steps = [
+      createScenarioStep({ kind: 'set_input', targetRef: 'd', value: 0 }, 0),
+      createScenarioStep({ kind: 'set_input', targetRef: 'd', value: 1 }, 1),
+      createScenarioStep({ kind: 'pulse_step', targetRef: 'clk', pulseBehavior: 'rising' }, 2),
+    ];
+
+    const vectors = materializeScenarioVectors(scenario);
+    expect(vectors).toHaveLength(4);
+    expect(vectors[1]).toMatchObject({
+      tick: 1,
+      inputs: { d: 1 },
+      expected: { q: 0 },
+    });
+    expect(vectors[2]?.inputs.clk).toBe(0);
+    expect(vectors[3]?.inputs.clk).toBe(1);
+  });
 });
 
 describe('repairScenarioLibrary', () => {

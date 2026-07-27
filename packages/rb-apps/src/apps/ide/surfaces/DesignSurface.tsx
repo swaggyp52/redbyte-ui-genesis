@@ -34,6 +34,12 @@ import {
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
+import type { VerifyScenarioStep } from '../verifyScenarioSteps';
+import {
+  buildSequentialReplayModel,
+  findNextReplayIndex,
+  findPreviousReplayIndex,
+} from '../sequentialReplay';
 import type { RuntimeLogicValue } from '../sim/simTypes';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
@@ -229,7 +235,8 @@ export interface DesignSurfaceProps {
   externalDebugSignals?: Map<string, RuntimeLogicValue> | null;
   externalDebugTick?: number | null;
   externalDebugContext?: VerifyDebugContext | null;
-  replaySession?: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
+  replaySession?: DesignReplaySession | null;
+  replaySteps?: VerifyScenarioStep[] | null;
   onClearExternalDebug?: () => void;
   onClearVerifyFocus?: () => void;
   // C-5b: Tick navigation within the debug waveform
@@ -262,8 +269,12 @@ interface StaleReplayBreadcrumb {
   caseCount: number | null;
   signal: string | null;
   timingHint: string | null;
-  sourceSession: Pick<RuntimeVerifyRun, 'waveform' | 'meta'> | null;
+  sourceSession: DesignReplaySession | null;
 }
+
+type DesignReplaySession =
+  Pick<RuntimeVerifyRun, 'waveform' | 'meta'> &
+  Partial<Pick<RuntimeVerifyRun, 'report' | 'evidence'>>;
 
 interface PaletteItem {
   type: string;
@@ -1010,6 +1021,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   externalDebugTick,
   externalDebugContext,
   replaySession,
+  replaySteps,
   onClearExternalDebug,
   onClearVerifyFocus,
   onPrevDebugTick,
@@ -1216,6 +1228,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const replayTrace = useMemo(
     () => normalizeReplayWaveformTrace(replaySession?.waveform ?? []),
     [replaySession?.waveform]
+  );
+  const sequentialReplay = useMemo(
+    () =>
+      buildSequentialReplayModel({
+        waveform: replaySession?.waveform ?? [],
+        report: replaySession?.report ?? null,
+        ioRows: replaySession?.evidence?.ioRows ?? null,
+        steps: replaySteps,
+        clockSignalName: replaySession?.meta.clockSignalName,
+      }),
+    [
+      replaySession?.meta.clockSignalName,
+      replaySession?.evidence?.ioRows,
+      replaySession?.report,
+      replaySession?.waveform,
+      replaySteps,
+    ]
   );
   const isReplaySuppressed =
     staleReplayBreadcrumb != null &&
@@ -2344,19 +2373,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   const handleCircuitChange = useCallback(
     (nextCircuit: Circuit, opts?: { isIntermediate?: boolean }) => {
-      updateCircuit(normalizeCircuitForCanvas(nextCircuit), {
+      const normalizedCircuit = normalizeCircuitForCanvas(nextCircuit);
+      updateCircuit(normalizedCircuit, {
         skipHistory: true,
         enforceLimits: true,
       });
+      // Live input toggles are exploratory runtime state, not authored circuit
+      // mutations. Keeping their canvas state local avoids invalidating a
+      // current Verify run or reinitializing the sequential simulator.
+      if (effectiveLearningMode === 'live') {
+        return;
+      }
       if (!opts?.isIntermediate) {
-        emitCircuitMutation(normalizeCircuitForCanvas(nextCircuit));
+        emitCircuitMutation(normalizedCircuit);
       }
       lastTracedPortRef.current = null;
       setTraceState(null);
       setWireContextMenu(null);
       setWireFeedback(null);
     },
-    [emitCircuitMutation, updateCircuit]
+    [effectiveLearningMode, emitCircuitMutation, updateCircuit]
   );
 
   const handleUndo = useCallback(() => {
@@ -3370,14 +3406,53 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     debugTickCount != null &&
     debugTickCount > 1 &&
     onSelectDebugTickIndex !== undefined;
+  const activeSequentialReplayFrame = useMemo(
+    () =>
+      debugTickIndex == null || replaySession?.meta.circuitKind !== 'sequential'
+        ? null
+        : sequentialReplay.frameAt(debugTickIndex),
+    [debugTickIndex, replaySession?.meta.circuitKind, sequentialReplay]
+  );
+  const previousReplayEventIndex =
+    debugTickIndex == null
+      ? null
+      : findPreviousReplayIndex(sequentialReplay.eventSampleIndexes, debugTickIndex);
+  const nextReplayEventIndex =
+    debugTickIndex == null
+      ? null
+      : findNextReplayIndex(sequentialReplay.eventSampleIndexes, debugTickIndex);
+  const previousReplayTransitionIndex =
+    debugTickIndex == null
+      ? null
+      : findPreviousReplayIndex(sequentialReplay.transitionSampleIndexes, debugTickIndex);
+  const nextReplayTransitionIndex =
+    debugTickIndex == null
+      ? null
+      : findNextReplayIndex(sequentialReplay.transitionSampleIndexes, debugTickIndex);
+  const selectReplayIndex = useCallback(
+    (index: number | null) => {
+      if (index == null) return;
+      setReplayPlaying(false);
+      onSelectDebugTickIndex?.(index);
+    },
+    [onSelectDebugTickIndex]
+  );
   useEffect(() => {
     if (!replayPlaying || !canRenderReplayScrubber || !onSelectDebugTickIndex) return;
     const interval = window.setInterval(() => {
-      if (debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1) {
+      if (debugTickIndex == null || debugTickCount == null) {
         setReplayPlaying(false);
         return;
       }
-      onSelectDebugTickIndex(debugTickIndex + 1);
+      const nextIndex = findNextReplayIndex(
+        sequentialReplay.eventSampleIndexes,
+        debugTickIndex
+      );
+      if (nextIndex == null) {
+        setReplayPlaying(false);
+        return;
+      }
+      onSelectDebugTickIndex(nextIndex);
     }, Math.round(700 / replaySpeed));
     return () => window.clearInterval(interval);
   }, [
@@ -3387,6 +3462,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onSelectDebugTickIndex,
     replayPlaying,
     replaySpeed,
+    sequentialReplay.eventSampleIndexes,
   ]);
   useEffect(() => {
     if (!isReplayMode) setReplayPlaying(false);
@@ -5281,7 +5357,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   data-testid="ide-design-register-clock-edge"
                 >
                   <option value="rising_edge">Rising edge</option>
-                  <option value="falling_edge">Falling edge</option>
+                  <option value="falling_edge" disabled>Falling edge · unsupported</option>
                 </select>
               </label>
               <label className="ide-design-inspector-field">
@@ -5294,9 +5370,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 >
                   <option value="none">None</option>
                   <option value="async_clear">Async clear</option>
-                  <option value="async_preset">Async preset</option>
-                  <option value="sync_reset">Synchronous reset</option>
-                  <option value="sync_set">Synchronous set</option>
+                  <option value="async_preset" disabled>Async preset · unsupported</option>
+                  <option value="sync_reset" disabled>Synchronous reset · unsupported</option>
+                  <option value="sync_set" disabled>Synchronous set · unsupported</option>
                 </select>
               </label>
               <label className="ide-design-inspector-field">
@@ -5308,7 +5384,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   data-testid="ide-design-register-reset-polarity"
                 >
                   <option value="active_high">Active high</option>
-                  <option value="active_low">Active low</option>
+                  <option value="active_low" disabled>Active low · unsupported</option>
                 </select>
               </label>
               <label className="ide-design-inspector-field">
@@ -5323,6 +5399,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <option value="active_low">Active low</option>
                 </select>
               </label>
+              <IdeCallout tone="info">
+                Supported learning path: one scalar Register1, rising-edge capture,
+                and optional active-high asynchronous clear. Unsupported imported
+                settings stay visible for repair but cannot be newly selected.
+              </IdeCallout>
           </div>
         </div>
       );
@@ -6456,6 +6537,31 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               <div className="ide-design-toolbar-row-v3">
+              {effectiveLearningMode === 'live' ? (
+                <div
+                  className="ide-toolbar-group is-simulation"
+                  data-testid="ide-design-live-transport"
+                  aria-label="Exploratory simulation controls"
+                >
+                  <span className="ide-design-toolbar-group-label">Simulation</span>
+                  <IdeButton
+                    tone="secondary"
+                    onClick={simRunning ? pauseSimulation : startSimulation}
+                    testId="ide-design-live-run"
+                  >
+                    {simRunning ? 'Pause' : 'Run'}
+                  </IdeButton>
+                  <IdeButton tone="ghost" onClick={stepSimulation} testId="ide-design-live-step">
+                    Step
+                  </IdeButton>
+                  <IdeButton tone="ghost" onClick={resetSimulation} testId="ide-design-live-reset">
+                    Reset
+                  </IdeButton>
+                  <span className="ide-design-live-tick" data-testid="ide-design-live-tick">
+                    Tick {runtimeSim.tick}
+                  </span>
+                </div>
+              ) : null}
               {/* Groups 1+2: Canvas tools — only visible when canvas is in the view */}
               {isCodeWorkspace ? (
                 <div className="ide-toolbar-group is-code-context" data-testid="ide-design-code-context">
@@ -6792,39 +6898,68 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             setReplayPlaying((playing) => !playing);
                           } else if (event.key === 'ArrowLeft') {
                             event.preventDefault();
-                            onPrevDebugTick?.();
+                            selectReplayIndex(
+                              event.shiftKey
+                                ? previousReplayTransitionIndex
+                                : previousReplayEventIndex
+                            );
                           } else if (event.key === 'ArrowRight') {
                             event.preventDefault();
-                            onNextDebugTick?.();
+                            selectReplayIndex(
+                              event.shiftKey
+                                ? nextReplayTransitionIndex
+                                : nextReplayEventIndex
+                            );
+                          } else if (event.key === 'Escape') {
+                            event.preventDefault();
+                            setReplayPlaying(false);
+                            onClearExternalDebug?.();
                           }
                         }}
                       >
                         <div className="ide-design-replay-transport-heading">
                           <strong>Circuit replay</strong>
-                          <span>Recorded simulator ticks · read-only canvas</span>
+                          <span>Authored events and signal transitions · read-only canvas</span>
                         </div>
+                        {activeSequentialReplayFrame ? (
+                          <div
+                            className="ide-design-replay-state-context"
+                            data-testid="ide-design-replay-state-context"
+                          >
+                            <span>Event {activeSequentialReplayFrame.eventNumber} / {activeSequentialReplayFrame.eventCount}</span>
+                            <span>D {activeSequentialReplayFrame.data ?? '?'}</span>
+                            <span>CLK {activeSequentialReplayFrame.clock ?? '?'}</span>
+                            <span>RESET {activeSequentialReplayFrame.reset ?? '?'}</span>
+                            <span>Edge {activeSequentialReplayFrame.edge}</span>
+                            <span>Q {activeSequentialReplayFrame.preState ?? '?'} → {activeSequentialReplayFrame.postState ?? '?'}</span>
+                            <span>{activeSequentialReplayFrame.stateChanged ? 'State changed' : 'State held'}</span>
+                          </div>
+                        ) : null}
                         <div className="ide-design-debug-nav" data-testid="ide-design-debug-nav">
                           <IdeButton
                             tone="ghost"
-                            onClick={() => {
-                              setReplayPlaying(false);
-                              onSelectDebugTickIndex?.(0);
-                            }}
-                            disabled={debugTickIndex === 0}
+                            onClick={() => selectReplayIndex(sequentialReplay.eventSampleIndexes[0] ?? 0)}
+                            disabled={previousReplayEventIndex == null}
                             testId="ide-design-replay-first"
                           >
-                            First
+                            First event
                           </IdeButton>
-                          {onPrevDebugTick ? (
-                            <IdeButton
-                              tone="ghost"
-                              onClick={onPrevDebugTick}
-                              disabled={debugTickIndex === 0 || debugTickIndex == null}
-                              testId="ide-design-debug-prev"
-                            >
-                              Prev
-                            </IdeButton>
-                          ) : null}
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => selectReplayIndex(previousReplayEventIndex)}
+                            disabled={previousReplayEventIndex == null}
+                            testId="ide-design-debug-prev"
+                          >
+                            Prev event
+                          </IdeButton>
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => selectReplayIndex(previousReplayTransitionIndex)}
+                            disabled={previousReplayTransitionIndex == null}
+                            testId="ide-design-replay-prev-transition"
+                          >
+                            Prev transition
+                          </IdeButton>
                           <IdeButton
                             tone="primary"
                             onClick={() => setReplayPlaying((playing) => !playing)}
@@ -6847,26 +6982,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               />
                             </div>
                           ) : null}
-                          {onNextDebugTick ? (
-                            <IdeButton
-                              tone="ghost"
-                              onClick={onNextDebugTick}
-                              disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
-                              testId="ide-design-debug-next"
-                            >
-                              Next
-                            </IdeButton>
-                          ) : null}
                           <IdeButton
                             tone="ghost"
-                            onClick={() => {
-                              setReplayPlaying(false);
-                              if (debugTickCount != null) onSelectDebugTickIndex?.(debugTickCount - 1);
-                            }}
-                            disabled={debugTickIndex == null || debugTickCount == null || debugTickIndex >= debugTickCount - 1}
+                            onClick={() => selectReplayIndex(nextReplayTransitionIndex)}
+                            disabled={nextReplayTransitionIndex == null}
+                            testId="ide-design-replay-next-transition"
+                          >
+                            Next transition
+                          </IdeButton>
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() => selectReplayIndex(nextReplayEventIndex)}
+                            disabled={nextReplayEventIndex == null}
+                            testId="ide-design-debug-next"
+                          >
+                            Next event
+                          </IdeButton>
+                          <IdeButton
+                            tone="ghost"
+                            onClick={() =>
+                              selectReplayIndex(
+                                sequentialReplay.eventSampleIndexes[
+                                  sequentialReplay.eventSampleIndexes.length - 1
+                                ] ?? null
+                              )
+                            }
+                            disabled={nextReplayEventIndex == null}
                             testId="ide-design-replay-last"
                           >
-                            Last
+                            Last event
                           </IdeButton>
                           <label className="ide-design-replay-speed">
                             Speed
@@ -7890,7 +8034,7 @@ function resolveNodeIoPresentation(
       return {
         kind: resourceKind,
         label: getLogicalIoPresentationLabel(ioRow, node),
-        pinAlias: boardBinding.alias,
+        pinAlias: boardBinding.packagePin,
       };
     }
   }
