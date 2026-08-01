@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   WORKSPACE_DOCK_SIZE_LIMITS,
   workspacePreferencesStore,
@@ -113,6 +113,26 @@ export const IdeWorkbenchShell: React.FC<IdeWorkbenchShellProps> = ({
     '--rb-workbench-pref-right-width': `${surfacePreferences.docks.right.sizePx}px`,
     '--rb-workbench-pref-bottom-height': `${surfacePreferences.docks.bottom.sizePx}px`,
   } as React.CSSProperties;
+
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    if (!shell) return;
+
+    // React intentionally keeps the shared shell mounted between stages. Reset
+    // only the page/workspace scroll owners so a long surface cannot make the
+    // next stage appear to open halfway down. Dock size, visibility, and each
+    // stage's project state remain governed by their existing authorities.
+    const scrollRegions = [
+      shell.closest<HTMLElement>('.ide-surface-column'),
+      shell.querySelector<HTMLElement>('[data-testid="ide-mode-body"]'),
+      ...shell.querySelectorAll<HTMLElement>('.ide-panel-body'),
+    ];
+    scrollRegions.forEach((region) => {
+      if (!region) return;
+      region.scrollTop = 0;
+      region.scrollLeft = 0;
+    });
+  }, [mode]);
 
   const setDockVisible = (dockId: WorkspaceDockId, visible: boolean) => {
     workspacePreferencesStore.setDock(mode, dockId, { visible });

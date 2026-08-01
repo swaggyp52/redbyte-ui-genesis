@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render } from '@testing-library/react';
 import { IdeWorkbenchShell } from '../components/IdeWorkbenchShell';
 import { workspacePreferencesStore } from '../workspacePreferences';
 
@@ -108,5 +108,43 @@ describe('IdeWorkbenchShell Unified Workbench v3 contract', () => {
     fireEvent.click(view.getByTestId('ide-show-left-dock'));
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     window.removeEventListener('keydown', leakedArrowKey);
+  });
+
+  it('opens each stage at the top without resetting workspace preferences', () => {
+    const view = render(
+      <div className="ide-surface-column" data-testid="surface-column">
+        <IdeWorkbenchShell
+          mode="design"
+          workspace={<div className="ide-panel-body" data-testid="panel-body">Canvas</div>}
+          leftDock={<div>Library</div>}
+          rightDock={<div>Inspector</div>}
+        />
+      </div>
+    );
+    const surfaceColumn = view.getByTestId('surface-column');
+    const modeBody = view.getByTestId('ide-mode-body');
+    const panelBody = view.getByTestId('panel-body');
+    surfaceColumn.scrollTop = 180;
+    modeBody.scrollTop = 320;
+    panelBody.scrollTop = 460;
+    act(() => {
+      workspacePreferencesStore.setDock('design', 'left', { sizePx: 284 });
+    });
+
+    view.rerender(
+      <div className="ide-surface-column" data-testid="surface-column">
+        <IdeWorkbenchShell
+          mode="project"
+          workspace={<div className="ide-panel-body" data-testid="panel-body">Project center</div>}
+          leftDock={<div>Library</div>}
+          rightDock={<div>Inspector</div>}
+        />
+      </div>
+    );
+
+    expect(view.getByTestId('surface-column').scrollTop).toBe(0);
+    expect(view.getByTestId('ide-mode-body').scrollTop).toBe(0);
+    expect(view.getByTestId('panel-body').scrollTop).toBe(0);
+    expect(workspacePreferencesStore.getSnapshot().surfaces.design.docks.left.sizePx).toBe(284);
   });
 });

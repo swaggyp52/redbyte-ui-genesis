@@ -37796,6 +37796,9 @@ Key details:
   standard, clock status, and conflict context.
 - Formalized project access through `ProjectRepository` and fail-closed recovery
   behavior while retaining the existing versioned browser-storage backing.
+- Made stage transitions synchronously reset the shared surface and workspace
+  scroll owners, so returning from a long stage opens the next primary work
+  object at its top without changing persisted dock geometry or project state.
 
 **Evidence and validation boundary**
 
