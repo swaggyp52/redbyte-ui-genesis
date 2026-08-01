@@ -8,7 +8,11 @@ role: ordered RedByte Product System v3 delivery queue
 
 # RedByte Product System v3 Work Queue
 
-## Milestone A - Cohesive Workbench Foundation (active)
+## Milestone A - Cohesive Workbench Foundation
+
+**Status:** Implemented and bounded local validation complete on the draft
+branch; exact-HEAD Browser-E0 evidence is the delivery record, and user visual
+acceptance remains the merge gate.
 
 1. Establish the one product branch and draft PR; record the hardening contract.
 2. Add light-first pre-paint theme selection with Light, Dark, and System persistence.
@@ -23,9 +27,48 @@ role: ordered RedByte Product System v3 delivery queue
 
 Milestone A does not run the full release aggregate and does not merge to `main`.
 
-## Milestone B - Hierarchical Design and Component Depth
+### Candidate delivery state
+
+- Branch: `product/redbyte-workbench-v3`
+- Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
+- Release lane: `main` and `origin/main` remain at
+  `57c8a94abd15d1810bf1f85eadf751c116ffbaa6`, **Stable Preview - Browser-E0**.
+- Local evidence: `.redbyte/product-immersion/workbench-v3-milestone-a/`
+  contains the 12 required screenshots and the bounded browser evidence record.
+- Evidence boundary: the captures and assertions prove only Browser-E0 layout,
+  persistence, command, project, and mapping behavior at the recorded candidate
+  state. They do not prove Vivado, bitstream, physical-board, deployment, or
+  classroom reliability.
+- Validation boundary: the Node 20.19.0 closeout passed 33 changed/new focused
+  files and 257/257 tests, workspace typecheck, the IDE CSS audit, and the
+  unified build (344 transformed modules and verified distributable). Docs,
+  encoding, and whitespace checks complete the bounded record; the 12-screen
+  pack is generated after the final documentation commit so it identifies the
+  exact candidate commit. The full release aggregate is intentionally excluded.
+- Merge gate: user visual acceptance. PR #80 remains draft; the candidate is not
+  merged, deployed, or live.
+
+### Carried debt
+
+- The repository facade retains the existing versioned browser-storage backing;
+  IndexedDB migration is deferred.
+- Recovery snapshots are durable, and corrupt repository indexes rebuild through
+  bounded reconstruction/rollback coverage. Recovery-candidate/session signaling
+  still needs further hardening.
+- Portable project backup does not yet carry every workspace-local,
+  multi-scenario authoring document.
+- Hierarchy and sources are inspect-oriented. Nested module editing, buses,
+  named nets, code-backed modules, parameters/generics, and top selection remain
+  future work.
+- Multiple constraint sets, broader board peripherals, and deeper compatibility
+  analysis remain future work.
+
+## Milestone B - Hierarchical Design and Component Depth (next; not started)
 
 Implement modules/subcircuits, create-component-from-selection, nested editing, custom ports, buses/named nets, slicing/concatenation, parameters/generics, code-backed HDL modules, source hierarchy, and top-module selection. Prove one nontrivial multi-module project.
+
+Milestone B requires separate authorization after the Milestone A acceptance
+decision. Do not begin it as part of Milestone A closeout.
 
 ## Milestone C - Scenario and Testbench Composer
 

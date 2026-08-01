@@ -12,7 +12,7 @@ role: RedByte Product System v3 architecture and Milestone A contract
 
 RedByte is a visual, local-first FPGA project workbench and Vivado companion for digital-logic education. RedByte owns project organization, supported visual authoring, supported behavioral simulation, scenario and evidence work, supported Basys3 assignment, HDL/XDC/testbench generation, and browser-package validation. Vivado owns full HDL and IP behavior, synthesis, implementation, timing analysis, bitstream generation, programming, hardware debug, and physical observation.
 
-Milestone A changes the product system, workspace, persistence cues, and visual identity. It does not broaden the proven logic, HDL, board, or hardware boundary.
+Milestone A changes the product system, workspace, persistence cues, and visual identity. Its draft candidate uses a warm light-first ivory/graphite foundation with coral, teal, amber, and blue semantic accents plus a complementary dark theme; the prior washed-out gray/lavender treatment is not the v3 identity. It does not broaden the proven logic, HDL, board, or hardware boundary.
 
 ## Information architecture
 
@@ -46,6 +46,11 @@ Storage policy:
 - External backup: RedByte project/package archive.
 
 The UI states are `Autosaving`, `Saving`, `Saved`, `Save failed`, and `Recovery available`, with a real last-saved time and storage location. Save As creates a new project identity; Duplicate copies the durable project and local authored scenario state without inventing fresh proof.
+
+Corrupt repository indexes are reconstructed from valid durable snapshots and
+covered by bounded rollback tests. Recovery-candidate/session signaling and
+complete portable backup of workspace-local multi-scenario documents remain
+future hardening work.
 
 Reload must preserve the active project, active surface, theme, layout preset and dimensions, panel visibility, toolbar preference, scenarios, probes, checks, and mapping. It must not promote stale or transient simulation evidence.
 
@@ -82,8 +87,10 @@ Official-source baseline retrieved 2026-08-01:
 
 | Source | Version | Affected contract |
 |---|---|---|
+| [Digilent Basys 3 Resource Center](https://digilent.com/reference/programmable-logic/basys-3/start) | living product resource center, retrieved 2026-08-01 | canonical board resource index, official document routing, FPGA part reference |
 | [Digilent Basys 3 FPGA Board Reference Manual](https://digilent.com/reference/_media/reference/programmable-logic/basys-3/basys3_rm.pdf) | Revised 2019-07-10, Basys3 rev. C, DOC 502-183 | board identity, XC7A35T-1CPG236C, supported physical resources, 100 MHz oscillator on W5 |
 | [Digilent Basys-3-Master.xdc](https://github.com/Digilent/digilent-xdc/blob/master/Basys-3-Master.xdc) | current upstream master retrieved 2026-08-01 | package pins, LVCMOS33 defaults, clock constraint reference |
+| [Digilent Basys 3 Public Schematic](https://digilent.com/reference/_media/reference/programmable-logic/basys-3/basys-3-sch-public-rev-d.pdf) | Rev D.1, DOC 500-183, 2021-02-05, retrieved 2026-08-01 | physical-resource and grouping cross-check; future differential-resource reference |
 | [AMD UG892, Vivado Design Suite User Guide: Design Flows Overview](https://docs.amd.com/r/2024.2-English/ug892-vivado-design-flows-overview/Understanding-Project-Mode-and-Non-Project-Mode) | 2024.2, 2024-11-13 | Project/Tcl handoff and Vivado-owned flow stages |
 | [AMD UG895, Vivado Design Suite User Guide: System-Level Design Entry](https://docs.amd.com/r/2024.2-English/ug895-vivado-system-level-design-entry/Introduction) | 2024.2, 2024-11-13 | source sets, top module, constraints, IP/block-design boundary |
 | [AMD UG900, Vivado Design Suite User Guide: Logic Simulation](https://docs.amd.com/r/2024.2-English/ug900-vivado-logic-simulation/Exporting-Simulation-Files-and-Scripts) | 2024.2, 2024-11-13 | simulation-source/testbench handoff boundary |

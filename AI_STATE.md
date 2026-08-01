@@ -37750,3 +37750,88 @@ Key details:
 - This proves browser theme selection, prepaint application, and reload persistence only. It does not prove every legacy surface has completed light-theme contrast review; that evidence is captured later in Milestone A.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-08-01 (Product System v3 Milestone A draft candidate)
+
+**Subsystem**
+
+- Shared IDE shell, project lifecycle and persistence facade, command system,
+  Project Center, configurable Design workbench, component metadata, Basys3
+  board profile/projection, and student-visible workflow language
+
+**Source truth**
+
+- `main` and `origin/main` remain at
+  `57c8a94abd15d1810bf1f85eadf751c116ffbaa6`, the released **Stable Preview -
+  Browser-E0** lane.
+- Milestone A is implemented only on `product/redbyte-workbench-v3` in draft PR
+  [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80). It is not
+  merged, deployed, live, or release-certified. Bounded local validation is
+  complete; exact-HEAD Browser-E0 delivery identifies the draft candidate, and
+  user visual acceptance remains the merge gate.
+
+**What changed**
+
+- Reframed the visible workbench spine as `Project -> Design -> Simulate ->
+  Board & Constraints -> Build & Export`, while retaining compatible internal
+  route IDs. `Import / Recover` remains a separate reviewed utility and Vivado
+  remains an external handoff.
+- Added the warm light-first and complementary dark visual identities, prepaint
+  theme persistence, one shared shell, grouped command palette, versioned
+  workspace preferences, presets, keyboard-accessible dock visibility and
+  resizing, toolbar visibility/group ordering, classroom overflow, and reset.
+- Rebuilt Project as a live Project Center over project, source, simulation,
+  mapping, package, storage, recent-project, and recovery state rather than a
+  decorative dashboard.
+- Reworked Design around Canvas / Code / Split views; Components, Hierarchy,
+  Sources, and Board left tabs; Inspector, Properties, and Constraints right
+  tabs; and Problems, Console, and Simulation bottom tabs. Current hierarchy
+  and source projections are inspect-oriented and do not claim nested editing.
+- Added a versioned component-definition facade over current support/runtime
+  truth and explicitly keeps unsupported RegisterBus and StateBank behavior
+  outside the active simulation/export boundary.
+- Added a versioned Basys3 profile/provenance facade and semantic compatibility
+  projection. Inline Design assignment and Board & Constraints now read and
+  mutate the same mapping authority, with resource class, package pin, I/O
+  standard, clock status, and conflict context.
+- Formalized project access through `ProjectRepository` and fail-closed recovery
+  behavior while retaining the existing versioned browser-storage backing.
+
+**Evidence and validation boundary**
+
+- Implementation-time focused tests cover theme selection, repository and
+  lifecycle behavior, workspace preferences, command registry/palette, shared
+  shell and keyboard resizing, Project projections, component definitions,
+  board profile/projection, mapping workflows, and visible stage grammar.
+- The ignored local evidence area
+  `.redbyte/product-immersion/workbench-v3-milestone-a/` contains 12 required
+  captures and a machine-readable Browser-E0 record covering theme/project
+  persistence, command execution, dock visibility/geometry persistence and
+  reset, inline assignment synchronization, and root-axis overflow at the
+  recorded viewports.
+- The bounded Node 20.19.0 closeout passed 33 changed/new focused test files
+  with 257/257 tests, workspace typecheck, the IDE CSS audit, and the unified
+  build with 344 transformed modules plus a verified distributable. Canonical
+  docs, encoding, and whitespace checks complete the same record.
+- Generate the 12-capture pack after this final documentation commit so the
+  Browser-E0 record identifies the exact candidate commit. The full release
+  aggregate is deliberately outside this milestone.
+
+**Proof boundary / remaining**
+
+- Browser captures prove only visible layout and their asserted interactions;
+  focused tests and builds prove only the software paths they exercise.
+- The repository facade still uses the current browser-storage backing rather
+  than IndexedDB. Corrupt indexes now rebuild from valid durable snapshots with
+  bounded rollback coverage; recovery-candidate/session signaling and complete
+  portable backup of workspace-local multi-scenario documents need further
+  hardening.
+- Nested modules, buses/named nets, code-backed module editing,
+  parameters/generics, multiple constraint sets, broader board resources, and
+  deeper compatibility analysis remain future work.
+- No Milestone A evidence proves Vivado E1, bitstream E2, physical-board E3,
+  production readiness, or unsupervised classroom reliability.
+- **Milestone B - Hierarchical Design and Component Depth** is next but not
+  started and requires separate authorization.
+
+- **Attribution**: Connor Angiel
