@@ -9,6 +9,8 @@ import type { MacroDefinition } from '../macros/MacroLibrary';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import { COMPONENT_DEFINITION_REGISTRY } from '../componentDefinitions';
+import { createClockTimingGuidance } from '../timingGuidance';
 
 const BASE_CIRCUIT: Circuit = {
   nodes: [
@@ -233,6 +235,26 @@ describe('DesignSurface palette dock redesign', () => {
     expect(view.queryByTestId('ide-design-live-inputs-toggle')).toBeNull();
   });
 
+  it('projects built-in card copy and semantic search from ComponentDefinition', () => {
+    const view = renderSurface();
+    const xnorDefinition = COMPONENT_DEFINITION_REGISTRY.getByRuntimeType('XNOR');
+    expect(xnorDefinition).toBeDefined();
+
+    const xnorCard = view.getByTestId('ide-design-palette-xnor');
+    expect(xnorCard).toHaveAttribute(
+      'title',
+      `${xnorDefinition?.displayName} - ${xnorDefinition?.description}`
+    );
+    expect(xnorCard.textContent).toContain(xnorDefinition?.displayName);
+    expect(xnorCard.textContent).toContain(xnorDefinition?.description);
+
+    fireEvent.change(view.getByTestId('ide-design-search'), {
+      target: { value: xnorDefinition?.category },
+    });
+    expect(view.getByTestId('ide-design-palette-xnor')).toBeTruthy();
+    expect(view.queryByTestId('ide-design-palette-and')).toBeNull();
+  });
+
   it('groups sequential palette into registers and legacy subsections', () => {
     const view = renderSurface();
     const palette = view.getByTestId('ide-design-dock-palette');
@@ -321,5 +343,82 @@ describe('DesignSurface palette dock redesign', () => {
     // CLK100MHZ Board Resource is still surfaceable — that's the canonical clock
     fireEvent.change(searchInput, { target: { value: 'clock' } });
     expect(view.getByTestId('ide-design-board-input-clk100mhz')).toBeTruthy();
+  });
+
+  it('describes an explicitly typed switch clock as a manual clock assignment', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'enter',
+          nodeId: 'sw0_node',
+          label: 'ENTER (SW5)',
+          pin: 'V15',
+          port: 'out',
+          direction: 'in',
+          timingRole: 'clock',
+          boardResourceType: 'switch',
+        },
+      ],
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Manual clock switch');
+    expect(facts).toContain('Manual clock switch SW5 assigned');
+    expect(facts).not.toContain('Clock resource required');
+  });
+
+  it('uses structural timing guidance for the metadata-absent Lab 8 ENTER row', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'iom-enter',
+          nodeId: 'sw0_node',
+          label: 'ENTER (SW5)',
+          pin: 'V15',
+          port: 'out',
+          direction: 'in',
+        },
+      ],
+      timingGuidance: createClockTimingGuidance('ENTER (SW5)'),
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Manual clock switch');
+    expect(facts).toContain('Manual clock switch SW5 assigned');
+    expect(facts).not.toContain('Not a timing-control signal');
+  });
+
+  it('describes a switch-backed reset as a reset switch rather than a button', () => {
+    useLogicViewStore.setState({
+      selection: { nodes: new Set(['sw0_node']), wires: new Set() },
+    });
+    const view = renderSurface({
+      ioRows: [
+        {
+          id: 'reset',
+          nodeId: 'sw0_node',
+          label: 'RESET (SW4)',
+          pin: 'W15',
+          port: 'out',
+          direction: 'in',
+          timingRole: 'reset',
+          boardResourceType: 'switch',
+        },
+      ],
+    });
+
+    fireEvent.click(view.getByTestId('ide-design-right-tab-constraints'));
+    const facts = view.getByTestId('ide-design-inline-board-assignment').textContent ?? '';
+    expect(facts).toContain('Reset-capable switch');
+    expect(facts).toContain('Reset switch SW4 assigned');
+    expect(facts).not.toContain('Reset-capable button');
   });
 });

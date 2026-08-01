@@ -18,7 +18,7 @@ describe('IdeStageNav stage grammar', () => {
     expect(view.getByTestId('mode-button-project')).toBeTruthy();
     expect(view.getByTestId('mode-button-design')).toBeTruthy();
     expect(view.getByTestId('mode-button-verify')).toBeTruthy();
-    expect(view.getByTestId('mode-button-hardware').textContent).toContain('Map Pins');
+    expect(view.getByTestId('mode-button-hardware').textContent).toContain('Board & Constraints');
     expect(view.getByTestId('mode-button-export')).toBeTruthy();
   });
 
@@ -49,8 +49,14 @@ describe('IdeStageNav stage grammar', () => {
 });
 
 describe('STUDENT_WORKFLOW_SPINE stage grammar', () => {
-  it('is exactly Project, Design, Verify, Map Pins, Export', () => {
-    expect(STUDENT_WORKFLOW_SPINE).toEqual(['Project', 'Design', 'Verify', 'Map Pins', 'Export']);
+  it('is exactly Project, Design, Simulate, Board & Constraints, Build & Export', () => {
+    expect(STUDENT_WORKFLOW_SPINE).toEqual([
+      'Project',
+      'Design',
+      'Simulate',
+      'Board & Constraints',
+      'Build & Export',
+    ]);
     expect(STUDENT_WORKFLOW_SPINE).not.toContain('Program');
     expect(STUDENT_WORKFLOW_SPINE).not.toContain('Import');
   });

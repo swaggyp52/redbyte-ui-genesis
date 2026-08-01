@@ -11,9 +11,21 @@ import { usePrefersReducedMotion } from '../usePrefersReducedMotion';
 type NodeLodBand = 'full' | 'compact' | 'minimal';
 
 function resolveNodeLod(zoom: number): NodeLodBand {
-  if (zoom < 0.70) return 'minimal';
+  // 50% is the lowest authored Design zoom preset. Keep circuit identity
+  // visible there; the minimal band is reserved for free-wheel overview zoom.
+  if (zoom < 0.5) return 'minimal';
   if (zoom < 0.85) return 'compact';
   return 'full';
+}
+
+function compactNodeLabel(label: string, maxCharacters = 18): string {
+  const characters = Array.from(label.trim());
+  if (characters.length <= maxCharacters) return characters.join('');
+  return `${characters.slice(0, maxCharacters - 1).join('')}…`;
+}
+
+function estimateLabelWidth(label: string, fontSize: number): number {
+  return Math.min(144, Math.max(56, Math.round(Array.from(label).length * fontSize * 0.58 + 18)));
 }
 
 export interface ChipMetadata {
@@ -322,12 +334,28 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     node.type !== 'Clock';
   const isChip = !!chipMetadata;
   const authoredChipLabel = isChip ? node.label?.trim() : '';
-  const chipDisplayLabel =
-    authoredChipLabel && authoredChipLabel.length > 0
-      ? authoredChipLabel.length > 11
-        ? `${authoredChipLabel.slice(0, 10)}…`
-        : authoredChipLabel
-      : chipMetadata?.name ?? node.type;
+  const chipLogicalName = authoredChipLabel || chipMetadata?.name || node.type;
+  const chipDisplayLabel = compactNodeLabel(chipLogicalName);
+  const chipLogicalNameFont = Math.min(12, Math.max(9, 10.5 * camera.zoom));
+  const chipMetadataFont = Math.min(9.5, Math.max(8, 8.5 * camera.zoom));
+  const chipNameplateWidth = estimateLabelWidth(chipDisplayLabel, chipLogicalNameFont);
+  const chipNameplateHeight = 18;
+  const chipTypeLabel = (chipMetadata?.name ?? node.type).toUpperCase();
+  const chipTypeLayerLabel =
+    nodeOutputIsUnknown && (node.type === 'OUTPUT' || node.type === 'Lamp')
+      ? `${chipTypeLabel} · ${nodeOutputValue}`
+      : authoredChipLabel
+        ? chipMetadata?.layer === undefined
+          ? chipTypeLabel
+          : `${chipTypeLabel} · L${chipMetadata.layer}`
+        : chipMetadata?.layer === undefined
+          ? ''
+          : `L${chipMetadata.layer}`;
+  const hasExternalIoIdentity =
+    node.type === 'INPUT' ||
+    node.type === 'Switch' ||
+    node.type === 'OUTPUT' ||
+    node.type === 'Lamp';
   const hasDiagnosticBadge = (diagnosticBadge?.total ?? 0) > 0;
   const diagnosticLabel =
     (diagnosticBadge?.error ?? 0) > 0
@@ -454,8 +482,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         {/* B1: Eval sequence badge — shown on hover when eval order is active */}
         {isHovered && evalSequence != null && (
           <g data-testid={`logic-node-eval-badge-${node.id}`} style={{ pointerEvents: 'none' }}>
-            <rect x={-size / 2} y={-chipHeight / 2 - 14} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
-            <text x={-size / 2 + 14} y={-chipHeight / 2 - 7} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
+            <rect x={-size / 2} y={-chipHeight / 2 - 36} width={28} height={13} rx={3} fill="#0f172a" stroke="#38bdf8" strokeWidth={1} />
+            <text x={-size / 2 + 14} y={-chipHeight / 2 - 29.5} textAnchor="middle" dominantBaseline="middle" fill="#38bdf8" fontSize={8} fontWeight="700">
               {`#${evalSequence}`}
             </text>
           </g>
@@ -541,41 +569,68 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           </g>
         ) : null}
 
-        {/* Chip label */}
-        {lod !== 'minimal' && (
-          <text
-            className="logic-node-label"
-            data-node-label="1"
-            x={0}
-            y={-chipHeight / 2 + chipHeaderHeight / 2}
-            dominantBaseline="middle"
-            textAnchor="middle"
-            fill="#eaf2ff"
-            fontSize={Math.max(8, 10 * camera.zoom)}
-            fontWeight="600"
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
+        {/* Logical instance identity lives outside the narrow status header so
+            authored names cannot collide with output/diagnostic indicators. */}
+        {lod !== 'minimal' && !hasExternalIoIdentity && (
+          <g
+            data-testid={`logic-node-identity-${node.id}`}
+            data-label-role="logical-name"
+            data-full-label={chipLogicalName}
+            style={{ pointerEvents: 'none' }}
           >
-            {chipDisplayLabel}
-          </text>
+            <rect
+              data-testid={`logic-node-identity-plate-${node.id}`}
+              x={-chipNameplateWidth / 2}
+              y={-chipHeight / 2 - 22}
+              width={chipNameplateWidth}
+              height={chipNameplateHeight}
+              rx={5}
+              fill="rgba(6, 15, 25, 0.96)"
+              stroke="rgba(103, 232, 249, 0.55)"
+              strokeWidth={1}
+            />
+            <text
+              className="logic-node-label"
+              data-node-label="1"
+              x={0}
+              y={-chipHeight / 2 - 13}
+              dominantBaseline="middle"
+              textAnchor="middle"
+              fill="#f4f8ff"
+              fontSize={chipLogicalNameFont}
+              fontWeight="700"
+              style={{ pointerEvents: 'none', userSelect: 'none' }}
+            >
+              {chipDisplayLabel}
+            </text>
+          </g>
         )}
 
-        {/* Layer badge */}
-        {lod === 'full' && chipMetadata.layer !== undefined && (
+        {/* Type/layer is deliberately a separate, secondary line inside the
+            body. It remains visible at the supported 50% zoom without being
+            mistaken for the authored logical instance name. */}
+        {lod !== 'minimal' && chipTypeLayerLabel && (
           <text
-            className="logic-node-sub-label"
+            className="logic-node-metadata"
+            data-testid={`logic-node-type-layer-${node.id}`}
+            data-label-role="type-layer"
             x={0}
-            y={chipHeight / 2 + 10}
+            y={chipHeight / 2 - Math.max(6, chipMetadataFont * 0.75)}
             dominantBaseline="middle"
             textAnchor="middle"
-            fill="#8aa8c7"
-            fontSize={Math.max(7, 8 * camera.zoom)}
-            style={{ pointerEvents: 'none', userSelect: 'none' }}
+            fill="#b9cee3"
+            fontSize={chipMetadataFont}
+            fontWeight="650"
+            style={{
+              pointerEvents: 'none',
+              userSelect: 'none',
+              paintOrder: 'stroke fill',
+              stroke: '#07111b',
+              strokeWidth: 2.4,
+              strokeLinejoin: 'round',
+            }}
           >
-            {nodeOutputIsUnknown && (node.type === 'OUTPUT' || node.type === 'Lamp')
-              ? `${chipMetadata.name} · ${nodeOutputValue}`
-              : authoredChipLabel
-                ? `${chipMetadata.name} · L${chipMetadata.layer}`
-                : `L${chipMetadata.layer}`}
+            {chipTypeLayerLabel}
           </text>
         )}
 
@@ -1601,6 +1656,7 @@ export const NodeView = React.memo(NodeViewComponent, (prevProps, nextProps) => 
   return (
     prevProps.node.id === nextProps.node.id &&
     prevProps.node.type === nextProps.node.type &&
+    prevProps.node.label === nextProps.node.label &&
     prevProps.node.position?.x === nextProps.node.position?.x &&
     prevProps.node.position?.y === nextProps.node.position?.y &&
     prevProps.node.rotation === nextProps.node.rotation &&

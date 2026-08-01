@@ -45,7 +45,7 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
     >
       <div className="ide-verify-job-header-main">
         <div className="ide-verify-job-copy">
-          <span className="ide-verify-job-kicker">Verify</span>
+          <span className="ide-verify-job-kicker">Simulate</span>
           <h2>Simulation Studio</h2>
           <p>Author stimulus, run the circuit, inspect the replay, and add checks when useful.</p>
         </div>

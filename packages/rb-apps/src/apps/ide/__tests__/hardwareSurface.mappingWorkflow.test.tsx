@@ -77,7 +77,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-panel-title-row"]')).toBeNull();
     expect(getByTestId('ide-hardware-panel').querySelector('[data-testid="ide-hardware-command-strip"]')).toBeNull();
-    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain('Bind project signals to Basys3 resources');
+    expect(getByTestId('ide-hw-board-resource-summary').textContent).toContain(
+      'Map a logical signal to a Basys3 control'
+    );
   });
 
   it('shows Complete state and full count when all required signals are mapped', () => {
@@ -564,7 +566,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain('Inspect the package in Export');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain(
+      'Inspect the package in Build & Export'
+    );
     fireEvent.click(getByTestId('ide-hw-continue-export'));
     expect(onOpenExport).toHaveBeenCalledTimes(1);
   });

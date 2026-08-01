@@ -28,17 +28,19 @@ export interface IdeWorkflowRouteStep extends IdeWorkflowStage {
 
 export const PROJECT_STAGE_LABEL = 'Project';
 export const DESIGN_STAGE_LABEL = 'Design';
-export const VERIFY_STAGE_LABEL = 'Verify';
-export const MAP_PINS_STAGE_LABEL = 'Map Pins';
-export const EXPORT_STAGE_LABEL = 'Export';
+export const VERIFY_STAGE_LABEL = 'Simulate';
+export const BOARD_CONSTRAINTS_STAGE_LABEL = 'Board & Constraints';
+/** @deprecated Internal routes may still be named hardware; use the board workspace label in UI. */
+export const MAP_PINS_STAGE_LABEL = BOARD_CONSTRAINTS_STAGE_LABEL;
+export const EXPORT_STAGE_LABEL = 'Build & Export';
 export const PROGRAM_STAGE_LABEL = 'Program';
 
 export const STUDENT_WORKFLOW_STAGES: readonly IdeWorkflowStage[] = [
   { id: 'project', label: PROJECT_STAGE_LABEL, step: 1, hint: 'Understand your project' },
   { id: 'design', label: DESIGN_STAGE_LABEL, step: 2, hint: 'Build the circuit' },
-  { id: 'verify', label: VERIFY_STAGE_LABEL, step: 3, hint: 'Develop the testbench' },
-  { id: 'hardware', label: MAP_PINS_STAGE_LABEL, step: 4, hint: 'Assign board pins' },
-  { id: 'export', label: EXPORT_STAGE_LABEL, step: 5, hint: 'Build the handoff' },
+  { id: 'verify', label: VERIFY_STAGE_LABEL, step: 3, hint: 'Develop and run scenarios' },
+  { id: 'hardware', label: BOARD_CONSTRAINTS_STAGE_LABEL, step: 4, hint: 'Plan board I/O and constraints' },
+  { id: 'export', label: EXPORT_STAGE_LABEL, step: 5, hint: 'Inspect the Vivado handoff' },
 ] as const;
 
 export const STUDENT_WORKFLOW_SPINE = STUDENT_WORKFLOW_STAGES.map((stage) => stage.label);

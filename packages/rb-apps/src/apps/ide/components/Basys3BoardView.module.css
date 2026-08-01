@@ -5,3 +5,48 @@
   width: 100%;
   height: auto;
 }
+
+.resource {
+  transition: fill 140ms ease, stroke 140ms ease, filter 140ms ease;
+}
+
+.resourceSelected {
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.95));
+}
+
+.resourceMapped {
+  filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.72));
+}
+
+.resourceUnavailable {
+  opacity: 0.48;
+}
+
+.aliasLabel,
+.secondaryLabel,
+.sectionLabel {
+  paint-order: stroke fill;
+  stroke: rgba(3, 10, 22, 0.92);
+  stroke-linejoin: round;
+}
+
+.aliasLabel {
+  font-weight: 750;
+  stroke-width: 1.35px;
+}
+
+.secondaryLabel {
+  font-weight: 650;
+  stroke-width: 1px;
+}
+
+.sectionLabel {
+  font-weight: 700;
+  stroke-width: 0.9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resource {
+    transition: none;
+  }
+}

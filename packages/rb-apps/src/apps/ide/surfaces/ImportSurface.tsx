@@ -2732,7 +2732,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               </p>
               <div className="ide-inline-actions">
                 {onGoToDesign ? <IdeButton tone="secondary" onClick={onGoToDesign} testId="ide-import-open-design">Open Design</IdeButton> : null}
-                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Verify</IdeButton> : null}
+                {onGoToVerify ? <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-import-open-verify">Open Simulate</IdeButton> : null}
               </div>
             </IdeCallout>
           ) : null}
@@ -2971,7 +2971,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
                     ) : null}
                     {onGoToExport ? (
                       <IdeButton tone="ghost" onClick={onGoToExport} testId="ide-import-go-to-export">
-                        Open Export
+                        Open Build &amp; Export
                       </IdeButton>
                     ) : null}
                   </div>

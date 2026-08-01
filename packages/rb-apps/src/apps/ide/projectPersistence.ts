@@ -2,12 +2,14 @@ import { decodeRBProject, encodeRBProject, type RBProject } from '../../export/p
 import { compareCodepoint } from '../../export/codepointSort';
 import type { VerifyScenario } from './verifyScenario';
 
-const STORAGE_VERSION = 1 as const;
-const PROJECT_INDEX_KEY = `rb.ide.projects.v${STORAGE_VERSION}.index`;
-const PROJECT_KEY_PREFIX = `rb.ide.project.v${STORAGE_VERSION}:`;
+export const IDE_PROJECT_STORAGE_VERSION = 1 as const;
+export const IDE_PROJECT_INDEX_KEY =
+  `rb.ide.projects.v${IDE_PROJECT_STORAGE_VERSION}.index`;
+export const IDE_PROJECT_KEY_PREFIX =
+  `rb.ide.project.v${IDE_PROJECT_STORAGE_VERSION}:`;
 
 export interface PersistedIdeProjectSnapshot {
-  version: typeof STORAGE_VERSION;
+  version: typeof IDE_PROJECT_STORAGE_VERSION;
   projectId: string;
   projectName: string;
   savedAtIso: string;
@@ -26,7 +28,7 @@ export interface PersistedIdeProjectIndexEntry {
 }
 
 export function buildProjectStorageKey(projectId: string): string {
-  return `${PROJECT_KEY_PREFIX}${projectId.trim()}`;
+  return `${IDE_PROJECT_KEY_PREFIX}${projectId.trim()}`;
 }
 
 export function saveIdeProjectSnapshot(input: {
@@ -43,7 +45,7 @@ export function saveIdeProjectSnapshot(input: {
   if (projectId.length === 0) return null;
 
   const snapshot: PersistedIdeProjectSnapshot = {
-    version: STORAGE_VERSION,
+    version: IDE_PROJECT_STORAGE_VERSION,
     projectId,
     projectName: input.projectName.trim() || 'Untitled Project',
     savedAtIso: input.savedAtIso ?? new Date().toISOString(),
@@ -74,17 +76,7 @@ export function loadIdeProjectSnapshot(projectId: string): PersistedIdeProjectSn
   try {
     const raw = localStorage.getItem(buildProjectStorageKey(trimmed));
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as PersistedIdeProjectSnapshot;
-    if (!parsed || typeof parsed !== 'object') return null;
-    if (parsed.version !== STORAGE_VERSION) return null;
-    if (typeof parsed.projectId !== 'string' || parsed.projectId.trim().length === 0) return null;
-    if (typeof parsed.projectName !== 'string' || parsed.projectName.trim().length === 0) return null;
-    if (typeof parsed.savedAtIso !== 'string' || parsed.savedAtIso.trim().length === 0) return null;
-    if (typeof parsed.projectHash !== 'string' || parsed.projectHash.trim().length === 0) return null;
-    if (typeof parsed.rbprojJson !== 'string' || parsed.rbprojJson.trim().length === 0) return null;
-    if (parsed.scenarios !== undefined && !Array.isArray(parsed.scenarios)) return null;
-    if (parsed.activeScenarioId !== undefined && typeof parsed.activeScenarioId !== 'string') return null;
-    return parsed;
+    return parsePersistedIdeProjectSnapshot(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -126,7 +118,7 @@ export function listIdeProjectSnapshots(): PersistedIdeProjectIndexEntry[] {
 
 function readProjectIndex(): PersistedIdeProjectIndexEntry[] {
   try {
-    const raw = localStorage.getItem(PROJECT_INDEX_KEY);
+    const raw = localStorage.getItem(IDE_PROJECT_INDEX_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -150,13 +142,29 @@ function upsertProjectIndex(entry: PersistedIdeProjectIndexEntry): void {
     .slice(0, 40);
 
   try {
-    localStorage.setItem(PROJECT_INDEX_KEY, JSON.stringify(next));
+    localStorage.setItem(IDE_PROJECT_INDEX_KEY, JSON.stringify(next));
   } catch {
     // Ignore storage failures.
   }
 }
 
-function normalizeProjectIndexEntry(value: unknown): PersistedIdeProjectIndexEntry | null {
+export function parsePersistedIdeProjectSnapshot(
+  value: unknown
+): PersistedIdeProjectSnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const parsed = value as Partial<PersistedIdeProjectSnapshot>;
+  if (parsed.version !== IDE_PROJECT_STORAGE_VERSION) return null;
+  if (typeof parsed.projectId !== 'string' || parsed.projectId.trim().length === 0) return null;
+  if (typeof parsed.projectName !== 'string' || parsed.projectName.trim().length === 0) return null;
+  if (typeof parsed.savedAtIso !== 'string' || parsed.savedAtIso.trim().length === 0) return null;
+  if (typeof parsed.projectHash !== 'string' || parsed.projectHash.trim().length === 0) return null;
+  if (typeof parsed.rbprojJson !== 'string' || parsed.rbprojJson.trim().length === 0) return null;
+  if (parsed.scenarios !== undefined && !Array.isArray(parsed.scenarios)) return null;
+  if (parsed.activeScenarioId !== undefined && typeof parsed.activeScenarioId !== 'string') return null;
+  return parsed as PersistedIdeProjectSnapshot;
+}
+
+export function normalizeProjectIndexEntry(value: unknown): PersistedIdeProjectIndexEntry | null {
   if (!value || typeof value !== 'object') return null;
   const candidate = value as Partial<PersistedIdeProjectIndexEntry>;
   if (typeof candidate.projectId !== 'string' || candidate.projectId.trim().length === 0) {

@@ -6,7 +6,7 @@
  * Verifies that every major blocker shown on Project:
  *   1. Tells the student which surface resolves it
  *   2. Offers a direct action button to that surface
- *   3. Export trust state is explained clearly
+ *   3. Build & Export trust state is explained clearly
  */
 
 import React from 'react';
@@ -53,8 +53,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Verify',
-    primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+    primaryCtaLabel: 'Simulate',
+    primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1002' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),
@@ -104,15 +104,47 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Verify');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Simulate');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(getByTestId('ide-project-change-project').textContent).toContain('Change Project');
     expect(queryByTestId('ide-project-context')).toBeNull();
     expect(queryByTestId('ide-project-utility-region')).toBeNull();
   });
 
-  it('keeps technical details available without duplicating the workflow or Export summary', () => {
+  it('normalizes legacy workflow labels while preserving their internal route modes', () => {
+    const onOpenHardware = vi.fn();
+    const { container, getByTestId } = render(
+      <BoardSignalProvider>
+        <ProjectSurface
+          {...makeProps({
+            primaryCtaLabel: 'Verify',
+            primaryCta: { label: 'Verify', mode: 'verify', code: 'legacy-verify' },
+            health: {
+              ...makeProps().health,
+              blockingIssues: [
+                {
+                  code: 'LEGACY-MAP',
+                  message: 'One board assignment needs attention.',
+                  fixPath: { mode: 'hardware', actionLabel: 'Open Map Pins' },
+                },
+              ],
+            },
+            onOpenHardware,
+          })}
+        />
+      </BoardSignalProvider>
+    );
+
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
+    const fixButton = getByTestId('ide-project-warnings-fix-LEGACY-MAP');
+    expect(fixButton.textContent).toContain('Board & Constraints');
+    expect(container.textContent).not.toContain('Map Pins');
+    fireEvent.click(fixButton);
+    expect(onOpenHardware).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps technical details available without duplicating the workflow or Build & Export summary', () => {
     const { container, getByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface {...makeProps()} />
@@ -120,7 +152,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     );
 
     const commandStrip = getByTestId('ide-project-command-strip');
-    expect(commandStrip.textContent).toContain('Next: Verify');
+    expect(commandStrip.textContent).toContain('Next: Simulate');
     expect(getByTestId('ide-project-professional-overview')).toBeTruthy();
     expect(getByTestId('ide-project-bridge')).toBeTruthy();
     expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
@@ -332,11 +364,11 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     // The old `ide-project-hero-blocker` duplicate in the hero was removed.
     expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).toContain('Build Submission Package');
     expect(getByTestId('ide-project-warnings-fix-RBP1999').textContent).not.toContain('Ã');
-    expect(getByTestId('ide-project-mapping-overview').textContent).toContain('Map Pins summary');
+    expect(getByTestId('ide-project-mapping-overview').textContent).toContain('Board & Constraints');
     expect(getByTestId('ide-project-mapping-overview').textContent).not.toContain('Ã');
   });
 
-  it('unmapped output blocker (RBP1005) includes an action button pointing to Map Pins', () => {
+  it('unmapped output blocker (RBP1005) includes an action button pointing to Board & Constraints', () => {
     const onOpenHardware = vi.fn();
     const health = deriveProjectHealth(
       {
@@ -380,12 +412,12 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     // Reconciliation R2: the Warnings panel owns blocker fix buttons.
     const fixBtn = container.querySelector('[data-testid^="ide-project-warnings-fix-"]') as HTMLButtonElement | null;
     expect(fixBtn).not.toBeNull();
-    expect(fixBtn!.textContent).toContain('Map Pins');
+    expect(fixBtn!.textContent).toContain('Board & Constraints');
     fireEvent.click(fixBtn!);
     expect(onOpenHardware).toHaveBeenCalled();
   });
 
-  it('missing verify vectors blocker includes an action button pointing to Verify', () => {
+  it('missing simulation vectors blocker includes an action button pointing to Simulate', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -411,8 +443,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
                 },
               ],
             },
-            primaryCtaLabel: 'Verify',
-            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+            primaryCtaLabel: 'Simulate',
+            primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1002' },
             onOpenVerify,
           })}
         />
@@ -426,7 +458,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
-  it('verify-failed blocker includes an action button pointing to Verify', () => {
+  it('failed comparison blocker includes an action button pointing to Simulate', () => {
     const onOpenVerify = vi.fn();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -447,13 +479,13 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
               blockingIssues: [
                 {
                   code: 'RBP1003',
-                  message: 'Latest verification run failed.',
-                  fixPath: { mode: 'verify', actionLabel: 'Run Verification' },
+                  message: 'Latest comparison run failed.',
+                  fixPath: { mode: 'verify', actionLabel: 'Run Simulation' },
                 },
               ],
             },
-            primaryCtaLabel: 'Verify',
-            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1003' },
+            primaryCtaLabel: 'Simulate',
+            primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1003' },
             onOpenVerify,
           })}
         />
@@ -462,12 +494,12 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     // Reconciliation R2: blocker fix buttons now live in ProjectWarningsPanel.
     const fixBtn = getByTestId('ide-project-warnings-fix-RBP1003');
-    expect(fixBtn.textContent).toContain('Verification');
+    expect(fixBtn.textContent).toContain('Simulation');
     fireEvent.click(fixBtn);
     expect(onOpenVerify).toHaveBeenCalled();
   });
 
-  it('keeps the loaded Project page a launch point even when Verify evidence is missing', () => {
+  it('keeps the loaded Project page a launch point even when simulation evidence is missing', () => {
     const { getByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -495,8 +527,8 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
     expect(queryByTestId('ide-project-quick-stats')).toBeNull();
-    expect(getByTestId('ide-projectx-next-status').textContent).toBe('VERIFY NEXT');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(getByTestId('ide-projectx-next-status').textContent).toBe('SIMULATE NEXT');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(queryByTestId('ide-project-command-mode-actions')).toBeNull();
   });
@@ -527,7 +559,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
 
     expect(queryByTestId('ide-project-readiness-goto-verify-for-export')).toBeNull();
     expect(queryByTestId('ide-project-showcase-primary-cta')).toBeNull();
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
   });
 
@@ -589,7 +621,7 @@ describe('ProjectSurface — blocker-to-surface routing', () => {
     expect(getByTestId('ide-project-bridge-subtitle').textContent).toContain('Custom Project');
     expect(getByTestId('ide-project-bridge-subtitle').textContent).not.toContain('signal-tour');
     expect(getByTestId('ide-project-identity-strip-title').textContent).toContain('Signal Tour: Switches â†’ LEDs');
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Verify');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
     expect(queryByText('From Signal Tour: Switches → LEDs')).toBeNull();
     expect((queryByTestId('ide-project-examples-disclosure') as HTMLElement | null)?.hidden).toBe(true);

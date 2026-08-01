@@ -1,6 +1,15 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { getComponentSupport, isNodeTypeSupportedFor, TickEngine } from '@redbyte/rb-logic-core';
+import { getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
   LogicCanvas,
   describePortRefForStudents,
@@ -41,7 +50,7 @@ import {
   findPreviousReplayIndex,
 } from '../sequentialReplay';
 import type { RuntimeLogicValue } from '../sim/simTypes';
-import { useBoardSignal } from '../BoardSignalContext';
+import { resolveBoardSignal, useBoardSignal } from '../BoardSignalContext';
 import { getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import type { TimingGuidance } from '../timingGuidance';
 import type {
@@ -57,8 +66,14 @@ import {
 import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
+import type { HdlSource } from '../../../fpga/toolchainBackend';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
-import { getBasys3BoardResource } from '../../../fpga/boards/basys3/basys3Pins';
+import {
+  getBasys3BoardResource,
+  isBasys3ResourceCompatibleWithSignal,
+  listBasys3CompatibleResources,
+} from '../../../fpga/boards/basys3/basys3Pins';
+import { listBasys3DesignBoardResourceInventory } from '../../../fpga/boards/basys3/basys3BoardSurfaceProjection';
 import { resolveBasys3SignalBinding } from '../../../fpga/boards/basys3/basys3SignalSemantics';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
@@ -99,6 +114,29 @@ import {
   type DesignCanvasViewport,
 } from './designCanvasCamera';
 import type { IdeChromeContract } from '../chromeContract';
+import {
+  deriveDesignHierarchy,
+  deriveDesignSources,
+  flattenDesignHierarchy,
+} from '../designProjectProjection';
+import {
+  COMPONENT_DEFINITION_REGISTRY,
+  createComponentDefinitionRegistry,
+  type ComponentDefinition,
+  type ComponentDefinitionCategory,
+  type ComponentDesignPaletteSection,
+} from '../componentDefinitions';
+import {
+  DESIGN_TOOLBAR_COMMAND_GROUPS,
+  IDE_COMMAND_IDS,
+  IDE_COMMAND_EVENT_NAME,
+  REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS,
+  listDesignToolbarCommandGroupOrder,
+  moveDesignToolbarCommandGroup,
+  type DesignToolbarCommandGroupId,
+  type IdeCommandId,
+} from '../ideCommandRegistry';
+import { workspacePreferencesStore } from '../workspacePreferences';
 import './design-workbench-v3.css';
 
 export const CHROME_CONTRACT = {
@@ -152,6 +190,8 @@ export function connectionRejectedMessage(reason: string): string {
 }
 
 export interface DesignSurfaceProps {
+  projectId?: string;
+  projectName?: string;
   onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
@@ -207,13 +247,18 @@ export interface DesignSurfaceProps {
     pin: string;
     port: string;
     direction: 'in' | 'out';
+    required?: boolean;
+    timingRole?: HardwareTimingRole;
+    boardResourceType?: HardwareBoardResourceType;
   }>;
+  onSetMappingPin?: (rowId: string, pin: string) => void;
   onGoToHardware?: () => void;
   onGoToImport?: () => void;
   onGoToProject?: () => void;
   onGoToVerify?: () => void;
   onClearDiagnostic?: () => void;
   topHdl?: string;
+  hdlSources?: readonly HdlSource[];
   onApplyHdl?: (hdl: string) => void;
   topEntityName?: string;
   onSaveAsComponent?: (def: CompositeNodeDef) => void;
@@ -279,7 +324,8 @@ type DesignReplaySession =
 interface PaletteItem {
   type: string;
   title: string;
-  category: 'IO' | 'Logic' | 'Sequential' | 'Components';
+  category: ComponentDefinitionCategory;
+  section: ComponentDesignPaletteSection;
   subtitle: string;
   glyph: string;
   searchTerms: string[];
@@ -322,6 +368,20 @@ interface BoardPaletteGroup {
   entries: BoardIoPaletteItem[];
 }
 
+const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
+  id: IdeCommandId;
+  label: string;
+}[] = [
+  { id: IDE_COMMAND_IDS.selectDesignTool, label: 'Select tool' },
+  { id: IDE_COMMAND_IDS.selectWireTool, label: 'Wire tool' },
+  { id: IDE_COMMAND_IDS.undoDesignEdit, label: 'Undo' },
+  { id: IDE_COMMAND_IDS.redoDesignEdit, label: 'Redo' },
+  { id: IDE_COMMAND_IDS.arrangeDesign, label: 'Arrange circuit' },
+  { id: IDE_COMMAND_IDS.fitDesignCanvas, label: 'Fit canvas' },
+  { id: IDE_COMMAND_IDS.zoomOutDesignCanvas, label: 'Zoom out' },
+  { id: IDE_COMMAND_IDS.zoomInDesignCanvas, label: 'Zoom in' },
+];
+
 const CANVAS_PLACEMENT_BLOCK_SELECTOR =
   '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
 
@@ -336,232 +396,34 @@ function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   );
 }
 
-const CORE_PALETTE_ITEMS: PaletteItem[] = [
-  {
-    type: 'AND',
-    title: 'AND Gate',
-    category: 'Logic',
-    subtitle: '2-input gate that goes high only when both inputs are high.',
-    glyph: 'AND',
-    searchTerms: ['gate', 'logic', 'combinational'],
-  },
-  {
-    type: 'OR',
-    title: 'OR Gate',
-    category: 'Logic',
-    subtitle: '2-input gate that goes high when either input is high.',
-    glyph: 'OR',
-    searchTerms: ['gate', 'logic', 'combinational'],
-  },
-  {
-    type: 'XOR',
-    title: 'XOR Gate',
-    category: 'Logic',
-    subtitle: 'Exclusive OR for difference and parity checks.',
-    glyph: 'XOR',
-    searchTerms: ['gate', 'logic', 'exclusive or', 'parity'],
-  },
-  {
-    type: 'NOT',
-    title: 'NOT Gate',
-    category: 'Logic',
-    subtitle: 'Single-input inverter for complementing a signal.',
-    glyph: 'NOT',
-    searchTerms: ['gate', 'logic', 'inverter', 'invert'],
-  },
-  {
-    type: 'NAND',
-    title: 'NAND Gate',
-    category: 'Logic',
-    subtitle: 'Universal gate that outputs low only when both inputs are high.',
-    glyph: 'NAND',
-    searchTerms: ['gate', 'logic', 'universal'],
-  },
-  {
-    type: 'NOR',
-    title: 'NOR Gate',
-    category: 'Logic',
-    subtitle: 'Universal gate that outputs high only when both inputs are low.',
-    glyph: 'NOR',
-    searchTerms: ['gate', 'logic', 'universal'],
-  },
-  {
-    type: 'XNOR',
-    title: 'XNOR Gate',
-    category: 'Logic',
-    subtitle: 'Equality gate that goes high when inputs match.',
-    glyph: 'XNOR',
-    searchTerms: ['gate', 'logic', 'equality', 'equivalence'],
-  },
-  {
-    type: 'AND3',
-    title: 'AND3 Gate',
-    category: 'Logic',
-    subtitle: '3-input AND: high only when all three inputs are high.',
-    glyph: 'AND3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input'],
-  },
-  {
-    type: 'OR3',
-    title: 'OR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input OR: high when any input is high.',
-    glyph: 'OR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input'],
-  },
-  {
-    type: 'NAND3',
-    title: 'NAND3 Gate',
-    category: 'Logic',
-    subtitle: '3-input NAND: low only when all three inputs are high.',
-    glyph: 'NAND3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'universal'],
-  },
-  {
-    type: 'NOR3',
-    title: 'NOR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input NOR: high only when all three inputs are low.',
-    glyph: 'NOR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'universal'],
-  },
-  {
-    type: 'XOR3',
-    title: 'XOR3 Gate',
-    category: 'Logic',
-    subtitle: '3-input XOR: high when an odd number of inputs are high.',
-    glyph: 'XOR3',
-    searchTerms: ['gate', 'logic', 'three input', '3 input', 'parity'],
-  },
-  {
-    type: 'Register1',
-    title: 'Register (1-bit)',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Preferred 1-bit register: width, CE, reset kind, and polarities are first-class.',
-    glyph: 'REG1',
-    searchTerms: ['register', 'dff', 'state', 'memory', 'fdce', 'sequential', 'flip flop'],
-  },
-  {
-    type: 'RegisterBus',
-    title: 'Register (Bus)',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Packed multi-bit register with per-bit D[i] / Q[i] taps for combinational logic.',
-    glyph: 'REGB',
-    searchTerms: ['register', 'bus', 'state', 'bank', 'vector', 'slice', 'tap', 'bit'],
-  },
-  {
-    type: 'StateBank',
-    title: 'State Bank',
-    category: 'Sequential',
-    sequentialTier: 'registers',
-    paletteBadge: 'Native',
-    subtitle: 'Grouped state for FSM-style clusters — same semantics as Register (Bus), different intent.',
-    glyph: 'BANK',
-    searchTerms: ['state', 'bank', 'register bank', 'fsm', 'sequential'],
-  },
-  // Slice N7 — chrome rebuild: Sim Clock palette entry REMOVED.
-  // Canonical clock model (Plan §4.1): one clock concept visible to the user — the
-  // board clock CLK100MHZ from Board Resources. Pure-sim sequential designs auto-
-  // inject `__sim_clk__` (rb-apps/.../verifySchedule.ts), so students never need
-  // to place a Clock node themselves. Existing serialized projects with legacy
-  // Clock nodes (no role) continue to load and elaborate correctly via the IR
-  // backward-compat path established in Slice M.
-  {
-    type: 'DFlipFlop',
-    title: 'DFF',
-    category: 'Sequential',
-    sequentialTier: 'legacy',
-    paletteBadge: 'Legacy',
-    subtitle: 'Classic single-bit D flip-flop — prefer Register (1-bit) for new native projects.',
-    glyph: 'DFF',
-    searchTerms: ['flip flop', 'flipflop', 'register', 'state', 'memory'],
-  },
-  {
-    type: 'INPUT',
-    title: 'Input Pin',
-    category: 'IO',
-    subtitle: 'Generic named input — give it any signal name. To start from a specific Basys3 switch, button, or clock, use Board Resources instead.',
-    glyph: 'IN',
-    searchTerms: ['input', 'pin', 'source', 'io', 'i/o'],
-  },
-  {
-    type: 'OUTPUT',
-    title: 'Output Pin',
-    category: 'IO',
-    subtitle: 'Generic named output — give it any signal name. To start from a specific Basys3 LED or display segment, use Board Resources instead.',
-    glyph: 'OUT',
-    searchTerms: ['output', 'pin', 'sink', 'probe', 'io', 'i/o'],
-  },
-  {
-    type: 'Ground',
-    title: 'Ground',
-    category: 'IO',
-    subtitle: 'Constant logic 0 source for reset and clear wiring.',
-    glyph: '0',
-    searchTerms: ['ground', 'constant', 'zero', 'low', 'clear'],
-  },
-];
+function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
+  return {
+    type: definition.runtimeType,
+    title: definition.displayName,
+    category: definition.category,
+    section: definition.designPalette.section,
+    subtitle: definition.description,
+    glyph: definition.symbol,
+    searchTerms: [...definition.searchTerms],
+    sequentialTier: definition.designPalette.sequentialTier,
+    paletteBadge: definition.designPalette.badge,
+  };
+}
 
-const CORE_COMPOSITE_PALETTE_ITEMS: PaletteItem[] = [
-  {
-    type: 'RSLatch',
-    title: 'RS Latch',
-    category: 'Components',
-    paletteBadge: '⚠ Latch',
-    subtitle: 'Bistable latch with set/reset. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
-    glyph: 'RS',
-    searchTerms: ['latch', 'memory', 'state', 'bistable'],
-  },
-  {
-    type: 'DLatch',
-    title: 'D Latch',
-    category: 'Components',
-    paletteBadge: '⚠ Latch',
-    subtitle: 'Level-sensitive latch with enable. Vivado warns on inferred latches — use Register (1-bit) for FPGA designs. Latches are valid for simulation and theory work.',
-    glyph: 'DL',
-    searchTerms: ['latch', 'memory', 'state', 'gated', 'level'],
-  },
-  {
-    type: 'JKFlipFlop',
-    title: 'JK Flip-Flop',
-    category: 'Components',
-    subtitle: 'Toggle-capable sequential primitive with J and K inputs.',
-    glyph: 'JK',
-    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state'],
-  },
-  {
-    type: 'TFlipFlop',
-    title: 'T Flip-flop',
-    category: 'Components',
-    paletteBadge: 'Legacy',
-    subtitle: 'Legacy toggle primitive — prefer Register (1-bit) with feedback for new builds.',
-    glyph: 'TFF',
-    searchTerms: ['flip flop', 'flipflop', 'toggle', 'state', 'tff'],
-  },
-  {
-    type: 'FullAdder',
-    title: 'Full Adder',
-    category: 'Components',
-    subtitle: 'Built-in arithmetic block for sum and carry logic.',
-    glyph: 'ADD',
-    searchTerms: ['adder', 'arithmetic', 'sum', 'carry'],
-  },
-  // Counter4Bit removed from palette — stub implementation (no real counting logic).
-  // Restore when Counter4Bit composite is properly implemented with flip-flops.
-];
+// Built-in cards are a projection of ComponentDefinition. The registry omits
+// the retired Sim Clock and unsupported Counter4Bit entries, while its current
+// support capabilities decide which definitions are student-authorable.
+const BUILTIN_PALETTE_ITEMS: readonly PaletteItem[] = COMPONENT_DEFINITION_REGISTRY.definitions
+  .filter(
+    (definition) =>
+      definition.designPalette.authoringCapability.supported &&
+      definition.designPalette.classroomCapability.supported
+  )
+  .map(definitionToPaletteItem);
 
-const PALETTE_ITEMS: PaletteItem[] = CORE_PALETTE_ITEMS.filter((item) =>
-  isNodeTypeSupportedFor(item.type, 'authoring') &&
-  isNodeTypeSupportedFor(item.type, 'classroom')
-);
-
-const COMPOSITE_PALETTE_ITEMS: PaletteItem[] = CORE_COMPOSITE_PALETTE_ITEMS.filter((item) =>
-  isNodeTypeSupportedFor(item.type, 'authoring') &&
-  isNodeTypeSupportedFor(item.type, 'classroom')
+const PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter((item) => item.section !== 'reusable');
+const COMPOSITE_PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter(
+  (item) => item.section === 'reusable'
 );
 
 const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
@@ -569,7 +431,7 @@ const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
     id: 'board',
     title: 'Board Resources',
     description:
-      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Map Pins.',
+      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board & Constraints.',
   },
   {
     id: 'io',
@@ -610,7 +472,7 @@ const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   {
     key: 'sequentialTiming',
     title: 'Timing',
-    description: 'Clock sources that drive sequential updates (map to board timing in Map Pins).',
+    description: 'Clock sources that drive sequential updates (map to board timing in Board & Constraints).',
     testId: 'ide-design-palette-sequential-timing',
   },
   {
@@ -621,39 +483,19 @@ const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
   },
 ];
 
-const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = [
-  ...Array.from({ length: 16 }, (_, index) => ({
-    alias: `SW${index}`,
-    direction: 'in' as const,
-    kind: 'switch' as const,
-  })),
-  { alias: 'BTNC', direction: 'in', kind: 'button' },
-  { alias: 'BTNU', direction: 'in', kind: 'button' },
-  { alias: 'BTNL', direction: 'in', kind: 'button' },
-  { alias: 'BTNR', direction: 'in', kind: 'button' },
-  { alias: 'BTND', direction: 'in', kind: 'button' },
-  { alias: 'CLK100MHZ', direction: 'in', kind: 'clock' },
-  { alias: 'RST', direction: 'in', kind: 'reset' },
-];
+const BASYS3_DESIGN_BOARD_ITEMS = listBasys3DesignBoardResourceInventory({
+  // RST is a logical authoring helper, not a Basys3 board resource. Keep it
+  // only through the projection's explicit synthetic-non-board contract.
+  includeSyntheticReset: true,
+});
 
-const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = [
-  ...Array.from({ length: 16 }, (_, index) => ({
-    alias: `LD${index}`,
-    direction: 'out' as const,
-    kind: 'led' as const,
-  })),
-  ...Array.from({ length: 7 }, (_, index) => ({
-    alias: `SEG${index}`,
-    direction: 'out' as const,
-    kind: 'segment' as const,
-  })),
-  ...Array.from({ length: 4 }, (_, index) => ({
-    alias: `AN${index}`,
-    direction: 'out' as const,
-    kind: 'anode' as const,
-  })),
-  { alias: 'DP', direction: 'out', kind: 'dp' },
-];
+const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
+  (item) => item.direction === 'in'
+);
+
+const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
+  (item) => item.direction === 'out'
+);
 
 const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
 
@@ -693,13 +535,13 @@ function groupBoardPaletteItems(
     {
       id: 'switches',
       title: 'Switches (SW0–SW15)',
-      description: 'Adds a pre-named input pin. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named input pin. Assign its board mapping in Board & Constraints.',
       entries: inputs.filter((entry) => entry.kind === 'switch'),
     },
     {
       id: 'buttons',
       title: 'Buttons (BTNC/U/L/R/D)',
-      description: 'Adds a pre-named button input. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named button input. Assign its board mapping in Board & Constraints.',
       entries: inputs.filter((entry) => entry.kind === 'button'),
     },
     {
@@ -714,13 +556,13 @@ function groupBoardPaletteItems(
     {
       id: 'leds',
       title: 'LEDs (LD0–LD15)',
-      description: 'Adds a pre-named output pin. Assign its board mapping in Map Pins.',
+      description: 'Adds a pre-named output pin. Assign its board mapping in Board & Constraints.',
       entries: outputs.filter((entry) => entry.kind === 'led'),
     },
     {
       id: 'display',
       title: 'Seven Segment Display',
-      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Map Pins.',
+      description: 'Segment, digit-select, and decimal point outputs. Assign board mappings in Board & Constraints.',
       entries: outputs.filter(
         (entry) => entry.kind === 'segment' || entry.kind === 'anode' || entry.kind === 'dp'
       ),
@@ -900,14 +742,14 @@ function resolveNodeInspectionTeachingProfile(
     if (node.type === 'INPUT' || node.type === 'Switch') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Drives a test or board input into the schematic — Map Pins ties it to a physical switch or pin when you go to the board.',
+        whatItIs: 'Drives a test or board input into the schematic — Board & Constraints ties it to a physical switch or pin when you go to the board.',
         structureHint: null,
       };
     }
     if (node.type === 'OUTPUT' || node.type === 'Lamp') {
       return {
         partKind: 'Board I/O',
-        whatItIs: 'Receives a net that should reach an LED or other board output; Map Pins assigns the Basys3 pin name.',
+        whatItIs: 'Receives a net that should reach an LED or other board output; Board & Constraints assigns the Basys3 pin name.',
         structureHint: null,
       };
     }
@@ -976,6 +818,8 @@ const GATE_SWAP_FAMILIES: Partial<Record<string, readonly string[]>> = {
 };
 
 export const DesignSurface: React.FC<DesignSurfaceProps> = ({
+  projectId,
+  projectName,
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
@@ -1002,12 +846,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   viewportSeed,
   starterContext,
   ioRows = [],
+  onSetMappingPin,
   onGoToHardware,
   onGoToImport,
   onGoToProject,
   onGoToVerify,
   onClearDiagnostic,
   topHdl,
+  hdlSources = [],
   onApplyHdl,
   topEntityName,
   onSaveAsComponent,
@@ -1131,7 +977,57 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [focusedIssueSignalKey, setFocusedIssueSignalKey] = useState<string | null>(null);
   const [diagnosticFilterNodeId, setDiagnosticFilterNodeId] = useState<string | null>(null);
   const [tickEngine] = useState(() => new TickEngine(editorCircuit, { tickRate: 10 }));
-  const [designView, setDesignView] = useState<'canvas' | 'hdl' | 'split'>('canvas');
+  const workspacePreferences = useSyncExternalStore(
+    workspacePreferencesStore.subscribe,
+    workspacePreferencesStore.getSnapshot,
+    workspacePreferencesStore.getSnapshot
+  );
+  const designView: 'canvas' | 'hdl' | 'split' =
+    workspacePreferences.design.view === 'code'
+      ? 'hdl'
+      : workspacePreferences.design.view;
+  const setDesignView = useCallback((view: 'canvas' | 'hdl' | 'split') => {
+    workspacePreferencesStore.setDesignView(view === 'hdl' ? 'code' : view);
+  }, []);
+  const toolbarCommandIds = workspacePreferences.design.toolbarCommandIds;
+  const toolbarCommandSet = useMemo(() => new Set(toolbarCommandIds), [toolbarCommandIds]);
+  const toolbarVisible = useCallback(
+    (commandId: IdeCommandId) => toolbarCommandSet.has(commandId),
+    [toolbarCommandSet]
+  );
+  const toggleToolbarCommand = useCallback((commandId: IdeCommandId, visible: boolean) => {
+    const current = workspacePreferencesStore.getSnapshot().design.toolbarCommandIds;
+    const next = visible
+      ? [...current, commandId]
+      : current.filter((id) => id !== commandId);
+    workspacePreferencesStore.setDesignToolbarCommandIds(next);
+  }, []);
+  const orderedToolbarGroupIds = useMemo(
+    () => listDesignToolbarCommandGroupOrder(toolbarCommandIds),
+    [toolbarCommandIds]
+  );
+  const toolbarGroupOrder = useMemo(
+    () => new Map(orderedToolbarGroupIds.map((groupId, index) => [groupId, index + 1])),
+    [orderedToolbarGroupIds]
+  );
+  const reorderToolbarGroup = useCallback(
+    (groupId: DesignToolbarCommandGroupId, direction: 'up' | 'down') => {
+      const current = workspacePreferencesStore.getSnapshot().design.toolbarCommandIds;
+      workspacePreferencesStore.setDesignToolbarCommandIds(
+        moveDesignToolbarCommandGroup(current, groupId, direction)
+      );
+    },
+    []
+  );
+  const [activeLeftDockTab, setActiveLeftDockTab] = useState<
+    'components' | 'hierarchy' | 'sources' | 'board'
+  >('components');
+  const [activeRightDockTab, setActiveRightDockTab] = useState<
+    'inspector' | 'properties' | 'constraints'
+  >('inspector');
+  const [activeBottomDockTab, setActiveBottomDockTab] = useState<
+    'problems' | 'console' | 'simulation'
+  >('problems');
   const [designDebugEnabled, setDesignDebugEnabled] = useState(() => readDesignDebugQueryParam());
   const [hdlDraftText, setHdlDraftText] = useState('');
   const [primaryArtifact, setPrimaryArtifact] = useState<DesignArtifact>('vhdl');
@@ -1489,7 +1385,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const starterNextAction =
     starterContext?.nextAction?.trim() ||
-    'Inspect the scaffold on the canvas, then continue editing or move to Verify.';
+    'Inspect the scaffold on the canvas, then continue editing or move to Simulate.';
   const isPlacementMode = placementModeLabel != null;
   // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
   // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
@@ -1935,19 +1831,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         item.title,
         item.type,
         item.category,
+        item.section,
         item.subtitle,
         ...item.searchTerms,
       ])
     );
-    const sequential = filtered.filter((item) => item.category === 'Sequential');
+    const sequential = filtered.filter((item) => item.section === 'sequential');
     return {
-      logic: filtered.filter((item) => item.category === 'Logic'),
+      logic: filtered.filter((item) => item.section === 'logic'),
       sequential,
       sequentialRegisters: sequential.filter((item) => item.sequentialTier === 'registers'),
       sequentialTiming: sequential.filter((item) => item.sequentialTier === 'timing'),
       sequentialLegacy: sequential.filter((item) => item.sequentialTier === 'legacy'),
-      io: filtered.filter((item) => item.category === 'IO'),
-      components: filtered.filter((item) => item.category === 'Components'),
+      io: filtered.filter((item) => item.section === 'io'),
+      components: filtered.filter((item) => item.section === 'reusable'),
     };
   }, [paletteQueryTerms]);
   const commonPaletteItems = useMemo(() => {
@@ -2592,6 +2489,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
 
+  useEffect(() => {
+    const onIdeCommand = (event: Event) => {
+      const commandId = (event as CustomEvent<{ commandId?: string }>).detail?.commandId;
+      if (commandId === IDE_COMMAND_IDS.arrangeDesign) handleArrangeCircuit();
+      else if (commandId === IDE_COMMAND_IDS.fitDesignCanvas) fitToCircuit();
+      else if (commandId === IDE_COMMAND_IDS.zoomInDesignCanvas) zoomIn();
+      else if (commandId === IDE_COMMAND_IDS.zoomOutDesignCanvas) zoomOut();
+    };
+    window.addEventListener(IDE_COMMAND_EVENT_NAME, onIdeCommand);
+    return () => window.removeEventListener(IDE_COMMAND_EVENT_NAME, onIdeCommand);
+  }, [fitToCircuit, handleArrangeCircuit, zoomIn, zoomOut]);
+
   const resetView = useCallback(() => {
     if (editorCircuit.nodes.length === 0) {
       setCamera({ x: 0, y: 0, zoom: 1 });
@@ -3050,13 +2959,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   );
 
   useEffect(() => {
-    if (!selectedNode) return;
+    if (!selectedNode) {
+      setActiveBoardSignal(null);
+      return;
+    }
     const row = ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`);
-    if (!row) return;
-    const swM = /^SW(\d+)$/i.exec(row.label);
-    if (swM) { setActiveBoardSignal({ type: 'sw', index: parseInt(swM[1], 10) }); return; }
-    const ldM = /^LD(\d+)$/i.exec(row.label);
-    if (ldM) { setActiveBoardSignal({ type: 'ld', index: parseInt(ldM[1], 10) }); return; }
+    setActiveBoardSignal(resolveBoardSignal(row?.pin));
   }, [selectedNode?.id, ioRowByNodeId, setActiveBoardSignal]);
   const selectedNodePins = useMemo(
     () => deriveNodePins(selectedNode, editorCircuit),
@@ -3484,7 +3392,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const activeSimulationSummary = activeDebugContext
     ? describeVerifyDebugSummary(activeDebugContext)
     : staleReplayBreadcrumb
-      ? 'Replay invalidated. Resume live edits or return to Verify for a fresh waveform.'
+      ? 'Replay invalidated. Resume live edits or return to Simulate for a fresh waveform.'
       : simulationStory.summary;
   const showSimulationSummary =
     staleReplayBreadcrumb != null ||
@@ -3544,8 +3452,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : !hasLogicalIoBoundary
           ? 'Add circuit I/O'
           : totalAuthoringWarnings > 0 || authoringIssueCounts.draftCount > 0
-            ? 'Ready for Verify — review wiring'
-            : 'Ready for Verify';
+            ? 'Ready for Simulate — review wiring'
+            : 'Ready for Simulate';
   const designCommandTone: 'idle' | 'ok' | 'warn' | 'error' =
     totalAuthoringErrors > 0
       ? 'error'
@@ -3553,7 +3461,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         ? 'warn'
         : 'ok';
   const designCommandDescription = totalAuthoringErrors > 0 && primaryDesignIssueSummary
-    ? `${primaryDesignIssueSummary} Repair this Design blocker before Verify or Export.`
+    ? `${primaryDesignIssueSummary} Repair this Design blocker before Simulate or Build & Export.`
     : effectiveExternalDebugTick != null
       ? 'Replay focus is active below. Scrub cases and inspect propagation before resuming live edits.'
       : activeVerifySignal
@@ -3561,8 +3469,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : designView === 'hdl'
           ? `Edit ${primaryArtifactLabel} while keeping the circuit aligned with live propagation.`
           : designView === 'split'
-            ? `Compare the circuit against ${primaryArtifactLabel} before moving into Verify.`
-            : 'Build the circuit and inspect live propagation before moving into Verify.';
+            ? `Compare the circuit against ${primaryArtifactLabel} before moving into Simulate.`
+            : 'Build the circuit and inspect live propagation before moving into Simulate.';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
     for (const node of editorCircuit.nodes) {
@@ -3756,6 +3664,100 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     if (!selectedNode) return null;
     return ioRowByNodeId.get(selectedNode.id) ?? ioRowByNodeId.get(`${selectedNode.id}.out`) ?? null;
   }, [ioRowByNodeId, selectedNode]);
+  const designHierarchy = useMemo(
+    () =>
+      deriveDesignHierarchy({
+        topModule: {
+          id: projectId?.trim() || topEntityName?.trim() || 'top',
+          name: topEntityName?.trim() || 'top',
+        },
+        circuit: editorCircuit,
+        customComponents: customComponentDefs,
+        selectedNodeId: selectedNode?.id ?? null,
+      }),
+    [customComponentDefs, editorCircuit, projectId, selectedNode?.id, topEntityName]
+  );
+  const designHierarchyRows = useMemo(
+    () => flattenDesignHierarchy(designHierarchy.root),
+    [designHierarchy]
+  );
+  const designSources = useMemo(
+    () =>
+      deriveDesignSources({
+        topModule: {
+          id: projectId?.trim() || topEntityName?.trim() || 'top',
+          name: topEntityName?.trim() || 'top',
+        },
+        circuit: editorCircuit,
+        customComponents: customComponentDefs,
+        hdlSources,
+      }),
+    [customComponentDefs, editorCircuit, hdlSources, projectId, topEntityName]
+  );
+  const selectedBoardResource = useMemo(
+    () =>
+      selectedNodeIoRow
+        ? getBasys3BoardResource(selectedNodeIoRow.pin)
+        : null,
+    [selectedNodeIoRow]
+  );
+  const selectedBoardResourceOptions = useMemo(() => {
+    if (!selectedNodeIoRow) return [];
+    const compatibleResources = listBasys3CompatibleResources(selectedNodeIoRow);
+    if (
+      selectedBoardResource &&
+      !compatibleResources.some((resource) => resource.id === selectedBoardResource.id)
+    ) {
+      compatibleResources.unshift(selectedBoardResource);
+    }
+    return compatibleResources.sort((left, right) =>
+      left.alias.localeCompare(right.alias, 'en-US', { numeric: true })
+    );
+  }, [selectedBoardResource, selectedNodeIoRow]);
+  const selectedBoardResourceCompatible = useMemo(
+    () =>
+      Boolean(
+        selectedNodeIoRow &&
+          selectedBoardResource &&
+          isBasys3ResourceCompatibleWithSignal(selectedBoardResource, selectedNodeIoRow)
+      ),
+    [selectedBoardResource, selectedNodeIoRow]
+  );
+  const componentDefinitionRegistry = useMemo(
+    () => createComponentDefinitionRegistry(customComponentDefs),
+    [customComponentDefs]
+  );
+  const selectedComponentDefinition = useMemo(
+    () => selectedNode ? componentDefinitionRegistry.getByRuntimeType(selectedNode.type) : undefined,
+    [componentDefinitionRegistry, selectedNode]
+  );
+  const selectedBoardConflict = useMemo(() => {
+    if (!selectedNodeIoRow || !selectedBoardResource) return null;
+    return (
+      ioRows.find((row) => {
+        if (row.id === selectedNodeIoRow.id || !row.pin) return false;
+        return getBasys3BoardResource(row.pin)?.packagePin === selectedBoardResource.packagePin;
+      }) ?? null
+    );
+  }, [ioRows, selectedBoardResource, selectedNodeIoRow]);
+  const handleHierarchyOpen = useCallback(
+    (nodeId: string | null, depth: number, componentType?: string) => {
+      setDesignView('canvas');
+      if (!nodeId) {
+        clearSelection();
+        return;
+      }
+      if (depth === 1) {
+        selectMultipleNodes([nodeId], false);
+        setActiveRightDockTab('inspector');
+        return;
+      }
+      setPaletteQuery(componentType ?? '');
+      setActiveLeftDockTab('components');
+      setActionToast('Opened the matching custom definition in Components. Nested definitions remain inspect-only.');
+    },
+    [clearSelection, selectMultipleNodes, setDesignView]
+  );
   const preferredNodeTracePort = useMemo(() => {
     if (!selectedNode) return null;
     if (selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp') return 'in';
@@ -4596,8 +4598,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
         const typeName = nodeTypeLabel(selectedNode.type);
         const studentNodeLabel = describeNodeForStudents(selectedNode, selectedNodeIoRow);
+        const mappedBoardResource = selectedNodeIoRow
+          ? getBasys3BoardResource(selectedNodeIoRow.pin)
+          : null;
         const boardSummary = selectedNodeIoRow
-          ? `${selectedNodeIoRow.label} -> ${selectedNodeIoRow.pin || 'unmapped'}`
+          ? mappedBoardResource
+            ? `${mappedBoardResource.alias} -> ${mappedBoardResource.packagePin}`
+            : 'Unassigned'
           : 'No board mapping';
         const selectedLogicalDirection = selectedNodeIoRow
           ? selectedNodeIoRow.direction === 'in'
@@ -4608,11 +4615,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             : selectedNode.type === 'OUTPUT' || selectedNode.type === 'Lamp'
               ? `Output signal - ${SIGNAL_LANGUAGE.outputSignal}`
               : 'Internal part or signal path';
-        const selectedBoardResource = selectedNodeIoRow?.label?.trim()
-          ? selectedNodeIoRow.label.trim()
-          : selectedNodeIoRow
-            ? 'Unassigned board resource'
-            : 'Not mapped to a board resource';
+        const selectedBoardResource = mappedBoardResource?.alias
+          ?? (selectedNodeIoRow ? 'Unassigned board resource' : 'Not mapped to a board resource');
         const selectedPackagePin = selectedNodeIoRow?.pin?.trim()
           ? selectedNodeIoRow.pin.trim()
           : 'No package pin yet';
@@ -5083,7 +5087,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : null;
             })()}
-            {renderSelectionProperties()}
           </div>
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
             <span className="ide-design-inspector-group-label">Net tracing</span>
@@ -5097,7 +5100,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 Focus path
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => selectedNode && handleFanoutTrace(selectedNode.id)} disabled={!selectedNodeHasFanout} testId="ide-design-context-trace-fanout">
-                Trace {'->'}
+                Trace net
               </IdeButton>
               <IdeButton tone="ghost" onClick={pinActiveInspectorSignal} disabled={!activeInspectorSignalKey} testId="ide-design-context-pin">
                 {isActiveInspectorSignalPinned ? 'Unpin' : 'Pin'}
@@ -5487,7 +5490,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           onClick={onGoToVerify}
           testId="ide-design-replay-context-return"
         >
-          Return to Verify waveform
+          Return to Simulate waveform
         </IdeButton>
       </div>
     );
@@ -5809,14 +5812,184 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       </IdeCallout>
     );
   };
+  const renderInlineBoardAssignment = () => {
+    if (!selectedNodeIoRow) {
+      return (
+        <IdeEmptyState
+          title="Select a top-level I/O pin"
+          body="Choose an input or output on the canvas to assign its Basys3 resource without leaving Design."
+          primaryAction={
+            onGoToHardware ? (
+              <IdeButton tone="secondary" onClick={onGoToHardware}>
+                Open Board &amp; Constraints
+              </IdeButton>
+            ) : undefined
+          }
+          testId="ide-design-inline-board-empty"
+        />
+      );
+    }
+
+    return (
+      <section className="ide-design-inline-board" data-testid="ide-design-inline-board-assignment">
+        <header>
+          <span className="ide-surface-block-label">Top-level {selectedNodeIoRow.direction === 'in' ? 'input' : 'output'}</span>
+          <h3>{selectedNodeIoRow.label}</h3>
+          <p>
+            Logical signal <code>{selectedNodeIoRow.id}</code> keeps its project identity; this control changes only its
+            board binding.
+          </p>
+        </header>
+        <label className="ide-design-inline-board-field">
+          <span>Basys3 resource</span>
+          <select
+            value={selectedBoardResource?.packagePin ?? ''}
+            onChange={(event) => onSetMappingPin?.(selectedNodeIoRow.id, event.target.value)}
+            disabled={!onSetMappingPin}
+            data-testid="ide-design-inline-board-resource"
+          >
+            <option value="">Unassigned</option>
+            {selectedBoardResourceOptions.map((resource) => (
+              <option key={resource.id} value={resource.packagePin}>
+                {resource.alias} · {resource.packagePin} · {resource.label}
+                {!isBasys3ResourceCompatibleWithSignal(resource, selectedNodeIoRow)
+                  ? ' · incompatible with this signal role'
+                  : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <dl className="ide-design-inline-board-facts">
+          <div><dt>Direction</dt><dd>{selectedNodeIoRow.direction === 'in' ? 'Input' : 'Output'}</dd></div>
+          <div><dt>Required class</dt><dd>{describeRequiredBoardResourceClass(selectedNodeIoRow, selectedBoardResource, timingGuidance)}</dd></div>
+          <div><dt>Package pin</dt><dd>{selectedBoardResource?.packagePin ?? 'Not assigned'}</dd></div>
+          <div><dt>I/O standard</dt><dd>{selectedBoardResource?.ioStandard ?? 'Assigned with resource'}</dd></div>
+          <div><dt>Constraint alias</dt><dd>{selectedBoardResource?.alias ?? 'None'}</dd></div>
+          <div><dt>Timing status</dt><dd>{describeBoardTimingStatus(selectedNodeIoRow, selectedBoardResource, timingGuidance)}</dd></div>
+          <div><dt>Conflict status</dt><dd>{selectedBoardConflict ? `Also used by ${selectedBoardConflict.label}` : 'No conflict'}</dd></div>
+        </dl>
+        {selectedBoardResource && !selectedBoardResourceCompatible ? (
+          <IdeCallout tone="error" title="Incompatible board resource">
+            {selectedBoardResource.alias} does not match the required signal role. Choose a compatible resource before export.
+          </IdeCallout>
+        ) : null}
+        {selectedBoardConflict ? (
+          <IdeCallout tone="error" title="Resource conflict">
+            {selectedBoardResource?.alias} is also assigned to {selectedBoardConflict.label}. Resolve the conflict before export.
+          </IdeCallout>
+        ) : null}
+        <div className="ide-inline-actions">
+          <IdeButton
+            tone="ghost"
+            disabled={!selectedNodeIoRow.pin || !onSetMappingPin}
+            onClick={() => onSetMappingPin?.(selectedNodeIoRow.id, '')}
+            testId="ide-design-inline-board-clear"
+          >
+            Clear assignment
+          </IdeButton>
+          {onGoToHardware ? (
+            <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-design-inline-board-open-board">
+              Open Board &amp; Constraints
+            </IdeButton>
+          ) : null}
+        </div>
+        <p className="ide-copy ide-design-inspector-proof-boundary">
+          This creates package constraints for export. It does not prove synthesis, implementation, programming, or physical board behavior.
+        </p>
+      </section>
+    );
+  };
+  const renderBottomWorkspace = () => (
+    <div className="ide-design-bottom-workspace" data-testid="ide-design-bottom-workspace">
+      <div className="ide-design-dock-tabs" role="tablist" aria-label="Design bottom panel">
+        {(['problems', 'console', 'simulation'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={activeBottomDockTab === tab}
+            className={activeBottomDockTab === tab ? 'is-active' : ''}
+            onClick={() => setActiveBottomDockTab(tab)}
+            data-testid={`ide-design-bottom-tab-${tab}`}
+          >
+            {tab === 'problems'
+              ? `Problems (${authoringIssues.length + compilerDiagnostics.length})`
+              : tab === 'simulation'
+                ? 'Simulation / Waveform'
+                : 'Console'}
+          </button>
+        ))}
+      </div>
+      <div className="ide-design-bottom-content">
+        {activeBottomDockTab === 'problems' ? (
+          authoringIssues.length === 0 && compilerDiagnostics.length === 0 ? (
+            <IdeEmptyState title="No current problems" body="The circuit has no reported structural or compiler diagnostics." primaryAction={null} />
+          ) : (
+            <div className="ide-design-problem-list">
+              {authoringIssues.map((issue) => (
+                <button
+                  type="button"
+                  key={`${issue.kind}:${issue.portKey}`}
+                  onClick={() => selectMultipleNodes([issue.nodeId], false)}
+                >
+                  <strong>{issue.title}</strong><span>{issue.message}</span><code>{issue.portKey}</code>
+                </button>
+              ))}
+              {compilerDiagnostics.map((diagnostic) => (
+                <button type="button" key={diagnostic.id} onClick={() => onDiagnosticAction?.(diagnostic)}>
+                  <strong>{diagnostic.title}</strong><span>{diagnostic.message}</span>
+                </button>
+              ))}
+            </div>
+          )
+        ) : activeBottomDockTab === 'console' ? (
+          <div className="ide-design-console-readout">
+            <strong>{liveHdlResult.error ? 'HDL generation stopped' : 'HDL preview is current'}</strong>
+            <span>{editorCircuit.nodes.length} nodes · {editorCircuit.connections.length} connections · {liveHdlResult.warnings.length} HDL warnings</span>
+            <p>{liveHdlResult.error ?? 'Generated previews are current for this browser session. Build & Export owns the handoff package.'}</p>
+          </div>
+        ) : (
+          <div className="ide-design-simulation-readout">
+            <strong>{isReplayMode ? 'Verify replay' : runtimeSim.running ? 'Exploratory simulation running' : 'Exploratory simulation paused'}</strong>
+            <span>Tick {runtimeSim.tick} · {runtimeSim.probes.length} pinned signals · {(isReplayMode ? displayTrace : runtimeSim.trace).length} trace samples</span>
+            <div className="ide-inline-actions">
+              {isReplayMode ? (
+                <IdeButton tone="secondary" onClick={onGoToVerify}>Open Simulate waveform</IdeButton>
+              ) : (
+                <>
+              <IdeButton tone="secondary" onClick={runtimeSim.running ? pauseSimulation : startSimulation}>
+                {runtimeSim.running ? 'Pause' : 'Run'}
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={stepSimulation}>Step</IdeButton>
+              <IdeButton tone="ghost" onClick={resetSimulation}>Reset</IdeButton>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
   return (
     <>
       <IdeSurfaceLayout
         mode="design"
         layoutIntent="workbench"
         leftDockMode={workspacePreset.leftDockMode}
-        rightDockMode={hasInspectorSelectionContext ? workspacePreset.rightDockMode : 'hidden'}
-        consoleMode="hidden"
+        rightDockMode={
+          hasInspectorSelectionContext || focusedAssetContext
+            ? workspacePreset.rightDockMode
+            : 'hidden'
+        }
+        consoleMode="auto"
+        console={renderBottomWorkspace()}
+        consoleHasBlocking={compilerErrorCount > 0}
+        consoleHasEntries={
+          authoringIssues.length > 0 ||
+          compilerDiagnostics.length > 0 ||
+          runtimeSim.trace.length > 0 ||
+          liveHdlResult.warnings.length > 0
+        }
         shellDensity={workspacePreset.shellDensity}
         surfaceFrame={workspacePreset.surfaceFrame}
         productSpine={{
@@ -5824,8 +5997,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           statusTone: designCommandTone,
           detail: designCommandDescription,
           primaryLabel: activeVerifySignal || effectiveExternalDebugTick != null
-            ? 'Return to Verify waveform'
-            : 'Open Verify',
+            ? 'Return to Simulate waveform'
+            : 'Open Simulate',
           onPrimary: onGoToVerify,
           recoveryLabel: onGoToProject ? 'Project' : undefined,
           onRecovery: onGoToProject,
@@ -5847,7 +6020,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   : 'No design blocker visible.',
         }}
         dock={
-        <>
+        <div className="ide-design-dock-stack" data-testid="ide-design-left-dock-workspace">
+          <div className="ide-design-dock-tabs" role="tablist" aria-label="Design tools">
+            {(['components', 'hierarchy', 'sources', 'board'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeLeftDockTab === tab}
+                className={activeLeftDockTab === tab ? 'is-active' : ''}
+                onClick={() => setActiveLeftDockTab(tab)}
+                data-testid={`ide-design-left-tab-${tab}`}
+              >
+                {tab === 'components' ? 'Components' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+              </button>
+            ))}
+          </div>
+          {activeLeftDockTab === 'components' ? (
           <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
             <header className="ide-design-subheader ide-design-palette-header">
               <div>
@@ -6143,11 +6332,121 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               />
             ) : null}
           </SurfacePanel>
-
-        </>
+          ) : activeLeftDockTab === 'hierarchy' ? (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-hierarchy">
+              <header className="ide-design-subheader">
+                <div><h3>Module Hierarchy</h3><p>{projectName ? `${projectName} · ` : ''}Actual instances in the current visual design.</p></div>
+              </header>
+              <div className="ide-design-tree" role="tree" aria-label="Module hierarchy">
+                {designHierarchyRows.map((node) => (
+                  <button
+                    key={node.hierarchyId}
+                    type="button"
+                    role="treeitem"
+                    aria-level={node.depth + 1}
+                    aria-selected={node.selected}
+                    className={node.selected ? 'is-selected' : ''}
+                    style={{ '--rb-tree-depth': node.depth } as React.CSSProperties}
+                    onClick={() => handleHierarchyOpen(node.nodeId, node.depth, node.openTarget.componentType)}
+                    data-testid={`ide-design-hierarchy-row-${node.hierarchyId}`}
+                  >
+                    <span className="ide-design-tree-glyph" aria-hidden="true">{node.depth === 0 ? '◇' : node.children.length > 0 ? '▣' : '◆'}</span>
+                    <span><strong>{node.label}</strong><small>{node.depth === 0 ? 'Top module' : node.runtimeType}</small></span>
+                    {node.truncation ? <em>{node.truncation.reason === 'cycle' ? 'Cycle guarded' : 'Depth limit'}</em> : null}
+                  </button>
+                ))}
+              </div>
+              {designHierarchy.cycleCount || designHierarchy.depthLimitCount ? (
+                <p className="ide-copy">{designHierarchy.cycleCount} cycles guarded · {designHierarchy.depthLimitCount} depth limits</p>
+              ) : null}
+            </SurfacePanel>
+          ) : activeLeftDockTab === 'sources' ? (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-sources">
+              <header className="ide-design-subheader">
+                <div><h3>Design Sources</h3><p>Real project-owned documents only.</p></div>
+              </header>
+              <div className="ide-design-source-list">
+                {designSources.entries.map((source) => (
+                  <button
+                    key={source.id}
+                    type="button"
+                    onClick={() => {
+                      if (source.kind === 'visual-circuit') setDesignView('canvas');
+                      else if (source.kind === 'hdl-source') setDesignView('hdl');
+                      else {
+                        setPaletteQuery(source.label);
+                        setActiveLeftDockTab('components');
+                      }
+                    }}
+                    data-testid={`ide-design-source-${source.kind}`}
+                  >
+                    <span aria-hidden="true">{source.kind === 'hdl-source' ? '</>' : source.kind === 'visual-circuit' ? '◇' : '▣'}</span>
+                    <span>
+                      <strong>{source.label}</strong>
+                      <small>
+                        {source.fileBacked
+                          ? `${source.language.toUpperCase()} · preserved read-only source`
+                          : source.kind === 'visual-circuit'
+                            ? `${source.nodeCount} nodes · ${source.connectionCount} connections · canvas editable`
+                            : `${source.nodeCount} nodes · definition inspect-only`}
+                      </small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="ide-copy">Generated VHDL and Verilog previews are outputs of the current visual source, not invented project files.</p>
+            </SurfacePanel>
+          ) : (
+            <SurfacePanel className="ide-design-project-browser" testId="ide-design-board-dock">
+              <header className="ide-design-subheader">
+                <div><h3>Board I/O</h3><p>Project bindings shared with Board &amp; Constraints.</p></div>
+              </header>
+              <div className="ide-design-board-binding-list">
+                {ioRows.map((row) => {
+                  const resource = getBasys3BoardResource(row.pin);
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => {
+                        selectMultipleNodes([row.nodeId], false);
+                        setActiveRightDockTab('constraints');
+                      }}
+                    >
+                      <span><strong>{row.label}</strong><small>{row.direction === 'in' ? 'Input' : 'Output'}</small></span>
+                      <code>{resource ? `${resource.alias} · ${resource.packagePin}` : 'Unassigned'}</code>
+                    </button>
+                  );
+                })}
+              </div>
+              {ioRows.length === 0 ? (
+                <IdeEmptyState title="No top-level I/O" body="Place an input or output pin to create a board-assignable signal." primaryAction={null} />
+              ) : null}
+              {onGoToHardware ? (
+                <IdeButton tone="secondary" onClick={onGoToHardware}>Open Board &amp; Constraints</IdeButton>
+              ) : null}
+            </SurfacePanel>
+          )}
+        </div>
       }
       inspector={
         <>
+          <div className="ide-design-dock-tabs" role="tablist" aria-label="Design inspector">
+            {(['inspector', 'properties', 'constraints'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeRightDockTab === tab}
+                className={activeRightDockTab === tab ? 'is-active' : ''}
+                onClick={() => setActiveRightDockTab(tab)}
+                data-testid={`ide-design-right-tab-${tab}`}
+              >
+                {tab === 'inspector' ? 'Inspector' : tab === 'properties' ? 'Properties' : 'Constraints'}
+              </button>
+            ))}
+          </div>
+          <div hidden={activeRightDockTab !== 'inspector'}>
           {focusedAssetContext && (
             <DesignFocusInspector
               context={focusedAssetContext}
@@ -6333,7 +6632,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               })()}
             </React.Fragment>
           )}
-
+          </div>
+          {activeRightDockTab === 'properties' ? (
+            <div className="ide-design-properties-panel" data-testid="ide-design-properties-panel">
+              {renderSelectionIdentityCard()}
+              {hasSingleSelectedNode && selectedNode ? (
+                <>
+                  {renderSelectedNodeDetails()}
+                  {renderSelectionProperties()}
+                  {selectedComponentDefinition ? (
+                    <section className="ide-design-component-contract" data-testid="ide-design-component-contract">
+                      <span className="ide-design-inspector-group-label">Component contract</span>
+                      <dl className="ide-design-inline-board-facts">
+                        <div><dt>Component type</dt><dd>{selectedComponentDefinition.displayName}</dd></div>
+                        <div><dt>Category</dt><dd>{selectedComponentDefinition.category.replaceAll('-', ' ')}</dd></div>
+                        <div><dt>Ports</dt><dd>{selectedComponentDefinition.ports.length}</dd></div>
+                        <div><dt>Compatibility</dt><dd>{selectedComponentDefinition.compatibilityTier === 1 ? 'Native visual path' : `Limited path · Tier ${selectedComponentDefinition.compatibilityTier}`}</dd></div>
+                        <div><dt>Simulation</dt><dd>{selectedComponentDefinition.simulationCapability.supported ? 'Supported' : 'Not supported'}</dd></div>
+                        <div><dt>HDL export</dt><dd>{selectedComponentDefinition.exportCapability.supported ? 'Supported' : 'Not supported'}</dd></div>
+                      </dl>
+                      <p className="ide-copy">{selectedComponentDefinition.compatibilityNote}</p>
+                    </section>
+                  ) : null}
+                </>
+              ) : (
+                <IdeEmptyState title="No editable selection" body="Select one component to inspect its current project-owned properties." primaryAction={null} />
+              )}
+            </div>
+          ) : null}
+          {activeRightDockTab === 'constraints' ? renderInlineBoardAssignment() : null}
         </>
       }
     >
@@ -6401,7 +6728,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       {isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
                     </span>
                     <p className="ide-design-workspace-summary">
-                      Build the circuit graph here, then use Verify to check its behavior.
+                      Build the circuit graph here, then use Simulate to check its behavior.
                     </p>
                     <div
                       className={`ide-design-authoring-summary ${authoringStatusToneClass}`}
@@ -6454,7 +6781,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           title={
                             replaySession && replayTrace.length > 0
                               ? 'Inspect the current Verify run without changing the circuit.'
-                              : 'Run a scenario in Verify to create a replay.'
+                              : 'Run a scenario in Simulate to create a replay.'
                           }
                           onClick={() => onSelectDebugTickIndex?.(0)}
                           data-testid="ide-design-learning-mode-replay"
@@ -6574,9 +6901,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : workspacePreset.showCanvasTools ? (
                 <>
                   {/* Group 1: Mode — primary weight */}
-                  <div className="ide-toolbar-group is-mode">
+                  {toolbarVisible(IDE_COMMAND_IDS.selectDesignTool) || toolbarVisible(IDE_COMMAND_IDS.selectWireTool) ? (
+                  <div
+                    className="ide-toolbar-group is-mode"
+                    style={{ order: toolbarGroupOrder.get('mode') ?? 1 }}
+                    data-toolbar-group="mode"
+                  >
                     <span className="ide-design-toolbar-group-label">Mode</span>
                     <div className="ide-design-tool-segmented" data-testid="ide-design-tool-segmented">
+                      {toolbarVisible(IDE_COMMAND_IDS.selectDesignTool) ? (
                       <button
                         type="button"
                         className={`ide-design-tool-segment ${toolMode === 'select' ? 'is-active' : ''}`}
@@ -6588,6 +6921,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-tool-icon" aria-hidden="true">↖</span>
                         <span className="ide-design-tool-text"><strong>Select</strong><kbd>S</kbd></span>
                       </button>
+                      ) : null}
+                      {toolbarVisible(IDE_COMMAND_IDS.selectWireTool) ? (
                       <button
                         type="button"
                         className={`ide-design-tool-segment ${toolMode === 'wire' ? 'is-active' : ''}`}
@@ -6599,24 +6934,40 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-tool-icon" aria-hidden="true">⌀</span>
                         <span className="ide-design-tool-text"><strong>Wire</strong><kbd>W</kbd></span>
                       </button>
+                      ) : null}
                     </div>
                   </div>
+                  ) : null}
 
                   {/* Group 2: Edit operations */}
-                  <div className="ide-toolbar-group is-edit">
+                  {toolbarVisible(IDE_COMMAND_IDS.undoDesignEdit) || toolbarVisible(IDE_COMMAND_IDS.redoDesignEdit) ? (
+                  <div
+                    className="ide-toolbar-group is-edit"
+                    style={{ order: toolbarGroupOrder.get('history') ?? 2 }}
+                    data-toolbar-group="history"
+                  >
                     <span className="ide-design-toolbar-group-label">History</span>
+                    {toolbarVisible(IDE_COMMAND_IDS.undoDesignEdit) ? (
                     <IdeButton tone="ghost" onClick={handleUndo} disabled={undoDepth === 0} testId="ide-design-tool-undo">
                       Undo
                     </IdeButton>
+                    ) : null}
+                    {toolbarVisible(IDE_COMMAND_IDS.redoDesignEdit) ? (
                     <IdeButton tone="ghost" onClick={handleRedo} disabled={redoDepth === 0} testId="ide-design-tool-redo">
                       Redo
                     </IdeButton>
+                    ) : null}
                   </div>
+                  ) : null}
                 </>
               ) : null}
 
               {/* Group 3: Utilities — floated right */}
-              <div className="ide-toolbar-group is-utils">
+              <div
+                className="ide-toolbar-group is-utils"
+                style={{ order: toolbarGroupOrder.get('canvas') ?? 3 }}
+                data-toolbar-group="canvas"
+              >
                 <span className="ide-design-toolbar-group-label">View</span>
                 <div className="ide-design-view-toggle" data-testid="ide-design-view-toggle">
                   {(['canvas', 'hdl', 'split'] as const).map((v) => (
@@ -6669,15 +7020,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       className="ide-design-toolbar-canvas-controls"
                       data-testid="ide-design-canvas-controls"
                     >
+                      {toolbarVisible(IDE_COMMAND_IDS.zoomOutDesignCanvas) ? (
                       <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-zoom-out">
                         Zoom −
                       </IdeButton>
+                      ) : null}
+                      {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
                       <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
                         Zoom +
                       </IdeButton>
+                      ) : null}
+                      {toolbarVisible(IDE_COMMAND_IDS.fitDesignCanvas) ? (
                       <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-fit-circuit-canvas">
                         Fit
                       </IdeButton>
+                      ) : null}
                       <IdeButton tone="ghost" onClick={resetView} testId="ide-design-zoom-reset">
                         Reset
                       </IdeButton>
@@ -6697,7 +7054,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     Snap {snapToGrid ? 'On' : 'Off'}
                   </IdeButton>
                 ) : null}
-                {workspacePreset.showCanvasTools ? (
+                {workspacePreset.showCanvasTools && toolbarVisible(IDE_COMMAND_IDS.arrangeDesign) ? (
                   <div className="ide-design-toolbar-layout" role="group" aria-label="Circuit layout">
                     <span className="ide-design-toolbar-group-label">Layout</span>
                     <IdeButton
@@ -6710,6 +7067,104 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </IdeButton>
                   </div>
                 ) : null}
+                {workspacePreset.showCanvasTools ? (
+                  <details
+                    className="ide-design-toolbar-overflow"
+                    data-testid="ide-design-toolbar-overflow"
+                    data-blocks-canvas-placement="1"
+                  >
+                    <summary>More tools</summary>
+                    <div className="ide-design-toolbar-overflow-menu" aria-label="More Design tools">
+                      {toolbarVisible(IDE_COMMAND_IDS.zoomOutDesignCanvas) ? (
+                        <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-overflow-zoom-out">
+                          Zoom out
+                        </IdeButton>
+                      ) : null}
+                      {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
+                        <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-overflow-zoom-in">
+                          Zoom in
+                        </IdeButton>
+                      ) : null}
+                      {toolbarVisible(IDE_COMMAND_IDS.fitDesignCanvas) ? (
+                        <IdeButton tone="ghost" onClick={() => fitToCircuit()} testId="ide-design-overflow-fit">
+                          Fit canvas
+                        </IdeButton>
+                      ) : null}
+                      <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-overflow-snap">
+                        Snap {snapToGrid ? 'On' : 'Off'}
+                      </IdeButton>
+                      {toolbarVisible(IDE_COMMAND_IDS.arrangeDesign) ? (
+                        <IdeButton
+                          tone="secondary"
+                          onClick={handleArrangeCircuit}
+                          disabled={editorCircuit.nodes.length < 2 || isReplayMode}
+                          testId="ide-design-overflow-arrange"
+                        >
+                          Arrange circuit
+                        </IdeButton>
+                      ) : null}
+                    </div>
+                  </details>
+                ) : null}
+                <details className="ide-design-toolbar-customize" data-blocks-canvas-placement="1">
+                  <summary data-testid="ide-design-toolbar-customize">Customize</summary>
+                  <div className="ide-design-toolbar-customize-menu" aria-label="Customize Design toolbar">
+                    <strong>Toolbar controls</strong>
+                    {DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS.map((option) => {
+                      const required = (REQUIRED_DESIGN_TOOLBAR_COMMAND_IDS as readonly IdeCommandId[]).includes(option.id);
+                      return (
+                        <label key={option.id}>
+                          <input
+                            type="checkbox"
+                            checked={toolbarVisible(option.id)}
+                            disabled={required}
+                            onChange={(event) => toggleToolbarCommand(option.id, event.target.checked)}
+                          />
+                          <span>{option.label}{required ? ' · required' : ''}</span>
+                        </label>
+                      );
+                    })}
+                    <strong className="ide-design-toolbar-customize-subheading">Command group order</strong>
+                    <div className="ide-design-toolbar-group-order" data-testid="ide-design-toolbar-group-order">
+                      {orderedToolbarGroupIds.map((groupId, index) => {
+                        const group = DESIGN_TOOLBAR_COMMAND_GROUPS.find((candidate) => candidate.id === groupId);
+                        if (!group) return null;
+                        return (
+                          <div key={groupId} className="ide-design-toolbar-group-order-row">
+                            <span>{index + 1}. {group.label}</span>
+                            <span className="ide-design-toolbar-group-order-actions">
+                              <button
+                                type="button"
+                                onClick={() => reorderToolbarGroup(groupId, 'up')}
+                                disabled={index === 0}
+                                aria-label={`Move ${group.label} earlier`}
+                                data-testid={`ide-design-toolbar-group-${groupId}-up`}
+                              >
+                                Up
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => reorderToolbarGroup(groupId, 'down')}
+                                disabled={index === orderedToolbarGroupIds.length - 1}
+                                aria-label={`Move ${group.label} later`}
+                                data-testid={`ide-design-toolbar-group-${groupId}-down`}
+                              >
+                                Down
+                              </button>
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <IdeButton
+                      tone="ghost"
+                      onClick={() => workspacePreferencesStore.restoreDesignToolbarDefaults()}
+                      testId="ide-design-toolbar-restore-defaults"
+                    >
+                      Restore defaults
+                    </IdeButton>
+                  </div>
+                </details>
               </div>
               </div>
             </div>
@@ -7164,7 +7619,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           )}
                           {onGoToVerify && (
                             <IdeButton tone="secondary" onClick={onGoToVerify} testId="ide-design-diagnostic-go-verify">
-                              Rerun verify
+                              Rerun simulation
                             </IdeButton>
                           )}
                           {onClearDiagnostic && (
@@ -7316,7 +7771,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                             onClick={onGoToVerify}
                             testId="ide-design-debug-context-return"
                           >
-                            Return to Verify
+                            Return to Simulate
                           </IdeButton>
                         ) : null}
                       </div>
@@ -7585,7 +8040,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       >
                         <div className="ide-design-authoring-quickstrip-copy">
                           <span className="ide-design-authoring-quickstrip-label">Next on canvas</span>
-                          <strong>Drop a gate, wire ports, then run Verify.</strong>
+                          <strong>Drop a gate, wire ports, then run Simulate.</strong>
                           <p data-testid="ide-design-logical-io-explainer">
                             {SIGNAL_LANGUAGE.designLogicalIo}
                           </p>
@@ -7999,6 +8454,135 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 };
 
 type DesignIoRow = NonNullable<DesignSurfaceProps['ioRows']>[number];
+
+type DesignBoardTimingRole = 'clock' | 'reset' | 'none';
+
+interface DesignBoardTimingSemantics {
+  role: DesignBoardTimingRole;
+  manualClock: boolean;
+  physicalCategory: 'clock' | 'switch' | 'button' | null;
+}
+
+function normalizeDesignTimingToken(value: string | undefined): string {
+  return normalizeIoSignalKey(value ?? '').replace(/[_.]/g, '');
+}
+
+function timingGuidanceNamesRow(
+  ioRow: DesignIoRow,
+  timingGuidance?: TimingGuidance
+): boolean {
+  if (timingGuidance?.kind !== 'clock' || !timingGuidance.signalName) return false;
+  const timingToken = normalizeDesignTimingToken(timingGuidance.signalName);
+  if (!timingToken) return false;
+  return [ioRow.id, ioRow.nodeId, ioRow.label]
+    .map(normalizeDesignTimingToken)
+    .some((candidate) => candidate.length > 0 && candidate === timingToken);
+}
+
+function rowHasResetIntent(ioRow: DesignIoRow): boolean {
+  if (ioRow.direction !== 'in') return false;
+  return [ioRow.id, ioRow.nodeId, ioRow.label]
+    .map(normalizeDesignTimingToken)
+    .some((candidate) => /^(reset|rst|clear|clr)/.test(candidate));
+}
+
+function resolveDesignBoardTimingSemantics(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): DesignBoardTimingSemantics {
+  const physicalCategory =
+    resource?.category === 'clock' ||
+    resource?.category === 'switch' ||
+    resource?.category === 'button'
+      ? resource.category
+      : ioRow.boardResourceType === 'clock_pin'
+        ? 'clock'
+        : ioRow.boardResourceType === 'switch' || ioRow.boardResourceType === 'button'
+          ? ioRow.boardResourceType
+          : null;
+  const role: DesignBoardTimingRole =
+    ioRow.direction === 'in' &&
+    (
+      ioRow.timingRole === 'clock' ||
+      ioRow.timingRole === 'manual_step' ||
+      ioRow.boardResourceType === 'clock_pin' ||
+      timingGuidanceNamesRow(ioRow, timingGuidance)
+    )
+      ? 'clock'
+      : ioRow.timingRole === 'reset' || rowHasResetIntent(ioRow)
+        ? 'reset'
+        : 'none';
+  const manualClock =
+    role === 'clock' &&
+    (
+      physicalCategory === 'switch' ||
+      physicalCategory === 'button' ||
+      (ioRow.timingRole === 'manual_step' && physicalCategory !== 'clock')
+    );
+  return { role, manualClock, physicalCategory };
+}
+
+function describeRequiredBoardResourceClass(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): string {
+  const timing = resolveDesignBoardTimingSemantics(ioRow, resource, timingGuidance);
+  if (timing.role === 'clock') {
+    if (timing.manualClock) {
+      if (timing.physicalCategory === 'switch') return 'Manual clock switch';
+      if (timing.physicalCategory === 'button') return 'Manual clock button';
+      return 'Manual clock switch or button';
+    }
+    return 'Dedicated clock input';
+  }
+  if (timing.role === 'reset') {
+    if (timing.physicalCategory === 'switch') return 'Reset-capable switch';
+    if (timing.physicalCategory === 'button') return 'Reset-capable button';
+    return 'Reset-capable switch or button';
+  }
+  switch (ioRow.boardResourceType) {
+    case 'switch':
+      return 'Slide switch';
+    case 'button':
+      return 'Pushbutton';
+    case 'led':
+      return 'LED';
+    case 'seven_seg':
+      return 'Seven-segment output';
+    default:
+      return ioRow.direction === 'in' ? 'Switch or button' : 'LED or display output';
+  }
+}
+
+function describeBoardTimingStatus(
+  ioRow: DesignIoRow,
+  resource: ReturnType<typeof getBasys3BoardResource>,
+  timingGuidance?: TimingGuidance
+): string {
+  const timing = resolveDesignBoardTimingSemantics(ioRow, resource, timingGuidance);
+  if (timing.role === 'clock') {
+    if (!resource) {
+      return timing.manualClock ? 'Manual clock resource not assigned' : 'Clock source not assigned';
+    }
+    if (resource.category === 'clock') {
+      return `${resource.frequencyMHz ?? 100} MHz board clock assigned`;
+    }
+    if (resource.category === 'switch') return `Manual clock switch ${resource.alias} assigned`;
+    if (resource.category === 'button') return `Manual clock button ${resource.alias} assigned`;
+    return 'Assigned resource is not a clock source';
+  }
+  if (timing.role === 'reset') {
+    if (!resource) return 'Reset resource not assigned';
+    if (resource.category === 'switch') return `Reset switch ${resource.alias} assigned`;
+    if (resource.category === 'button') return `Reset button ${resource.alias} assigned`;
+    return 'Assigned resource is not reset-capable';
+  }
+  return resource?.category === 'clock'
+    ? 'Clock resource is incompatible with this signal'
+    : 'Not a timing-control signal';
+}
 
 function resolveNodeIoPresentation(
   node: Node,
@@ -8791,7 +9375,7 @@ function buildSequentialInspectorContext(input: {
       stateSummary: `${fanout} downstream ${fanout === 1 ? 'path' : 'paths'}`,
       timingContext: boardSummary,
       actionKind: ioRow ? null : 'go-to-hardware',
-      actionLabel: ioRow ? null : 'Go to Map Pins',
+      actionLabel: ioRow ? null : 'Go to Board & Constraints',
       actionPort: null,
     };
   }
@@ -8853,7 +9437,7 @@ function buildSequentialInspectorContext(input: {
       roleLabel,
       behaviorSummary,
       nextStep: controlSource
-        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Verify / Map Pins.`
+        ? `CLK is wired — confirm the ${edgeLabel} edge matches your intent in Simulate / Board & Constraints.`
         : 'Wire CLK to a clock or manual step source before expecting updates.',
       controlLabel: 'Clock',
       ioSummaryLabel: 'Inputs',

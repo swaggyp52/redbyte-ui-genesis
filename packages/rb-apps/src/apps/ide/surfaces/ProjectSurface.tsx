@@ -114,7 +114,7 @@ export interface ProjectSurfaceProps {
   onSaveNow?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
-  saveState?: 'saved' | 'unsaved' | 'autosaving';
+  saveState?: 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed';
   onRenameProject?: (nextName: string) => void;
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
@@ -168,8 +168,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onResetProject,
   saveState = 'saved',
   onRenameProject,
-  studentName = '',
-  onStudentNameChange,
   hasVerifyRun = false,
   fpgaConfig,
   importFidelity,
@@ -274,7 +272,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     [health, readiness, workflowAuthority]
   );
   const activePrimaryCta = workflowAuthority?.primaryCta ?? primaryCta;
-  const activePrimaryCtaLabel = workflowAuthority?.primaryCta.label ?? primaryCtaLabel;
+  const activePrimaryCtaLabel = formatProjectWorkflowActionLabel(
+    workflowAuthority?.primaryCta.label ?? primaryCtaLabel,
+    activePrimaryCta.mode
+  );
   const projectVerifyState = resolvedWorkflowAuthority.verifyState;
   const compareMatches = resolvedWorkflowAuthority.compareMatches;
   const compareDiffers = resolvedWorkflowAuthority.compareDiffers;
@@ -286,6 +287,21 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const hasSuccessfulExportBundle = resolvedWorkflowAuthority.hasSuccessfulExportBundle;
   const hardwareReady = resolvedWorkflowAuthority.hardwareReady;
   const blockingIssues = health.blockingIssues;
+  const visibleBlockingIssues = useMemo(
+    () => blockingIssues.map((issue) => issue.fixPath
+      ? {
+          ...issue,
+          fixPath: {
+            ...issue.fixPath,
+            actionLabel: formatProjectWorkflowActionLabel(
+              issue.fixPath.actionLabel,
+              issue.fixPath.mode
+            ),
+          },
+        }
+      : issue),
+    [blockingIssues]
+  );
 
   const activeExample = useMemo(
     () => examples.find((example) => example.id === activeExampleId) ?? null,
@@ -311,9 +327,9 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
     if (trimmed) return trimmed;
     if (starterExample?.summary) return starterExample.summary;
     if (!readiness.hasCircuit) return 'Choose a course lab, starter, saved project, import, or blank design.';
-    if (projectKind === 'blank') return 'This circuit started from a blank canvas. Continue authoring, verify it, map required pins, and build the handoff package.';
+    if (projectKind === 'blank') return 'This circuit started from a blank canvas. Continue authoring, simulate it, assign board constraints, and build the handoff package.';
     if (projectKind === 'custom') return 'This is your authored circuit. Continue from the next required stage.';
-    if (projectKind === 'import') return 'Imported design ready for review, verification, mapping, and export.';
+    if (projectKind === 'import') return 'Imported design ready for review, simulation, board constraints, and package build.';
     if (projectKind === 'saved') return 'Saved project restored on this device.';
     return 'Authored digital-logic project.';
   }, [description, projectKind, readiness.hasCircuit, starterExample?.summary]);
@@ -340,11 +356,11 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   const heroStatusLabel = blockingDesignIssue
     ? 'DESIGN BLOCKED'
     : activePrimaryCta.mode === 'verify'
-    ? 'VERIFY NEXT'
+    ? 'SIMULATE NEXT'
     : hardwareReady
-      ? 'Trusted export ready'
+      ? 'Build & Export ready'
       : exportAvailable
-        ? 'Export available'
+        ? 'Build available'
         : 'Continue project';
   const heroStatusMessage = getProjectStatusMessage({
     readiness,
@@ -471,8 +487,6 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               onCommitIdentityEdit={commitIdentityEdit}
               onCancelIdentityEdit={cancelIdentityEdit}
               canRename={Boolean(onRenameProject)}
-              studentName={studentName}
-              onStudentNameChange={onStudentNameChange}
               activePrimaryCta={activePrimaryCta}
               activePrimaryCtaLabel={activePrimaryCtaLabel}
               onPrimaryCta={onPrimaryCta}
@@ -529,6 +543,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
+              hasVectors={readiness.hasVectors}
               onFocusMacro={onFocusMacro}
               onFocusCustomComponent={onFocusCustomComponent}
             />
@@ -555,7 +570,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
           )}
 
           {readiness.hasCircuit ? (
-            <ProjectWarningsPanel issues={blockingIssues} onNavigateFix={handleProjectModeAction} />
+            <ProjectWarningsPanel issues={visibleBlockingIssues} onNavigateFix={handleProjectModeAction} />
           ) : null}
         </div>
       </IdePanel>
@@ -567,7 +582,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               <p>
                 Your current project will remain unchanged until you confirm.
                 <br />
-                Save or export it first if you need a backup.
+                Save or download a backup first if you need one.
               </p>
               <p>
                 {saveState === 'unsaved'
@@ -608,8 +623,6 @@ interface LoadedProjectOverviewProps {
   onCommitIdentityEdit: () => void;
   onCancelIdentityEdit: () => void;
   canRename: boolean;
-  studentName: string;
-  onStudentNameChange?: (name: string) => void;
   activePrimaryCta: ProjectPrimaryCta;
   activePrimaryCtaLabel: string;
   onPrimaryCta: () => void;
@@ -632,7 +645,7 @@ interface LoadedProjectOverviewProps {
   onStartGuidedLab?: (labId: string) => void;
   fpgaConfig?: { part: string; top: string; board: string };
   topModuleName: string;
-  saveState: 'saved' | 'unsaved' | 'autosaving';
+  saveState: 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed';
   savedAgoLabel: string | null;
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
@@ -666,6 +679,7 @@ interface LoadedProjectOverviewProps {
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
+  hasVectors: boolean;
   onFocusMacro?: (macroId: string, macroName: string) => void;
   onFocusCustomComponent?: (componentName: string) => void;
 }
@@ -684,8 +698,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   onCommitIdentityEdit,
   onCancelIdentityEdit,
   canRename,
-  studentName,
-  onStudentNameChange,
   activePrimaryCta,
   activePrimaryCtaLabel,
   onPrimaryCta,
@@ -742,16 +754,21 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   projectKind,
   sourceExampleId,
   scenarioAuthority,
+  hasVectors,
   onFocusMacro,
   onFocusCustomComponent,
 }) => {
   const saveLabel = saveState === 'unsaved'
     ? 'Unsaved changes'
-    : saveState === 'autosaving'
-      ? 'Saving...'
-      : savedAgoLabel
-        ? `Saved ${savedAgoLabel}`
-        : 'Saved locally';
+    : saveState === 'save-failed'
+      ? 'Save failed'
+      : saveState === 'autosaving'
+        ? 'Autosaving...'
+        : saveState === 'saving'
+          ? 'Saving...'
+          : savedAgoLabel
+            ? `Saved ${savedAgoLabel}`
+            : 'Saved locally';
   const fidelityLabel = importFidelity === 'full'
     ? 'Full restore'
     : importFidelity === 'reconstructed'
@@ -772,13 +789,31 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   const primaryButtonLabel = activePrimaryCta.mode === 'verify' && !/^continue\b/i.test(activePrimaryCtaLabel)
     ? `Continue to ${activePrimaryCtaLabel}`
     : activePrimaryCtaLabel;
+  const designNodeCount = outline?.nodeCount ?? circuit?.nodes.length ?? 0;
+  const designConnectionCount = outline?.connectionCount ?? circuit?.connections.length ?? 0;
+  const reusableModuleNames = [
+    ...(outline?.macros.map((macro) => macro.name) ?? []),
+    ...(outline?.customComponents.map((component) => component.name) ?? []),
+  ];
+  const resolvedTopModule = fpgaConfig?.top?.trim() || topModuleName.trim() || 'No top module';
+  const simulationSourceLabel = hasVectors
+    ? scenarioAuthority === 'starter'
+      ? 'Starter scenario vectors'
+      : scenarioAuthority === 'authored' || scenarioAuthority === 'verified'
+        ? 'Authored scenario vectors'
+        : 'Project scenario vectors'
+    : 'No scenario vectors';
+  const simulationSourceDetail = health.lastVerify
+    ? `${health.dirtySinceVerify ? 'Stale' : 'Current'} ${health.lastVerify.runKind === 'trace' ? 'simulation trace' : 'Compare result'}`
+    : 'No simulation run recorded';
+  const recentActivity = getRecentProjectActivity(health, recentProjects, savedAgoLabel);
 
   return (
     <>
       <section className="ide-project-v3-command-board" data-testid="ide-project-command-board-v1">
       <header className="ide-project-v3-header" data-testid="ide-project-identity-strip">
         <div className="ide-project-v3-identity">
-          <p className="ide-surface-block-label">Project overview</p>
+          <p className="ide-surface-block-label">Project center · {projectContextLabel}</p>
           {identityEditing ? (
             <input
               ref={identityInputRef}
@@ -818,9 +853,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
           <p className="ide-project-v3-description" data-testid="ide-project-overview-summary">
             {projectSummary}
           </p>
-          {circuit && circuit.nodes.length > 0 ? (
-            <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} />
-          ) : null}
           {starterName && starterName !== projectName ? (
             <p className="ide-project-v3-source" data-testid="ide-project-workspace-context">
               Started from <strong>{starterName}</strong>
@@ -831,20 +863,55 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <strong>Goal:</strong> {expectedBehavior}
             </p>
           ) : null}
-          {onStudentNameChange ? (
-            <label className="ide-project-v3-student-field">
-              <span>Student</span>
-              <input
-                type="text"
-                value={studentName}
-                onChange={(event) => onStudentNameChange(event.target.value)}
-                aria-label="Student name"
-                placeholder="Optional student name"
-              />
-            </label>
-          ) : studentName ? (
-            <p className="ide-project-v3-student">Student: {studentName}</p>
-          ) : null}
+          <div className="ide-project-v3-meta" data-testid="ide-project-professional-facts">
+            <div>
+              <span>Readiness</span>
+              <strong data-testid="ide-project-readiness-blocker-count">{readinessLabel}</strong>
+              <small>{heroStatusMessage}</small>
+            </div>
+            <div data-testid="ide-project-design-sources">
+              <span>Design sources</span>
+              <strong>Circuit graph</strong>
+              <small>
+                {designNodeCount} components · {designConnectionCount} wires
+                {fidelityLabel ? (
+                  <span data-testid="ide-project-import-fidelity"> · {fidelityLabel} import</span>
+                ) : null}
+              </small>
+            </div>
+            <div data-testid="ide-project-module-hierarchy">
+              <span>Module hierarchy</span>
+              <strong>{resolvedTopModule}</strong>
+              <small>
+                {reusableModuleNames.length > 0
+                  ? `Reusable: ${reusableModuleNames.join(', ')}`
+                  : 'Top-level circuit only'}
+              </small>
+            </div>
+            <div data-testid="ide-project-simulation-sources">
+              <span>Simulation sources</span>
+              <strong>{simulationSourceLabel}</strong>
+              <small>{simulationSourceDetail}</small>
+            </div>
+            <div data-testid="ide-project-constraint-set">
+              <span>Constraint set</span>
+              <strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong>
+              <small>
+                {mappedRequiredRows.length}/{requiredRows.length} required assignments
+                {fpgaConfig?.part ? ` · ${fpgaConfig.part}` : ''}
+              </small>
+            </div>
+            <div data-testid="ide-project-storage-summary">
+              <span>Storage &amp; recovery</span>
+              <strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong>
+              <small>This browser on this device{onRestoreLastSave ? ' · Restore last save action' : ''}</small>
+            </div>
+            <div data-testid="ide-project-recent-activity">
+              <span>Recent activity</span>
+              <strong>{recentActivity.label}</strong>
+              <small>{recentActivity.detail}</small>
+            </div>
+          </div>
         </div>
 
         <section
@@ -873,45 +940,30 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
       </header>
 
       <div className="ide-project-v3-toolbar">
-        <IdeButton tone="ghost" onClick={onToggleChangeProject} testId="ide-project-change-project">
-          {changeProjectOpen ? 'Close project choices' : 'Change Project'}
-        </IdeButton>
-        <details className="ide-project-v3-more-actions">
-          <summary>More project actions</summary>
-          <div>
-            <div className="ide-project-v3-meta" data-testid="ide-project-professional-facts">
-              <div>
-                <span>Readiness</span>
-                <strong data-testid="ide-project-readiness-blocker-count">{readinessLabel}</strong>
-              </div>
-              <div>
-                <span>Target board</span>
-                <strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong>
-              </div>
-              <div>
-                <span>Save state</span>
-                <strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong>
-              </div>
-              <div>
-                <span>Project type</span>
-                <strong>{projectContextLabel}</strong>
-                {fidelityLabel ? <small data-testid="ide-project-import-fidelity">{fidelityLabel}</small> : null}
-              </div>
-            </div>
-            {onSaveNow ? (
-              <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">Save now</IdeButton>
-            ) : null}
+        <div className="ide-project-v3-actions">
+          <IdeButton tone="ghost" onClick={onToggleChangeProject} testId="ide-project-change-project">
+            {changeProjectOpen ? 'Close project choices' : 'Change Project'}
+          </IdeButton>
+          {onSaveNow ? (
+            <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-session-save-now">Save now</IdeButton>
+          ) : null}
+          {onRestoreLastSave ? (
+            <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">Restore last save</IdeButton>
+          ) : null}
+        </div>
+        {onOpenSavedProjects || onResetProject ? (
+          <details className="ide-project-v3-more-actions">
+            <summary>More project actions</summary>
+            <div>
             {onOpenSavedProjects ? (
               <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">Open existing</IdeButton>
-            ) : null}
-            {onRestoreLastSave ? (
-              <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-session-restore">Restore last save</IdeButton>
             ) : null}
             {onResetProject ? (
               <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">Reset project</IdeButton>
             ) : null}
-          </div>
-        </details>
+            </div>
+          </details>
+        ) : null}
       </div>
 
       {changeProjectOpen ? (
@@ -991,6 +1043,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <details className="ide-project-v3-stage-details">
               <summary>Design details</summary>
               <IoSummary inputRows={inputRows} outputRows={outputRows} />
+              {circuit && circuit.nodes.length > 0 ? (
+                <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} />
+              ) : null}
               {outline ? (
                 <ProjectInventory
                   outline={outline}
@@ -1002,10 +1057,10 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
           </ProjectStageRow>
 
           <ProjectStageRow
-            label="Verification"
+            label="Simulate"
             state={formatBehavioralEvidenceTier(behavioralEvidenceTier)}
             summary={verifySummary}
-            actionLabel="Open Verify"
+            actionLabel="Open Simulate"
             onAction={onOpenVerify}
             testId="ide-project-summary-verify"
           />
@@ -1014,16 +1069,16 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             ref={mappingSectionRef}
             className={`ide-project-v3-stage-row${highlightedMappingKey ? ' is-highlighted' : ''}`}
             data-testid="ide-project-mapping-overview"
-            aria-label="Map Pins summary"
+            aria-label="Board and constraints summary"
           >
             <div className="ide-project-v3-stage-name" data-testid="ide-project-mapping-summary-strip">
-              <span>Map Pins summary</span>
+              <span>Board &amp; Constraints</span>
               <strong data-testid="ide-project-mapping-stat">
                 {mappedRequiredRows.length}/{requiredRows.length} required mapped
               </strong>
             </div>
             <div className="ide-project-v3-stage-body" data-testid="ide-project-panel-mapping">
-              <h3 data-testid="ide-project-map-pins-header">Board pin mapping</h3>
+              <h3 data-testid="ide-project-map-pins-header">Board assignments</h3>
               <p className="ide-project-v3-mapping-headline">
                 {missingRequiredRows.length > 0
                   ? `${missingRequiredRows.length} required signal${missingRequiredRows.length === 1 ? '' : 's'} still need a board resource`
@@ -1032,7 +1087,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <details className="ide-project-v3-stage-details">
                 <summary>Mapping details</summary>
                 <p data-testid="ide-project-map-pipeline-copy">
-                  Project mirrors the saved board binding before building the Vivado package. Assignments change only in Map Pins.
+                  Project mirrors the saved board binding before building the Vivado package. Assignments change only in Board &amp; Constraints.
                 </p>
                 {missingRequiredRows.length > 0 ? (
                   <p className="ide-project-v3-missing" data-testid="ide-project-mapping-missing-list">
@@ -1057,15 +1112,15 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               ) : null}
             </div>
             <div className="ide-project-v3-stage-action">
-              <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-open-map-pins">Open Map Pins</IdeButton>
+              <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-open-map-pins">Open Board &amp; Constraints</IdeButton>
             </div>
           </section>
 
           <ProjectStageRow
-            label="Export"
+            label="Build & Export"
             state={exportPackageCurrent ? 'Current package' : exportAvailable ? 'Available' : 'Blocked'}
             summary={exportSummary}
-            actionLabel="Open Export"
+            actionLabel="Open Build & Export"
             onAction={onOpenExport}
             testId="ide-project-summary-export"
             actionTestId="ide-project-open-export"
@@ -1135,7 +1190,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <dd data-testid="ide-project-dirty-since-verify">{health.dirtySinceVerify ? 'DIRTY' : 'CLEAN'}</dd>
           </div>
           <div>
-            <dt>Dirty since Export</dt>
+            <dt>Dirty since package build</dt>
             <dd data-testid="ide-project-dirty-since-export">{health.dirtySinceExport ? 'DIRTY' : 'CLEAN'}</dd>
           </div>
           <div>
@@ -1576,6 +1631,26 @@ const RecentProjects: React.FC<{
   </section>
 );
 
+function formatProjectWorkflowActionLabel(
+  label: string,
+  mode: ProjectHealthMode
+): string {
+  const trimmed = label.trim();
+  if (/board\s*&\s*constraints/i.test(trimmed)) return trimmed;
+  if (/map pins/i.test(trimmed)) {
+    return trimmed.replace(/map pins/gi, 'Board & Constraints');
+  }
+  if (mode === 'verify' && !/simulat/i.test(trimmed)) {
+    return trimmed
+      .replace(/\bverification\b/gi, 'Simulation')
+      .replace(/\bverify\b/gi, 'Simulate');
+  }
+  if (mode === 'export' && !/build\s*&\s*export/i.test(trimmed)) {
+    return trimmed.replace(/\bexport\b/gi, 'Build & Export');
+  }
+  return trimmed;
+}
+
 function getProjectStatusMessage(input: {
   readiness: ProjectSurfaceProps['readiness'];
   projectVerifyState: ProjectVerifyState;
@@ -1591,14 +1666,14 @@ function getProjectStatusMessage(input: {
   if (!input.readiness.hasCircuit) return 'No circuit loaded yet.';
   if (input.blockingDesignIssueMessage) return `Design blocked - ${input.blockingDesignIssueMessage}`;
   if (input.missingRequiredCount > 0) return `${input.missingRequiredCount} required board signal${input.missingRequiredCount === 1 ? '' : 's'} still need mapping.`;
-  if (!input.readiness.hasVectors) return 'Mapping complete - add vectors in Verify before you rely on Export or hardware.';
+  if (!input.readiness.hasVectors) return 'Board assignments are complete - add vectors in Simulate before you rely on Build & Export or a hardware handoff.';
   if (input.projectVerifyState === 'stale') return 'The circuit changed after the latest comparison.';
   if (input.compareTraceOnly) return 'Observed outputs are current; expected-output comparison has not run.';
   if (input.compareDiffers) return 'The latest comparison differs from the expected outputs.';
   if (!input.compareCurrent) return 'Run Compare for the current circuit before relying on the handoff.';
-  if (!input.exportPackageCurrent) return 'Verification is current; build a fresh export package.';
+  if (!input.exportPackageCurrent) return 'Simulation evidence is current; build a fresh handoff package.';
   if (input.hardwareReady) return 'Browser-E0 project evidence is current. Vivado and board proof remain external.';
-  if (input.compareMatches) return 'Verification matches the current design.';
+  if (input.compareMatches) return 'Simulation matches the current design.';
   return 'Continue the current project workflow.';
 }
 
@@ -1640,13 +1715,13 @@ function getVerifySummary(
   simRunning: boolean
 ): string {
   if (simRunning) return 'Simulation is running for the current project.';
-  if (!health.lastVerify) return 'No comparison run yet. Open Verify to author cases, run the circuit, and compare outputs.';
+  if (!health.lastVerify) return 'No comparison run yet. Open Simulate to author cases, run the circuit, and compare outputs.';
   if (compareMatches) return 'Latest Compare run matches the current design and expected outputs.';
   if (comparePassIncomplete) return 'Checks matched, but board mapping still needs review.';
   if (projectVerifyState === 'stale') return 'The last comparison belongs to an older design state.';
   if (projectVerifyState === 'trace') return 'Observed outputs are current; expected-output comparison has not run.';
-  if (projectVerifyState === 'verify-error') return 'The latest run ended with a verification error.';
-  if (health.lastVerify.status === 'fail') return 'Expected and observed outputs differ. Inspect the first mismatch in Verify.';
+  if (projectVerifyState === 'verify-error') return 'The latest run ended with a simulation error.';
+  if (health.lastVerify.status === 'fail') return 'Expected and observed outputs differ. Inspect the first mismatch in Simulate.';
   return health.dirtySinceVerify
     ? 'The design changed after the last comparison.'
     : 'Comparison evidence needs review.';
@@ -1661,10 +1736,10 @@ function getExportSummary(
 ): string {
   if (!health.lastExport) {
     return exportAvailable
-      ? 'Draft handoff files are available in Export. Build or download the bundle when you are ready.'
-      : 'Export remains blocked until required mapping and project structure are complete.';
+      ? 'Draft handoff files are available in Build & Export. Build or download the bundle when you are ready.'
+      : 'Build & Export remains blocked until required board assignments and project structure are complete.';
   }
-  if (health.lastExport.status === 'blocked') return 'The latest export attempt was blocked. Open Export for the owning repair path.';
+  if (health.lastExport.status === 'blocked') return 'The latest package build was blocked. Open Build & Export for the owning repair path.';
   if (hardwareReady) return 'The current browser-E0 package is ready for Vivado handoff; external hardware proof is still pending.';
   if (health.dirtySinceExport || !exportPackageCurrent) {
     return hasOkBundle
@@ -1677,6 +1752,57 @@ function getExportSummary(
 function formatSavedAt(value: string): string {
   if (!value) return 'not saved';
   return value.replace('T', ' ').replace('.000Z', 'Z');
+}
+
+function getRecentProjectActivity(
+  health: ProjectHealth,
+  recentProjects: NonNullable<ProjectSurfaceProps['recentProjects']>,
+  savedAgoLabel: string | null
+): { label: string; detail: string } {
+  const activities: Array<{ label: string; atIso: string }> = [];
+  const verifyAt = health.lastVerify?.ranAtIso;
+  if (verifyAt) {
+    activities.push({
+      label: health.lastVerify?.runKind === 'trace'
+        ? 'Simulation trace captured'
+        : health.lastVerify?.status === 'pass'
+          ? 'Compare passed'
+          : 'Compare found differences',
+      atIso: verifyAt,
+    });
+  }
+  const exportAt = health.lastExport?.downloadedAtIso ?? health.lastExport?.ranAtIso;
+  if (exportAt) {
+    activities.push({
+      label: health.lastExport?.status === 'ok' ? 'Handoff package created' : 'Package build blocked',
+      atIso: exportAt,
+    });
+  }
+  for (const project of recentProjects) {
+    if (!project.savedAtIso) continue;
+    activities.push({
+      label: `Saved ${project.projectName}`,
+      atIso: project.savedAtIso,
+    });
+  }
+
+  activities.sort((left, right) => {
+    const leftTime = new Date(left.atIso).getTime();
+    const rightTime = new Date(right.atIso).getTime();
+    if (!Number.isFinite(leftTime) && !Number.isFinite(rightTime)) return 0;
+    if (!Number.isFinite(leftTime)) return 1;
+    if (!Number.isFinite(rightTime)) return -1;
+    return rightTime - leftTime;
+  });
+  const latest = activities[0];
+  if (latest) {
+    return {
+      label: latest.label,
+      detail: formatSavedAtRelative(latest.atIso) ?? formatSavedAt(latest.atIso),
+    };
+  }
+  if (savedAgoLabel) return { label: 'Project saved', detail: savedAgoLabel };
+  return { label: 'No recorded run yet', detail: 'Save, simulate, or build a package to record activity' };
 }
 
 function formatSavedAtRelative(value: string): string | null {

@@ -245,7 +245,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
             </p>
             {firstBlocker.isHardwareIssue && onGoToHardware && (
               <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-blocker-goto-hardware">
-                Fix in Map Pins
+                Fix in Board &amp; Constraints
               </IdeButton>
             )}
             {firstBlocker.isDesignIssue && onGoToDesign && (
@@ -479,7 +479,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
           <div className="ide-inline-actions ide-mt-2">
             {onGoToHardware && (
               <IdeButton tone="secondary" onClick={onGoToHardware} testId="ide-export-go-hardware">
-                Back to Map Pins
+                Back to Board &amp; Constraints
               </IdeButton>
             )}
             {onGoToProject && (
@@ -564,7 +564,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                   </p>
                   {trustPrimaryCtaIsVerify && onOpenVerify && (
                     <IdeButton tone="ghost" onClick={onOpenVerify} testId="ide-export-trust-go-verify">
-                      Open Verify
+                      Open Simulate
                     </IdeButton>
                   )}
                 </div>
@@ -601,7 +601,7 @@ export const ExportReadinessHero: React.FC<ExportReadinessHeroProps> = ({
                   </p>
                   {trustPrimaryCtaIsHardware && onGoToHardware && (
                     <IdeButton tone="ghost" onClick={onGoToHardware} testId="ide-export-trust-go-hardware">
-                      Open Map Pins
+                      Open Board &amp; Constraints
                     </IdeButton>
                   )}
                 </div>
@@ -816,7 +816,7 @@ export const ExportVivadoInstructions: React.FC<ExportVivadoInstructionsProps> =
 
       {hasVerifyEvidenceWarning && downloadReady && (
         <IdeCallout tone="warn" testId="ide-export-vivado-unverified-callout" className="ide-mt-1">
-          Run Verify before relying on this handoff. Without a comparison run, the testbench
+          Run Simulate before relying on this handoff. Without a comparison run, the testbench
           vectors have no confirmed match against live outputs.
         </IdeCallout>
       )}

@@ -2525,7 +2525,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       let action: string;
       if (reason === 'missing-output-node') {
         label = `${row.signal} is not connected to a design node`;
-        action = `On Project, open Map Pins and wire this output to a real node before trusting checks.`;
+        action = `On Project, open Board & Constraints and wire this output to a real node before trusting checks.`;
       } else if (reason === 'missing-output-sample') {
         label = `${row.signal} is floating — the simulator could not see a value`;
         action = `In Design, add a net so ${row.signal} is driven; then re-run.`;
@@ -4364,7 +4364,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     ) {
       const actions: VerifyPrimaryStatusAreaProps['actions'] = [
         {
-          label: 'Open Project — Map Pins',
+          label: 'Open Project — Board & Constraints',
           onClick: onOpenProjectVectors,
           tone: 'primary',
           testId: 'ide-verify-primary-open-project-mappins',
@@ -4382,7 +4382,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         tone: 'warn',
         title: 'Board pins are not finished on Project',
         message:
-          'Simulation and checks can still run, but unmapped outputs will not line up with a trustworthy export or board test until you assign them on Project → Map Pins.',
+          'Simulation and checks can still run, but unmapped outputs will not line up with a trustworthy export or board test until you assign them in Board & Constraints.',
         actions,
       };
     }
@@ -5905,7 +5905,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     onClick={compactPrimaryStatusAction.onClick}
                     testId={compactPrimaryStatusAction.testId}
                   >
-                    Project → Map Pins
+                    Board & Constraints
                   </IdeButton>
                 ) : null}
               </div>
@@ -6095,6 +6095,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   ) : (
                     <span className="ide-copy ide-verify-wfbar-meta" data-testid="ide-verify-run-state">
                       {signalTimeline.length} signals · {allWaveformTicks.length} ticks · {runState.toUpperCase()}
+                      {displaySignalTimeline.length > 4 ? ' · scroll lanes' : ''}
                     </span>
                   )}
                 </div>
@@ -6252,7 +6253,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 <IdeCallout tone="error" title="No trace generated" testId="ide-verify-no-trace-guard">
                   <p className="ide-copy">The run completed but produced no waveform data.</p>
                   <ul className="ide-list">
-                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Map Pins</li>
+                    <li>Circuit has no outputs mapped to IO signals — check I/O mapping in Board & Constraints</li>
                     <li>{sequentialGuidanceCopy.noTraceHint}</li>
                     <li>Circuit has unconnected gates — verify all nodes are wired</li>
                   </ul>
@@ -6315,7 +6316,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   selectedSignal={selectedSignal}
                   emptyMessage={
                     lastRun
-                      ? 'No waveform data in this run — check I/O mapping in Map Pins'
+                      ? 'No waveform data in this run — check I/O mapping in Board & Constraints'
                       : 'Run the current stimulus to observe outputs'
                   }
                   ghostSignals={

@@ -23,12 +23,12 @@ describe('PageProductHeader', () => {
     );
 
     expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('What do I do next?');
-    expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('Map required pins');
-    expect(getByTestId('ide-product-spine-hardware').textContent).toContain('Hardware / Map Pins');
+    expect(getByTestId('ide-next-step-guide-hardware').textContent).toContain('Assign required signals');
+    expect(getByTestId('ide-product-spine-hardware').textContent).toContain('Board & Constraints');
     expect(getByTestId('ide-product-spine-status-hardware').textContent).toContain('Mapping missing');
     expect(getByTestId('ide-product-spine-next-hardware').textContent).toContain('Map SW0 and LD0');
-    expect(getByTestId('ide-product-spine-boundary-hardware').textContent).toContain('E1');
-    expect(getByTestId('ide-product-spine-recover-hardware').textContent).toContain('Select a row');
+    expect(getByTestId('ide-product-spine-boundary-hardware').textContent).toContain('Vivado');
+    expect(getByTestId('ide-product-spine-recover-hardware').textContent).toContain('Select the affected row');
     expect((getByTestId('ide-product-spine-details-hardware') as HTMLDetailsElement).open).toBe(false);
 
     fireEvent.click(getByTestId('ide-product-spine-details-hardware').querySelector('summary')!);
@@ -59,7 +59,7 @@ describe('PageProductHeader', () => {
     expect(onPrimary).toHaveBeenCalledTimes(1);
     expect(onRecovery).toHaveBeenCalledTimes(1);
     expect(getByTestId('ide-product-spine-blocked-verify').textContent).toContain('failed output');
-    expect(getByTestId('ide-product-spine-recover-verify').textContent).toContain('Use observed values');
+    expect(getByTestId('ide-product-spine-recover-verify').textContent).toContain('Repair expected values');
   });
 
   it('keeps the Project spine expanded because Project is the orientation surface', () => {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import type { ProjectHealth } from '../projectHealth';
 import {
@@ -12,10 +12,12 @@ import {
 import { buildCurrentVerifyProjectHash } from '../verifyProjectHash';
 import { BoardSignalProvider } from '../BoardSignalContext';
 import { HardwareSurface } from '../surfaces/HardwareSurface';
+import { workspacePreferencesStore } from '../workspacePreferences';
 
 afterEach(() => {
   cleanup();
 });
+beforeEach(() => workspacePreferencesStore.reset());
 
 type HardwareSurfaceProps = React.ComponentProps<typeof HardwareSurface>;
 
@@ -174,7 +176,7 @@ function renderHardware(overrides: Partial<HardwareSurfaceProps> = {}) {
 }
 
 describe('HardwareSurface readiness', () => {
-  it('projects a recorded Verify trace onto the simulated board with explicit trust copy', () => {
+  it('opens the simulated-board tool and restores its persisted support dock', () => {
     const verifyRun = {
       ...makeVerifyRun('combinational', { a: 'input', sum: 'output' }),
       waveform: [
@@ -206,8 +208,15 @@ describe('HardwareSurface readiness', () => {
       verifyLastRun: verifyRun,
     });
 
+    expect(getByTestId('ide-hw-after-mapping-tools').textContent).toContain(
+      'Simulation is exploratory and is not hardware evidence'
+    );
+
     fireEvent.click(getByTestId('ide-hw-mode-btn-live'));
 
+    expect(getByTestId('ide-hw-mode-exit-hint').textContent).toContain('Simulation active');
+    expect(getByTestId('ide-hw-mode-btn-live')).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(getByTestId('ide-show-left-dock'));
     expect(getByTestId('ide-hw-live-dock').textContent).toContain('Simulated board preview');
     expect(getByTestId('ide-hw-simulated-board-trust').textContent).toContain(
       'Browser simulation only'
@@ -236,7 +245,7 @@ describe('HardwareSurface readiness', () => {
     });
 
     const workspace = getByTestId('ide-hw-board-workspace');
-    expect(workspace.textContent).toContain('Bind project signals to Basys3 resources');
+    expect(workspace.textContent).toContain('Plan Basys3 I/O and constraint intent');
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table')).toBeTruthy();
     expect(getByTestId('ide-hw-selected-mapping-editor')).toBeTruthy();
@@ -503,16 +512,20 @@ describe('HardwareSurface readiness', () => {
     });
 
     const readiness = getByTestId('ide-hardware-readiness-callout');
-    expect(readiness.textContent).toContain('Run Verify before relying on this handoff');
-    expect(readiness.textContent).toContain('Open Verify before you rely on the hardware or export handoff');
+    expect(readiness.textContent).toContain('Run Simulate before relying on this handoff');
+    expect(readiness.textContent).toContain(
+      'Open Simulate before you rely on the hardware or export handoff'
+    );
     expect(readiness.textContent).not.toContain('BLOCKED');
     expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Build needed');
   });
 
   it('keeps ready status at E0 and leaves Vivado, bitstream, and board proof external', () => {
     const health = makeHealth({ blockingIssues: [], dirtySinceExport: false });
-    const { getByTestId } = renderHardware({
+    const onOpenExport = vi.fn();
+    const { getByTestId, queryByTestId } = renderHardware({
       health,
+      onOpenExport,
       workflowAuthority: makeHardwareWorkflowAuthority(health, {
         currentVerifyProjectHash: health.lastVerify?.hash ?? null,
         currentExportHash: health.lastExport?.hash ?? null,
@@ -523,14 +536,13 @@ describe('HardwareSurface readiness', () => {
     expect(readiness.textContent).toContain('E0 handoff ready');
     expect(readiness.textContent).toContain('external E1/E2/E3 evidence');
     expect(getByTestId('ide-hardware-dep-chain').textContent).toContain('Vivado proof pending');
+    expect(getByTestId('ide-hw-mapping-next-action').textContent).toContain(
+      'Inspect the package in Build & Export'
+    );
+    expect(queryByTestId('ide-hardware-program-handoff-cta')).toBeNull();
 
-    fireEvent.click(getByTestId('ide-hw-mode-btn-proof'));
-    const handoff = getByTestId('ide-hardware-program-handoff-cta');
-    expect(handoff.textContent).toContain('Vivado project ZIP');
-    expect(handoff.textContent).toContain('Generate Bitstream');
-    expect(handoff.textContent).toContain('Hardware Manager');
-    expect(handoff.textContent).toContain('Program Device');
-    expect(getByTestId('ide-hardware-submission-hint').textContent).toContain('export ZIP');
+    fireEvent.click(getByTestId('ide-hw-continue-export'));
+    expect(onOpenExport).toHaveBeenCalledTimes(1);
   });
 
   it('routes a current structural Design blocker back to Design instead of Export', () => {

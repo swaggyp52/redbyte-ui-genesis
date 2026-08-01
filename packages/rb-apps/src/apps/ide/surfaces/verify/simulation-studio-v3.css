@@ -72,6 +72,16 @@
   font-size: 13px !important;
 }
 
+/* The legacy compact split layout hid metric labels and left students with a
+   row of unexplained numbers. Milestone A keeps the values compact while
+   restoring the meaning of every result. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
+  .ide-verify-region--waveform
+  .ide-verify-results-summary-metric-label {
+  display: inline !important;
+}
+
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-panel
   .ide-verify-results-summary-headline {

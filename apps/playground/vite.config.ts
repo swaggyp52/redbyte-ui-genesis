@@ -17,6 +17,14 @@ function getGitSha(): string {
   }
 }
 
+function getGitBranch(): string {
+  try {
+    return execSync('git branch --show-current').toString().trim() || 'detached';
+  } catch {
+    return 'unknown';
+  }
+}
+
 // Plugin to remove ALL modulepreload from HTML (for debugging)
 function removeAllModulePreload() {
   return {
@@ -35,7 +43,10 @@ export default defineConfig({
   publicDir: path.resolve(__dirname, '../../public'),
   define: {
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? process.env.CF_PAGES_COMMIT_SHA ?? getGitSha()),
+    __GIT_BRANCH__: JSON.stringify(process.env.GIT_BRANCH ?? process.env.CF_PAGES_BRANCH ?? getGitBranch()),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    __NODE_VERSION__: JSON.stringify(process.version),
+    __DEV_URL__: JSON.stringify(process.env.RB_DEV_URL ?? 'http://localhost:5173'),
     __RB_VITE_CONFIG__: JSON.stringify('vite.config.ts'),
   },
   build: {

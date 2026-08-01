@@ -20,7 +20,10 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
-  grid-template-columns: minmax(188px, 196px) minmax(0, 1fr) minmax(232px, 244px) !important;
+  grid-template-columns:
+    var(--ide-workbench-left-width, 220px)
+    minmax(0, 1fr)
+    var(--ide-workbench-right-width, 280px) !important;
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
 }
@@ -842,6 +845,40 @@
     border-left: 0;
   }
 
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(420px, 1fr) minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-workspace,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-dock-right {
+    grid-column: 1;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-columns: minmax(196px, 212px) minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock
+    .ide-workbench-workspace {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-pane-row,
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-pane--canvas,
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvasWrap,
@@ -879,48 +916,132 @@
   }
 }
 
-@media (max-width: 760px) {
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
+/* The legacy polish layer hid both support docks below 820px without updating
+   shell state, which left visible preferences with no panel or restore action.
+   Keep the real docks mounted; the narrower breakpoint below stacks them. */
+@media (max-width: 820px) {
+  .ide-root:has(.ide-workbench-shell[data-ide-mode-marker='design']) {
     grid-template-columns: minmax(0, 1fr) !important;
-    grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    :is(.ide-workbench-dock-left, .ide-workbench-dock-right) {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock),
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock,
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock) {
+    grid-template-rows:
+      minmax(160px, 220px)
+      minmax(520px, 1fr)
+      minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-rows: minmax(520px, 1fr) minmax(180px, 260px) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-rows: minmax(160px, 220px) minmax(520px, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-rows: minmax(520px, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock)
+    .ide-workbench-dock-left {
     grid-column: 1;
     grid-row: 1;
     max-height: 220px;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-workspace {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock)
+    .ide-workbench-workspace {
     grid-column: 1;
     grid-row: 2;
   }
 
-  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock
+    .ide-workbench-workspace {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock)
+    .ide-workbench-dock-right {
     grid-column: 1;
     grid-row: 3;
     max-height: 260px;
   }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock)
+    .ide-workbench-dock-right {
+    grid-column: 1;
+    grid-row: 2;
+    max-height: 260px;
+  }
+
+  /* Horizontal rail sizes are preserved and resume above this breakpoint;
+     their separators have no meaningful geometry while the rails are stacked. */
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    :is(.ide-workbench-resize-handle--left, .ide-workbench-resize-handle--right) {
+    display: none !important;
+  }
 }
 
-/* Visual System v1: preserve the circuit canvas as the dominant work object. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: clamp(188px, 13vw, 204px);
-  --ide-workbench-right-width: clamp(196px, 14vw, 216px);
-}
+/* Visual System v1: preserve the circuit canvas as the dominant work object.
+   At desktop widths, the preference authority owns exact dock geometry. The
+   compact breakpoints above deliberately stack support regions instead. */
+@media (min-width: 1180px) {
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+    --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 220px);
+    --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px);
+  }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main {
-  grid-template-columns:
-    minmax(188px, var(--ide-workbench-left-width))
-    minmax(0, 1fr)
-    minmax(210px, var(--ide-workbench-right-width)) !important;
-}
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock):not(.hide-right-dock) {
+    grid-template-columns:
+      var(--ide-workbench-left-width)
+      minmax(0, 1fr)
+      var(--ide-workbench-right-width) !important;
+  }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  .ide-workbench-main.hide-right-dock {
-  grid-template-columns:
-    minmax(188px, var(--ide-workbench-left-width))
-    minmax(0, 1fr) !important;
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock:not(.hide-right-dock) {
+    grid-template-columns: minmax(0, 1fr) var(--ide-workbench-right-width) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main:not(.hide-left-dock).hide-right-dock {
+    grid-template-columns: var(--ide-workbench-left-width) minmax(0, 1fr) !important;
+  }
+
+  .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+    .ide-workbench-main.hide-left-dock.hide-right-dock {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette {

@@ -1205,6 +1205,10 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const selectionCountLabel = `${selection.nodes.size} selected`;
   const activeDragDelta = canvasInput.dragState.dragDelta ?? { x: 0, y: 0 };
   const showSelectionBounds = Boolean(selectionBoundsScreen) && selection.nodes.size > 0;
+  // A single selected node already has an outline, canvas focus, and inspector
+  // authority. Its redundant count pill can overlap an INPUT/Switch toggle.
+  // Keep the count only when it communicates actual multi-selection state.
+  const showSelectionCountBadge = selection.nodes.size > 1;
   const showSelectionGhost =
     showSelectionBounds && interactionMode === 'draggingNode' && selection.nodes.size > 1;
   const selectionBadgeLayout = React.useMemo(() => {
@@ -1920,31 +1924,33 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                 pointerEvents="none"
               />
             ) : null}
-            <g data-testid="logic-selection-count-badge">
-              <rect
-                x={selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6}
-                y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
-                width={96}
-                height={18}
-                rx={9}
-                fill="rgba(9, 16, 24, 0.92)"
-                stroke="rgba(142, 199, 255, 0.65)"
-                strokeWidth={1}
-                pointerEvents="none"
-              />
-              <text
-                x={(selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6) + 48}
-                y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill="#d9efff"
-                fontFamily="IBM Plex Mono, Consolas, monospace"
-                fontSize={10}
-                pointerEvents="none"
-              >
-                {selectionCountLabel}
-              </text>
-            </g>
+            {showSelectionCountBadge ? (
+              <g data-testid="logic-selection-count-badge">
+                <rect
+                  x={selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6}
+                  y={selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24}
+                  width={96}
+                  height={18}
+                  rx={9}
+                  fill="rgba(9, 16, 24, 0.92)"
+                  stroke="rgba(142, 199, 255, 0.65)"
+                  strokeWidth={1}
+                  pointerEvents="none"
+                />
+                <text
+                  x={(selectionBadgeLayout?.countLeft ?? selectionBoundsScreen.x + 6) + 48}
+                  y={(selectionBadgeLayout?.top ?? selectionBoundsScreen.y - 24) + 12}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#d9efff"
+                  fontFamily="IBM Plex Mono, Consolas, monospace"
+                  fontSize={10}
+                  pointerEvents="none"
+                >
+                  {selectionCountLabel}
+                </text>
+              </g>
+            ) : null}
             {interactionMode === 'draggingNode' ? (
               <g data-testid="logic-selection-delta">
                 <rect

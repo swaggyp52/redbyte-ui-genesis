@@ -33,6 +33,7 @@ import type {
   GuidedLabTaskDefinition,
 } from '../labTaskDefinition';
 import {
+  BOARD_CONSTRAINTS_STAGE_LABEL,
   EXPORT_STAGE_LABEL,
   PROGRAM_STAGE_LABEL,
   VERIFY_STAGE_LABEL,
@@ -62,6 +63,7 @@ import {
   resolveBasys3PackagePin,
   type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
+import { listBasys3CompatibleBoardAliases } from '../../../fpga/boards/basys3/basys3BoardSurfaceProjection';
 import type { IdeChromeContract } from '../chromeContract';
 import './hardware-mapping-workspace-v3.css';
 
@@ -73,21 +75,32 @@ export const CHROME_CONTRACT = {
   exitPaths: [
     {
       fromMode: 'bringup',
-      label: 'Back to Map Pins',
+      label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
       testId: 'ide-hw-mode-exit-back',
     },
     {
       fromMode: 'proof',
-      label: 'Back to Map Pins',
+      label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
       testId: 'ide-hw-mode-exit-back',
     },
     {
       fromMode: 'live',
-      label: 'Back to Map Pins',
+      label: `Back to ${BOARD_CONSTRAINTS_STAGE_LABEL}`,
       testId: 'ide-hw-mode-exit-back',
     },
   ],
 } satisfies IdeChromeContract;
+
+const OPEN_SIMULATE_LABEL = `Open ${VERIFY_STAGE_LABEL}`;
+const OPEN_BUILD_EXPORT_LABEL = `Open ${EXPORT_STAGE_LABEL}`;
+
+function formatHardwareWorkflowDestinationText(value: string): string {
+  return value
+    .replaceAll('Open Verify', OPEN_SIMULATE_LABEL)
+    .replaceAll('open Verify', `open ${VERIFY_STAGE_LABEL}`)
+    .replaceAll('Open Export', OPEN_BUILD_EXPORT_LABEL)
+    .replaceAll('open Export', `open ${EXPORT_STAGE_LABEL}`);
+}
 
 export interface HardwareMappingRow {
   id: string;
@@ -335,32 +348,7 @@ function formatLogicalSignalList(labels: string[]): string {
 
 function buildAllowedBoardAliasesForRow(row: HardwareMappingRow | null): Set<string> | undefined {
   if (!row) return undefined;
-  if (row.direction === 'in') {
-    return new Set([
-      ...Array.from({ length: 16 }, (_, index) => `SW${index}`),
-      'BTNC',
-      'BTNU',
-      'BTND',
-      'BTNL',
-      'BTNR',
-      'CLK100MHZ',
-    ]);
-  }
-  return new Set([
-    ...Array.from({ length: 16 }, (_, index) => `LD${index}`),
-    'CA',
-    'CB',
-    'CC',
-    'CD',
-    'CE',
-    'CF',
-    'CG',
-    'DP',
-    'AN0',
-    'AN1',
-    'AN2',
-    'AN3',
-  ]);
+  return new Set(listBasys3CompatibleBoardAliases(row));
 }
 
 /** Format a single assertion entry as a plain student-readable sentence. */
@@ -1271,6 +1259,10 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       }),
     [hasOtherBlockingIssue, mappingReady, resolvedWorkflowAuthority]
   );
+  const failureTruthMessage = formatHardwareWorkflowDestinationText(failureTruth.message);
+  const failureTruthPrimaryCtaLabel = formatHardwareWorkflowDestinationText(
+    failureTruth.primaryCtaLabel
+  );
   const mappingHandoffBlockedByDesign =
     mappingReady && (failureTruth.condition === 'design-blocked' || hasPresentedDesignBlocker);
   const readinessCalloutTone = failureTruth.severity === 'ready'
@@ -1289,7 +1281,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const hardwareReadinessMessage =
     failureTruth.condition === 'ready'
       ? 'Verify Compare and Export are current for the browser package. Vivado build, bitstream programming, and physical board observation are not proven in RedByte and must be captured as external E1/E2/E3 evidence.'
-      : failureTruth.message;
+      : failureTruthMessage;
   const mappingReadyFollowUp = useMemo(() => {
     switch (failureTruth.condition) {
       case 'design-blocked':
@@ -1301,14 +1293,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'verify-not-run':
         return {
           commandStrip:
-            'Pin mapping is complete. Open Verify to create current evidence before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — open Verify to create trusted export evidence.',
+            'Pin mapping is complete. Open Simulate to create current evidence before you rely on Hardware or Export.',
+          headerHint: 'Mapping complete — open Simulate to create trusted export evidence.',
         };
       case 'verify-stale':
         return {
           commandStrip:
             'Pin mapping is complete, but Verify evidence is stale. Re-run Verify before you rely on Hardware or Export.',
-          headerHint: 'Mapping complete — Verify evidence is stale. Open Verify to refresh before export.',
+          headerHint: 'Mapping complete — Verify evidence is stale. Open Simulate to refresh before export.',
         };
       case 'trace-only':
         return {
@@ -1319,9 +1311,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       case 'assertions-differ':
         return {
           commandStrip:
-            'Pin mapping is complete, but the latest Compare run differs. Open Verify to inspect the mismatch before you rely on Hardware or Export.',
+            'Pin mapping is complete, but the latest Compare run differs. Open Simulate to inspect the mismatch before you rely on Hardware or Export.',
           headerHint:
-            'Mapping complete — latest Compare run differs. Open Verify to inspect the mismatch before export.',
+            'Mapping complete — latest Compare run differs. Open Simulate to inspect the mismatch before export.',
         };
       case 'mapping-review':
         return {
@@ -1339,11 +1331,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         };
       default:
         return {
-          commandStrip: failureTruth.message,
-          headerHint: `Mapping complete — ${failureTruth.primaryCtaLabel.toLowerCase()} to continue.`,
+          commandStrip: failureTruthMessage,
+          headerHint: `Mapping complete — ${failureTruthPrimaryCtaLabel.toLowerCase()} to continue.`,
         };
     }
-  }, [failureTruth.condition, failureTruth.message, failureTruth.primaryCtaLabel]);
+  }, [failureTruth.condition, failureTruthMessage, failureTruthPrimaryCtaLabel]);
   const dominantPrimaryAction = useMemo(() => {
     switch (failureTruth.primaryCtaIntent) {
       case 'map-pins':
@@ -1373,8 +1365,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const blockedHero = showBlockedHero
     ? {
         title: failureTruth.title,
-        body: failureTruth.message,
-        primaryLabel: failureTruth.primaryCtaLabel,
+        body: failureTruthMessage,
+        primaryLabel: failureTruthPrimaryCtaLabel,
         primaryAction: dominantPrimaryAction,
         primaryTestId: 'ide-hardware-blocked-primary',
       }
@@ -1451,11 +1443,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     ) {
       return {
         title: failureTruth.title,
-        body: failureTruth.message,
-        primaryLabel: failureTruth.primaryCtaLabel,
+        body: failureTruthMessage,
+        primaryLabel: failureTruthPrimaryCtaLabel,
         primaryAction: dominantPrimaryAction,
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: onOpenVerify ? 'Open Verify' : null,
+        secondaryLabel: onOpenVerify ? OPEN_SIMULATE_LABEL : null,
         secondaryAction: onOpenVerify ?? null,
       };
     }
@@ -1463,8 +1455,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     if (failureTruth.primaryCtaIntent === 'verify' || compareDiffers) {
       return {
         title: failureTruth.title,
-        body: failureTruth.message,
-        primaryLabel: failureTruth.primaryCtaLabel || 'Open Verify',
+        body: failureTruthMessage,
+        primaryLabel: failureTruthPrimaryCtaLabel || OPEN_SIMULATE_LABEL,
         primaryAction: onOpenVerify,
         primaryTestId: 'ide-hardware-next-primary',
         secondaryLabel: hwMode !== 'bringup' && vectorsCount > 0 ? 'Board Check' : null,
@@ -1511,7 +1503,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         primaryLabel: 'Open Board Check',
         primaryAction: () => setHwMode('bringup'),
         primaryTestId: 'ide-hardware-next-primary',
-        secondaryLabel: 'Open Export',
+        secondaryLabel: OPEN_BUILD_EXPORT_LABEL,
         secondaryAction: onOpenExport,
       };
     }
@@ -1529,9 +1521,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     blockedHero,
     compareDiffers,
     dominantPrimaryAction,
-    failureTruth.message,
+    failureTruthMessage,
     failureTruth.primaryCtaIntent,
-    failureTruth.primaryCtaLabel,
+    failureTruthPrimaryCtaLabel,
     failureTruth.title,
     hasNoBoundaryRows,
     hwMode,
@@ -1823,7 +1815,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
 
   const hardwareBoardChromeStage =
     hwMode === 'map'
-      ? 'Map Pins'
+      ? 'Board & Constraints'
       : hwMode === 'bringup'
         ? 'Stage 2 · Board Check'
         : hwMode === 'proof'
@@ -1927,7 +1919,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     <SurfacePanel className="ide-workbench-placeholder ide-hw-dock-panel ide-hw-dock--map" testId="ide-hw-map-dock">
       <header className="ide-workbench-placeholder-header ide-hw-map-dock-header">
         <div className="ide-hw-map-dock-head-main">
-          <h3>Map Pins</h3>
+          <h3>Board & Constraints</h3>
           <p className="ide-copy ide-copy--flush ide-hw-map-dock-authority-line" data-testid="ide-hw-map-dock-authority-sub">
             Map signal -&gt; board control -&gt; package pin -&gt; XDC constraint.
           </p>
@@ -2001,7 +1993,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             hierarchySurface="hardware"
             hierarchyRole="next"
           >
-            Open Export
+            {OPEN_BUILD_EXPORT_LABEL}
           </IdeButton>
         ) : (
           <div className="ide-hw-map-dock-hint" data-testid="ide-hw-map-dock-incomplete-hint">
@@ -2149,11 +2141,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       <div className="ide-inline-actions">
         {failureTruth.condition === 'ready' ? (
           <IdeButton tone="primary" onClick={onOpenExport} testId="ide-hardware-build-export">
-            Open Export Bundle
+            {OPEN_BUILD_EXPORT_LABEL}
           </IdeButton>
         ) : (
           <IdeButton tone="primary" onClick={dominantPrimaryAction} testId="ide-hardware-build-export">
-            {failureTruth.primaryCtaLabel}
+            {failureTruthPrimaryCtaLabel}
           </IdeButton>
         )}
       </div>
@@ -2407,7 +2399,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       </IdeInspectorSection>
       <IdeInspectorSection title="Advanced XDC preview" defaultOpen={false}>
         <p className="ide-copy ide-copy--flush">
-          Export uses the same saved Map Pins binding when generating <code>top.xdc</code>.
+          {EXPORT_STAGE_LABEL} uses the same saved {BOARD_CONSTRAINTS_STAGE_LABEL} assignment when
+          generating <code>top.xdc</code>.
         </p>
         <pre className="ide-hw-xdc-preview" data-testid="ide-hw-xdc-preview">
           {selectedBoardResourceXdc || 'Select a board resource to preview its XDC binding.'}
@@ -2480,7 +2473,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
       ? hasNoBoundaryRows
         ? PROFESSIONAL_CLASSROOM_COPY.hardwareNoSignals
         : mappingReady
-          ? 'Every required signal has one coherent Basys3 resource and package pin. Continue to Export to inspect the handoff package.'
+          ? 'Every required signal has one coherent Basys3 resource and package pin. Continue to Build & Export to inspect the handoff package.'
           : selectedMappingRow
             ? `${selectedMappingLabel} is selected. Choose a compatible resource in the selected-signal control to assign the package pin.`
             : 'Pin mapping connects each circuit signal to a physical Basys3 resource. Select a signal row, choose a compatible resource, then save the assignment.'
@@ -2561,7 +2554,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             compareMatches || compareCurrent ? 'is-ok' : verifyCurrent && !compareMatches ? 'is-warn' : 'is-missing'
           }`}
           onClick={onOpenVerify}
-          title="Open Verify"
+          title={OPEN_SIMULATE_LABEL}
         >
           <span className="ide-hardware-dep-step__num">1</span>
           <span className="ide-hardware-dep-step__label">{VERIFY_STAGE_LABEL}</span>
@@ -2578,7 +2571,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
             hardwareState === 'ready' ? 'is-ok' : hardwareState === 'export-stale' ? 'is-warn' : 'is-missing'
           }`}
           onClick={onOpenExport}
-          title="Open Export"
+          title={OPEN_BUILD_EXPORT_LABEL}
         >
           <span className="ide-hardware-dep-step__num">2</span>
           <span className="ide-hardware-dep-step__label">{EXPORT_STAGE_LABEL}</span>
@@ -2666,8 +2659,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           : failureTruth.severity === 'blocked'
             ? 'error'
             : 'warn',
-        detail: showBlockedHero ? failureTruth.message : nextActionHero.body,
-        primaryLabel: showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel,
+        detail: showBlockedHero ? failureTruthMessage : nextActionHero.body,
+        primaryLabel: showBlockedHero ? failureTruthPrimaryCtaLabel : nextActionHero.primaryLabel,
         onPrimary: showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction,
         recoveryLabel: hardwareCommandSecondaryLabel ?? undefined,
         onRecovery: hardwareCommandSecondaryAction ?? undefined,
@@ -2677,7 +2670,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         blockedLabel: !hasRequiredMappingRows
           ? 'No required project IO boundary is available from Design.'
           : mappingReady
-            ? failureTruth.message
+            ? failureTruthMessage
             : `${mappingAttentionCount} required mapping issue${mappingAttentionCount === 1 ? '' : 's'} still need attention.`,
       }}
       dock={hwMode === 'map' ? null : activeDock}
@@ -2725,7 +2718,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         onClick={showBlockedHero ? dominantPrimaryAction : nextActionHero.primaryAction}
                         testId={showBlockedHero ? 'ide-hardware-blocked-primary' : nextActionHero.primaryTestId}
                       >
-                        {showBlockedHero ? failureTruth.primaryCtaLabel : nextActionHero.primaryLabel}
+                        {showBlockedHero ? failureTruthPrimaryCtaLabel : nextActionHero.primaryLabel}
                       </IdeButton>
                     </span>
                     {hardwareCommandSecondaryAction && hardwareCommandSecondaryLabel ? (
@@ -2762,14 +2755,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
               }}
               testId="ide-hw-mode-exit-back"
             >
-              ← Back to Map Pins
+              ← Back to {BOARD_CONSTRAINTS_STAGE_LABEL}
             </IdeButton>
             <span className="ide-hw-mode-exit-hint" data-testid="ide-hw-mode-exit-hint">
               {hwMode === 'bringup'
-                ? 'Board Check active — press Esc or click Back to return to Map Pins.'
+                ? 'Board Check active — press Esc or click Back to return to Board & Constraints.'
                 : hwMode === 'proof'
-                  ? 'Pre-flight active — press Esc or click Back to return to Map Pins.'
-                  : 'Simulation active — press Esc or click Back to return to Map Pins.'}
+                  ? 'Pre-flight active — press Esc or click Back to return to Board & Constraints.'
+                  : 'Simulation active — press Esc or click Back to return to Board & Constraints.'}
             </span>
           </div>
         ) : null}
@@ -2807,8 +2800,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 setSelectedMappingRowId(null);
               }}
             >
-              <span className="ide-hw-mode-segment-title">Map Pins</span>
-              <span className="ide-hw-mode-segment-hint">Bind required I/O</span>
+              <span className="ide-hw-mode-segment-title">Assignments</span>
+              <span className="ide-hw-mode-segment-hint">Bind I/O and inspect XDC</span>
               <span className="ide-hw-mode-segment-status" aria-hidden="true">
                 {mappingReady ? '✓' : mappingAttentionCount > 0 ? '○' : '·'}
               </span>
@@ -2982,8 +2975,8 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
           >
             <header className="ide-hw-v3__progress" data-testid="ide-hw-board-resource-summary">
               <div className="ide-hw-v3__progress-copy">
-                <p className="ide-surface-block-label">Map Pins</p>
-                <h2>Bind project signals to Basys3 resources</h2>
+                <p className="ide-surface-block-label">Board &amp; Constraints</p>
+                <h2>Plan Basys3 I/O and constraint intent</h2>
                 <strong data-testid="ide-hardware-mapping-progress">
                   {mappingReady
                     ? 'MAPPING COMPLETE'
@@ -3020,7 +3013,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   {mappingHandoffBlockedByDesign
                     ? 'Repair the circuit in Design'
                     : mappingReady
-                    ? 'Inspect the package in Export'
+                    ? 'Inspect the package in Build & Export'
                     : nextMappingIssueRow
                       ? (conflictingMappingRows.includes(nextMappingIssueRow) ? 'Resolve ' : 'Assign ') + formatProjectSignalName(nextMappingIssueRow)
                       : 'Review required assignments'}
@@ -3053,7 +3046,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     {mappingHandoffBlockedByDesign
                       ? 'Open Design'
                       : mappingReady
-                        ? 'Continue to Export'
+                        ? 'Continue to Build & Export'
                         : 'Select next signal'}
                   </IdeButton>
                 </div>

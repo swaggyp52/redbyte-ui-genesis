@@ -88,7 +88,7 @@ export const VectorEditor: React.FC<VectorEditorProps> = ({
   if (!hasFields) {
     return (
       <p className="ide-vector-editor-empty" style={{ color: 'var(--rb-text-secondary)', fontSize: '0.85em', margin: '8px 0' }}>
-        No IO mapping — add inputs and outputs in Map Pins first.
+        No I/O mapping — assign project signals in Board & Constraints first.
       </p>
     );
   }

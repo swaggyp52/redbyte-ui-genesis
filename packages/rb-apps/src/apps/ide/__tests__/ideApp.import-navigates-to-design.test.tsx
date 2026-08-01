@@ -19,10 +19,14 @@
  */
 
 import React from 'react';
+import { ThemeProvider } from '@redbyte/rb-theme';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import type { RBProject } from '../../../export/projectFormat';
+import { saveIdeProjectSnapshot } from '../projectPersistence';
 import { useProjectRuntime } from '../projectRuntime';
+import { saveLabSessionMeta } from '../persistence/labSession';
+import type { VerifyScenario } from '../verifyScenario';
 
 // Mock the ImportSurface module so the IdeApp render under test calls a stub
 // instead of the real lazy-loaded component. The stub captures the
@@ -69,6 +73,21 @@ vi.mock('../surfaces/ImportSurface', () => {
             },
           ],
         },
+        hdl: {
+          top: 'student_top',
+          sources: [
+            {
+              path: 'rtl/student_top.vhd',
+              language: 'vhdl',
+              text: 'entity student_top is end entity;',
+            },
+            {
+              path: 'rtl/helper.v',
+              language: 'verilog',
+              text: 'module helper; endmodule',
+            },
+          ],
+        },
         ioMapping: {
           inputs: [{ id: 'sw0', nodeId: 'sw0_node', port: 'out', label: 'sw0', pin: 'SW0' }],
           outputs: [{ id: 'ld0', nodeId: 'ld0_node', port: 'in', label: 'ld0', pin: 'LD0' }],
@@ -100,6 +119,56 @@ function seedImportRoute() {
   window.history.replaceState({}, '', '/os/?mode=import');
 }
 
+function renderIdeApp() {
+  return render(
+    <ThemeProvider>
+      <IdeApp />
+    </ThemeProvider>
+  );
+}
+
+function failRecoverySnapshotWrites() {
+  const originalSetItem = Storage.prototype.setItem;
+  return vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+    this: Storage,
+    key: string,
+    value: string
+  ) {
+    if (key.startsWith('rb.ide.project.v1:backup-')) {
+      throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+    }
+    return originalSetItem.call(this, key, value);
+  });
+}
+
+function buildLifecycleProject(projectId: string, name: string, stem: string): RBProject {
+  return {
+    kind: 'rb-project',
+    version: 1,
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+    name,
+    circuit: {
+      nodes: [
+        { id: `${stem}_input`, type: 'INPUT', label: 'A', x: 0, y: 0 },
+        { id: `${stem}_output`, type: 'OUTPUT', label: 'Y', x: 200, y: 0 },
+      ],
+      connections: [
+        {
+          from: { nodeId: `${stem}_input`, portName: 'out' },
+          to: { nodeId: `${stem}_output`, portName: 'in' },
+        },
+      ],
+    },
+    ioMapping: {
+      inputs: [{ id: 'a', nodeId: `${stem}_input`, port: 'out', label: 'A', pin: 'V17' }],
+      outputs: [{ id: 'y', nodeId: `${stem}_output`, port: 'in', label: 'Y', pin: 'U16' }],
+    },
+    vectors: [{ tick: 0, inputs: { a: 1 }, expected: { y: 1 } }],
+    meta: { projectId, projectKind: 'custom', scenarioAuthority: 'authored' },
+  };
+}
+
 describe('IdeApp: import navigates to Design after success', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -112,10 +181,11 @@ describe('IdeApp: import navigates to Design after success', () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it('routes to Design after a successful import callback', async () => {
-    const view = render(<IdeApp />);
+    const view = renderIdeApp();
 
     // Land on the Import surface (stub).
     await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
@@ -145,5 +215,113 @@ describe('IdeApp: import navigates to Design after success', () => {
       },
       { timeout: 10000 }
     );
+
+    fireEvent.click(
+      await view.findByTestId('ide-design-left-tab-sources', {}, { timeout: 10000 })
+    );
+    expect(
+      view
+        .getAllByTestId('ide-design-source-hdl-source')
+        .map((entry) => entry.querySelector('strong')?.textContent)
+    ).toEqual([
+      'rtl/student_top.vhd',
+      'rtl/helper.v',
+    ]);
   }, 30000);
+
+  it('leaves current work untouched when its recovery checkpoint cannot be written', async () => {
+    const currentProject = buildLifecycleProject('rb-current-work', 'Current Work', 'current');
+    useProjectRuntime.getState().loadFromProject(currentProject);
+    failRecoverySnapshotWrites();
+
+    const view = renderIdeApp();
+    await view.findByTestId('ide-import-panel', {}, { timeout: 5000 });
+    fireEvent.click(view.getByTestId('ide-import-test-fire'));
+
+    await waitFor(() => {
+      expect(useProjectRuntime.getState().lastSavedAt).toContain('Current work was left unchanged');
+    });
+    expect(useProjectRuntime.getState().projectId).toBe('rb-current-work');
+    expect(useProjectRuntime.getState().circuit.nodes.map((node) => node.id)).toEqual([
+      'current_input',
+      'current_output',
+    ]);
+  });
+
+  it('fails closed when Build Fresh cannot create its recovery snapshot', async () => {
+    window.history.replaceState({}, '', '/os/?mode=project');
+    const currentProject = buildLifecycleProject('rb-build-fresh-current', 'Build Fresh Current', 'build_fresh');
+    useProjectRuntime.getState().loadFromProject(currentProject);
+    failRecoverySnapshotWrites();
+
+    const view = renderIdeApp();
+    fireEvent.click(await view.findByTestId('ide-project-change-project'));
+    fireEvent.click(await view.findByTestId('ide-project-path-build-fresh'));
+    fireEvent.click(await view.findByTestId('ide-project-build-fresh-confirm'));
+
+    await waitFor(() => {
+      expect(useProjectRuntime.getState().lastSavedAt).toContain('Current work was left unchanged');
+    });
+    expect(useProjectRuntime.getState().projectId).toBe('rb-build-fresh-current');
+    expect(useProjectRuntime.getState().circuit.nodes.map((node) => node.id)).toEqual([
+      'build_fresh_input',
+      'build_fresh_output',
+    ]);
+  });
+
+  it('keeps newer hydrated runtime work when the debounced repository snapshot is older', async () => {
+    window.history.replaceState({}, '', '/os/');
+    const projectId = 'rb-reload-race';
+    const staleProject = buildLifecycleProject(projectId, 'Stale Repository Project', 'stale');
+    expect(
+      saveIdeProjectSnapshot({
+        projectId,
+        projectName: staleProject.name,
+        projectHash: 'stale-repository-hash',
+        project: staleProject,
+        scenarios: [],
+      })
+    ).not.toBeNull();
+
+    const freshProject = buildLifecycleProject(projectId, 'Fresh Hydrated Project', 'fresh');
+    const freshScenario: VerifyScenario = {
+      id: 'fresh-scenario',
+      name: 'Fresh scenario',
+      vectors: [{ tick: 0, inputs: { a: 1 }, expected: { y: 1 } }],
+      probes: [{ key: 'fresh_input.out', label: 'Fresh input' }],
+      version: 1,
+      createdAt: '2026-08-01T00:01:00.000Z',
+      updatedAt: '2026-08-01T00:01:00.000Z',
+    };
+    useProjectRuntime.getState().loadFromProject(freshProject, {
+      scenarios: [freshScenario],
+      activeScenarioId: freshScenario.id,
+    });
+    saveLabSessionMeta({
+      version: 1,
+      savedAt: Date.now(),
+      projectId,
+      currentMode: 'verify',
+      activeExampleId: null,
+      projectKind: 'custom',
+      scenarioAuthority: 'authored',
+      probedKeys: ['fresh_input.out'],
+    });
+
+    const view = renderIdeApp();
+
+    await waitFor(() => {
+      expect(view.getByTestId('ide-root').getAttribute('data-ide-stage')).toBe('verify');
+      expect(useProjectRuntime.getState().projectName).toBe('Fresh Hydrated Project');
+    });
+    expect(useProjectRuntime.getState().circuit.nodes.map((node) => node.id)).toEqual([
+      'fresh_input',
+      'fresh_output',
+    ]);
+    expect(useProjectRuntime.getState().scenarios[0]).toMatchObject({
+      id: 'fresh-scenario',
+      probes: [{ key: 'fresh_input.out', label: 'Fresh input' }],
+      vectors: [{ expected: { y: 1 } }],
+    });
+  });
 });

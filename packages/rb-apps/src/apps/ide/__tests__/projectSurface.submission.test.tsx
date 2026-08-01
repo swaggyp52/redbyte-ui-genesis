@@ -39,8 +39,8 @@ function makeProps(overrides: Partial<ProjectSurfaceProps> = {}): ProjectSurface
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Verify',
-    primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+    primaryCtaLabel: 'Simulate',
+    primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1002' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),
@@ -108,7 +108,7 @@ describe('ProjectSurface workspace panels', () => {
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Map Pins');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Board & Constraints');
     // Reconciliation R2: ProjectWarningsPanel is the single blocker authority.
     const warningsLists = getAllByTestId('ide-project-warnings-list');
     expect(warningsLists[warningsLists.length - 1].textContent).toContain('Finish mapping before relying on hardware behavior');
@@ -125,13 +125,13 @@ describe('ProjectSurface workspace panels', () => {
               blockingIssues: [
                 {
                   code: 'RBP1004',
-                  message: 'Design changed since last verification run.',
-                  fixPath: { mode: 'verify', actionLabel: 'Run Verification' },
+                  message: 'Design changed since the last simulation run.',
+                  fixPath: { mode: 'verify', actionLabel: 'Run Simulation' },
                 },
               ],
             },
-            primaryCtaLabel: 'Verify',
-            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1004' },
+            primaryCtaLabel: 'Simulate',
+            primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1004' },
             projectKind: 'example',
             examples: [
               {
@@ -161,7 +161,7 @@ describe('ProjectSurface workspace panels', () => {
     const goals = getAllByTestId('ide-project-overview-goal');
     expect(goals[goals.length - 1].textContent).toContain('Flip switches and the matching LEDs follow immediately.');
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Verify');
+    expect(primaryCtas[primaryCtas.length - 1].textContent).toContain('Simulate');
     const nextSteps = getAllByTestId('ide-project-command-strip-next-step-copy');
     expect(nextSteps[nextSteps.length - 1].textContent).toContain('comparison');
     expect(queryByTestId('ide-project-board-preview')).toBeNull();
@@ -338,7 +338,7 @@ describe('ProjectSurface workspace panels', () => {
     expect(missing.textContent).not.toMatch(/\bout\b|\bin\b/);
   });
 
-  it('surfaces FPGA config, fidelity, and a Map Pins handoff for lab-day export prep', () => {
+  it('surfaces FPGA config, fidelity, and a Board & Constraints handoff for lab-day package prep', () => {
     const onFpgaConfigChange = vi.fn();
     const onOpenHardware = vi.fn();
     const { getAllByTestId, getByTestId } = render(
@@ -394,7 +394,7 @@ describe('ProjectSurface workspace panels', () => {
     expect(onOpenHardware).toHaveBeenCalledTimes(1);
   });
 
-  it('routes the single Project primary action to Verify when proof is missing', () => {
+  it('routes the single Project primary action to Simulate when proof is missing', () => {
     const { getAllByTestId, queryByTestId } = render(
       <BoardSignalProvider>
         <ProjectSurface
@@ -413,20 +413,20 @@ describe('ProjectSurface workspace panels', () => {
               blockingIssues: [
                 {
                   code: 'RBP1002',
-                  message: 'No verification vectors defined.',
+                  message: 'No simulation vectors defined.',
                   fixPath: { mode: 'verify', actionLabel: 'Add Test Vectors' },
                 },
               ],
             },
-            primaryCtaLabel: 'Verify',
-            primaryCta: { label: 'Verify', mode: 'verify', code: 'RBP1002' },
+            primaryCtaLabel: 'Simulate',
+            primaryCta: { label: 'Simulate', mode: 'verify', code: 'RBP1002' },
           })}
         />
       </BoardSignalProvider>
     );
 
     const primaryCtas = getAllByTestId('ide-project-command-strip-primary-cta');
-    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Verify');
+    expect(primaryCtas[primaryCtas.length - 1]?.textContent).toContain('Simulate');
     expect(queryByTestId('ide-project-command-strip-secondary-cta')).toBeNull();
   });
 

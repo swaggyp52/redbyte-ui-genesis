@@ -44,8 +44,8 @@ function makeProps(): ProjectSurfaceProps {
     examples: [],
     activeExampleId: null,
     onOpenExample: vi.fn(),
-    primaryCtaLabel: 'Map Pins',
-    primaryCta: { label: 'Map Pins', mode: 'hardware', code: 'RBP1001' },
+    primaryCtaLabel: 'Board & Constraints',
+    primaryCta: { label: 'Board & Constraints', mode: 'hardware', code: 'RBP1001' },
     onPrimaryCta: vi.fn(),
     onUpdateMappingPin: vi.fn(),
     onAutoSuggestMapping: vi.fn(),
@@ -94,7 +94,7 @@ function makeProps(): ProjectSurfaceProps {
 describe('ProjectSurface Unified Workbench v3 overview', () => {
   it('shows the project workflow with one clear primary action and progressive disclosure', () => {
     const props = makeProps();
-    const { container, getByTestId } = render(
+    const { container, getByTestId, queryByLabelText } = render(
       <BoardSignalProvider>
         <ProjectSurface {...props} />
       </BoardSignalProvider>
@@ -105,16 +105,23 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
     expect((getByTestId('ide-project-fpga-top') as HTMLInputElement).value).toBe('half_adder_top');
     expect(getByTestId('ide-project-overview-board').textContent).toBe('Basys3');
     expect(getByTestId('ide-project-overview-saved-state').textContent).toContain('Unsaved');
+    expect(getByTestId('ide-project-design-sources').textContent).toContain('6 components · 4 wires');
+    expect(getByTestId('ide-project-module-hierarchy').textContent).toContain('half_adder_top');
+    expect(getByTestId('ide-project-simulation-sources').textContent).toContain('scenario vectors');
+    expect(getByTestId('ide-project-constraint-set').textContent).toContain('3/4 required assignments');
+    expect(getByTestId('ide-project-storage-summary').textContent).toContain('This browser on this device');
+    expect(getByTestId('ide-project-recent-activity').textContent).toContain('Compare passed');
+    expect(queryByLabelText('Student name')).toBeNull();
 
     expect(getByTestId('ide-project-summary-design').textContent).toContain('2 inputs and 2 outputs');
     expect(getByTestId('ide-project-design-io-summary').textContent).toContain('A, B');
     expect(getByTestId('ide-project-summary-verify').textContent).toContain('Latest Compare run matches');
     expect(getByTestId('ide-project-mapping-overview').textContent).toContain('CARRY');
-    expect(getByTestId('ide-project-summary-export').textContent).toContain('Export remains blocked');
+    expect(getByTestId('ide-project-summary-export').textContent).toContain('Build & Export remains blocked');
     expect(getByTestId('ide-project-recent-counter-lab').textContent).toContain('Counter Lab');
 
     expect(container.querySelectorAll('.ide-button-primary')).toHaveLength(1);
-    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Map Pins');
+    expect(getByTestId('ide-project-command-strip-primary-cta').textContent).toContain('Board & Constraints');
     expect(container.querySelectorAll('details').length).toBeGreaterThan(0);
     expect(Array.from(container.querySelectorAll('summary')).map((summary) => summary.textContent)).toContain('Technical details');
 
@@ -188,7 +195,7 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
     const dialog = getByTestId('ide-project-build-fresh-dialog');
     expect(dialog.textContent).toContain('Start a new blank project?');
     expect(dialog.textContent).toContain('Your current project will remain unchanged until you confirm.');
-    expect(dialog.textContent).toContain('Save or export it first if you need a backup.');
+    expect(dialog.textContent).toContain('Save or download a backup first if you need one.');
     expect(dialog.textContent).toContain('This workspace has unsaved changes.');
     expect(nativeConfirm).not.toHaveBeenCalled();
     expect(props.onStartBlankProject).not.toHaveBeenCalled();

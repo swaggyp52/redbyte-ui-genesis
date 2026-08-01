@@ -491,8 +491,8 @@ export const IDE_EXAMPLES: IdeExampleDefinition[] = [
         // Carry OR
         { id: 'or_node',   type: 'OR',     x: 650, y: 280, label: 'OR (CARRY)',    config: {}, state: {} },
         // Outputs
-        { id: 'ld0_node',  type: 'OUTPUT', x: 840, y: 260, label: 'LD0 (CARRY)',   config: {}, state: {} },
-        { id: 'ld1_node',  type: 'OUTPUT', x: 840, y: 180, label: 'LD1 (SUM)',     config: {}, state: {} },
+        { id: 'ld0_node',  type: 'OUTPUT', x: 840, y: 330, label: 'LD0 (CARRY)',   config: {}, state: {} },
+        { id: 'ld1_node',  type: 'OUTPUT', x: 840, y: 130, label: 'LD1 (SUM)',     config: {}, state: {} },
       ],
       connections: [
         // Stage 1 inputs

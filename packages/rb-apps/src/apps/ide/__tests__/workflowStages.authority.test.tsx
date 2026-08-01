@@ -18,7 +18,7 @@ describe('workflow stage authority', () => {
     localStorage.clear();
   });
 
-  it('shows Map Pins as the hardware route label in the top bar and horizontal stage nav', () => {
+  it('shows Board & Constraints as the hardware route label in the top bar and horizontal stage nav', () => {
     const topBar = render(
       <IdeTopBar
         projectName="Adder"
@@ -26,7 +26,7 @@ describe('workflow stage authority', () => {
         currentMode="hardware"
       />
     );
-    expect(topBar.getByTestId('ide-topbar-mode-label').textContent).toBe('Map Pins');
+    expect(topBar.getByTestId('ide-topbar-mode-label').textContent).toBe('Board & Constraints');
 
     const stageNav = render(
       <IdeStageNav
@@ -34,7 +34,7 @@ describe('workflow stage authority', () => {
         onModeChange={vi.fn()}
       />
     );
-    expect(stageNav.getByTestId('mode-button-hardware').textContent).toContain('Map Pins');
+    expect(stageNav.getByTestId('mode-button-hardware').textContent).toContain('Board & Constraints');
   });
 
   it('keeps top-bar context focused on project, board, save, Import, and Help', () => {
@@ -62,7 +62,7 @@ describe('workflow stage authority', () => {
     expect(view.getByTestId('ide-top-bar')).toHaveAttribute('data-build-sha', 'abcdef1');
     expect(view.getByTestId('ide-save-state').getAttribute('aria-label')).toBe('saved');
     expect(view.getByTestId('ide-topbar-save-btn').textContent).toBe('Save');
-    expect(view.getByTestId('mode-button-import').textContent).toBe('Import');
+    expect(view.getByTestId('mode-button-import').textContent).toBe('Import / Recover');
     expect(view.getByTestId('ide-topbar-help-btn').textContent).toBe('Help');
     expect(view.queryByTestId('ide-topbar-workflow-help-btn')).toBeNull();
 
@@ -80,6 +80,34 @@ describe('workflow stage authority', () => {
     ]);
   });
 
+  it('closes top-bar menus after an action so they cannot obstruct the workspace', () => {
+    const onResetWorkspace = vi.fn();
+    const onLoad = vi.fn();
+    const view = render(
+      <IdeTopBar
+        projectName="Adder"
+        saveState="saved"
+        currentMode="design"
+        activeWorkspacePreset="authoring"
+        onApplyWorkspacePreset={vi.fn()}
+        onResetWorkspace={onResetWorkspace}
+        onLoad={onLoad}
+      />
+    );
+
+    const workspaceMenu = view.getByTestId('ide-workspace-menu') as HTMLDetailsElement;
+    workspaceMenu.open = true;
+    fireEvent.click(view.getByTestId('ide-workspace-reset'));
+    expect(onResetWorkspace).toHaveBeenCalledTimes(1);
+    expect(workspaceMenu.open).toBe(false);
+
+    const projectMenu = view.getByTestId('ide-project-menu') as HTMLDetailsElement;
+    projectMenu.open = true;
+    fireEvent.click(view.getByText('Open project...'));
+    expect(onLoad).toHaveBeenCalledTimes(1);
+    expect(projectMenu.open).toBe(false);
+  });
+
   it('uses one five-stage authority for horizontal flow order and labels', () => {
     expect(STUDENT_WORKFLOW_STAGES.map((stage) => stage.id)).toEqual([
       'project',
@@ -88,6 +116,8 @@ describe('workflow stage authority', () => {
       'hardware',
       'export',
     ]);
-    expect(STUDENT_WORKFLOW_SUMMARY).toBe('Project → Design → Verify → Map Pins → Export');
+    expect(STUDENT_WORKFLOW_SUMMARY).toBe(
+      'Project → Design → Simulate → Board & Constraints → Build & Export',
+    );
   });
 });

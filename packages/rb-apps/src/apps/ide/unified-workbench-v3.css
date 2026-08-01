@@ -70,8 +70,8 @@
 
 .ide-root .ide-stage-nav {
   display: grid;
-  grid-template-columns: repeat(5, minmax(128px, 1fr));
-  width: min(100%, 880px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(100%, 1200px);
   min-width: 0;
   margin: 0 auto;
 }
@@ -234,23 +234,23 @@
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --ide-workbench-left-width: clamp(196px, 15vw, 224px) !important;
-  --ide-workbench-right-width: clamp(228px, 18vw, 264px) !important;
+  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 220px) !important;
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px) !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] {
-  --ide-workbench-left-width: clamp(184px, 14vw, 208px) !important;
-  --ide-workbench-right-width: clamp(224px, 18vw, 264px) !important;
+  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 240px) !important;
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px) !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='hardware'] {
-  --ide-workbench-left-width: clamp(220px, 18vw, 268px) !important;
-  --ide-workbench-right-width: clamp(252px, 20vw, 300px) !important;
+  --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 240px) !important;
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 300px) !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='export'],
 .ide-root .ide-workbench-shell[data-ide-mode-marker='import'] {
-  --ide-workbench-right-width: clamp(280px, 23vw, 340px) !important;
+  --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 300px) !important;
 }
 
 .ide-root .ide-workbench-console {
