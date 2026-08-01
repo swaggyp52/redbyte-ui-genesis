@@ -229,6 +229,15 @@ async function readVisiblePreviewByPath(page, artifactPath) {
     await preview.isVisible().catch(() => false),
     `${artifactPath} selected generated preview must be visible in the Export workspace`
   );
+  const renderedCodeLines = await preview
+    .locator('.ide-export-v3__code-line > span:last-child')
+    .allTextContents()
+    .catch(() => []);
+  if (renderedCodeLines.length > 0) {
+    return normalizeArtifactText(
+      renderedCodeLines.map((line) => (line === ' ' ? '' : line)).join('\n')
+    );
+  }
   return normalizeArtifactText(await preview.textContent().catch(() => ''));
 }
 

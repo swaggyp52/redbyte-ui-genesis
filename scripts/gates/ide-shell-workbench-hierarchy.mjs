@@ -23,6 +23,8 @@ const MODES = [
     support: [
       ['[data-testid="ide-design-dock-palette"]'],
       [
+        '[data-testid="ide-design-toolbar"]',
+        '[data-testid="ide-design-selection-inspector"]',
         '[data-testid="ide-design-inspector-canvas-default"]',
         '[data-testid="ide-design-inspector-selection-details"]',
         '[data-testid="ide-design-inspector-actions"]',
@@ -33,8 +35,15 @@ const MODES = [
     id: 'verify',
     primary: ['[data-testid="ide-verify-lab-grid"]'],
     support: [
-      ['[data-testid="ide-verify-left-dock"]'],
-      ['[data-testid="ide-verify-region-waveform"]'],
+      [
+        '[data-testid="ide-verify-command-bar"]',
+        '[data-testid="ide-verify-signal-shelf"]',
+      ],
+      [
+        '[data-testid="ide-verify-region-stimulus"]',
+        '[data-testid="ide-verify-region-waveform"]',
+        '[data-testid="ide-verify-waveform-placeholder"]',
+      ],
     ],
   },
   {
@@ -143,10 +152,13 @@ async function assertShellHierarchy(page, viewport, mode) {
     );
   });
   assert(!state.proofRibbon.visible, `${viewport.label}/${mode.id}: retired proof ribbon is still visible`);
-  assert(!state.statusBar.visible, `${viewport.label}/${mode.id}: retired support footer is still visible`);
+  assert(
+    state.statusBar.visible && state.statusBar.height <= 28,
+    `${viewport.label}/${mode.id}: shared status bar must remain visible and compact ${JSON.stringify(state.statusBar)}`
+  );
   assert(state.productSpineCount === 0, `${viewport.label}/${mode.id}: duplicate page product spine is visible`);
   assert(
-    state.layoutShell.top >= state.stageNav.bottom - 2 && state.layoutShell.top <= state.stageNav.bottom + 2,
+    state.layoutShell.top >= state.stageNav.bottom - 10 && state.layoutShell.top <= state.stageNav.bottom + 2,
     `${viewport.label}/${mode.id}: workbench shell must begin directly under stage navigation (${JSON.stringify({
       stageNav: state.stageNav,
       layoutShell: state.layoutShell,

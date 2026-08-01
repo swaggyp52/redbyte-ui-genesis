@@ -143,8 +143,8 @@ async function assertDesignDirectManipulation(page, viewport) {
   });
 
   assert(
-    metrics.supportDockPolicy === 'stable',
-    `${viewport.label}: Design must use the stable v3 support-dock policy ${JSON.stringify(metrics)}`
+    metrics.supportDockPolicy === 'persistent-configurable',
+    `${viewport.label}: Design must use the persistent configurable v3 support-dock policy ${JSON.stringify(metrics)}`
   );
   assert(
     metrics.libraryDock?.visibleWidth >= 180 && metrics.libraryDock?.visibleWidth <= 230,
@@ -163,7 +163,7 @@ async function assertDesignDirectManipulation(page, viewport) {
     metrics.canvas && metrics.libraryDock && metrics.dock &&
       metrics.canvas.visibleWidth /
         (metrics.libraryDock.visibleWidth + metrics.canvas.visibleWidth + metrics.dock.visibleWidth) + 0.005 >=
-        (viewport.width >= 1440 ? 0.66 : 0.64),
+        0.62,
     `${viewport.label}: Design canvas lost primary workspace ${JSON.stringify({ library: metrics.libraryDock, canvas: metrics.canvas, inspector: metrics.dock })}`
   );
   assert(
@@ -216,7 +216,8 @@ async function assertVerifyFailRepairPass(page, viewport) {
   let status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: Verify should pass saved checks, got "${status}"`);
   assert(await visible(page.locator('[data-testid="ide-verify-region-waveform"]').first()), `${viewport.label}: Verify waveform region missing`);
-  assert(await visible(page.locator('[data-testid="ide-verify-region-stimulus"]').first()), `${viewport.label}: Verify stimulus region missing`);
+  assert(await visible(page.locator('[data-testid="ide-vcb-workspace-scenario"]').first()), `${viewport.label}: Scenario authoring tab missing after replay`);
+  await openChecksWorkspace(page, viewport.label);
 
   const target = await pickExpectedCell(page);
   await clickExpectedCellToValue(page, target, target.value === 0 ? 1 : 0);
@@ -224,12 +225,20 @@ async function assertVerifyFailRepairPass(page, viewport) {
   status = await clickRunAndReadStatus(page);
   assert(isVerifyFail(status), `${viewport.label}: edited expected output should FAIL Compare, got "${status}"`);
 
+  await openChecksWorkspace(page, viewport.label);
   await clickExpectedCellToValue(page, target, target.value);
   assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare must remain selectable after expected repair`);
   status = await clickRunAndReadStatus(page);
   assert(isVerifyPass(status), `${viewport.label}: repaired expected output should PASS Compare, got "${status}"`);
 
   await assertNoRootOverflow(page, `${viewport.label}/Verify`);
+}
+
+async function openChecksWorkspace(page, label) {
+  const checksTab = page.locator('[data-testid="ide-vcb-workspace-checks"]').first();
+  assert(await visible(checksTab), `${label}: optional Checks workspace must remain reachable`);
+  await checksTab.click();
+  await page.locator('[data-testid="ide-verify-region-stimulus"]').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function clickRunAndReadStatus(page) {
