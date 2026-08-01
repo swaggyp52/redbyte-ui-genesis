@@ -281,14 +281,29 @@ export async function setVerifyRunMode(page, mode) {
       : '[data-testid="ide-vcb-observe-only"]';
   const button = page.locator(selector).first();
   const isVisible = await button.isVisible().catch(() => false);
-  if (!isVisible) return false;
-  const isDisabled = await button.isDisabled().catch(() => true);
-  if (isDisabled) return false;
-  const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
-  if (!isPressed) {
-    await button.click();
+  if (isVisible) {
+    const isDisabled = await button.isDisabled().catch(() => true);
+    if (isDisabled) return false;
+    const isPressed = (await button.getAttribute('aria-pressed').catch(() => 'false')) === 'true';
+    if (!isPressed) {
+      await button.click();
+    }
+    return true;
   }
-  return true;
+
+  // Product System v3 has one simulation authority: every run records observed
+  // values and automatically evaluates any authored optional checks. Preserve
+  // older gate intent without requiring the retired Observe / Compare toggle.
+  const simulationBar = page.locator(
+    '[data-testid="ide-verify-command-bar"][data-run-mode="simulation"]'
+  ).first();
+  if (!(await simulationBar.isVisible().catch(() => false))) return false;
+  if (mode === 'observe') return true;
+
+  const simulationText = ((await simulationBar.textContent().catch(() => '')) ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /checks\s+[1-9]\d*|evaluates\s+[1-9]\d*\s+optional check/i.test(simulationText);
 }
 
 export async function saveObservedOutputs(page) {

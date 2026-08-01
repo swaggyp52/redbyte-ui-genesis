@@ -37821,8 +37821,9 @@ Key details:
   information hierarchy and visible language. They require the always-visible
   Project Center overview, inspect the engineering record through the accessible
   `Technical details` disclosure, expect `Simulate`, `Board & Constraints`, and
-  `Build & Export`, and exercise the in-workspace Build Fresh recovery modal
-  instead of the retired native browser prompt.
+  `Build & Export`, exercise the in-workspace Build Fresh recovery modal instead
+  of the retired native browser prompt, and recognize that the unified Simulate
+  run records observations while evaluating any authored optional checks.
 
 **Proof boundary / remaining**
 

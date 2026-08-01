@@ -88,6 +88,7 @@ describe('Verify Simulation Studio', () => {
 
     expect(view.getByTestId('ide-verify-results-summary-headline').textContent).toBe('Simulation complete');
     expect(view.getByTestId('ide-verify-results-summary-subline').textContent).toContain('No checks configured');
+    expect(view.getByTestId('ide-verify-summary-status').textContent).toBe('Simulation complete · No checks configured');
     expect(view.getByTestId('ide-verify-results-summary').getAttribute('data-kind')).toBe('observe-done');
     expect(view.getByTestId('ide-vcb-workspace-replay').getAttribute('aria-selected')).toBe('true');
     expect(view.getByTestId('ide-verify-open-circuit-replay')).toBeTruthy();

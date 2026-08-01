@@ -5193,7 +5193,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     ? 'No circuit'
                     : runProofIsStale
                       ? 'Simulation stale'
-                      : simulationEvidenceSummary?.simulationLabel ?? 'Scenario ready'
+                      : simulationEvidenceSummary
+                        ? `${simulationEvidenceSummary.simulationLabel} · ${simulationEvidenceSummary.assertionLabel}`
+                        : 'Scenario ready'
             }
             stateTone={
               gradingBlockedByDesign
