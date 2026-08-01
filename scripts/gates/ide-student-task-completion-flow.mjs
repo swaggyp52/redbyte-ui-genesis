@@ -323,8 +323,10 @@ async function assertExportHandoff(page, viewport) {
   assert(await visible(upstream), `${viewport.label}: Export upstream readiness ownership missing`);
   assert(await visible(fileBrowser), `${viewport.label}: Export v3 package file browser missing`);
   const text = ((await page.locator('[data-testid="ide-mode-export"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+  const simulationReadiness = ((await page.locator('[data-testid="ide-export-upstream-verify"]').first().textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ');
   assert(/E0/i.test(text), `${viewport.label}: Export must state E0 package boundary`);
-  assert(/Verify|Compare/i.test(text), `${viewport.label}: Export must carry Verify state forward`);
+  assert(/Simulate/i.test(simulationReadiness), `${viewport.label}: Export must carry Simulate ownership forward`);
+  assert(/Validated|Simulated|Draft|Not run|Inconclusive/i.test(simulationReadiness), `${viewport.label}: Export must carry simulation evidence state forward`);
   assert(/Pin|Mapping|Basys3/i.test(text), `${viewport.label}: Export must carry pin mapping context forward`);
   assert(
     !/E1\s+(ready|passed|complete)|E2\s+(ready|passed|complete)|E3\s+(ready|passed|complete)|board observed/i.test(text),

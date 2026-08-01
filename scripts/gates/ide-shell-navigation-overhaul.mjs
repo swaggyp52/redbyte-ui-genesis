@@ -147,7 +147,7 @@ async function assertShellChrome(page, viewport, label) {
     })})`
   );
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']),
     `${viewport.label}/${label}: expected one five-stage workflow, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${label}: Import must be a separate utility, not step 6`);

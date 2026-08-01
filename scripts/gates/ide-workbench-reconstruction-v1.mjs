@@ -133,7 +133,7 @@ async function assertShellChrome(page, viewport, label) {
   assert(Math.abs(state.shell.top - state.stageNav.bottom) <= 2, `${viewport.label}/${label}: workbench must begin directly below stage navigation ${JSON.stringify(state)}`);
   assert(Math.abs(state.surfaceColumn.top - state.shell.top) <= 2, `${viewport.label}/${label}: surface column must begin with workbench ${JSON.stringify(state)}`);
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']) && state.importIsUtility,
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']) && state.importIsUtility,
     `${viewport.label}/${label}: shell must expose ordered five stages plus top-bar Import utility ${JSON.stringify(state)}`
   );
 }

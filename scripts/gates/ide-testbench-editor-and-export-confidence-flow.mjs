@@ -322,8 +322,8 @@ async function assertExportConfidence(page, { expectedPackage, expectedVerify })
     assert(packageState === 'draft', `Export package should be draft while Verify evidence is stale, got "${packageState}"`);
     assert(/Draft/i.test(pkg), `Export package confidence should be draft, got "${pkg}"`);
     assert(
-      /Open Verify|Verify|Compare|rerun|review/i.test(primaryActionText),
-      `stale export must route back to Verify instead of looking build-ready, got "${primaryActionText}"`,
+      /Open Simulate|Simulate|Compare|rerun|review/i.test(primaryActionText),
+      `stale export must route back to Simulate instead of looking build-ready, got "${primaryActionText}"`,
     );
   }
   assert(

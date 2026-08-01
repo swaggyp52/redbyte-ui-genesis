@@ -26,6 +26,31 @@ export function assertBuildFreshReplacementDialog(message, label = 'Build Fresh 
   assert(/local saved projects stay available/i.test(message), `${label} must say local saved projects stay available, got "${message}"`);
 }
 
+export async function assertBuildFreshReplacementModal(page, label = 'Build Fresh replacement modal') {
+  const dialog = page.locator('[data-testid="ide-project-build-fresh-dialog"]').first();
+  await dialog.waitFor({ state: 'visible', timeout: 5000 });
+
+  const dialogText = (await dialog.innerText()).replace(/\s+/g, ' ').trim();
+  assert(/start a new blank project/i.test(dialogText), `${label} must name the blank-project action, got "${dialogText}"`);
+  assert(
+    /current project will remain unchanged until you confirm/i.test(dialogText),
+    `${label} must keep the current project unchanged before confirmation, got "${dialogText}"`
+  );
+  assert(
+    /save or download a backup/i.test(dialogText),
+    `${label} must offer a save or download recovery path, got "${dialogText}"`
+  );
+
+  const cancel = dialog.locator('[data-testid="ide-project-build-fresh-cancel"]').first();
+  const confirm = dialog.locator('[data-testid="ide-project-build-fresh-confirm"]').first();
+  assert(await visible(cancel), `${label} must expose Cancel`);
+  assert(await visible(confirm), `${label} must expose Start blank project`);
+  assert(/start blank project/i.test(await confirm.innerText()), `${label} confirm action must name the result`);
+
+  await cancel.click();
+  await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+}
+
 export async function loadStarterProject(page, options = {}) {
   const { preferredLabStarterTestId, exactExampleId } = options;
 

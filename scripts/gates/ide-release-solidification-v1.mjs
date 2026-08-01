@@ -134,8 +134,12 @@ async function assertExportHandoffChecklist(page, baseUrl, viewport) {
   assert(await visible(checklist), `${viewport.label}: Export must expose direct upstream readiness`);
   assert(await visible(e0Boundary), `${viewport.label}: Export must expose the Browser E0 boundary directly`);
   const checklistText = normalized(`${await checklist.textContent()} ${await e0Boundary.textContent()}`);
+  const simulationReadiness = normalized(
+    await page.locator('[data-testid="ide-export-upstream-verify"]').first().textContent()
+  );
   assert(/package/i.test(checklistText), `${viewport.label}: Export checklist must name package readiness`);
-  assert(/verify|compare/i.test(checklistText), `${viewport.label}: Export checklist must include Verify state`);
+  assert(/simulate/i.test(simulationReadiness), `${viewport.label}: Export checklist must name Simulate ownership`);
+  assert(/validated|simulated|draft|not run|inconclusive/i.test(simulationReadiness), `${viewport.label}: Export checklist must include simulation evidence state`);
   assert(/pins|mapping/i.test(checklistText), `${viewport.label}: Export checklist must include pin mapping state`);
   assert(/E0/i.test(checklistText), `${viewport.label}: Export checklist must state E0 package boundary`);
   assert(/external|Vivado|Basys3/i.test(checklistText), `${viewport.label}: Export checklist must separate external proof`);

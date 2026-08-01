@@ -52,8 +52,8 @@ await runIdeGate('IDE Verify no-circuit task-first entry', async ({ page, baseUr
       `${viewport.label}: task panel must explain that there is no circuit yet (${metrics.taskText})`
     );
     assert(
-      !/(no io mapping yet|map pins|board pins|view on hardware|run verify to see waveforms)/i.test(metrics.panelText),
-      `${viewport.label}: blank Verify must not blame mapping/hardware or waveform apparatus (${metrics.panelText})`
+      !/(no io mapping yet|map pins|board & constraints|board pins|view on hardware|run (?:verify|simulate) to see waveforms)/i.test(metrics.panelText),
+      `${viewport.label}: blank Simulate must not blame mapping/hardware or waveform apparatus (${metrics.panelText})`
     );
     assert(!metrics.labGridVisible, `${viewport.label}: blank Verify must not render the lab waveform/testbench grid`);
 

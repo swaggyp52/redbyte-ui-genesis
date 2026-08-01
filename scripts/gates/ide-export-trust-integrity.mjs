@@ -75,7 +75,7 @@ await runIdeGate('IDE export trust integrity satisfied', async ({ page, baseUrl 
   );
 
   const summaryMapping = await text(page.locator('[data-testid="ide-export-upstream-mapping"]'));
-  assert(/Map Pins/i.test(summaryMapping), `upstream readiness must name Map Pins, got "${summaryMapping}"`);
+  assert(/Board & Constraints/i.test(summaryMapping), `upstream readiness must name Board & Constraints, got "${summaryMapping}"`);
   extractMappedCount(summaryMapping);
 
   const evidenceBoundary = await text(page.locator('[data-testid="ide-export-e0-boundary-summary"]'));

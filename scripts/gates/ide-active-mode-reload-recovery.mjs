@@ -29,7 +29,15 @@ async function assertModeRoute(page, mode, label) {
 
   const topbarMode = await text(page.locator('[data-testid="ide-topbar-mode-label"]'));
   assert(
-    topbarMode.toLowerCase() === (mode === 'hardware' ? 'map pins' : mode),
+    topbarMode.toLowerCase() === (
+      mode === 'verify'
+        ? 'simulate'
+        : mode === 'hardware'
+          ? 'board & constraints'
+          : mode === 'export'
+            ? 'build & export'
+            : mode
+    ),
     `${label} should show ${mode}; topbar showed "${topbarMode}"`
   );
 }

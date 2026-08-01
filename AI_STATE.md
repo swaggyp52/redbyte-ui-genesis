@@ -37817,10 +37817,12 @@ Key details:
   Browser-E0 record identifies the exact candidate commit. The full release
   aggregate is deliberately outside this milestone.
 - The existing remote Classroom Truth Gates workflow is not a Milestone A local
-  gate, but its Product examples check now follows the v3 information hierarchy:
-  it requires the always-visible Project Center overview, opens the accessible
-  `Technical details` disclosure, and verifies the engineering record rather
-  than requiring low-level metadata to compete with the primary workflow.
+  gate, but its directly affected Project and shell assertions now follow the v3
+  information hierarchy and visible language. They require the always-visible
+  Project Center overview, inspect the engineering record through the accessible
+  `Technical details` disclosure, expect `Simulate`, `Board & Constraints`, and
+  `Build & Export`, and exercise the in-workspace Build Fresh recovery modal
+  instead of the retired native browser prompt.
 
 **Proof boundary / remaining**
 

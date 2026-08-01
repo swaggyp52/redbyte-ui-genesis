@@ -58,7 +58,7 @@ await runIdeGate('IDE export handoff station satisfied', async ({ page, baseUrl 
     'draft readiness hero must not look like a trusted/ready export'
   );
   assert(
-    /Open Verify|Verify|Compare|repair|review/i.test(await normalizedText(currentExportAction(page))),
+    /Open Simulate|Simulate|Compare|repair|review/i.test(await normalizedText(currentExportAction(page))),
     'draft readiness primary path must send the student toward repair/review evidence'
   );
 
@@ -192,9 +192,9 @@ async function assertReadmeBoundary(page) {
 
 async function assertMappingSummary(page) {
   const mapping = page.locator('[data-testid="ide-export-upstream-mapping"]').first();
-  assert(await visible(mapping), 'upstream readiness must expose Map Pins status');
+  assert(await visible(mapping), 'upstream readiness must expose Board & Constraints status');
   const mappingText = await normalizedText(mapping);
-  assert(/Map Pins/i.test(mappingText), `mapping summary must name its owning workspace, got "${mappingText}"`);
+  assert(/Board & Constraints/i.test(mappingText), `mapping summary must name its owning workspace, got "${mappingText}"`);
   assert(/Ready|required missing|blocker|assign/i.test(mappingText), `mapping summary must expose readiness, got "${mappingText}"`);
 }
 

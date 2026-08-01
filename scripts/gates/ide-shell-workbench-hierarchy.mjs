@@ -157,7 +157,7 @@ async function assertShellHierarchy(page, viewport, mode) {
     `${viewport.label}/${mode.id}: workbench starts too low in first viewport (${state.layoutShell.top}px)`
   );
   assert(
-    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Verify', 'Map Pins', 'Export']),
+    JSON.stringify(state.stageLabels) === JSON.stringify(['Project', 'Design', 'Simulate', 'Board & Constraints', 'Build & Export']),
     `${viewport.label}/${mode.id}: stage navigation must be the one five-stage authority, got ${JSON.stringify(state.stageLabels)}`
   );
   assert(state.importIsUtility, `${viewport.label}/${mode.id}: Import must be a utility, not step 6`);
