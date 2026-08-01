@@ -7,6 +7,31 @@
     <!-- REDBYTE_OS_IDE - Product marker: this is the IDE/OS app. Do not remove. -->
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <script>
+      // Apply the persisted workbench palette before CSS and React paint.
+      // ThemeProvider owns changes after mount; this prevents a dark-to-light flash.
+      (() => {
+        let setting = 'light';
+        try {
+          const stored = localStorage.getItem('rb-theme-variant');
+          if (stored === 'light' || stored === 'dark' || stored === 'system' || stored === 'midnight') {
+            setting = stored;
+          } else if (stored === 'redbyte-dark') {
+            setting = 'dark';
+          } else if (stored === 'instrument') {
+            setting = 'light';
+          }
+        } catch {}
+        const resolved = setting === 'system'
+          ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+          : setting;
+        document.documentElement.dataset.theme = resolved;
+        document.documentElement.dataset.rbTheme = resolved;
+        document.documentElement.dataset.rbThemeSetting = setting;
+        document.documentElement.dataset.redbyteMode = 'ide';
+        document.documentElement.style.colorScheme = resolved === 'light' ? 'light' : 'dark';
+      })();
+    </script>
+    <script>
       // SAFETY: Defer Three.js preload until after main.tsx controls the import order
       // This prevents temporal dead zone (TDZ) errors in Three.js minified exports
       const params = new URLSearchParams(window.location.search);

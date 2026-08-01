@@ -2,6 +2,7 @@
 // IdeApp - IDE-first shell surface with deterministic mode markers.
 
 import React, { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTheme } from '@redbyte/rb-theme';
 import { analyzeSequentialLogic, type Circuit } from '@redbyte/rb-logic-core';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import {
@@ -20,6 +21,7 @@ import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
 import './ide/unified-workbench-v3.css';
 import './ide/visual-system-v1.css';
+import './ide/product-system-v3.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
@@ -232,6 +234,11 @@ function toDesignWireId(connection: IdeCircuitConnection): string {
 }
 
 export const IdeApp: React.FC = () => {
+  const {
+    variant: themeVariant,
+    resolvedVariant: resolvedThemeVariant,
+    setVariant: setThemeVariant,
+  } = useTheme();
   const [currentMode, setCurrentMode] = useState<IdeMode>(() => resolveInitialIdeMode());
   const activeMode = useMemo(() => normalizeIdeMode(currentMode), [currentMode]);
   const activeModeRef = useRef<IdeMode>(activeMode);
@@ -2009,6 +2016,7 @@ export const IdeApp: React.FC = () => {
       data-testid="ide-root"
       data-redbyte-mode="ide"
       data-ide-stage={activeMode}
+      data-workbench-theme={resolvedThemeVariant}
     >
       {autosaveAvailable && projectKind === 'home' && !hasCircuit && (
         <div className="ide-autosave-banner" data-testid="ide-autosave-banner">
@@ -2033,6 +2041,8 @@ export const IdeApp: React.FC = () => {
         onImport={() => setCurrentMode('import')}
         onRenameProject={handleRenameProject}
         onHelp={() => setShowShortcuts(true)}
+        themeVariant={themeVariant}
+        onThemeChange={setThemeVariant}
       />
 
       <IdeStageNav

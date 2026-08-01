@@ -37724,3 +37724,29 @@ Key details:
 - Snapshot-style regression coverage should be added before any serious CSS pruning or overlay collapse work.
 
 - **Attribution**: Connor Angiel
+
+## Change Log 2026-08-01 (Product System v3 light-first theme foundation)
+
+**Subsystem**
+
+- IDE bootstrap, shared visual tokens, and top-bar theme control
+
+**What changed**
+
+- Mounted the existing shared theme provider at IDE bootstrap and added a Light / Dark / System selector to the shared top bar.
+- Added a prepaint theme resolver in the playground document so the persisted choice is applied before React renders; new users resolve to Workbench Light.
+- Added the final Product System v3 token layer that maps legacy IDE variables onto a coherent light or dark palette and gives the Project workspace a genuine light work surface.
+- Kept System responsive to operating-system color-scheme changes and retained reduced-motion behavior.
+
+**Validation**
+
+- `corepack pnpm exec vitest run packages/rb-theme/src/__tests__/applyTheme.test.ts` -> PASS (`2 passed`).
+- `corepack pnpm -s typecheck` -> PASS.
+- Real Edge session at `1440x900` -> Light rendered before interaction; Dark persisted through reload; browser console had zero errors.
+- `git diff --check` -> PASS.
+
+**Proof boundary / remaining**
+
+- This proves browser theme selection, prepaint application, and reload persistence only. It does not prove every legacy surface has completed light-theme contrast review; that evidence is captured later in Milestone A.
+
+- **Attribution**: Connor Angiel

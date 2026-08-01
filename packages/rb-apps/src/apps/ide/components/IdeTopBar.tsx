@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ThemeVariant } from '@redbyte/rb-theme';
 import type { IdeBuildIdentity } from '../buildIdentity';
 import { getIdeModeLabel, type IdeMode } from '../workflowStages';
 
@@ -19,6 +20,8 @@ export interface IdeTopBarProps {
   onImport?: () => void;
   onHelp?: () => void;
   onRenameProject?: (nextName: string) => void;
+  themeVariant?: ThemeVariant;
+  onThemeChange?: (theme: Exclude<ThemeVariant, 'midnight'>) => void;
 }
 
 // Geometric circuit mark. Color is inherited from the professional shell theme.
@@ -54,6 +57,8 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   onImport,
   onHelp,
   onRenameProject,
+  themeVariant = 'light',
+  onThemeChange,
 }) => {
   const [editingName, setEditingName] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState(projectName);
@@ -189,6 +194,21 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
         <span className="ide-save-label" aria-live="polite">
           {saveState === 'saved' ? 'Saved' : saveState === 'autosaving' ? 'Saving…' : 'Unsaved'}
         </span>
+        {onThemeChange ? (
+          <label className="ide-theme-control" data-testid="ide-theme-control">
+            <span className="ide-theme-control-label">Theme</span>
+            <select
+              value={themeVariant === 'midnight' ? 'dark' : themeVariant}
+              onChange={(event) => onThemeChange(event.target.value as Exclude<ThemeVariant, 'midnight'>)}
+              aria-label="Workbench theme"
+              data-testid="ide-theme-select"
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="system">System</option>
+            </select>
+          </label>
+        ) : null}
         {onSave && (
           <button
             type="button"

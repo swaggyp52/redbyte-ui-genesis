@@ -1,0 +1,278 @@
+/* RedByte Product System v3 — light-first shared workbench palette.
+   This file loads after legacy surface CSS and maps every major IDE token to a
+   concrete resolved palette. Page-specific styles should consume these tokens. */
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] {
+  color-scheme: light;
+  --rb-bg: #f3f5f7;
+  --rb-canvas: #f8fafc;
+  --rb-shell: #ffffff;
+  --rb-surface: #ffffff;
+  --rb-surface-1: #ffffff;
+  --rb-surface-2: #f1f4f7;
+  --rb-surface-3: #e7ebef;
+  --rb-surface-raised: #f1f4f7;
+  --rb-surface-overlay: #ffffff;
+  --rb-border: #d8dee5;
+  --rb-border-subtle: #e5e9ee;
+  --rb-border-default: #cbd3dc;
+  --rb-border-strong: #9ba8b5;
+  --rb-text: #202832;
+  --rb-text-strong: #202832;
+  --rb-text-primary: #202832;
+  --rb-text-secondary: #4d5b68;
+  --rb-text-muted: #6f7d8a;
+  --rb-action: #216eaa;
+  --rb-accent: #216eaa;
+  --rb-action-hover: #195f96;
+  --rb-action-pressed: #124d7c;
+  --rb-focus: #1976ba;
+  --rb-brand-red: #c44f59;
+  --rb-project: #6657c8;
+  --rb-design: #087da5;
+  --rb-verify: #8b4db2;
+  --rb-map-pins: #9a6500;
+  --rb-export: #187a57;
+  --rb-import: #276fa7;
+  --rb-state-success: #187a57;
+  --rb-state-warning: #9a6500;
+  --rb-warning-text: #765000;
+  --rb-state-danger: #c43d4b;
+  --rb-state-info: #216eaa;
+  --rb-success: var(--rb-state-success);
+  --rb-warning: var(--rb-state-warning);
+  --rb-danger: var(--rb-state-danger);
+  --rb-info: var(--rb-state-info);
+  --rb-state-success-bg: #e8f5ef;
+  --rb-state-warning-bg: #fff4d8;
+  --rb-state-danger-bg: #fdebed;
+  --rb-state-info-bg: #e8f2fa;
+  --rb-success-bg: var(--rb-state-success-bg);
+  --rb-warning-bg: var(--rb-state-warning-bg);
+  --rb-error-bg: var(--rb-state-danger-bg);
+  --rb-info-bg: var(--rb-state-info-bg);
+  --rb-success-border: #83bda7;
+  --rb-warning-border: #d2ac5b;
+  --rb-error-border: #dda0a7;
+  --rb-info-border: #91b8d5;
+  --rb-shadow-elevated: 0 12px 32px rgba(35, 48, 61, 0.12);
+  --rb-shadow-float: 0 16px 38px rgba(35, 48, 61, 0.18);
+  --rb-shadow-node: 0 3px 10px rgba(35, 48, 61, 0.16);
+  --ide-bg: var(--rb-bg);
+  --ide-surface-1: var(--rb-surface-1);
+  --ide-surface-2: var(--rb-surface-2);
+  --ide-surface-3: var(--rb-surface-3);
+  --ide-surface-panel: var(--rb-surface-1);
+  --ide-surface-raised: var(--rb-surface-2);
+  --ide-surface-inset: #eef2f5;
+  --ide-surface-code: #f7f8fa;
+  --ide-border: var(--rb-border-default);
+  --ide-border-subtle: var(--rb-border-subtle);
+  --ide-border-strong: var(--rb-border-strong);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-primary: var(--rb-text-primary);
+  --ide-text-muted: var(--rb-text-secondary);
+  --ide-text-secondary: var(--rb-text-secondary);
+  --ide-text-soft: var(--rb-text-muted);
+  --rbp-surface-card: var(--rb-surface-1);
+  --rbp-surface-card-hi: var(--rb-surface-2);
+  --rbp-state-neutral-bg: var(--rb-surface-2);
+  --rb-surface-deep: #eef2f5;
+  --rb-lab-bg-base: #eef2f5;
+  --rb-lab-bg-workbench: #ffffff;
+  --rb-lab-bg-workbench-hi: #f4f6f8;
+  --rb-lab-bg-proof: #f6f2fb;
+  --rb-lab-bg-board: #fff9ed;
+  --rb-lab-bg-export: #f1f8f4;
+  --rb-lab-bg-inspector: #f7f9fb;
+  --rb-lab-border-subtle: rgba(87, 105, 123, 0.24);
+  --rb-lab-border-focus: rgba(25, 118, 186, 0.56);
+  --rb-lab-accent-flow: #216eaa;
+  --rb-lab-accent-proof: #187a57;
+  --rb-lab-accent-hardware: #9a6500;
+  --rb-lab-accent-export: #187a57;
+  --rb-lab-state-draft: #607181;
+  --rb-lab-state-current: #187a57;
+  --rb-lab-state-stale: #9a6500;
+  --rb-lab-state-attention: #c43d4b;
+  --rb-lab-state-external: #216eaa;
+  --rb-lab-depth-1: 0 8px 22px rgba(35, 48, 61, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  --rb-lab-depth-2: 0 16px 38px rgba(35, 48, 61, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'],
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] {
+  color-scheme: dark;
+  --rb-bg: #0d1218;
+  --rb-canvas: #10161d;
+  --rb-shell: #151b23;
+  --rb-surface: #1a222c;
+  --rb-surface-1: #1a222c;
+  --rb-surface-2: #202a35;
+  --rb-surface-3: #27323e;
+  --rb-surface-raised: #202a35;
+  --rb-surface-overlay: #27323e;
+  --rb-border: #394554;
+  --rb-border-subtle: #2a3440;
+  --rb-border-default: #394554;
+  --rb-border-strong: #526172;
+  --rb-text: #f4f6f8;
+  --rb-text-strong: #f4f6f8;
+  --rb-text-primary: #f4f6f8;
+  --rb-text-secondary: #c7d0d9;
+  --rb-text-muted: #98a6b5;
+  --rb-action: #3d7cb8;
+  --rb-accent: #78aee2;
+  --rb-action-hover: #4a8ac5;
+  --rb-action-pressed: #326da4;
+  --rb-focus: #7db2e4;
+  --rb-brand-red: #d7656e;
+  --rb-project: #9889ef;
+  --rb-design: #48b9dd;
+  --rb-verify: #c07bd9;
+  --rb-map-pins: #d9a64d;
+  --rb-export: #55b98d;
+  --rb-import: #68a9dc;
+  --rb-state-success: #5eb889;
+  --rb-state-warning: #e1a74b;
+  --rb-warning-text: #f0c56e;
+  --rb-state-danger: #e2777d;
+  --rb-state-info: #78aee2;
+  --rb-success: var(--rb-state-success);
+  --rb-warning: var(--rb-state-warning);
+  --rb-danger: var(--rb-state-danger);
+  --rb-info: var(--rb-state-info);
+  --rb-state-success-bg: #173129;
+  --rb-state-warning-bg: #352b19;
+  --rb-state-danger-bg: #392126;
+  --rb-state-info-bg: #1a2b3b;
+  --rb-success-bg: var(--rb-state-success-bg);
+  --rb-warning-bg: var(--rb-state-warning-bg);
+  --rb-error-bg: var(--rb-state-danger-bg);
+  --rb-info-bg: var(--rb-state-info-bg);
+  --rb-success-border: #326c52;
+  --rb-warning-border: #806126;
+  --rb-error-border: #87434b;
+  --rb-info-border: #3f6588;
+  --ide-bg: var(--rb-bg);
+  --ide-surface-1: var(--rb-surface-1);
+  --ide-surface-2: var(--rb-surface-2);
+  --ide-surface-3: var(--rb-surface-3);
+  --ide-surface-panel: var(--rb-surface-1);
+  --ide-surface-raised: var(--rb-surface-2);
+  --ide-surface-inset: #111820;
+  --ide-surface-code: #0c1117;
+  --ide-border: var(--rb-border-default);
+  --ide-border-subtle: var(--rb-border-subtle);
+  --ide-border-strong: var(--rb-border-strong);
+  --ide-text-strong: var(--rb-text-primary);
+  --ide-text-primary: var(--rb-text-primary);
+  --ide-text-muted: var(--rb-text-secondary);
+  --ide-text-secondary: var(--rb-text-secondary);
+  --ide-text-soft: var(--rb-text-muted);
+  --rb-surface-deep: #111820;
+}
+
+:root[data-redbyte-mode='ide'] body {
+  background: var(--rb-bg);
+  color: var(--rb-text-primary);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root {
+  background:
+    radial-gradient(circle at 18% -12%, rgba(33, 110, 170, 0.08), transparent 34%),
+    radial-gradient(circle at 82% 6%, rgba(196, 79, 89, 0.06), transparent 30%),
+    linear-gradient(180deg, #f6f7f9 0%, var(--rb-bg) 100%);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-surface-column {
+  background: linear-gradient(180deg, #f8fafb 0%, #eef2f5 100%);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-workbench-shell .ide-workbench-main {
+  background: linear-gradient(180deg, #f7f9fb 0%, #eef2f5 100%);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-workbench-shell .ide-workbench-workspace {
+  background: var(--rb-surface-1);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-left-rail {
+  background: var(--rb-shell);
+  border-color: var(--rb-border-subtle);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='design'] .ide-workbench-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root [data-ide-mode-marker='hardware'] .ide-workbench-workspace {
+  background: linear-gradient(180deg, var(--rb-surface-1), var(--rb-surface-2));
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-panel,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-export-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-hw-card,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-next,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-session,
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-projectx-examples {
+  border-color: var(--rb-border-subtle);
+  background: var(--rb-surface-1);
+  box-shadow: var(--rb-lab-depth-1);
+}
+
+.ide-root .ide-top-bar,
+.ide-root .ide-stage-nav-frame {
+  background: color-mix(in srgb, var(--rb-shell) 96%, var(--rb-surface-2));
+  border-color: var(--rb-border-subtle);
+}
+
+.ide-root .ide-theme-control {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: var(--rb-radius-control);
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-1);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ide-root .ide-theme-control select {
+  min-height: 34px;
+  padding: 0 28px 0 4px;
+  border: 0;
+  color: var(--rb-text-primary);
+  background: transparent;
+  font: inherit;
+}
+
+.ide-root .ide-theme-control select:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (max-width: 1180px) {
+  .ide-root .ide-theme-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .ide-root .ide-theme-control {
+    padding-left: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ide-root *,
+  .ide-root *::before,
+  .ide-root *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
