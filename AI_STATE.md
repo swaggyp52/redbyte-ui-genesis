@@ -37816,6 +37816,11 @@ Key details:
 - Generate the 12-capture pack after this final documentation commit so the
   Browser-E0 record identifies the exact candidate commit. The full release
   aggregate is deliberately outside this milestone.
+- The existing remote Classroom Truth Gates workflow is not a Milestone A local
+  gate, but its Product examples check now follows the v3 information hierarchy:
+  it requires the always-visible Project Center overview, opens the accessible
+  `Technical details` disclosure, and verifies the engineering record rather
+  than requiring low-level metadata to compete with the primary workflow.
 
 **Proof boundary / remaining**
 

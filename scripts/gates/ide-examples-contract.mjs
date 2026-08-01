@@ -3,13 +3,23 @@
 import { assert, runIdeGate } from './_gateHarness.mjs';
 
 async function assertProjectRecordVisible(page) {
+  const overview = page.locator('[data-testid="ide-project-professional-overview"]').first();
+  await overview.waitFor({ state: 'visible', timeout: 10000 });
+
   const record = page.locator('[data-testid="ide-project-bridge-disclosure"]').first();
   await record.waitFor({ state: 'visible', timeout: 10000 });
-  assert(
-    await record.evaluate((element) => !(element instanceof HTMLDetailsElement)),
-    'project engineering record must be an ordinary visible section, not a disclosure',
-  );
-  await page.waitForSelector('[data-testid="ide-project-bridge"]', { timeout: 10000 });
+  const recordKind = await record.evaluate((element) => ({
+    isDisclosure: element instanceof HTMLDetailsElement,
+    isOpen: element instanceof HTMLDetailsElement ? element.open : true,
+    summary: element.querySelector('summary')?.textContent?.trim() ?? '',
+  }));
+  if (recordKind.isDisclosure) {
+    assert(recordKind.summary === 'Technical details', 'project engineering record disclosure must be labeled Technical details');
+    if (!recordKind.isOpen) {
+      await record.locator('summary').click();
+    }
+  }
+  await page.locator('[data-testid="ide-project-bridge"]').waitFor({ state: 'visible', timeout: 10000 });
 }
 
 async function openExamplesBrowserIfCollapsed(page) {
