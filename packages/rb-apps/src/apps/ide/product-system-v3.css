@@ -706,6 +706,15 @@
   }
 }
 
+/* Keep the complete command set inside a 1366px classroom viewport even when
+   Linux system-font metrics run wider than Windows. The dot remains an
+   aria-labelled save-state control, and the status bar retains the full text. */
+@media (max-width: 1400px) {
+  .ide-root .ide-save-label {
+    display: none;
+  }
+}
+
 @media (max-width: 1260px) {
   .ide-root .ide-topbar-command {
     width: 38px;

@@ -37803,6 +37803,9 @@ Key details:
   checks exist but a trace-only run does not evaluate them, Simulate now reports
   `Checks not evaluated`; `No checks configured` is reserved for scenarios with
   zero authored checks.
+- Hardened the shared top bar for Linux classroom font metrics: at 1400px and
+  below the duplicate save-state text yields to its labelled status dot and the
+  persistent status bar, keeping every command inside the 1366px root viewport.
 
 **Evidence and validation boundary**
 
