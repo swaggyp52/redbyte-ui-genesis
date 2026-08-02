@@ -4213,6 +4213,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     () => lastRun ? buildSimulationEvidenceSummary(lastRun, runProofIsStale) : null,
     [lastRun, runProofIsStale]
   );
+  const displayedAssertionLabel =
+    simulationEvidenceSummary &&
+    lastRunKind === 'trace' &&
+    simulationEvidenceSummary.assertionStatus === 'not-configured' &&
+    totalAssertedCheckCount > 0
+      ? 'Checks not evaluated'
+      : simulationEvidenceSummary?.assertionLabel ?? null;
   useEffect(() => {
     if (!lastRun) {
       lastAnnouncedRunRef.current = null;
@@ -4227,14 +4234,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     const ordinal = runAnnouncementOrdinalRef.current;
     const runKind = getRuntimeVerifyRunKind(lastRun);
     const summary = buildSimulationEvidenceSummary(lastRun);
-    const outcome = `${summary.simulationLabel}. ${summary.assertionLabel}.`;
+    const assertionLabel =
+      runKind === 'trace' && summary.assertionStatus === 'not-configured' && totalAssertedCheckCount > 0
+        ? 'Checks not evaluated'
+        : summary.assertionLabel;
+    const outcome = `${summary.simulationLabel}. ${assertionLabel}.`;
     const comparedChecks = lastRun.report.rows.length;
     const detail =
       runKind === 'verify'
         ? ` ${comparedChecks} saved check${comparedChecks === 1 ? '' : 's'} compared.`
         : ` ${lastRun.waveform.length} waveform tick${lastRun.waveform.length === 1 ? '' : 's'} recorded.`;
     setRunAnnouncement(`Simulation run ${ordinal}. ${outcome}${detail}`);
-  }, [lastRun]);
+  }, [lastRun, totalAssertedCheckCount]);
   const verifyLayoutPolicy = useMemo(
     () => ({
       /** Keep the compact signal browser stable beside the primary workspace. */
@@ -5040,7 +5051,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           : gradingBlockedByDesign
             ? 'Repair the structural Design issue before relying on a simulation or optional checks.'
             : simulationEvidenceSummary
-              ? `${simulationEvidenceSummary.assertionLabel}. ${lastRun?.waveform.length ?? 0} recorded waveform samples are available for replay.`
+              ? `${displayedAssertionLabel}. ${lastRun?.waveform.length ?? 0} recorded waveform samples are available for replay.`
               : 'Author stimulus, run the circuit, then inspect the waveform or add optional checks.',
         primaryLabel: isNoCircuitTaskFirst || gradingBlockedByDesign
           ? 'Open Design'
@@ -5052,7 +5063,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         recoveryLabel: hasSessionFailureEvidence ? 'Inspect Design' : onGoToDesign ? 'Open Design' : undefined,
         onRecovery: hasSessionFailureEvidence ? handleGoToDesignFromVerify : onGoToDesign,
         doneLabel: simulationEvidenceSummary
-          ? `${simulationEvidenceSummary.simulationLabel}. ${simulationEvidenceSummary.assertionLabel}.`
+          ? `${simulationEvidenceSummary.simulationLabel}. ${displayedAssertionLabel}.`
           : 'The scenario is ready to simulate.',
         blockedLabel: isNoCircuitTaskFirst
           ? 'No circuit boundary is available to verify.'
@@ -5194,7 +5205,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     : runProofIsStale
                       ? 'Simulation stale'
                       : simulationEvidenceSummary
-                        ? `${simulationEvidenceSummary.simulationLabel} · ${simulationEvidenceSummary.assertionLabel}`
+                        ? `${simulationEvidenceSummary.simulationLabel} · ${displayedAssertionLabel}`
                         : 'Scenario ready'
             }
             stateTone={
@@ -5798,7 +5809,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 subline={
                   runProofIsStale
                     ? 'The circuit, scenario, or checks changed. Run the current scenario before using this trace.'
-                    : `${simulationEvidenceSummary?.assertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
+                    : `${displayedAssertionLabel ?? 'Checks not evaluated'} · Scenario: ${lastRun.scenarioName}`
                 }
                 guidanceItems={
                   !runProofIsStale && sessionSignalsAssertionFailure

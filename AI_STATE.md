@@ -37799,6 +37799,10 @@ Key details:
 - Made stage transitions synchronously reset the shared surface and workspace
   scroll owners, so returning from a long stage opens the next primary work
   object at its top without changing persisted dock geometry or project state.
+- Kept observation runs and optional checks semantically distinct: when authored
+  checks exist but a trace-only run does not evaluate them, Simulate now reports
+  `Checks not evaluated`; `No checks configured` is reserved for scenarios with
+  zero authored checks.
 
 **Evidence and validation boundary**
 
