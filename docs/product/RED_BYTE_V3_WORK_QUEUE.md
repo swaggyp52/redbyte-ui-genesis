@@ -33,14 +33,16 @@ Milestone A does not run the full release aggregate and does not merge to `main`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
 - Release lane: `main` and `origin/main` remain at
   `57c8a94abd15d1810bf1f85eadf751c116ffbaa6`, **Stable Preview - Browser-E0**.
-- Local evidence: `.redbyte/product-immersion/workbench-v3-milestone-a/`
-  contains the 12 required screenshots and the bounded browser evidence record.
+- Local evidence: `.redbyte/product-immersion/workbench-v3-milestone-a/` is the
+  reserved destination for the 12 required screenshots and bounded browser
+  evidence record. The delivery sequence regenerates them from the final
+  candidate commit; older ignored captures are not exact-candidate authority.
 - Evidence boundary: the captures and assertions prove only Browser-E0 layout,
   persistence, command, project, and mapping behavior at the recorded candidate
   state. They do not prove Vivado, bitstream, physical-board, deployment, or
   classroom reliability.
-- Validation boundary: the Node 20.19.0 closeout passed 33 changed/new focused
-  files and 257/257 tests, workspace typecheck, the IDE CSS audit, and the
+- Validation boundary: the Node 20.19.0 closeout passed 40 changed/new focused
+  files and 287/287 tests, workspace typecheck, the IDE CSS audit, and the
   unified build (344 transformed modules and verified distributable). Docs,
   encoding, and whitespace checks complete the bounded record; the 12-screen
   pack is generated after the final documentation commit so it identifies the

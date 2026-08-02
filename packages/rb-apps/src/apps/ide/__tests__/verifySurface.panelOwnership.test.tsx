@@ -68,7 +68,11 @@ function makeFailRun(): RuntimeVerifyRun {
       clockSignalName: null,
     },
     report: {
-      rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail' }],
+      vectors: [{ id: 'vec-01', tick: 0, inputs: { sw0: 0 }, expected: { ld0: 1 }, caseIndex: 0 }],
+      inputsAtTick: { 0: { sw0: 0 } },
+      inputsByVectorId: { 'vec-01': { sw0: 0 } },
+      signalRoles: { sw0: 'input', ld0: 'output' },
+      rows: [{ tick: 0, signal: 'ld0', expected: '1', actual: '0', status: 'fail', vectorId: 'vec-01', caseIndex: 0 }],
     } as RuntimeVerifyRun['report'],
     waveform: [{ tick: 0, signals: { sw0: '0', ld0: '0' }, mismatches: [{ signal: 'ld0', expected: '1', actual: '0' }] }],
   };
@@ -92,12 +96,13 @@ describe('VerifySurface panel ownership', () => {
     expect(getByTestId('ide-verify-analysis-tab-nav')).toBeTruthy();
   });
 
-  it('keeps the signal legend visible in a stable shell rail', () => {
+  it('keeps the signal legend visible in the integrated workbench shelf', () => {
     const { getByTestId, queryByTestId } = render(
       <VerifySurface {...BASE_PROPS} lastRun={makeFailRun()} />
     );
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
   });
 
@@ -106,9 +111,21 @@ describe('VerifySurface panel ownership', () => {
       <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
     );
 
-    expect(getByTestId('ide-left-dock')).toBeTruthy();
-    expect(getByTestId('ide-verify-left-dock')).toBeTruthy();
+    expect(queryByTestId('ide-left-dock')).toBeNull();
+    expect(getByTestId('ide-verify-signal-shelf')).toBeTruthy();
+    expect(getByTestId('ide-verify-signal-shelf-list')).toBeTruthy();
     expect(queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
+  });
+
+  it('exposes the selected signal as semantic button state', () => {
+    const { getByTestId } = render(
+      <VerifySurface {...BASE_PROPS} lastRun={makePassRun()} />
+    );
+    const inputSignal = getByTestId('ide-verify-shelf-signal-sw0');
+
+    expect(inputSignal).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(inputSignal);
+    expect(inputSignal).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('removes the right shell inspector rail from Verify', () => {

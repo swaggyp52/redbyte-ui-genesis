@@ -1069,6 +1069,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const autoTracedNodeRef = useRef<string | null>(null);
   /** When set, traceState wire-net was auto-applied from a lone wire selection (clears on deselect / clear / non-wire trace). */
   const autoWireSelectionTraceIdRef = useRef<string | null>(null);
+  /** Signal focus projected from a selected wire; clear only this owned focus when that wire selection ends. */
+  const selectedWireSignalFocusRef = useRef<string | null>(null);
   const traceStateRef = useRef<DesignTraceState | null>(null);
   traceStateRef.current = traceState;
 
@@ -3639,8 +3641,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const hasMeaningfulSimulationStory =
     showSimulationStrip &&
     (showSimulationSummary || isReplayMode || staleReplayBreadcrumb != null || simulationStory.clockEvent != null);
+  const hasMeaningfulSplitRuntimeContext =
+    isSplitWorkspace &&
+    !showSimulationStrip &&
+    (simRunning || simTick > 0 || runtimeSim.trace.length > 1);
+  const isSelectionOwnedWireTrace =
+    traceState?.kind === 'wire-net' &&
+    autoWireSelectionTraceIdRef.current != null &&
+    traceState.sourceKey === autoWireSelectionTraceIdRef.current;
   const showRuntimeStatus =
-    hasMeaningfulSimulationStory || traceState != null || (isSplitWorkspace && !showSimulationStrip);
+    hasMeaningfulSimulationStory ||
+    (traceState != null && !isSelectionOwnedWireTrace) ||
+    hasMeaningfulSplitRuntimeContext;
   const showWorkspaceStatusBar =
     totalAuthoringErrors > 0 ||
     totalAuthoringWarnings > 0 ||
@@ -4360,9 +4372,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
 
   useEffect(() => {
     if (!onRuntimeSimSetSelectedSignal) return;
-    if (!selectedWireSignalKey) return;
-    onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
-  }, [onRuntimeSimSetSelectedSignal, selectedWireSignalKey]);
+    if (selectedWireSignalKey) {
+      selectedWireSignalFocusRef.current = selectedWireSignalKey;
+      if (
+        runtimeSim.selectedSignalKey !== selectedWireSignalKey &&
+        !verifyLinkedSignalKey &&
+        !debugLinkedSignalKey
+      ) {
+        onRuntimeSimSetSelectedSignal(selectedWireSignalKey);
+      }
+      return;
+    }
+
+    const ownedSignalKey = selectedWireSignalFocusRef.current;
+    if (!ownedSignalKey) return;
+    selectedWireSignalFocusRef.current = null;
+    if (
+      runtimeSim.selectedSignalKey === ownedSignalKey &&
+      !verifyLinkedSignalKey &&
+      !debugLinkedSignalKey
+    ) {
+      onRuntimeSimSetSelectedSignal(null);
+    }
+  }, [
+    debugLinkedSignalKey,
+    onRuntimeSimSetSelectedSignal,
+    runtimeSim.selectedSignalKey,
+    selectedWireSignalKey,
+    verifyLinkedSignalKey,
+  ]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -7090,6 +7128,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           Fit canvas
                         </IdeButton>
                       ) : null}
+                      <IdeButton tone="ghost" onClick={resetView} testId="ide-design-overflow-reset">
+                        Reset view
+                      </IdeButton>
+                      <IdeButton
+                        tone="ghost"
+                        onClick={centerSelection}
+                        disabled={selection.nodes.size === 0}
+                        testId="ide-design-overflow-center-selection"
+                      >
+                        Center selection
+                      </IdeButton>
                       <IdeButton tone="ghost" onClick={toggleSnapToGrid} testId="ide-design-overflow-snap">
                         Snap {snapToGrid ? 'On' : 'Off'}
                       </IdeButton>

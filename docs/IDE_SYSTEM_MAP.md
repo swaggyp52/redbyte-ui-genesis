@@ -4,6 +4,15 @@
 
 **Release / certification:** Instructor-facing “what is safe for students right now” (starter matrix, E0–E3 tiers, Vivado proof links) lives in `docs/STUDENT_RELEASE_READINESS.md`, `docs/RC1_STUDENT_RELEASE_FREEZE.md`, and `docs/release/vivado-basys3-certification-matrix.md`.
 
+> **Current Product System v3 candidate routing (2026-08-01):** The
+> student-visible five-stage spine is **Project -> Design -> Simulate -> Board &
+> Constraints -> Build & Export**. Internal route IDs and source filenames still
+> use `verify`, `hardware`, and `export` for compatibility; those implementation
+> names do not replace the current student-facing stage names. Current candidate
+> authority comes from the checked-out Product System v3 code/tests together with
+> `AI_STATE.md` and `docs/ACTIVE_WORK.md`, not from the obsolete July RC branch or
+> its `0788044` checkpoint.
+
 ---
 
 ## 0. Documentation Authority Map
@@ -35,14 +44,34 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 | Surface | File | Responsibility |
 |---------|------|----------------|
 | Public Start | `public/start.html`, `apps/playground/src/boot/ide-bootstrap.ts` | Professional browser entry that explains the five-stage RedByte workflow and opens the IDE through one dominant action. It is not a workflow stage and does not own project readiness. |
-| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Textual engineering overview and control point for **Project -> Design -> Verify -> Map Pins -> Export**. Loaded state explains identity, target, design size, Verify evidence, mapping progress, package state, blocker, and one recommendation. Build Fresh / Open Starter / Import / Open Existing remain directly reachable without making students manage core disclosures. |
-| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Canvas-first structural authoring and live simulation in stable library / canvas / inspector regions. A direct toolbar and context-preserving camera actions support graph editing; constrained widths move selected details below the canvas automatically rather than exposing layout toggles. Design remains editable without a local bridge agent. |
-| Verify | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Simulation & Replay Studio and testbench-document owner for named scenarios, stimulus, clock policy, deterministic runs, waveform/circuit replay, optional assertions, and repair routing. One `Run simulation` authority records behavior; simulation completion stays independent from assertion PASS/FAIL, and `Edit expected` stays separate from `Inspect Design` / `Open Design` repair. |
-| Map Pins (internal hardware mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Stable Basys3 assignment workspace. A row's `Assign`, `Edit`, or `Resolve` action opens the resource selector; `Save assignment` commits project signal -> board resource -> package pin truth. The board is reference-only, and coherent mappings continue to Export. |
-| Export | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Stable downstream package decision, file browser/preview, and Vivado handoff owner. Export reads Design, Verify, and Map Pins readiness, presents blocked/draft/ready consequence, routes repair through `Open Export` where applicable, and keeps trusted `Download Package` separate from `Download draft`. `Open technical evidence` remains secondary. |
+| Project | `packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.tsx` | Live Project Center and control point for **Project -> Design -> Simulate -> Board & Constraints -> Build & Export**. Loaded state explains identity, target, design sources, simulation evidence, constraint progress, package state, blocker, and one recommendation. Build Fresh / Open Starter / Import / Open Existing remain directly reachable without making students manage core disclosures. |
+| Design | `packages/rb-apps/src/apps/ide/surfaces/DesignSurface.tsx` | Canvas-first structural authoring and live exploration. The circuit canvas receives the available width while idle; the bounded **Inspector** is contextual and opens only when a circuit object or supported workspace asset owns selection focus. Camera actions remain reachable, and constrained widths move lower-frequency actions into **More tools** and selected details below the canvas instead of creating a permanent third column. |
+| Simulate (internal `verify` mode) | `packages/rb-apps/src/apps/ide/surfaces/VerifySurface.tsx` | Simulation & Replay Studio and testbench-document owner for named scenarios, stimulus, clock policy, deterministic runs, waveform/circuit replay, optional assertions, and repair routing. Inputs, outputs, and available internal lanes live in an integrated signal shelf above the lab grid rather than a separate left rail. One `Run simulation` authority records behavior; simulation completion stays independent from assertion PASS/FAIL, and `Edit expected` stays separate from `Inspect Design` / `Open Design` repair. |
+| Board & Constraints (internal `hardware` mode) | `packages/rb-apps/src/apps/ide/surfaces/HardwareSurface.tsx` | Stable Basys3 assignment and constraint workspace. A row's `Assign`, `Edit`, or `Resolve` action opens the resource selector; `Save assignment` commits project signal -> board resource -> package pin truth. The board is reference-only, and coherent mappings continue to Build & Export. |
+| Build & Export (internal `export` mode) | `packages/rb-apps/src/apps/ide/surfaces/ExportSurface.tsx` | Stable downstream package decision, file browser/preview, and Vivado handoff owner. Build & Export reads Design, Simulate, and Board & Constraints readiness, presents blocked/draft/ready consequence, routes repair to the owning stage, and keeps trusted `Download Package` separate from `Download draft`. `Open technical evidence` remains secondary. |
 | Import utility | `packages/rb-apps/src/apps/ide/surfaces/ImportSurface.tsx` | Safe horizontal Upload -> Review -> Apply recovery. ZIP, Paste HDL, and conditional Paste XDC are source choices inside Upload; Review precedes explicit Apply confirmation. Import stays outside the numbered stage navigator, preserves active work until confirmation, and cancel performs no replacement. |
 
-### Historical Unified Workbench v3 local candidate (2026-07-15)
+### Current Product System v3 Milestone A authority (2026-08-01)
+
+- **Five-stage authority:** `Project -> Design -> Simulate -> Board & Constraints
+  -> Build & Export`; Import / Recover remains a separate utility with no stage
+  number or completion state.
+- **Design support ownership:** the Inspector is selection-owned and contextual.
+  Idle Design returns its width to the canvas; selecting an object or supported
+  workspace asset opens the bounded support region, and constrained layouts move
+  selected detail below the canvas when required.
+- **Simulate signal ownership:** relevant inputs, outputs, and internal lanes live
+  in the integrated signal shelf inside the Simulate workbench. A permanent left
+  Signals rail is not part of the current composition.
+- **Compatibility boundary:** `VerifySurface`, `HardwareSurface`, `ExportSurface`,
+  and the `verify` / `hardware` / `export` mode IDs remain implementation names.
+  Student-facing workflow copy and ownership use the Product System v3 names.
+
+### Historical July Unified Workbench v3 local candidate (2026-07-15) - obsolete
+
+This section is retained only as branch-era layout and proof history. It is not
+current Product System v3 authority and must not be used to restore retired July
+workflow names or shell composition.
 
 - **Persistent shell:** `IdeApp.tsx`, `IdeTopBar.tsx`, `IdeStageNav.tsx`, and `IdeWorkbenchShell.tsx` compose the product bar, exactly five horizontal stages, and the active workbench. `IdeLeftRail`, passive onboarding overlay, permanent footer/status console, and student-managed dock-toggle architecture are absent from v3.
 - **Five-stage authority:** `Project -> Design -> Verify -> Map Pins -> Export` uses current/complete/attention/blocked state from existing workflow authority. Import is a top-bar utility with no stage number or completion state.
@@ -55,16 +84,16 @@ Do not create a new product-definition, whole-app-audit, or proof-matrix doc whe
 - **Import:** horizontal Upload -> Review -> Apply; ZIP / Paste HDL / conditional Paste XDC are Upload-source choices, review precedes explicit replacement confirmation, and cancel preserves current work.
 - **Evidence and boundary:** fresh rebuilt v3 proof covers the five stages plus Import utility across four viewport conditions with empty failure/browser-problem arrays. The latest source-blind professor rerun on the frozen current build is **HOLD**, not GO: the workflow rail/stage state contradicts Design and Export blocker state, Verify defaults to Observe-only with blank expected-value dashes and no clear Compare-unlock path, and the Design recovery route can lose the specific `LD2` no-driver cause discovered from Export/Map Pins. Blank Student/timestamp fields and dash semantics remain visible debt. Student A and Student B each reached a UI-reported nine-file download; neither downloaded archive was independently inspected. Student C completed the final blind Import Task 4 in 2m35 with about 10 clicks, one intentional Design -> Import loop, no misclick or irreversible action, and proof that cancel preserved the original project before confirmation applied the candidate; candidate persistence and pin-alias explanation remain debt. The final blind Broken XOR task reached Compare PASS in 16.4 minutes with 51 clicks, 4 key presses, 2 lab-selection mistakes, about 5 wire misses, about 4 backtracks, and no irreversible action; diagnosis, Undo, and Update Compare worked, while affordance and wording remain debt. Generated bytes, mapping authority, Compare semantics, and E0/E1/E2/E3 boundaries are unchanged; nothing was pushed or deployed. **Verdict: broad local implementation evidence exists, but professor approval remains on HOLD pending repair and rerun.**
 
-### Unified Workbench v3 RC authority layer (2026-07-22)
+### Historical July Unified Workbench v3 RC authority layer (2026-07-22) - obsolete
 
-- **Current source:** local `product/redbyte-unified-workbench-v3-rc-integrated` at pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab`. This is the manual/docs input, not the final reconstructed release SHA. No push, PR, merge, deployment, production replay, or remote-green claim applies.
+- **Historical source checkpoint only:** local `product/redbyte-unified-workbench-v3-rc-integrated` at pre-doc checkpoint `0788044cbdf2699520d90a3428f2e5034dc73cab`. That branch and SHA are obsolete recovery/proof context, not current product or documentation authority. No push, PR, merge, deployment, production replay, or remote-green claim applied to that checkpoint.
 - **Verify state owner:** `verifyScenario.ts` stores per-document `sequentialPolicy` beside named browser-local scenarios; `projectRuntime.ts` persists, duplicates, renames, repairs, and reconciles it with live I/O. `verifyScenarioSteps.ts` preserves rising/falling/high/low pulse behavior. `verifyClockPolicy.ts::materializeVectorsForClockPolicy()` produces the shared execution vectors consumed by runtime Verify, bring-up expectations, and testbench generation. `simEngineCore.ts` executes those vectors: manual/custom rows drive authored clock values and only low-to-high advances rising-edge state; Auto rows are sampled post-rising-edge. The policy remains outside portable `RBProject`, but Auto `runCycles`, automatic reset materialization, resolved clock/schedule data, starting level, and authored stimulus may change generated bytes and freshness.
 - **Mapping state owner:** `basys3ExportContract.ts::buildSemanticMappingProjection()` is the semantic-to-artifact authority. Each row owns logical signal ID/label, direction, exact artifact port, board resource, package pin, I/O standard, exact XDC line, requirement, and conflict classification. `HardwareSurface`, `buildExportViewModel`, generators, and Import review consume that projection.
 - **Export trust owner:** `exportTrustState.ts` holds structural `blocked` / `downloadable`, `verificationTrust` `unverified` / `draft` / `trusted`, and action `not-downloaded` / `downloaded`. Verify evidence currentness (`current`, `missing`, `stale`, or `failed`) stays upstream. `buildProjectExportPackageSourceHash()` fingerprints every byte-bearing artifact plus wrapper inputs. `isExportDownloadReceiptCurrent()` requires the exact current package/project/Verify hashes, mapping currentness, download kind, trust, and SHA-256 receipt.
 - **Manifest authority:** `buildCanonicalBasys3ProjectProjection()` refreshes the embedded manifest's generated HDL and constraints to the exact package projection. Import is manifest-first; `importPortIdentity.ts` permits strict scalar or parser-owned vector-bit identities and grants embedded-XDC projection only to manifest imports.
 - **Interaction contracts:** `ide:gate:design-port-target-authority` guards `24x24` sparse targets, `32x24` dense clusters, keyboard operation, and compact picker behavior. The strengthened `ide:gate:verify-postrun-workbench-usability` guards `36x36` waveform controls and `13px` labels. `ide:gate:hardware-phase5-contract` guards grouped mapping and conflict repair. `ide:gate:export-submission-answer-contract` guards the first-viewport submission answer.
-- **Source-checkpoint proof:** Node `20.19.0` / pnpm `10.24.0` passes the touched authority matrix (`20/20` files, `258/258` tests), typecheck, unified build, and the current sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates on `0788044cb`. Historical pre-sequential checkpoint `f4f7ca8f3` had passed the earlier `36/36`, `477/477` matrix. Final exact-SHA aggregate/browser/human/manual/remote certification remains pending after docs and curated reconstruction.
-- **Geometry/boundary:** The accepted Design laptop floor remains `62%`, with recorded full-viewport share `63.1%` at 1366 and `65.0%` at 1440. The strategic `70%` target is not met. All RC proof is Browser E0; Guided 4-Bit, Mapping Assistant v2, Vivado, bitstream, programming, board observation, and E1/E2/E3 remain outside the program.
+- **Historical source-checkpoint proof:** Node `20.19.0` / pnpm `10.24.0` passed the touched authority matrix (`20/20` files, `258/258` tests), typecheck, unified build, and the then-current sequential, mapping/package, custom-clock ZIP, preservation, Verify-repair, Export-trust, Import, ZIP-recovery, and wire-interaction gates on `0788044cb`. Historical pre-sequential checkpoint `f4f7ca8f3` had passed the earlier `36/36`, `477/477` matrix. These results do not certify the current Product System v3 candidate.
+- **Historical geometry/boundary:** The July selected-context Design evidence recorded a `62%` laptop floor, with full-viewport share `63.1%` at 1366 and `65.0%` at 1440. The strategic `70%` target was not met. All RC proof was Browser E0; Guided 4-Bit, Mapping Assistant v2, Vivado, bitstream, programming, board observation, and E1/E2/E3 remained outside that program.
 
 ### Historical predecessor shell model — superseded by Unified Workbench v3
 
@@ -181,17 +210,17 @@ Gate: `scripts/gates/ide-zip-import-contract.mjs`
 
 ---
 
-### Path 2: Verify Run Produces Deterministic Evidence
+### Path 2: Simulate Run Produces Deterministic Evidence
 
-1. Design surface runs simulation (30+ ticks)
-2. VerifySurface -> user authors or selects a named testbench, generates/edits cases as needed, then clicks Run
+1. Design supplies the current circuit and live structural authority.
+2. Simulate (`VerifySurface` on the internal `verify` route) -> user authors or selects a named testbench, generates/edits cases as needed, then clicks Run simulation.
 3. `projectRuntime.ts::runVerification()` resolves that document's policy and builds IO mapping from runtime `projectIoRows`.
 4. `materializeVectorsForClockPolicy()` creates the shared execution vectors. Manual/custom retains one settled sample per authored row. Auto starts at cycle 0 and materializes `max(runCycles, authored-row count, 1)` rows; it places any automatic reset assertion in cycle 0 with later deassertion when applicable, with no separate hidden runtime reset prelude.
 5. `projectRuntime.ts::runVerification()` → calls `buildDeterministicVerifyContext(circuit, ioMapping)`.
 6. `projectRuntime.ts::runVerification()` → calls `runDeterministicVerifyFromModel(circuit, simModel, ioRows, materializedVectors, scheduleContract)`. Manual/custom advances state only on authored low-to-high transitions; repeated high, high-to-low, repeated low, and flat-low hold. Every Auto result row is sampled post-rising-edge.
 7. Bring-up expectations and generated `testbench.vhd` consume the same materialized vector sequence rather than independently reinterpreting the raw policy.
 8. One execution sequence produces `RuntimeVerifyRun.report`, waveform, expected-check sampling, PASS/FAIL classification, and the deterministic evidence capsule.
-9. VerifySurface renders simulation status (`complete` / `blocked`) independently from assertion status (`not-configured` / `passing` / `failing` / `not-evaluated`) and projects Draft, Simulated, or Validated behavioral evidence without treating trace-only evidence as assertion proof.
+9. Simulate renders simulation status (`complete` / `blocked`) independently from assertion status (`not-configured` / `passing` / `failing` / `not-evaluated`) and projects Draft, Simulated, or Validated behavioral evidence without treating trace-only evidence as assertion proof. Relevant lanes stay in the integrated signal shelf above the lab grid rather than a separate Signals rail.
 10. A completed run exposes waveform replay and a read-only `replaySession` on the real Design canvas. On an assertion mismatch, `Edit expected` repairs the testbench while `Inspect Design` and structural `Open Design` preserve circuit-repair context, including the failed signal label, expected/observed bits, tick, input snapshot, and next-inspection hint when available.
 
 Freshness authority: the verify ledger `projectHash` is produced by `buildCurrentVerifyProjectHash()` so workflow status, Hardware, and Export compare against the same normalized state. A stimulus change after a pass stales Verify as testbench/state drift; a circuit or mapping change stales it as project drift.
@@ -200,10 +229,10 @@ Gate: `scripts/gates/ide-verify-reality-contract.mjs`
 
 ---
 
-### Path 3: Export -> Vivado Package
+### Path 3: Build & Export -> Vivado Package
 
 1. Project must have: IO mapping complete + current Compare PASS with saved checks for a trusted export. Structurally buildable but unverified packages are labeled draft/debug, not trusted handoff.
-2. `Open Export` enters the stable handoff workspace; ExportSurface computes its blocked/draft/ready decision from shared workflow authority and diagnostics.
+2. `Open Build & Export` enters the stable handoff workspace (`ExportSurface` on the internal `export` route); the surface computes its blocked/draft/ready decision from shared workflow authority and diagnostics.
 3. Trusted readiness exposes `Download Package`; a structurally buildable but untrusted state exposes the separate `Download draft` action and warning language. These actions are not interchangeable.
 4. The file browser/preview exposes package contents in the primary workspace, while `Open technical evidence` opens the secondary evidence dialog.
 5. `buildExportViewModel.ts` accepts the shared materialized execution vectors plus the resolved clock/schedule projection. It does not consume waveform, UI status, or Compare-result objects as testbench-generation inputs.
@@ -219,9 +248,9 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (guards current Export readi
 
 ---
 
-### Path 4: Hardware Checklist
+### Path 4: Board & Constraints Checklist
 
-1. Map Pins receives `health` + `mappingRows` + `vectorsCount` through internal hardware mode.
+1. Board & Constraints receives `health` + `mappingRows` + `vectorsCount` through internal `hardware` mode.
 2. It derives assignment progress and missing/conflicting resources from the same mapping authority Export consumes.
 3. A row's `Assign`, `Edit`, or `Resolve` action opens the resource selector for that signal.
 4. The student chooses a valid Basys3 resource and uses `Save assignment`; `Clear` affects only the selected row.
@@ -231,7 +260,7 @@ Gate: `scripts/gates/ide-export-ready-contract.mjs` (guards current Export readi
 
 Gate: `scripts/gates/ide-bringup-contract.mjs`
 
-**Ownership truth:** Map Pins ends when required assignments are coherent and routes the student to Export. Export owns downstream package readiness and routes stale, missing, trace-only, or differing Verify evidence back to Verify; Map Pins does not repair or reclassify Verify evidence. A structurally buildable but untrusted package remains an explicitly labeled draft unless a real Design or mapping prerequisite blocks artifact generation.
+**Ownership truth:** Board & Constraints ends when required assignments are coherent and routes the student to Build & Export. Build & Export owns downstream package readiness and routes stale, missing, trace-only, or differing simulation evidence back to Simulate; Board & Constraints does not repair or reclassify that evidence. A structurally buildable but untrusted package remains an explicitly labeled draft unless a real Design or constraint prerequisite blocks artifact generation.
 
 ---
 

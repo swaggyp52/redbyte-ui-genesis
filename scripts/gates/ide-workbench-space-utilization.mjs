@@ -11,6 +11,7 @@ import {
   setVerifyRunMode,
   visible,
 } from './_gateHarness.mjs';
+import { assertNoRootOverflow, selectFirstVisibleDesignNode } from './_workbenchReconstructionHarness.mjs';
 import { isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 
 const VIEWPORTS = [
@@ -24,9 +25,9 @@ const SCREENSHOT_ROOT = process.env.RB_WORKBENCH_SPACE_SCREENSHOTS_DIR
   : '';
 
 const SPACE_BUDGETS = {
-  // This is the accepted laptop floor. The separate 70% strategic target remains
-  // intentionally unmet at the 1366 and 1440 viewports.
-  designCanvasWidthRatio: 0.62,
+  // Idle Design deliberately withholds the empty Inspector, so the canvas must
+  // own at least four fifths of the classroom-width workspace.
+  designCanvasWidthRatio: 0.80,
   designCanvasHeightRatio: 0.52,
   verifyWaveformMinWidthRatio: 0.36,
   verifyWaveformMinHeightRatio: 0.30,
@@ -199,15 +200,16 @@ async function assertDesignSpace(page, viewport) {
     `${viewport.label}: Design Library must remain a stable 180-230px region (${metrics.rects.leftDock.width.toFixed(1)}px)`
   );
   assert(
-    metrics.rects.rightDock.visible && metrics.rects.rightDock.width >= 210 && metrics.rects.rightDock.width <= 290,
-    `${viewport.label}: Design Inspector must remain a stable 210-290px region (${metrics.rects.rightDock.width.toFixed(1)}px)`
+    !metrics.rects.rightDock.visible,
+    `${viewport.label}: idle Design must reserve width for the canvas instead of an empty Inspector`
   );
-  const availableWidth = metrics.rects.leftDock.width + canvas.width + metrics.rects.rightDock.width;
-  const availableShare = canvas.width / Math.max(1, availableWidth);
-  const minimumAvailableShare = viewport.width >= 1800 ? 0.70 : viewport.width >= 1440 ? 0.66 : 0.64;
+  const workspace = metrics.rects.workspace;
+  assert(workspace.visible, `${viewport.label}: Design workspace must be measurable`);
+  const workspaceShare = canvas.width / Math.max(1, workspace.width);
+  const minimumWorkspaceShare = viewport.width >= 1800 ? 0.85 : 0.80;
   assert(
-    availableShare >= minimumAvailableShare,
-    `${viewport.label}: Design canvas owns ${(availableShare * 100).toFixed(2)}% of the stable workbench; expected at least ${(minimumAvailableShare * 100).toFixed(0)}%`
+    workspaceShare >= minimumWorkspaceShare,
+    `${viewport.label}: idle Design canvas owns ${(workspaceShare * 100).toFixed(2)}% of the complete workspace; expected at least ${(minimumWorkspaceShare * 100).toFixed(0)}%`
   );
   assert(
     metrics.retiredDockControlCount === 0,
@@ -221,9 +223,26 @@ async function assertDesignStableRegions(page, viewport) {
     `${viewport.label}: stable Design Library must expose the component palette`
   );
   assert(
-    await visible(page.locator('[data-testid="ide-right-dock"]').first()),
-    `${viewport.label}: stable Design Inspector must remain visible`
+    !(await visible(page.locator('[data-testid="ide-right-dock"]').first())),
+    `${viewport.label}: empty Design Inspector must not compete with the canvas`
   );
+  await selectFirstVisibleDesignNode(page);
+  const metrics = await readSurfaceMetrics(page);
+  assert(
+    metrics.rects.rightDock.visible && metrics.rects.rightDock.width >= 220 && metrics.rects.rightDock.width <= 300,
+    `${viewport.label}: selected Design object must reveal a bounded 220-300px Inspector (${metrics.rects.rightDock.width.toFixed(1)}px)`
+  );
+  assert(
+    metrics.rects.designCanvas.width >= viewport.width * 0.6,
+    `${viewport.label}: contextual Inspector leaves only ${metrics.rects.designCanvas.width.toFixed(1)}px for the circuit canvas`
+  );
+  assert(
+    !rectanglesOverlap(metrics.rects.designCanvas, metrics.rects.leftDock) &&
+      !rectanglesOverlap(metrics.rects.designCanvas, metrics.rects.rightDock),
+    `${viewport.label}: contextual Inspector or Library overlaps the circuit canvas`
+  );
+  await assertNoRootOverflow(page, `${viewport.label}/Design contextual Inspector`);
+  await capture(page, viewport, 'design-selected');
 }
 
 async function assertVerifySpace(page, viewport, phase) {
@@ -265,8 +284,16 @@ async function assertVerifySpace(page, viewport, phase) {
 
 function assertStableVerifySignals(metrics, viewport, phase) {
   assert(
-    metrics.rects.leftDock.visible && metrics.rects.verifySignals.visible,
-    `${viewport.label}: Verify ${phase} must keep the stable Signals region visible`
+    !metrics.rects.leftDock.visible,
+    `${viewport.label}: Simulate ${phase} must not spend width on a separate Signals rail`
+  );
+  assert(
+    metrics.rects.verifySignalShelf.visible && metrics.rects.verifySignalShelfList.visible,
+    `${viewport.label}: Simulate ${phase} must keep its integrated signal shelf visible`
+  );
+  assert(
+    metrics.rects.verifySignalShelf.width >= viewport.width * 0.8,
+    `${viewport.label}: Simulate ${phase} signal shelf is too narrow (${metrics.rects.verifySignalShelf.width.toFixed(1)}px)`
   );
   assert(
     metrics.retiredDockControlCount === 0,
@@ -456,6 +483,8 @@ async function readSurfaceMetrics(page) {
         verifyStimulus: rect('[data-testid="ide-verify-region-stimulus"]'),
         verifyGrid: rect('.ide-stimulus-grid-scroll'),
         verifySignals: rect('[data-testid="ide-verify-left-dock"]'),
+        verifySignalShelf: rect('[data-testid="ide-verify-signal-shelf"]'),
+        verifySignalShelfList: rect('[data-testid="ide-verify-signal-shelf-list"]'),
         verifyWaveform: rect(
           '[data-testid="ide-verify-region-waveform"], [data-testid="ide-verify-waveform-preview"], [data-testid="ide-verify-waveform-svg"]'
         ),
@@ -500,6 +529,13 @@ async function writeMetrics() {
   if (!SCREENSHOT_ROOT) return;
   await fs.mkdir(SCREENSHOT_ROOT, { recursive: true });
   await fs.writeFile(path.join(SCREENSHOT_ROOT, 'metrics.json'), JSON.stringify(metricsLog, null, 2));
+}
+
+function rectanglesOverlap(first, second) {
+  if (!first.visible || !second.visible) return false;
+  const overlapWidth = Math.max(0, Math.min(first.right, second.right) - Math.max(first.left, second.left));
+  const overlapHeight = Math.max(0, Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top));
+  return overlapWidth > 2 && overlapHeight > 2;
 }
 
 async function normalizedText(locator) {

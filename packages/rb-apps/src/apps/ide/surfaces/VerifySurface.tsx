@@ -144,7 +144,7 @@ import './verify/simulation-studio-v3.css';
 export const CHROME_CONTRACT = {
   surfaceId: 'verify',
   topStripSlots: ['command-bar', 'status-row'],
-  leftDockPolicy: 'always',
+  leftDockPolicy: 'hidden',
   rightDockPolicy: 'hidden',
   exitPaths: [],
 } satisfies IdeChromeContract;
@@ -5295,6 +5295,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               {(signalTimeline.length > relevantSignalTimeline.length || hiddenSignals.length > 0) ? (
                 <button
                   type="button"
+                  aria-pressed={showAllSignals}
                   onClick={() => {
                     setShowMismatchOnlySignals(false);
                     setShowAllSignals((previous) => !previous);
@@ -5327,6 +5328,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                             key={signalRow.signal}
                             className={selectedSignal === signalRow.signal ? 'is-active' : ''}
                             type="button"
+                            aria-pressed={selectedSignal === signalRow.signal}
                             onClick={() => handleSignalSelect(signalRow.signal)}
                             onMouseEnter={() => handleSignalHover(signalRow.signal)}
                             onMouseLeave={() => handleSignalHover(null)}

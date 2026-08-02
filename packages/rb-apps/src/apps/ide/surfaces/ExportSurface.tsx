@@ -528,6 +528,8 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   const behavioralEvidenceTier = verifyLastRun
     ? deriveBehavioralEvidenceTier(verifyLastRun, behavioralEvidenceIsStale)
     : deriveBehavioralEvidenceTierFromResult(verifyResult, behavioralEvidenceIsStale);
+  const hasStaleBehavioralEvidence =
+    behavioralEvidenceIsStale && Boolean(verifyLastRun || verifyResult);
   /** True when the previous verify run passed but the circuit has since changed (STALE).
    *  Download is allowed but labeled as previous sealed build - not blocked. */
   const isStaleButPassBefore =
@@ -1601,15 +1603,19 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
       ready: behavioralEvidenceTier === 'validated',
       status: verifyBlockedByDesign
         ? 'Inconclusive - Design blocked'
-        : formatBehavioralEvidenceTier(behavioralEvidenceTier),
+        : hasStaleBehavioralEvidence
+          ? 'Stale - rerun Simulate'
+          : formatBehavioralEvidenceTier(behavioralEvidenceTier),
       detail:
         behavioralEvidenceTier === 'validated'
           ? 'The current simulation completed and all configured optional checks passed.'
-          : behavioralEvidenceTier === 'simulated'
-            ? verifyResult?.status === 'fail'
-              ? 'Simulation completed, but one or more expected outputs differ from the observed circuit behavior.'
-              : 'A current simulation trace exists. Optional checks are absent or not all passing.'
-            : 'Run the current scenario in Simulate to create behavioral evidence.',
+          : hasStaleBehavioralEvidence
+            ? 'Prior simulation evidence exists, but the design, testbench, or mapping changed. Rerun the current scenario in Simulate before relying on this handoff.'
+            : behavioralEvidenceTier === 'simulated'
+              ? verifyResult?.status === 'fail'
+                ? 'Simulation completed, but one or more expected outputs differ from the observed circuit behavior.'
+                : 'A current simulation trace exists. Optional checks are absent or not all passing.'
+              : 'Run the current scenario in Simulate to create behavioral evidence.',
     },
     {
       id: 'mapping',

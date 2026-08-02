@@ -65,8 +65,10 @@ simulation, HDL, board, or hardware support.
 ## Candidate Evidence And Exit Gates
 
 - Local Browser-E0 evidence is stored under
-  `.redbyte/product-immersion/workbench-v3-milestone-a/` and includes the 12
-  required viewport captures plus a machine-readable browser evidence record.
+  `.redbyte/product-immersion/workbench-v3-milestone-a/`. The delivery sequence
+  regenerates the 12 required viewport captures plus the machine-readable
+  browser evidence record from the final candidate commit; older ignored
+  captures are not exact-candidate authority.
 - The browser record covers theme persistence, project reload, command
   execution, dock visibility and geometry persistence/reset, semantic inline
   mapping, board synchronization, and root-axis overflow at the captured
@@ -75,13 +77,16 @@ simulation, HDL, board, or hardware support.
   workspace preferences, command registry/palette, shared shell, project
   projections, component facade, Basys3 profile/projection, mapping workflows,
   and visible stage grammar.
-- The bounded Node 20.19.0 closeout passed: 33 changed/new focused test files
-  with 257/257 tests, workspace typecheck, IDE CSS audit, and the unified build
+- The bounded Node 20.19.0 closeout passed: 40 changed/new focused test files
+  with 287/287 tests, workspace typecheck, IDE CSS audit, and the unified build
   with 344 transformed modules plus a verified distributable. Canonical-doc,
   encoding, and whitespace checks are part of the same closeout record.
+- The affected classroom browser gates cover root overflow, loaded-path first
+  viewport ownership, active-mode reload, contextual Design support docks,
+  integrated Simulate signals, obstruction, and primary-workspace utilization.
 - The 12-capture evidence is generated after the final documentation commit so
   the screenshots and machine-readable record identify the exact candidate
-  commit. The full release/classroom aggregate remains outside Milestone A.
+  SHA. The full release/classroom aggregate remains outside Milestone A.
 - Visual acceptance is still required before any merge. Browser screenshots
   and Playwright assertions are Browser-E0 evidence only.
 

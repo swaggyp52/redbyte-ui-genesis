@@ -704,6 +704,13 @@
   .ide-root .ide-theme-control-label {
     display: none;
   }
+
+  /* The stage rail immediately below already names the active workspace.
+     Yield the duplicate breadcrumb before Linux font metrics can push the
+     classroom top bar wider than the viewport on the two longest stages. */
+  .ide-root .ide-mode-breadcrumb {
+    display: none;
+  }
 }
 
 /* Keep the complete command set inside a 1366px classroom viewport even when
@@ -1303,6 +1310,96 @@
 :root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
 :root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
+}
+
+/* A loaded Project Center is a focused command surface, not a page-sized tint.
+   These selectors deliberately require the loaded-state header so the blank
+   project start screen keeps its own calmer welcome treatment. */
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main {
+  background: #eee9e0;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(211, 94, 79, 0.065), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(8, 122, 120, 0.055), transparent 32%),
+    #fbf8f1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-identity {
+  background:
+    linear-gradient(145deg, rgba(211, 94, 79, 0.045), transparent 42%),
+    var(--rb-surface-1);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-next {
+  background:
+    linear-gradient(155deg, rgba(8, 122, 120, 0.09), rgba(8, 122, 120, 0.018) 58%),
+    var(--rb-surface-1);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-main {
+  background: #0e110f;
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight']
+  .ide-root
+  .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
+  .ide-workbench-workspace {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(239, 122, 104, 0.04), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(102, 194, 182, 0.045), transparent 32%),
+    #151916;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-identity,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-identity {
+  border-color: color-mix(in srgb, var(--rb-border-strong) 68%, var(--rb-border-default));
+  background:
+    linear-gradient(145deg, rgba(239, 122, 104, 0.045), transparent 42%),
+    #202421;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-next,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-next {
+  background:
+    linear-gradient(155deg, rgba(102, 194, 182, 0.105), rgba(102, 194, 182, 0.02) 58%),
+    #202421;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-workspace,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-workspace {
+  border-color: color-mix(in srgb, var(--rb-border-strong) 62%, var(--rb-border-default));
+  background: #252a26;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-redbyte-mode='ide'][data-rb-theme='dark'] .ide-root .ide-project-v3 .ide-project-v3-stage-row,
+:root[data-redbyte-mode='ide'][data-rb-theme='midnight'] .ide-root .ide-project-v3 .ide-project-v3-stage-row {
+  border-color: #4a534b;
+  background: #1b1f1c;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
 }
 
 /* Design is an instrument workspace inside the surrounding light or dark shell.

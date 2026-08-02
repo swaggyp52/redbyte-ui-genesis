@@ -2232,8 +2232,9 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-signal-shelf {
-  align-self: start;
-  min-height: 0;
+  align-self: stretch;
+  flex: 0 0 auto !important;
+  min-height: 50px;
 }
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
@@ -2241,8 +2242,10 @@
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='checks'] {
   flex: 0 0 auto !important;
+  width: 100% !important;
   height: auto !important;
   min-height: 0 !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: auto !important;
   align-content: start !important;
   overflow: visible !important;
@@ -2261,6 +2264,9 @@
   .ide-verify-lab-grid[data-studio-mode='checks']
   .ide-verify-scenario-builder-details--postrun {
   flex: 0 0 auto !important;
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
   height: auto !important;
   max-height: none !important;
   overflow: visible !important;
@@ -2339,4 +2345,42 @@
   background: rgba(148, 163, 184, 0.04);
   color: #6f8194;
   cursor: not-allowed;
+}
+
+/* Product System v3: a failing check must expose its guarded repair decision
+   beside the still-valid waveform. The earlier v2A.1 hierarchy guard hid this
+   entire region, leaving mismatch diagnosis and Use observed actions inert. */
+.ide-root.ide-root
+  .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='replay']
+  .ide-verify-advanced-failure {
+  display: block !important;
+}
+
+.ide-root.ide-root
+  .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='replay']
+  .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure) {
+  display: grid !important;
+  grid-template-columns: minmax(340px, 0.72fr) minmax(0, 1.28fr) !important;
+  grid-template-areas:
+    'summary summary'
+    'failure waveform'
+    'actions waveform' !important;
+  align-items: start !important;
+  gap: 8px !important;
+}
+
+@media (max-width: 1150px) {
+  .ide-root.ide-root
+    .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-studio-mode='replay']
+    .ide-verify-instrument-deck:has(> .ide-verify-advanced-failure) {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas:
+      'summary'
+      'failure'
+      'actions'
+      'waveform' !important;
+  }
 }

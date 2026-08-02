@@ -37806,6 +37806,28 @@ Key details:
 - Hardened the shared top bar for Linux classroom font metrics: at 1400px and
   below the duplicate save-state text yields to its labelled status dot and the
   persistent status bar, keeping every command inside the 1366px root viewport.
+- Aligned the classroom workspace gates with the implemented v3 hierarchy:
+  Design keeps its Inspector contextual until an object is selected, while
+  Simulate keeps signals in the integrated workbench shelf instead of a
+  separate rail. At 1500px and below the duplicate top-bar stage breadcrumb
+  now yields to the fully named stage rail, containing the longer Board &
+  Constraints and Build & Export routes under Linux font metrics without
+  clipping commands or hiding surface overflow.
+- Finished the warm Project Center hierarchy by removing the legacy violet
+  tint, separating the loaded light/dark workspace layers, and letting the
+  recommendation card size to its useful content instead of stretching into
+  an empty column. The blank-project start path retains its separate welcome
+  treatment.
+- Tightened the cross-surface proof contract: selection-owned Design traces no
+  longer duplicate the status story, passive Split view does not create an
+  empty runtime band, incoming Verify/debug repair focus remains authoritative
+  even while a wire stays selected, compact camera actions remain reachable
+  through **More tools**, Simulate signal selection exposes semantic pressed
+  state from the first through last lane, and repaired expected values must
+  reappear visibly in Checks before the testbench flow can pass.
+- Build & Export now names stale prior simulation evidence explicitly and
+  routes the student back to Simulate rather than presenting that evidence as
+  merely absent or current.
 
 **Evidence and validation boundary**
 
@@ -37814,17 +37836,16 @@ Key details:
   shell and keyboard resizing, Project projections, component definitions,
   board profile/projection, mapping workflows, and visible stage grammar.
 - The ignored local evidence area
-  `.redbyte/product-immersion/workbench-v3-milestone-a/` contains 12 required
-  captures and a machine-readable Browser-E0 record covering theme/project
-  persistence, command execution, dock visibility/geometry persistence and
-  reset, inline assignment synchronization, and root-axis overflow at the
-  recorded viewports.
-- The bounded Node 20.19.0 closeout passed 33 changed/new focused test files
-  with 257/257 tests, workspace typecheck, the IDE CSS audit, and the unified
+  `.redbyte/product-immersion/workbench-v3-milestone-a/` is reserved for the 12
+  required captures and machine-readable Browser-E0 record. The delivery
+  sequence regenerates that pack from the final candidate commit; earlier
+  captures in the ignored directory are not exact-candidate authority.
+- The bounded Node 20.19.0 closeout passed 40 changed/new focused test files
+  with 287/287 tests, workspace typecheck, the IDE CSS audit, and the unified
   build with 344 transformed modules plus a verified distributable. Canonical
   docs, encoding, and whitespace checks complete the same record.
-- Generate the 12-capture pack after this final documentation commit so the
-  Browser-E0 record identifies the exact candidate commit. The full release
+- The 12-capture pack is generated after this final documentation commit so
+  its Browser-E0 record identifies the exact candidate SHA. The full release
   aggregate is deliberately outside this milestone.
 - The existing remote Classroom Truth Gates workflow is not a Milestone A local
   gate, but its directly affected Project and shell assertions now follow the v3

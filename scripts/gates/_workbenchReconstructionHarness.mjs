@@ -54,7 +54,7 @@ export async function openLogicGatesStarter(page, baseUrl, gateLabel) {
 }
 
 export async function openMode(page, baseUrl, mode, gateLabel) {
-  const button = page.locator(`[data-testid="mode-button-${mode}"]`).first();
+  const button = page.locator(`[data-testid="mode-button-${mode}"]:visible`).first();
   if (await button.isVisible().catch(() => false)) {
     await button.click();
   } else {
@@ -139,4 +139,38 @@ export async function assertVisibleRect(page, selectors, label, options = {}) {
     assert(rect.visibleHeight >= options.minHeight, `${label}: too short (${rect.visibleHeight}px < ${options.minHeight}px)`);
   }
   return rect;
+}
+
+export async function selectFirstVisibleDesignNode(page) {
+  const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
+  assert(canvas, 'Design live canvas must have a browser-visible bounding box');
+
+  const nodes = page.locator('[data-node-id]');
+  const count = await nodes.count();
+  for (let index = 0; index < count; index += 1) {
+    const node = nodes.nth(index);
+    const box = await node.boundingBox();
+    if (!box || box.width <= 4 || box.height <= 4 || !rectanglesIntersect(box, canvas)) continue;
+    const nodeId = await node.getAttribute('data-node-id');
+    if (!nodeId) continue;
+
+    await node.click({ position: { x: box.width / 2, y: box.height / 2 } });
+    await page.waitForSelector('[data-testid="ide-right-dock"]', { state: 'visible', timeout: 5000 });
+    await page.waitForFunction(
+      (expectedNodeId) => window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.has?.(expectedNodeId) === true,
+      nodeId,
+    );
+    return nodeId;
+  }
+
+  throw new Error('Design canvas must expose a visible node that can be selected with a real click');
+}
+
+function rectanglesIntersect(first, second) {
+  return (
+    first.x + first.width > second.x &&
+    first.x < second.x + second.width &&
+    first.y + first.height > second.y &&
+    first.y < second.y + second.height
+  );
 }

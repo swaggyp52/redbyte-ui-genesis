@@ -6,14 +6,29 @@ import {
   assertNoRootOverflow,
   captureBrowserProblems,
   openLogicGatesStarter,
+  selectFirstVisibleDesignNode,
 } from './_workbenchReconstructionHarness.mjs';
 
 const VIEWPORTS = [
-  { label: 'classroom-stable', width: 1366, height: 768, minCanvasWidth: 850, minCanvasHeight: 380 },
-  { label: 'wide-stable', width: 1920, height: 1080, minCanvasWidth: 1400, minCanvasHeight: 620 },
+  {
+    label: 'classroom-stable',
+    width: 1366,
+    height: 768,
+    minCanvasWidth: 1080,
+    minSelectedCanvasWidth: 820,
+    minCanvasHeight: 380,
+  },
+  {
+    label: 'wide-stable',
+    width: 1920,
+    height: 1080,
+    minCanvasWidth: 1630,
+    minSelectedCanvasWidth: 1360,
+    minCanvasHeight: 620,
+  },
 ];
 
-await runIdeGate('IDE Design support docks remain stable', async ({ page, baseUrl }) => {
+await runIdeGate('IDE Design support docks remain contextual and stable', async ({ page, baseUrl }) => {
   const browserProblems = captureBrowserProblems(page);
   const failures = [];
 
@@ -31,32 +46,33 @@ await runIdeGate('IDE Design support docks remain stable', async ({ page, baseUr
         assert(initial.layoutMode === 'wide', `${viewport.label}: expected wide layout, got ${initial.layoutMode}`);
       }
       assert(initial.left.visible, `${viewport.label}: Library must be open by default ${JSON.stringify(initial)}`);
-      assert(initial.right.visible, `${viewport.label}: Inspector must remain a stable support region ${JSON.stringify(initial)}`);
+      assert(!initial.right.visible, `${viewport.label}: empty Inspector must yield to the circuit canvas ${JSON.stringify(initial)}`);
       assert(!initial.leftToggle.visible && !initial.rightToggle.visible, `${viewport.label}: v3 must not render retired restore rails`);
-      assertStableCanvas(initial, viewport, 'default workspace');
+      assertUsableCanvas(initial, viewport, 'default workspace', { inspectorExpected: false });
 
-      const selectedNodeId = await clickFirstVisibleNode(page);
+      const selectedNodeId = await selectFirstVisibleDesignNode(page);
       await page.waitForTimeout(120);
       const inspectorOpen = await readDockState(page);
       assert(
         inspectorOpen.selection.nodes.includes(selectedNodeId),
         `${viewport.label}: clicking ${selectedNodeId} must establish a real Inspector selection ${JSON.stringify(inspectorOpen.selection)}`
       );
-      assert(inspectorOpen.left.visible && inspectorOpen.right.visible, `${viewport.label}: selection must not change stable dock geometry`);
-      assertStableCanvas(inspectorOpen, viewport, 'selected-node workspace');
+      assert(inspectorOpen.left.visible && inspectorOpen.right.visible, `${viewport.label}: selection must reveal the contextual Inspector`);
+      assertUsableCanvas(inspectorOpen, viewport, 'selected-node workspace', { inspectorExpected: true });
       assert(
-        Math.abs(inspectorOpen.canvas.width - initial.canvas.width) <= 2,
-        `${viewport.label}: selection must not resize the primary canvas ${JSON.stringify({ initial, inspectorOpen })}`
+        inspectorOpen.canvas.width < initial.canvas.width,
+        `${viewport.label}: contextual Inspector must claim bounded workspace beside, not over, the canvas ${JSON.stringify({ initial, inspectorOpen })}`
       );
+      await assertNoRootOverflow(page, `${viewport.label}/selected Inspector`);
       await assertProjectSignature(page, projectSignature, `${viewport.label}/Inspector selection`);
 
       await reloadDesign(page);
       await assertBuildHash(page, `${viewport.label}/reload`);
       const reloaded = await readDockState(page);
       assert(reloaded.left.visible, `${viewport.label}: reload must return transient dock UI to the default Library state`);
-      assert(reloaded.right.visible, `${viewport.label}: reload must preserve the stable Inspector region`);
+      assert(!reloaded.right.visible, `${viewport.label}: reload must close the transient contextual Inspector`);
       assert(!reloaded.leftToggle.visible && !reloaded.rightToggle.visible, `${viewport.label}: reload must not restore retired rails`);
-      assertStableCanvas(reloaded, viewport, 'reloaded default');
+      assertUsableCanvas(reloaded, viewport, 'reloaded default', { inspectorExpected: false });
       await assertProjectSignature(page, projectSignature, `${viewport.label}/reload persistence`);
       await assertNoRootOverflow(page, viewport.label);
     } catch (error) {
@@ -77,34 +93,6 @@ async function clearStudentContextOnce(page, baseUrl, label) {
     sessionStorage.clear();
     localStorage.setItem('rb-onboarding-v1-seen', '1');
   });
-}
-
-async function clickFirstVisibleNode(page) {
-  const canvas = await page.locator('[data-testid="ide-design-live-canvas"]').first().boundingBox();
-  assert(canvas, 'Design live canvas must have a browser-visible bounding box');
-
-  const nodes = page.locator('[data-node-id]');
-  const count = await nodes.count();
-  for (let index = 0; index < count; index += 1) {
-    const node = nodes.nth(index);
-    const box = await node.boundingBox();
-    if (!box || box.width <= 4 || box.height <= 4 || !intersects(box, canvas)) continue;
-    const nodeId = await node.getAttribute('data-node-id');
-    if (!nodeId) continue;
-    await node.click({ position: { x: box.width / 2, y: box.height / 2 } });
-    return nodeId;
-  }
-
-  throw new Error('Design canvas must expose a visible node that can be selected with a real click');
-}
-
-function intersects(first, second) {
-  return (
-    first.x + first.width > second.x &&
-    first.x < second.x + second.width &&
-    first.y + first.height > second.y &&
-    first.y < second.y + second.height
-  );
 }
 
 async function reloadDesign(page) {
@@ -178,19 +166,20 @@ async function readDockState(page) {
   });
 }
 
-function assertStableCanvas(state, viewport, label) {
+function assertUsableCanvas(state, viewport, label, { inspectorExpected }) {
   assert(
-    state.supportDockPolicy === 'stable',
-    `${viewport.label}/${label}: Design must declare the stable support-region policy ${JSON.stringify(state)}`
+    state.supportDockPolicy === 'persistent-configurable',
+    `${viewport.label}/${label}: Design must declare the configurable support-region policy ${JSON.stringify(state)}`
   );
   const visibleDockCount = Number(state.left.visible) + Number(state.right.visible);
   assert(
-    visibleDockCount === 2,
-    `${viewport.label}/${label}: Library and Inspector must remain predictable beside the canvas ${JSON.stringify(state)}`
+    visibleDockCount === (inspectorExpected ? 2 : 1),
+    `${viewport.label}/${label}: support regions must match the current Design context ${JSON.stringify(state)}`
   );
   assert(state.canvas.visible, `${viewport.label}/${label}: live canvas must remain visible ${JSON.stringify(state)}`);
+  const minimumCanvasWidth = inspectorExpected ? viewport.minSelectedCanvasWidth : viewport.minCanvasWidth;
   assert(
-    state.canvas.width >= viewport.minCanvasWidth && state.canvas.height >= viewport.minCanvasHeight,
+    state.canvas.width >= minimumCanvasWidth && state.canvas.height >= viewport.minCanvasHeight,
     `${viewport.label}/${label}: support tools must preserve a usable canvas ${JSON.stringify(state)}`
   );
   assert(state.canvasPointerEvents !== 'none', `${viewport.label}/${label}: live canvas must remain interactive`);

@@ -7,10 +7,9 @@ import {
   clickVerifyRun,
   loadStarterProject,
   runIdeGate,
-  saveObservedOutputs,
   setVerifyRunMode,
 } from './_gateHarness.mjs';
-import { isVerifyFail, isVerifyPass, isVerifyTrace, waitForVerifyResult } from './_verifyStatus.mjs';
+import { isVerifyFail, isVerifyPass, waitForVerifyResult } from './_verifyStatus.mjs';
 import {
   assertBuildHash,
   assertNoRootOverflow,
@@ -72,10 +71,17 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await ensureCaseCount(page, cases.length);
   await authorInputCases(page, cases);
   await capture(page, '01-verify-authored-multiple-cases.png');
+  const authoredCheckOutputIds = outputIds.slice(0, 2);
+  await clearExpectedChecks(page, authoredCheckOutputIds, cases.length);
+  await capture(page, '02-checks-unset-for-authoring.png');
 
-  await runObserveSaveAndAssertExpected(page, outputIds.slice(0, 2), cases.length);
-  await assertObservedEvidenceVisible(page);
-  await capture(page, '02-observe-expected-and-observed-evidence.png');
+  await runSimulation(page);
+  await assertReplayEvidenceVisible(page);
+  await capture(page, '03-run-replay-evidence.png');
+  const observedOutputs = await readScenarioObservedOutputs(page, authoredCheckOutputIds, cases.length);
+  await capture(page, '04-observed-values-in-scenario.png');
+  await authorExpectedChecks(page, observedOutputs);
+  await capture(page, '05-authored-checks.png');
 
   const targetTick = 1;
   const targetA = { fieldId: outputIds[0], tick: targetTick };
@@ -89,10 +95,11 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
   await runCompareAndExpect(page, 'two wrong expected outputs', 'fail');
   await assertFailureRepairPanel(page, { expectRowRepair: true, expectAllRepair: true });
-  await capture(page, '03-two-failed-outputs-repair-actions.png');
+  await capture(page, '06-two-failed-outputs-repair-actions.png');
 
   await page.getByTestId('ide-verify-repair-use-observed').click();
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
+  await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
   const afterCellRepairB = await readCellValue(page, expectedCellTestId(targetB.fieldId, targetB.tick));
   assert(
     afterCellRepairB !== originalB,
@@ -104,8 +111,9 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await assertDirectFailureEvidence(page, 'peer failure after surgical cell repair');
   await page.getByTestId('ide-verify-repair-use-observed').click();
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
+  await assertExpectedCellVisibleValue(page, targetB.fieldId, targetB.tick, originalB);
   await runCompareAndExpect(page, 'two surgical cell repairs', 'pass');
-  await capture(page, '04-cell-repair-pass.png');
+  await capture(page, '07-cell-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
@@ -118,9 +126,11 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await page.getByTestId('ide-verify-repair-use-observed-row').click();
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
+  await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
+  await assertExpectedCellVisibleValue(page, targetB.fieldId, targetB.tick, originalB);
   await runCompareAndExpect(page, 'row repair', 'pass');
   record.phases.push({ phase: 'row-repair', tick: targetTick });
-  await capture(page, '05-row-repair-pass.png');
+  await capture(page, '08-row-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
   await flipExpectedCell(page, targetB.fieldId, targetB.tick);
@@ -129,12 +139,15 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await page.getByTestId('ide-verify-repair-use-observed-all').click();
   await waitForExpectedValue(page, targetA.fieldId, targetA.tick, originalA);
   await waitForExpectedValue(page, targetB.fieldId, targetB.tick, originalB);
+  await assertExpectedCellVisibleValue(page, targetA.fieldId, targetA.tick, originalA);
+  await assertExpectedCellVisibleValue(page, targetB.fieldId, targetB.tick, originalB);
   await runCompareAndExpect(page, 'all failed repair', 'pass');
   record.phases.push({ phase: 'all-failed-repair' });
-  await capture(page, '06-all-failed-repair-pass.png');
+  await capture(page, '09-all-failed-repair-pass.png');
 
   await flipExpectedCell(page, targetA.fieldId, targetA.tick);
-  const staleSummary = page.getByTestId('ide-verify-results-summary').first();
+  await openReplayWorkspace(page);
+  const staleSummary = page.locator('[data-testid="ide-verify-results-summary"]:visible').first();
   await staleSummary.waitFor({ state: 'visible', timeout: 10000 });
   assert((await staleSummary.getAttribute('data-kind')) === 'stale', 'Verify latest-run authority must be marked stale after an expected-output edit');
   const staleText = await text(staleSummary);
@@ -142,12 +155,12 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
     /Checks changed|Rerun Compare/i.test(staleText),
     `Verify must name stale testbench evidence after edit, got "${staleText}"`,
   );
-  await capture(page, '07-testbench-edit-stale.png');
+  await capture(page, '10-testbench-edit-stale.png');
 
   await openMode(page, baseUrl, 'export', 'testbench-editor-and-export-confidence-flow-stale-export');
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 15000 });
   await assertExportConfidence(page, { expectedPackage: 'draft', expectedVerify: 'stale' });
-  await capture(page, '08-export-confidence-stale-draft.png');
+  await capture(page, '11-export-confidence-stale-draft.png');
 
   await openMode(page, baseUrl, 'verify', 'testbench-editor-and-export-confidence-flow-final-compare');
   await setExpectedCell(page, targetA.fieldId, targetA.tick, originalA);
@@ -156,7 +169,7 @@ await runIdeGate('IDE testbench editor and export confidence flow satisfied', as
   await openMode(page, baseUrl, 'export', 'testbench-editor-and-export-confidence-flow-current-export');
   await page.waitForSelector('[data-testid="ide-export-panel"]', { timeout: 15000 });
   await assertExportConfidence(page, { expectedPackage: 'buildable-e0', expectedVerify: 'pass' });
-  await capture(page, '09-export-confidence-ready-e0.png');
+  await capture(page, '12-export-confidence-ready-e0.png');
 
   record.phases.push({ phase: 'complete', outputsChecked: outputIds.slice(0, 2) });
   await writeFile(
@@ -183,13 +196,68 @@ async function assertTestbenchWorkspace(page, label) {
     ['authoring path', authoringPath],
     ['case actions', toolbar],
     ['stimulus grid', grid],
-    ['expected-output cell', expectedCell],
     ['Observe/Compare selector', runMode],
     ['Verify status', status],
-    ['pre-run waveform evidence', waveformPlaceholder],
   ]) {
     assert(await locator.isVisible().catch(() => false), `${label}: ${name} must be visible`);
   }
+
+  const scenarioTab = page.getByTestId('ide-vcb-workspace-scenario').first();
+  const replayTab = page.getByTestId('ide-vcb-workspace-replay').first();
+  assert(
+    (await scenarioTab.getAttribute('aria-selected')) === 'true',
+    `${label}: Scenario authoring must own the pre-run workspace`,
+  );
+  assert(await replayTab.isDisabled(), `${label}: Replay must remain unavailable until a run creates evidence`);
+  assert((await waveformPlaceholder.count()) > 0, `${label}: the quiet pre-run Replay placeholder must remain mounted`);
+  assert(
+    !(await waveformPlaceholder.isVisible().catch(() => false)),
+    `${label}: pre-run Replay evidence must stay out of the active Scenario workspace`,
+  );
+
+  assert(
+    (await expectedCell.count()) === 0,
+    `${label}: Scenario must keep optional expected-output checks out of the stimulus-first workspace`,
+  );
+  const checksTab = page.getByTestId('ide-vcb-workspace-checks').first();
+  await checksTab.click();
+  await page.waitForSelector('[data-testid^="ide-stimulus-expected-"]', { state: 'visible', timeout: 5000 });
+  assert((await expectedCell.count()) > 0, `${label}: Checks must expose expected-output cells`);
+  await expectedCell.scrollIntoViewIfNeeded();
+  assert(await expectedCell.isVisible().catch(() => false), `${label}: expected-output cells must be reachable in Checks`);
+  await assertNoRootOverflow(page, `${label} Checks workspace`);
+  const checksGeometry = await page.evaluate(() => {
+    const lab = document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getBoundingClientRect();
+    const stimulus = document.querySelector('[data-testid="ide-verify-region-stimulus"]')?.getBoundingClientRect();
+    return lab && stimulus
+      ? {
+          labWidth: lab.width,
+          stimulusWidth: stimulus.width,
+          leftInset: stimulus.left - lab.left,
+          rightInset: lab.right - stimulus.right,
+        }
+      : null;
+  });
+  assert(checksGeometry !== null, `${label}: Checks geometry must be measurable`);
+  assert(
+    checksGeometry.stimulusWidth >= checksGeometry.labWidth * 0.96,
+    `${label}: Checks must own the full lab width: ${JSON.stringify(checksGeometry)}`,
+  );
+  assert(
+    checksGeometry.leftInset >= 0 &&
+      checksGeometry.rightInset >= 0 &&
+      checksGeometry.leftInset <= 16 &&
+      checksGeometry.rightInset <= 16 &&
+      Math.abs(checksGeometry.leftInset - checksGeometry.rightInset) <= 2,
+    `${label}: Checks must use only the lab's symmetric content inset: ${JSON.stringify(checksGeometry)}`,
+  );
+  const checksHeaderCopy = await text(header);
+  assert(
+    /expected outputs.*Unset|Unset.*expected outputs/i.test(checksHeaderCopy),
+    `${label}: Checks must explain optional expected outputs and Unset semantics, got "${checksHeaderCopy}"`,
+  );
+  await scenarioTab.click();
+  await workspace.waitFor({ state: 'visible', timeout: 5000 });
 
   assert(
     /Combinational case table/i.test(await text(authoringPath)),
@@ -197,8 +265,8 @@ async function assertTestbenchWorkspace(page, label) {
   );
   const headerCopy = await text(header);
   assert(
-    /Testbench cases.*inputs.*expected/i.test(headerCopy),
-    `${label}: case-table header must explain input stimulus and expected-output ownership, got "${headerCopy}"`,
+    /Testbench cases.*inputs.*observed outputs.*replay/i.test(headerCopy),
+    `${label}: Scenario header must explain input stimulus, observed outputs, and replay, got "${headerCopy}"`,
   );
   assert(/Cases/i.test(await text(toolbar)), `${label}: visible toolbar must expose case editing`);
   assert(
@@ -207,8 +275,8 @@ async function assertTestbenchWorkspace(page, label) {
   );
   const modeCopy = await text(page.getByTestId('ide-vcb-mode-explainer').first());
   assert(
-    /observed outputs|expected outputs|expected values/i.test(modeCopy),
-    `${label}: run-mode copy must explain observed versus expected evidence, got "${modeCopy}"`,
+    /observed (?:outputs|values)|expected (?:outputs|values)|evaluates \d+ optional checks/i.test(modeCopy),
+    `${label}: run authority must name observation or configured optional-check evaluation, got "${modeCopy}"`,
   );
   assert(/Draft|Not started|Ready/i.test(await text(status)), `${label}: pre-run status must describe an unrun testbench`);
   assert(
@@ -217,42 +285,56 @@ async function assertTestbenchWorkspace(page, label) {
   );
 }
 
-async function assertObservedEvidenceVisible(page) {
+async function assertReplayEvidenceVisible(page) {
   const scope = await text(page.locator('[data-testid="ide-verify-scope-header"]').first());
-  assert(/Waveform truth/i.test(scope), `Observe must expose waveform evidence, got "${scope}"`);
+  assert(/Waveform truth/i.test(scope), `Run simulation must expose waveform evidence, got "${scope}"`);
   const waveformVisible = await page.locator('[data-testid="ide-verify-waveform-preview"]').first().isVisible().catch(() => false);
-  assert(waveformVisible, 'Observed waveform preview must be visible after Observe');
+  assert(waveformVisible, 'Observed waveform preview must be visible after Run simulation');
   assert(
     await page.getByTestId('ide-verify-waveform-svg').first().isVisible().catch(() => false),
-    'Observed waveform lanes must be visible after Observe',
-  );
-  assert(
-    await page.getByTestId('ide-stimulus-observed-group').first().isVisible().catch(() => false),
-    'Observed values must be visible beside the authored stimulus after Observe',
+    'Observed waveform lanes must be visible after Run simulation',
   );
   const status = await text(page.getByTestId('ide-verify-summary-status').first());
-  assert(isVerifyTrace(status), `Observe must report observation-only evidence, got "${status}"`);
-  assert(!isVerifyPass(status) && !isVerifyFail(status), `Observe must not report trusted PASS/FAIL, got "${status}"`);
+  assert(isVerifyPass(status), `Configured starter checks must pass after Run simulation, got "${status}"`);
+  assert(!isVerifyFail(status), `Run simulation must not report failed starter checks, got "${status}"`);
+  const runAuthority = await page.evaluate(() => {
+    const run = window.__RB_PROJECT_RUNTIME__?.getState?.()?.verifyLastRun;
+    return {
+      simulationStatus: run?.simulationStatus ?? null,
+      assertionStatus: run?.assertionStatus ?? null,
+      checkedRows: run?.report?.rows?.length ?? 0,
+    };
+  });
+  assert(runAuthority.simulationStatus === 'complete', `simulation authority must be complete: ${JSON.stringify(runAuthority)}`);
+  assert(runAuthority.assertionStatus === 'passing', `starter check authority must be passing: ${JSON.stringify(runAuthority)}`);
+  assert(runAuthority.checkedRows > 0, `starter run must evaluate configured checks: ${JSON.stringify(runAuthority)}`);
   assert(
-    /Observation only/i.test(await text(page.getByTestId('ide-verify-context-state').first())),
-    'Observe must expose Observation only as the current Verify state',
+    /Checks passing|Checks aligned|Simulation complete/i.test(await text(page.getByTestId('ide-verify-context-state').first())),
+    'Run simulation must expose the current passing check state',
   );
   const summary = page.getByTestId('ide-verify-results-summary').first();
-  assert((await summary.getAttribute('data-kind')) === 'observe-done', 'Observe result authority must be observation-only');
   assert(
-    /Observed outputs recorded.*no expected checks compared/i.test(await text(summary)),
-    'Observe summary must distinguish recorded output evidence from Compare proof',
+    /Simulation complete.*Checks passing/i.test(await text(summary)),
+    'Run summary must distinguish completed simulation from passing optional checks',
   );
 }
 
 async function assertFailureRepairPanel(page, options) {
-  const summary = page.getByTestId('ide-verify-results-summary').first();
+  const summary = page.locator('[data-testid="ide-verify-results-summary"]:visible').first();
   await summary.waitFor({ state: 'visible', timeout: 10000 });
-  assert((await summary.getAttribute('data-kind')) === 'fail', 'visible result authority must be FAIL');
+  assert(
+    (await summary.getAttribute('data-kind')) === 'observe-done',
+    'completed simulation evidence must remain valid while optional checks fail',
+  );
+  assert(
+    /Simulation complete.*Checks failing/i.test(await text(summary)),
+    'result summary must distinguish completed simulation from failing optional checks',
+  );
   const guidance = await text(page.getByTestId('ide-verify-results-guidance').first());
-  assert(/Expected value is incorrect/i.test(guidance), 'visible FAIL guidance must mention expected values');
-  assert(/Circuit logic is incorrect/i.test(guidance), 'visible FAIL guidance must mention circuit logic');
-  assert(/Output is disconnected/i.test(guidance), 'visible FAIL guidance must mention disconnected outputs');
+  assert(
+    /waveform.*valid.*Open Checks|inspect the first mismatch/i.test(guidance),
+    'visible check-failure guidance must preserve waveform evidence and route to the mismatch',
+  );
   await assertDirectFailureEvidence(page, 'failed output repair');
   const panelText = await text(page.locator('[data-testid="ide-verify-repair-panel"]').first());
   assert(/Compare failed/i.test(panelText), `repair panel must name Compare failed, got "${panelText}"`);
@@ -269,9 +351,9 @@ async function assertFailureRepairPanel(page, options) {
 }
 
 async function assertDirectFailureEvidence(page, label) {
-  const repairPanel = page.getByTestId('ide-verify-repair-panel').first();
-  const repairDecision = page.getByTestId('ide-verify-repair-decision').first();
-  const failedCase = page.getByTestId('ide-verify-results-summary-open-fail').first();
+  const repairPanel = page.locator('[data-testid="ide-verify-repair-panel"]:visible').first();
+  const repairDecision = page.locator('[data-testid="ide-verify-repair-decision"]:visible').first();
+  const failedCase = page.locator('[data-testid="ide-verify-results-summary-open-fail"]:visible').first();
 
   await repairPanel.waitFor({ state: 'visible', timeout: 10000 });
   assert(await repairDecision.isVisible().catch(() => false), `${label}: direct repair decision must be visible`);
@@ -337,21 +419,71 @@ async function assertExportConfidence(page, { expectedPackage, expectedVerify })
   );
 }
 
-async function runObserveSaveAndAssertExpected(page, outputIds, caseCount) {
-  await setVerifyRunMode(page, 'observe');
-  await clickVerifyRunAndWaitForNewResult(page, 'Observe run', 'pass-or-trace');
-  const savedSelector = await saveObservedOutputs(page);
-  assert(savedSelector, 'Verify must allow saving observed outputs after Observe');
-  await page.waitForFunction(
-    () => (window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? []).some((vector) => Object.keys(vector.expected ?? {}).length > 0),
-    { timeout: 8000 },
-  );
+async function runSimulation(page) {
+  await clickVerifyRunAndWaitForNewResult(page, 'Run simulation', 'pass');
+  await openReplayWorkspace(page);
+}
+
+async function readScenarioObservedOutputs(page, outputIds, caseCount) {
+  await openScenarioWorkspace(page);
+  const observedOutputs = [];
   for (let tick = 0; tick < caseCount; tick += 1) {
     for (const outputId of outputIds) {
-      const value = await readCellValue(page, expectedCellTestId(outputId, tick));
-      assert(value === 0 || value === 1, `expected ${outputId} at t${tick} to be saved, got ${value}`);
+      const cell = page.locator(`[data-testid="ide-stimulus-observed-${outputId}-t${tick}"]:visible`).first();
+      await cell.waitFor({ state: 'visible', timeout: 8000 });
+      const rawValue = await cell.getAttribute('data-value');
+      const value = rawValue === '1' ? 1 : rawValue === '0' ? 0 : null;
+      assert(value === 0 || value === 1, `Observe must report ${outputId} at t${tick}, got ${rawValue}`);
+      observedOutputs.push({ fieldId: outputId, tick, value });
     }
   }
+  return observedOutputs;
+}
+
+async function authorExpectedChecks(page, observedOutputs) {
+  await openChecksWorkspace(page);
+  for (const entry of observedOutputs) {
+    assert(
+      (await readCellValue(page, expectedCellTestId(entry.fieldId, entry.tick))) === null,
+      `Checks authoring setup must begin Unset for ${entry.fieldId} at t${entry.tick}`,
+    );
+  }
+  for (const entry of observedOutputs) {
+    await setExpectedCell(page, entry.fieldId, entry.tick, entry.value);
+  }
+  const vectors = await page.evaluate(() => window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? []);
+  const configuredChecks = vectors.reduce((total, vector) => total + Object.keys(vector.expected ?? {}).length, 0);
+  assert(
+    configuredChecks >= observedOutputs.length,
+    `Checks authoring must persist ${observedOutputs.length} expected values, got ${configuredChecks}`,
+  );
+}
+
+async function clearExpectedChecks(page, outputIds, caseCount) {
+  await openChecksWorkspace(page);
+  for (let tick = 0; tick < caseCount; tick += 1) {
+    for (const outputId of outputIds) {
+      const testId = expectedCellTestId(outputId, tick);
+      const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
+      await cell.scrollIntoViewIfNeeded();
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if ((await readCellValue(page, testId)) === null) break;
+        await cell.click();
+        await page.waitForTimeout(100);
+      }
+      assert((await readCellValue(page, testId)) === null, `expected ${testId} to become Unset`);
+    }
+  }
+  const state = await page.evaluate(({ clearedOutputIds, expectedCaseCount }) => {
+    const vectors = window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? [];
+    const selected = vectors.filter((vector) => vector.tick >= 0 && vector.tick < expectedCaseCount);
+    return {
+      clearedKeysRemain: selected.some((vector) => clearedOutputIds.some((fieldId) => fieldId in (vector.expected ?? {}))),
+      remainingChecks: selected.reduce((total, vector) => total + Object.keys(vector.expected ?? {}).length, 0),
+    };
+  }, { clearedOutputIds: outputIds, expectedCaseCount: caseCount });
+  assert(!state.clearedKeysRemain, `cleared output checks must be absent from runtime vectors: ${JSON.stringify(state)}`);
+  assert(state.remainingChecks > 0, 'starter must retain at least one independent check for the initial simulation run');
 }
 
 async function runCompareAndExpect(page, label, expectation) {
@@ -431,7 +563,7 @@ async function ensureCaseCount(page, desired) {
 
 async function setInputCell(page, fieldId, tick, value) {
   const testId = `ide-stimulus-cell-${fieldId}-t${tick}`;
-  const cell = page.getByTestId(testId).first();
+  const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const current = await readCellValue(page, testId);
@@ -444,8 +576,9 @@ async function setInputCell(page, fieldId, tick, value) {
 }
 
 async function setExpectedCell(page, fieldId, tick, value) {
+  await openChecksWorkspace(page);
   const testId = expectedCellTestId(fieldId, tick);
-  const cell = page.getByTestId(testId).first();
+  const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const current = await readCellValue(page, testId);
@@ -474,12 +607,65 @@ async function waitForExpectedValue(page, fieldId, tick, value) {
   );
 }
 
+async function assertExpectedCellVisibleValue(page, fieldId, tick, value) {
+  await openChecksWorkspace(page);
+  const testId = expectedCellTestId(fieldId, tick);
+  const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
+  await cell.waitFor({ state: 'visible', timeout: 5000 });
+  assert(
+    (await readCellValue(page, testId)) === value,
+    `repaired Checks cell ${testId} must visibly show ${value}`,
+  );
+}
+
 async function readCellValue(page, testId) {
-  const title = await page.getByTestId(testId).first().getAttribute('title');
-  if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
-  if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
-  if (/:\s*not set\s*-\s*drag/i.test(title ?? '')) return null;
+  const cell = page.locator(`[data-testid="${testId}"]:visible`).first();
+  if ((await cell.count()) > 0) {
+    const title = await cell.getAttribute('title');
+    if (/:\s*1\s*-\s*drag/i.test(title ?? '')) return 1;
+    if (/:\s*0\s*-\s*drag/i.test(title ?? '')) return 0;
+    if (/:\s*not set\s*-\s*drag/i.test(title ?? '')) return null;
+  }
+  const expectedMatch = /^ide-stimulus-expected-(.+)-t(\d+)$/.exec(testId);
+  if (expectedMatch) {
+    const [, fieldId, rawTick] = expectedMatch;
+    return page.evaluate(
+      ({ targetFieldId, targetTick }) => {
+        const vector = (window.__RB_PROJECT_RUNTIME__?.getState?.()?.projectVectors ?? []).find(
+          (candidate) => candidate.tick === targetTick,
+        );
+        const value = vector?.expected?.[targetFieldId];
+        return value === true || value === 1 ? 1 : value === false || value === 0 ? 0 : null;
+      },
+      { targetFieldId: fieldId, targetTick: Number(rawTick) },
+    );
+  }
   return null;
+}
+
+async function openChecksWorkspace(page) {
+  const checksTab = page.getByTestId('ide-vcb-workspace-checks').first();
+  if ((await checksTab.getAttribute('aria-selected')) !== 'true') {
+    await checksTab.click();
+  }
+  await page.waitForSelector('[data-testid^="ide-stimulus-expected-"]', { state: 'visible', timeout: 5000 });
+}
+
+async function openReplayWorkspace(page) {
+  const replayTab = page.getByTestId('ide-vcb-workspace-replay').first();
+  assert(!(await replayTab.isDisabled()), 'Replay must become available after Run simulation creates evidence');
+  if ((await replayTab.getAttribute('aria-selected')) !== 'true') {
+    await replayTab.click();
+  }
+  await page.getByTestId('ide-verify-waveform-preview').first().waitFor({ state: 'visible', timeout: 5000 });
+}
+
+async function openScenarioWorkspace(page) {
+  const scenarioTab = page.getByTestId('ide-vcb-workspace-scenario').first();
+  if ((await scenarioTab.getAttribute('aria-selected')) !== 'true') {
+    await scenarioTab.click();
+  }
+  await page.locator('[data-testid="ide-stimulus-observed-group"]:visible').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
 async function readTickCount(page) {

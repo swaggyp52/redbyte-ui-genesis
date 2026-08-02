@@ -2248,7 +2248,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                   {pinAlias && pinAlias !== ioLabel ? (
                     <text
                       x={0}
-                      y={size / 2 + 19}
+                      y={size * 0.75 + 18}
                       textAnchor="middle"
                       fill="#7f8b9e"
                       fontSize={Math.max(7, 8 * camera.zoom)}

@@ -231,6 +231,28 @@ describe('ExportSurface handoff states', () => {
     expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Run the current scenario in Simulate');
   });
 
+  it('keeps stale behavioral currentness distinct from the draft evidence tier', () => {
+    const { getByTestId } = render(
+      <ExportSurface
+        project={baseMappedProject()}
+        determinismHash="current-design-hash"
+        verifyResult={passVerify}
+        dirtySinceVerify={true}
+        workflowAuthority={makeAuthority({
+          verifyResult: passVerify,
+          dirtySinceVerify: true,
+          exportHash: 'current-design-hash',
+        })}
+      />
+    );
+
+    expect(getByTestId('ide-export-simulation-evidence-tier').textContent).toContain('Draft');
+    const verifyReadiness = getByTestId('ide-export-upstream-verify');
+    expect(verifyReadiness.textContent).toContain('Stale - rerun Simulate');
+    expect(verifyReadiness.textContent).toContain('Prior simulation evidence exists');
+    expect(verifyReadiness.textContent).not.toContain('create behavioral evidence');
+  });
+
   it('readiness details show validated simulation evidence when Compare passed and is current', () => {
     const { getByTestId } = render(
       <ExportSurface

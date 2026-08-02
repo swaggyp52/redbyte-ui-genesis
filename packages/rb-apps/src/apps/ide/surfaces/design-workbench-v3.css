@@ -323,7 +323,7 @@
   flex-wrap: nowrap !important;
   align-items: center !important;
   gap: 6px !important;
-  padding: 4px 8px !important;
+  padding: 3px 8px !important;
   pointer-events: auto !important;
 }
 
@@ -1206,6 +1206,34 @@
   .ide-design-sim-story-strip.is-replay-mode
   .ide-design-sim-story-summary {
   display: none !important;
+}
+
+/* Keep selection tracing informative without adding a second status row at
+   classroom widths. Full wire context remains available in the Inspector. */
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-main {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-row {
+  flex: 0 0 auto !important;
+  flex-wrap: nowrap !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-label {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-design-workspace-health-meta {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']

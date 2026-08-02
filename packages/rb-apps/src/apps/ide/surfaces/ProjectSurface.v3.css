@@ -766,7 +766,7 @@
 .ide-project-v3-header {
   grid-template-columns: minmax(0, 2fr) minmax(300px, 0.86fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
   padding: 0;
   border: 0;
 }
@@ -779,7 +779,11 @@
   border: 1px solid var(--rb-border);
   border-radius: 12px;
   background:
-    radial-gradient(circle at 88% 18%, rgba(139, 124, 255, 0.12), transparent 30%),
+    radial-gradient(
+      circle at 88% 18%,
+      color-mix(in srgb, var(--rb-project) 12%, transparent),
+      transparent 30%
+    ),
     var(--rb-surface-1);
   box-shadow: var(--rb-shadow-elevated);
 }
@@ -801,14 +805,19 @@
 
 .ide-project-v3-next {
   grid-template-columns: 1fr;
-  align-content: center;
+  align-content: start;
+  align-self: start;
   gap: 12px;
-  min-height: 100%;
+  min-height: 0;
   padding: 22px;
-  border: 1px solid rgba(139, 124, 255, 0.36);
+  border: 1px solid color-mix(in srgb, var(--rb-action) 36%, var(--rb-border));
   border-radius: 12px;
   background:
-    linear-gradient(150deg, rgba(139, 124, 255, 0.16), transparent 54%),
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--rb-action) 16%, transparent),
+      transparent 54%
+    ),
     var(--rb-surface-2);
   box-shadow: var(--rb-shadow-elevated);
 }
