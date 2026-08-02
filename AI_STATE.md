@@ -37828,6 +37828,12 @@ Key details:
 - Build & Export now names stale prior simulation evidence explicitly and
   routes the student back to Simulate rather than presenting that evidence as
   merely absent or current.
+- Removed the legacy whole-dock opacity transition from Design so changing
+  Components / Hierarchy / Sources / Board I/O cannot dim the supporting rail
+  or leave stale compositor tiles over the primary toolbar. Board & Constraints
+  now labels the logical signal, generated artifact port, physical board
+  resource, and package pin as separate identity domains; a zero-unassigned
+  summary now says that all required mappings are assigned.
 
 **Evidence and validation boundary**
 
@@ -37844,6 +37850,10 @@ Key details:
   with 287/287 tests, workspace typecheck, the IDE CSS audit, and the unified
   build with 344 transformed modules plus a verified distributable. Canonical
   docs, encoding, and whitespace checks complete the same record.
+- The final visual-proof hardening additionally passes the focused Hardware
+  mapping suite (16/16), the Design Workbench v1 browser gate at both required
+  viewports, and the student-loop browser contract with explicit artifact-port
+  labeling.
 - The 12-capture pack is generated after this final documentation commit so
   its Browser-E0 record identifies the exact candidate SHA. The full release
   aggregate is deliberately outside this milestone.

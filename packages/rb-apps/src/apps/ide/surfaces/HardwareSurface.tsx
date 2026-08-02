@@ -2995,7 +2995,13 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                 <div data-testid="ide-hw-mapping-overview-unassigned">
                   <span>Unassigned</span>
                   <strong>{unresolvedRequiredCount}</strong>
-                  <small>{unresolvedRequiredCount === 1 ? 'mapping needs a resource' : 'mappings need resources'}</small>
+                  <small>
+                    {unresolvedRequiredCount === 0
+                      ? 'all required mappings assigned'
+                      : unresolvedRequiredCount === 1
+                        ? 'mapping needs a resource'
+                        : 'mappings need resources'}
+                  </small>
                 </div>
                 <div className={conflictingRequiredCount > 0 ? 'is-conflict' : undefined} data-testid="ide-hw-mapping-overview-conflicts">
                   <span>Conflicts</span><strong>{conflictingRequiredCount}</strong>
@@ -3068,11 +3074,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     <table
                       className="ide-hw-v3__table"
                       data-testid="ide-hw-map-table"
-                      data-columns="Signal|Purpose|Board resource|Package pin|Status|Action"
+                      data-columns="Logical signal|Purpose|Board resource|Package pin|Status|Action"
                       data-work-priority="primary"
                     >
                       <thead><tr>
-                        <th scope="col">Signal</th><th scope="col">Purpose</th><th scope="col">Board resource</th>
+                        <th scope="col">Logical signal</th><th scope="col">Purpose</th><th scope="col">Board resource</th>
                         <th scope="col">Package pin</th><th scope="col">Status</th><th scope="col">Action</th>
                       </tr></thead>
                       {mapModeGroups.map((group) => (
@@ -3114,6 +3120,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           const signalIdentity = splitMappingSignalLabel(
                             projection?.logicalLabel ?? getStudentFacingIoLabel(row, row.id)
                           );
+                          const artifactPortName = projection?.artifactPortName?.trim() || signalIdentity.physical;
                           return (
                             <tr
                               key={row.id}
@@ -3128,7 +3135,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                             >
                               <th scope="row" data-testid={'ide-hw-map-row-signal-' + row.id}>
                                 <strong>{signalIdentity.logical}</strong>
-                                {signalIdentity.physical ? <small>{signalIdentity.physical}</small> : null}
+                                {artifactPortName ? <small>Artifact port: {artifactPortName}</small> : null}
                               </th>
                               <td data-testid={'ide-hw-map-row-role-' + row.id}>
                                 {row.direction === 'in' ? 'Circuit input' : 'Circuit output'}

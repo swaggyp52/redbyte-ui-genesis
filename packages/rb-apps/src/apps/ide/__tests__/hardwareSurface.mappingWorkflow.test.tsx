@@ -103,6 +103,9 @@ describe('HardwareSurface — mapping workflow primitives', () => {
 
     expect(getByTestId('ide-hardware-mapping-progress').textContent).toBe('MAPPING COMPLETE');
     expect(getByTestId('ide-hw-map-table').getAttribute('data-work-priority')).toBe('primary');
+    expect(getByTestId('ide-hw-mapping-overview-unassigned').textContent).toContain(
+      'all required mappings assigned'
+    );
   });
 
   it('shows Incomplete state when a required signal has no pin', () => {
@@ -186,8 +189,8 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     );
 
     const table = getByTestId('ide-hw-map-table');
-    expect(table.getAttribute('data-columns')).toBe('Signal|Purpose|Board resource|Package pin|Status|Action');
-    expect(table.textContent).toContain('Signal');
+    expect(table.getAttribute('data-columns')).toBe('Logical signal|Purpose|Board resource|Package pin|Status|Action');
+    expect(table.textContent).toContain('Logical signal');
     expect(table.textContent).toContain('Purpose');
     expect(table.textContent).toContain('Board resource');
     const afterMapping = getByTestId('ide-hw-after-mapping-tools');
@@ -297,7 +300,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(getByTestId('ide-hardware-chain-pin').textContent).toContain('V17');
   });
 
-  it('renders the export-owned logical-to-artifact projection without re-sanitizing EN', () => {
+  it('labels logical and artifact-port identity separately without re-sanitizing EN', () => {
     const health = makeHealth();
     const { getByTestId } = render(
       <BoardSignalProvider>
@@ -333,7 +336,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       </BoardSignalProvider>
     );
 
-    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('EN');
+    expect(getByTestId('ide-hw-map-row-signal-en').textContent).toBe('ENArtifact port: SW');
     expect(getByTestId('ide-hw-map-row-binding-en').textContent).toBe('Slide switch SW0');
     fireEvent.click(getByTestId('ide-hw-map-row-en'));
     expect(getByTestId('ide-hardware-chain-artifact').textContent).toContain('SW');

@@ -33,6 +33,11 @@
   min-width: 0;
   max-width: none;
   overflow: hidden auto;
+  /* Whole-dock opacity animation made text needlessly dim while focused and
+     could leave stale compositor tiles when browser proof disabled animations.
+     Keep transitions on the controls themselves, not the workbench region. */
+  opacity: 1 !important;
+  transition: none !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left {
@@ -54,7 +59,6 @@
   width: auto;
   position: relative;
   z-index: 4;
-  opacity: 1;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette,

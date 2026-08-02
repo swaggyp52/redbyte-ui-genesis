@@ -78,6 +78,9 @@ async function proveDesignWorkbenchAtViewport(page, baseUrl, viewport) {
   await loadStarterDesign(page, baseUrl, 'logic-gates', `logic-gates-${viewport.label}`);
   await capture(page, viewport, '02-logic-gates-starter');
   await checkOrCaptureOnly('Logic Gates starter', () => assertGraphWorkbench(page, viewport, 'Logic Gates starter'));
+  await checkOrCaptureOnly('Hierarchy toolbar ownership', () =>
+    assertHierarchyToolbarOwnership(page, viewport)
+  );
   await checkOrCaptureOnly('Logic Gates boundary actions', () =>
     assertDesignBoundaryActions(page, 'Logic Gates starter')
   );
@@ -392,6 +395,90 @@ async function waitForDesignWorkbench(page) {
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-toolbar"]', { timeout: 15000 });
   await page.waitForSelector('[data-testid="ide-design-dock-palette"]', { timeout: 15000 });
+}
+
+async function assertHierarchyToolbarOwnership(page, viewport) {
+  await page.getByTestId('ide-design-left-tab-hierarchy').click();
+  await page.locator('[data-testid^="ide-design-hierarchy-row-"]').first().waitFor({
+    state: 'visible',
+    timeout: 5000,
+  });
+  await page.waitForFunction(() => {
+    const toolbar = document.querySelector('[data-testid="ide-design-toolbar"]');
+    return toolbar instanceof HTMLElement && toolbar.scrollLeft === 0;
+  }, undefined, { timeout: 2000 });
+
+  const ownership = await page.evaluate(() => {
+    const toolbar = document.querySelector('[data-testid="ide-design-toolbar"]');
+    if (!(toolbar instanceof HTMLElement)) return null;
+    const leftDock = document.querySelector('[data-testid="ide-left-dock"]');
+    const leftDockStyle = leftDock instanceof HTMLElement ? getComputedStyle(leftDock) : null;
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const ids = [
+      'ide-design-tool-select',
+      'ide-design-tool-wire',
+      'ide-design-view-canvas',
+      'ide-design-view-hdl',
+      'ide-design-view-split',
+    ];
+    return {
+      scrollLeft: toolbar.scrollLeft,
+      scrollWidth: toolbar.scrollWidth,
+      clientWidth: toolbar.clientWidth,
+      leftDockOpacity: leftDockStyle?.opacity ?? null,
+      leftDockTransitionDuration: leftDockStyle?.transitionDuration ?? null,
+      leftDockAnimationCount: leftDock instanceof HTMLElement ? leftDock.getAnimations().length : -1,
+      controls: ids.map((id) => {
+        const control = document.querySelector(`[data-testid="${id}"]`);
+        if (!(control instanceof HTMLElement)) return { id, present: false };
+        const rect = control.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+        const style = getComputedStyle(control);
+        return {
+          id,
+          present: true,
+          visible: rect.width > 1 && rect.height > 1 && style.display !== 'none' && style.visibility !== 'hidden',
+          withinToolbar:
+            rect.left >= toolbarRect.left - 1 &&
+            rect.right <= toolbarRect.right + 1 &&
+            rect.top >= toolbarRect.top - 1 &&
+            rect.bottom <= toolbarRect.bottom + 1,
+          withinViewport:
+            rect.left >= 0 &&
+            rect.right <= window.innerWidth &&
+            rect.top >= 0 &&
+            rect.bottom <= window.innerHeight,
+          pointerHit: Boolean(hit && control.contains(hit)),
+          rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom },
+        };
+      }),
+    };
+  });
+
+  assert(ownership, `${viewport.label}: hierarchy toolbar is missing`);
+  assert(ownership.scrollLeft === 0, `${viewport.label}: hierarchy toolbar retained scrollLeft=${ownership.scrollLeft}`);
+  assert(
+    ownership.scrollWidth <= ownership.clientWidth + 1,
+    `${viewport.label}: hierarchy toolbar still owns horizontal overflow ${JSON.stringify(ownership)}`
+  );
+  assert(
+    ownership.leftDockOpacity === '1' && ownership.leftDockTransitionDuration === '0s' && ownership.leftDockAnimationCount === 0,
+    `${viewport.label}: hierarchy left dock still animates as one dimmed compositor layer ${JSON.stringify(ownership)}`
+  );
+  const blocked = ownership.controls.filter(
+    (control) =>
+      !control.present ||
+      !control.visible ||
+      !control.withinToolbar ||
+      !control.withinViewport ||
+      !control.pointerHit
+  );
+  assert(
+    blocked.length === 0,
+    `${viewport.label}: hierarchy hid or obstructed primary toolbar controls ${JSON.stringify(blocked)}`
+  );
+
+  await page.getByTestId('ide-design-left-tab-components').click();
 }
 
 async function assertBlankCanvasStart(page, viewport, label) {

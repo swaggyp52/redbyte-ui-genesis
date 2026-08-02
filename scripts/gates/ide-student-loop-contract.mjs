@@ -155,6 +155,13 @@ await runIdeGate('IDE student loop contract satisfied', async ({ page, baseUrl }
   const hardwarePanel = page.locator('[data-testid="ide-hardware-panel"]').first();
   assert(await visible(hardwarePanel), 'hardware panel must be visible');
 
+  const firstMappedSignal = page.locator('[data-testid^="ide-hw-map-row-signal-"]').first();
+  await firstMappedSignal.waitFor({ state: 'visible', timeout: 10000 });
+  assert(
+    /Artifact port:/i.test((await firstMappedSignal.textContent()) ?? ''),
+    'Board & Constraints must label artifact-port identity separately from the logical signal and physical resource',
+  );
+
   const afterMappingTools = page.locator('[data-testid="ide-hw-after-mapping-tools"]').first();
   await afterMappingTools.waitFor({ state: 'visible', timeout: 10000 });
 
