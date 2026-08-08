@@ -7133,6 +7133,19 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
             <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
               <div className="ide-design-toolbar-row-v3">
+              <div className="ide-design-command-context" aria-label="Current design module and mode">
+                <nav className="ide-design-command-breadcrumb" aria-label="Design module breadcrumb">
+                  <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
+                  {activeNativeModule ? <><span aria-hidden="true">/</span><button type="button" onClick={() => onOpenModule?.(activeNativeModule.id)}>{activeNativeModule.displayName}</button></> : null}
+                </nav>
+                {!isCodeWorkspace ? (
+                  <div className="ide-design-command-mode" role="group" aria-label="Design mode">
+                    <button type="button" className={effectiveLearningMode === 'edit' ? 'is-active' : ''} onClick={handleResumeLiveEditing}>Edit</button>
+                    <button type="button" className={effectiveLearningMode === 'live' ? 'is-active' : ''} disabled={!hasRunnablePath} onClick={() => { onClearExternalDebug?.(); setDesignLearningMode('live'); }}>Live</button>
+                    <button type="button" className={effectiveLearningMode === 'replay' ? 'is-active' : ''} disabled={!replaySession || replayTrace.length === 0} onClick={() => onSelectDebugTickIndex?.(0)}>Replay</button>
+                  </div>
+                ) : null}
+              </div>
               {effectiveLearningMode === 'live' ? (
                 <div
                   className="ide-toolbar-group is-simulation"
@@ -7361,8 +7374,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-toolbar-overflow"
                     data-blocks-canvas-placement="1"
                   >
-                    <summary>More tools</summary>
+                    <summary>More</summary>
                     <div className="ide-design-toolbar-overflow-menu" aria-label="More Design tools">
+                      <label className="ide-design-more-field">
+                        <span>Canvas appearance</span>
+                        <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance in More tools">
+                          <option value="dark">Dark canvas</option>
+                          <option value="light">Light canvas</option>
+                          <option value="system">Follow application</option>
+                        </select>
+                      </label>
+                      <label className="ide-design-more-field">
+                        <span>Canvas density</span>
+                        <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density in More tools">
+                          <option value="comfortable">Comfortable</option>
+                          <option value="compact">Compact</option>
+                        </select>
+                      </label>
                       {toolbarVisible(IDE_COMMAND_IDS.zoomOutDesignCanvas) ? (
                         <IdeButton tone="ghost" onClick={zoomOut} testId="ide-design-overflow-zoom-out">
                           Zoom out

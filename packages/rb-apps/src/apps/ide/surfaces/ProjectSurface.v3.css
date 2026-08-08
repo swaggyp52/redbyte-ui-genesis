@@ -1013,3 +1013,140 @@
 .ide-root .ide-project-evidence-tier.is-validated strong {
   color: var(--rb-success);
 }
+
+/* Milestone B2 — Project Center owns the full workplane. */
+.ide-project-v3 {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  padding: 20px clamp(20px, 2vw, 32px) 24px;
+  gap: 16px;
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
+  font-size: 14px;
+  height: 100%;
+  overflow: auto;
+  align-content: start;
+  grid-template-rows: auto;
+}
+
+.ide-project-v3-command-board,
+.ide-project-v3-workspace,
+.ide-project-v3-recent {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  box-shadow: 0 8px 24px rgba(21, 32, 51, 0.06);
+}
+
+.ide-project-v3-command-board { min-height: 0; padding: 20px 24px 12px; }
+.ide-project-v3-header { grid-template-columns: minmax(0, 1fr) minmax(280px, 316px); gap: 24px; }
+.ide-project-v3-meta { display: none; }
+.ide-project-v3-title,
+.ide-project-v3-title-button,
+.ide-project-v3-title-input { font-size: clamp(22px, 2vw, 26px); line-height: 1.15; }
+.ide-project-v3-description,
+.ide-project-v3-goal,
+.ide-project-v3-source { max-width: 80ch; font-size: 14px; line-height: 1.5; }
+
+.ide-project-v3-next {
+  min-height: 0;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--rb-action) 28%, var(--rb-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface));
+}
+.ide-project-v3-next h2 { margin: 2px 0 4px; font-size: 18px; }
+.ide-project-v3-next-reason { margin: 0 0 12px; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-v3-next-state { color: var(--rb-action); font-size: 12px; letter-spacing: .04em; text-transform: none; }
+
+.ide-project-v3-identity { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.ide-project-v3-toolbar { display: none; }
+.ide-project-v3-workspace { height: 560px; min-height: 560px; padding: 0; overflow: hidden; }
+.ide-project-v3-workspace-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .65fr) auto; align-items: center; gap: 20px; padding: 14px 20px; border-bottom: 1px solid var(--rb-border); background: var(--rb-surface-2); }
+.ide-project-v3-workspace-header h2 { margin: 2px 0 0; font-size: 18px; }
+.ide-project-v3-workspace-header > p { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-evidence-tier { min-width: 190px; padding: 8px 10px; }
+
+.ide-project-workbench-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 270px) minmax(520px, 1fr) minmax(280px, 320px);
+  height: 475px;
+  min-height: 475px;
+}
+
+.ide-project-explorer,
+.ide-project-design-overview,
+.ide-project-v3-stage-table { min-width: 0; padding: 18px; }
+
+.ide-project-explorer {
+  gap: 4px;
+  overflow: auto;
+  border-right: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
+  max-height: 475px;
+}
+.ide-project-explorer > header { margin-bottom: 6px; }
+.ide-project-explorer > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.ide-project-explorer-heading { margin: 12px 8px 4px; color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-explorer-group { display: none; }
+.ide-project-explorer > button { min-height: 44px; padding: 8px 10px; font-size: 14px; }
+.ide-project-explorer > button small { margin-top: 2px; font-size: 12px; line-height: 1.35; }
+.ide-project-explorer > header {
+  display: grid;
+  gap: 2px;
+}
+.ide-project-explorer > button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
+  text-align: left;
+}
+.ide-project-explorer > button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.ide-project-explorer > button strong,
+.ide-project-explorer > button small {
+  display: block;
+  min-width: 0;
+}
+
+.ide-project-design-overview { display: grid; align-content: start; gap: 12px; max-height: 475px; overflow: auto; border-right: 1px solid var(--rb-border); }
+.ide-project-design-overview > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
+.ide-project-design-overview h3 { font-size: 20px; }
+.ide-project-design-overview > p { font-size: 14px; line-height: 1.5; }
+.ide-project-design-overview .ide-project-v3-circuit-preview { min-height: 230px; height: 230px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
+.ide-project-interface-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); border-color: var(--rb-border); }
+.ide-project-interface-strip > div { min-height: 76px; padding: 12px; }
+.ide-project-interface-strip span,
+.ide-project-interface-strip small { font-size: 12px; }
+.ide-project-interface-strip strong { font-size: 20px; }
+
+.ide-project-v3-stage-table { max-height: 475px; overflow: auto; background: var(--rb-surface-2); }
+.ide-project-v3-stage-table > :not(.ide-project-context-panel) { display: none; }
+.ide-project-context-panel { display: grid; align-content: start; gap: 12px; }
+.ide-project-context-section { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface); }
+.ide-project-context-section > span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-context-section > strong { font-size: 15px; line-height: 1.35; }
+.ide-project-context-section > p,
+.ide-project-context-section > small { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-context-actions .ide-button { width: 100%; min-height: 36px; }
+
+@media (max-width: 1180px) {
+  .ide-project-workbench-grid { grid-template-columns: 220px minmax(460px, 1fr); }
+  .ide-project-v3-stage-table { grid-column: 1 / -1; border-top: 1px solid var(--rb-border); }
+  .ide-project-context-panel { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 820px) {
+  .ide-project-v3 { padding: 12px; }
+  .ide-project-v3-header,
+  .ide-project-v3-workspace-header,
+  .ide-project-workbench-grid { grid-template-columns: minmax(0, 1fr); }
+  .ide-project-context-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ide-project-interface-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

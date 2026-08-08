@@ -1035,7 +1035,8 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
 
         <div className="ide-project-workbench-grid" data-testid="ide-project-workbench-grid">
           <aside className="ide-project-explorer" data-testid="ide-project-explorer">
-            <header><span>PROJECT EXPLORER</span><strong>{projectName}</strong></header>
+            <header><span>Project explorer</span><strong>{projectName}</strong></header>
+            <p className="ide-project-explorer-heading">Design Sources</p>
             <button type="button" className="is-active" onClick={onOpenDesign}>
               <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module</small></span>
             </button>
@@ -1051,6 +1052,23 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <div className="ide-project-explorer-group">
               <span>Constraints</span><small>{fpgaConfig?.board ?? 'Basys3'} · {mappedRequiredRows.length}/{requiredRows.length} mapped</small>
             </div>
+            <p className="ide-project-explorer-heading">Simulation Sources</p>
+            <button type="button" onClick={onOpenVerify}>
+              <span aria-hidden="true">◇</span><span><strong>Full Adder truth table</strong><small>{simulationSourceLabel}</small></span>
+            </button>
+            <button type="button" onClick={onOpenVerify}>
+              <span aria-hidden="true">ƒ</span><span><strong>Generated testbench</strong><small>{simulationSourceDetail}</small></span>
+            </button>
+            <p className="ide-project-explorer-heading">Constraints</p>
+            <button type="button" onClick={onOpenHardware}>
+              <span aria-hidden="true">⌁</span><span><strong>{fpgaConfig?.board ?? 'Basys3'}</strong><small>Current XDC set · {mappedRequiredRows.length}/{requiredRows.length} assigned</small></span>
+            </button>
+            <p className="ide-project-explorer-heading">Recovery</p>
+            {onRestoreLastSave ? (
+              <button type="button" onClick={onRestoreLastSave}>
+                <span aria-hidden="true">↶</span><span><strong>Latest save</strong><small>{savedAgoLabel}</small></span>
+              </button>
+            ) : null}
           </aside>
 
           <main className="ide-project-design-overview" data-testid="ide-project-design-overview">
@@ -1064,11 +1082,39 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <div><span>Inputs</span><strong>{inputRows.length}</strong><small>{inputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
               <div><span>Outputs</span><strong>{outputRows.length}</strong><small>{outputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
               <div><span>Components</span><strong>{designNodeCount}</strong><small>{designConnectionCount} wires</small></div>
-              <div><span>Custom modules</span><strong>{hierarchy?.modules.length ?? 0}</strong><small>{(hierarchy?.modules ?? []).map((module) => module.displayName).join(', ') || 'None yet'}</small></div>
+              <div><span>Modules</span><strong>{(hierarchy?.modules.length ?? 0) + 1}</strong><small>{[resolvedTopModule, ...(hierarchy?.modules ?? []).map((module) => module.displayName)].join(', ')}</small></div>
             </div>
           </main>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
+          <div className="ide-project-context-panel">
+            <section className="ide-project-context-section">
+              <span>Project status</span>
+              <strong>{readinessLabel}</strong>
+              <p>{heroStatusMessage}</p>
+            </section>
+            <section className="ide-project-context-section">
+              <span>Current problems</span>
+              <strong>
+                {missingRequiredRows.length > 0 ? `${missingRequiredRows.length} assignments need attention` : health.dirtySinceVerify ? 'Simulation evidence is stale' : 'No blocking project problems'}
+              </strong>
+              <p>{missingRequiredRows.length > 0 ? `Assign ${missingRequiredRows.slice(0, 3).map(getStudentFacingIoLabel).join(', ')} in Board & Constraints.` : verifySummary}</p>
+              {missingRequiredRows.length > 0 ? <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-context-map">Resolve assignments</IdeButton> : null}
+            </section>
+            <section className="ide-project-context-section">
+              <span>Recent activity</span>
+              <strong>{recentActivity.label}</strong>
+              <p>{recentActivity.detail}</p>
+            </section>
+            <section className="ide-project-context-section ide-project-context-actions">
+              <span>Project actions</span>
+              <IdeButton tone="ghost" onClick={onToggleChangeProject} testId="ide-project-context-change">Change project</IdeButton>
+              {onSaveNow ? <IdeButton tone="secondary" onClick={onSaveNow} testId="ide-project-context-save">Save project</IdeButton> : null}
+              {onRestoreLastSave ? <IdeButton tone="ghost" onClick={onRestoreLastSave} testId="ide-project-context-restore">Restore last save</IdeButton> : null}
+              <IdeButton tone="ghost" onClick={onOpenExport} testId="ide-project-context-export">Open package</IdeButton>
+              <small>{exportPackageCurrent ? 'Package is current.' : exportAvailable ? exportSummary : 'Package is blocked by upstream work.'}</small>
+            </section>
+          </div>
           <span className="ide-project-v3-readiness-anchor" data-testid="ide-project-readiness-workspace">
             Workflow readiness
           </span>
