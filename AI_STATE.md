@@ -7873,6 +7873,12 @@ This left an unresolved contradiction with the locked product direction (`Import
   disclosure through 1500px, while Canvas / Code / Split remain direct. This
   prevents a third toolbar row under wider Linux font metrics and gives that
   height back to the primary circuit canvas instead of weakening the gate.
+- Exact remote run `31252037982` then passed the repaired reconstruction gate
+  plus the remaining Design, Simulate, Board, release-solidification, visual,
+  and ZIP recovery tail before exposing two stale Import recovery expectations:
+  they tried to click example buttons while the labelled example disclosure was
+  still closed. The recovery workflow and wizard now open that real student
+  control before proving the structural and blocked examples are reachable.
 - Board & Constraints keeps the assignment table primary at laptop widths. The
   Basys3 graphic is again a labelled non-interactive reference; the selected
   signal resource selector is the sole assignment authority described by the
@@ -7904,7 +7910,8 @@ This left an unresolved contradiction with the locked product direction (`Import
   reconstruction, Design direct workbench, Design Workbench v1, camera zoom
   integrity, the 491-second stability overhaul, dual tool windows, Library
   cropping, tool-window coexistence, and no-cropped-controls proof. Exact-HEAD
-  remote required-check proof is still pending for this follow-up candidate.
+  remote required-check proof is still pending for the Import gate-alignment
+  follow-up candidate.
 
 **Proof boundary**
 
