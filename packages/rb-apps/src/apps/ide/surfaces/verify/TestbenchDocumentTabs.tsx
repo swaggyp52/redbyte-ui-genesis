@@ -86,11 +86,11 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
     <section
       className="ide-testbench-documents"
       data-testid="ide-testbench-documents"
-      aria-label="Testbench documents"
+      aria-label="Scenario explorer"
     >
       <div className="ide-testbench-documents-heading">
         <div>
-          <span className="ide-testbench-documents-eyebrow">Testbench documents</span>
+          <span className="ide-testbench-documents-eyebrow">Scenario explorer</span>
           <strong>Choose the scenario you want to author and run.</strong>
         </div>
         <button
@@ -105,9 +105,12 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
 
       <div className="ide-testbench-document-tabrow">
         <div className="ide-testbench-document-tabs" role="tablist" aria-label="Open testbenches">
-          {scenarios.map((scenario) => {
+          {scenarios.map((scenario, scenarioIndex) => {
             const isActive = scenario.id === activeScenario.id;
             const summary = summarizeScenario(scenario);
+            const displayName = /^new scenario$/i.test(scenario.name.trim())
+              ? `Scenario ${scenarioIndex + 1}`
+              : scenario.name;
             return (
               <button
                 key={scenario.id}
@@ -119,7 +122,7 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
                 data-testid={`ide-testbench-document-tab-${scenario.id}`}
               >
                 <span className="ide-testbench-document-card-heading">
-                  <span>{scenario.name}</span>
+                  <span>{displayName}</span>
                   <small>v{scenario.version}</small>
                 </span>
                 <span className="ide-testbench-document-card-meta">
@@ -130,7 +133,7 @@ export const TestbenchDocumentTabs: React.FC<TestbenchDocumentTabsProps> = ({
                 </span>
                 <span
                   className="ide-testbench-document-preview"
-                  aria-label={`${scenario.name} stimulus preview`}
+                  aria-label={`${displayName} stimulus preview`}
                   data-testid={`ide-testbench-document-preview-${scenario.id}`}
                 >
                   {summary.previewValues.length > 0 ? (

@@ -567,6 +567,10 @@
   padding: 20px clamp(20px, 2vw, 32px) 24px;
   background: var(--rb-app-bg);
   color: var(--rb-text-primary);
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  grid-auto-rows: max-content;
 }
 
 .ide-root .ide-hw-v3__progress,
@@ -632,6 +636,22 @@
 .ide-root .ide-hardware-basys3-binding-chain { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; border-radius: 8px; background: var(--rb-surface-2); }
 .ide-root .ide-hardware-basys3-binding-chain > span[aria-hidden='true'] { display: none; }
 .ide-root .ide-hardware-basys3-binding-chain pre { overflow: auto; font-size: 12px; }
+
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain {
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+}
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain :is(small, strong) {
+  color: var(--rb-text-secondary);
+}
+.ide-root .ide-hw-v3 .ide-hw-v3__editor .ide-hardware-basys3-binding-chain pre {
+  border: 1px solid #334155;
+  background: #10161f;
+  color: #f2f5f8;
+  font-size: 13px;
+  line-height: 1.5;
+}
 
 @media (max-width: 1180px) {
   .ide-root .ide-hw-v3__workspace { grid-template-columns: minmax(330px, 38fr) minmax(0, 62fr); }

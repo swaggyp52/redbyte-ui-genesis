@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-08-08 (Visual Quality Recovery: Studio UI Foundation Freeze)
+
+**Subsystem:** Shared Studio component states and the visible Project, Design,
+Simulate, Board & Constraints, and Build & Export composition on the Product
+System v3 candidate.
+
+**Product repair:** Studio Light now uses one cool-neutral support system with
+graphite text, explicit primary/secondary/ghost/disabled/danger states, and
+charcoal reserved for the circuit, waveform, and code instruments. Project is
+an intrinsic three-region workspace without the overlapping hero/recent-project
+composition. Design has one compact module row, one command bar, light support
+docks, contextual inspector, closed-by-default bottom dock, and a more legible
+graph. Simulate uses a compact scenario explorer, lane-sized waveform, readable
+instrument controls, and a light surrounding workbench. Board and Export now
+share the same typography, control states, spacing, and pane hierarchy. A
+development-only real-component state matrix supports visual review without
+shipping a student-facing gallery.
+
+**Review and validation boundary:** Exactly two full-resolution Browser-E0
+review cycles produced eight final captures and seven before/after composites
+under the ignored `.redbyte/product-immersion/ui-quality-recovery/` path at
+1440x900 and 1366x768, 100% browser zoom, Studio Light, and Dark canvas. Local
+typecheck, IDE CSS audit, unified build (349 transformed modules, 132.9 seconds),
+the focused graph-label contract, and `git diff --check` pass under Node 24.15.0
+/ pnpm 10.24.0; the repository pin remains Node 20.19.0. The bounded six-file
+selection also recorded five legacy presentation-contract failures describing
+retired Design headers/dock behavior and a removed Simulate title; the rejected
+UI was not restored. This work is local-only pending user visual review and does
+not claim push, merge, deployment, Vivado, bitstream, Basys3, or release proof.
+
 ## Change Log 2026-08-08 (Milestone C.1: workbench geometry stabilization)
 
 **Subsystem:** Product System v3 Project, Simulate, and Build & Export visual

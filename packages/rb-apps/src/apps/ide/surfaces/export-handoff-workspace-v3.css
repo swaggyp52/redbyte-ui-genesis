@@ -783,9 +783,10 @@
   background: var(--rb-canvas-dark);
   color: #f2f5f8;
 }
-.ide-root .ide-export-v3__preview > header { min-height: 76px; border-bottom: 1px solid rgba(190, 202, 217, .16); background: var(--rb-canvas-dark-panel); }
+.ide-root .ide-export-v3__preview > header { min-height: 76px; border-bottom: 1px solid var(--rb-border); background: var(--rb-surface); }
 .ide-root .ide-export-v3__preview > header span,
-.ide-root .ide-export-v3__preview > header p { color: #b5bfcc; font-size: 12px; }
+.ide-root .ide-export-v3__preview > header p { color: var(--rb-text-secondary); font-size: 13px; }
+.ide-root .ide-export-v3__preview > header strong { color: var(--rb-text-primary); }
 .ide-root .ide-export-v3__preview > div { background: var(--rb-canvas-dark) !important; }
 .ide-root .ide-export-v3__preview pre { padding: 16px 0; color: #e8edf3 !important; font-size: 13px; line-height: 1.55; }
 .ide-root .ide-export-v3__code-line { min-height: 21px; }

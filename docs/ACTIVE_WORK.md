@@ -30,12 +30,13 @@ imported_by: CLAUDE.md
 
 - Branch: `product/redbyte-workbench-v3`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
-- Milestone: **Milestone C.1 - Workbench Geometry Stabilization**
-- Status: implemented locally with bounded browser evidence and focused
-  validation complete. The scenario composer remains authoritative; this slice
-  repairs its visible workbench composition without beginning Milestone D.
-  Draft PR #80 remains the review boundary; this candidate is not a release or
-  hardware-proof branch.
+- Milestone: **Visual Quality Recovery - Studio UI Foundation Freeze**
+- Status: implemented and locally committed for user visual review. Shared
+  component states and the five existing student workspaces were recomposed
+  without beginning Milestone D or expanding product semantics. The scenario
+  composer and hierarchy remain authoritative. Draft PR #80 is historical
+  context only for this local review state; this candidate is not pushed,
+  released, or hardware-proven.
 - Live impact: none. The candidate is not merged, deployed, or release-certified.
 
 Do not describe candidate behavior as current `main` behavior. Do not merge the
@@ -59,8 +60,8 @@ owns synthesis, implementation, timing analysis, bitstream generation,
 programming, and physical observation outside RedByte's browser workbench.
 
 The candidate now combines the shared workbench foundation, native reusable
-visual hierarchy, RedByte Studio reconstruction, a functional scenario
-composer, and the C.1 geometry stabilization pass. Simulate owns named
+visual hierarchy, a functional scenario composer, C.1 geometry stabilization,
+and the Studio UI Foundation Freeze. Simulate owns named
 persisted documents, a direct event timeline, optional output checks, real
 deterministic replay, failure repair context, and the same generated testbench
 source shown by Build & Export. Timeline and Checks keep the scenario explorer;
@@ -71,6 +72,11 @@ HDL, board, or hardware support beyond the documented boundaries.
 
 ## Candidate Evidence And Exit Gates
 
+- The current local-only visual review record is stored under the ignored
+  `.redbyte/product-immersion/ui-quality-recovery/` path. It contains the defect
+  ledger, eight exact final captures, and seven before/after comparisons at
+  1440x900 and 1366x768 with Studio Light, Dark canvas, and 100% browser zoom.
+  User visual approval is still required before any push or next milestone.
 - Milestone C.1 Browser-E0 evidence is stored under the ignored
   `.redbyte/product-immersion/milestone-c1-geometry/` path. It records exact
   1366x768 and 1440x900 Timeline/Waveform geometry, Project circuit-preview
