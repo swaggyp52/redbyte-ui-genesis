@@ -1040,7 +1040,7 @@
   box-shadow: 0 8px 24px rgba(21, 32, 51, 0.06);
 }
 
-.ide-project-v3-command-board { min-height: 0; padding: 20px 24px 12px; }
+.ide-project-v3-command-board { min-height: 210px; padding: 20px 24px 12px; }
 .ide-project-v3-header { grid-template-columns: minmax(0, 1fr) minmax(280px, 316px); gap: 24px; }
 .ide-project-v3-meta { display: none; }
 .ide-project-v3-title,

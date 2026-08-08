@@ -1608,6 +1608,76 @@
   min-height: 36px;
 }
 
+/* Hierarchy is a project navigator, so its rows use tree rhythm instead of the
+   legacy inline utility layout. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser {
+  min-height: 100%;
+  background: var(--rb-surface);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader {
+  padding: 12px;
+  border-bottom: 1px solid var(--rb-border);
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-project-browser .ide-design-subheader p {
+  margin: 0;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > button,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > article > button {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  text-align: left;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > button > span:last-child,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser > article > button > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser strong { font-size: 14px; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-browser small {
+  display: block;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 6px 2px 2px;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-native-module-actions button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px;
+  border: 1px solid var(--rb-border);
+  border-radius: 6px;
+  background: var(--rb-surface);
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+}
+
 @media (max-width: 1366px) {
   .ide-design-command-breadcrumb { display: none; }
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar { padding-inline: 4px; }

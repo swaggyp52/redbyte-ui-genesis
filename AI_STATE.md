@@ -1,5 +1,39 @@
 # AI State
 
+## Change Log 2026-08-08 (Milestone B2: RedByte Studio workbench reconstruction)
+
+**Subsystem:** Shared product shell and the Project, Design, Simulate, Board &
+Constraints, and Build & Export workspaces on the Product System v3 candidate.
+
+**Product reconstruction:** Studio Light now uses cool neutral application
+surfaces, readable workflow typography, concise live stage status, and a 48px
+product bar plus 44px stage bar. Studio Dark uses neutral charcoal. The Design
+canvas remains independently configurable and defaults to Dark canvas. Project
+is a full-width project center with an interactive source explorer, useful live
+circuit preview, and one context rail. Design uses one 44px command bar, a
+project hierarchy tree, light support docks, larger graph labels, and a dominant
+instrument canvas. Simulate is a scenario / waveform / inspector workstation.
+Board & Constraints connects the signal list, interactive Basys3 board, mapping
+editor, and generated XDC consequence. Build & Export connects a grouped source
+tree, readable code viewer, and Vivado handoff inspector across the workplane.
+The accepted Milestone B1 hierarchy, simulation, mapping, and package authority
+are unchanged.
+
+**Evidence and bounded validation:** Six exact `1440x900` final captures and
+five before/after comparisons are stored under
+`docs/release/evidence/milestone-b2/`. A normal browser walkthrough completed
+Project -> Design top -> HalfAdder -> top -> Simulate -> Board & Constraints ->
+Build & Export; the laptop check had no root horizontal overflow and retained a
+single-row 44px Design command bar, while the desktop check used the full
+workplane. Under local Node 24.15.0, typecheck, IDE CSS audit, unified build
+(135.4 seconds), and `git diff --check` passed. The repo remains pinned to Node
+20.19.0. The bounded six-file focused Vitest selection surfaced 39 historical
+Verify/Export copy and retired-work-object expectations (including `Verify`,
+`Map Pins`, and legacy PASS-hero wording); per the milestone contract these are
+recorded as legacy test debt and the accepted v3 UI was not reverted. No full
+Vitest, full Playwright, Classroom Truth Gates, remote check watch, Vivado,
+bitstream, Basys3 programming, deployment, merge, or release proof ran.
+
 ## Change Log 2026-08-08 (Milestone B1: native visual hierarchy)
 
 **Subsystem:** Project hierarchy, reusable visual modules, hierarchical Design and

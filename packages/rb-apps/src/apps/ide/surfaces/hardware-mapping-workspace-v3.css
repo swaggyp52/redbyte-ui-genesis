@@ -557,3 +557,93 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Milestone B2 — signal list / physical board / assignment inspector. */
+.ide-root .ide-hw-v3 {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  gap: 16px;
+  padding: 20px clamp(20px, 2vw, 32px) 24px;
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-hw-v3__progress,
+.ide-root .ide-hw-v3__assignments,
+.ide-root .ide-hw-v3__editor,
+.ide-root .ide-hw-v3__board,
+.ide-root .ide-hw-v3__lab,
+.ide-root .ide-hw-v3__after {
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  box-shadow: 0 8px 24px rgba(21, 32, 51, .05);
+}
+
+.ide-root .ide-hw-v3__progress {
+  grid-template-columns: minmax(0, 1fr) auto minmax(260px, 320px);
+  min-height: 104px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--rb-border);
+  background: var(--rb-surface);
+}
+.ide-root .ide-hw-v3__progress h2 { margin: 2px 0 6px; font-size: 22px; }
+.ide-root .ide-hw-v3__progress-copy > strong { color: var(--rb-map-pins); font-size: 12px; }
+.ide-root .ide-hw-v3__metrics { min-width: 300px; border: 1px solid var(--rb-border); background: var(--rb-surface-2); }
+.ide-root .ide-hw-v3__metrics span,
+.ide-root .ide-hw-v3__metrics small { color: var(--rb-text-muted); font-size: 12px; }
+.ide-root .ide-hw-v3__next { border-left: 1px solid var(--rb-border); }
+
+.ide-root .ide-hw-v3__workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 36fr) minmax(430px, 40fr) minmax(280px, 24fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.ide-root .ide-hw-v3__assignments { grid-column: 1; min-width: 0; overflow: hidden; }
+.ide-root .ide-hw-v3__side { display: contents; }
+.ide-root .ide-hw-v3__board { grid-column: 2; grid-row: 1; min-width: 0; order: initial; }
+.ide-root .ide-hw-v3__editor { grid-column: 3; grid-row: 1; min-width: 0; order: initial; }
+.ide-root .ide-hw-v3__section-header { min-height: 68px; padding: 14px 16px; }
+.ide-root .ide-hw-v3__section-header h3 { margin: 2px 0 0; font-size: 17px; }
+
+.ide-root .ide-hw-v3__table-scroll { max-height: 610px; overflow: auto; }
+.ide-root .ide-hw-v3__table { min-width: 0; font-size: 13px; }
+.ide-root .ide-hw-v3__table th,
+.ide-root .ide-hw-v3__table td { padding: 10px 8px; font-size: 13px; }
+.ide-root .ide-hw-v3__table th:nth-child(2),
+.ide-root .ide-hw-v3__table td:nth-child(2),
+.ide-root .ide-hw-v3__table th:nth-child(4),
+.ide-root .ide-hw-v3__table td:nth-child(4) { display: none; }
+.ide-root .ide-hw-v3__mapping-row > th small { font-size: 12px !important; }
+
+.ide-root .ide-hw-v3__board-reference-graphic {
+  min-height: 500px;
+  padding: 24px;
+  pointer-events: auto;
+  background: linear-gradient(var(--rb-canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--rb-canvas-grid) 1px, transparent 1px), var(--rb-surface-2);
+  background-size: 24px 24px;
+}
+.ide-root .ide-hw-v3__board-reference-graphic svg { min-height: 430px; }
+.ide-root .ide-hw-v3__field { font-size: 13px; }
+.ide-root .ide-hw-v3__field select { min-height: 40px; font-size: 14px; }
+.ide-root .ide-hw-v3__consequence { color: var(--rb-text-secondary); font-size: 13px; line-height: 1.5; }
+.ide-root .ide-hardware-basys3-binding-chain { grid-template-columns: minmax(0, 1fr); gap: 6px; padding: 12px; border-radius: 8px; background: var(--rb-surface-2); }
+.ide-root .ide-hardware-basys3-binding-chain > span[aria-hidden='true'] { display: none; }
+.ide-root .ide-hardware-basys3-binding-chain pre { overflow: auto; font-size: 12px; }
+
+@media (max-width: 1180px) {
+  .ide-root .ide-hw-v3__workspace { grid-template-columns: minmax(330px, 38fr) minmax(0, 62fr); }
+  .ide-root .ide-hw-v3__board { grid-column: 2; }
+  .ide-root .ide-hw-v3__editor { grid-column: 1 / -1; grid-row: 2; }
+}
+
+@media (max-width: 820px) {
+  .ide-root .ide-hw-v3 { padding: 12px; }
+  .ide-root .ide-hw-v3__progress,
+  .ide-root .ide-hw-v3__workspace { grid-template-columns: minmax(0, 1fr); }
+  .ide-root .ide-hw-v3__assignments,
+  .ide-root .ide-hw-v3__board,
+  .ide-root .ide-hw-v3__editor { grid-column: 1; grid-row: auto; }
+}

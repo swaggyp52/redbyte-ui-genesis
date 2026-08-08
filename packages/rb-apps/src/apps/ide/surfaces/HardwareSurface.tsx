@@ -440,7 +440,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     })
   );
   const [bringupStepIndex, setBringupStepIndex] = useState(0);
-  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(null);
+  const [selectedMappingRowId, setSelectedMappingRowId] = useState<string | null>(() => mappingRows[0]?.id ?? null);
 
   // Slice N4 — chrome rebuild: Esc returns the user to Map Pins from any
   // sub-mode (bringup / proof / live). Without this, students who entered a
@@ -464,7 +464,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [hwMode]);
-  const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string | null>(null);
+  const [selectedBoardResourceAlias, setSelectedBoardResourceAlias] = useState<string | null>(() =>
+    resolveBoardControlAlias(mappingRows[0]?.pin) ?? null
+  );
   const [structuredPinDrafts, setStructuredPinDrafts] = useState<Record<string, string>>({});
   const [entryMetadataSelection, setEntryMetadataSelection] = useState<string>('');
   const [newEntryKind, setNewEntryKind] = useState<HardwareMappingEntryV2['kind']>('scalar');
@@ -3272,8 +3274,12 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   >
                     <Basys3BoardView
                       mappedAliases={mapModeAliases}
-                      highlightedAlias={selectedMappingRowPin}
-                      onSelectAlias={() => undefined}
+                      highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
+                      onSelectAlias={(alias) => {
+                        if (!selectedMappingRow) return;
+                        const isCompatible = compatiblePlannerResources.some((resource) => resource.alias === alias);
+                        if (isCompatible) setSelectedBoardResourceAlias(alias);
+                      }}
                     />
                   </div>
                 </section>

@@ -5522,6 +5522,31 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-workspace-mode={verifyWorkspaceMode}
           data-studio-mode={studioMode}
         >
+        <aside className="ide-sim-scenario-explorer" data-testid="ide-sim-scenario-explorer" aria-label="Scenario explorer">
+          <header>
+            <span>Scenarios</span>
+            <strong>{scenarios?.length ?? 0}</strong>
+          </header>
+          <div className="ide-sim-scenario-list">
+            {scenarios && scenarios.length > 0 ? scenarios.map((scenario) => (
+              <button
+                key={scenario.id}
+                type="button"
+                className={scenario.id === activeScenarioId ? 'is-active' : ''}
+                onClick={() => onSwitchScenario?.(scenario.id)}
+              >
+                <strong>{scenario.name}</strong>
+                <span>{scenario.vectors.length} events · {inputFields.length + outputFields.length} signals</span>
+                <small>{scenario.id === lastRun?.scenarioId ? (runProofIsStale ? 'Stale result' : 'Current result') : 'Ready to run'}</small>
+              </button>
+            )) : <p>No saved scenario yet.</p>}
+          </div>
+          <div className="ide-sim-scenario-actions">
+            <IdeButton tone="primary" onClick={() => handleRunWithPreflight(true)} disabled={runState === 'running'} testId="ide-sim-scenario-run">{runState === 'running' ? 'Running…' : 'Run scenario'}</IdeButton>
+            <IdeButton tone="secondary" onClick={() => setStudioMode('replay')} disabled={!lastRun} testId="ide-sim-scenario-replay">Replay result</IdeButton>
+            <IdeButton tone="ghost" onClick={() => setStudioMode('scenario')} testId="ide-sim-scenario-table">Table view</IdeButton>
+          </div>
+        </aside>
         <VerifyStimulusRegion
           className="ide-verify-testbench-primary"
           data-panel-state="stable"
@@ -6936,6 +6961,21 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             </div>}
           </div>}
         </VerifyWaveformRegion>
+        <aside className="ide-sim-context-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
+          <header><span>Inspector</span><strong>{selectedSignal ?? 'Select a signal'}</strong></header>
+          <dl>
+            <div><dt>Event</dt><dd>{selectedTick == null ? '—' : `Event ${selectedTick + 1}`}</dd></div>
+            <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
+            <div><dt>Check state</dt><dd>{failingRows.length > 0 ? `${failingRows.length} failing` : lastRun ? 'No failing checks' : 'Not run'}</dd></div>
+            <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
+          </dl>
+          <section>
+            <span>Selection guidance</span>
+            <p>{selectedSignal ? 'Move the cursor to inspect this lane at another event, create a check, or trace its circuit path.' : 'Select a waveform lane and event to inspect its observed value.'}</p>
+          </section>
+          <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
+          <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
+        </aside>
         </div>
         </div>
         </VerifyWorkspaceRegion>

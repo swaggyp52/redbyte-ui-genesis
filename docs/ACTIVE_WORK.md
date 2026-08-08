@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-08-01
+last_validated: 2026-08-08
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -30,15 +30,15 @@ imported_by: CLAUDE.md
 
 - Branch: `product/redbyte-workbench-v3`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
-- Milestone: **Milestone A - Cohesive Workbench Foundation**
-- Status: implemented and bounded local validation is complete. Exact-HEAD
-  Browser-E0 evidence and draft-branch delivery identify the candidate; user
-  visual acceptance remains the merge gate.
+- Milestone: **Milestone B2 - Visual Workbench Reconstruction**
+- Status: implemented with bounded local validation and six final visual
+  captures. Draft PR #80 remains the review boundary; user visual acceptance
+  remains the merge gate.
 - Live impact: none. The candidate is not merged, deployed, or release-certified.
 
-Do not describe candidate behavior as current `main` behavior. Do not begin
-Milestone B without separate authorization after the Milestone A acceptance
-decision.
+Do not describe candidate behavior as current `main` behavior. Do not merge the
+candidate or begin Milestone C until this visual reconstruction is reviewed and
+accepted.
 
 ## Candidate Product Truth
 
@@ -56,19 +56,19 @@ Project
 owns synthesis, implementation, timing analysis, bitstream generation,
 programming, and physical observation outside RedByte's browser workbench.
 
-Milestone A adds the light-first visual system, shared shell, command registry
-and palette, persistent workspace preferences, Project Center, configurable
-Design docks and toolbar, component-definition facade, and one synchronized
-Basys3 board-profile/mapping projection. It does not broaden circuit,
-simulation, HDL, board, or hardware support.
+The candidate now combines the shared workbench foundation, native reusable
+visual hierarchy, and the RedByte Studio reconstruction. Studio Light owns the
+application surfaces while dark instrument surfaces are limited to the circuit
+canvas, waveform, and code viewer. Project, Design, Simulate, Board &
+Constraints, and Build & Export use full-width task compositions. This does not
+broaden circuit, simulation, HDL, board, or hardware support.
 
 ## Candidate Evidence And Exit Gates
 
-- Local Browser-E0 evidence is stored under
-  `.redbyte/product-immersion/workbench-v3-milestone-a/`. The delivery sequence
-  regenerates the 12 required viewport captures plus the machine-readable
-  browser evidence record from the final candidate commit; older ignored
-  captures are not exact-candidate authority.
+- Milestone B2 visual evidence is stored under
+  `docs/release/evidence/milestone-b2/`: six exact-size final captures and five
+  compact before/after comparisons. Milestone B1 hierarchy evidence remains in
+  the adjacent `milestone-b1/` folder.
 - The browser record covers theme persistence, project reload, command
   execution, dock visibility and geometry persistence/reset, semantic inline
   mapping, board synchronization, and root-axis overflow at the captured
@@ -77,10 +77,11 @@ simulation, HDL, board, or hardware support.
   workspace preferences, command registry/palette, shared shell, project
   projections, component facade, Basys3 profile/projection, mapping workflows,
   and visible stage grammar.
-- The bounded Node 20.19.0 closeout passed: 40 changed/new focused test files
-  with 287/287 tests, workspace typecheck, IDE CSS audit, and the unified build
-  with 344 transformed modules plus a verified distributable. Canonical-doc,
-  encoding, and whitespace checks are part of the same closeout record.
+- The Milestone B2 local Node 24.15.0 closeout passed workspace typecheck, IDE
+  CSS audit, unified build, `git diff --check`, and a normal browser walkthrough.
+  The pinned runtime remains Node 20.19.0. A bounded six-file test selection
+  exposed 39 stale Verify/Export wording and retired-work-object assertions;
+  those expectations are legacy debt, not authority to restore old UI.
 - The affected classroom browser gates cover root overflow, loaded-path first
   viewport ownership, active-mode reload, contextual Design support docks,
   integrated Simulate signals, obstruction, and primary-workspace utilization.
@@ -99,9 +100,9 @@ simulation, HDL, board, or hardware support.
   signaling still need further hardening.
 - Portable project backup does not yet include every workspace-local,
   multi-scenario authoring document.
-- Hierarchy and source views expose current project truth but remain
-  inspect-oriented; nested module editing, buses/named nets, code-backed modules,
-  parameters/generics, and top-module selection belong to Milestone B.
+- Native visual hierarchy supports reusable HalfAdder-style modules and direct
+  module navigation. Buses/named nets, code-backed modules, parameters/generics,
+  and broader top-module tooling remain future depth work.
 - Multiple constraint sets, broader Basys3 peripherals, and deeper compatibility
   analysis belong to later milestones.
 - No Product System v3 candidate claim includes Vivado E1, bitstream E2, board
@@ -109,11 +110,10 @@ simulation, HDL, board, or hardware support.
 
 ## Next Authorized Endpoint
 
-Deliver the validated Milestone A candidate, its exact-HEAD Browser-E0 evidence,
-and the coherent commits to draft PR #80. Stop at the draft candidate and await
-the user visual-acceptance/merge decision. The next planned milestone is
-**Milestone B - Hierarchical Design and Component Depth**, but it is not started
-and requires separate authorization.
+Deliver the Milestone B2 Studio reconstruction to draft PR #80 and stop for
+visual acceptance. The next planned milestone is **Milestone C - Scenario and
+Testbench Composer**. Do not begin it until the current workbench is reviewed
+and explicitly accepted.
 
 ## Start
 

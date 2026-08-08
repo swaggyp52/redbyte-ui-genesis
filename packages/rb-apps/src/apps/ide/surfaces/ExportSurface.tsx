@@ -1887,6 +1887,28 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   <p>No generated package files are available yet.</p>
                 )}
               </article>
+              <aside className="ide-export-v3__handoff" data-testid="ide-export-handoff-inspector" aria-label="Vivado handoff inspector">
+                <header><span>Handoff inspector</span><strong>{formatExportDerivedState(exportTrustAxes.derived)}</strong></header>
+                <dl>
+                  <div><dt>Evidence tier</dt><dd>{formatBehavioralEvidenceTier(behavioralEvidenceTier)}</dd></div>
+                  <div><dt>Top module</dt><dd>{topModule}</dd></div>
+                  <div><dt>Target board</dt><dd>{boardTargetLabel}</dd></div>
+                  <div><dt>FPGA part</dt><dd>{vivadoPart}</dd></div>
+                  <div><dt>Ownership</dt><dd>RedByte generated handoff</dd></div>
+                  <div><dt>Warnings</dt><dd>{diagnosticsList.length}</dd></div>
+                </dl>
+                <section>
+                  <span>What to submit</span>
+                  <p>Submit the roles requested by your instructor, commonly <code>top.vhd</code> and <code>top.xdc</code>.</p>
+                </section>
+                <section>
+                  <span>Vivado next</span>
+                  <ol><li>Download and unzip the package.</li><li>Run the included import Tcl or open the generated project.</li><li>Review synthesis and implementation warnings before bitstream generation.</li></ol>
+                </section>
+                <IdeButton tone="primary" onClick={() => void handleDownloadExport('project')} disabled={downloadDisabled} testId="ide-export-handoff-download">
+                  {isRebuilding ? 'Building package…' : 'Download package'}
+                </IdeButton>
+              </aside>
             </div>
           </section>
 
