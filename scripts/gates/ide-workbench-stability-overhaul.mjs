@@ -119,7 +119,7 @@ async function assertCleanWorkbench(page, viewport, label) {
 }
 
 async function assertDirectDesignControls(page, viewport) {
-  const usesResponsiveTools = viewport.width <= 1400;
+  const usesResponsiveTools = viewport.width <= 1500;
   const state = await page.evaluate(() => {
     const isVisible = (element) => {
       if (!(element instanceof HTMLElement)) return false;

@@ -84,7 +84,7 @@ async function loadStarterDesign(page, baseUrl, viewportLabel) {
 }
 
 function assertDirectCanvas(metrics, viewport, label) {
-  const usesResponsiveTools = viewport.width <= 1400;
+  const usesResponsiveTools = viewport.width <= 1500;
   assert(metrics.mode === 'design', `${label}: expected Design mode, got ${metrics.mode}`);
   assert(metrics.rootOverflowX <= 2, `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`);
   assert(metrics.liveCanvas.visible, `${label}: live canvas must be visible`);

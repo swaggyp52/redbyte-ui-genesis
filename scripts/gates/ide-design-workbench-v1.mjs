@@ -178,7 +178,7 @@ async function proveCameraTransitionsAtViewport(page, baseUrl, viewport) {
   await assertCameraTransitionState(page, viewport, 'Final Code to Split', 'split', worldCenterAnchor);
   await assertMovedNodePosition(page, movedNode);
   await assertSelectionState(page, { node: true });
-  const compactToolbar = viewport.width <= 1400;
+  const compactToolbar = viewport.width <= 1500;
   if (compactToolbar) {
     const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
     assert(await overflow.isVisible().catch(() => false), 'Split selected-node action must expose More tools');
@@ -611,7 +611,7 @@ function assertWorkbenchHierarchy(metrics, viewport, label, options) {
     metrics.rootOverflowX <= 2,
     `${label}: root has horizontal overflow (${metrics.rootOverflowX.toFixed(1)}px)`
   );
-  if (viewport.width <= 1400) {
+  if (viewport.width <= 1500) {
     assert(!metrics.canvasControls.visible, `${label}: compact toolbar must yield the direct camera group`);
     assert(metrics.toolbarOverflow.visible, `${label}: compact toolbar must expose More tools`);
   } else {
@@ -733,7 +733,7 @@ async function proveZoomFitCenter(page, viewport) {
   await clickDesignView(page, 'canvas');
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 10000 });
   await selectFirstVisibleNode(page);
-  const compactToolbar = viewport.width <= 1400;
+  const compactToolbar = viewport.width <= 1500;
   if (compactToolbar) {
     const overflow = page.getByTestId('ide-design-toolbar-overflow').first();
     assert(await overflow.isVisible().catch(() => false), 'Compact toolbar must expose More tools');

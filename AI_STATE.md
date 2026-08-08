@@ -7864,6 +7864,15 @@ This left an unresolved contradiction with the locked product direction (`Import
   use bounded grid tracks and explicit `min-width: 0` ownership. The fix shrinks
   the real layout instead of relying on document scrolling, while internal work
   surfaces retain their own deliberate overflow behavior.
+- Exact remote run `31248497062` proved that root repair: Design Workbench v1,
+  nested-scroll, root-overflow, and every earlier classroom gate passed. It then
+  exposed a later Linux-only 1440px toolbar wrap in workbench reconstruction:
+  the utility row grew by 40px and pushed the circuit canvas to 362px from the
+  viewport top, beyond the 330px first-workbench ceiling.
+- Camera and layout commands now move into the existing **More tools**
+  disclosure through 1500px, while Canvas / Code / Split remain direct. This
+  prevents a third toolbar row under wider Linux font metrics and gives that
+  height back to the primary circuit canvas instead of weakening the gate.
 - Board & Constraints keeps the assignment table primary at laptop widths. The
   Basys3 graphic is again a labelled non-interactive reference; the selected
   signal resource selector is the sole assignment authority described by the
@@ -7891,8 +7900,11 @@ This left an unresolved contradiction with the locked product direction (`Import
   contract, release solidification v1/v2, Browser-E0 packaging boundary,
   workspace utilization/visual finish, and all four ZIP/import recovery gates.
   Focused Hardware mapping tests pass `16/16`; the playground build transforms
-  344 modules. Exact-HEAD remote required-check proof is still pending for this
-  follow-up candidate.
+  344 modules. The 1500px toolbar follow-up additionally passes workbench
+  reconstruction, Design direct workbench, Design Workbench v1, camera zoom
+  integrity, the 491-second stability overhaul, dual tool windows, Library
+  cropping, tool-window coexistence, and no-cropped-controls proof. Exact-HEAD
+  remote required-check proof is still pending for this follow-up candidate.
 
 **Proof boundary**
 

@@ -1175,7 +1175,10 @@
   box-shadow: var(--rb-shadow-float);
 }
 
-@media (max-width: 1400px) {
+/* Linux font metrics can make the utility row wrap a third time at 1440px.
+   Keep camera/layout commands in More tools through laptop widths so the
+   primary circuit canvas begins inside the first workbench viewport. */
+@media (max-width: 1500px) {
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
     .ide-design-toolbar-view-tools,
   .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
