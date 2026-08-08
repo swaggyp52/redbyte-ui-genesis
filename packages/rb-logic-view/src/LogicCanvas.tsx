@@ -2153,7 +2153,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="#f8fafc"
-                      fontSize={Math.max(8, 9 * camera.zoom)}
+                      fontSize={Math.max(12, 12 * camera.zoom)}
                       fontWeight="700"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >
@@ -2185,7 +2185,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                             ? '#22c55e'
                             : '#9ca3af'
                     }
-                    fontSize={Math.max(8, 10 * camera.zoom)}
+                    fontSize={Math.max(12, 12 * camera.zoom)}
                     fontWeight="700"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
@@ -2239,7 +2239,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                     textAnchor="middle"
                     dominantBaseline="middle"
                     fill="#9af0c9"
-                    fontSize={Math.max(10, 11 * camera.zoom)}
+                    fontSize={Math.max(12, 12 * camera.zoom)}
                     fontWeight="750"
                     style={{ pointerEvents: 'none', userSelect: 'none' }}
                   >
@@ -2251,7 +2251,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
                       y={size * 0.75 + 18}
                       textAnchor="middle"
                       fill="#7f8b9e"
-                      fontSize={Math.max(7, 8 * camera.zoom)}
+                      fontSize={Math.max(12, 12 * camera.zoom)}
                       fontWeight="600"
                       style={{ pointerEvents: 'none', userSelect: 'none' }}
                     >

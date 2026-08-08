@@ -7131,8 +7131,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </section>
               </section>
             ) : null}
-            <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
-              <div className="ide-design-toolbar-row-v3">
+            <div className="ide-design-command-context-row" data-testid="ide-design-command-context-row">
               <div className="ide-design-command-context" aria-label="Current design module and mode">
                 <nav className="ide-design-command-breadcrumb" aria-label="Design module breadcrumb">
                   <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
@@ -7146,6 +7145,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   </div>
                 ) : null}
               </div>
+              <span className={`ide-design-command-state ${authoringStatusToneClass}`}>
+                {isCodeWorkspace ? primaryArtifactFileName : authoringStatusLabel}
+              </span>
+            </div>
+            <div className="ide-design-toolbar" data-testid="ide-design-toolbar">
+              <div className="ide-design-toolbar-row-v3">
               {effectiveLearningMode === 'live' ? (
                 <div
                   className="ide-toolbar-group is-simulation"

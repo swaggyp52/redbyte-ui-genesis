@@ -234,9 +234,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const size = 48 * camera.zoom * presentationScale;
   const inlinePortRadius = presentationZoomMode === 'classroom' ? 6.4 : 5;
   const inlinePortGlowRadius = presentationZoomMode === 'classroom' ? 9.5 : 8;
-  const nodeLabelFont = Math.max(11, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
-  const pinAliasFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
-  const pinNameFont = Math.max(7, (presentationZoomMode === 'classroom' ? 9 : 8) * camera.zoom);
+  const nodeLabelFont = Math.max(12, (presentationZoomMode === 'classroom' ? 14 : 13) * camera.zoom);
+  const pinAliasFont = Math.max(12, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
+  const pinNameFont = Math.max(12, (presentationZoomMode === 'classroom' ? 13 : 12) * camera.zoom);
   const nodeScale = isDragging ? 1 : isSelected ? 1.03 : isHovered ? 1.018 : 1;
   const nodeCornerRadius = presentationZoomMode === 'classroom' ? 10 : 8;
   const nodeHeaderHeight = Math.max(14, size * (presentationZoomMode === 'classroom' ? 0.3 : 0.28));
@@ -336,8 +336,8 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   const authoredChipLabel = isChip ? node.label?.trim() : '';
   const chipLogicalName = authoredChipLabel || chipMetadata?.name || node.type;
   const chipDisplayLabel = compactNodeLabel(chipLogicalName);
-  const chipLogicalNameFont = Math.min(12, Math.max(9, 10.5 * camera.zoom));
-  const chipMetadataFont = Math.min(9.5, Math.max(8, 8.5 * camera.zoom));
+  const chipLogicalNameFont = Math.min(15, Math.max(12, 13.5 * camera.zoom));
+  const chipMetadataFont = Math.min(14, Math.max(8, 12.5 * camera.zoom));
   const chipNameplateWidth = estimateLabelWidth(chipDisplayLabel, chipLogicalNameFont);
   const chipNameplateHeight = 18;
   const chipTypeLabel = (chipMetadata?.name ?? node.type).toUpperCase();
@@ -560,7 +560,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               textAnchor="middle"
               dominantBaseline="middle"
               fill={nodeOutputIsUnknown ? '#fde68a' : nodeOutputValue === 1 ? '#dcfce7' : '#cbd5e1'}
-              fontSize={8}
+              fontSize={12}
               fontWeight="700"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >
@@ -606,9 +606,9 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
           </g>
         )}
 
-        {/* Type/layer is deliberately a separate, secondary line inside the
-            body. It remains visible at the supported 50% zoom without being
-            mistaken for the authored logical instance name. */}
+        {/* Type/layer remains secondary to the authored instance name. Compact
+            zooms retain the identity at a reduced scale without competing with
+            the primary nameplate. */}
         {lod !== 'minimal' && chipTypeLayerLabel && (
           <text
             className="logic-node-metadata"
@@ -1299,7 +1299,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
               textAnchor="middle"
               dominantBaseline="middle"
               fill="#9fb6cf"
-              fontSize={Math.max(7, 9 * camera.zoom)}
+              fontSize={Math.max(12, 12 * camera.zoom)}
               fontWeight="600"
               style={{ pointerEvents: 'none', userSelect: 'none' }}
             >

@@ -812,8 +812,8 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
     health.lastVerify,
     health.dirtySinceVerify
   );
-  const primaryButtonLabel = activePrimaryCta.mode === 'verify' && !/^continue\b/i.test(activePrimaryCtaLabel)
-    ? `Continue to ${activePrimaryCtaLabel}`
+  const primaryButtonLabel = activePrimaryCta.mode === 'verify'
+    ? 'Open Simulate'
     : activePrimaryCtaLabel;
   const designNodeCount = outline?.nodeCount ?? circuit?.nodes.length ?? 0;
   const designConnectionCount = outline?.connectionCount ?? circuit?.connections.length ?? 0;
