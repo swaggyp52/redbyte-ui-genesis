@@ -5,11 +5,11 @@
    -------------------------------------------------------------------------- */
 
 :root[data-redbyte-mode='ide'] {
-  --ide-stage-nav-height: 44px;
+  --ide-stage-nav-height: 48px;
 }
 
 .ide-root {
-  --ide-topbar-height: 52px;
+  --ide-topbar-height: 48px;
   grid-template-rows:
     var(--ide-topbar-height)
     var(--ide-stage-nav-height)
@@ -238,6 +238,21 @@
   --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px) !important;
 }
 
+/* Document-oriented stages still use the shared workbench frame, but the work
+   object must use the window rather than inheriting the legacy 1360px report
+   column. Surface styles provide their own responsive gutters. */
+.ide-root:is(
+  [data-ide-stage='project'],
+  [data-ide-stage='verify'],
+  [data-ide-stage='hardware'],
+  [data-ide-stage='export']
+) .ide-main-area {
+  width: 100%;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+}
+
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] {
   --ide-workbench-left-width: var(--rb-workbench-pref-left-width, 240px) !important;
   --ide-workbench-right-width: var(--rb-workbench-pref-right-width, 280px) !important;
@@ -379,4 +394,122 @@
   border: 1px solid var(--rb-border, rgba(148, 163, 184, 0.28));
   background: var(--rb-surface-2, #111c2a);
   transform: translate(-50%, -50%);
+}
+
+/* RedByte Studio shell ownership. Surface CSS owns work objects; this file owns
+   the 48px product bar, 48px workflow bar, docks, and 24px support footer. */
+.ide-root {
+  background: var(--rb-app-bg, var(--rb-bg));
+  color: var(--rb-text-primary);
+  font-size: 14px;
+}
+
+.ide-root .ide-top-bar {
+  min-height: 48px;
+  max-height: 48px;
+  padding: 0 clamp(16px, 1.7vw, 28px);
+  gap: 16px;
+  border-bottom: 1px solid var(--rb-border-subtle);
+  background: var(--rb-shell);
+  box-shadow: none;
+}
+
+.ide-root .ide-top-right {
+  min-width: 0;
+  gap: 8px;
+}
+
+.ide-root .ide-brand-wordmark,
+.ide-root .ide-project-name,
+.ide-root .ide-mode-breadcrumb,
+.ide-root .ide-theme-control select,
+.ide-root .ide-topbar-menu > summary {
+  color: var(--rb-text-primary);
+  font-size: 14px;
+}
+
+.ide-root .ide-brand-mark { color: var(--rb-brand-red); }
+
+.ide-root .ide-theme-control,
+.ide-root .ide-theme-control select,
+.ide-root .ide-topbar-menu > summary,
+.ide-root .ide-topbar-action,
+.ide-root .ide-topbar-help-btn {
+  min-height: 36px;
+}
+
+.ide-root .ide-stage-nav-frame {
+  padding: 0 clamp(16px, 1.7vw, 28px);
+  background: var(--rb-shell);
+}
+
+.ide-root .ide-stage-nav {
+  width: 100%;
+  margin: 0;
+}
+
+.ide-root .ide-stage-nav-button {
+  min-height: 44px;
+}
+
+.ide-root .ide-stage-nav-button[data-state='current'] {
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-shell));
+}
+
+.ide-root .ide-stage-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 6px;
+  color: inherit;
+}
+
+.ide-root .ide-stage-nav-icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.ide-root .ide-stage-nav-hint {
+  overflow: hidden;
+  color: var(--rb-text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root .ide-status-bar {
+  min-height: 24px;
+  max-height: 24px;
+  padding: 0 16px;
+  border-top: 1px solid var(--rb-border-subtle);
+  background: var(--rb-shell);
+  color: var(--rb-text-muted);
+  font-size: 12px;
+}
+
+.ide-root .ide-status-build { display: none; }
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
+  --ide-workbench-left-width: clamp(200px, var(--rb-workbench-pref-left-width, 240px), 320px) !important;
+  --ide-workbench-right-width: clamp(260px, var(--rb-workbench-pref-right-width, 300px), 380px) !important;
+}
+
+@media (max-width: 1366px) {
+  .ide-root .ide-topbar-fact-label,
+  .ide-root .ide-theme-control-label,
+  .ide-root .ide-save-label,
+  .ide-root .ide-topbar-command kbd,
+  .ide-root .ide-mode-breadcrumb {
+    display: none;
+  }
+
+  .ide-root .ide-stage-nav-button { padding-inline: 8px; }
 }

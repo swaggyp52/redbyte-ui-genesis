@@ -300,9 +300,9 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
               aria-label="Workbench theme"
               data-testid="ide-theme-select"
             >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System</option>
+              <option value="light">Studio Light</option>
+              <option value="dark">Studio Dark</option>
+              <option value="system">Follow application</option>
             </select>
           </label>
         ) : null}

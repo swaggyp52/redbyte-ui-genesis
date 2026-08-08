@@ -94,6 +94,8 @@ describe('workspace preferences', () => {
     ]);
     store.applyPreset('board');
     store.setDock('design', 'right', { visible: false, sizePx: 333 });
+    store.setDesignCanvasAppearance('light');
+    store.setDesignCanvasDensity('compact');
 
     expect(store.getSnapshot().activePresetId).toBeNull();
     expect(store.getSnapshot().design.view).toBe('code');
@@ -107,7 +109,9 @@ describe('workspace preferences', () => {
       visible: false,
       sizePx: 333,
     });
-    expect(listener).toHaveBeenCalledTimes(4);
+    expect(store.getSnapshot().design.canvasAppearance).toBe('light');
+    expect(store.getSnapshot().design.canvasDensity).toBe('compact');
+    expect(listener).toHaveBeenCalledTimes(6);
 
     const restored = createWorkspacePreferencesStore(storage).getSnapshot();
     expect(restored).toEqual(store.getSnapshot());
@@ -115,7 +119,7 @@ describe('workspace preferences', () => {
 
     unsubscribe();
     store.reset();
-    expect(listener).toHaveBeenCalledTimes(4);
+    expect(listener).toHaveBeenCalledTimes(6);
     expect(store.getSnapshot()).toEqual(DEFAULT_WORKSPACE_PREFERENCES);
   });
 

@@ -22,7 +22,6 @@ import './ide/theme/redbyte-primitives.css';
 import './ide/unified-workbench-v3.css';
 import './ide/visual-system-v1.css';
 import './ide/product-system-v3.css';
-import './ide/milestone-b1.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
@@ -2443,6 +2442,21 @@ export const IdeApp: React.FC = () => {
       <IdeStageNav
         currentMode={activeMode}
         onModeChange={setCurrentMode}
+        stageStatus={{
+          project: hasCircuit ? 'Loaded' : 'New project',
+          design: `${circuit.nodes.length} component${circuit.nodes.length === 1 ? '' : 's'}`,
+          verify: runtimeSim.running
+            ? 'Running'
+            : projectVerifyState === 'assertions-match'
+              ? 'Current'
+              : projectVerifyState === 'stale'
+                ? 'Stale'
+                : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
+                  ? 'Needs review'
+                  : 'Not run',
+          hardware: `${projectIoRows.filter((row) => row.required && row.pin.trim().length > 0).length} / ${projectIoRows.filter((row) => row.required).length} assigned`,
+          export: exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft',
+        }}
         stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
         stepsBlocked={{
           design: Boolean(blockingDesignIssue),
@@ -2886,10 +2900,6 @@ export const IdeApp: React.FC = () => {
         }
         boardState={effectiveReadiness.hasIoMapping ? 'Assignments ready' : `${effectiveReadiness.missingRequiredCount} missing`}
         packageState={exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft'}
-        branch={buildIdentity.envLabel === 'dev' ? buildIdentity.branch : undefined}
-        fullSha={buildIdentity.envLabel === 'dev' ? buildIdentity.fullSha : undefined}
-        runtime={buildIdentity.envLabel === 'dev' ? buildIdentity.runtime : undefined}
-        devUrl={buildIdentity.envLabel === 'dev' ? buildIdentity.devUrl : undefined}
       />
 
       <input
