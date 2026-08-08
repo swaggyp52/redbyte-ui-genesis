@@ -1814,6 +1814,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                       <div>
                         {group.artifacts.length > 0 ? group.artifacts.map((artifact) => {
                           const slug = artifact.path.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                          const availability = formatArtifactAvailability(
+                            artifact.status,
+                            downloadReady,
+                            exportTrusted
+                          );
                           return (
                             <button
                               key={artifact.path}
@@ -1827,7 +1832,14 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                                 {formatArtifactGlyph(artifact.path)}
                               </span>
                               <span className="ide-export-v3__file-name">{artifact.path}</span>
-                              <strong>{formatArtifactAvailability(artifact.status, downloadReady, exportTrusted)}</strong>
+                              <strong
+                                className="ide-export-v3__file-availability"
+                                aria-label={availability}
+                                title={availability}
+                              >
+                                <span aria-hidden="true">{artifact.status === 'ready' ? '✓' : '·'}</span>
+                                <span className="ide-export-v3__file-availability-label">{availability}</span>
+                              </strong>
                             </button>
                           );
                         }) : (

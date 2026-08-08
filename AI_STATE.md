@@ -1,5 +1,35 @@
 # AI State
 
+## Change Log 2026-08-08 (Milestone C.1: workbench geometry stabilization)
+
+**Subsystem:** Product System v3 Project, Simulate, and Build & Export visual
+composition on draft PR #80.
+
+**Product repair:** Simulate now uses one compact command row and one
+context-aware run/rerun authority. Timeline and Checks retain the scenario
+explorer, while Waveform and Testbench release both support rails and own the
+full workplane. Scenario management no longer overlays documents, eight Full
+Adder events fit without horizontal scrolling at 1366x768 and 1440x900, and
+the accepted work modes use the panel body as the single vertical scroll owner
+instead of nesting scroll traps inside the explorer, editor, and inspector.
+Failure/stale/pass presentation now uses the correct semantic tone. Project
+uses intrinsic workbench height with a larger circuit preview. Build & Export
+shows complete source names, compact availability marks, and intrinsically
+sized source, preview, and handoff panes.
+
+**Evidence and bounded validation:** Ignored Browser-E0 evidence under
+`.redbyte/product-immersion/milestone-c1-geometry/` records exact 1366x768 and
+1440x900 Studio Light captures for Timeline, Waveform, Project, and Build &
+Export. Workspace typecheck, the IDE CSS audit, the focused single-run-authority
+test, the unified build (347 transformed modules, 130.9 seconds), and
+`git diff --check` pass under Node 24.15.0 / pnpm 10.24.0; the repository pin
+remains Node 20.19.0. One bounded four-file legacy selection was stopped after
+19.1 seconds with 12 stale presentation-contract failures, including old
+literal `Run simulation` and duplicate primary-status expectations; the
+accepted C.1 composition was not reverted and no broad aggregate or remote
+check watch ran. This remains Browser-E0 only and does not claim merge,
+deployment, Vivado, bitstream, or Basys3 proof.
+
 ## Change Log 2026-08-08 (Milestone C: Scenario + Testbench Composer)
 
 **Subsystem:** Persisted Simulate scenarios, event/check authoring, real circuit

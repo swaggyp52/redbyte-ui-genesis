@@ -100,6 +100,7 @@ export interface VerifyCommandBarProps {
 
 export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
   onRun,
+  runLabel,
   runDisabled,
   runPulsing,
   workspaceMode = 'scenario',
@@ -219,7 +220,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
             hierarchySurface="verify"
             hierarchyRole="next"
           >
-            Run simulation
+            {runLabel}
           </IdeButton>
         </div>
 

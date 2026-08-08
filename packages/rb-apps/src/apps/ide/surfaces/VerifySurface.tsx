@@ -5260,6 +5260,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 ? 'running'
                 : runProofIsStale
                   ? 'stale'
+                  : sessionSignalsAssertionFailure
+                    ? 'fail'
                   : isNoCircuitTaskFirst
                     ? 'attention'
                   : simulationEvidenceSummary
@@ -5289,7 +5291,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               : undefined
           }
           onRun={runVerification}
-          runLabel={gradingBlockedByDesign ? 'Run Observe' : compactCommandRunLabel}
+          runLabel={
+            gradingBlockedByDesign
+              ? 'Run Observe'
+              : runProofIsStale
+                ? 'Rerun simulation'
+                : compactCommandRunLabel
+          }
           runDisabled={runState === 'running'}
           runPulsing={readyDraftCanRun}
           needsExpectedOutputs={needsExpectedOutputs && !gradingBlockedByDesign}
@@ -5300,7 +5308,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           hasReplay={Boolean(lastRun && lastRun.waveform.length > 0)}
         />
         )}
-        {primaryStatus && !compactPrimaryStatusAction ? (
+        {primaryStatus && !compactPrimaryStatusAction && !(
+          forceRunStale || isRunStale || (isTestbenchStale && !hasStaleAuthoredReference)
+        ) ? (
           <div
             className={`ide-verify-session-guidance${forceRunStale ? ' ide-verify-session-guidance--reload' : ''}`}
             data-testid="ide-verify-session-guidance"
@@ -5588,11 +5598,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
               </IdeButton>
             </div>
           )}
-          <div className="ide-sim-scenario-actions">
-            <IdeButton tone="primary" onClick={() => handleRunWithPreflight(true)} disabled={runState === 'running'} testId="ide-sim-scenario-run">{runState === 'running' ? 'Running…' : 'Run scenario'}</IdeButton>
-            <IdeButton tone="secondary" onClick={() => setStudioMode('replay')} disabled={!lastRun} testId="ide-sim-scenario-replay">Replay result</IdeButton>
-            <IdeButton tone="ghost" onClick={() => setStudioMode('testbench')} testId="ide-sim-scenario-testbench">View generated VHDL</IdeButton>
-          </div>
         </aside>
         <VerifyStimulusRegion
           className="ide-verify-testbench-primary"

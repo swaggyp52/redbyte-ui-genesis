@@ -43,15 +43,9 @@ export const VerifyContextHeader: React.FC<VerifyContextHeaderProps> = ({
       className="ide-verify-context-header ide-verify-job-header"
       data-testid="ide-verify-context-header"
     >
-      <div className="ide-verify-job-header-main">
-        <div className="ide-verify-job-copy">
-          <span className="ide-verify-job-kicker">Simulate</span>
-          <h2>Simulation Studio</h2>
-          <p>Author stimulus, run the circuit, inspect the replay, and add checks when useful.</p>
-        </div>
-      </div>
       <div className="ide-verify-context-details" aria-label="Simulation session context">
         <div className="ide-verify-context-identity">
+          <span className="ide-verify-context-label">Active scenario</span>
           <span
             className="ide-verify-context-project"
             data-testid="ide-verify-context-project"

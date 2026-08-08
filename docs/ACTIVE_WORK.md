@@ -30,10 +30,12 @@ imported_by: CLAUDE.md
 
 - Branch: `product/redbyte-workbench-v3`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
-- Milestone: **Milestone C - Scenario + Testbench Composer**
+- Milestone: **Milestone C.1 - Workbench Geometry Stabilization**
 - Status: implemented locally with bounded browser evidence and focused
-  validation complete. Draft PR #80 remains the review boundary; this
-  candidate is not a release or hardware-proof branch.
+  validation complete. The scenario composer remains authoritative; this slice
+  repairs its visible workbench composition without beginning Milestone D.
+  Draft PR #80 remains the review boundary; this candidate is not a release or
+  hardware-proof branch.
 - Live impact: none. The candidate is not merged, deployed, or release-certified.
 
 Do not describe candidate behavior as current `main` behavior. Do not merge the
@@ -57,16 +59,22 @@ owns synthesis, implementation, timing analysis, bitstream generation,
 programming, and physical observation outside RedByte's browser workbench.
 
 The candidate now combines the shared workbench foundation, native reusable
-visual hierarchy, RedByte Studio reconstruction, and a functional scenario
-composer. Simulate owns named persisted documents, a direct event timeline,
-optional output checks, real deterministic replay, failure repair context, and
-the same generated testbench source shown by Build & Export. Studio Light owns
-the application surfaces while dark instrument surfaces are limited to the
-circuit canvas, waveform, and code viewer. This does not broaden circuit,
-simulation, HDL, board, or hardware support beyond the documented boundaries.
+visual hierarchy, RedByte Studio reconstruction, a functional scenario
+composer, and the C.1 geometry stabilization pass. Simulate owns named
+persisted documents, a direct event timeline, optional output checks, real
+deterministic replay, failure repair context, and the same generated testbench
+source shown by Build & Export. Timeline and Checks keep the scenario explorer;
+Waveform and Testbench become full-width focus modes. Studio Light owns the
+application surfaces while dark instrument surfaces are limited to the circuit
+canvas, waveform, and code viewer. This does not broaden circuit, simulation,
+HDL, board, or hardware support beyond the documented boundaries.
 
 ## Candidate Evidence And Exit Gates
 
+- Milestone C.1 Browser-E0 evidence is stored under the ignored
+  `.redbyte/product-immersion/milestone-c1-geometry/` path. It records exact
+  1366x768 and 1440x900 Timeline/Waveform geometry, Project circuit-preview
+  composition, and Build & Export source visibility.
 - Milestone C browser evidence is stored under
   `docs/release/evidence/milestone-c/`: eight focused captures covering the
   eight-case Full Adder scenario, checks, pass/fail/repair, generated source,
@@ -116,9 +124,9 @@ simulation, HDL, board, or hardware support beyond the documented boundaries.
 
 ## Next Authorized Endpoint
 
-Deliver Milestone C to draft PR #80 and stop for product review. Do not begin a
-new feature milestone until the scenario model, browser evidence, current
-limitations, and bounded validation have been reviewed.
+Deliver Milestone C.1 to draft PR #80 and stop for product review. Do not begin
+Milestone D or another feature area until the stabilized 1366x768 and 1440x900
+workbench composition has been reviewed.
 
 ## Start
 

@@ -1025,8 +1025,8 @@
   background: var(--rb-app-bg);
   color: var(--rb-text-primary);
   font-size: 14px;
-  height: 100%;
-  overflow: auto;
+  height: auto;
+  overflow: visible;
   align-content: start;
   grid-template-rows: auto;
 }
@@ -1040,7 +1040,7 @@
   box-shadow: 0 8px 24px rgba(21, 32, 51, 0.06);
 }
 
-.ide-project-v3-command-board { min-height: 210px; padding: 20px 24px 12px; }
+.ide-project-v3-command-board { min-height: 148px; padding: 16px 20px 10px; }
 .ide-project-v3-header { grid-template-columns: minmax(0, 1fr) minmax(280px, 316px); gap: 24px; }
 .ide-project-v3-meta { display: none; }
 .ide-project-v3-title,
@@ -1063,7 +1063,7 @@
 
 .ide-project-v3-identity { padding: 0; border: 0; background: transparent; box-shadow: none; }
 .ide-project-v3-toolbar { display: none; }
-.ide-project-v3-workspace { height: 560px; min-height: 560px; padding: 0; overflow: hidden; }
+.ide-project-v3-workspace { height: auto; min-height: 560px; padding: 0; overflow: visible; }
 .ide-project-v3-workspace-header { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .65fr) auto; align-items: center; gap: 20px; padding: 14px 20px; border-bottom: 1px solid var(--rb-border); background: var(--rb-surface-2); }
 .ide-project-v3-workspace-header h2 { margin: 2px 0 0; font-size: 18px; }
 .ide-project-v3-workspace-header > p { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
@@ -1072,8 +1072,8 @@
 .ide-project-workbench-grid {
   display: grid;
   grid-template-columns: minmax(240px, 270px) minmax(520px, 1fr) minmax(280px, 320px);
-  height: 475px;
-  min-height: 475px;
+  height: auto;
+  min-height: 520px;
 }
 
 .ide-project-explorer,
@@ -1082,10 +1082,10 @@
 
 .ide-project-explorer {
   gap: 4px;
-  overflow: auto;
+  overflow: visible;
   border-right: 1px solid var(--rb-border);
   background: var(--rb-surface-2);
-  max-height: 475px;
+  max-height: none;
 }
 .ide-project-explorer > header { margin-bottom: 6px; }
 .ide-project-explorer > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
@@ -1115,18 +1115,18 @@
   min-width: 0;
 }
 
-.ide-project-design-overview { display: grid; align-content: start; gap: 12px; max-height: 475px; overflow: auto; border-right: 1px solid var(--rb-border); }
+.ide-project-design-overview { display: grid; align-content: start; gap: 12px; max-height: none; overflow: visible; border-right: 1px solid var(--rb-border); }
 .ide-project-design-overview > header span { font-size: 12px; letter-spacing: 0; text-transform: none; }
 .ide-project-design-overview h3 { font-size: 20px; }
 .ide-project-design-overview > p { font-size: 14px; line-height: 1.5; }
-.ide-project-design-overview .ide-project-v3-circuit-preview { min-height: 230px; height: 230px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
+.ide-project-design-overview .ide-project-v3-circuit-preview { min-height: 300px; height: clamp(300px, 36vh, 390px); border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
 .ide-project-interface-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); border-color: var(--rb-border); }
 .ide-project-interface-strip > div { min-height: 76px; padding: 12px; }
 .ide-project-interface-strip span,
 .ide-project-interface-strip small { font-size: 12px; }
 .ide-project-interface-strip strong { font-size: 20px; }
 
-.ide-project-v3-stage-table { max-height: 475px; overflow: auto; background: var(--rb-surface-2); }
+.ide-project-v3-stage-table { max-height: none; overflow: visible; background: var(--rb-surface-2); }
 .ide-project-v3-stage-table > :not(.ide-project-context-panel) { display: none; }
 .ide-project-context-panel { display: grid; align-content: start; gap: 12px; }
 .ide-project-context-section { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface); }
