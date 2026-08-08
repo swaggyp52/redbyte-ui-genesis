@@ -5,6 +5,7 @@ import {
   captureBrowserProblems,
   installCleanStudentContext,
   openMode,
+  selectFirstVisibleDesignNode,
 } from './_workbenchReconstructionHarness.mjs';
 
 export const RELEASE_READINESS_VIEWPORTS = [
@@ -46,11 +47,8 @@ export async function openDesignInspector(page, baseUrl, gateLabel) {
   await openMode(page, baseUrl, 'design', gateLabel);
   await page.waitForSelector('[data-testid="ide-design-live-canvas"]', { timeout: 15000 });
 
-  const rightToggle = page.locator('[data-testid="ide-workbench-dock-toggle-right"]').first();
-  if (await rightToggle.isVisible().catch(() => false)) {
-    await rightToggle.click();
-    await page.waitForTimeout(180);
-  }
+  await selectFirstVisibleDesignNode(page);
+  await page.waitForTimeout(180);
   await page.waitForSelector('[data-testid="ide-right-dock"]', { timeout: 5000 });
 }
 

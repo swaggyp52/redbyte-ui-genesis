@@ -2788,7 +2788,7 @@ export const ImportSurface: React.FC<ImportSurfaceProps> = ({
               ) : null}
 
               {tab === 'upload' && !zipInspection ? (
-                <details className="ide-import-v3__samples">
+                <details className="ide-import-v3__samples" data-testid="ide-import-example-disclosure">
                   <summary>No ZIP available? Try an example</summary>
                   <div>
                     <IdeButton tone="secondary" onClick={() => loadImportSample('and-gate')} testId="ide-import-load-sample-and-gate">

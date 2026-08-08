@@ -3260,7 +3260,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                       <p className="ide-surface-block-label">Board reference</p>
                       <h3>Basys3</h3>
                       <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
-                      Select a compatible control on the board or use the resource selector. Save the assignment when the signal-resource path is correct.
+                      Use the resource selector above to assign this signal. The board visual is a reference for the selected and saved binding.
                       </p>
                     </div>
                   </header>
@@ -3273,9 +3273,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     <Basys3BoardView
                       mappedAliases={mapModeAliases}
                       highlightedAlias={selectedMappingRowPin}
-                      allowedAliases={selectedAllowedBoardAliases}
-                      assignmentMode={Boolean(selectedMappingRow)}
-                      onSelectAlias={(alias) => setSelectedBoardResourceAlias(alias)}
+                      onSelectAlias={() => undefined}
                     />
                   </div>
                 </section>

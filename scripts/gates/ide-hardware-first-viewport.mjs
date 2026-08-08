@@ -6,9 +6,9 @@
  * Contract:
  * 1) The shell build identity matches the current Git SHA.
  * 2) Hardware opens the Logic Gates starter directly in Map Pins at classroom and desktop sizes.
- * 3) Progress and the selected-mapping editor lead the guided task; the mapping table remains visible below them.
- * 4) The Basys3 board starts as a secondary reference beside the table and stays reachable below an expanded editor.
- * 5) The selected signal -> board -> pin -> XDC chain remains first-viewport content.
+ * 3) Progress and the mapping table lead the guided task in the first viewport.
+ * 4) The Basys3 board remains a secondary reference beside the table.
+ * 5) Selecting a row exposes a reachable editor and signal -> board -> pin -> XDC chain below the board.
  * 6) This is presentation-only proof: no pin mapping, generated artifact, or E1/E2/E3 hardware proof changes.
  */
 
@@ -89,15 +89,19 @@ await runIdeGate('IDE hardware first viewport hierarchy satisfied', async ({ pag
         `${viewport.label}: Basys3 board reference must remain proportionally visible ${JSON.stringify(observation.board)}`
       );
       assert(
-        observation.bindingChain.visibleHeight >= 44,
-        `${viewport.label}: selected binding chain must remain visible in the first viewport`
+        observation.editor.width >= 250,
+        `${viewport.label}: selected-signal editor must retain a usable support-region width ${JSON.stringify(observation.editor)}`
       );
 
-      await page.locator('[data-testid="ide-hw-map-board"]').first().scrollIntoViewIfNeeded();
+      await page.locator('[data-testid="ide-hw-selected-mapping-editor"]').first().scrollIntoViewIfNeeded();
       const scrolledObservation = await readHardwareFirstViewportState(page);
       assert(
-        scrolledObservation.board.visibleHeight >= 150,
-        `${viewport.label}: expanded mapping editor must leave the secondary board reference reachable ${JSON.stringify(scrolledObservation.board)}`
+        scrolledObservation.editor.visibleHeight >= 150,
+        `${viewport.label}: selected-signal editor must remain reachable below the board reference ${JSON.stringify(scrolledObservation.editor)}`
+      );
+      assert(
+        scrolledObservation.bindingChain.visibleHeight >= 44,
+        `${viewport.label}: selected binding chain must remain reachable with the selected-signal editor`
       );
 
       const bodyText = await normalizedText(page.locator('[data-testid="ide-mode-hardware"]').first());
@@ -160,20 +164,23 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
       const workspace = document.querySelector('[data-testid="ide-hw-board-workspace"]');
       const table = document.querySelector('[data-testid="ide-hw-map-table"]');
       const mode = document.querySelector('[data-ide-mode-marker]');
-      const chain = document.querySelector('[data-testid="ide-hardware-basys3-binding-chain"]');
-      if (!workspace || !table || !chain || !mode) return false;
+      const board = document.querySelector('[data-testid="ide-hw-map-board"]');
+      const editor = document.querySelector('[data-testid="ide-hw-selected-mapping-editor"]');
+      if (!workspace || !table || !board || !editor || !mode) return false;
       if (mode.getAttribute('data-ide-mode-marker') !== 'hardware') return false;
       if (!workspace.classList.contains('ide-hw-v3')) return false;
 
       const workspaceRect = workspace.getBoundingClientRect();
       const tableRect = table.getBoundingClientRect();
-      const chainRect = chain.getBoundingClientRect();
-      const chainVisibleHeight = Math.max(0, Math.min(window.innerHeight, chainRect.bottom) - Math.max(0, chainRect.top));
+      const boardRect = board.getBoundingClientRect();
+      const boardVisibleHeight = Math.max(0, Math.min(window.innerHeight, boardRect.bottom) - Math.max(0, boardRect.top));
       return (
         workspaceRect.top <= 200 &&
         tableRect.top <= 560 &&
         tableRect.width >= 620 &&
-        chainVisibleHeight >= 44
+        boardRect.top <= 560 &&
+        boardVisibleHeight >= 150 &&
+        editor.getBoundingClientRect().width >= 250
       );
     },
     { timeout: 15000 },
@@ -181,8 +188,8 @@ async function waitForHardwareFirstViewportLayout(page, viewportLabel) {
     const state = await readHardwareFirstViewportState(page);
     throw new Error(
       `${viewportLabel}: Hardware Map Pins layout did not settle into first-viewport contract ` +
-        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, chain ${state.bindingChain.top.toFixed(1)}px/${state.bindingChain.visibleHeight.toFixed(1)}px visible, ` +
-        `table ${state.table.top.toFixed(1)}px/${state.table.width.toFixed(1)}px wide)`
+        `(workspace ${state.boardWorkspace.top.toFixed(1)}px, board ${state.board.top.toFixed(1)}px/${state.board.visibleHeight.toFixed(1)}px visible, ` +
+        `editor ${state.editor.top.toFixed(1)}px/${state.editor.width.toFixed(1)}px wide, table ${state.table.top.toFixed(1)}px/${state.table.width.toFixed(1)}px wide)`
     );
   });
 }
@@ -235,6 +242,7 @@ async function readHardwareFirstViewportState(page) {
       boardWorkspace: rectFor('[data-testid="ide-hw-board-workspace"]'),
       table: rectFor('[data-testid="ide-hw-map-table"]'),
       board: rectFor('[data-testid="ide-hw-map-board"]'),
+      editor: rectFor('[data-testid="ide-hw-selected-mapping-editor"]'),
       bindingChain: rectFor('[data-testid="ide-hardware-basys3-binding-chain"]'),
     };
   });

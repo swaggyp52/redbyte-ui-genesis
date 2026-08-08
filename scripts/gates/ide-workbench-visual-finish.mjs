@@ -163,6 +163,13 @@ async function assertImportFirstLook(page, viewport) {
     '[data-testid="ide-import-start-secondary"]',
     'Import Paste HDL alternative'
   );
+  await assertRectInViewport(
+    page,
+    viewport,
+    '[data-testid="ide-import-example-disclosure"] > summary',
+    'Import example disclosure'
+  );
+  await page.locator('[data-testid="ide-import-example-disclosure"] > summary').first().click();
   await assertRectInViewport(page, viewport, '[data-testid="ide-import-load-sample-and-gate"]', 'Import structural sample alternative');
 
   const workbenchText = await normalizedText(page.locator('[data-testid="ide-import-workbench"]').first());

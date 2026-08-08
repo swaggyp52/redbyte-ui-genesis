@@ -7851,6 +7851,57 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-08-08 (Milestone A compact-shell and release-tail closeout)
+
+**Current truth**
+
+- Exact remote Classroom Truth Gates on `43d4f22c5` reproduced a 74px root
+  overflow only in Linux Chromium at the effective `1093x614` 125%-stress
+  viewport. The one-column application grid could expand to Linux font
+  min-content width even though the same Design camera/stress path passed on
+  Windows.
+- The v3 root, top bar, surface column, workbench shell, and main workspace now
+  use bounded grid tracks and explicit `min-width: 0` ownership. The fix shrinks
+  the real layout instead of relying on document scrolling, while internal work
+  surfaces retain their own deliberate overflow behavior.
+- Board & Constraints keeps the assignment table primary at laptop widths. The
+  Basys3 graphic is again a labelled non-interactive reference; the selected
+  signal resource selector is the sole assignment authority described by the
+  product manual. Compact table spacing keeps the action column reachable.
+- Import keeps a concise example disclosure visible on the empty first look;
+  opening it exposes a structural sample beneath the primary ZIP and Paste HDL
+  paths without adding permanent button clutter.
+
+**Gate alignment and validation**
+
+- Release-readiness helpers open the contextual Design Inspector by selecting
+  a real node. The coexistence gate measures the documented selected-context
+  `62%` canvas share across Library, Canvas, and Inspector and accepts the
+  current 280px contextual Inspector.
+- Simulate release and nested-scroll gates now switch deliberately among
+  Scenario, Replay, and Checks. Post-run evidence is measured in Replay while
+  expected-output edits occur in Checks; the inactive workspace must not
+  compete for layout.
+- Board first-viewport proof follows the table-first v3 hierarchy and verifies
+  that the selected-signal editor and signal/resource/pin/XDC chain remain
+  reachable below the secondary board reference.
+- Pinned Node `20.19.0` local proof passes the exact Design Workbench v1
+  camera/stress gate, root/cropping/action-density regression group, Simulate
+  task plane, Board hierarchy and obstruction gates, release-readiness visual
+  contract, release solidification v1/v2, Browser-E0 packaging boundary,
+  workspace utilization/visual finish, and all four ZIP/import recovery gates.
+  Focused Hardware mapping tests pass `16/16`; the playground build transforms
+  344 modules. Exact-HEAD remote required-check proof is still pending for this
+  follow-up candidate.
+
+**Proof boundary**
+
+- This remains Stable Preview - Browser-E0 evidence on draft PR #80. It is not
+  merged, deployed, live, Vivado-certified, bitstream-proven, or physically
+  observed on a Basys3 board.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Core learning loop Verify readability)
 
 **Subsystem**

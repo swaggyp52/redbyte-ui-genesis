@@ -48,10 +48,12 @@ await runIdeGate('IDE nested scroll regression guard satisfied', async ({ page, 
 
       await openMode(page, baseUrl, viewport, 'verify');
       await ensureVerifyVectorsReady(page);
+      await selectVerifyWorkspace(page, 'checks');
       await assertVerifyPreRunScrollSpace(page, viewport);
       assert(await setVerifyRunMode(page, 'compare'), `${viewport.label}: Compare mode must be selectable`);
       await clickVerifyRun(page);
       await waitForVerifyResult(page, { timeout: 15000 });
+      await selectVerifyWorkspace(page, 'replay');
       await assertVerifyPostRunScrollSpace(page, viewport);
 
       await openMode(page, baseUrl, viewport, 'hardware');
@@ -89,6 +91,18 @@ async function openMode(page, baseUrl, viewport, mode) {
   await page.waitForSelector(`[data-testid="ide-mode-${mode}"]`, { timeout: 15000 });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => null);
   await page.waitForTimeout(120);
+}
+
+async function selectVerifyWorkspace(page, mode) {
+  const button = page.locator(`[data-testid="ide-vcb-workspace-${mode}"]`).first();
+  assert(await button.isVisible().catch(() => false), `Verify ${mode} workspace control must be visible`);
+  await button.click();
+  await page.waitForFunction(
+    (expectedMode) =>
+      document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === expectedMode,
+    mode,
+    { timeout: 5000 },
+  );
 }
 
 async function assertVerifyPreRunScrollSpace(page, viewport) {
