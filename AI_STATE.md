@@ -7783,6 +7783,30 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-08-08 (Milestone A responsive Design gate alignment)
+
+**Current truth**
+
+- The exact remote Milestone A candidate passed the full blank-authoring and
+  release-safety path, then exposed a stale responsive assumption in
+  `ide:gate:design-canvas-zoom-integrity`: at 1366px the product intentionally
+  moves camera controls into the visible **More tools** menu, while the gate
+  still tried to click the hidden desktop copies after looking for an older
+  **View** disclosure.
+- The gate now resolves each camera action through the control source that is
+  actually visible: the inline desktop controls, the compatible historical
+  disclosure, or the responsive overflow menu. Camera finiteness, rendered
+  node and wire visibility, resize behavior, mode transitions, and reload
+  assertions are unchanged.
+
+**Proof boundary**
+
+- This aligns browser regression evidence with the existing responsive product
+  contract. It does not change circuit behavior, claim hardware or Vivado
+  execution, or broaden the Stable Preview - Browser-E0 evidence level.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Core learning loop Verify readability)
 
 **Subsystem**
