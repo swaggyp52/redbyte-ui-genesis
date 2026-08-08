@@ -1,5 +1,31 @@
 # AI State
 
+## Change Log 2026-08-08 (Milestone C: Scenario + Testbench Composer)
+
+**Subsystem:** Persisted Simulate scenarios, event/check authoring, real circuit
+evaluation, waveform/failure inspection, generated testbench projection, and
+Project / Build & Export integration on the Product System v3 candidate.
+
+**Product implementation:** Simulate now uses one scenario explorer and four
+work lenses: Timeline, Waveform, Checks, and Testbench. Timeline directly adds,
+duplicates, deletes, selects, and retimes stable-ID events; input changes at one
+tick are authored together and duplicate ticks are rejected. Checks cycles only
+observable outputs through Unset / 0 / 1. Scenario create, duplicate, rename,
+delete confirmation, selection, events, checks, probes, and policy remain owned
+by the existing persisted project runtime. The Testbench lens renders the exact
+`testbench.vhd` artifact produced by Build & Export rather than a second source.
+Project Center now exposes the active scenario and generated simulation source.
+Export freshness now hashes the elaborated hierarchy, matching Runtime Verify,
+so a current hierarchical run is no longer mislabeled stale.
+
+**Browser evidence and boundary:** The bounded `Full Adder Exhaustive` workflow
+under `docs/release/evidence/milestone-c/` covers all eight input combinations,
+16 passing optional checks, a deliberate `SUM` mismatch with expected/observed
+and stimulus context, repair, rerun recovery, current generated-testbench
+provenance, reload persistence, reload staleness, and 1440x900 plus 1366x768
+geometry. This remains Browser-E0 evidence. It does not claim Vivado, synthesis,
+implementation, bitstream, Basys3, deployment, merge, or release proof.
+
 ## Change Log 2026-08-08 (Milestone B2: RedByte Studio workbench reconstruction)
 
 **Subsystem:** Shared product shell and the Project, Design, Simulate, Board &

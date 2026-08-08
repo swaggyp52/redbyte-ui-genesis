@@ -2093,12 +2093,14 @@
 /* Simulation & Replay Studio v1: one primary workspace at a time. */
 .ide-root .ide-verify-lab-grid[data-studio-mode='replay'] .ide-verify-region--stimulus,
 .ide-root .ide-verify-lab-grid[data-studio-mode='scenario'] .ide-verify-region--waveform,
-.ide-root .ide-verify-lab-grid[data-studio-mode='checks'] .ide-verify-region--waveform {
+.ide-root .ide-verify-lab-grid[data-studio-mode='checks'] .ide-verify-region--waveform,
+.ide-root .ide-verify-lab-grid[data-studio-mode='testbench'] .ide-verify-region--waveform {
   display: none;
 }
 
 .ide-root .ide-verify-lab-grid[data-studio-mode='scenario'],
 .ide-root .ide-verify-lab-grid[data-studio-mode='checks'],
+.ide-root .ide-verify-lab-grid[data-studio-mode='testbench'],
 .ide-root .ide-verify-lab-grid[data-studio-mode='replay'] {
   grid-template-columns: minmax(0, 1fr) !important;
 }
@@ -2544,6 +2546,417 @@
 .ide-sim-context-inspector section { padding: 12px; border: 1px solid var(--rb-border); border-radius: 8px; background: var(--rb-surface-2); }
 .ide-sim-context-inspector section span { font-size: 13px; font-weight: 700; }
 .ide-sim-context-inspector section p { margin: 6px 0 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+
+/* Milestone C composer: one scenario authority, timeline-first authoring. */
+.ide-sim-scenario-explorer {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-documents {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-documents-heading,
+.ide-sim-scenario-explorer .ide-testbench-document-tabrow {
+  display: grid;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-documents-heading strong {
+  display: block;
+  margin-top: 3px;
+  color: var(--rb-text-primary);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-new {
+  width: 100%;
+  min-height: 38px;
+  border-color: color-mix(in srgb, var(--rb-verify) 42%, var(--rb-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rb-verify) 8%, var(--rb-surface));
+  color: var(--rb-text-primary);
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-tabs {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  overflow: visible;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-tab {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+  min-height: 96px;
+  padding: 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-2);
+  color: var(--rb-text-primary);
+  text-align: left;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-tab.is-active {
+  border-color: color-mix(in srgb, var(--rb-verify) 55%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-verify) 7%, var(--rb-surface));
+  box-shadow: inset 3px 0 0 var(--rb-verify);
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-card-heading,
+.ide-sim-scenario-explorer .ide-testbench-document-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 5px 8px;
+  white-space: normal;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-card-meta,
+.ide-sim-scenario-explorer .ide-testbench-document-preview {
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-manage summary {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  color: var(--rb-text-secondary);
+  cursor: pointer;
+}
+
+.ide-sim-scenario-explorer .ide-testbench-document-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.ide-sim-scenario-actions {
+  flex: 0 0 auto;
+  margin: 0 14px 14px;
+}
+
+.ide-sim-scenario-empty {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.ide-sim-scenario-empty p {
+  margin: 0;
+  color: var(--rb-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.ide-scenario-composer {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+
+.ide-scenario-composer:focus-visible {
+  outline: 2px solid var(--rb-action);
+  outline-offset: -2px;
+}
+
+.ide-scenario-composer__header,
+.ide-scenario-testbench-preview > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ide-scenario-composer__header > div,
+.ide-scenario-testbench-preview > header > div {
+  display: grid;
+  gap: 4px;
+}
+
+.ide-scenario-composer__header span,
+.ide-scenario-testbench-preview > header span {
+  color: var(--rb-simulate, #7c3aed);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.ide-scenario-composer__header h3,
+.ide-scenario-testbench-preview h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.ide-scenario-composer__header p {
+  margin: 0;
+  color: var(--rb-text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.ide-scenario-composer__header > button,
+.ide-scenario-composer__empty > button {
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid var(--rb-action);
+  border-radius: 8px;
+  background: var(--rb-action);
+  color: #fff;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.ide-scenario-event-rail {
+  display: flex;
+  gap: 8px;
+  padding: 4px 2px 10px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rb-border);
+}
+
+.ide-scenario-event-rail > button {
+  position: relative;
+  display: grid;
+  flex: 0 0 112px;
+  gap: 4px;
+  min-height: 76px;
+  padding: 10px 11px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface-subtle, var(--rb-surface-2));
+  color: var(--rb-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.ide-scenario-event-rail > button::after {
+  position: absolute;
+  right: -9px;
+  top: 35px;
+  width: 8px;
+  height: 1px;
+  background: var(--rb-border-strong);
+  content: '';
+}
+
+.ide-scenario-event-rail > button:last-child::after { display: none; }
+.ide-scenario-event-rail > button.is-selected {
+  border-color: var(--rb-action);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-action) 15%, transparent);
+}
+.ide-scenario-event-rail > button[data-state='pass'] { border-bottom: 3px solid var(--rb-success); }
+.ide-scenario-event-rail > button[data-state='fail'] { border-bottom: 3px solid var(--rb-danger); }
+.ide-scenario-event-rail > button[data-state='stale'] { border-bottom: 3px solid var(--rb-warning); }
+.ide-scenario-event-rail > button span,
+.ide-scenario-event-rail > button small { color: var(--rb-text-secondary); font-size: 12px; }
+.ide-scenario-event-rail > button strong { font-size: 16px; }
+
+.ide-scenario-event-editor {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface-subtle, var(--rb-surface-2));
+}
+
+.ide-scenario-event-editor__identity {
+  display: grid;
+  grid-template-columns: minmax(120px, .7fr) minmax(140px, .8fr) minmax(220px, 1.5fr);
+  gap: 12px;
+}
+
+.ide-scenario-event-editor__identity > *,
+.ide-scenario-event-editor__identity > label {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  margin: 0;
+}
+
+.ide-scenario-event-editor__identity span,
+.ide-scenario-signal-editor header small {
+  color: var(--rb-text-muted);
+  font-size: 12px;
+}
+
+.ide-scenario-time-field {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  overflow: hidden;
+  min-height: 38px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-scenario-time-field b { display: grid; place-items: center; background: var(--rb-surface-2); }
+.ide-scenario-time-field input { min-width: 0; border: 0; background: transparent; color: var(--rb-text-primary); font: inherit; }
+.ide-scenario-time-error { margin: -8px 0 0; color: var(--rb-danger); font-size: 13px; }
+
+.ide-scenario-signal-editor { display: grid; gap: 10px; }
+.ide-scenario-signal-editor header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ide-scenario-signal-editor header span { font-size: 14px; font-weight: 750; }
+.ide-scenario-signal-editor > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.ide-scenario-signal-editor > div > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 10px;
+  min-height: 48px;
+  padding: 9px 11px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.ide-scenario-signal-editor > div > button.is-high { border-color: color-mix(in srgb, var(--rb-success) 65%, var(--rb-border)); background: color-mix(in srgb, var(--rb-success) 8%, var(--rb-surface)); }
+.ide-scenario-signal-editor > div > button.is-unset { border-style: dashed; }
+.ide-scenario-signal-editor > div > button small { grid-column: 1 / -1; color: var(--rb-text-muted); font-size: 12px; }
+
+.ide-scenario-stimulus-snapshot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-scenario-stimulus-snapshot > span { color: var(--rb-text-secondary); font-size: 13px; font-weight: 700; }
+.ide-scenario-stimulus-snapshot > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.ide-scenario-stimulus-snapshot code { padding: 4px 7px; border-radius: 5px; background: var(--rb-surface-2); color: var(--rb-text-primary); font-size: 12px; }
+
+.ide-scenario-event-editor > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--rb-border);
+}
+.ide-scenario-event-editor > footer button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+.ide-scenario-event-editor > footer button.is-danger { color: var(--rb-danger); }
+
+.ide-scenario-table-disclosure {
+  margin: 0 18px 18px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-scenario-table-disclosure > summary {
+  min-height: 40px;
+  padding: 11px 14px;
+  color: var(--rb-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ide-scenario-table-disclosure[open] > summary { border-bottom: 1px solid var(--rb-border); }
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-scenario-testbench-preview {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
+}
+.ide-root.ide-root .ide-scenario-testbench-preview > header :is(h3, strong) { color: var(--rb-text-primary); }
+.ide-scenario-testbench-preview > header > div:last-child { text-align: right; }
+.ide-root.ide-root .ide-scenario-testbench-preview > header small { color: var(--rb-text-secondary); font-size: 12px; }
+.ide-scenario-testbench-code {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid #283344;
+  border-radius: 8px;
+  background: #10161f;
+  color: #e7edf5;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.ide-scenario-testbench-code > div { display: grid; grid-template-columns: 52px minmax(max-content, 1fr); min-height: 22px; }
+.ide-scenario-testbench-code > div > span { padding: 1px 12px; border-right: 1px solid #283344; color: #738195; text-align: right; user-select: none; }
+.ide-scenario-testbench-code code { padding: 1px 12px; color: inherit; white-space: pre; }
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-command-bar .ide-vcb-row--primary {
+  display: grid !important;
+  grid-template-columns: minmax(360px, auto) auto minmax(180px, 1fr) !important;
+  align-items: center !important;
+}
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-command-bar .ide-vcb-mode-toggle {
+  display: flex !important;
+  min-width: 0;
+  grid-template-columns: none !important;
+  flex-wrap: nowrap;
+}
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-command-bar .ide-vcb-mode-btn {
+  flex: 1 1 0 !important;
+  min-width: 88px !important;
+  white-space: nowrap;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario'],
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks'],
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='testbench'] {
+  grid-template-columns: minmax(220px, 240px) minmax(520px, 1fr) minmax(270px, 310px) !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  min-height: 610px !important;
+  overflow: hidden !important;
+}
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='scenario'] .ide-verify-region--stimulus,
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='checks'] .ide-verify-region--stimulus,
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-studio-mode='testbench'] .ide-verify-region--stimulus {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: auto !important;
+}
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-scenario-time-field input {
+  background: var(--rb-surface) !important;
+  color: var(--rb-text-primary) !important;
+}
+
+@media (max-width: 900px) {
+  .ide-scenario-event-editor__identity { grid-template-columns: minmax(0, 1fr); }
+  .ide-scenario-composer__header,
+  .ide-scenario-testbench-preview > header { display: grid; }
+  .ide-scenario-testbench-preview > header > div:last-child { text-align: left; }
+}
 
 .ide-root .ide-verify-console-frame,
 .ide-root .ide-verify-instrument-deck,

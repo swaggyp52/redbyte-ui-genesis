@@ -491,7 +491,8 @@ The inspector panel shows per-selection health: primary issue with severity pill
 
 **Major UI Regions.**
 
-- *Scenario workspace:* Named testbench documents appear as visual scenario cards showing combinational/sequential type, event count, optional check count, timing cycles when present, and a compact signal preview. Each card opens explicit combinational cases or a sequential clock/reset/input timeline. The default Scenario view does not require expected values.
+- *Scenario workspace:* Named testbench documents appear as visual scenario cards showing combinational/sequential type, event count, optional check count, timing cycles when present, and a compact signal preview. The Timeline lens directly adds, duplicates, deletes, selects, retimes, and edits stable-ID events; several input values may change together at one tick, while duplicate ticks are rejected. The default Timeline view does not require expected values.
+- *Workbench lenses:* Timeline owns stimulus, Waveform owns replay evidence, Checks owns optional output expectations, and Testbench shows the generated read-only `testbench.vhd`. The Testbench lens consumes the exact Build & Export artifact and is not an independent editor or static sample.
 - *Integrated signal shelf:* Current inputs, outputs, and available internal lanes stay inside the Simulate workbench above the lab grid. Simulate does not reserve a separate left Signals rail; the shelf keeps relevant lanes visible with an explicit path to show the broader signal set.
 - *Run controls:* One stable **Run simulation** authority. Scenario, Replay, and Checks are workspace lenses rather than competing run modes.
 - *Replay / results:* Quiet before a run; after a run it shows selected case/time, observed values, readable waveform evidence, circuit-replay handoff, and a separate assertion state.

@@ -216,6 +216,8 @@ export interface TestVectorCheckpoint extends CheckpointDefinition {
 }
 
 export interface TestVector {
+  /** Stable authoring identity. Older projects without one are repaired on first edit. */
+  id?: string;
   tick: number;
   inputs: Record<string, boolean | number>;
   expected: Record<string, boolean | number>;

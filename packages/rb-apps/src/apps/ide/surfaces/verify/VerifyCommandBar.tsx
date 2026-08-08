@@ -90,8 +90,8 @@ export interface VerifyCommandBarProps {
    * (first recovery move + where detail lives).
    */
   readonly failureRecoveryLine?: string;
-  readonly workspaceMode?: 'scenario' | 'replay' | 'checks';
-  readonly onWorkspaceModeChange?: (mode: 'scenario' | 'replay' | 'checks') => void;
+  readonly workspaceMode?: 'scenario' | 'replay' | 'checks' | 'testbench';
+  readonly onWorkspaceModeChange?: (mode: 'scenario' | 'replay' | 'checks' | 'testbench') => void;
   readonly configuredCheckCount?: number;
   readonly hasReplay?: boolean;
 }
@@ -182,7 +182,7 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
       <div className="ide-vcb-row ide-vcb-row--primary">
         <div className="ide-vcb-group ide-vcb-group--mode" data-testid="ide-vcb-run-mode">
           <div className="ide-vcb-mode-toggle" role="tablist" aria-label="Simulation Studio workspace">
-            {(['scenario', 'replay', 'checks'] as const).map((mode) => (
+            {(['scenario', 'replay', 'checks', 'testbench'] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -195,10 +195,12 @@ export const VerifyCommandBar: React.FC<VerifyCommandBarProps> = ({
                 title={mode === 'replay' && !hasReplay ? 'Run the simulation to create a replay.' : undefined}
               >
                 {mode === 'scenario'
-                  ? 'Scenario'
+                  ? 'Timeline'
                   : mode === 'replay'
-                    ? 'Replay'
-                    : `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`}
+                    ? 'Waveform'
+                    : mode === 'checks'
+                      ? `Checks${configuredCheckCount > 0 ? ` ${configuredCheckCount}` : ''}`
+                      : 'Testbench'}
               </button>
             ))}
           </div>

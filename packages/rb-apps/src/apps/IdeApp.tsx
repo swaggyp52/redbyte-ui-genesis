@@ -2503,6 +2503,15 @@ export const IdeApp: React.FC = () => {
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
+              scenarioCount={scenarios.length}
+              activeScenarioName={activeScenario?.name ?? null}
+              activeScenarioEventCount={activeScenario?.vectors.length ?? 0}
+              activeScenarioCheckCount={
+                activeScenario?.vectors.reduce(
+                  (count, vector) => count + Object.keys(vector.expected ?? {}).length,
+                  0
+                ) ?? 0
+              }
               activeExampleId={activeExampleId}
               onOpenExample={handleOpenExample}
               primaryCtaLabel={primaryProjectCta.label}
@@ -2783,6 +2792,9 @@ export const IdeApp: React.FC = () => {
               guidedLabTask={activeGuidedLabTask}
               guidedLabDesignChecklist={fullAdderLabDesignChecklist}
               onCreateGuidedLabTruthTable={handleCreateFullAdderTruthTable}
+              generatedTestbenchSource={
+                exportViewModel.artifacts.find((artifact) => artifact.path === 'testbench.vhd')?.content
+              }
             />
             </Suspense>
           </ErrorBoundary>

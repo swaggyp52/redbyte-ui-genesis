@@ -30,14 +30,14 @@ imported_by: CLAUDE.md
 
 - Branch: `product/redbyte-workbench-v3`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
-- Milestone: **Milestone B2 - Visual Workbench Reconstruction**
-- Status: implemented with bounded local validation and six final visual
-  captures. Draft PR #80 remains the review boundary; user visual acceptance
-  remains the merge gate.
+- Milestone: **Milestone C - Scenario + Testbench Composer**
+- Status: implemented locally with bounded browser evidence and focused
+  validation complete. Draft PR #80 remains the review boundary; this
+  candidate is not a release or hardware-proof branch.
 - Live impact: none. The candidate is not merged, deployed, or release-certified.
 
 Do not describe candidate behavior as current `main` behavior. Do not merge the
-candidate or begin Milestone C until this visual reconstruction is reviewed and
+candidate or begin the next milestone until this composer slice is reviewed and
 accepted.
 
 ## Candidate Product Truth
@@ -57,15 +57,21 @@ owns synthesis, implementation, timing analysis, bitstream generation,
 programming, and physical observation outside RedByte's browser workbench.
 
 The candidate now combines the shared workbench foundation, native reusable
-visual hierarchy, and the RedByte Studio reconstruction. Studio Light owns the
-application surfaces while dark instrument surfaces are limited to the circuit
-canvas, waveform, and code viewer. Project, Design, Simulate, Board &
-Constraints, and Build & Export use full-width task compositions. This does not
-broaden circuit, simulation, HDL, board, or hardware support.
+visual hierarchy, RedByte Studio reconstruction, and a functional scenario
+composer. Simulate owns named persisted documents, a direct event timeline,
+optional output checks, real deterministic replay, failure repair context, and
+the same generated testbench source shown by Build & Export. Studio Light owns
+the application surfaces while dark instrument surfaces are limited to the
+circuit canvas, waveform, and code viewer. This does not broaden circuit,
+simulation, HDL, board, or hardware support beyond the documented boundaries.
 
 ## Candidate Evidence And Exit Gates
 
-- Milestone B2 visual evidence is stored under
+- Milestone C browser evidence is stored under
+  `docs/release/evidence/milestone-c/`: eight focused captures covering the
+  eight-case Full Adder scenario, checks, pass/fail/repair, generated source,
+  Project/Export integration, reload persistence/staleness, and compact layout.
+- Milestone B2 visual evidence remains under
   `docs/release/evidence/milestone-b2/`: six exact-size final captures and five
   compact before/after comparisons. Milestone B1 hierarchy evidence remains in
   the adjacent `milestone-b1/` folder.
@@ -77,11 +83,10 @@ broaden circuit, simulation, HDL, board, or hardware support.
   workspace preferences, command registry/palette, shared shell, project
   projections, component facade, Basys3 profile/projection, mapping workflows,
   and visible stage grammar.
-- The Milestone B2 local Node 24.15.0 closeout passed workspace typecheck, IDE
-  CSS audit, unified build, `git diff --check`, and a normal browser walkthrough.
-  The pinned runtime remains Node 20.19.0. A bounded six-file test selection
-  exposed 39 stale Verify/Export wording and retired-work-object assertions;
-  those expectations are legacy debt, not authority to restore old UI.
+- Milestone C migrated the bounded 39-assertion B2 selection to the accepted v3
+  contract while preserving behavioral assertions. The pinned runtime remains
+  Node 20.19.0; this machine currently provides Node 24.15.0, which must be
+  reported as a validation caveat rather than treated as pinned equivalence.
 - The affected classroom browser gates cover root overflow, loaded-path first
   viewport ownership, active-mode reload, contextual Design support docks,
   integrated Simulate signals, obstruction, and primary-workspace utilization.
@@ -98,8 +103,9 @@ broaden circuit, simulation, HDL, board, or hardware support.
 - Durable recovery snapshots exist, and corrupt repository indexes now rebuild
   through bounded reconstruction/rollback tests. Recovery-candidate and session
   signaling still need further hardening.
-- Portable project backup does not yet include every workspace-local,
-  multi-scenario authoring document.
+- Named scenarios and their events/checks survive browser-local save, autosave,
+  recovery, and reload. Portable cross-browser/archive transfer of the complete
+  scenario sidecar remains unproven.
 - Native visual hierarchy supports reusable HalfAdder-style modules and direct
   module navigation. Buses/named nets, code-backed modules, parameters/generics,
   and broader top-module tooling remain future depth work.
@@ -110,10 +116,9 @@ broaden circuit, simulation, HDL, board, or hardware support.
 
 ## Next Authorized Endpoint
 
-Deliver the Milestone B2 Studio reconstruction to draft PR #80 and stop for
-visual acceptance. The next planned milestone is **Milestone C - Scenario and
-Testbench Composer**. Do not begin it until the current workbench is reviewed
-and explicitly accepted.
+Deliver Milestone C to draft PR #80 and stop for product review. Do not begin a
+new feature milestone until the scenario model, browser evidence, current
+limitations, and bounded validation have been reviewed.
 
 ## Start
 

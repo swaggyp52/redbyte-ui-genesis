@@ -138,6 +138,10 @@ import { deriveScenarioStepsFromVectors } from '../verifyScenarioSteps';
 import type { IdeChromeContract } from '../chromeContract';
 import { diagnoseVerifyFailure } from '../verifyFailureDiagnosis';
 import { TestbenchDocumentTabs } from './verify/TestbenchDocumentTabs';
+import {
+  ScenarioComposerWorkbench,
+  ScenarioTestbenchPreview,
+} from './verify/ScenarioComposerWorkbench';
 import { buildSimulationEvidenceSummary } from '../simulationEvidence';
 import './verify/simulation-studio-v3.css';
 
@@ -298,6 +302,8 @@ export interface VerifySurfaceProps {
       readonly fromPin?: string; readonly toPin?: string; readonly fromPort?: string; readonly toPort?: string;
     }>;
   };
+  /** Canonical generated simulation source from the export view model. */
+  generatedTestbenchSource?: string;
 }
 
 // ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
@@ -412,6 +418,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   onCreateGuidedLabTruthTable,
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
+  generatedTestbenchSource,
 }) => {
   const gradingBlockedByDesign = Boolean(designBlockingIssue);
   // Preserve observation traces, but revoke checked PASS/FAIL presentation
@@ -574,7 +581,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
-  const [studioMode, setStudioMode] = useState<'scenario' | 'replay' | 'checks'>(
+  const [studioMode, setStudioMode] = useState<'scenario' | 'replay' | 'checks' | 'testbench'>(
     () => lastRun ? 'replay' : 'scenario'
   );
   const [orphanPreflight, setOrphanPreflight] = useState(false);
@@ -3636,6 +3643,27 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     [authoredVectors, canApplyRunDerivedRepair, captureContext, commitVectorCollections, customVectors, lastRun?.waveform?.length]
   );
 
+  const resolveExpectedSignalKey = useCallback(
+    (signal: string): string => {
+      const normalizedSignal = normalizeFieldId(signal);
+      const displaySignal =
+        canonicalWaveformSignalByRawKey.get(normalizedSignal) ?? signal;
+      const normalizedDisplaySignal = normalizeFieldId(displaySignal);
+      const matchingField = outputFields.find((field) => {
+        const normalizedId = normalizeFieldId(field.id);
+        const normalizedLabel = normalizeFieldId(field.label);
+        return (
+          normalizedId === normalizedSignal ||
+          normalizedLabel === normalizedSignal ||
+          normalizedId === normalizedDisplaySignal ||
+          normalizedLabel === normalizedDisplaySignal
+        );
+      });
+      return matchingField?.id ?? displaySignal;
+    },
+    [canonicalWaveformSignalByRawKey, outputFields]
+  );
+
   const applyExpectedCellValue = useCallback(
     (input: {
       tick: number;
@@ -3645,8 +3673,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       rerunCompare?: boolean;
     }): boolean => {
       if (!canApplyRunDerivedRepair) return false;
-      const canonicalSignal =
-        canonicalWaveformSignalByRawKey.get(normalizeFieldId(input.signal)) ?? input.signal;
+      const canonicalSignal = resolveExpectedSignalKey(input.signal);
       const result = updateExpectedCellInVectorSets({
         projectVectors: authoredVectors,
         customVectors,
@@ -3661,7 +3688,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       }
       return changed;
     },
-    [authoredVectors, canApplyRunDerivedRepair, canonicalWaveformSignalByRawKey, commitVectorCollections, customVectors]
+    [authoredVectors, canApplyRunDerivedRepair, commitVectorCollections, customVectors, resolveExpectedSignalKey]
   );
 
   const applyObservedFailures = useCallback(
@@ -3673,8 +3700,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
 
       for (const failure of failures) {
         if (!isRepairableObservedFailure(failure)) continue;
-        const canonicalSignal =
-          canonicalWaveformSignalByRawKey.get(normalizeFieldId(failure.signal)) ?? failure.signal;
+        const canonicalSignal = resolveExpectedSignalKey(failure.signal);
         const result = updateExpectedCellInVectorSets({
           projectVectors: nextProjectVectors,
           customVectors: nextCustomVectors,
@@ -3695,7 +3721,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       setOracleApplied(false);
       return true;
     },
-    [authoredVectors, canApplyRunDerivedRepair, canonicalWaveformSignalByRawKey, customVectors, onCustomVectorsChange, onVectorsChange]
+    [authoredVectors, canApplyRunDerivedRepair, customVectors, onCustomVectorsChange, onVectorsChange, resolveExpectedSignalKey]
   );
 
   const queueScopedCapture = useCallback(
@@ -4051,6 +4077,25 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
     }
     return Object.keys(sample).length > 0 ? sample : null;
   }, [selectedTick, signalTimeline]);
+  const selectedAuthoredEvent = useMemo(
+    () => authoredVectors.find((vector) => vector.tick === selectedTick) ?? authoredVectors[0] ?? null,
+    [authoredVectors, selectedTick]
+  );
+  const selectedAuthoredEventIndex = selectedAuthoredEvent
+    ? authoredVectors.findIndex((vector) => vector.id === selectedAuthoredEvent.id)
+    : -1;
+  const previousAuthoredEvent =
+    selectedAuthoredEventIndex > 0 ? authoredVectors[selectedAuthoredEventIndex - 1] ?? null : null;
+  const selectedEventChangedInputs = selectedAuthoredEvent
+    ? inputFields.filter(
+        (field) =>
+          (selectedAuthoredEvent.inputs[field.id] ?? 0) !==
+          (previousAuthoredEvent?.inputs[field.id] ?? 0)
+      )
+    : [];
+  const selectedEventCheckCount = selectedAuthoredEvent
+    ? Object.keys(selectedAuthoredEvent.expected ?? {}).length
+    : 0;
   const selectedCheckSignal = useMemo(() => {
     if (!selectedSignal) return null;
     return canonicalWaveformSignalByRawKey.get(normalizeFieldId(selectedSignal)) ?? selectedSignal;
@@ -5523,28 +5568,30 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           data-studio-mode={studioMode}
         >
         <aside className="ide-sim-scenario-explorer" data-testid="ide-sim-scenario-explorer" aria-label="Scenario explorer">
-          <header>
-            <span>Scenarios</span>
-            <strong>{scenarios?.length ?? 0}</strong>
-          </header>
-          <div className="ide-sim-scenario-list">
-            {scenarios && scenarios.length > 0 ? scenarios.map((scenario) => (
-              <button
-                key={scenario.id}
-                type="button"
-                className={scenario.id === activeScenarioId ? 'is-active' : ''}
-                onClick={() => onSwitchScenario?.(scenario.id)}
-              >
-                <strong>{scenario.name}</strong>
-                <span>{scenario.vectors.length} events · {inputFields.length + outputFields.length} signals</span>
-                <small>{scenario.id === lastRun?.scenarioId ? (runProofIsStale ? 'Stale result' : 'Current result') : 'Ready to run'}</small>
-              </button>
-            )) : <p>No saved scenario yet.</p>}
-          </div>
+          {scenarios && scenarios.length > 0 ? (
+            <TestbenchDocumentTabs
+              scenarios={scenarios}
+              activeScenarioId={activeScenarioId ?? null}
+              onSwitch={(id) => onSwitchScenario?.(id)}
+              onCreate={() => onCreateScenario?.()}
+              onDuplicate={() => onDuplicateScenario?.()}
+              onRename={(name) => onRenameScenario?.(name)}
+              onDelete={(id) => onDeleteScenario?.(id)}
+            />
+          ) : (
+            <div className="ide-sim-scenario-empty">
+              <span>Scenarios</span>
+              <strong>No saved scenario yet</strong>
+              <p>Create one to keep stimulus, checks, results, and generated VHDL together.</p>
+              <IdeButton tone="primary" onClick={() => onCreateScenario?.()} testId="ide-scenario-create-btn">
+                Create scenario
+              </IdeButton>
+            </div>
+          )}
           <div className="ide-sim-scenario-actions">
             <IdeButton tone="primary" onClick={() => handleRunWithPreflight(true)} disabled={runState === 'running'} testId="ide-sim-scenario-run">{runState === 'running' ? 'Running…' : 'Run scenario'}</IdeButton>
             <IdeButton tone="secondary" onClick={() => setStudioMode('replay')} disabled={!lastRun} testId="ide-sim-scenario-replay">Replay result</IdeButton>
-            <IdeButton tone="ghost" onClick={() => setStudioMode('scenario')} testId="ide-sim-scenario-table">Table view</IdeButton>
+            <IdeButton tone="ghost" onClick={() => setStudioMode('testbench')} testId="ide-sim-scenario-testbench">View generated VHDL</IdeButton>
           </div>
         </aside>
         <VerifyStimulusRegion
@@ -5607,17 +5654,6 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
         )}
 
         {/* Scenario library strip — rendered whenever scenario library props are provided */}
-        {scenarios && scenarios.length > 0 && (
-          <TestbenchDocumentTabs
-            scenarios={scenarios}
-            activeScenarioId={activeScenarioId ?? null}
-            onSwitch={(id) => onSwitchScenario?.(id)}
-            onCreate={() => onCreateScenario?.()}
-            onDuplicate={() => onDuplicateScenario?.()}
-            onRename={(name) => onRenameScenario?.(name)}
-            onDelete={(id) => onDeleteScenario?.(id)}
-          />
-        )}
         {(activeScheduleContract?.timingMode === 'manual_event_driven_lab' ||
           effectiveClockPolicy?.overrideMode === 'manual-pulses' ||
           effectiveClockPolicy?.overrideMode === 'custom-pattern') && (
@@ -5722,7 +5758,28 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        <ScenarioBuilderPanel
+        {studioMode === 'testbench' ? (
+          <ScenarioTestbenchPreview
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            source={generatedTestbenchSource}
+          />
+        ) : (
+          <ScenarioComposerWorkbench
+            scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
+            vectors={authoredVectors}
+            inputFields={stimulusPanelInputFields}
+            outputFields={outputFields}
+            selectedTick={selectedTick}
+            lens={studioMode === 'checks' ? 'checks' : 'scenario'}
+            onSelectTick={handleStimulusSelectedTickChange}
+            onVectorsChange={onVectorsChange}
+            caseEvidenceByTick={testbenchCaseEvidenceByTick}
+            observedValuesByTick={testbenchObservedValuesByTick}
+          />
+        )}
+        <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-table-disclosure">
+          <summary>Open detailed event table</summary>
+          <ScenarioBuilderPanel
           isFirstRun={isFirstRunState}
           isSequential={isSequentialRun}
           authoringModeSummary={scenarioBuilderModeSummary}
@@ -5772,7 +5829,8 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           observedValuesByTick={testbenchObservedValuesByTick}
           caseEvidenceByTick={testbenchCaseEvidenceByTick}
           showExpectedLanes={studioMode === 'checks'}
-        />
+          />
+        </details>
         </VerifyStimulusRegion>
 
         <VerifyWaveformRegion>
@@ -6962,19 +7020,55 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>}
         </VerifyWaveformRegion>
         <aside className="ide-sim-context-inspector" data-testid="ide-sim-context-inspector" aria-label="Simulation inspector">
-          <header><span>Inspector</span><strong>{selectedSignal ?? 'Select a signal'}</strong></header>
-          <dl>
-            <div><dt>Event</dt><dd>{selectedTick == null ? '—' : `Event ${selectedTick + 1}`}</dd></div>
-            <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
-            <div><dt>Check state</dt><dd>{failingRows.length > 0 ? `${failingRows.length} failing` : lastRun ? 'No failing checks' : 'Not run'}</dd></div>
-            <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
-          </dl>
-          <section>
-            <span>Selection guidance</span>
-            <p>{selectedSignal ? 'Move the cursor to inspect this lane at another event, create a check, or trace its circuit path.' : 'Select a waveform lane and event to inspect its observed value.'}</p>
-          </section>
-          <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
-          <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
+          {studioMode === 'testbench' ? (
+            <>
+              <header><span>Source inspector</span><strong>testbench.vhd</strong></header>
+              <dl>
+                <div><dt>Owner</dt><dd>Active scenario</dd></div>
+                <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
+                <div><dt>Events</dt><dd>{authoredVectors.length}</dd></div>
+                <div><dt>Checks</dt><dd>{totalAssertedCheckCount}</dd></div>
+                <div><dt>Source role</dt><dd>Simulation only</dd></div>
+                <div><dt>Package</dt><dd>Build &amp; Export</dd></div>
+              </dl>
+              <section>
+                <span>One source of truth</span>
+                <p>This preview is the same generated testbench.vhd included in the Vivado handoff. Event or check edits regenerate it from the active scenario.</p>
+              </section>
+              <IdeButton tone="secondary" onClick={onGoToExport} disabled={!onGoToExport} testId="ide-sim-inspector-open-export">Open Build &amp; Export</IdeButton>
+            </>
+          ) : (
+            <>
+              <header><span>Inspector</span><strong>{selectedSignal ?? (selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : 'Select an event')}</strong></header>
+              <dl>
+                <div><dt>Event</dt><dd>{selectedAuthoredEvent ? `Event ${selectedAuthoredEventIndex + 1}` : '—'}</dd></div>
+                <div><dt>Time</dt><dd>{selectedAuthoredEvent ? `t${selectedAuthoredEvent.tick}` : '—'}</dd></div>
+                <div><dt>Input changes</dt><dd>{selectedEventChangedInputs.length > 0 ? selectedEventChangedInputs.map((field) => field.label).join(', ') : 'None at this event'}</dd></div>
+                <div><dt>Current value</dt><dd>{selectedCheckObservedValue ?? '—'}</dd></div>
+                <div><dt>Saved checks</dt><dd>{selectedEventCheckCount > 0 ? selectedEventCheckCount : 'None'}</dd></div>
+                <div><dt>Check state</dt><dd>{failingRows.some((row) => row.tick === selectedAuthoredEvent?.tick) ? 'Failing at this event' : lastRun ? 'No failure at this event' : 'Not evaluated'}</dd></div>
+                <div><dt>Scenario</dt><dd>{activeScenario?.name ?? lastRun?.scenarioName ?? 'Default'}</dd></div>
+              </dl>
+              <section>
+                <span>Selection guidance</span>
+                <p>{selectedSignal ? 'Move the cursor to inspect this lane at another event, create a check, or trace its circuit path.' : 'Select a waveform lane and event to inspect its observed value.'}</p>
+              </section>
+              <IdeButton
+                tone="secondary"
+                onClick={() => {
+                  const disclosure = document.querySelector<HTMLDetailsElement>('[data-testid="ide-scenario-table-disclosure"]');
+                  if (disclosure) disclosure.open = true;
+                  disclosure?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }}
+                disabled={!selectedAuthoredEvent}
+                testId="ide-sim-inspector-edit-event"
+              >
+                Edit in detailed table
+              </IdeButton>
+              <IdeButton tone="secondary" onClick={() => setCreateCheckDialogOpen(true)} disabled={!canCreateCheckFromSelection} testId="ide-sim-inspector-create-check">Create check from this value</IdeButton>
+              <IdeButton tone="ghost" onClick={handleGoToDesignFromVerify} disabled={!selectedSignal && !selectedFailureCase} testId="ide-sim-inspector-trace-design">Trace in Design</IdeButton>
+            </>
+          )}
         </aside>
         </div>
         </div>
@@ -6989,14 +7083,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             onClose={closeCreateCheckDialog}
             body={
               <section className="ide-verify-create-check-dialog">
-                <p className="ide-verify-create-check-event">At Event {selectedTick + 1}:</p>
+                <p className="ide-verify-create-check-event">At Event {selectedAuthoredEventIndex + 1} (t{selectedTick}):</p>
                 <div className="ide-verify-create-check-value" data-testid="ide-verify-create-check-preview">
                   <strong>{selectedCheckSignal}</strong>
                   <span>observed</span>
                   <code>{selectedCheckObservedValue}</code>
                 </div>
                 <p>
-                  RedByte will expect {selectedCheckSignal} = {selectedCheckObservedValue} at Event {selectedTick + 1}.
+                  RedByte will expect {selectedCheckSignal} = {selectedCheckObservedValue} at t{selectedTick}.
                 </p>
                 <IdeCallout tone="info" title="Optional check">
                   This turns observed behavior into one expectation. It changes only this signal at this event.
@@ -7061,7 +7155,10 @@ function normalizeVectors(
   const validOutputIds = new Set(outputFields.map((f) => f.id));
   return vectors
     .map((vector, index) => ({
-      id: `vec-${String(index + 1).padStart(2, '0')}`,
+      id:
+        typeof vector.id === 'string' && vector.id.trim().length > 0
+          ? vector.id
+          : `event-${String(index + 1).padStart(2, '0')}`,
       tick: Number.isFinite(vector.tick) ? Math.max(0, Math.floor(vector.tick)) : index,
       inputs: Object.fromEntries(
         Object.entries(vector.inputs ?? {}).map(([key, value]) => [
@@ -7621,10 +7718,14 @@ export function updateExpectedCellInVectorSets(input: {
   const normalizedSignal = normalizeFieldId(input.signal);
   let changed = false;
   let capturedAnyExpected = false;
+  const ownedVectors = buildOwnedVectors(input.projectVectors, input.customVectors);
+  const hasExactVectorIdentity = Boolean(
+    input.vectorId && ownedVectors.some((vector) => vector.id === input.vectorId)
+  );
 
-  const updatedOwnedVectors = buildOwnedVectors(input.projectVectors, input.customVectors).map((vector) => {
-    if (input.vectorId && vector.id !== input.vectorId) return vector;
-    if (!input.vectorId && vector.tick !== input.tick) return vector;
+  const updatedOwnedVectors = ownedVectors.map((vector) => {
+    if (hasExactVectorIdentity && vector.id !== input.vectorId) return vector;
+    if (!hasExactVectorIdentity && vector.tick !== input.tick) return vector;
     const expectedKeyByNormalized = new Map<string, string>();
     for (const key of Object.keys(vector.expected ?? {})) {
       const normalized = normalizeFieldId(key);

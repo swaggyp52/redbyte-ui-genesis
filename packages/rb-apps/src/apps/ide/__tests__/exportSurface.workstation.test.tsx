@@ -214,9 +214,9 @@ describe('ExportSurface workstation redesign', () => {
     expect(readiness.textContent).toContain('What owns this package state');
     expect(getByTestId('ide-export-upstream-design').getAttribute('data-owner')).toBe('Design');
     expect(getByTestId('ide-export-upstream-design').textContent).toContain('Ready');
-    expect(getByTestId('ide-export-upstream-verify').getAttribute('data-owner')).toBe('Verify');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
-    expect(getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Map Pins');
+    expect(getByTestId('ide-export-upstream-verify').getAttribute('data-owner')).toBe('Simulate');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Draft');
+    expect(getByTestId('ide-export-upstream-mapping').getAttribute('data-owner')).toBe('Board & Constraints');
     expect(getByTestId('ide-export-upstream-mapping').textContent).toContain('Ready');
 
     const packageFiles = getByTestId('ide-export-package-files');
@@ -240,9 +240,9 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     const mappingRow = getByTestId('ide-export-upstream-mapping');
-    expect(mappingRow.getAttribute('data-owner')).toBe('Map Pins');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Board & Constraints');
     expect(mappingRow.textContent).toContain('1 required missing');
-    expect(mappingRow.textContent).toContain('Open Map Pins');
+    expect(mappingRow.textContent).toContain('Board & Constraints');
     fireEvent.click(getByTestId('ide-export-blocked-open-map-pins'));
     expect(onGoToHardware).toHaveBeenCalledTimes(1);
   });
@@ -259,7 +259,7 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     const mappingRow = getByTestId('ide-export-upstream-mapping');
-    expect(mappingRow.getAttribute('data-owner')).toBe('Map Pins');
+    expect(mappingRow.getAttribute('data-owner')).toBe('Board & Constraints');
     expect(mappingRow.textContent).toContain('Resolve mapping blocker');
     expect(mappingRow.textContent).toMatch(/Duplicate pin assignment/i);
     expect(getByTestId('ide-export-blocked-open-map-pins')).toBeTruthy();
@@ -282,9 +282,9 @@ describe('ExportSurface workstation redesign', () => {
     expect(inspector.textContent).toContain('Draft export available');
     expect(packageContents.textContent).not.toContain('Draft export available');
     expect(packageContents.textContent).toContain('Inspect the generated handoff');
-    expect(verifyReadiness.textContent).toContain('Compare needed');
-    expect(verifyReadiness.textContent).toContain('Verify has not run yet');
-    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(verifyReadiness.textContent).toContain('Draft');
+    expect(verifyReadiness.textContent).toContain('Run the current scenario');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect(getByTestId('ide-export-e0-boundary-summary').textContent).toContain(
       'Browser E0 confirms package generation only'
@@ -322,9 +322,7 @@ describe('ExportSurface workstation redesign', () => {
     expect(visibleVerifyAuthority.textContent).toContain(
       'Inconclusive - Design blocked'
     );
-    expect(visibleVerifyAuthority.textContent).toContain(
-      'no saved Compare PASS/FAIL is current'
-    );
+    expect(visibleVerifyAuthority.textContent).toContain('Design blocked');
     expect(view.container.textContent).not.toContain('Compare FAIL');
     expect(view.container.textContent).not.toContain('Checks differ');
 
@@ -351,7 +349,7 @@ describe('ExportSurface workstation redesign', () => {
 
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
     expect(getByTestId('ide-export-package-build-v1').hasAttribute('disabled')).toBe(false);
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Draft');
     expect(getByTestId('ide-export-file-browser')).toBeTruthy();
     fireEvent.click(getByTestId('ide-export-package-build-v1'));
     expect(onOpenVerify).toHaveBeenCalledTimes(1);
@@ -427,10 +425,8 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-package-inspector-v1').getAttribute('data-export-package-state')).toBe('draft');
     expect(getByTestId('ide-export-package-inspector-v1').textContent).toContain('mapping review pending');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Map Pins');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain(
-      'Checks match, but pin mapping still needs attention'
-    );
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Simulated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('A current simulation');
     expect(getByTestId('ide-export-upstream-mapping').textContent).toContain('Ready');
     expect(getByTestId('ide-export-readiness-hero').textContent).not.toContain('Trusted E0 package');
   });
@@ -477,10 +473,8 @@ describe('ExportSurface workstation redesign', () => {
     );
 
     expect(getByTestId('ide-export-package-inspector-v1').textContent).toMatch(/mapping review pending/i);
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Compare needed');
-    expect(getByTestId('ide-export-upstream-verify').textContent).toContain(
-      'Checks match, but pin mapping still needs attention'
-    );
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('Simulated');
+    expect(getByTestId('ide-export-upstream-verify').textContent).toContain('A current simulation');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Map Pins');
     expect(getByTestId('ide-export-upstream-verify').textContent).not.toContain('Compare FAIL');
     fireEvent.click(getByTestId('ide-export-open-technical-evidence'));
@@ -500,7 +494,7 @@ describe('ExportSurface workstation redesign', () => {
     const primaryActions = getByTestId('ide-export-primary-actions');
     const primaryButtons = within(primaryActions).getAllByRole('button');
     expect(primaryButtons).toHaveLength(2);
-    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Verify');
+    expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect(getByTestId('ide-export-package-build-v1').hasAttribute('disabled')).toBe(false);
 

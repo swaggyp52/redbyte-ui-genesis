@@ -86,6 +86,10 @@ export interface ProjectSurfaceProps {
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
+  scenarioCount?: number;
+  activeScenarioName?: string | null;
+  activeScenarioEventCount?: number;
+  activeScenarioCheckCount?: number;
   activeExampleId: string | null;
   onOpenExample: (exampleId: string) => void;
   primaryCtaLabel: string;
@@ -148,6 +152,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   projectKind = 'blank',
   sourceExampleId = null,
   scenarioAuthority = 'none',
+  scenarioCount = 0,
+  activeScenarioName = null,
+  activeScenarioEventCount = 0,
+  activeScenarioCheckCount = 0,
   activeExampleId,
   onOpenExample,
   primaryCtaLabel,
@@ -547,6 +555,10 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               projectKind={projectKind}
               sourceExampleId={sourceExampleId}
               scenarioAuthority={scenarioAuthority}
+              scenarioCount={scenarioCount}
+              activeScenarioName={activeScenarioName}
+              activeScenarioEventCount={activeScenarioEventCount}
+              activeScenarioCheckCount={activeScenarioCheckCount}
               hasVectors={readiness.hasVectors}
               onFocusMacro={onFocusMacro}
               onFocusCustomComponent={onFocusCustomComponent}
@@ -684,6 +696,10 @@ interface LoadedProjectOverviewProps {
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
+  scenarioCount: number;
+  activeScenarioName: string | null;
+  activeScenarioEventCount: number;
+  activeScenarioCheckCount: number;
   hasVectors: boolean;
   onFocusMacro?: (macroId: string, macroName: string) => void;
   onFocusCustomComponent?: (componentName: string) => void;
@@ -760,6 +776,10 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   projectKind,
   sourceExampleId,
   scenarioAuthority,
+  scenarioCount,
+  activeScenarioName,
+  activeScenarioEventCount,
+  activeScenarioCheckCount,
   hasVectors,
   onFocusMacro,
   onFocusCustomComponent,
@@ -896,8 +916,12 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             </div>
             <div data-testid="ide-project-simulation-sources">
               <span>Simulation sources</span>
-              <strong>{simulationSourceLabel}</strong>
-              <small>{simulationSourceDetail}</small>
+              <strong>{activeScenarioName ?? simulationSourceLabel}</strong>
+              <small>
+                {scenarioCount > 0
+                  ? `${scenarioCount} scenario${scenarioCount === 1 ? '' : 's'} · ${activeScenarioEventCount} events · ${activeScenarioCheckCount} ${activeScenarioCheckCount === 1 ? 'check' : 'checks'}`
+                  : simulationSourceDetail}
+              </small>
             </div>
             <div data-testid="ide-project-constraint-set">
               <span>Constraint set</span>
@@ -1054,10 +1078,10 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             </div>
             <p className="ide-project-explorer-heading">Simulation Sources</p>
             <button type="button" onClick={onOpenVerify}>
-              <span aria-hidden="true">◇</span><span><strong>Full Adder truth table</strong><small>{simulationSourceLabel}</small></span>
+              <span aria-hidden="true">◇</span><span><strong>{activeScenarioName ?? 'Scenario workspace'}</strong><small>{activeScenarioEventCount} events · {activeScenarioCheckCount} {activeScenarioCheckCount === 1 ? 'check' : 'checks'}</small></span>
             </button>
             <button type="button" onClick={onOpenVerify}>
-              <span aria-hidden="true">ƒ</span><span><strong>Generated testbench</strong><small>{simulationSourceDetail}</small></span>
+              <span aria-hidden="true">ƒ</span><span><strong>testbench.vhd</strong><small>{hasVectors ? 'Generated from the active scenario' : 'Add events to generate simulation source'}</small></span>
             </button>
             <p className="ide-project-explorer-heading">Constraints</p>
             <button type="button" onClick={onOpenHardware}>

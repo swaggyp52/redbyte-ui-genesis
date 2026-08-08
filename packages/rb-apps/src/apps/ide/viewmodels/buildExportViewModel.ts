@@ -820,9 +820,13 @@ function getExportVectors(
 }
 
 function getProjectCircuitHash(project: RBProject): string {
-  // Runtime Verify hashes the live, unflattened circuit. Export must compare
-  // against that same authority before macro flattening changes its shape.
-  return buildVerifyCircuitEvidenceHash(project.circuit);
+  // Runtime Verify evaluates the elaborated hierarchy. Export must compare
+  // against that same semantic circuit; hashing the parent module shell made
+  // every valid hierarchical run appear stale even when its scenario, mapping,
+  // and circuit were unchanged.
+  return buildVerifyCircuitEvidenceHash(
+    elaborateProjectHierarchy(project.circuit, project.hierarchy)
+  );
 }
 
 function canonicalizeScheduleEvidence(contract: VerifyScheduleContract) {
