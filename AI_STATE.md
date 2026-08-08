@@ -7739,6 +7739,50 @@ This left an unresolved contradiction with the locked product direction (`Import
 
 - **Attribution**: Connor Angiel
 
+## Change Log 2026-08-08 (Milestone A remote blank-authoring gate recovery)
+
+**Current truth**
+
+- The first remote Classroom Truth Gates run for Milestone A reached the
+  authoritative `ide:gate:authoring-depth-release-safety` path and exposed a
+  real blank-canvas regression: Design retained individual placement actions,
+  but the product-manual quick start for a usable input/output boundary was no
+  longer reachable.
+- Design now presents two deliberately prioritized quick starts: **Add
+  input/output pins** creates one logical input and one logical output, while
+  **Build AND starter** creates a small wired example. A separate compact
+  **Place individually** row preserves direct Input, Output, and Gate placement
+  without making those lower-level actions compete with the recommended path.
+- On classroom-height viewports, the post-boundary **Next on canvas** strip now
+  anchors to the top of the live canvas instead of rendering below the browser
+  viewport. Its actions remain interactive while the rest of the guidance does
+  not intercept placed nodes.
+
+**Validation and evidence**
+
+- The focused blank-state component suite passes 5/5 tests; workspace
+  typecheck and the IDE CSS audit pass with no audit warnings or errors.
+- The rebuilt unified distribution passes with 344 transformed modules and a
+  verified artifact.
+- `ide:gate:design-workbench-v1` passes in 40.4 seconds, preserving direct
+  input/output/gate placement and the established canvas hierarchy.
+- `ide:gate:authoring-depth-release-safety` passes end to end in 861 seconds at
+  both required classroom viewports, including blank authoring, reload,
+  starter editing, Simulate, Board & Constraints, Build & Export, and Import.
+- Targeted 1366x768 Browser-E0 captures show the full 228px blank card, all
+  five actions, zero root-axis overflow, and the complete 79.4px post-boundary
+  strip inside the viewport. Evidence remains local under
+  `.redbyte/product-immersion/workbench-v3-milestone-a/`.
+
+**Proof boundary**
+
+- This closes the browser-workflow regression only. It does not claim Vivado
+  synthesis or implementation, bitstream generation, Basys3 programming,
+  physical observation, deployment, production readiness, or university
+  certification.
+
+- **Attribution**: Connor Angiel
+
 ## Change Log 2026-07-26 (Core learning loop Verify readability)
 
 **Subsystem**

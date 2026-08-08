@@ -521,6 +521,29 @@
   gap: 6px;
 }
 
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-placement-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-placement-actions > span {
+  margin-right: 2px;
+  color: #91a3b5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-placement-actions .ide-button {
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 12px;
+  pointer-events: auto;
+}
+
 /* First-use guidance is instructional content, not microcopy. Keep it readable
    and keep its direct authoring actions above the fold. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow,
@@ -576,6 +599,13 @@
   .ide-design-canvas:has(.ide-design-canvas-live[data-placement-active='1'])
   .ide-design-authoring-quickstrip {
   pointer-events: auto !important;
+}
+
+@media (max-height: 820px) {
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
+    top: 12px !important;
+    bottom: auto !important;
+  }
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-view-tools {
@@ -917,6 +947,11 @@
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions .ide-button {
     min-height: 36px;
     padding-inline: 8px;
+  }
+
+  .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-placement-actions .ide-button {
+    min-height: 32px;
+    padding-inline: 7px;
   }
 }
 

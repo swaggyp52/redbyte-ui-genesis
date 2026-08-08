@@ -2064,7 +2064,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       spawnAtCanvasCenter('INPUT', { x: -120, y: -24 });
       spawnAtCanvasCenter('OUTPUT', { x: 120, y: -24 });
     }
-    setActionToast('Added starter IO pins.');
+    setActionToast('Added input and output boundary pins.');
   }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, editorCircuit.nodes, onRuntimeAddIo, spawnAtCanvasCenter]);
 
   const addAndGateStarter = useCallback(() => {
@@ -8068,17 +8068,28 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         <span className="ide-design-empty-eyebrow">Blank circuit</span>
                         <h3>Start a circuit</h3>
                         <div className="ide-design-empty-actions">
-                          <IdeButton tone="secondary" onClick={() => beginNodePlacement('INPUT')} testId="ide-design-empty-add-input">
-                            Add input
+                          <IdeButton tone="primary" onClick={addIoPins} testId="ide-design-empty-add-io">
+                            Add input/output pins
                           </IdeButton>
-                          <IdeButton tone="secondary" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
-                            Add output
-                          </IdeButton>
-                          <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
-                            Place gate
+                          <IdeButton tone="secondary" onClick={addAndGateStarter} testId="ide-design-empty-add-and">
+                            Build AND starter
                           </IdeButton>
                         </div>
-                        <p className="ide-design-empty-summary">The Component Library stays available for every supported gate and register.</p>
+                        <div className="ide-design-empty-placement-actions">
+                          <span>Place individually</span>
+                          <IdeButton tone="ghost" onClick={() => beginNodePlacement('INPUT')} testId="ide-design-empty-add-input">
+                            Input
+                          </IdeButton>
+                          <IdeButton tone="ghost" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
+                            Output
+                          </IdeButton>
+                          <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
+                            Gate
+                          </IdeButton>
+                        </div>
+                        <p className="ide-design-empty-summary">
+                          Start with a usable boundary or a wired example. The Component Library stays available for individual gates, inputs, outputs, and registers.
+                        </p>
                       </div>
                     )}
                     {showPartialBlankAuthoring ? (
