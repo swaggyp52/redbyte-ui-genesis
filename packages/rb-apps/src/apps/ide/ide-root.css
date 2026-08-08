@@ -21921,11 +21921,11 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
 
 /* Inspector section title: quieter */
 [data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.09em !important;
-  color: rgba(100, 150, 195, 0.6) !important;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  color: var(--rb-text-secondary);
 }
 
 /* ── Diagnostics drawer: hidden unless it has actual content ── */
@@ -23656,7 +23656,6 @@ select:focus-visible {
 
 /* ── 9. Section title consistency across all surfaces ──────── */
 .ide-panel-section-title,
-.ide-inspector-title,
 .ide-workbench-placeholder-header h3,
 .ide-workbench-console-header h4 {
   font-size: 9px !important;
@@ -23828,27 +23827,6 @@ button:disabled,
 }
 
 /* Labels: clearly secondary */
-.ide-verify-zoom-label {
-  font-size: 9px !important;
-  opacity: 0.42 !important;
-  letter-spacing: 0.05em !important;
-  text-transform: uppercase !important;
-}
-
-/* Zoom/range buttons: compact */
-.ide-verify-zoom-btn {
-  font-size: 10px !important;
-  padding: 2px 7px !important;
-  min-height: 22px !important;
-  border-radius: 4px !important;
-  opacity: 0.72 !important;
-  transition: opacity 100ms ease, background 100ms ease !important;
-}
-.ide-verify-zoom-btn:hover {
-  opacity: 1 !important;
-  background: rgba(56,189,248,0.1) !important;
-}
-
 /* Cursor controls: left-border separation */
 .ide-verify-cursor-controls {
   border-left: 1px solid rgba(56,189,248,0.08) !important;
@@ -24652,30 +24630,31 @@ button:disabled,
 
 /* ── A4. Waveform controls bar: tighter, cleaner ─────────────── */
 .ide-verify-zoom-label {
-  font-size: 9px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.06em !important;
-  text-transform: uppercase !important;
-  opacity: 0.38 !important;
-  margin-right: 2px !important;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 1;
+  margin-right: 2px;
 }
 .ide-verify-zoom-btn {
-  font-size: 11px !important;
-  min-height: 24px !important;
-  padding: 2px 8px !important;
-  border-radius: 4px !important;
-  background: rgba(30,41,59,0.6) !important;
-  border: 1px solid rgba(56,189,248,0.1) !important;
-  color: rgba(148,163,184,0.8) !important;
+  font-size: 13px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #202a37;
+  border: 1px solid #526173;
+  color: #f2f5f8;
+  opacity: 1;
 }
 .ide-verify-zoom-btn:hover {
-  background: rgba(30,41,59,0.9) !important;
-  color: rgba(186,230,253,0.95) !important;
+  background: #2b3848;
+  color: #ffffff;
 }
 .ide-verify-zoom-btn.is-active {
-  background: rgba(56,189,248,0.12) !important;
-  border-color: rgba(56,189,248,0.35) !important;
-  color: rgba(186,230,253,0.95) !important;
+  background: #2b3848;
+  border-color: #93a4b8;
+  color: #ffffff;
 }
 
 /* ── A4. Scope header: unified instrument band ───────────────── */
@@ -31657,11 +31636,11 @@ button:disabled,
 }
 
 [data-ide-mode-marker='design'] .ide-inspector-title {
-  font-size: 9px !important;
-  letter-spacing: 0.12em !important;
-  font-weight: 800 !important;
-  color: rgba(120, 160, 200, 0.6) !important;
-  text-transform: uppercase !important;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-weight: 750;
+  color: var(--rb-text-secondary);
+  text-transform: none;
 }
 
 /* ── Verify: Signal rail — compact overhaul ──────────────────────────────── */

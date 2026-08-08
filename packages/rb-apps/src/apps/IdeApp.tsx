@@ -32,6 +32,7 @@ import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
 import { IdeButton, IdeModal } from './ide/components/IdePrimitives';
+import { StudioControlStateMatrix } from './ide/components/StudioControlStateMatrix';
 import { ProjectSurface } from './ide/surfaces/ProjectSurface';
 import { deriveProjectOutlineSummary } from './ide/projectOutline';
 import type { DesignCompilerStatus } from './ide/surfaces/DesignSurface';
@@ -2392,6 +2393,14 @@ export const IdeApp: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty: refs provide current values
+
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('manual') === 'control-state-matrix') {
+    return (
+      <div className="ide-root" data-redbyte-mode="ide" data-workbench-theme="studio-light">
+        <StudioControlStateMatrix />
+      </div>
+    );
+  }
 
   return (
     <BoardSignalProvider>

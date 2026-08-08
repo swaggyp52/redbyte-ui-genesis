@@ -5290,12 +5290,6 @@
   max-width: min(210px, 32vw) !important;
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
-  [data-testid='ide-verify-waveform-preview'] {
-  min-height: 0 !important;
-  height: 100% !important;
-}
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']:has(.ide-verify-workbench[data-layout-mode='wide']):has(.ide-verify-region--result .ide-verify-run-proof)
   .ide-verify-panel
@@ -5477,13 +5471,6 @@
   min-height: 24px !important;
   padding: 2px 6px !important;
   border-radius: 8px !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-  .ide-verify-lab-grid[data-verify-workflow-phase='post-run'][data-workspace-mode='split']
-  [data-testid='ide-verify-waveform-preview'] {
-  min-height: clamp(292px, calc(100vh - 438px), 560px) !important;
-  height: clamp(292px, calc(100vh - 438px), 560px) !important;
 }
 
 /* Six-page product spine closeout: action-first gates still require

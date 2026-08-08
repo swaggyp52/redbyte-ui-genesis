@@ -25,7 +25,7 @@
   --rb-text-strong: #101828;
   --rb-text-primary: #152033;
   --rb-text-secondary: #4d5a6b;
-  --rb-text-muted: #6e7a89;
+  --rb-text-muted: #667386;
   --rb-action: #2563eb;
   --rb-accent: #2563eb;
   --rb-action-hover: #1d4ed8;
@@ -278,7 +278,7 @@
 .ide-root .ide-status-item,
 .ide-root .ide-status-support {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -1231,17 +1231,16 @@
 }
 
 .ide-root .ide-project-v3 .ide-project-v3-identity {
-  border: 1px solid var(--rb-border-default);
-  border-top: 3px solid var(--rb-brand-red);
-  background: var(--rb-surface-1);
-  box-shadow: var(--rb-lab-depth-1);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .ide-root .ide-project-v3 .ide-project-v3-next {
   border: 1px solid color-mix(in srgb, var(--rb-action) 42%, var(--rb-border-default));
-  border-top: 3px solid var(--rb-action);
+  border-left: 3px solid var(--rb-action);
   background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface-1));
-  box-shadow: var(--rb-lab-depth-1);
+  box-shadow: none;
 }
 
 .ide-root .ide-project-v3 .ide-project-v3-next-state {
@@ -1271,8 +1270,8 @@
 
 .ide-root .ide-project-v3 .ide-project-v3-workspace {
   border: 1px solid var(--rb-border-default);
-  background: color-mix(in srgb, var(--rb-surface-2) 95%, var(--rb-brand-red));
-  box-shadow: 0 8px 22px rgba(49, 41, 32, 0.06);
+  background: var(--rb-surface-1);
+  box-shadow: 0 6px 18px rgba(21, 32, 51, 0.05);
 }
 
 .ide-root .ide-project-v3 .ide-project-v3-workspace-header {
@@ -1340,37 +1339,29 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16);
 }
 
-/* A loaded Project Center is a focused command surface, not a page-sized tint.
-   These selectors deliberately require the loaded-state header so the blank
-   project start screen keeps its own calmer welcome treatment. */
+/* Loaded Project Center uses the same cool-neutral application plane as every
+   other Studio surface. Decorative haze made project data feel detached. */
 :root[data-redbyte-mode='ide'][data-rb-theme='light']
   .ide-root
   .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
   .ide-workbench-main {
-  background: #eee9e0;
+  background: var(--rb-app-bg);
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light']
   .ide-root
   .ide-workbench-shell[data-ide-mode-marker='project']:has(.ide-project-v3-header)
   .ide-workbench-workspace {
-  background:
-    radial-gradient(circle at 10% 0%, rgba(211, 94, 79, 0.065), transparent 30%),
-    radial-gradient(circle at 90% 0%, rgba(8, 122, 120, 0.055), transparent 32%),
-    #fbf8f1;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  background: var(--rb-app-bg);
+  box-shadow: none;
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-identity {
-  background:
-    linear-gradient(145deg, rgba(211, 94, 79, 0.045), transparent 42%),
-    var(--rb-surface-1);
+  background: transparent;
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='light'] .ide-root .ide-project-v3 .ide-project-v3-next {
-  background:
-    linear-gradient(155deg, rgba(8, 122, 120, 0.09), rgba(8, 122, 120, 0.018) 58%),
-    var(--rb-surface-1);
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface-1));
 }
 
 :root[data-redbyte-mode='ide'][data-rb-theme='dark']
@@ -1430,80 +1421,22 @@
   box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
 }
 
-/* Design is an instrument workspace inside the surrounding light or dark shell.
-   Keep every rail and tool panel on one calm navy family so light-theme tokens
-   cannot leak unreadable dark text onto the circuit canvas. */
+/* Design support panels stay in the application theme. Only the circuit
+   canvas is an instrument surface; this prevents a second navy application
+   from appearing inside Studio Light. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] {
-  --rb-surface: #101923;
-  --rb-surface-1: #101923;
-  --rb-surface-2: #172431;
-  --rb-surface-3: #20313f;
-  --rb-surface-raised: #1b2a38;
-  --rb-surface-overlay: #1b2a38;
-  --rb-success-bg: #173129;
-  --rb-success-border: #326c52;
-  --rb-border-subtle: #26394a;
-  --rb-border-default: #3b5266;
-  --rb-border-strong: #66839a;
-  --rb-text-primary: #eef5fa;
-  --rb-text-secondary: #c2d2df;
-  --rb-text-muted: #91a8bb;
-  --ide-text-strong: #eef5fa;
-  --ide-text-primary: #eef5fa;
-  --ide-text-muted: #c2d2df;
-  --ide-text-secondary: #c2d2df;
-  --ide-text-soft: #91a8bb;
-  --ide-surface-1: #101923;
-  --ide-surface-2: #172431;
-  --ide-surface-3: #20313f;
-  --ide-surface-panel: #101923;
-  --ide-surface-raised: #1b2a38;
-  --ide-border: #3b5266;
-  --ide-border-subtle: #26394a;
-  --ide-border-strong: #66839a;
-  background: #0d151e;
+  background: var(--rb-app-bg);
+  color: var(--rb-text-primary);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-main,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-console,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-bottom-workspace {
-  background: #101923 !important;
-  color: #eef5fa;
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design']
+  :is(.ide-workbench-main, .ide-workbench-dock, .ide-workbench-console, .ide-design-bottom-workspace) {
+  background: var(--rb-surface);
+  color: var(--rb-text-primary);
 }
 
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-right {
-  background: #111b25 !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-title {
-  color: #eef5fa !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-summary {
-  color: #a9bdcc !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-summary,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-summary strong {
-  color: #b9ccd9 !important;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs {
-  background: #111b25;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
-  color: #b9cad7;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button.is-active,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button[aria-selected='true'] {
-  color: #75c8dc;
-}
-
-/* Dock tabs are workspace navigation, so they must all remain reachable at
-   the default 220/280px rail widths instead of sliding under a clipped row. */
+/* Dock tabs are workspace navigation, so they remain reachable and readable
+   at the normal 240/300px support-rail widths. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-workbench-dock-left .ide-design-dock-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1520,36 +1453,44 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
   min-width: 0;
-  padding-inline: 5px;
-  font-size: 12px !important;
+  min-height: 38px;
+  padding-inline: 8px;
+  color: var(--rb-text-secondary);
+  font-size: 13px;
   white-space: nowrap;
+}
+
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button.is-active,
+.ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--rb-action) 9%, var(--rb-surface));
+  color: var(--rb-action-hover);
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
   .ide-design-project-browser .ide-design-subheader h3 {
-  padding-block: 0 !important;
-  color: var(--rb-text-secondary) !important;
-  font-size: 12px !important;
-  letter-spacing: 0.06em !important;
+  padding-block: 0;
+  color: var(--rb-text-primary);
+  font-size: 15px;
+  letter-spacing: 0;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control {
-  border-color: #4c6578;
-  background: #1b2a38;
-  color: #eef5fa;
+  border-color: var(--rb-border-default);
+  background: var(--rb-surface-raised);
+  color: var(--rb-text-primary);
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-input-control.is-on {
-  border-color: #4f9573;
-  background: #173129;
-  color: #e8f6ee;
+  border-color: var(--rb-success);
+  background: color-mix(in srgb, var(--rb-success) 10%, var(--rb-surface));
+  color: #056956;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-problem-list span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout span,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-console-readout p,
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-simulation-readout span {
-  color: #a9bdcc;
+  color: var(--rb-text-secondary);
 }
 
 /* Put collapse affordances on the dock seam instead of over tab labels. */
@@ -1568,27 +1509,6 @@
 
 .ide-root .ide-workbench-dock-collapse--right {
   left: -1px;
-}
-
-/* At normal laptop widths, give canvas utilities a deliberate second row.
-   This keeps Arrange and Customize visible when the inspector is open. */
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='standard']
-  .ide-design-toolbar .ide-toolbar-group.is-utils,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
-  .ide-design-toolbar .ide-toolbar-group.is-utils {
-  flex: 1 0 100% !important;
-  flex-wrap: wrap !important;
-  row-gap: 5px;
-  justify-content: flex-start;
-  margin-left: 0 !important;
-  overflow: visible;
-}
-
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='standard']
-  .ide-design-toolbar .ide-design-toolbar-view-tools,
-.ide-root .ide-workbench-shell[data-ide-mode-marker='design'][data-layout-mode='compact']
-  .ide-design-toolbar .ide-design-toolbar-view-tools {
-  flex-wrap: wrap;
 }
 
 @media (max-width: 1420px) {
