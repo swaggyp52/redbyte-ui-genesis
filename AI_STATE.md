@@ -7879,6 +7879,14 @@ This left an unresolved contradiction with the locked product direction (`Import
   they tried to click example buttons while the labelled example disclosure was
   still closed. The recovery workflow and wizard now open that real student
   control before proving the structural and blocked examples are reachable.
+- Exact remote run `31255768115` passed the complete 93-minute classroom loop,
+  both repaired Import recovery gates, the determinism/parity tail, and every
+  no-solution lab guard. The outer Golden Basys3 export then exposed stale
+  switch/AND and ALU expected ZIP hashes after the branch's cumulative export
+  content changes. The shared ZIP builder already uses a fixed UTC timestamp,
+  normalized newlines, lexical entry order, STORE compression, and DOS platform
+  metadata; both golden hashes are refreshed from the current deterministic
+  artifacts and rechecked under separate New York and UTC Node processes.
 - Board & Constraints keeps the assignment table primary at laptop widths. The
   Basys3 graphic is again a labelled non-interactive reference; the selected
   signal resource selector is the sole assignment authority described by the
@@ -7910,8 +7918,8 @@ This left an unresolved contradiction with the locked product direction (`Import
   reconstruction, Design direct workbench, Design Workbench v1, camera zoom
   integrity, the 491-second stability overhaul, dual tool windows, Library
   cropping, tool-window coexistence, and no-cropped-controls proof. Exact-HEAD
-  remote required-check proof is still pending for the Import gate-alignment
-  follow-up candidate.
+  remote required-check proof is still pending for the golden export follow-up
+  candidate.
 
 **Proof boundary**
 
