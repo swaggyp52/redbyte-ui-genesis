@@ -22,6 +22,7 @@ import './ide/theme/redbyte-primitives.css';
 import './ide/unified-workbench-v3.css';
 import './ide/visual-system-v1.css';
 import './ide/product-system-v3.css';
+import './ide/milestone-b1.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
@@ -85,6 +86,11 @@ import {
   type ProjectIoRow,
   type ProjectTestbenchSnapshot,
 } from './ide/projectRuntime';
+import {
+  TOP_MODULE_ID,
+  elaborateProjectHierarchy,
+} from './ide/projectHierarchy';
+import { generateHierarchicalVhdlProject } from './ide/hierarchicalVhdl';
 import {
   FULL_ADDER_LAB_ID,
   FULL_ADDER_SCRATCH_LAB,
@@ -398,6 +404,7 @@ export const IdeApp: React.FC = () => {
   const scenarios = useProjectRuntime((state) => state.scenarios);
   const activeScenarioId = useProjectRuntime((state) => state.activeScenarioId);
   const circuit = useProjectRuntime((state) => state.circuit);
+  const hierarchy = useProjectRuntime((state) => state.hierarchy);
   const verifyLastRun = useProjectRuntime((state) => state.verifyLastRun);
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
@@ -436,6 +443,13 @@ export const IdeApp: React.FC = () => {
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
   const addDesignBoardIo = useProjectRuntime((state) => state.addDesignBoardIo);
   const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
+  const setActiveModule = useProjectRuntime((state) => state.setActiveModule);
+  const createModuleFromSelection = useProjectRuntime((state) => state.createModuleFromSelection);
+  const placeModuleInstance = useProjectRuntime((state) => state.placeModuleInstance);
+  const updateActiveModuleCircuit = useProjectRuntime((state) => state.updateActiveModuleCircuit);
+  const renameModuleInstance = useProjectRuntime((state) => state.renameModuleInstance);
+  const duplicateModuleDefinition = useProjectRuntime((state) => state.duplicateModuleDefinition);
+  const deleteModuleDefinition = useProjectRuntime((state) => state.deleteModuleDefinition);
   const runRuntimeVerification = useProjectRuntime((state) => state.actions.verify.run);
   const clearRuntimeVerification = useProjectRuntime((state) => state.actions.verify.clear);
   const runRuntimeSim = useProjectRuntime((state) => state.actions.sim.run);
@@ -458,6 +472,17 @@ export const IdeApp: React.FC = () => {
   const saveMacro = useProjectRuntime((state) => state.saveMacro);
   const deleteMacro = useProjectRuntime((state) => state.deleteMacro);
   const instantiateMacro = useProjectRuntime((state) => state.instantiateMacro);
+  const activeDesignCircuit = useMemo(
+    () =>
+      hierarchy.activeModuleId === TOP_MODULE_ID
+        ? circuit
+        : hierarchy.modules.find((module) => module.id === hierarchy.activeModuleId)?.circuit ?? circuit,
+    [circuit, hierarchy],
+  );
+  const simulationCircuit = useMemo(
+    () => elaborateProjectHierarchy(circuit, hierarchy),
+    [circuit, hierarchy],
+  );
   const hasCircuit = circuit.nodes.length > 0;
   const projectOutline = useMemo(
     () =>
@@ -470,12 +495,12 @@ export const IdeApp: React.FC = () => {
     [circuit, macros, customComponents, projectIoRows],
   );
   const hasDff = useMemo(
-    () => deriveHasDff(circuit, verifyLastRun?.schedule),
-    [circuit, verifyLastRun?.schedule]
+    () => deriveHasDff(simulationCircuit, verifyLastRun?.schedule),
+    [simulationCircuit, verifyLastRun?.schedule]
   );
   const verifyMode: VerifyMode = useMemo(
-    () => detectVerifyMode(circuit, verifyLastRun?.schedule),
-    [circuit, verifyLastRun?.schedule]
+    () => detectVerifyMode(simulationCircuit, verifyLastRun?.schedule),
+    [simulationCircuit, verifyLastRun?.schedule]
   );
   const missingRequiredCount = useMemo(
     () => projectIoRows.filter((entry) => entry.required && entry.pin.trim().length === 0).length,
@@ -598,8 +623,8 @@ export const IdeApp: React.FC = () => {
   // DesignSurface mutations now hand the next circuit directly back to runtime,
   // so the shell never re-reads useCircuitStore to decide canonical truth.
   useLayoutEffect(() => {
-    projectRuntimeCircuitToEditorStore(circuit);
-  }, [circuit]);
+    projectRuntimeCircuitToEditorStore(activeDesignCircuit);
+  }, [activeDesignCircuit]);
 
   const applyExample = useCallback(
     (exampleId: string) => {
@@ -891,9 +916,9 @@ export const IdeApp: React.FC = () => {
   }, [applyDebugTickIndex]);
 
   const handleDesignMutation = useCallback((nextCircuit: Circuit) => {
-    applyCircuitMutation(nextCircuit);
+    updateActiveModuleCircuit(nextCircuit);
     setDiagnosticRouteRequest(null);
-  }, [applyCircuitMutation]);
+  }, [updateActiveModuleCircuit]);
 
   const refreshSavedProjects = useCallback(() => {
     const result = projectRepository.list();
@@ -1124,7 +1149,7 @@ export const IdeApp: React.FC = () => {
   );
   const hdlText = useMemo(() => {
     try {
-      const netlist = netlistFromCircuit(circuit);
+      const netlist = netlistFromCircuit(simulationCircuit);
       const ioMappingForExport = {
         inputs: projectIoRows
           .filter((r) => r.direction === 'in')
@@ -1140,8 +1165,27 @@ export const IdeApp: React.FC = () => {
     } catch {
       return '';
     }
-  }, [circuit, effectiveTopEntityName, projectIoRows]);
+  }, [effectiveTopEntityName, projectIoRows, simulationCircuit]);
   const xdcText = useMemo(() => buildConstraintText(projectIoRows), [projectIoRows]);
+  const projectIoMapping = useMemo(
+    () => materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+    [hardwareMappingV2],
+  );
+  const hierarchyHdl = useMemo(
+    () => generateHierarchicalVhdlProject({
+      kind: 'rb-project',
+      version: 1,
+      createdAt: '2026-02-19T00:00:00.000Z',
+      updatedAt: '2026-02-19T00:00:00.000Z',
+      name: projectName,
+      circuit: normalizeProjectCircuit(circuit),
+      hierarchy,
+      ioMapping: projectIoMapping,
+      hdl: { top: effectiveTopEntityName, sources: [] },
+      fpga: { board: fpgaConfig.board, part: fpgaConfig.part, top: effectiveTopEntityName },
+    }),
+    [circuit, effectiveTopEntityName, fpgaConfig.board, fpgaConfig.part, hierarchy, projectIoMapping, projectName],
+  );
 
   const exportProject = useMemo<RBProject>(
     () => ({
@@ -1158,8 +1202,13 @@ export const IdeApp: React.FC = () => {
           {
             path: 'top.vhd',
             language: 'vhdl',
-            text: hdlText,
+            text: hierarchyHdl?.topVhd ?? hdlText,
           },
+          ...(hierarchyHdl?.moduleSources.map((source) => ({
+            path: source.path,
+            language: 'vhdl' as const,
+            text: source.text,
+          })) ?? []),
         ],
       },
       fpga: {
@@ -1171,9 +1220,10 @@ export const IdeApp: React.FC = () => {
           text: xdcText,
         },
       },
-      ioMapping: materializeIoMappingFromHardwareMappingV2(hardwareMappingV2),
+      ioMapping: projectIoMapping,
       hardwareMappingV2,
       vectors: authoritativeProjectVectors,
+      hierarchy,
       customComponents: customComponents.length > 0 ? customComponents : undefined,
       macros: macros.length > 0 ? macros : undefined,
       meta: {
@@ -1190,11 +1240,14 @@ export const IdeApp: React.FC = () => {
       activeGuidedLabTask,
       circuit,
       customComponents,
+      hierarchy,
+      hierarchyHdl,
       hdlText,
       macros,
       projectDescription,
       projectId,
       projectIoRows,
+      projectIoMapping,
       hardwareMappingV2,
       projectKind,
       projectName,
@@ -1794,8 +1847,8 @@ export const IdeApp: React.FC = () => {
     [exportHasRequiredMappingGap, exportRequiredMappingGapCount, readiness]
   );
   const designDiagnostics = useMemo(
-    () => deriveDesignCompilerDiagnostics(exportProject),
-    [exportProject]
+    () => deriveDesignCompilerDiagnostics({ ...exportProject, circuit: simulationCircuit }),
+    [exportProject, simulationCircuit]
   );
   const liveScheduleContract = useMemo(() => {
     if (!exportProject) return undefined;
@@ -1960,22 +2013,22 @@ export const IdeApp: React.FC = () => {
   const currentVerifyProjectHash = useMemo(
     () =>
       buildCurrentVerifyProjectHash({
-        circuit,
+        circuit: simulationCircuit,
         projectVectors: authoritativeProjectVectors,
         customVectors,
         projectIoRows,
       }),
-    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
+    [authoritativeProjectVectors, customVectors, projectIoRows, simulationCircuit]
   );
   const currentVerifyReplayHash = useMemo(
     () =>
       buildCurrentVerifyReplayHash({
-        circuit,
+        circuit: simulationCircuit,
         projectVectors: authoritativeProjectVectors,
         customVectors,
         projectIoRows,
       }),
-    [authoritativeProjectVectors, circuit, customVectors, projectIoRows]
+    [authoritativeProjectVectors, customVectors, projectIoRows, simulationCircuit]
   );
   const workflowAuthority = useMemo(
     () =>
@@ -2464,6 +2517,7 @@ export const IdeApp: React.FC = () => {
               importFidelity={importFidelity}
               outline={projectOutline}
               circuit={circuit}
+              hierarchy={hierarchy}
               onFocusMacro={(macroId, macroName) => {
                 setDesignFocusRequest(
                   createDesignFocusRequest('macro', macroId, macroName)
@@ -2556,10 +2610,10 @@ export const IdeApp: React.FC = () => {
               projectId={projectId}
               projectName={projectName}
               onCircuitMutated={handleDesignMutation}
-              onRuntimeAddNode={addDesignNode}
-              onRuntimeAddIo={addDesignIo}
-              onRuntimeAddBoardIo={addDesignBoardIo}
-              onRuntimeConnect={connectDesignNodes}
+              onRuntimeAddNode={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignNode : undefined}
+              onRuntimeAddIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignIo : undefined}
+              onRuntimeAddBoardIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignBoardIo : undefined}
+              onRuntimeConnect={hierarchy.activeModuleId === TOP_MODULE_ID ? connectDesignNodes : undefined}
               onRuntimeUndo={undoProjectEdit}
               onRuntimeRedo={redoProjectEdit}
               runtimeUndoDepth={designUndoDepth}
@@ -2588,6 +2642,13 @@ export const IdeApp: React.FC = () => {
               designFocusRequest={designFocusRequest}
               onClearDesignFocus={() => setDesignFocusRequest(null)}
               topEntityName={effectiveTopEntityName}
+              hierarchy={hierarchy}
+              onOpenModule={setActiveModule}
+              onCreateModuleFromSelection={createModuleFromSelection}
+              onPlaceModuleInstance={placeModuleInstance}
+              onRenameModuleInstance={renameModuleInstance}
+              onDuplicateModuleDefinition={duplicateModuleDefinition}
+              onDeleteModuleDefinition={deleteModuleDefinition}
               hdlSources={projectHdlSources}
               onSaveAsComponent={addCustomComponent}
               customComponentTypes={customComponents.map((c) => ({ type: c.name, title: c.name, description: c.description ?? '' }))}
@@ -2627,7 +2688,7 @@ export const IdeApp: React.FC = () => {
               fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
             <VerifySurface
-              circuitGraph={circuit}
+              circuitGraph={simulationCircuit}
               deterministicHash={currentVerifyReplayHash}
               projectName={projectName}
               board={fpgaConfig?.board ?? 'Basys3'}

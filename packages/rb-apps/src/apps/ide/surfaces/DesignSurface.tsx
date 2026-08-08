@@ -137,6 +137,16 @@ import {
   type IdeCommandId,
 } from '../ideCommandRegistry';
 import { workspacePreferencesStore } from '../workspacePreferences';
+import {
+  TOP_MODULE_ID,
+  analyzeModuleSelection,
+  moduleUsageCount,
+  readInstanceName,
+  type CreateModuleInput,
+  type CreateModuleResult,
+  type ModuleSelectionAnalysis,
+  type ProjectHierarchyDocument,
+} from '../projectHierarchy';
 import './design-workbench-v3.css';
 
 export const CHROME_CONTRACT = {
@@ -261,6 +271,17 @@ export interface DesignSurfaceProps {
   hdlSources?: readonly HdlSource[];
   onApplyHdl?: (hdl: string) => void;
   topEntityName?: string;
+  hierarchy?: ProjectHierarchyDocument;
+  onOpenModule?: (moduleId: string) => void;
+  onCreateModuleFromSelection?: (input: CreateModuleInput) => CreateModuleResult | null;
+  onPlaceModuleInstance?: (
+    moduleId: string,
+    position: { x: number; y: number },
+    instanceName?: string,
+  ) => Node | null;
+  onRenameModuleInstance?: (nodeId: string, instanceName: string) => void;
+  onDuplicateModuleDefinition?: (moduleId: string) => string | null;
+  onDeleteModuleDefinition?: (moduleId: string) => boolean;
   onSaveAsComponent?: (def: CompositeNodeDef) => void;
   customComponentTypes?: Array<{ type: string; title: string; description: string }>;
   /**
@@ -856,6 +877,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   hdlSources = [],
   onApplyHdl,
   topEntityName,
+  hierarchy,
+  onOpenModule,
+  onCreateModuleFromSelection,
+  onPlaceModuleInstance,
+  onRenameModuleInstance,
+  onDuplicateModuleDefinition,
+  onDeleteModuleDefinition,
   onSaveAsComponent,
   customComponentTypes,
   customComponentDefs,
@@ -989,6 +1017,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const setDesignView = useCallback((view: 'canvas' | 'hdl' | 'split') => {
     workspacePreferencesStore.setDesignView(view === 'hdl' ? 'code' : view);
   }, []);
+  const canvasAppearance = workspacePreferences.design.canvasAppearance;
+  const canvasDensity = workspacePreferences.design.canvasDensity;
   const toolbarCommandIds = workspacePreferences.design.toolbarCommandIds;
   const toolbarCommandSet = useMemo(() => new Set(toolbarCommandIds), [toolbarCommandIds]);
   const toolbarVisible = useCallback(
@@ -1042,6 +1072,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [saveComponentOpen, setSaveComponentOpen] = useState(false);
   const [saveComponentName, setSaveComponentName] = useState('');
   const [savedComponentToast, setSavedComponentToast] = useState<string | null>(null);
+  const [moduleDialog, setModuleDialog] = useState<{
+    analysis: ModuleSelectionAnalysis;
+    moduleName: string;
+    instanceName: string;
+    portNames: Record<string, string>;
+    error: string | null;
+  } | null>(null);
   const savedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current); }, []);
 
@@ -1057,6 +1094,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState('');
+  const [editingModuleInstanceId, setEditingModuleInstanceId] = useState<string | null>(null);
+  const [moduleInstanceNameDraft, setModuleInstanceNameDraft] = useState('');
 
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
@@ -1373,11 +1412,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal,
   ]);
   const getChipMetadata = useCallback((nodeType: string, node?: Node): ChipMetadata | undefined => {
+    const moduleDefinitionId = node && typeof node.config?.moduleDefinitionId === 'string'
+      ? node.config.moduleDefinitionId
+      : null;
+    const nativeModule = hierarchy?.modules.find(
+      (module) => module.id === moduleDefinitionId || module.name === nodeType,
+    );
+    if (nativeModule) {
+      return {
+        name: nativeModule.displayName,
+        inputs: nativeModule.ports
+          .filter((port) => port.direction === 'input')
+          .map((port) => ({ id: port.name, name: port.name })),
+        outputs: nativeModule.ports
+          .filter((port) => port.direction === 'output')
+          .map((port) => ({ id: port.name, name: port.name })),
+        color: '#5b68d8',
+        layer: 1,
+      };
+    }
     if (node) {
       return getDesignChipMetadataForNode(node) ?? getDesignChipMetadata(nodeType);
     }
     return getDesignChipMetadata(nodeType);
-  }, []);
+  }, [hierarchy]);
 
   const { setActiveBoardSignal } = useBoardSignal();
   const activeInsertionMacro = useMemo(
@@ -2797,6 +2855,50 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
   }, [saveComponentName, onSaveAsComponent, buildCompositeDefFromSelection]);
 
+  const openModuleDialog = useCallback(() => {
+    const analysis = analyzeModuleSelection(
+      editorCircuit,
+      selectedNodeIdsAll,
+      hierarchy?.modules.map((module) => module.name) ?? [],
+    );
+    const nextNumber = (hierarchy?.modules.length ?? 0) + 1;
+    const moduleName = `LogicBlock${nextNumber}`;
+    setModuleDialog({
+      analysis,
+      moduleName,
+      instanceName: `u_logic_block_${nextNumber}`,
+      portNames: Object.fromEntries(
+        [...analysis.inputs, ...analysis.outputs].map((port) => [port.id, port.suggestedName]),
+      ),
+      error: analysis.errors[0] ?? null,
+    });
+  }, [editorCircuit, hierarchy?.modules, selectedNodeIdsAll]);
+
+  const confirmCreateModule = useCallback(() => {
+    if (!moduleDialog || !onCreateModuleFromSelection || !moduleDialog.analysis.ok) return;
+    try {
+      const created = onCreateModuleFromSelection({
+        moduleName: moduleDialog.moduleName,
+        instanceName: moduleDialog.instanceName,
+        selectedNodeIds: moduleDialog.analysis.selectedNodeIds,
+        portNames: moduleDialog.portNames,
+      });
+      if (!created) {
+        setModuleDialog((current) => current ? { ...current, error: 'The module could not be created.' } : current);
+        return;
+      }
+      setModuleDialog(null);
+      clearSelection();
+      setSavedComponentToast(created.definition.displayName);
+      setActionToast(`Created ${created.definition.displayName} and replaced the selection with ${readInstanceName(created.instance)}.`);
+      if (savedToastTimerRef.current) clearTimeout(savedToastTimerRef.current);
+      savedToastTimerRef.current = setTimeout(() => setSavedComponentToast(null), 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'The module could not be created.';
+      setModuleDialog((current) => current ? { ...current, error: message } : current);
+    }
+  }, [clearSelection, moduleDialog, onCreateModuleFromSelection]);
+
   const openMacroDialog = useCallback(() => {
     const selectedIds = new Set(selectedNodeIdsAll);
     setMacroDialogState({
@@ -3693,6 +3795,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => flattenDesignHierarchy(designHierarchy.root),
     [designHierarchy]
   );
+  const activeNativeModule = useMemo(
+    () => hierarchy?.modules.find((module) => module.id === hierarchy.activeModuleId) ?? null,
+    [hierarchy],
+  );
+  const isEditingTopModule = !hierarchy || hierarchy.activeModuleId === TOP_MODULE_ID;
   const designSources = useMemo(
     () =>
       deriveDesignSources({
@@ -3743,6 +3850,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => selectedNode ? componentDefinitionRegistry.getByRuntimeType(selectedNode.type) : undefined,
     [componentDefinitionRegistry, selectedNode]
   );
+  const selectedNativeModule = useMemo(() => {
+    if (!selectedNode || !hierarchy) return null;
+    const moduleId = typeof selectedNode.config?.moduleDefinitionId === 'string'
+      ? selectedNode.config.moduleDefinitionId
+      : null;
+    return hierarchy.modules.find((module) => module.id === moduleId || module.name === selectedNode.type) ?? null;
+  }, [hierarchy, selectedNode]);
   const selectedBoardConflict = useMemo(() => {
     if (!selectedNodeIoRow || !selectedBoardResource) return null;
     return (
@@ -5126,6 +5240,57 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               ) : null;
             })()}
           </div>
+          {selectedNativeModule ? (
+            <div className="ide-design-inspector-action-group" data-testid="ide-design-module-instance-actions">
+              <span className="ide-design-inspector-group-label">Module instance</span>
+              <div className="ide-design-inspector-action-grid">
+                <IdeButton
+                  tone="primary"
+                  onClick={() => onOpenModule?.(selectedNativeModule.id)}
+                  testId="ide-design-open-module-definition"
+                >
+                  Open definition
+                </IdeButton>
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => {
+                    setEditingModuleInstanceId(selectedNode.id);
+                    setModuleInstanceNameDraft(readInstanceName(selectedNode));
+                  }}
+                  testId="ide-design-rename-module-instance"
+                >
+                  Rename instance
+                </IdeButton>
+              </div>
+              {editingModuleInstanceId === selectedNode.id ? (
+                <div className="ide-design-inline-instance-rename">
+                  <input
+                    value={moduleInstanceNameDraft}
+                    onChange={(event) => setModuleInstanceNameDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && moduleInstanceNameDraft.trim()) {
+                        onRenameModuleInstance?.(selectedNode.id, moduleInstanceNameDraft.trim());
+                        setEditingModuleInstanceId(null);
+                      }
+                      if (event.key === 'Escape') setEditingModuleInstanceId(null);
+                    }}
+                    aria-label="Instance name"
+                    data-testid="ide-design-module-instance-name-input"
+                    autoFocus
+                  />
+                  <IdeButton tone="primary" disabled={!moduleInstanceNameDraft.trim()} onClick={() => {
+                    if (!moduleInstanceNameDraft.trim()) return;
+                    onRenameModuleInstance?.(selectedNode.id, moduleInstanceNameDraft.trim());
+                    setEditingModuleInstanceId(null);
+                  }} testId="ide-design-module-instance-name-save">Save name</IdeButton>
+                  <IdeButton tone="ghost" onClick={() => setEditingModuleInstanceId(null)}>Cancel</IdeButton>
+                </div>
+              ) : null}
+              <p className="ide-copy">
+                {selectedNativeModule.displayName} · {selectedNativeModule.ports.length} ports · editable visual source
+              </p>
+            </div>
+          ) : null}
           <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-group">
             <span className="ide-design-inspector-group-label">Net tracing</span>
             <div className="ide-design-inspector-action-grid">
@@ -5255,11 +5420,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
-          {onSaveAsComponent && selectedNodeIdsAll.length >= 2 ? (
+          {(onCreateModuleFromSelection || onSaveAsComponent) && selectedNodeIdsAll.length >= 2 ? (
             <div className="ide-design-inspector-action-group">
-              <span className="ide-design-inspector-group-label">Reusable block</span>
+              <span className="ide-design-inspector-group-label">Hierarchy</span>
               <div className="ide-design-inspector-action-grid">
-                {saveComponentOpen ? (
+                {onCreateModuleFromSelection ? (
+                  <IdeButton tone="primary" onClick={openModuleDialog} testId="ide-design-create-module-open">
+                    Create component from selection…
+                  </IdeButton>
+                ) : saveComponentOpen ? (
                   <>
                     <input
                       className="ide-text-input"
@@ -5285,7 +5454,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
               {savedComponentToast ? (
                 <IdeCallout tone="success" testId="ide-design-save-component-toast">
-                  Saved "{savedComponentToast}" and added it to the Custom palette.
+                  Created "{savedComponentToast}" as an editable project component.
                 </IdeCallout>
               ) : null}
             </div>
@@ -5851,6 +6020,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     );
   };
   const renderInlineBoardAssignment = () => {
+    if (!isEditingTopModule) {
+      return (
+        <IdeEmptyState
+          title="Board mapping belongs to the top module"
+          body="Component definitions expose logical ports. Return to the top module to bind those project signals to Basys3 resources."
+          primaryAction={<IdeButton tone="secondary" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>Return to top</IdeButton>}
+          testId="ide-design-module-board-boundary"
+        />
+      );
+    }
     if (!selectedNodeIoRow) {
       return (
         <IdeEmptyState
@@ -6060,7 +6239,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         dock={
         <div className="ide-design-dock-stack" data-testid="ide-design-left-dock-workspace">
           <div className="ide-design-dock-tabs" role="tablist" aria-label="Design tools">
-            {(['components', 'hierarchy', 'sources', 'board'] as const).map((tab) => (
+            {(['components', 'hierarchy', 'sources', 'board'] as const)
+              .filter((tab) => isEditingTopModule || tab !== 'board')
+              .map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -6322,24 +6503,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </span>
                       </div>
                       <div className="ide-palette-card-list">
-                        {filteredCustomComponents.map((item) =>
-                          renderNodePaletteCard(
-                            {
-                              type: item.type,
-                              title: item.title,
-                              subtitle: item.description || 'Custom reusable block.',
-                              glyph: 'C',
-                            },
-                            {
-                              badge: 'Custom',
-                              className: 'ide-palette-card--custom',
-                              title: item.description || item.title,
-                              testId: `ide-design-palette-custom-${item.type
-                                .toLowerCase()
-                                .replace(/[^a-z0-9]/g, '-')}`,
-                            }
-                          )
-                        )}
+                        {filteredCustomComponents.map((item) => {
+                          const definition = hierarchy?.modules.find((module) => module.name === item.type);
+                          return (
+                            <article key={item.type} className="ide-palette-card ide-palette-card--custom ide-native-component-card" data-testid={`ide-design-palette-custom-${item.type.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}>
+                              <span className="ide-design-component-tile-glyph" aria-hidden="true">M</span>
+                              <span className="ide-palette-card-body">
+                                <span className="ide-palette-card-title-row"><strong>{item.title}</strong><span className="ide-palette-card-badge">Project</span></span>
+                                <span className="ide-palette-card-subtitle">{definition ? `${definition.ports.length} ports · editable visual source` : item.description || 'Custom reusable block.'}</span>
+                                <span className="ide-native-component-card-actions">
+                                  {definition && isEditingTopModule && onPlaceModuleInstance ? (
+                                    <button type="button" onClick={() => {
+                                      const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
+                                      onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
+                                    }}>Place instance</button>
+                                  ) : null}
+                                  {definition && onOpenModule ? <button type="button" onClick={() => onOpenModule(definition.id)}>Open definition</button> : null}
+                                </span>
+                              </span>
+                            </article>
+                          );
+                        })}
                       </div>
                     </div>
                   ) : null}
@@ -6373,30 +6557,63 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           ) : activeLeftDockTab === 'hierarchy' ? (
             <SurfacePanel className="ide-design-project-browser" testId="ide-design-hierarchy">
               <header className="ide-design-subheader">
-                <div><h3>Module Hierarchy</h3><p>{projectName ? `${projectName} · ` : ''}Actual instances in the current visual design.</p></div>
+                <div><h3>Project Hierarchy</h3><p>{projectName ? `${projectName} · ` : ''}Open, reuse, and manage visual module sources.</p></div>
               </header>
-              <div className="ide-design-tree" role="tree" aria-label="Module hierarchy">
-                {designHierarchyRows.map((node) => (
+              {hierarchy ? (
+                <div className="ide-native-module-browser" data-testid="ide-design-native-module-browser">
                   <button
-                    key={node.hierarchyId}
                     type="button"
-                    role="treeitem"
-                    aria-level={node.depth + 1}
-                    aria-selected={node.selected}
-                    className={node.selected ? 'is-selected' : ''}
-                    style={{ '--rb-tree-depth': node.depth } as React.CSSProperties}
-                    onClick={() => handleHierarchyOpen(node.nodeId, node.depth, node.openTarget.componentType)}
-                    data-testid={`ide-design-hierarchy-row-${node.hierarchyId}`}
+                    className={isEditingTopModule ? 'is-active' : ''}
+                    onClick={() => onOpenModule?.(TOP_MODULE_ID)}
+                    data-testid="ide-design-open-top-module"
                   >
-                    <span className="ide-design-tree-glyph" aria-hidden="true">{node.depth === 0 ? '◇' : node.children.length > 0 ? '▣' : '◆'}</span>
-                    <span><strong>{node.label}</strong><small>{node.depth === 0 ? 'Top module' : node.runtimeType}</small></span>
-                    {node.truncation ? <em>{node.truncation.reason === 'cycle' ? 'Cycle guarded' : 'Depth limit'}</em> : null}
+                    <span aria-hidden="true">◇</span>
+                    <span><strong>{topEntityName || 'top'}</strong><small>Top module · board I/O owner</small></span>
                   </button>
-                ))}
-              </div>
-              {designHierarchy.cycleCount || designHierarchy.depthLimitCount ? (
-                <p className="ide-copy">{designHierarchy.cycleCount} cycles guarded · {designHierarchy.depthLimitCount} depth limits</p>
-              ) : null}
+                  {hierarchy.modules.map((module) => {
+                    const usageCount = moduleUsageCount(
+                      hierarchy.activeModuleId === TOP_MODULE_ID ? editorCircuit : { nodes: [], connections: [] },
+                      module.id,
+                    );
+                    return (
+                      <article key={module.id} className={hierarchy.activeModuleId === module.id ? 'is-active' : ''}>
+                        <button type="button" onClick={() => onOpenModule?.(module.id)} data-testid={`ide-design-open-module-${module.id}`}>
+                          <span aria-hidden="true">▣</span>
+                          <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · {usageCount} instance{usageCount === 1 ? '' : 's'}</small></span>
+                        </button>
+                        <div className="ide-native-module-actions">
+                          {isEditingTopModule && onPlaceModuleInstance ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const center = {
+                                  x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+                                  y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+                                };
+                                onPlaceModuleInstance(module.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
+                              }}
+                            >Use</button>
+                          ) : null}
+                          {onDuplicateModuleDefinition ? <button type="button" onClick={() => onDuplicateModuleDefinition(module.id)}>Duplicate</button> : null}
+                          {onDeleteModuleDefinition ? <button type="button" disabled={usageCount > 0} onClick={() => onDeleteModuleDefinition(module.id)}>Delete</button> : null}
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {hierarchy.modules.length === 0 ? (
+                    <IdeEmptyState title="No custom components yet" body="Select connected logic on the top canvas, then choose Create component from selection." primaryAction={null} />
+                  ) : null}
+                </div>
+              ) : (
+                <div className="ide-design-tree" role="tree" aria-label="Module hierarchy">
+                  {designHierarchyRows.map((node) => (
+                    <button key={node.hierarchyId} type="button" role="treeitem" aria-level={node.depth + 1} aria-selected={node.selected} className={node.selected ? 'is-selected' : ''} style={{ '--rb-tree-depth': node.depth } as React.CSSProperties} onClick={() => handleHierarchyOpen(node.nodeId, node.depth, node.openTarget.componentType)}>
+                      <span className="ide-design-tree-glyph" aria-hidden="true">{node.depth === 0 ? '◇' : node.children.length > 0 ? '▣' : '◆'}</span>
+                      <span><strong>{node.label}</strong><small>{node.depth === 0 ? 'Top module' : node.runtimeType}</small></span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </SurfacePanel>
           ) : activeLeftDockTab === 'sources' ? (
             <SurfacePanel className="ide-design-project-browser" testId="ide-design-sources">
@@ -6702,7 +6919,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         </>
       }
     >
-        <DesignWorkspaceFrame view={effectiveDesignView}>
+        <DesignWorkspaceFrame view={effectiveDesignView} canvasAppearance={canvasAppearance} canvasDensity={canvasDensity}>
           <div className="ide-surface-command-stack">
 
             {/* ── Compact primary toolbar ── */}
@@ -6760,13 +6977,27 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : (
                 <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
-                  <span className="ide-design-workspace-label">Design</span>
+                  <nav className="ide-design-module-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
+                    <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
+                      {topEntityName || 'top'}
+                    </button>
+                    {activeNativeModule ? (
+                      <>
+                        <span aria-hidden="true">/</span>
+                        <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
+                          {activeNativeModule.displayName}
+                        </button>
+                      </>
+                    ) : null}
+                  </nav>
                   <div className="ide-design-workspace-heading-main">
                     <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
-                      {isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
+                      {activeNativeModule ? `Editing ${activeNativeModule.displayName}` : isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
                     </span>
                     <p className="ide-design-workspace-summary">
-                      Build the circuit graph here, then use Simulate to check its behavior.
+                      {activeNativeModule
+                        ? 'Edit this reusable component source. Board assignments remain owned by the top module.'
+                        : 'Build the circuit graph here, then use Simulate to check its behavior.'}
                     </p>
                     <div
                       className={`ide-design-authoring-summary ${authoringStatusToneClass}`}
@@ -7020,6 +7251,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </button>
                   ))}
                 </div>
+                {workspacePreset.showCanvasTools ? (
+                  <div className="ide-design-canvas-preferences" data-testid="ide-design-canvas-preferences">
+                    <label>
+                      <span>Canvas</span>
+                      <select value={canvasAppearance} onChange={(event) => workspacePreferencesStore.setDesignCanvasAppearance(event.target.value as 'dark' | 'light' | 'system')} aria-label="Canvas appearance">
+                        <option value="dark">Dark graph paper</option>
+                        <option value="light">Light graph paper</option>
+                        <option value="system">Follow application theme</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>Density</span>
+                      <select value={canvasDensity} onChange={(event) => workspacePreferencesStore.setDesignCanvasDensity(event.target.value as 'comfortable' | 'compact')} aria-label="Canvas density">
+                        <option value="comfortable">Comfortable</option>
+                        <option value="compact">Compact</option>
+                      </select>
+                    </label>
+                  </div>
+                ) : null}
                 {workspacePreset.showCanvasTools ? (
                   <div
                     className={`ide-design-toolbar-view-tools${showSplitCanvasContext ? ' is-split' : ''}`}
@@ -8014,7 +8264,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       }}
                       onNodeDoubleClick={(nodeId) => {
                         const node = editorCircuit.nodes.find((n) => n.id === nodeId);
-                        if (node) beginNodeLabelEdit(node);
+                        if (!node) return;
+                        const moduleDefinitionId = typeof node.config?.moduleDefinitionId === 'string'
+                          ? node.config.moduleDefinitionId
+                          : null;
+                        const nativeModule = hierarchy?.modules.find(
+                          (module) => module.id === moduleDefinitionId || module.name === node.type,
+                        );
+                        if (nativeModule && onOpenModule) {
+                          onOpenModule(nativeModule.id);
+                          return;
+                        }
+                        beginNodeLabelEdit(node);
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       changedNodeIds={changedNodeIds}
@@ -8420,6 +8681,63 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         onClose={() => setMacroDialogState(null)}
         onSave={handleSaveMacro}
       />
+      {moduleDialog ? (
+        <IdeModal
+          title="Create project component"
+          testId="ide-design-create-module-dialog"
+          onClose={() => setModuleDialog(null)}
+          body={
+            <div className="ide-module-create-dialog">
+              <p className="ide-copy">
+                The selected {moduleDialog.analysis.selectedComponentCount} components will become one editable definition and one reusable instance.
+              </p>
+              <div className="ide-module-create-fields">
+                <label>
+                  <span>Module name</span>
+                  <input value={moduleDialog.moduleName} onChange={(event) => setModuleDialog((current) => current ? { ...current, moduleName: event.target.value, error: null } : current)} data-testid="ide-design-create-module-name" />
+                </label>
+                <label>
+                  <span>Instance name</span>
+                  <input value={moduleDialog.instanceName} onChange={(event) => setModuleDialog((current) => current ? { ...current, instanceName: event.target.value, error: null } : current)} data-testid="ide-design-create-instance-name" />
+                </label>
+              </div>
+              <section className="ide-module-port-editor" aria-label="Module ports">
+                <header><strong>Inferred ports</strong><span>{moduleDialog.analysis.inputs.length} in · {moduleDialog.analysis.outputs.length} out</span></header>
+                {[...moduleDialog.analysis.inputs, ...moduleDialog.analysis.outputs].map((port) => (
+                  <label key={port.id}>
+                    <span className={`is-${port.direction}`}>{port.direction === 'input' ? 'IN' : 'OUT'}</span>
+                    <input
+                      value={moduleDialog.portNames[port.id] ?? ''}
+                      onChange={(event) => setModuleDialog((current) => current ? {
+                        ...current,
+                        portNames: { ...current.portNames, [port.id]: event.target.value },
+                        error: null,
+                      } : current)}
+                      data-testid={`ide-design-create-port-${port.id}`}
+                    />
+                    <code>{port.internalRefs.map((ref) => `${ref.nodeId}.${ref.portName}`).join(', ')}</code>
+                  </label>
+                ))}
+              </section>
+              {moduleDialog.analysis.warnings.map((warning) => <IdeCallout key={warning} tone="warn">{warning}</IdeCallout>)}
+              {moduleDialog.error ? <IdeCallout tone="error" testId="ide-design-create-module-error">{moduleDialog.error}</IdeCallout> : null}
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setModuleDialog(null)}>Cancel</IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={confirmCreateModule}
+                disabled={!moduleDialog.analysis.ok || !moduleDialog.moduleName.trim() || !moduleDialog.instanceName.trim()}
+                testId="ide-design-create-module-confirm"
+              >
+                Create and replace selection
+              </IdeButton>
+            </>
+          }
+        />
+      ) : null}
       {diagnosticsDialogOpen ? (
         <IdeModal
           title="Design diagnostics"

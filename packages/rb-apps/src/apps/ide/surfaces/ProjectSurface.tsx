@@ -26,6 +26,7 @@ import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { Circuit } from '@redbyte/rb-logic-core';
+import type { ProjectHierarchyDocument } from '../projectHierarchy';
 import {
   deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
@@ -124,6 +125,7 @@ export interface ProjectSurfaceProps {
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
   outline?: ProjectOutlineSummary | null;
   circuit?: Circuit;
+  hierarchy?: ProjectHierarchyDocument;
   onFocusMacro?: (macroId: string, macroName: string) => void;
   onFocusCustomComponent?: (componentName: string) => void;
   ioSignalRolesByLabel?: Record<string, IoSignalRole>;
@@ -174,6 +176,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onFpgaConfigChange,
   outline = null,
   circuit,
+  hierarchy,
   onFocusMacro,
   onFocusCustomComponent,
 }) => {
@@ -515,6 +518,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               onFpgaConfigChange={onFpgaConfigChange}
               outline={outline}
               circuit={circuit}
+              hierarchy={hierarchy}
               inputRows={inputRows}
               outputRows={outputRows}
               onOpenDesign={onOpenDesign}
@@ -651,6 +655,7 @@ interface LoadedProjectOverviewProps {
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
   outline: ProjectOutlineSummary | null;
   circuit?: Circuit;
+  hierarchy?: ProjectHierarchyDocument;
   inputRows: ProjectMappingRow[];
   outputRows: ProjectMappingRow[];
   onOpenDesign: () => void;
@@ -726,6 +731,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   onFpgaConfigChange,
   outline,
   circuit,
+  hierarchy,
   inputRows,
   outputRows,
   onOpenDesign,
@@ -1007,10 +1013,10 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
       >
         <header className="ide-project-v3-workspace-header">
           <div>
-            <p className="ide-surface-block-label">Five-stage workflow</p>
-            <h2>Your project at a glance</h2>
+            <p className="ide-surface-block-label">Project workspace</p>
+            <h2>Sources, structure, and next actions</h2>
           </div>
-          <p>Continue the recommended step above, or open the stage that needs attention.</p>
+          <p>Inspect what belongs to the project, understand its interface, and continue where work remains.</p>
           <div
             className={`ide-project-evidence-tier is-${behavioralEvidenceTier}`}
             data-testid="ide-project-simulation-evidence-tier"
@@ -1026,6 +1032,41 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             </small>
           </div>
         </header>
+
+        <div className="ide-project-workbench-grid" data-testid="ide-project-workbench-grid">
+          <aside className="ide-project-explorer" data-testid="ide-project-explorer">
+            <header><span>PROJECT EXPLORER</span><strong>{projectName}</strong></header>
+            <button type="button" className="is-active" onClick={onOpenDesign}>
+              <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module</small></span>
+            </button>
+            {(hierarchy?.modules ?? []).map((module) => (
+              <button key={module.id} type="button" onClick={() => onFocusCustomComponent?.(module.name)}>
+                <span aria-hidden="true">▣</span>
+                <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · visual source</small></span>
+              </button>
+            ))}
+            <div className="ide-project-explorer-group">
+              <span>Simulation</span><small>{simulationSourceLabel}</small>
+            </div>
+            <div className="ide-project-explorer-group">
+              <span>Constraints</span><small>{fpgaConfig?.board ?? 'Basys3'} · {mappedRequiredRows.length}/{requiredRows.length} mapped</small>
+            </div>
+          </aside>
+
+          <main className="ide-project-design-overview" data-testid="ide-project-design-overview">
+            <header>
+              <div><span>DESIGN OVERVIEW</span><h3>{resolvedTopModule}</h3></div>
+              <IdeButton tone="secondary" onClick={onOpenDesign} testId="ide-project-overview-open-design-primary">Open in Design</IdeButton>
+            </header>
+            <p>{projectSummary}</p>
+            {circuit && circuit.nodes.length > 0 ? <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} /> : null}
+            <div className="ide-project-interface-strip">
+              <div><span>Inputs</span><strong>{inputRows.length}</strong><small>{inputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
+              <div><span>Outputs</span><strong>{outputRows.length}</strong><small>{outputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
+              <div><span>Components</span><strong>{designNodeCount}</strong><small>{designConnectionCount} wires</small></div>
+              <div><span>Custom modules</span><strong>{hierarchy?.modules.length ?? 0}</strong><small>{(hierarchy?.modules ?? []).map((module) => module.displayName).join(', ') || 'None yet'}</small></div>
+            </div>
+          </main>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <span className="ide-project-v3-readiness-anchor" data-testid="ide-project-readiness-workspace">
@@ -1125,6 +1166,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             testId="ide-project-summary-export"
             actionTestId="ide-project-open-export"
           />
+        </div>
         </div>
       </section>
 

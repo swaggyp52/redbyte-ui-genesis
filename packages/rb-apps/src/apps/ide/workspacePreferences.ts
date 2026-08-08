@@ -28,6 +28,8 @@ export const WORKSPACE_PRESET_IDS = ['authoring', 'simulation', 'board', 'code']
 export type WorkspacePresetId = (typeof WORKSPACE_PRESET_IDS)[number];
 
 export type DesignWorkspaceView = 'canvas' | 'code' | 'split';
+export type DesignCanvasAppearance = 'dark' | 'light' | 'system';
+export type DesignCanvasDensity = 'comfortable' | 'compact';
 
 export interface WorkspaceDockPreferences {
   readonly visible: boolean;
@@ -41,6 +43,8 @@ export interface WorkspaceSurfacePreferences {
 export interface DesignWorkspacePreferences {
   readonly view: DesignWorkspaceView;
   readonly toolbarCommandIds: readonly IdeCommandId[];
+  readonly canvasAppearance: DesignCanvasAppearance;
+  readonly canvasDensity: DesignCanvasDensity;
 }
 
 export interface WorkspacePreferencesV1 {
@@ -156,6 +160,8 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
   design: {
     view: 'canvas',
     toolbarCommandIds: [...DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS],
+    canvasAppearance: 'dark',
+    canvasDensity: 'comfortable',
   },
 });
 
@@ -195,6 +201,12 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
     design: {
       view: isDesignWorkspaceView(rawDesign.view) ? rawDesign.view : defaults.design.view,
       toolbarCommandIds: normalizeToolbarCommandIds(rawDesign.toolbarCommandIds),
+      canvasAppearance: isDesignCanvasAppearance(rawDesign.canvasAppearance)
+        ? rawDesign.canvasAppearance
+        : defaults.design.canvasAppearance,
+      canvasDensity: isDesignCanvasDensity(rawDesign.canvasDensity)
+        ? rawDesign.canvasDensity
+        : defaults.design.canvasDensity,
     },
   });
 }
@@ -300,6 +312,20 @@ export class WorkspacePreferencesStore {
     });
   }
 
+  setDesignCanvasAppearance(canvasAppearance: DesignCanvasAppearance): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, canvasAppearance },
+    });
+  }
+
+  setDesignCanvasDensity(canvasDensity: DesignCanvasDensity): WorkspacePreferencesV1 {
+    return this.#replace({
+      ...this.#preferences,
+      design: { ...this.#preferences.design, canvasDensity },
+    });
+  }
+
   restoreDesignToolbarDefaults(): WorkspacePreferencesV1 {
     return this.setDesignToolbarCommandIds(DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS);
   }
@@ -333,6 +359,8 @@ export function createDefaultWorkspacePreferences(): WorkspacePreferencesV1 {
     design: {
       view: DEFAULT_WORKSPACE_PREFERENCES.design.view,
       toolbarCommandIds: [...DEFAULT_WORKSPACE_PREFERENCES.design.toolbarCommandIds],
+      canvasAppearance: DEFAULT_WORKSPACE_PREFERENCES.design.canvasAppearance,
+      canvasDensity: DEFAULT_WORKSPACE_PREFERENCES.design.canvasDensity,
     },
   });
 }
@@ -445,6 +473,14 @@ function isWorkspacePresetId(value: unknown): value is WorkspacePresetId {
 
 function isDesignWorkspaceView(value: unknown): value is DesignWorkspaceView {
   return value === 'canvas' || value === 'code' || value === 'split';
+}
+
+function isDesignCanvasAppearance(value: unknown): value is DesignCanvasAppearance {
+  return value === 'dark' || value === 'light' || value === 'system';
+}
+
+function isDesignCanvasDensity(value: unknown): value is DesignCanvasDensity {
+  return value === 'comfortable' || value === 'compact';
 }
 
 function isIdeCommandId(value: unknown): value is IdeCommandId {

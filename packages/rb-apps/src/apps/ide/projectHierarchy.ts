@@ -1,0 +1,830 @@
+import type { Circuit, CompositeNodeDef, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
+
+export const PROJECT_HIERARCHY_SCHEMA_VERSION = 'rb.project-hierarchy.v1' as const;
+export const TOP_MODULE_ID = 'top' as const;
+
+export type ModulePortDirection = 'input' | 'output';
+
+export interface ModulePort {
+  id: string;
+  name: string;
+  direction: ModulePortDirection;
+  width: 1;
+  sourceBoundary: {
+    internalRefs: PortRef[];
+  };
+}
+
+export interface NativeVisualModuleDefinition {
+  id: string;
+  name: string;
+  displayName: string;
+  kind: 'native-visual';
+  ports: ModulePort[];
+  circuit: Circuit;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProjectHierarchyDocument {
+  schemaVersion: typeof PROJECT_HIERARCHY_SCHEMA_VERSION;
+  topModuleId: typeof TOP_MODULE_ID;
+  activeModuleId: string;
+  modules: NativeVisualModuleDefinition[];
+}
+
+export interface ModuleBoundaryDraft {
+  id: string;
+  suggestedName: string;
+  direction: ModulePortDirection;
+  internalRefs: PortRef[];
+}
+
+export interface ModuleSelectionAnalysis {
+  ok: boolean;
+  selectedNodeIds: string[];
+  selectedComponentCount: number;
+  inputs: ModuleBoundaryDraft[];
+  outputs: ModuleBoundaryDraft[];
+  warnings: string[];
+  errors: string[];
+}
+
+export interface CreateModuleInput {
+  moduleName: string;
+  instanceName: string;
+  selectedNodeIds: readonly string[];
+  portNames?: Readonly<Record<string, string>>;
+  nowIso?: string;
+}
+
+export interface CreateModuleResult {
+  circuit: Circuit;
+  hierarchy: ProjectHierarchyDocument;
+  definition: NativeVisualModuleDefinition;
+  instance: Node;
+  analysis: ModuleSelectionAnalysis;
+}
+
+const BOUNDARY_INPUT_TYPE = 'Switch';
+const BOUNDARY_OUTPUT_TYPE = 'Lamp';
+
+export function createEmptyProjectHierarchy(): ProjectHierarchyDocument {
+  return {
+    schemaVersion: PROJECT_HIERARCHY_SCHEMA_VERSION,
+    topModuleId: TOP_MODULE_ID,
+    activeModuleId: TOP_MODULE_ID,
+    modules: [],
+  };
+}
+
+export function normalizeProjectHierarchy(
+  value: unknown,
+  legacyDefinitions: readonly CompositeNodeDef[] = [],
+): ProjectHierarchyDocument {
+  if (!isRecord(value) || value.schemaVersion !== PROJECT_HIERARCHY_SCHEMA_VERSION) {
+    return {
+      ...createEmptyProjectHierarchy(),
+      modules: legacyDefinitions.map((definition, index) =>
+        moduleFromCompositeDefinition(definition, index),
+      ),
+    };
+  }
+
+  const modules = Array.isArray(value.modules)
+    ? value.modules
+        .map((entry, index) => normalizeModuleDefinition(entry, index))
+        .filter((entry): entry is NativeVisualModuleDefinition => entry !== null)
+    : [];
+  const requestedActive = typeof value.activeModuleId === 'string' ? value.activeModuleId : TOP_MODULE_ID;
+  const activeModuleId =
+    requestedActive === TOP_MODULE_ID || modules.some((module) => module.id === requestedActive)
+      ? requestedActive
+      : TOP_MODULE_ID;
+  return {
+    schemaVersion: PROJECT_HIERARCHY_SCHEMA_VERSION,
+    topModuleId: TOP_MODULE_ID,
+    activeModuleId,
+    modules: modules.sort((left, right) => left.name.localeCompare(right.name)),
+  };
+}
+
+export function analyzeModuleSelection(
+  circuit: Circuit,
+  selectedNodeIds: readonly string[],
+  customModuleNames: readonly string[] = [],
+): ModuleSelectionAnalysis {
+  const selected = [...new Set(selectedNodeIds.map((id) => id.trim()).filter(Boolean))].sort();
+  const selectedSet = new Set(selected);
+  const nodes = circuit.nodes.filter((node) => selectedSet.has(node.id));
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  if (nodes.length < 2) errors.push('Select at least two connected components.');
+  if (nodes.length !== selected.length) errors.push('The selection contains a missing component.');
+
+  const nested = nodes.filter(
+    (node) => customModuleNames.includes(node.type) || readString(node.config?.moduleDefinitionId),
+  );
+  if (nested.length > 0) {
+    errors.push('Custom modules cannot contain another custom module in this milestone.');
+  }
+  const boundaryNodes = nodes.filter((node) => isTopLevelBoundaryNode(node));
+  if (boundaryNodes.length > 0) {
+    errors.push('Select the functional logic only; top-level inputs and outputs stay in the parent module.');
+  }
+  if (nodes.length >= 2 && !isConnectedSelection(circuit, selectedSet)) {
+    errors.push('The selected components must form one connected subcircuit.');
+  }
+
+  const incoming = circuit.connections.filter((connection) => {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    return !selectedSet.has(from.nodeId) && selectedSet.has(to.nodeId);
+  });
+  const outgoing = circuit.connections.filter((connection) => {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    return selectedSet.has(from.nodeId) && !selectedSet.has(to.nodeId);
+  });
+
+  const inputs = groupBoundaryConnections(circuit, incoming, 'input');
+  const outputs = groupBoundaryConnections(circuit, outgoing, 'output');
+  if (inputs.length === 0) warnings.push('No input boundary was inferred.');
+  if (outputs.length === 0) warnings.push('No output boundary was inferred.');
+
+  return {
+    ok: errors.length === 0,
+    selectedNodeIds: selected,
+    selectedComponentCount: nodes.length,
+    inputs,
+    outputs,
+    warnings,
+    errors,
+  };
+}
+
+export function createModuleFromSelection(
+  circuit: Circuit,
+  hierarchy: ProjectHierarchyDocument,
+  input: CreateModuleInput,
+): CreateModuleResult {
+  const analysis = analyzeModuleSelection(
+    circuit,
+    input.selectedNodeIds,
+    hierarchy.modules.map((module) => module.name),
+  );
+  if (!analysis.ok) throw new Error(analysis.errors[0] ?? 'Selection cannot become a module.');
+
+  const displayName = validateModuleName(input.moduleName);
+  const instanceName = validateInstanceName(input.instanceName);
+  if (hierarchy.modules.some((module) => module.name.toLowerCase() === displayName.toLowerCase())) {
+    throw new Error(`A module named "${displayName}" already exists.`);
+  }
+  if (circuit.nodes.some((node) => readInstanceName(node).toLowerCase() === instanceName.toLowerCase())) {
+    throw new Error(`An instance named "${instanceName}" already exists in this module.`);
+  }
+
+  const portDrafts = [...analysis.inputs, ...analysis.outputs];
+  const usedPortNames = new Set<string>();
+  const ports = portDrafts.map((draft) => {
+    const requested = input.portNames?.[draft.id] ?? draft.suggestedName;
+    const name = validatePortName(requested);
+    const key = name.toLowerCase();
+    if (usedPortNames.has(key)) throw new Error(`Duplicate module port name "${name}".`);
+    usedPortNames.add(key);
+    return {
+      id: draft.id,
+      name,
+      direction: draft.direction,
+      width: 1 as const,
+      sourceBoundary: { internalRefs: draft.internalRefs.map(clonePortRef) },
+    } satisfies ModulePort;
+  });
+
+  const selectedSet = new Set(analysis.selectedNodeIds);
+  const selectedNodes = circuit.nodes.filter((node) => selectedSet.has(node.id));
+  const internalConnections = circuit.connections.filter((connection) => {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    return selectedSet.has(from.nodeId) && selectedSet.has(to.nodeId);
+  });
+  const normalized = normalizeModuleCircuit(selectedNodes, internalConnections, ports);
+  const moduleId = uniqueModuleId(displayName, hierarchy.modules);
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  const definition: NativeVisualModuleDefinition = {
+    id: moduleId,
+    name: toVhdlIdentifier(displayName),
+    displayName,
+    kind: 'native-visual',
+    ports,
+    circuit: normalized,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  const centroid = selectionCentroid(selectedNodes);
+  const instance: Node = {
+    id: uniqueNodeId(circuit, instanceName),
+    type: definition.name,
+    label: instanceName,
+    position: centroid,
+    x: centroid.x,
+    y: centroid.y,
+    config: {
+      moduleDefinitionId: moduleId,
+      moduleName: definition.name,
+      instanceName,
+      label: instanceName,
+      nativeVisualModule: true,
+    },
+  };
+
+  const nextConnections: Connection[] = [];
+  for (const connection of circuit.connections) {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    if (selectedSet.has(from.nodeId) || selectedSet.has(to.nodeId)) continue;
+    nextConnections.push(cloneConnection(connection));
+  }
+  for (const port of ports) {
+    const draft = portDrafts.find((entry) => entry.id === port.id)!;
+    if (port.direction === 'input') {
+      const representative = findIncomingRepresentative(circuit, selectedSet, draft.internalRefs);
+      if (representative) {
+        nextConnections.push({
+          from: clonePortRef(representative),
+          to: { nodeId: instance.id, portName: port.name },
+        });
+      }
+    } else {
+      const targets = findOutgoingTargets(circuit, selectedSet, draft.internalRefs[0]);
+      for (const target of targets) {
+        nextConnections.push({
+          from: { nodeId: instance.id, portName: port.name },
+          to: clonePortRef(target),
+        });
+      }
+    }
+  }
+
+  return {
+    circuit: {
+      nodes: [...circuit.nodes.filter((node) => !selectedSet.has(node.id)).map(cloneNode), instance],
+      connections: nextConnections,
+    },
+    hierarchy: {
+      ...hierarchy,
+      activeModuleId: TOP_MODULE_ID,
+      modules: [...hierarchy.modules, definition].sort((left, right) => left.name.localeCompare(right.name)),
+    },
+    definition,
+    instance,
+    analysis,
+  };
+}
+
+export function placeModuleInstance(
+  circuit: Circuit,
+  definition: NativeVisualModuleDefinition,
+  position: { x: number; y: number },
+  requestedInstanceName?: string,
+): { circuit: Circuit; instance: Node } {
+  const usage = circuit.nodes.filter(
+    (node) => readString(node.config?.moduleDefinitionId) === definition.id,
+  ).length;
+  const instanceName = validateInstanceName(requestedInstanceName ?? `${toCamelIdentifier(definition.name)}${usage}`);
+  const instance: Node = {
+    id: uniqueNodeId(circuit, instanceName),
+    type: definition.name,
+    label: instanceName,
+    position: { x: Math.round(position.x), y: Math.round(position.y) },
+    x: Math.round(position.x),
+    y: Math.round(position.y),
+    config: {
+      moduleDefinitionId: definition.id,
+      moduleName: definition.name,
+      instanceName,
+      label: instanceName,
+      nativeVisualModule: true,
+    },
+  };
+  return {
+    circuit: { nodes: [...circuit.nodes.map(cloneNode), instance], connections: circuit.connections.map(cloneConnection) },
+    instance,
+  };
+}
+
+export function elaborateProjectHierarchy(
+  topCircuit: Circuit,
+  hierarchy: ProjectHierarchyDocument | undefined,
+): Circuit {
+  if (!hierarchy || hierarchy.modules.length === 0) return cloneCircuit(topCircuit);
+  const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
+  const modulesByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
+  const instanceNodes = topCircuit.nodes.filter((node) => resolveModuleForNode(node, modulesById, modulesByName));
+  if (instanceNodes.length === 0) return cloneCircuit(topCircuit);
+  const instanceIds = new Set(instanceNodes.map((node) => node.id));
+  const instancesById = new Map(instanceNodes.map((node) => [node.id, node]));
+  const nodes = topCircuit.nodes.filter((node) => !instanceIds.has(node.id)).map(cloneNode);
+  const connections: Connection[] = [];
+
+  for (const instance of instanceNodes) {
+    const definition = resolveModuleForNode(instance, modulesById, modulesByName)!;
+    const prefix = `${instance.id}__`;
+    const boundaryNodeIds = new Set(
+      definition.circuit.nodes
+        .filter((node) => readString(node.config?.moduleBoundary))
+        .map((node) => node.id),
+    );
+    nodes.push(
+      ...definition.circuit.nodes
+        .filter((node) => !boundaryNodeIds.has(node.id))
+        .map((node) => ({
+          ...cloneNode(node),
+          id: `${prefix}${node.id}`,
+          label: `${readInstanceName(instance)}.${node.label ?? node.id}`,
+          config: { ...(node.config ?? {}), hierarchyPath: `top.${readInstanceName(instance)}` },
+        })),
+    );
+    connections.push(
+      ...definition.circuit.connections
+        .filter((connection) => {
+          const from = normalizeEndpoint(connection.from, 'out');
+          const to = normalizeEndpoint(connection.to, 'in');
+          return !boundaryNodeIds.has(from.nodeId) && !boundaryNodeIds.has(to.nodeId);
+        })
+        .map((connection) => prefixConnection(connection, prefix)),
+    );
+
+  }
+
+  // Resolve each top-level wire through both ends at once. Doing this after all
+  // instances are expanded is important for module-to-module wires: neither the
+  // source nor target instance may survive in the flattened simulation graph.
+  for (const connection of topCircuit.connections) {
+    const parentSource = normalizeEndpoint(connection.from, 'out');
+    const parentTarget = normalizeEndpoint(connection.to, 'in');
+    const sourceInstance = instancesById.get(parentSource.nodeId);
+    const targetInstance = instancesById.get(parentTarget.nodeId);
+
+    let source = clonePortRef(parentSource);
+    if (sourceInstance) {
+      const sourceDefinition = resolveModuleForNode(sourceInstance, modulesById, modulesByName);
+      const outputPort = sourceDefinition?.ports.find(
+        (port) => port.direction === 'output' && port.name === parentSource.portName,
+      );
+      const internalSource = outputPort?.sourceBoundary.internalRefs[0];
+      if (!internalSource) continue;
+      source = {
+        nodeId: `${sourceInstance.id}__${internalSource.nodeId}`,
+        portName: internalSource.portName,
+      };
+    }
+
+    let targets: PortRef[] = [clonePortRef(parentTarget)];
+    if (targetInstance) {
+      const targetDefinition = resolveModuleForNode(targetInstance, modulesById, modulesByName);
+      const inputPort = targetDefinition?.ports.find(
+        (port) => port.direction === 'input' && port.name === parentTarget.portName,
+      );
+      targets = (inputPort?.sourceBoundary.internalRefs ?? []).map((target) => ({
+        nodeId: `${targetInstance.id}__${target.nodeId}`,
+        portName: target.portName,
+      }));
+    }
+
+    for (const target of targets) {
+      connections.push({ from: clonePortRef(source), to: clonePortRef(target) });
+    }
+  }
+  return { nodes, connections };
+}
+
+export function toCompositeDefinition(module: NativeVisualModuleDefinition): CompositeNodeDef {
+  return {
+    name: module.name,
+    description: `${module.displayName} · native visual module`,
+    subcircuit: cloneCircuit(module.circuit),
+    inputMapping: Object.fromEntries(
+      module.ports
+        .filter((port) => port.direction === 'input')
+        .map((port) => {
+          const boundary = module.circuit.nodes.find(
+            (node) =>
+              readString(node.config?.modulePortId) === port.id &&
+              readString(node.config?.moduleBoundary) === 'input',
+          );
+          return [port.name, `${boundary?.id ?? port.sourceBoundary.internalRefs[0]?.nodeId}.isOn`];
+        }),
+    ),
+    outputMapping: Object.fromEntries(
+      module.ports
+        .filter((port) => port.direction === 'output')
+        .map((port) => {
+          const ref = port.sourceBoundary.internalRefs[0];
+          return [port.name, `${ref.nodeId}.${ref.portName}`];
+        }),
+    ),
+  };
+}
+
+export function moduleUsageCount(circuit: Circuit, moduleId: string): number {
+  return circuit.nodes.filter((node) => readString(node.config?.moduleDefinitionId) === moduleId).length;
+}
+
+export function isModuleInstance(node: Node, hierarchy: ProjectHierarchyDocument): boolean {
+  return Boolean(
+    hierarchy.modules.find(
+      (module) =>
+        module.id === readString(node.config?.moduleDefinitionId) || module.name === node.type,
+    ),
+  );
+}
+
+export function readInstanceName(node: Node): string {
+  return readString(node.config?.instanceName) || readString(node.config?.label) || node.label || node.id;
+}
+
+function groupBoundaryConnections(
+  circuit: Circuit,
+  connections: Connection[],
+  direction: ModulePortDirection,
+): ModuleBoundaryDraft[] {
+  const groups = new Map<string, { refs: PortRef[]; suggestedName: string }>();
+  for (const connection of connections) {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    const keyRef = direction === 'input' ? from : from;
+    const internalRef = direction === 'input' ? to : from;
+    const key = `${keyRef.nodeId}.${keyRef.portName}`;
+    const externalNodeId = direction === 'input' ? from.nodeId : to.nodeId;
+    const externalNode = circuit.nodes.find((node) => node.id === externalNodeId);
+    const suggestedName =
+      readString(externalNode?.config?.label) ||
+      externalNode?.label ||
+      (direction === 'input' ? `IN${groups.size + 1}` : `OUT${groups.size + 1}`);
+    const group = groups.get(key) ?? { refs: [], suggestedName };
+    if (!group.refs.some((ref) => ref.nodeId === internalRef.nodeId && ref.portName === internalRef.portName)) {
+      group.refs.push(clonePortRef(internalRef));
+    }
+    groups.set(key, group);
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, group], index) => ({
+      id: `${direction}-${index + 1}-${key.replace(/[^a-zA-Z0-9]+/g, '-')}`,
+      suggestedName: validateSuggestedPortName(group.suggestedName, direction, index),
+      direction,
+      internalRefs: group.refs.sort((left, right) =>
+        `${left.nodeId}.${left.portName}`.localeCompare(`${right.nodeId}.${right.portName}`),
+      ),
+    }));
+}
+
+function normalizeModuleCircuit(
+  selectedNodes: Node[],
+  internalConnections: Connection[],
+  ports: ModulePort[],
+): Circuit {
+  const xs = selectedNodes.map((node) => node.position?.x ?? node.x ?? 0);
+  const ys = selectedNodes.map((node) => node.position?.y ?? node.y ?? 0);
+  const minX = Math.min(...xs);
+  const minY = Math.min(...ys);
+  const maxX = Math.max(...xs);
+  const nodes = selectedNodes.map((node) => {
+    const position = {
+      x: Math.round((node.position?.x ?? node.x ?? 0) - minX + 220),
+      y: Math.round((node.position?.y ?? node.y ?? 0) - minY + 80),
+    };
+    return { ...cloneNode(node), position, x: position.x, y: position.y };
+  });
+  const connections = internalConnections.map(cloneConnection);
+  const inputs = ports.filter((port) => port.direction === 'input');
+  const outputs = ports.filter((port) => port.direction === 'output');
+  inputs.forEach((port, index) => {
+    const id = `port_in_${index + 1}`;
+    nodes.push({
+      id,
+      type: BOUNDARY_INPUT_TYPE,
+      label: port.name,
+      position: { x: 20, y: 80 + index * 120 },
+      x: 20,
+      y: 80 + index * 120,
+      config: { label: port.name, moduleBoundary: 'input', modulePortId: port.id },
+    });
+    for (const target of port.sourceBoundary.internalRefs) {
+      connections.push({ from: { nodeId: id, portName: 'out' }, to: clonePortRef(target) });
+    }
+  });
+  outputs.forEach((port, index) => {
+    const id = `port_out_${index + 1}`;
+    const source = port.sourceBoundary.internalRefs[0];
+    nodes.push({
+      id,
+      type: BOUNDARY_OUTPUT_TYPE,
+      label: port.name,
+      position: { x: Math.round(maxX - minX + 440), y: 80 + index * 120 },
+      x: Math.round(maxX - minX + 440),
+      y: 80 + index * 120,
+      config: { label: port.name, moduleBoundary: 'output', modulePortId: port.id },
+    });
+    if (source) connections.push({ from: clonePortRef(source), to: { nodeId: id, portName: 'in' } });
+  });
+  return { nodes, connections };
+}
+
+function findIncomingRepresentative(
+  circuit: Circuit,
+  selectedSet: Set<string>,
+  internalRefs: readonly PortRef[],
+): PortRef | null {
+  const targets = new Set(internalRefs.map((ref) => `${ref.nodeId}.${ref.portName}`));
+  const match = circuit.connections.find((connection) => {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    return !selectedSet.has(from.nodeId) && selectedSet.has(to.nodeId) && targets.has(`${to.nodeId}.${to.portName}`);
+  });
+  return match ? normalizeEndpoint(match.from, 'out') : null;
+}
+
+function findOutgoingTargets(
+  circuit: Circuit,
+  selectedSet: Set<string>,
+  internalRef: PortRef | undefined,
+): PortRef[] {
+  if (!internalRef) return [];
+  return circuit.connections
+    .filter((connection) => {
+      const from = normalizeEndpoint(connection.from, 'out');
+      const to = normalizeEndpoint(connection.to, 'in');
+      return (
+        selectedSet.has(from.nodeId) &&
+        !selectedSet.has(to.nodeId) &&
+        from.nodeId === internalRef.nodeId &&
+        from.portName === internalRef.portName
+      );
+    })
+    .map((connection) => normalizeEndpoint(connection.to, 'in'));
+}
+
+function isConnectedSelection(circuit: Circuit, selected: Set<string>): boolean {
+  const first = selected.values().next().value as string | undefined;
+  if (!first) return false;
+  const adjacency = new Map<string, Set<string>>();
+  selected.forEach((id) => adjacency.set(id, new Set()));
+  for (const connection of circuit.connections) {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    if (!selected.has(from.nodeId) || !selected.has(to.nodeId)) continue;
+    adjacency.get(from.nodeId)?.add(to.nodeId);
+    adjacency.get(to.nodeId)?.add(from.nodeId);
+  }
+  // Parallel gates in a functional block (for example the XOR and AND in a
+  // Half Adder) are connected through their shared parent signals even when
+  // no internal wire runs directly between them.
+  const selectedTargetsByExternalSource = new Map<string, Set<string>>();
+  for (const connection of circuit.connections) {
+    const from = normalizeEndpoint(connection.from, 'out');
+    const to = normalizeEndpoint(connection.to, 'in');
+    if (selected.has(from.nodeId) || !selected.has(to.nodeId)) continue;
+    const sourceKey = `${from.nodeId}.${from.portName}`;
+    const targets = selectedTargetsByExternalSource.get(sourceKey) ?? new Set<string>();
+    targets.add(to.nodeId);
+    selectedTargetsByExternalSource.set(sourceKey, targets);
+  }
+  for (const targets of selectedTargetsByExternalSource.values()) {
+    const ids = [...targets];
+    for (let index = 1; index < ids.length; index += 1) {
+      adjacency.get(ids[0]!)?.add(ids[index]!);
+      adjacency.get(ids[index]!)?.add(ids[0]!);
+    }
+  }
+  const visited = new Set<string>();
+  const queue = [first];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (visited.has(id)) continue;
+    visited.add(id);
+    for (const next of adjacency.get(id) ?? []) queue.push(next);
+  }
+  return visited.size === selected.size;
+}
+
+function moduleFromCompositeDefinition(
+  definition: CompositeNodeDef,
+  index: number,
+): NativeVisualModuleDefinition {
+  const ports: ModulePort[] = [
+    ...Object.entries(definition.inputMapping).map(([name, ref], portIndex) => ({
+      id: `legacy-input-${portIndex + 1}`,
+      name,
+      direction: 'input' as const,
+      width: 1 as const,
+      sourceBoundary: { internalRefs: [parseInternalRef(ref)] },
+    })),
+    ...Object.entries(definition.outputMapping).map(([name, ref], portIndex) => ({
+      id: `legacy-output-${portIndex + 1}`,
+      name,
+      direction: 'output' as const,
+      width: 1 as const,
+      sourceBoundary: { internalRefs: [parseInternalRef(ref)] },
+    })),
+  ];
+  return {
+    id: `legacy-${slug(definition.name)}-${index + 1}`,
+    name: toVhdlIdentifier(definition.name),
+    displayName: definition.name,
+    kind: 'native-visual',
+    ports,
+    circuit: cloneCircuit(definition.subcircuit),
+    createdAt: '1970-01-01T00:00:00.000Z',
+    updatedAt: '1970-01-01T00:00:00.000Z',
+  };
+}
+
+function normalizeModuleDefinition(value: unknown, index: number): NativeVisualModuleDefinition | null {
+  if (!isRecord(value) || !isRecord(value.circuit)) return null;
+  if (!Array.isArray(value.circuit.nodes) || !Array.isArray(value.circuit.connections)) return null;
+  const displayName = readString(value.displayName) || readString(value.name) || `Module ${index + 1}`;
+  const name = toVhdlIdentifier(readString(value.name) || displayName);
+  const id = readString(value.id) || `module-${slug(name)}-${index + 1}`;
+  const ports = Array.isArray(value.ports)
+    ? value.ports.map((port, portIndex) => normalizeModulePort(port, portIndex)).filter((port): port is ModulePort => port !== null)
+    : [];
+  return {
+    id,
+    name,
+    displayName,
+    kind: 'native-visual',
+    ports,
+    circuit: cloneCircuit(value.circuit as unknown as Circuit),
+    createdAt: readString(value.createdAt) || '1970-01-01T00:00:00.000Z',
+    updatedAt: readString(value.updatedAt) || '1970-01-01T00:00:00.000Z',
+  };
+}
+
+function normalizeModulePort(value: unknown, index: number): ModulePort | null {
+  if (!isRecord(value)) return null;
+  const direction = value.direction === 'output' ? 'output' : value.direction === 'input' ? 'input' : null;
+  const name = readString(value.name);
+  if (!direction || !name) return null;
+  const sourceBoundary = isRecord(value.sourceBoundary) ? value.sourceBoundary : {};
+  const internalRefs = Array.isArray(sourceBoundary.internalRefs)
+    ? sourceBoundary.internalRefs.map((ref) => normalizeEndpoint(ref, direction === 'input' ? 'in' : 'out'))
+    : [];
+  return {
+    id: readString(value.id) || `${direction}-${index + 1}`,
+    name: validatePortName(name),
+    direction,
+    width: 1,
+    sourceBoundary: { internalRefs },
+  };
+}
+
+function resolveModuleForNode(
+  node: Node,
+  modulesById: Map<string, NativeVisualModuleDefinition>,
+  modulesByName: Map<string, NativeVisualModuleDefinition>,
+): NativeVisualModuleDefinition | undefined {
+  return modulesById.get(readString(node.config?.moduleDefinitionId)) ?? modulesByName.get(node.type);
+}
+
+function prefixConnection(connection: Connection, prefix: string): Connection {
+  const from = normalizeEndpoint(connection.from, 'out');
+  const to = normalizeEndpoint(connection.to, 'in');
+  return {
+    ...(connection.id ? { id: `${prefix}${connection.id}` } : {}),
+    from: { nodeId: `${prefix}${from.nodeId}`, portName: from.portName },
+    to: { nodeId: `${prefix}${to.nodeId}`, portName: to.portName },
+  };
+}
+
+function selectionCentroid(nodes: readonly Node[]): { x: number; y: number } {
+  const total = nodes.reduce(
+    (sum, node) => ({
+      x: sum.x + (node.position?.x ?? node.x ?? 0),
+      y: sum.y + (node.position?.y ?? node.y ?? 0),
+    }),
+    { x: 0, y: 0 },
+  );
+  return { x: Math.round(total.x / nodes.length), y: Math.round(total.y / nodes.length) };
+}
+
+function isTopLevelBoundaryNode(node: Node): boolean {
+  return ['INPUT', 'OUTPUT', 'Switch', 'Lamp'].includes(node.type);
+}
+
+function validateModuleName(value: string): string {
+  const trimmed = value.trim();
+  if (!/^[A-Za-z][A-Za-z0-9_ ]{1,47}$/.test(trimmed)) {
+    throw new Error('Module name must start with a letter and use letters, numbers, spaces, or underscores.');
+  }
+  return trimmed;
+}
+
+function validateInstanceName(value: string): string {
+  const trimmed = value.trim();
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,47}$/.test(trimmed)) {
+    throw new Error('Instance name must start with a letter and use only letters, numbers, or underscores.');
+  }
+  return trimmed;
+}
+
+function validatePortName(value: string): string {
+  const trimmed = value.trim().replace(/\s+/g, '_');
+  if (!/^[A-Za-z][A-Za-z0-9_]{0,47}$/.test(trimmed)) {
+    throw new Error(`Invalid port name "${value}".`);
+  }
+  return trimmed.toUpperCase();
+}
+
+function validateSuggestedPortName(value: string, direction: ModulePortDirection, index: number): string {
+  try {
+    return validatePortName(value);
+  } catch {
+    return `${direction === 'input' ? 'IN' : 'OUT'}${index + 1}`;
+  }
+}
+
+function uniqueModuleId(name: string, modules: readonly NativeVisualModuleDefinition[]): string {
+  const base = `module-${slug(name)}`;
+  let candidate = base;
+  let index = 2;
+  while (modules.some((module) => module.id === candidate)) candidate = `${base}-${index++}`;
+  return candidate;
+}
+
+function uniqueNodeId(circuit: Circuit, name: string): string {
+  const base = slug(name) || 'module-instance';
+  let candidate = base;
+  let index = 2;
+  while (circuit.nodes.some((node) => node.id === candidate)) candidate = `${base}-${index++}`;
+  return candidate;
+}
+
+function toVhdlIdentifier(value: string): string {
+  const words = value.trim().split(/[^A-Za-z0-9]+/).filter(Boolean);
+  const joined = words.map((word) => word[0]?.toUpperCase() + word.slice(1)).join('') || 'Module';
+  return /^[A-Za-z]/.test(joined) ? joined : `Module${joined}`;
+}
+
+function toCamelIdentifier(value: string): string {
+  const pascal = toVhdlIdentifier(value);
+  return pascal[0].toLowerCase() + pascal.slice(1);
+}
+
+function slug(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function parseInternalRef(value: string): PortRef {
+  const dot = value.lastIndexOf('.');
+  return dot > 0
+    ? { nodeId: value.slice(0, dot), portName: value.slice(dot + 1) }
+    : { nodeId: value, portName: 'out' };
+}
+
+function normalizeEndpoint(value: unknown, fallbackPortName: string): PortRef {
+  if (typeof value === 'string') return { nodeId: value, portName: fallbackPortName };
+  if (isRecord(value)) {
+    return {
+      nodeId: readString(value.nodeId),
+      portName: readString(value.portName) || readString(value.port) || fallbackPortName,
+    };
+  }
+  return { nodeId: '', portName: fallbackPortName };
+}
+
+function clonePortRef(ref: PortRef): PortRef {
+  return { nodeId: ref.nodeId, portName: ref.portName || ref.port || 'out' };
+}
+
+function cloneConnection(connection: Connection): Connection {
+  return {
+    ...(connection.id ? { id: connection.id } : {}),
+    from: clonePortRef(normalizeEndpoint(connection.from, 'out')),
+    to: clonePortRef(normalizeEndpoint(connection.to, 'in')),
+  };
+}
+
+function cloneNode(node: Node): Node {
+  return {
+    ...node,
+    position: node.position ? { ...node.position } : undefined,
+    config: node.config ? { ...node.config } : undefined,
+    state: node.state ? { ...node.state } : undefined,
+  };
+}
+
+function cloneCircuit(circuit: Circuit): Circuit {
+  return { nodes: circuit.nodes.map(cloneNode), connections: circuit.connections.map(cloneConnection) };
+}
+
+function readString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}

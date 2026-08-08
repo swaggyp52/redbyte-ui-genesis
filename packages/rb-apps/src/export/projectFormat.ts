@@ -16,6 +16,10 @@ import type { ToolchainProjectInput } from '../fpga/toolchainBackend';
 import type { HardwareMappingDocumentV2, IoMapping, LabSpecV1, TestVector } from '@redbyte/rb-utils';
 import { stableStringify } from './stableStringify';
 import { compareCodepoint } from './codepointSort';
+import {
+  normalizeProjectHierarchy,
+  type ProjectHierarchyDocument,
+} from '../apps/ide/projectHierarchy';
 
 export interface RBFpgaConstraints {
   type: 'xdc';
@@ -81,6 +85,8 @@ export interface RBProject {
   macros?: MacroDefinition[];
   labSpec?: LabSpecV1;
   customComponents?: CompositeNodeDef[];
+  /** Native visual module authority. `circuit` remains the top-module graph. */
+  hierarchy?: ProjectHierarchyDocument;
   meta?: {
     appVersion?: string;
     gitCommit?: string;
@@ -322,6 +328,9 @@ export const encodeRBProject = (project: RBProject) => {
     vectors: normalizeVectors(project.vectors),
     submodules: normalizeSubmodules(project.submodules),
     macros: normalizeMacros(project.macros),
+    hierarchy: project.hierarchy
+      ? normalizeProjectHierarchy(project.hierarchy, project.customComponents ?? [])
+      : undefined,
     meta: project.meta
       ? {
           ...project.meta,
@@ -392,6 +401,12 @@ export const normalizeRBProject = (value: unknown): RBProject => {
     customComponents: Array.isArray(value.customComponents)
       ? value.customComponents.filter(isCompositeNodeDef)
       : undefined,
+    hierarchy: normalizeProjectHierarchy(
+      value.hierarchy,
+      Array.isArray(value.customComponents)
+        ? value.customComponents.filter(isCompositeNodeDef)
+        : [],
+    ),
     meta: isRecord(value.meta) ? { ...(value.meta as NonNullable<RBProject['meta']>) } : undefined,
   };
 };

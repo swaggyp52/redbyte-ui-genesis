@@ -1,5 +1,38 @@
 # AI State
 
+## Change Log 2026-08-08 (Milestone B1: native visual hierarchy)
+
+**Subsystem:** Project hierarchy, reusable visual modules, hierarchical Design and
+Simulate inspection, inline board constraints, multi-source VHDL export, and the
+student workbench visual system.
+
+**Product repair:** Students can now turn a connected top-level selection into a
+named native visual module with explicit named ports, replace the selection with
+an instance, reuse and rename additional instances, open the module source, edit
+its visual layout, and return through a persistent `full_adder / HalfAdder`
+breadcrumb. Project Center exposes the real project explorer and module
+hierarchy. Design renders module-specific port names, supports direct
+definition-open affordances, keeps board assignment owned by the top module,
+and persists canvas appearance and density choices. The simulator elaborates
+module-to-module connections into stable `instance.internal` signal paths, and
+the signal shelf can reveal internal `ha0.*` and `ha1.*` evidence. Build & Export
+emits a structural `top.vhd` plus one VHDL source per reusable module while
+retaining the existing XDC, testbench, project, and README roles.
+
+**Evidence and validation boundary:** One bounded browser flow created and reused
+`HalfAdder`, rewired the Full Adder as two module instances, edited and reloaded
+the module source, ran all eight simulation cases with passing optional checks,
+inspected internal signals, confirmed inline `SW0 / V17` assignment, and exposed
+a 10-file downloadable E0 package containing `top.vhd` and `half_adder.vhd`.
+The six exact-size captures are under
+`docs/release/evidence/milestone-b1/`. Focused Vitest passes 3 files / 8 tests;
+workspace typecheck, the IDE CSS audit (zero warnings and errors), the unified
+build (347 transformed modules), and `git diff --check` pass under Node 24.15.0.
+The repository remains pinned to Node 20.19.0, so the runtime mismatch is
+reported rather than treated as pinned-runtime proof. No broad test aggregate,
+Playwright suite, Vivado execution, bitstream, physical Basys3 observation,
+deployment, or E1/E2/E3 authority is claimed.
+
 ## Change Log 2026-07-27 (Stable Preview - Browser-E0 consolidation)
 
 **Subsystem:** canonical source, scenario authority, root development entrypoint,
