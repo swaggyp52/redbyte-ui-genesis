@@ -28,8 +28,8 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
     await page.locator('[data-testid="ide-verify-summary-status"]').first().textContent().catch(() => '')
   )?.trim() ?? '';
   assert(
-    preRunStatus === 'BLOCKED' || preRunStatus === 'READY',
-    `pre-run status must be BLOCKED or READY, got "${preRunStatus}"`
+    /Scenario ready/i.test(preRunStatus),
+    `loaded starter must report Scenario ready before its first run, got "${preRunStatus}"`
   );
 
   await ensureVerifyVectorsReady(page);
@@ -37,12 +37,20 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const runBtn = page.locator('[data-testid="ide-vcb-run"]').first();
   assert(!(await runBtn.isDisabled().catch(() => false)), 'run button must be enabled once vectors exist');
   assert(
-    await page.locator('[data-testid="ide-vcb-observe-only"]').first().isVisible().catch(() => false),
-    'Verify must expose Observe only in the student run-mode selector'
+    await page.locator('[data-testid="ide-vcb-workspace-scenario"]').first().isVisible().catch(() => false),
+    'Verify must expose the Scenario workspace before a run'
+  );
+  assert(
+    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().isVisible().catch(() => false),
+    'Verify must expose optional Checks beside the Scenario workspace'
+  );
+  assert(
+    /Run simulation/i.test((await runBtn.textContent().catch(() => '')) ?? ''),
+    'Verify must expose one simulation run authority'
   );
   assert(
     await setVerifyRunMode(page, 'compare'),
-    'Verify must expose Compare checks for deterministic student proof runs'
+    'saved starter checks must be recognized for automatic evaluation'
   );
 
   await clickVerifyRun(page);
@@ -53,7 +61,7 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   )?.trim() ?? '';
   assert(
     isVerifyPass(compareStatus),
-    `starter Compare run must produce a PASS state, got "${compareStatus}"`
+    `starter simulation with saved checks must produce a PASS state, got "${compareStatus}"`
   );
 
   const noTraceGuard = page.locator('[data-testid="ide-verify-no-trace-guard"]').first();
@@ -73,21 +81,11 @@ await runIdeGate('IDE verify reality contract satisfied', async ({ page, baseUrl
   const waveformGrid = page.locator('[data-testid="ide-verify-workspace-waveform"]').first();
   assert(await visible(waveformGrid), 'waveform grid must be visible after run');
 
-  const signalList = page.locator('[data-testid="ide-verify-signal-list"]').first();
-  if (!(await visible(signalList))) {
-    const leftDockToggle = page.locator('[data-testid="ide-workbench-dock-toggle-left"]').first();
-    assert(await visible(leftDockToggle), 'left dock toggle must be visible when signal list is collapsed');
-    await leftDockToggle.click();
-  }
+  const signalShelf = page.locator('[data-testid="ide-verify-signal-shelf"]').first();
+  const signalShelfList = page.locator('[data-testid="ide-verify-signal-shelf-list"]').first();
+  assert(await visible(signalShelf), 'integrated signal shelf must remain visible after run');
+  assert(await visible(signalShelfList), 'integrated signal shelf list must remain visible after run');
 
-  const signalRailToggle = page.locator('[data-testid="ide-verify-signal-rail-toggle"]').first();
-  const railExpanded = (await signalRailToggle.getAttribute('aria-expanded').catch(() => 'true')) === 'true';
-  if (!railExpanded) {
-    await signalRailToggle.click();
-  }
-
-  assert(await visible(signalList), 'signal list must be visible after run');
-
-  const signalRows = await page.locator('.ide-signal-row[data-testid^="ide-verify-signal-"]').count().catch(() => 0);
-  assert(signalRows >= 1, `signal list must show at least one signal, got ${signalRows}`);
+  const signalRows = await page.locator('[data-testid^="ide-verify-shelf-signal-"]').count().catch(() => 0);
+  assert(signalRows >= 1, `integrated signal shelf must show at least one signal, got ${signalRows}`);
 });

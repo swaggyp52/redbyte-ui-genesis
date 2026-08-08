@@ -50,6 +50,9 @@ await runIdeGate('IDE Verify laptop authoring remains visible and operable', asy
     });
 
     await openStarterInVerify(page, baseUrl, 'two-bit-counter', `${viewport.label}-counter`);
+    const clockPolicyPanel = page.getByTestId('ide-verify-clock-policy-panel').first();
+    await clockPolicyPanel.locator('summary').click();
+    await page.getByTestId('ide-verify-clock-mode-manual').first().waitFor({ state: 'visible', timeout: 5000 });
     await page.getByTestId('ide-verify-clock-mode-manual').first().click();
     await page.waitForFunction(
       () => {
@@ -111,9 +114,25 @@ async function openStarterInVerify(page, baseUrl, exampleId, gateLabel) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await openMode(page, baseUrl, 'verify', `verify-laptop-authoring-${gateLabel}`);
   await page.waitForSelector('[data-testid="ide-stimulus-canvas"]', { timeout: 15000 });
+  await page.waitForSelector('[data-testid="ide-vcb-workspace-scenario"]', { state: 'attached', timeout: 10000 });
+  await page.evaluate(() => {
+    const button = document.querySelector('[data-testid="ide-vcb-workspace-scenario"]');
+    if (button instanceof HTMLButtonElement) button.click();
+  });
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'scenario',
+    { timeout: 5000 },
+  );
 }
 
 async function assertAuthoringRows(page, { label, inputCount, expectedCount }) {
+  const checksTab = page.locator('[data-testid="ide-vcb-workspace-checks"]').first();
+  assert(await checksTab.isVisible().catch(() => false), `${label}: Checks workspace tab must remain visible`);
+  await checksTab.click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'checks',
+    { timeout: 5000 },
+  );
   await page.evaluate(() => {
     const body = document.querySelector('.ide-verify-panel > .ide-panel-body');
     const firstInput = document.querySelector(

@@ -185,11 +185,9 @@ async function ensureSimPaused(page) {
 }
 
 async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
-  await ensureLiveInputsExpanded(page);
   for (const nodeId of inputNodeIds) {
-    await page.waitForSelector(`[data-testid="ide-design-input-toggle-${nodeId}"]`, {
-      timeout: 10000,
-    });
+    await selectDesignNode(page, nodeId);
+    await page.waitForSelector('[data-testid="ide-design-inspector-input-toggle"]', { timeout: 10000 });
   }
   await page.waitForSelector(`[data-testid="node-OUTPUT-${outputNodeId}"]`, {
     timeout: 10000,
@@ -198,8 +196,8 @@ async function assertControlsPresent(page, inputNodeIds, outputNodeId) {
 
 async function setInputBit(page, nodeId, value) {
   const target = String(value);
-  const toggleSelector = `[data-testid="ide-design-input-toggle-${nodeId}"]`;
-  await ensureLiveInputsExpanded(page);
+  await selectDesignNode(page, nodeId);
+  const toggleSelector = '[data-testid="ide-design-inspector-input-toggle"]';
   const currentPressed = await page
     .locator(toggleSelector)
     .first()
@@ -231,21 +229,6 @@ async function setInputBit(page, nodeId, value) {
   }
 }
 
-async function ensureLiveInputsExpanded(page) {
-  await revealDesignLibrary(page);
-
-  const firstToggle = page.locator('[data-testid^="ide-design-input-toggle-"]').first();
-  if (await firstToggle.isVisible().catch(() => false)) {
-    return;
-  }
-
-  const disclosureToggle = page.locator('[data-testid="ide-design-live-inputs-toggle"]').first();
-  const isVisible = await disclosureToggle.isVisible().catch(() => false);
-  assert(isVisible, 'design live inputs toggle must be visible before input editing');
-  await disclosureToggle.click();
-  await firstToggle.waitFor({ state: 'visible', timeout: 5000 });
-}
-
 async function revealDesignLibrary(page) {
   if (await page.locator('[data-testid="ide-left-dock"]').first().isVisible().catch(() => false)) {
     return;
@@ -257,6 +240,28 @@ async function revealDesignLibrary(page) {
   );
   await libraryToggle.click();
   await page.waitForSelector('[data-testid="ide-left-dock"]', { timeout: 5000 });
+}
+
+async function selectDesignNode(page, nodeId) {
+  const selected = await page.evaluate((id) => {
+    const store = window.__RB_LOGIC_VIEW_STORE__?.getState?.();
+    if (!store) return false;
+    if (typeof store.selectMultipleNodes === 'function') {
+      store.selectMultipleNodes([id]);
+    } else if (typeof store.selectNode === 'function') {
+      store.selectNode(id);
+    } else {
+      return false;
+    }
+    return true;
+  }, nodeId);
+  assert(selected, `Design selection store must select ${nodeId}`);
+  await page.waitForFunction(
+    (id) => Boolean(window.__RB_LOGIC_VIEW_STORE__?.getState?.()?.selection?.nodes?.has?.(id)),
+    nodeId,
+    { timeout: 5000 },
+  );
+  await page.waitForSelector('[data-testid="ide-design-selection-inspector"]', { timeout: 5000 });
 }
 
 async function assertOutputBit(page, nodeId, expected) {

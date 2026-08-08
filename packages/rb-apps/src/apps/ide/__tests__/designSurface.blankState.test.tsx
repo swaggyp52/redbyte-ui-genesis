@@ -146,15 +146,10 @@ describe('DesignSurface blank-state guidance', () => {
     });
 
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Start a circuit');
-    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Add input/output pins');
-    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Build AND starter');
-    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Place individually');
+    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Add input');
+    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Add output');
+    expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Place gate');
     expect(view.getByTestId('ide-design-empty-state').textContent).toContain('Component Library');
-    expect(view.getByTestId('ide-design-empty-add-io')).toBeTruthy();
-    expect(view.getByTestId('ide-design-empty-add-and')).toBeTruthy();
-    expect(view.getByTestId('ide-design-empty-add-input')).toBeTruthy();
-    expect(view.getByTestId('ide-design-empty-add-output')).toBeTruthy();
-    expect(view.getByTestId('ide-design-empty-place-gate')).toBeTruthy();
     expect(view.getByTestId('ide-left-dock')).toBeTruthy();
     expect(view.queryByTestId('ide-right-dock')).toBeNull();
     expect(view.queryByTestId('ide-workbench-dock-toggle-left')).toBeNull();
@@ -170,7 +165,7 @@ describe('DesignSurface blank-state guidance', () => {
     expect((view.getByTestId('ide-design-overflow-center-selection') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('adds a usable logical boundary from the primary blank-state action', async () => {
+  it('starts direct input placement from the blank-state task actions', async () => {
     const view = render(
       <DesignSurface
         runtimeSim={makeRuntimeSim()}
@@ -185,22 +180,6 @@ describe('DesignSurface blank-state guidance', () => {
         onGoToVerify={vi.fn()}
       />
     );
-
-    await waitFor(() => {
-      expect(view.getByTestId('ide-design-empty-state')).toBeTruthy();
-    });
-
-    fireEvent.click(view.getByTestId('ide-design-empty-add-io'));
-    await waitFor(() => {
-      expect(useCircuitStore.getState().circuit.nodes).toHaveLength(2);
-    });
-    expect(useCircuitStore.getState().circuit.nodes.map((node) => node.type)).toEqual(['INPUT', 'OUTPUT']);
-    expect(useLogicViewStore.getState().interactionMode).toBe('idle');
-    expect(view.queryByTestId('ide-design-empty-state')).toBeNull();
-  });
-
-  it('keeps direct individual placement available under the quick starts', async () => {
-    const view = renderSurface();
 
     await waitFor(() => {
       expect(view.getByTestId('ide-design-empty-state')).toBeTruthy();

@@ -41,16 +41,24 @@ await runIdeGate('IDE Verify pre-run testbench owns usable layout', async ({ pag
     await ensureVerifyVectorsReady(page);
     await page.waitForTimeout(150);
 
-    const metrics = await readPreRunMetrics(page);
+    let metrics = await readPreRunMetrics(page);
     await capture(page, viewport, 'prerun-testbench-layout');
 
     assert(
-      /Simulation Studio.*Author a testbench.*run the circuit.*compare waveform evidence.*expected behavior/i.test(metrics.verifyJobText),
+      /Simulation Studio.*Author stimulus.*run the circuit.*inspect the replay.*add checks/i.test(metrics.verifyJobText),
       `${viewport.label}: Verify must expose the v3 Simulation Studio job definition (${JSON.stringify(metrics.verifyJobText)})`
     );
     assert(metrics.rootOverflowX <= 1, `${viewport.label}: root must not horizontally overflow (${metrics.rootOverflowX}px)`);
-    assert(metrics.expectedCells >= 12, `${viewport.label}: starter checks must expose all expected-output cells (${metrics.expectedCells})`);
-    assert(metrics.runButtonVisible, `${viewport.label}: Run Compare must remain visible before the first run`);
+    assert(metrics.runButtonVisible, `${viewport.label}: Run simulation must remain visible before the first run`);
+    assert(metrics.studioMode === 'scenario', `${viewport.label}: pre-run Verify must open in Scenario, got "${metrics.studioMode}"`);
+
+    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'checks',
+      { timeout: 5000 },
+    );
+    metrics = await readPreRunMetrics(page);
+    assert(metrics.expectedCells >= 12, `${viewport.label}: starter Checks workspace must expose all expected-output cells (${metrics.expectedCells})`);
 
     assert(
       metrics.workspaceMode === 'stimulus-focus',
@@ -147,6 +155,7 @@ async function readPreRunMetrics(page) {
         document.querySelector('[data-testid="ide-verify-context-header"]')?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
       phase: labGridElement?.getAttribute('data-verify-workflow-phase') ?? '',
       workspaceMode: labGridElement?.getAttribute('data-workspace-mode') ?? '',
+      studioMode: labGridElement?.getAttribute('data-studio-mode') ?? '',
       stimulusLayout: labGridElement?.getAttribute('data-stimulus-layout') ?? '',
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),

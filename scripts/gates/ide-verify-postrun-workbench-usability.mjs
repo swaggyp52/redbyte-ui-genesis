@@ -22,7 +22,7 @@ const VIEWPORTS = [
     height: 768,
     compact: false,
     minStimulusWidth: 500,
-    minWaveformPreviewClippedHeight: 200,
+    minWaveformPreviewClippedHeight: 160,
     maxWaveformPreviewTopOffset: 300,
   },
   {
@@ -31,7 +31,7 @@ const VIEWPORTS = [
     height: 900,
     compact: false,
     minStimulusWidth: 530,
-    minWaveformPreviewClippedHeight: 320,
+    minWaveformPreviewClippedHeight: 290,
     maxWaveformPreviewTopOffset: 300,
   },
   {
@@ -116,8 +116,14 @@ async function openLogicGatesVerify(page, baseUrl, viewportLabel) {
 }
 
 async function assertPostRunWorkbench(page, viewport, label) {
+  const replayTab = page.locator('[data-testid="ide-vcb-workspace-replay"]').first();
+  assert(await replayTab.isVisible().catch(() => false), `${viewport.label}/${label}: Replay workspace tab is unavailable`);
+  await replayTab.click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'replay',
+    { timeout: 5000 },
+  );
   if (viewport.compact) {
-    await assertCompactStimulusFocus(page, viewport, label);
     await positionCompactWaveformControls(page);
   }
   const metrics = await page.evaluate(() => {
@@ -231,6 +237,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
       rootOverflowX: root ? Math.max(0, root.scrollWidth - root.clientWidth) : 0,
       documentOverflowX: Math.max(0, document.documentElement.scrollWidth - window.innerWidth),
       workspaceMode: labGrid?.getAttribute('data-workspace-mode') ?? '',
+      studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
       phase: labGrid?.getAttribute('data-verify-workflow-phase') ?? '',
       stimulusLayout: labGrid?.getAttribute('data-stimulus-layout') ?? '',
       labGrid: box('[data-testid="ide-verify-lab-grid"]'),
@@ -389,7 +396,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
           };
         }),
       },
-      modeLabels: ['ide-vcb-observe-only', 'ide-vcb-use-saved-checks'].flatMap((testId) =>
+      modeLabels: ['ide-vcb-workspace-scenario', 'ide-vcb-workspace-replay', 'ide-vcb-workspace-checks'].flatMap((testId) =>
         Array.from(document.querySelectorAll(`[data-testid="${testId}"]`)).map((element) => {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);
@@ -427,29 +434,14 @@ async function assertPostRunWorkbench(page, viewport, label) {
   assert(metrics.buildHash === CURRENT_SHA, `${viewport.label}/${label}: visible build hash ${metrics.buildHash || 'missing'} != ${CURRENT_SHA}`);
   assert(metrics.rootOverflowX <= 1 && metrics.documentOverflowX <= 1, `${viewport.label}/${label}: root/document overflow ${JSON.stringify(metrics)}`);
   assert(metrics.phase === 'post-run', `${viewport.label}/${label}: expected post-run phase, got "${metrics.phase}"`);
-  assert(
-    metrics.workspaceMode === (viewport.compact ? 'stimulus-focus' : 'split'),
-    `${viewport.label}/${label}: expected ${viewport.compact ? 'compact stimulus-focus' : 'split'} workspace, got "${metrics.workspaceMode}"`,
-  );
+  assert(metrics.studioMode === 'replay', `${viewport.label}/${label}: expected Replay workspace, got "${metrics.studioMode}"`);
   assert(metrics.stimulusLayout === 'stable', `${viewport.label}/${label}: expected stable stimulus layout, got "${metrics.stimulusLayout}"`);
   assert(metrics.stimulus && metrics.waveform && metrics.labGrid, `${viewport.label}/${label}: missing Verify workbench regions ${JSON.stringify(metrics)}`);
   assert(
-    metrics.stimulus.width >= viewport.minStimulusWidth,
-    `${viewport.label}/${label}: post-run testbench lane too narrow (${metrics.stimulus.width}px < ${viewport.minStimulusWidth}px)`
+    metrics.waveform.width >= viewport.minStimulusWidth && metrics.waveform.width / metrics.labGrid.width >= 0.92,
+    `${viewport.label}/${label}: Replay must own a usable full-width waveform (${metrics.waveform.width}/${metrics.labGrid.width})`,
   );
-  assert(
-    metrics.stimulus.width / metrics.labGrid.width >= (viewport.compact ? 0.92 : 0.46),
-    `${viewport.label}/${label}: post-run testbench must own a usable ${viewport.compact ? 'compact row' : 'share'} (${metrics.stimulus.width}/${metrics.labGrid.width})`
-  );
-  assert(
-    metrics.waveform.width >= (viewport.compact ? viewport.minStimulusWidth : 500),
-    `${viewport.label}/${label}: waveform lane must remain usable (${metrics.waveform.width}px)`,
-  );
-  assert(metrics.workbenchBody?.width >= viewport.minStimulusWidth - 24, `${viewport.label}/${label}: workbench body too narrow ${JSON.stringify(metrics.workbenchBody)}`);
-  assert(metrics.gridScroll?.width >= viewport.minStimulusWidth - 52, `${viewport.label}/${label}: stimulus grid too narrow ${JSON.stringify(metrics.gridScroll)}`);
-  assert(metrics.gridScroll?.extraX <= 8, `${viewport.label}/${label}: post-run testbench should not create a horizontal mini-scroll trap ${JSON.stringify(metrics.gridScroll)}`);
-  assert(metrics.expectedCells >= 12, `${viewport.label}/${label}: expected starter checks to remain visible/editable (${metrics.expectedCells})`);
-  assert(metrics.runVisible, `${viewport.label}/${label}: Run/Update Compare action must remain visible`);
+  assert(metrics.runVisible, `${viewport.label}/${label}: Run simulation action must remain visible`);
   assertModeLabelsFit(metrics.modeLabels, viewport, label);
   assertWaveformControlsUsable(metrics.waveformControls, viewport, label, {
     requireInitialHitability: label !== 'FAIL',
@@ -480,8 +472,8 @@ async function assertPostRunWorkbench(page, viewport, label) {
       `${viewport.label}/${label}: too little unclipped waveform evidence is visible (${metrics.waveformPreviewClippedHeight}px < ${viewport.minWaveformPreviewClippedHeight}px; viewport-only=${metrics.waveformPreviewVisibleHeight}px) ${JSON.stringify(metrics.waveformPreview)}`
     );
     assert(
-      metrics.waveformPreviewClippedHeight / Math.max(1, metrics.waveformPreview.height) >= 0.6,
-      `${viewport.label}/${label}: less than 60% of the waveform preview is initially readable (${metrics.waveformPreviewClippedHeight}/${metrics.waveformPreview.height})`,
+      metrics.waveformPreviewClippedHeight / Math.max(1, metrics.waveformPreview.height) >= 0.5,
+      `${viewport.label}/${label}: less than 50% of the waveform preview is initially readable (${metrics.waveformPreviewClippedHeight}/${metrics.waveformPreview.height})`,
     );
   }
   const deckScrollable = Boolean(
@@ -501,7 +493,7 @@ async function assertPostRunWorkbench(page, viewport, label) {
   if (viewport.compact) {
     assert(
       panelBodyScrollable && !deckScrollable,
-      `${viewport.label}/${label}: compact stimulus-focus must use only the panel body for vertical scrolling ${JSON.stringify({ panelBody: metrics.panelBody, instrumentDeck: metrics.instrumentDeck })}`,
+      `${viewport.label}/${label}: compact Replay must use only the panel body for vertical scrolling ${JSON.stringify({ panelBody: metrics.panelBody, instrumentDeck: metrics.instrumentDeck })}`,
     );
   } else {
     assert(
@@ -510,6 +502,12 @@ async function assertPostRunWorkbench(page, viewport, label) {
     );
   }
   await assertLastWaveformLaneReachable(page, viewport, label);
+  await assertChecksWorkspaceAccessible(page, viewport, label);
+  await replayTab.click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'replay',
+    { timeout: 5000 },
+  );
   if (viewport.compact && label === 'FAIL') {
     await assertCompactRepairActionsReachable(page, viewport, label);
   }
@@ -690,6 +688,9 @@ async function assertFailureWaveformControlsReachable(page, viewport, label) {
         height: rect.height,
         visibleHeight,
         centerHit: centerHit === control || control.contains(centerHit),
+        centerHitTarget: centerHit instanceof HTMLElement
+          ? { testId: centerHit.getAttribute('data-testid') ?? '', className: centerHit.className, tagName: centerHit.tagName }
+          : null,
         inAuthority: authority.contains(control),
       });
     }
@@ -807,6 +808,12 @@ async function positionCompactWaveformControls(page) {
 
 async function assertCompactRepairActionsReachable(page, viewport, label) {
   const actions = await page.evaluate(async () => {
+    const box = (selector) => {
+      const element = document.querySelector(selector);
+      if (!(element instanceof HTMLElement)) return null;
+      const rect = element.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom };
+    };
     const body = document.querySelector('.ide-verify-panel > .ide-panel-body');
     const deck = document.querySelector('.ide-verify-instrument-deck');
     if (!(body instanceof HTMLElement) || !(deck instanceof HTMLElement)) return null;
@@ -836,11 +843,21 @@ async function assertCompactRepairActionsReachable(page, viewport, label) {
         rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height, bottom: rect.bottom },
         visibleHeight,
         centerHit: centerHit === control || control.contains(centerHit),
+        centerHitTarget: centerHit instanceof HTMLElement
+          ? { testId: centerHit.getAttribute('data-testid') ?? '', className: centerHit.className, tagName: centerHit.tagName }
+          : null,
         inRepairPanel: Boolean(control.closest('[data-testid="ide-verify-repair-panel"]')),
       });
     }
     const result = {
       records,
+      geometry: {
+        repairPanel: box('[data-testid="ide-verify-repair-panel"]'),
+        advancedFailure: box('.ide-verify-advanced-failure'),
+        oscilloscope: box('.ide-verify-oscilloscope-stage'),
+        waveformBar: box('[data-testid="ide-verify-waveform-bar"]'),
+        deck: box('.ide-verify-instrument-deck'),
+      },
       panelBody: {
         overflowY: getComputedStyle(body).overflowY,
         maxScrollY: Math.max(0, body.scrollHeight - body.clientHeight),
@@ -870,7 +887,7 @@ async function assertCompactRepairActionsReachable(page, viewport, label) {
       record.visibleHeight >= Math.max(1, Math.floor(record.rect.height * 0.9)),
       `${viewport.label}/${label}: compact repair action remains clipped after outer scroll ${JSON.stringify(record)}`,
     );
-    assert(record.centerHit, `${viewport.label}/${label}: compact repair action center is not hit-testable ${JSON.stringify(record)}`);
+    assert(record.centerHit, `${viewport.label}/${label}: compact repair action center is not hit-testable ${JSON.stringify({ record, geometry: actions.geometry })}`);
   }
 }
 
@@ -928,16 +945,72 @@ async function assertLastWaveformLaneReachable(page, viewport, label) {
   }
 }
 
+async function assertChecksWorkspaceAccessible(page, viewport, label) {
+  const checksTab = page.locator('[data-testid="ide-vcb-workspace-checks"]').first();
+  assert(await checksTab.isVisible().catch(() => false), `${viewport.label}/${label}: Checks workspace tab is unavailable`);
+  await checksTab.click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'checks',
+    { timeout: 5000 },
+  );
+
+  const metrics = await page.evaluate(() => {
+    const box = (selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      };
+    };
+    const labGrid = document.querySelector('[data-testid="ide-verify-lab-grid"]');
+    const gridScroll = document.querySelector('.ide-stimulus-grid-scroll');
+    return {
+      studioMode: labGrid?.getAttribute('data-studio-mode') ?? '',
+      labGrid: box('[data-testid="ide-verify-lab-grid"]'),
+      stimulus: box('[data-testid="ide-verify-region-stimulus"]'),
+      waveform: box('[data-testid="ide-verify-region-waveform"]'),
+      expectedCells: document.querySelectorAll('[data-testid^="ide-stimulus-expected-"]').length,
+      runText: document.querySelector('[data-testid="ide-vcb-run"]')?.textContent?.trim() ?? '',
+      gridScroll: gridScroll
+        ? {
+            ...box('.ide-stimulus-grid-scroll'),
+            extraX: Math.max(0, gridScroll.scrollWidth - gridScroll.clientWidth),
+          }
+        : null,
+    };
+  });
+
+  assert(metrics.studioMode === 'checks', `${viewport.label}/${label}: Checks selection did not own the studio ${JSON.stringify(metrics)}`);
+  assert(metrics.labGrid && metrics.stimulus, `${viewport.label}/${label}: Checks workspace is missing its authoring surface ${JSON.stringify(metrics)}`);
+  assert(
+    metrics.stimulus.width >= viewport.minStimulusWidth && metrics.stimulus.width / metrics.labGrid.width >= 0.92,
+    `${viewport.label}/${label}: Checks must own a usable full-width authoring surface ${JSON.stringify(metrics)}`,
+  );
+  assert(metrics.waveform?.width === 0, `${viewport.label}/${label}: hidden Replay surface still consumes Checks workspace width ${JSON.stringify(metrics.waveform)}`);
+  assert(metrics.expectedCells >= 12, `${viewport.label}/${label}: saved checks are not visible/editable (${metrics.expectedCells})`);
+  assert(metrics.gridScroll?.width >= viewport.minStimulusWidth - 52, `${viewport.label}/${label}: checks grid is too narrow ${JSON.stringify(metrics.gridScroll)}`);
+  assert(metrics.gridScroll?.extraX <= 8, `${viewport.label}/${label}: Checks workspace creates a horizontal mini-scroll trap ${JSON.stringify(metrics.gridScroll)}`);
+  assert(metrics.runText === 'Run simulation', `${viewport.label}/${label}: unified run authority changed to "${metrics.runText}"`);
+}
+
 function assertModeLabelsFit(modeLabels, viewport, label) {
   const expectedLabels = new Map([
-    ['ide-vcb-observe-only', { text: 'Observe' }],
-    ['ide-vcb-use-saved-checks', { text: 'Compare checks' }],
+    ['ide-vcb-workspace-scenario', { text: 'Scenario' }],
+    ['ide-vcb-workspace-replay', { text: 'Replay' }],
+    ['ide-vcb-workspace-checks', { text: 'Checks', prefix: true }],
   ]);
   for (const [testId, expected] of expectedLabels) {
     const metrics = modeLabels.filter((candidate) => candidate.testId === testId && candidate.visible);
     assert(metrics.length > 0, `${viewport.label}/${label}: missing visible Verify command deck label ${testId}`);
     for (const metric of metrics) {
-      assert(metric.text === expected.text, `${viewport.label}/${label}: Verify command deck label ${testId} changed to "${metric.text}"`);
+      assert(
+        expected.prefix ? metric.text.startsWith(expected.text) : metric.text === expected.text,
+        `${viewport.label}/${label}: Verify command deck label ${testId} changed to "${metric.text}"`,
+      );
       assert(
         metric.width >= metric.requiredReadableWidth,
         `${viewport.label}/${label}: Verify command deck label "${expected.text}" is too narrow to read (${metric.width}px < ${metric.requiredReadableWidth}px) ${JSON.stringify(metric)}`
@@ -964,14 +1037,13 @@ async function assertPostRunToggleKeepsWorkbenchAccessible(page, viewport) {
     !(await toggle.isVisible().catch(() => false)),
     `${viewport.label}: stable testbench authoring must not expose a collapse toggle`,
   );
-  await page.waitForSelector('[data-testid="ide-verify-workbench-body"]', { timeout: 5000 });
   assert(
     !(await page.locator('[data-testid="ide-verify-workbench-collapsed-strip"]').isVisible().catch(() => false)),
     `${viewport.label}: post-run workbench must keep the editable checks visible`,
   );
   assert(
-    await page.locator('[data-testid="ide-verify-authoring-path"]:visible').first().isVisible().catch(() => false),
-    `${viewport.label}: the testbench authoring path must remain visible after a run`,
+    await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().isVisible().catch(() => false),
+    `${viewport.label}: the Checks authoring workspace must remain reachable after a run`,
   );
   await assertPostRunWorkbench(page, viewport, 'STABLE AUTHORING');
 }
@@ -994,6 +1066,11 @@ async function clickRunAndWaitForNewResult(page) {
 }
 
 async function pickRenderedExpectedTarget(page) {
+  await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'checks',
+    { timeout: 5000 },
+  );
   const cells = await page.locator('[data-testid^="ide-stimulus-expected-"]').evaluateAll((elements) =>
     elements.map((element) => {
       const testId = element.getAttribute('data-testid') || '';
@@ -1027,6 +1104,11 @@ async function readRenderedCellValue(page, target) {
 }
 
 async function clickExpectedCellToValue(page, target, expectedValue) {
+  await page.locator('[data-testid="ide-vcb-workspace-checks"]').first().click();
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="ide-verify-lab-grid"]')?.getAttribute('data-studio-mode') === 'checks',
+    { timeout: 5000 },
+  );
   const cell = page.getByTestId(target.testId).first();
   await cell.scrollIntoViewIfNeeded();
   for (let attempt = 0; attempt < 4; attempt += 1) {

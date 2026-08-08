@@ -601,7 +601,7 @@
   pointer-events: auto !important;
 }
 
-@media (max-height: 820px) {
+@media (max-height: 960px) {
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-authoring-quickstrip {
     top: 12px !important;
     bottom: auto !important;

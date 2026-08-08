@@ -48,14 +48,27 @@ async function runAuthoringDepthPath(page, baseUrl, viewport) {
   await page.waitForSelector('[data-testid="ide-mode-design"]', { timeout: 15000 });
   await assertSurfaceSafe(page, `${viewport.label}/Design blank`);
 
-  assert(await isVisible(page, '[data-testid="ide-design-empty-add-io"]'), `${viewport.label}: blank canvas must expose Add boundary I/O`);
-  assert(await isVisible(page, '[data-testid="ide-design-empty-add-and"]'), `${viewport.label}: blank canvas must expose a starter gate path`);
-  await clickVisible(page, '[data-testid="ide-design-empty-add-io"]', `${viewport.label}: Add boundary I/O`);
-  await waitForRuntimeNodes(page, 2, `${viewport.label}: Add boundary I/O`);
+  assert(await isVisible(page, '[data-testid="ide-design-empty-add-input"]'), `${viewport.label}: blank canvas must expose direct input placement`);
+  assert(await isVisible(page, '[data-testid="ide-design-empty-add-output"]'), `${viewport.label}: blank canvas must expose direct output placement`);
+  assert(await isVisible(page, '[data-testid="ide-design-empty-place-gate"]'), `${viewport.label}: blank canvas must expose direct gate placement`);
+
+  await clickVisible(page, '[data-testid="ide-design-empty-add-input"]', `${viewport.label}: arm first input placement`);
+  await placePendingNode(page, 0.3, 0.38, `${viewport.label}: place first input`);
+  await waitForRuntimeNodes(page, 1, `${viewport.label}: first input`);
+
+  await revealDock(page, 'left');
+  await clickVisible(page, '[data-testid="ide-design-palette-input"]', `${viewport.label}: arm second input placement`);
+  await placePendingNode(page, 0.3, 0.62, `${viewport.label}: place second input`);
+  await waitForRuntimeNodes(page, 2, `${viewport.label}: second input`);
+
+  await clickVisible(page, '[data-testid="ide-design-palette-output"]', `${viewport.label}: arm output placement`);
+  await placePendingNode(page, 0.7, 0.5, `${viewport.label}: place output`);
+  await waitForRuntimeNodes(page, 3, `${viewport.label}: output`);
 
   await assertPartialBlankAuthoring(page, viewport);
-  await clickVisible(page, '[data-testid="ide-design-quick-add-and"], [data-testid="ide-design-status-add-and"]', `${viewport.label}: quick Add AND`);
-  await waitForRuntimeNodes(page, 3, `${viewport.label}: Add AND after boundary I/O`);
+  await clickVisible(page, '[data-testid="ide-design-palette-and"]', `${viewport.label}: arm AND placement`);
+  await placePendingNode(page, 0.5, 0.5, `${viewport.label}: place AND`);
+  await waitForRuntimeNodes(page, 4, `${viewport.label}: AND after boundary I/O`);
   await assertPartialBlankAuthoring(page, viewport, { expectAnd: true });
 
   await clickVisible(page, '[data-testid="ide-design-quick-wire"], [data-testid="ide-design-tool-wire"]', `${viewport.label}: Wire tool`);
@@ -273,6 +286,22 @@ async function waitForRuntimeNodes(page, minimum, label) {
   );
   const count = (await readCircuitCounts(page)).nodes;
   assert(count >= minimum, `${label}: expected at least ${minimum} nodes, got ${count}`);
+}
+
+async function placePendingNode(page, widthRatio, heightRatio, label) {
+  const hitLayer = page.locator('[data-testid="ide-design-placement-hit-layer"]').first();
+  await hitLayer.waitFor({ state: 'visible', timeout: 5000 });
+  const bounds = await hitLayer.boundingBox();
+  assert(Boolean(bounds), `${label}: placement hit layer has no measurable bounds`);
+  await page.mouse.click(
+    bounds.x + bounds.width * widthRatio,
+    bounds.y + bounds.height * heightRatio,
+  );
+  await page.waitForFunction(
+    () => !document.querySelector('[data-testid="ide-design-placement-hit-layer"]'),
+    undefined,
+    { timeout: 5000 },
+  );
 }
 
 async function waitForFunctionLabeled(page, predicate, arg, label, timeout = 10000) {

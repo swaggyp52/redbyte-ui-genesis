@@ -2383,4 +2383,12 @@
       'actions'
       'waveform' !important;
   }
+
+  .ide-root.ide-root
+    .ide-workbench-shell[data-ide-mode-marker='verify']
+    .ide-verify-lab-grid[data-studio-mode='replay']
+    .ide-verify-advanced-failure {
+    max-height: none !important;
+    overflow: visible !important;
+  }
 }

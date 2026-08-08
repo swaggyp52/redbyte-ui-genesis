@@ -7798,6 +7798,50 @@ This left an unresolved contradiction with the locked product direction (`Import
   disclosure, or the responsive overflow menu. Camera finiteness, rendered
   node and wire visibility, resize behavior, mode transitions, and reload
   assertions are unchanged.
+- The adjacent direct-workbench gate now applies the same responsive truth. It
+  proves compact **More tools** availability and interaction at 1366px, direct
+  inline camera controls at 1440px, and a closed transient menu after every
+  action while retaining canvas dominance and graph-overlap checks.
+- The cross-surface stability gate uses that same visible-control resolution
+  before continuing through Simulate reload, Board & Constraints, and the
+  return to Design; it no longer blocks on a deliberately hidden desktop host.
+- The later complex-build signal-trace scenario also resolves reset, zoom, and
+  fit through the visible responsive source, so its deliberate wrong-circuit
+  diagnosis remains testable at both required widths.
+- That scenario now enters optional-check authorship through the student-facing
+  **Checks** workspace (or the compatible earlier **Add expected outputs**
+  action) before editing expected cells, preserving the intended
+  observation-first Simulate workflow instead of bypassing it.
+- The Design correctness gate now selects each real input or output before
+  reading the contextual Inspector and toggles inputs through the selected
+  input control. It no longer requires the retired always-visible idle I/O
+  inspector, while preserving immediate combinational truth-table checks.
+- The palette-build contract uses the same contextual input controls after
+  placing and wiring its XOR circuit, while continuing to prove output truth,
+  no combinational tick advance, and unique board-resource placement.
+- Verify reality and saved-check gates now follow the Simulation Studio
+  contract: **Scenario / Replay / Checks**, one **Run simulation** authority,
+  and automatic evaluation of authored optional checks. They no longer require
+  retired Observe/Compare toggles or reject the clearer **Scenario ready** state.
+- Post-run signal visibility is asserted through the integrated Simulate shelf,
+  not the retired collapsible left-dock rail.
+- Simulation layout, post-run usability, evidence-workbench, and laptop
+  authoring gates now switch deliberately between **Scenario**, **Checks**, and
+  **Replay**. Each workspace owns the full authoring or evidence canvas instead
+  of reviving the retired simultaneous editor/waveform split.
+- At compact replay widths a failing simulation no longer traps repair actions
+  in a nested 500px failure scroller. The outer panel body is the single scroll
+  authority, keeping **Use observed** and **Open Design** visible and
+  hit-testable above the waveform controls.
+- Export E2E proof follows the unified simulation/check contract and reads the
+  grouped v3 artifact browser by its actual filename element. Preview/ZIP byte
+  parity excludes visible line-number chrome while retaining exact generated
+  source comparison.
+- Blank Design authoring is direct again: **Add input**, **Add output**, and
+  **Place gate** arm real canvas placement without redundant one-click circuit
+  generators. Release safety now places two inputs, an output, and an AND gate
+  through the same student controls, and the partial-authoring guide is
+  top-anchored through 960px-high laptop viewports so its actions stay visible.
 
 **Proof boundary**
 
