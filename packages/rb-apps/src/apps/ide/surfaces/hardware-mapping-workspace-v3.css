@@ -623,13 +623,13 @@
 .ide-root .ide-hw-v3__mapping-row > th small { font-size: 12px !important; }
 
 .ide-root .ide-hw-v3__board-reference-graphic {
-  min-height: 500px;
-  padding: 24px;
+  min-height: 440px;
+  padding: 18px;
   pointer-events: auto;
   background: linear-gradient(var(--rb-canvas-grid) 1px, transparent 1px), linear-gradient(90deg, var(--rb-canvas-grid) 1px, transparent 1px), var(--rb-surface-2);
   background-size: 24px 24px;
 }
-.ide-root .ide-hw-v3__board-reference-graphic svg { min-height: 430px; }
+.ide-root .ide-hw-v3__board-reference-graphic svg { min-height: 380px; }
 .ide-root .ide-hw-v3__field { font-size: 13px; }
 .ide-root .ide-hw-v3__field select { min-height: 40px; font-size: 14px; }
 .ide-root .ide-hw-v3__consequence { color: var(--rb-text-secondary); font-size: 13px; line-height: 1.5; }

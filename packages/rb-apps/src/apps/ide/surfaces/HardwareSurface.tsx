@@ -3213,7 +3213,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         {selectedBoardResource
                           ? selectedBoardResource.alias + ' uses package pin ' + selectedBoardResource.packagePin +
                             '. Export will bind artifact port ' + (selectedMappingProjection?.artifactPortName ?? selectedXdcPortRef) + ' in top.xdc.'
-                          : 'Choose a compatible Basys3 resource. The board below is a physical reference.'}
+                          : 'Choose from the selector or click a highlighted Basys3 resource. Both update the same saved mapping.'}
                       </p>
                       <div className="ide-hw-v3__editor-actions">
                         <IdeButton
@@ -3256,29 +3256,36 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   )}
                 </section>
 
-                <section className="ide-hw-v3__board" data-testid="ide-hw-map-board" data-work-priority="reference">
+                <section className="ide-hw-v3__board" data-testid="ide-hw-map-board" data-work-priority="primary">
                   <header className="ide-hw-v3__section-header">
                     <div>
-                      <p className="ide-surface-block-label">Board reference</p>
+                      <p className="ide-surface-block-label">Interactive board</p>
                       <h3>Basys3</h3>
                       <p className="ide-copy ide-copy--flush" data-testid="ide-hw-board-task-copy">
-                      Use the resource selector above to assign this signal. The board visual is a reference for the selected and saved binding.
+                      {selectedMappingRow ? 'Click a highlighted compatible resource to assign it immediately.' : 'Select a logical signal, then choose its physical board resource here.'}
                       </p>
                     </div>
                   </header>
                   <div
                     className="ide-hw-v3__board-reference-graphic"
                     data-testid="ide-hw-board-reference-graphic"
-                    role="img"
-                    aria-label="Basys3 board reference. Assignments use the selected signal resource control above."
+                    role="region"
+                    aria-label="Interactive Basys3 board assignment canvas"
                   >
                     <Basys3BoardView
                       mappedAliases={mapModeAliases}
                       highlightedAlias={selectedBoardResourceAlias ?? selectedMappingRowPin}
+                      allowedAliases={selectedMappingRow ? new Set(compatiblePlannerResources.map((resource) => resource.alias)) : new Set<string>()}
+                      assignmentMode={Boolean(selectedMappingRow)}
                       onSelectAlias={(alias) => {
                         if (!selectedMappingRow) return;
-                        const isCompatible = compatiblePlannerResources.some((resource) => resource.alias === alias);
-                        if (isCompatible) setSelectedBoardResourceAlias(alias);
+                        const resource = compatiblePlannerResources.find((candidate) => candidate.alias === alias);
+                        if (!resource) return;
+                        const occupiedByAnotherSignal = (mappedRowsByPackagePin.get(resource.packagePin) ?? [])
+                          .some((candidate) => candidate.id !== selectedMappingRow.id);
+                        if (occupiedByAnotherSignal) return;
+                        setSelectedBoardResourceAlias(alias);
+                        onSetMappingPin?.(selectedMappingRow.id, resource.packagePin);
                       }}
                     />
                   </div>

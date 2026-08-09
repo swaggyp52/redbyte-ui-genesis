@@ -2090,10 +2090,9 @@
   background: rgba(255, 107, 122, 0.07);
 }
 
-/* Simulation & Replay Studio v1: one primary workspace at a time. */
+/* Focus modes keep one scenario authority while allowing the default composer
+   to remain visually connected to its waveform evidence. */
 .ide-root .ide-verify-lab-grid[data-studio-mode='replay'] .ide-verify-region--stimulus,
-.ide-root .ide-verify-lab-grid[data-studio-mode='scenario'] .ide-verify-region--waveform,
-.ide-root .ide-verify-lab-grid[data-studio-mode='checks'] .ide-verify-region--waveform,
 .ide-root .ide-verify-lab-grid[data-studio-mode='testbench'] .ide-verify-region--waveform {
   display: none;
 }
@@ -2317,8 +2316,64 @@
 }
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary {
+  display: grid !important;
+  grid-template-columns: minmax(170px, .75fr) minmax(260px, 1.35fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
   min-height: 0 !important;
+  height: auto !important;
   padding: 7px 10px !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 8px;
+  min-width: 0;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-state {
+  grid-row: 1;
+  align-self: center;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-headline {
+  display: none;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  :is(.ide-verify-results-summary-headline, .ide-verify-results-summary-subline) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-guidance {
+  display: none;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-metric {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-summary-actions {
+  flex-wrap: nowrap;
+  padding: 0 !important;
 }
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-results-actions {
@@ -2549,11 +2604,11 @@
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-lab-grid[data-studio-mode] {
   display: grid;
-  grid-template-columns: minmax(236px, 256px) minmax(0, 1fr) !important;
-  grid-template-rows: auto !important;
+  grid-template-columns: minmax(220px, 248px) minmax(0, 1fr) minmax(260px, 292px) !important;
+  grid-template-rows: auto auto !important;
   align-items: start;
   width: 100%;
-  min-height: calc(100dvh - 48px - 56px - 24px - 58px) !important;
+  min-height: 0 !important;
   padding: 12px clamp(20px, 2vw, 32px) 16px;
   gap: 10px;
   overflow: visible !important;
@@ -2569,7 +2624,7 @@
   color: var(--rb-text-primary);
 }
 
-.ide-sim-scenario-explorer { grid-column: 1; grid-row: 1; max-height: calc(100dvh - 190px); padding: 0; overflow: hidden; border: 1px solid var(--rb-border); border-radius: 10px; }
+.ide-sim-scenario-explorer { grid-column: 1; grid-row: 1 / span 2; max-height: calc(100dvh - 150px); padding: 0; overflow: hidden; border: 1px solid var(--rb-border); border-radius: 10px; }
 .ide-sim-scenario-explorer > header,
 .ide-sim-context-inspector > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 2px 12px; border-bottom: 1px solid var(--rb-border-subtle); }
 .ide-sim-scenario-explorer > header span,
@@ -2586,7 +2641,6 @@
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus,
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform {
   grid-column: 2 !important;
-  grid-row: 1;
   min-width: 0;
   min-height: 0;
   overflow: visible;
@@ -2594,6 +2648,8 @@
   border-radius: 10px;
   background: var(--rb-surface);
 }
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--stimulus { grid-row: 1 !important; }
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-region--waveform { grid-row: 2 !important; display: block; }
 
 .ide-root .ide-testbench-documents,
 .ide-root .ide-verify-stimulus-header,
@@ -2607,7 +2663,7 @@
 .ide-root .ide-stimulus-label-cell strong { font-size: 14px; }
 .ide-root .ide-stimulus-label-cell small { font-size: 12px; }
 
-.ide-sim-context-inspector { display: none; grid-column: 3; grid-row: 1; align-content: start; gap: 12px; padding: 12px; border-left: 1px solid var(--rb-border); }
+.ide-sim-context-inspector { display: grid; grid-column: 3; grid-row: 1 / span 2; align-content: start; gap: 10px; padding: 12px; border: 1px solid var(--rb-border); border-radius: 10px; background: var(--rb-surface); }
 .ide-sim-context-inspector dl { display: grid; gap: 0; margin: 0; border: 1px solid var(--rb-border); border-radius: 8px; overflow: hidden; }
 .ide-sim-context-inspector dl > div { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.2fr); gap: 10px; padding: 10px; border-bottom: 1px solid var(--rb-border-subtle); }
 .ide-sim-context-inspector dl > div:last-child { border-bottom: 0; }
@@ -2740,10 +2796,10 @@
 
 .ide-scenario-composer {
   display: grid;
-  gap: 16px;
-  min-height: calc(100dvh - 210px);
+  gap: 12px;
+  min-height: 330px;
   align-content: start;
-  padding: 18px;
+  padding: 14px;
   background: var(--rb-surface);
   color: var(--rb-text-primary);
 }
@@ -3031,23 +3087,30 @@
 }
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid:is([data-studio-mode='scenario'], [data-studio-mode='checks']) .ide-verify-region--waveform {
+  display: block !important;
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='replay'],
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='testbench'] {
-  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-columns: minmax(220px, 248px) minmax(0, 1fr) minmax(260px, 292px) !important;
 }
 .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='replay'] .ide-sim-scenario-explorer,
 .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='testbench'] .ide-sim-scenario-explorer {
-  display: none;
+  display: flex;
 }
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='replay'] .ide-verify-region--waveform,
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-lab-grid[data-studio-mode='testbench'] .ide-verify-region--stimulus {
-  grid-column: 1 / -1 !important;
-  grid-row: 1 !important;
+  grid-column: 2 !important;
+  grid-row: 1 / span 2 !important;
   width: 100% !important;
   height: auto !important;
   max-height: none !important;
@@ -3056,11 +3119,10 @@
 
 @media (min-width: 1240px) {
   .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
-    .ide-verify-lab-grid:is([data-studio-mode='scenario'], [data-studio-mode='checks']) {
+    .ide-verify-lab-grid[data-studio-mode] {
     grid-template-columns: minmax(236px, 256px) minmax(0, 1fr) minmax(268px, 300px) !important;
   }
-  .ide-verify-lab-grid:is([data-studio-mode='scenario'], [data-studio-mode='checks'])
-    .ide-sim-context-inspector {
+  .ide-verify-lab-grid[data-studio-mode] .ide-sim-context-inspector {
     display: grid;
   }
 }
@@ -3087,9 +3149,9 @@
 
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   .ide-verify-oscilloscope-stage [data-testid='ide-verify-waveform-preview'] {
-  min-height: 300px !important;
-  height: clamp(300px, 38vh, 380px) !important;
-  max-height: 380px !important;
+  min-height: 238px !important;
+  height: clamp(238px, 29vh, 310px) !important;
+  max-height: 310px !important;
 }
 .ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify'] .ide-verify-oscilloscope-stage {
   min-height: 0 !important;
@@ -3104,7 +3166,7 @@
   height: auto !important;
 }
 .ide-root .ide-vwp {
-  min-height: clamp(240px, 36vh, 350px);
+  min-height: clamp(220px, 28vh, 300px);
   background-color: #10161f;
   background-image: linear-gradient(rgba(150, 170, 196, .06) 1px, transparent 1px);
 }

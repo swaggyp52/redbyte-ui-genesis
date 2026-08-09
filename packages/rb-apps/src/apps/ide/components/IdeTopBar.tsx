@@ -1,8 +1,9 @@
 import React from 'react';
 import type { ThemeVariant } from '@redbyte/rb-theme';
 import type { IdeBuildIdentity } from '../buildIdentity';
-import { getIdeModeLabel, type IdeMode } from '../workflowStages';
+import type { IdeMode } from '../workflowStages';
 import { WORKSPACE_PRESETS, type WorkspacePresetId } from '../workspacePreferences';
+import { IdeStageNav } from './IdeStageNav';
 
 export type IdeTopBarSaveState =
   | 'saved'
@@ -20,6 +21,10 @@ export interface IdeTopBarProps {
   storageLabel?: string;
   recoveryAvailable?: boolean;
   currentMode?: IdeMode;
+  onModeChange?: (mode: IdeMode) => void;
+  stepsCompleted?: Partial<Record<IdeMode, boolean>>;
+  stepsBlocked?: Partial<Record<IdeMode, boolean>>;
+  stageStatus?: Partial<Record<IdeMode, string>>;
   buildIdentity?: IdeBuildIdentity;
   // Legacy toolbar props — kept optional for backward compat; no longer rendered.
   onSave?: () => void;
@@ -73,6 +78,10 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
   storageLabel = 'This browser on this device',
   recoveryAvailable = false,
   currentMode,
+  onModeChange,
+  stepsCompleted,
+  stepsBlocked,
+  stageStatus,
   buildIdentity,
   onSave,
   onSaveAs,
@@ -116,7 +125,6 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
     .filter(Boolean)
     .join(' - ');
 
-  const modeLabel = currentMode ? getIdeModeLabel(currentMode) : null;
   const canRenameProject = Boolean(onRenameProject);
   const boardLabel = boardTarget.toLowerCase() === 'basys3' ? 'Basys3' : boardTarget;
 
@@ -219,15 +227,19 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
           </h1>
         </div>
 
-        {modeLabel && (
-          <>
-            <span className="ide-breadcrumb-sep" aria-hidden="true">/</span>
-            <span className="ide-mode-breadcrumb" data-testid="ide-topbar-mode-label">
-              {modeLabel}
-            </span>
-          </>
-        )}
       </div>
+
+      {currentMode && onModeChange ? (
+        <div className="ide-top-center">
+          <IdeStageNav
+            currentMode={currentMode}
+            onModeChange={onModeChange}
+            stepsCompleted={stepsCompleted}
+            stepsBlocked={stepsBlocked}
+            stageStatus={stageStatus}
+          />
+        </div>
+      ) : null}
 
       <div className="ide-top-right">
         <span className="ide-topbar-fact" data-testid="ide-board-chip">
@@ -254,108 +266,105 @@ export const IdeTopBar: React.FC<IdeTopBarProps> = ({
             Commands <kbd>Ctrl K</kbd>
           </button>
         ) : null}
-        {onApplyWorkspacePreset ? (
-          <details className="ide-topbar-menu" data-testid="ide-workspace-menu">
-            <summary>Workspace</summary>
-            <div className="ide-topbar-menu-popover" role="menu" aria-label="Workspace presets">
-              <span className="ide-topbar-menu-heading">Layout preset</span>
-              {(Object.keys(WORKSPACE_PRESETS) as WorkspacePresetId[]).map((presetId) => (
-                <button
-                  key={presetId}
-                  type="button"
-                  role="menuitemradio"
-                  aria-checked={activeWorkspacePreset === presetId}
-                  onClick={(event) => {
-                    onApplyWorkspacePreset(presetId);
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                  }}
-                  data-testid={`ide-workspace-preset-${presetId}`}
-                >
-                  <strong>{WORKSPACE_PRESETS[presetId].name}</strong>
-                  <small>{WORKSPACE_PRESETS[presetId].description}</small>
-                </button>
-              ))}
-              {onResetWorkspace ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={(event) => {
-                    onResetWorkspace();
-                    event.currentTarget.closest('details')?.removeAttribute('open');
-                  }}
-                  data-testid="ide-workspace-reset"
-                >
-                  Restore default layout
-                </button>
-              ) : null}
-            </div>
-          </details>
-        ) : null}
-        {onThemeChange ? (
-          <label className="ide-theme-control" data-testid="ide-theme-control">
-            <span className="ide-theme-control-label">Theme</span>
-            <select
-              value={themeVariant === 'midnight' ? 'dark' : themeVariant}
-              onChange={(event) => onThemeChange(event.target.value as Exclude<ThemeVariant, 'midnight'>)}
-              aria-label="Workbench theme"
-              data-testid="ide-theme-select"
-            >
-              <option value="light">Studio Light</option>
-              <option value="dark">Studio Dark</option>
-              <option value="system">Follow application</option>
-            </select>
-          </label>
-        ) : null}
         {onSave && (
           <button
             type="button"
-            className="ide-topbar-action"
+            className="ide-topbar-action ide-topbar-save"
             onClick={onSave}
             data-testid="ide-topbar-save-btn"
           >
             Save
           </button>
         )}
-        {(onSaveAs || onLoad || onDuplicateProject || onExportBackup || onRecover) ? (
-          <details className="ide-topbar-menu" data-testid="ide-project-menu">
-            <summary>Project</summary>
-            <div className="ide-topbar-menu-popover" role="menu" aria-label="Project actions">
-              {onLoad ? <button type="button" role="menuitem" onClick={(event) => { onLoad(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Open project...</button> : null}
-              {onSaveAs ? <button type="button" role="menuitem" onClick={(event) => { onSaveAs(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Save As...</button> : null}
-              {onDuplicateProject ? <button type="button" role="menuitem" onClick={(event) => { onDuplicateProject(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Duplicate project</button> : null}
-              {onExportBackup ? <button type="button" role="menuitem" onClick={(event) => { onExportBackup(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Export backup</button> : null}
-              {onRecover ? (
-                <button type="button" role="menuitem" onClick={(event) => { onRecover(); event.currentTarget.closest('details')?.removeAttribute('open'); }} disabled={!recoveryAvailable}>
-                  Restore recovery snapshot{recoveryAvailable ? '' : ' (none available)'}
-                </button>
-              ) : null}
+        <details className="ide-topbar-menu ide-topbar-more" data-testid="ide-project-menu">
+          <summary aria-label="Open application and project menu">More</summary>
+          <div className="ide-topbar-menu-popover ide-topbar-more-popover" aria-label="Application and project actions">
+            {onApplyWorkspacePreset ? (
+              <section className="ide-topbar-menu-section" data-testid="ide-workspace-menu" aria-label="Workspace presets">
+                <span className="ide-topbar-menu-heading">Workspace</span>
+                <div className="ide-topbar-menu-choice-grid">
+                  {(Object.keys(WORKSPACE_PRESETS) as WorkspacePresetId[]).map((presetId) => (
+                    <button
+                      key={presetId}
+                      type="button"
+                      aria-pressed={activeWorkspacePreset === presetId}
+                      onClick={(event) => {
+                        onApplyWorkspacePreset(presetId);
+                        event.currentTarget.closest('details')?.removeAttribute('open');
+                      }}
+                      data-testid={`ide-workspace-preset-${presetId}`}
+                    >
+                      <strong>{WORKSPACE_PRESETS[presetId].name}</strong>
+                      <small>{WORKSPACE_PRESETS[presetId].description}</small>
+                    </button>
+                  ))}
+                </div>
+                {onResetWorkspace ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      onResetWorkspace();
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                    }}
+                    data-testid="ide-workspace-reset"
+                  >
+                    Restore default layout
+                  </button>
+                ) : null}
+              </section>
+            ) : null}
+            {onThemeChange ? (
+              <section className="ide-topbar-menu-section">
+                <span className="ide-topbar-menu-heading">Appearance</span>
+                <label className="ide-theme-control" data-testid="ide-theme-control">
+                  <span className="ide-theme-control-label">Application theme</span>
+                  <select
+                    value={themeVariant === 'midnight' ? 'dark' : themeVariant}
+                    onChange={(event) => {
+                      onThemeChange(event.target.value as Exclude<ThemeVariant, 'midnight'>);
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                    }}
+                    aria-label="Workbench theme"
+                    data-testid="ide-theme-select"
+                  >
+                    <option value="light">Studio Light</option>
+                    <option value="dark">Studio Dark</option>
+                    <option value="system">Follow application</option>
+                  </select>
+                </label>
+              </section>
+            ) : null}
+            <section className="ide-topbar-menu-section" aria-label="Project actions">
+              <span className="ide-topbar-menu-heading">Project</span>
+              <div className="ide-topbar-menu-action-grid">
+                {onLoad ? <button type="button" onClick={(event) => { onLoad(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Open project...</button> : null}
+                {onSaveAs ? <button type="button" onClick={(event) => { onSaveAs(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Save As...</button> : null}
+                {onDuplicateProject ? <button type="button" onClick={(event) => { onDuplicateProject(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Duplicate</button> : null}
+                {onExportBackup ? <button type="button" onClick={(event) => { onExportBackup(); event.currentTarget.closest('details')?.removeAttribute('open'); }}>Export backup</button> : null}
+                {onRecover ? <button type="button" onClick={(event) => { onRecover(); event.currentTarget.closest('details')?.removeAttribute('open'); }} disabled={!recoveryAvailable}>Recover snapshot</button> : null}
+                {onImport ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      onImport();
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                    }}
+                    data-testid="mode-button-import"
+                    aria-current={currentMode === 'import' ? 'page' : undefined}
+                  >
+                    Import / Recover
+                  </button>
+                ) : null}
+              </div>
               <span className="ide-topbar-menu-storage">Stored in {storageLabel}</span>
-            </div>
-          </details>
-        ) : null}
-        {onImport && (
-          <button
-            type="button"
-            className="ide-topbar-action"
-            onClick={onImport}
-            data-testid="mode-button-import"
-            data-active={currentMode === 'import' ? 'true' : 'false'}
-            aria-current={currentMode === 'import' ? 'page' : undefined}
-          >
-            Import / Recover
-          </button>
-        )}
-        {onHelp && (
-          <button
-            className="ide-topbar-help-btn"
-            onClick={onHelp}
-            title="Help and keyboard shortcuts"
-            aria-label="Help and keyboard shortcuts"
-            data-testid="ide-topbar-help-btn"
-          >
-            Help
-          </button>
-        )}
+            </section>
+            {onHelp ? (
+              <button type="button" className="ide-topbar-menu-help" onClick={(event) => { onHelp(); event.currentTarget.closest('details')?.removeAttribute('open'); }} data-testid="ide-topbar-help-btn">
+                Help and keyboard shortcuts
+              </button>
+            ) : null}
+          </div>
+        </details>
       </div>
     </header>
   );

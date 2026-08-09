@@ -143,6 +143,18 @@
   min-height: 40px;
 }
 
+.ide-export-v3__validation {
+  flex: 1 0 100%;
+  max-width: none;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: right;
+  white-space: nowrap;
+}
+.ide-export-v3__validation.is-ready { color: var(--rb-success); }
+.ide-export-v3__validation.is-blocked { color: var(--rb-danger); }
+
 .ide-export-v3__section-header {
   display: flex;
   align-items: flex-start;
@@ -733,7 +745,7 @@
 }
 
 .ide-root .ide-export-v3__decision {
-  grid-template-columns: minmax(0, 1fr) minmax(230px, 280px) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(440px, 500px);
   min-height: 96px;
   padding: 12px 18px;
   border-top: 1px solid var(--rb-border);

@@ -498,6 +498,9 @@
   max-width: 390px;
   gap: 7px;
   padding: 12px;
+  border-color: #334155;
+  color: #f2f5f8;
+  background: rgba(16, 22, 31, .94);
   pointer-events: none;
 }
 
@@ -507,12 +510,23 @@
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty h3 {
   margin: 0;
+  color: #f2f5f8;
   font-size: 17px;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-summary {
   margin: 0;
-  color: #7f93a8;
+  color: #b8c3d1;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-eyebrow { color: #9fb0c3; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost {
+  border-color: #526173;
+  color: #f2f5f8;
+  background: #202a37;
+}
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-overlay-empty .ide-button.ide-button-ghost:hover {
+  border-color: #93a4b8;
+  background: #2b3848;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-empty-actions {
@@ -1432,11 +1446,7 @@
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-workspace-header:has(.ide-design-wire-cuebar) {
-  display: flex !important;
-  min-height: 40px;
-  padding: 0 10px;
-  border-bottom: 1px solid var(--rb-border);
-  background: var(--rb-canvas-dark-panel);
+  display: none !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar {
@@ -1505,6 +1515,30 @@
   color: var(--rb-text-primary);
 }
 .ide-design-command-mode button:disabled { opacity: .45; }
+
+.ide-design-wire-inline {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  padding: 3px 7px;
+  gap: 7px;
+  border: 1px solid color-mix(in srgb, var(--rb-action) 38%, var(--rb-border));
+  border-radius: 6px;
+  color: var(--rb-text-secondary);
+  background: color-mix(in srgb, var(--rb-action) 7%, var(--rb-surface));
+  font-size: 13px;
+}
+.ide-design-wire-inline strong { color: var(--rb-action); font-size: 13px; }
+.ide-design-wire-inline span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ide-design-wire-inline button {
+  min-height: 28px;
+  padding: 0 7px;
+  border: 1px solid var(--rb-border);
+  border-radius: 5px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  font-weight: 650;
+}
 
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-command-breadcrumb button,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-command-mode button {
@@ -1642,6 +1676,66 @@
   :is(.ide-design-palette-header, .ide-palette-section) {
   background: var(--rb-surface);
   color: var(--rb-text-primary);
+}
+
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-palette {
+  border-color: var(--rb-border);
+  background: var(--rb-surface-2);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section {
+  margin: 0;
+  padding: 10px;
+  gap: 7px;
+  border: 0;
+  border-bottom: 1px solid var(--rb-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-copy {
+  margin: 2px 0 4px;
+  color: var(--rb-text-muted);
+  font-size: 12px;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  min-height: 48px;
+  align-items: center;
+  padding: 7px 8px;
+  gap: 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  box-shadow: none;
+  text-align: left;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card:hover,
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card:focus-visible {
+  border-color: var(--rb-action);
+  background: var(--rb-state-info-bg);
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-component-tile-title,
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-title-row strong {
+  color: var(--rb-text-primary);
+  font-size: 14px;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-subtitle {
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+  line-height: 1.3;
+}
+:root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-badge {
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--rb-text-secondary);
+  background: var(--rb-surface-3);
+  font-size: 11px !important;
 }
 
 :root[data-rb-theme='light'] .ide-workbench-shell[data-ide-mode-marker='design']

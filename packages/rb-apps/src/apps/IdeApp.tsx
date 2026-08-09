@@ -19,15 +19,13 @@ import './ide/ide-root.css';
 import './ide/ide-polish-pass.css';
 import './ide/theme/redbyte-theme.css';
 import './ide/theme/redbyte-primitives.css';
-import './ide/unified-workbench-v3.css';
-import './ide/visual-system-v1.css';
 import './ide/product-system-v3.css';
+import './ide/unified-workbench-v3.css';
 import { projectRuntimeCircuitToEditorStore } from './ide/circuitProjection';
 import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
-import { IdeStageNav, type IdeMode } from './ide/components/IdeStageNav';
-import { getIdeModeLabel } from './ide/workflowStages';
+import { getIdeModeLabel, type IdeMode } from './ide/workflowStages';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
@@ -2427,6 +2425,31 @@ export const IdeApp: React.FC = () => {
         storageLabel={repositoryState.storageLocation.label}
         recoveryAvailable={repositoryState.recoveryAvailable}
         currentMode={activeMode}
+        onModeChange={setCurrentMode}
+        stageStatus={{
+          project: hasCircuit ? 'Loaded' : 'New project',
+          design: `${circuit.nodes.length} component${circuit.nodes.length === 1 ? '' : 's'}`,
+          verify: runtimeSim.running
+            ? 'Running'
+            : projectVerifyState === 'assertions-match'
+              ? 'Current'
+              : projectVerifyState === 'stale'
+                ? 'Stale'
+                : projectVerifyState === 'trace'
+                  ? 'Observed'
+                : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
+                  ? 'Needs review'
+                  : 'Not run',
+          hardware: `${projectIoRows.filter((row) => row.required && row.pin.trim().length > 0).length} / ${projectIoRows.filter((row) => row.required).length} assigned`,
+          export: exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft',
+        }}
+        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
+        stepsBlocked={{
+          design: Boolean(blockingDesignIssue),
+          verify: !hasCircuit || Boolean(blockingDesignIssue),
+          hardware: !hasCircuit || Boolean(blockingDesignIssue),
+          export: !workflowAuthority.exportAvailable,
+        }}
         buildIdentity={buildIdentity}
         onSave={handleSaveProject}
         onSaveAs={handleSaveAsProject}
@@ -2446,33 +2469,6 @@ export const IdeApp: React.FC = () => {
         onResetWorkspace={handleResetWorkspace}
         themeVariant={themeVariant}
         onThemeChange={setThemeVariant}
-      />
-
-      <IdeStageNav
-        currentMode={activeMode}
-        onModeChange={setCurrentMode}
-        stageStatus={{
-          project: hasCircuit ? 'Loaded' : 'New project',
-          design: `${circuit.nodes.length} component${circuit.nodes.length === 1 ? '' : 's'}`,
-          verify: runtimeSim.running
-            ? 'Running'
-            : projectVerifyState === 'assertions-match'
-              ? 'Current'
-              : projectVerifyState === 'stale'
-                ? 'Stale'
-                : projectVerifyState === 'assertions-differ' || projectVerifyState === 'verify-error'
-                  ? 'Needs review'
-                  : 'Not run',
-          hardware: `${projectIoRows.filter((row) => row.required && row.pin.trim().length > 0).length} / ${projectIoRows.filter((row) => row.required).length} assigned`,
-          export: exportViewModel.status === 'ready' ? 'Ready' : exportViewModel.status === 'blocked' ? 'Blocked' : 'Draft',
-        }}
-        stepsCompleted={{ project: hasCircuit, ...workflowAuthority.stageCompletion }}
-        stepsBlocked={{
-          design: Boolean(blockingDesignIssue),
-          verify: !hasCircuit || Boolean(blockingDesignIssue),
-          hardware: !hasCircuit || Boolean(blockingDesignIssue),
-          export: !workflowAuthority.exportAvailable,
-        }}
       />
 
       {showShortcuts && <KeyboardShortcutsModal onClose={() => setShowShortcuts(false)} />}

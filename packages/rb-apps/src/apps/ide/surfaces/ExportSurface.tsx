@@ -337,6 +337,10 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
   );
   const [downloadError, setDownloadError] = useState<string>('');
   const [sessionDownloadEvidence, setSessionDownloadEvidence] = useState<ProjectHealthExportResult>();
+  const [packageValidation, setPackageValidation] = useState<{
+    status: 'ready' | 'blocked';
+    message: string;
+  } | null>(null);
   const [copiedTarget, setCopiedTarget] = useState<string | null>(null);
   const [copyError, setCopyError] = useState(false);
   const [technicalEvidenceOpen, setTechnicalEvidenceOpen] = useState(false);
@@ -1723,6 +1727,23 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
               <small>{viewModel.artifacts.length} generated file{viewModel.artifacts.length === 1 ? '' : 's'}</small>
             </div>
             <div className="ide-export-v3__primary" data-testid="ide-export-primary-actions">
+              <IdeButton
+                tone="secondary"
+                onClick={() => setPackageValidation(
+                  exportBlocked
+                    ? {
+                        status: 'blocked',
+                        message: `${viewModel.errors.length || 1} package blocker${viewModel.errors.length === 1 ? '' : 's'} found.`,
+                      }
+                    : {
+                        status: 'ready',
+                        message: `${viewModel.artifacts.length} files structurally valid.`,
+                      }
+                )}
+                testId="ide-export-validate-package"
+              >
+                Validate package
+              </IdeButton>
               {exportBlocked ? (
                 <IdeButton
                   tone="primary"
@@ -1760,6 +1781,11 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                 >
                   Download draft
                 </IdeButton>
+              ) : null}
+              {packageValidation ? (
+                <small className={`ide-export-v3__validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
+                  {packageValidation.message} Browser E0 only · Vivado external.
+                </small>
               ) : null}
             </div>
           </section>

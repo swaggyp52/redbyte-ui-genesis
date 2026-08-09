@@ -251,8 +251,8 @@
 }
 
 /* The five product stages must read as navigation, not clipped metadata.
-   visual-system-v1 loads a legacy 1040px cap; the v3 shell deliberately uses
-   the wider desktop rail so Board & Constraints remains fully named. */
+   The integrated shell deliberately uses the wider desktop rail so
+   Board & Constraints remains fully named. */
 .ide-root .ide-stage-nav {
   width: min(100%, 1200px);
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -296,11 +296,6 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-}
-
-.ide-root .ide-workbench-shell:has(> .ide-workbench-console) {
-  grid-template-rows: auto minmax(0, 1fr) minmax(96px, var(--ide-workbench-console-height)) !important;
 }
 
 /* The persisted bottom-dock height owns the complete grid track. Legacy chrome

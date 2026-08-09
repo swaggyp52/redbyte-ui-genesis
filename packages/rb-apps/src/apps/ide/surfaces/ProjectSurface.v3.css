@@ -1048,15 +1048,33 @@
 
 .ide-project-v3-command-board { min-height: 0; padding: 0; overflow: hidden; }
 .ide-project-v3-header {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 316px);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
-  padding: 16px 18px;
+  padding: 14px 18px;
   border: 1px solid var(--rb-border);
   border-radius: 10px;
   background: var(--rb-surface);
 }
 .ide-project-v3-meta { display: none; }
+.ide-project-v3-facts {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  gap: 6px;
+}
+.ide-project-v3-facts > span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 5px 9px;
+  gap: 6px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-2);
+}
+.ide-project-v3-facts small { color: var(--rb-text-muted); font-size: 12px; }
+.ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 700; }
 .ide-project-v3-title,
 .ide-project-v3-title-button,
 .ide-project-v3-title-input { font-size: clamp(22px, 2vw, 26px); line-height: 1.15; }
@@ -1100,8 +1118,8 @@
 .ide-project-workbench-grid {
   display: grid;
   grid-template-columns: minmax(236px, 260px) minmax(440px, 1fr) minmax(276px, 304px);
-  height: clamp(410px, calc(100vh - 460px), 520px);
-  min-height: 410px;
+  height: clamp(420px, calc(100dvh - 400px), 560px);
+  min-height: 420px;
 }
 
 .ide-project-explorer,
@@ -1155,6 +1173,19 @@
 }
 .ide-project-design-overview .ide-project-v3-circuit-preview figcaption span { color: var(--rb-text-secondary); }
 .ide-project-design-overview .ide-project-v3-circuit-preview figcaption strong { color: var(--rb-text-primary); }
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--rb-border-strong);
+  border-radius: 6px;
+  color: var(--rb-text-primary);
+  background: var(--rb-surface);
+  font: 650 13px/1 var(--rb-font-ui);
+}
+.ide-project-design-overview .ide-project-v3-circuit-preview figcaption button:hover {
+  border-color: var(--rb-action);
+  color: var(--rb-action);
+}
 .ide-project-interface-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--rb-border); }
 .ide-project-interface-strip > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 8px; min-height: 76px; padding: 12px; border-right: 1px solid var(--rb-border); }
 .ide-project-interface-strip > div:last-child { border-right: 0; }
@@ -1171,6 +1202,14 @@
 .ide-project-context-section > strong { font-size: 15px; line-height: 1.35; }
 .ide-project-context-section > p,
 .ide-project-context-section > small { margin: 0; color: var(--rb-text-secondary); font-size: 13px; line-height: 1.45; }
+.ide-project-context-section.is-highlighted { border-color: var(--rb-action); box-shadow: 0 0 0 2px color-mix(in srgb, var(--rb-action) 18%, transparent); }
+.ide-project-context-next {
+  border-color: color-mix(in srgb, var(--rb-action) 34%, var(--rb-border));
+  background: color-mix(in srgb, var(--rb-action) 5%, var(--rb-surface));
+}
+.ide-project-context-next > span { color: var(--rb-action); }
+.ide-project-context-next h3 { margin: 0; color: var(--rb-text-primary); font-size: 18px; line-height: 1.25; }
+.ide-project-context-next .ide-button { width: 100%; min-height: 40px; }
 .ide-project-context-actions .ide-button { width: 100%; min-height: 36px; }
 
 .ide-project-v3-recent {

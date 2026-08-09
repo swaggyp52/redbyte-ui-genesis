@@ -3577,6 +3577,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             : 'Build the circuit and inspect live propagation before moving into Simulate.';
   const ioPresentationMap = useMemo(() => {
     const map: Record<string, NodeIoPresentation> = {};
+    const exposesBoardAssignments = !hierarchy || hierarchy.activeModuleId === TOP_MODULE_ID;
     for (const node of editorCircuit.nodes) {
       if (
         node.type !== 'INPUT' &&
@@ -3587,10 +3588,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       ) {
         continue;
       }
-      map[node.id] = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+      const presentation = resolveNodeIoPresentation(node, ioRowByNodeId.get(node.id));
+      map[node.id] = exposesBoardAssignments
+        ? presentation
+        : { ...presentation, pinAlias: undefined };
     }
     return map;
-  }, [editorCircuit.nodes, ioRowByNodeId]);
+  }, [editorCircuit.nodes, hierarchy, ioRowByNodeId]);
   const selectedWireSignalKey = useMemo(() => {
     if (selectedWireIds.length === 0) return null;
     const parsed = parseWireId(selectedWireIds[0]);
@@ -7137,6 +7141,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                   <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
                   {activeNativeModule ? <><span aria-hidden="true">/</span><button type="button" onClick={() => onOpenModule?.(activeNativeModule.id)}>{activeNativeModule.displayName}</button></> : null}
                 </nav>
+                {toolMode === 'wire' && !isPlacementMode ? (
+                  <div className="ide-design-wire-inline" data-testid="ide-design-wire-inline" data-wire-active={wireStartPort ? '1' : '0'}>
+                    <strong>Wire</strong>
+                    <span>{wireFeedback ?? (wireStartPort ? `${wireSourceLabel} selected · choose an input` : 'Choose an output port')}</span>
+                    {wireStartPort ? <button type="button" onClick={cancelActiveWire}>Cancel</button> : null}
+                  </div>
+                ) : null}
                 {!isCodeWorkspace ? (
                   <div className="ide-design-command-mode" role="group" aria-label="Design mode">
                     <button type="button" className={effectiveLearningMode === 'edit' ? 'is-active' : ''} onClick={handleResumeLiveEditing}>Edit</button>

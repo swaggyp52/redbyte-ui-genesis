@@ -889,84 +889,16 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <strong>Goal:</strong> {expectedBehavior}
             </p>
           ) : null}
-          <div className="ide-project-v3-meta" data-testid="ide-project-professional-facts">
-            <div>
-              <span>Readiness</span>
-              <strong data-testid="ide-project-readiness-blocker-count">{readinessLabel}</strong>
-              <small>{heroStatusMessage}</small>
-            </div>
-            <div data-testid="ide-project-design-sources">
-              <span>Design sources</span>
-              <strong>Circuit graph</strong>
-              <small>
-                {designNodeCount} components · {designConnectionCount} wires
-                {fidelityLabel ? (
-                  <span data-testid="ide-project-import-fidelity"> · {fidelityLabel} import</span>
-                ) : null}
-              </small>
-            </div>
-            <div data-testid="ide-project-module-hierarchy">
-              <span>Module hierarchy</span>
-              <strong>{resolvedTopModule}</strong>
-              <small>
-                {reusableModuleNames.length > 0
-                  ? `Reusable: ${reusableModuleNames.join(', ')}`
-                  : 'Top-level circuit only'}
-              </small>
-            </div>
-            <div data-testid="ide-project-simulation-sources">
-              <span>Simulation sources</span>
-              <strong>{activeScenarioName ?? simulationSourceLabel}</strong>
-              <small>
-                {scenarioCount > 0
-                  ? `${scenarioCount} scenario${scenarioCount === 1 ? '' : 's'} · ${activeScenarioEventCount} events · ${activeScenarioCheckCount} ${activeScenarioCheckCount === 1 ? 'check' : 'checks'}`
-                  : simulationSourceDetail}
-              </small>
-            </div>
-            <div data-testid="ide-project-constraint-set">
-              <span>Constraint set</span>
-              <strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong>
-              <small>
-                {mappedRequiredRows.length}/{requiredRows.length} required assignments
-                {fpgaConfig?.part ? ` · ${fpgaConfig.part}` : ''}
-              </small>
-            </div>
-            <div data-testid="ide-project-storage-summary">
-              <span>Storage &amp; recovery</span>
-              <strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong>
-              <small>This browser on this device{onRestoreLastSave ? ' · Restore last save action' : ''}</small>
-            </div>
-            <div data-testid="ide-project-recent-activity">
-              <span>Recent activity</span>
-              <strong>{recentActivity.label}</strong>
-              <small>{recentActivity.detail}</small>
-            </div>
+          <div className="ide-project-v3-facts" data-testid="ide-project-professional-facts">
+            <span><small>Top</small><strong>{resolvedTopModule}</strong></span>
+            <span><small>Target</small><strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong></span>
+            <span><small>Design</small><strong>{designNodeCount} components · {reusableModuleNames.length + 1} modules</strong></span>
+            <span title={simulationSourceDetail}><small>Simulation</small><strong>{projectVerifyState === 'trace' ? 'Observed' : health.lastVerify && !health.dirtySinceVerify ? 'Current' : health.dirtySinceVerify ? 'Stale' : 'Not run'} · {scenarioCount} scenarios</strong></span>
+            <span><small>Readiness</small><strong>{readinessLabel}</strong></span>
+            <span><small>Storage</small><strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong></span>
+            {fidelityLabel ? <span data-testid="ide-project-import-fidelity"><small>Import</small><strong>{fidelityLabel}</strong></span> : null}
           </div>
         </div>
-
-        <section
-          className="ide-project-v3-next"
-          data-testid="ide-project-command-strip"
-          aria-label="Recommended next action"
-        >
-          <span className="ide-project-v3-next-state" data-testid="ide-projectx-next-status">
-            {heroStatusLabel}
-          </span>
-          <h2 data-testid="ide-projectx-next-title">Next: {activePrimaryCtaLabel}</h2>
-          <p hidden data-testid="ide-project-hero-status">{heroStatusMessage}</p>
-          <p className="ide-project-v3-next-reason" data-testid="ide-project-command-strip-next-step-copy">
-            {nextStepReason}
-          </p>
-          <IdeButton
-            tone="primary"
-            onClick={onPrimaryCta}
-            testId="ide-project-command-strip-primary-cta"
-          >
-            <span data-testid={`ide-project-command-action-${activePrimaryCta.mode}`}>
-              {primaryButtonLabel}
-            </span>
-          </IdeButton>
-        </section>
       </header>
 
       <div className="ide-project-v3-toolbar">
@@ -1070,6 +1002,13 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                 <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · visual source</small></span>
               </button>
             ))}
+            {(outline?.macros.length ?? 0) > 0 ? <p className="ide-project-explorer-heading">Reusable Components</p> : null}
+            {(outline?.macros ?? []).map((macro) => (
+              <button key={macro.id} type="button" onClick={() => onFocusMacro?.(macro.id, macro.name)}>
+                <span aria-hidden="true">◫</span>
+                <span><strong>{macro.name}</strong><small>{macro.ioSummary}</small></span>
+              </button>
+            ))}
             <div className="ide-project-explorer-group">
               <span>Simulation</span><small>{simulationSourceLabel}</small>
             </div>
@@ -1101,7 +1040,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <IdeButton tone="secondary" onClick={onOpenDesign} testId="ide-project-overview-open-design-primary">Open in Design</IdeButton>
             </header>
             <p>{projectSummary}</p>
-            {circuit && circuit.nodes.length > 0 ? <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} /> : null}
+            {circuit && circuit.nodes.length > 0 ? <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} onOpenDesign={onOpenDesign} /> : null}
             <div className="ide-project-interface-strip">
               <div><span>Inputs</span><strong>{inputRows.length}</strong><small>{inputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
               <div><span>Outputs</span><strong>{outputRows.length}</strong><small>{outputRows.map(getStudentFacingIoLabel).join(', ') || 'None'}</small></div>
@@ -1112,12 +1051,19 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <div className="ide-project-context-panel">
-            <section className="ide-project-context-section">
-              <span>Project status</span>
-              <strong>{readinessLabel}</strong>
-              <p>{heroStatusMessage}</p>
+            <section className="ide-project-context-section ide-project-context-next" data-testid="ide-project-command-strip" aria-label="Recommended next action">
+              <span data-testid="ide-projectx-next-status">{heroStatusLabel}</span>
+              <h3 data-testid="ide-projectx-next-title">Next: {activePrimaryCtaLabel}</h3>
+              <p hidden data-testid="ide-project-hero-status">{heroStatusMessage}</p>
+              <p data-testid="ide-project-command-strip-next-step-copy">{nextStepReason}</p>
+              <IdeButton tone="primary" onClick={onPrimaryCta} testId="ide-project-command-strip-primary-cta">
+                <span data-testid={`ide-project-command-action-${activePrimaryCta.mode}`}>{primaryButtonLabel}</span>
+              </IdeButton>
             </section>
-            <section className="ide-project-context-section">
+            <section
+              ref={mappingSectionRef}
+              className={`ide-project-context-section${highlightedMappingKey ? ' is-highlighted' : ''}`}
+            >
               <span>Current problems</span>
               <strong>
                 {missingRequiredRows.length > 0 ? `${missingRequiredRows.length} assignments need attention` : health.dirtySinceVerify ? 'Simulation evidence is stale' : 'No blocking project problems'}
@@ -1139,103 +1085,6 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <small>{exportPackageCurrent ? 'Package is current.' : exportAvailable ? exportSummary : 'Package is blocked by upstream work.'}</small>
             </section>
           </div>
-          <span className="ide-project-v3-readiness-anchor" data-testid="ide-project-readiness-workspace">
-            Workflow readiness
-          </span>
-          <ProjectStageRow
-            label="Design"
-            state={outline ? `${outline.nodeCount} nodes, ${outline.connectionCount} connections` : 'Circuit loaded'}
-            summary={`${inputRows.length} input${inputRows.length === 1 ? '' : 's'} and ${outputRows.length} output${outputRows.length === 1 ? '' : 's'} define the top-level interface.`}
-            actionLabel="Open Design"
-            onAction={onOpenDesign}
-            testId="ide-project-summary-design"
-            actionTestId="ide-project-overview-open-design"
-          >
-            <details className="ide-project-v3-stage-details">
-              <summary>Design details</summary>
-              <IoSummary inputRows={inputRows} outputRows={outputRows} />
-              {circuit && circuit.nodes.length > 0 ? (
-                <ProjectCircuitPreview circuit={circuit} inputRows={inputRows} outputRows={outputRows} />
-              ) : null}
-              {outline ? (
-                <ProjectInventory
-                  outline={outline}
-                  onFocusMacro={onFocusMacro}
-                  onFocusCustomComponent={onFocusCustomComponent}
-                />
-              ) : null}
-            </details>
-          </ProjectStageRow>
-
-          <ProjectStageRow
-            label="Simulate"
-            state={formatBehavioralEvidenceTier(behavioralEvidenceTier)}
-            summary={verifySummary}
-            actionLabel="Open Simulate"
-            onAction={onOpenVerify}
-            testId="ide-project-summary-verify"
-          />
-
-          <section
-            ref={mappingSectionRef}
-            className={`ide-project-v3-stage-row${highlightedMappingKey ? ' is-highlighted' : ''}`}
-            data-testid="ide-project-mapping-overview"
-            aria-label="Board and constraints summary"
-          >
-            <div className="ide-project-v3-stage-name" data-testid="ide-project-mapping-summary-strip">
-              <span>Board &amp; Constraints</span>
-              <strong data-testid="ide-project-mapping-stat">
-                {mappedRequiredRows.length}/{requiredRows.length} required mapped
-              </strong>
-            </div>
-            <div className="ide-project-v3-stage-body" data-testid="ide-project-panel-mapping">
-              <h3 data-testid="ide-project-map-pins-header">Board assignments</h3>
-              <p className="ide-project-v3-mapping-headline">
-                {missingRequiredRows.length > 0
-                  ? `${missingRequiredRows.length} required signal${missingRequiredRows.length === 1 ? '' : 's'} still need a board resource`
-                  : `${mappedRequiredRows.length}/${requiredRows.length} required signals mapped`}
-              </p>
-              <details className="ide-project-v3-stage-details">
-                <summary>Mapping details</summary>
-                <p data-testid="ide-project-map-pipeline-copy">
-                  Project mirrors the saved board binding before building the Vivado package. Assignments change only in Board &amp; Constraints.
-                </p>
-                {missingRequiredRows.length > 0 ? (
-                  <p className="ide-project-v3-missing" data-testid="ide-project-mapping-missing-list">
-                    Missing: {missingRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ')}
-                    {missingRequiredRows.length > 6 ? `, +${missingRequiredRows.length - 6} more` : ''}
-                  </p>
-                ) : (
-                  <p className="ide-project-v3-mapped-list">
-                    Mapped: {mappedRequiredRows.slice(0, 6).map(getStudentFacingIoLabel).join(', ') || 'No required board signals'}
-                  </p>
-                )}
-                {hasVerifyRun && missingRequiredRows.length > 0 ? (
-                  <p className="ide-project-v3-handoff-note" data-testid="ide-project-mapping-post-verify-hint">
-                    Logic was verified; finish board pins so the Vivado package matches the simulated interface.
-                  </p>
-                ) : null}
-              </details>
-              {missingRequiredRows.length > 0 ? (
-                <strong className="ide-project-v3-missing-count" data-testid="ide-project-mapping-warn-chip">
-                  {missingRequiredRows.length} unmapped
-                </strong>
-              ) : null}
-            </div>
-            <div className="ide-project-v3-stage-action">
-              <IdeButton tone="secondary" onClick={onOpenHardware} testId="ide-project-open-map-pins">Open Board &amp; Constraints</IdeButton>
-            </div>
-          </section>
-
-          <ProjectStageRow
-            label="Build & Export"
-            state={exportPackageCurrent ? 'Current package' : exportAvailable ? 'Available' : 'Blocked'}
-            summary={exportSummary}
-            actionLabel="Open Build & Export"
-            onAction={onOpenExport}
-            testId="ide-project-summary-export"
-            actionTestId="ide-project-open-export"
-          />
         </div>
         </div>
       </section>
@@ -1322,63 +1171,12 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   );
 };
 
-interface ProjectStageRowProps {
-  label: string;
-  state: string;
-  summary: string;
-  actionLabel: string;
-  onAction: () => void;
-  testId: string;
-  actionTestId?: string;
-  children?: React.ReactNode;
-}
-
-const ProjectStageRow: React.FC<ProjectStageRowProps> = ({
-  label,
-  state,
-  summary,
-  actionLabel,
-  onAction,
-  testId,
-  actionTestId,
-  children,
-}) => (
-  <div className="ide-project-v3-stage-row" data-testid={testId}>
-    <div className="ide-project-v3-stage-name">
-      <span>{label}</span>
-      <strong>{state}</strong>
-    </div>
-    <div className="ide-project-v3-stage-body">
-      <p>{summary}</p>
-      {children}
-    </div>
-    <div className="ide-project-v3-stage-action">
-      <IdeButton tone="secondary" onClick={onAction} testId={actionTestId}>{actionLabel}</IdeButton>
-    </div>
-  </div>
-);
-
-const IoSummary: React.FC<{
-  inputRows: ProjectMappingRow[];
-  outputRows: ProjectMappingRow[];
-}> = ({ inputRows, outputRows }) => (
-  <div className="ide-project-v3-io" data-testid="ide-project-design-io-summary">
-    <div>
-      <strong>Inputs</strong>
-      <span>{inputRows.length ? inputRows.map(getStudentFacingIoLabel).join(', ') : 'None defined'}</span>
-    </div>
-    <div>
-      <strong>Outputs</strong>
-      <span>{outputRows.length ? outputRows.map(getStudentFacingIoLabel).join(', ') : 'None defined'}</span>
-    </div>
-  </div>
-);
-
 const ProjectCircuitPreview: React.FC<{
   circuit: Circuit;
   inputRows: ProjectMappingRow[];
   outputRows: ProjectMappingRow[];
-}> = ({ circuit, inputRows, outputRows }) => {
+  onOpenDesign?: () => void;
+}> = ({ circuit, inputRows, outputRows, onOpenDesign }) => {
   const preview = useMemo(() => {
     const nodes = circuit.nodes.slice(0, 24);
     const xs = nodes.map((node, index) => node.position?.x ?? node.x ?? index * 90);
@@ -1420,7 +1218,7 @@ const ProjectCircuitPreview: React.FC<{
           <span>Live circuit snapshot</span>
           <strong>{circuit.nodes.length} components · {circuit.connections.length} wires</strong>
         </div>
-        <span>Read-only</span>
+        {onOpenDesign ? <button type="button" onClick={onOpenDesign}>Open canvas</button> : <span>Preview</span>}
       </figcaption>
       <svg viewBox="0 0 600 200" role="img" aria-label="Read-only preview of the current circuit graph">
         {preview.edges.map((edge, index) => {
@@ -1461,43 +1259,6 @@ const ProjectCircuitPreview: React.FC<{
     </figure>
   );
 };
-
-const ProjectInventory: React.FC<{
-  outline: ProjectOutlineSummary;
-  onFocusMacro?: (macroId: string, macroName: string) => void;
-  onFocusCustomComponent?: (componentName: string) => void;
-}> = ({ outline, onFocusMacro, onFocusCustomComponent }) => (
-  <div className="ide-project-v3-inventory" data-testid="ide-project-overview">
-    <p>
-      <strong>{outline.nodeCount}</strong> nodes, <strong>{outline.connectionCount}</strong> connections,
-      {' '}<strong>{outline.nodeTypeBreakdown.length}</strong> component types.
-    </p>
-    {outline.macros.length > 0 || outline.customComponents.length > 0 ? (
-      <div className="ide-project-v3-inventory-actions">
-        {outline.macros.map((macro) => onFocusMacro ? (
-          <button
-            key={macro.id}
-            type="button"
-            onClick={() => onFocusMacro(macro.id, macro.name)}
-            data-testid={`ide-project-overview-macro-${macro.id}-action`}
-          >
-            Macro: {macro.name} ({macro.ioSummary})
-          </button>
-        ) : <span key={macro.id}>Macro: {macro.name}</span>)}
-        {outline.customComponents.map((component) => onFocusCustomComponent ? (
-          <button
-            key={component.name}
-            type="button"
-            onClick={() => onFocusCustomComponent(component.name)}
-            data-testid={`ide-project-overview-custom-${component.name}-action`}
-          >
-            Component: {component.name} ({component.ioSummary})
-          </button>
-        ) : <span key={component.name}>Component: {component.name}</span>)}
-      </div>
-    ) : null}
-  </div>
-);
 
 const ProjectLanding: React.FC<{
   onOpenLabCatalog: () => void;
@@ -1827,11 +1588,11 @@ function getVerifySummary(
   simRunning: boolean
 ): string {
   if (simRunning) return 'Simulation is running for the current project.';
+  if (projectVerifyState === 'trace') return 'Observed outputs are current; expected-output comparison has not run.';
   if (!health.lastVerify) return 'No comparison run yet. Open Simulate to author cases, run the circuit, and compare outputs.';
   if (compareMatches) return 'Latest Compare run matches the current design and expected outputs.';
   if (comparePassIncomplete) return 'Checks matched, but board mapping still needs review.';
   if (projectVerifyState === 'stale') return 'The last comparison belongs to an older design state.';
-  if (projectVerifyState === 'trace') return 'Observed outputs are current; expected-output comparison has not run.';
   if (projectVerifyState === 'verify-error') return 'The latest run ended with a simulation error.';
   if (health.lastVerify.status === 'fail') return 'Expected and observed outputs differ. Inspect the first mismatch in Simulate.';
   return health.dirtySinceVerify
