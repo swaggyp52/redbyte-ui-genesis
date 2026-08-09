@@ -105,19 +105,17 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
     expect((getByTestId('ide-project-fpga-top') as HTMLInputElement).value).toBe('half_adder_top');
     expect(getByTestId('ide-project-overview-board').textContent).toBe('Basys3');
     expect(getByTestId('ide-project-overview-saved-state').textContent).toContain('Unsaved');
-    expect(getByTestId('ide-project-design-sources').textContent).toContain('6 components · 4 wires');
-    expect(getByTestId('ide-project-module-hierarchy').textContent).toContain('half_adder_top');
-    expect(getByTestId('ide-project-simulation-sources').textContent).toContain('scenario vectors');
-    expect(getByTestId('ide-project-constraint-set').textContent).toContain('3/4 required assignments');
-    expect(getByTestId('ide-project-storage-summary').textContent).toContain('This browser on this device');
-    expect(getByTestId('ide-project-recent-activity').textContent).toContain('Compare passed');
+    expect(getByTestId('ide-project-professional-facts').textContent).toContain('6 components');
+    expect(getByTestId('ide-project-explorer').textContent).toContain('Design Sources');
+    expect(getByTestId('ide-project-explorer').textContent).toContain('Simulation Sources');
+    expect(getByTestId('ide-project-explorer').textContent).toContain('Constraints');
+    expect(getByTestId('ide-project-explorer').textContent).toContain('Recovery');
+    expect(getByTestId('ide-project-design-overview').textContent).toContain('half_adder_top');
     expect(queryByLabelText('Student name')).toBeNull();
 
-    expect(getByTestId('ide-project-summary-design').textContent).toContain('2 inputs and 2 outputs');
-    expect(getByTestId('ide-project-design-io-summary').textContent).toContain('A, B');
-    expect(getByTestId('ide-project-summary-verify').textContent).toContain('Latest Compare run matches');
-    expect(getByTestId('ide-project-mapping-overview').textContent).toContain('CARRY');
-    expect(getByTestId('ide-project-summary-export').textContent).toContain('Build & Export remains blocked');
+    expect(getByTestId('ide-project-command-strip').textContent).toContain('Next: Board & Constraints');
+    expect(getByTestId('ide-project-workspace-grid').textContent).toContain('CARRY');
+    expect(getByTestId('ide-project-workspace-grid').textContent).toContain('Compare passed');
     expect(getByTestId('ide-project-recent-counter-lab').textContent).toContain('Counter Lab');
 
     expect(container.querySelectorAll('.ide-button-primary')).toHaveLength(1);
@@ -127,7 +125,7 @@ describe('ProjectSurface Unified Workbench v3 overview', () => {
 
     fireEvent.click(getByTestId('ide-project-command-strip-primary-cta'));
     expect(props.onPrimaryCta).toHaveBeenCalledTimes(1);
-    fireEvent.click(getByTestId('ide-project-open-map-pins'));
+    fireEvent.click(getByTestId('ide-project-context-map'));
     expect(props.onOpenHardware).toHaveBeenCalledTimes(1);
     fireEvent.click(getByTestId('ide-project-recent-counter-lab'));
     expect(props.onOpenRecentProject).toHaveBeenCalledWith('counter-lab');

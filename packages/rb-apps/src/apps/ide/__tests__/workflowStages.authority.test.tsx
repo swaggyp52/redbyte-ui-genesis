@@ -3,7 +3,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
-import { IdeStageNav } from '../components/IdeStageNav';
 import { IdeTopBar } from '../components/IdeTopBar';
 import {
   IDE_MODE_DEFINITIONS,
@@ -18,23 +17,18 @@ describe('workflow stage authority', () => {
     localStorage.clear();
   });
 
-  it('shows Board & Constraints as the hardware route label in the top bar and horizontal stage nav', () => {
+  it('renders Board & Constraints through the single stage authority integrated into the top bar', () => {
     const topBar = render(
       <IdeTopBar
         projectName="Adder"
         saveState="saved"
         currentMode="hardware"
-      />
-    );
-    expect(topBar.getByTestId('ide-topbar-mode-label').textContent).toBe('Board & Constraints');
-
-    const stageNav = render(
-      <IdeStageNav
-        currentMode="hardware"
         onModeChange={vi.fn()}
       />
     );
-    expect(stageNav.getByTestId('mode-button-hardware').textContent).toContain('Board & Constraints');
+    expect(topBar.getByTestId('mode-button-hardware').textContent).toContain('Board & Constraints');
+    expect(topBar.queryByTestId('ide-topbar-mode-label')).toBeNull();
+
   });
 
   it('keeps top-bar context focused on project, board, save, Import, and Help', () => {
@@ -55,6 +49,7 @@ describe('workflow stage authority', () => {
         onHelp={onHelp}
         onSave={vi.fn()}
         onImport={vi.fn()}
+        onModeChange={vi.fn()}
       />
     );
 
@@ -63,7 +58,7 @@ describe('workflow stage authority', () => {
     expect(view.getByTestId('ide-save-state').getAttribute('aria-label')).toBe('saved');
     expect(view.getByTestId('ide-topbar-save-btn').textContent).toBe('Save');
     expect(view.getByTestId('mode-button-import').textContent).toBe('Import / Recover');
-    expect(view.getByTestId('ide-topbar-help-btn').textContent).toBe('Help');
+    expect(view.getByTestId('ide-topbar-help-btn').textContent).toBe('Help and keyboard shortcuts');
     expect(view.queryByTestId('ide-topbar-workflow-help-btn')).toBeNull();
 
     fireEvent.click(view.getByTestId('ide-topbar-help-btn'));
@@ -95,13 +90,12 @@ describe('workflow stage authority', () => {
       />
     );
 
-    const workspaceMenu = view.getByTestId('ide-workspace-menu') as HTMLDetailsElement;
-    workspaceMenu.open = true;
+    const projectMenu = view.getByTestId('ide-project-menu') as HTMLDetailsElement;
+    projectMenu.open = true;
     fireEvent.click(view.getByTestId('ide-workspace-reset'));
     expect(onResetWorkspace).toHaveBeenCalledTimes(1);
-    expect(workspaceMenu.open).toBe(false);
+    expect(projectMenu.open).toBe(false);
 
-    const projectMenu = view.getByTestId('ide-project-menu') as HTMLDetailsElement;
     projectMenu.open = true;
     fireEvent.click(view.getByText('Open project...'));
     expect(onLoad).toHaveBeenCalledTimes(1);

@@ -236,7 +236,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
     expect(outputs.querySelector('[data-testid="ide-hw-map-row-ld0"]')).toBeTruthy();
   });
 
-  it('keeps the board as a secondary reference after the mapping table', () => {
+  it('makes the board a primary assignment surface backed by the canonical mapping callback', () => {
     // Guide renders during active mapping (at least one row unmapped).
     // Use incomplete rows so mappingReady is false and guide is visible.
     const health = makeHealth();
@@ -244,6 +244,7 @@ describe('HardwareSurface — mapping workflow primitives', () => {
       { id: 'sw0', label: 'sw0', direction: 'in' as const, pin: 'V17', required: true },
       { id: 'ld0', label: 'ld0', direction: 'out' as const, pin: '', required: true },
     ];
+    const onSetMappingPin = vi.fn();
     const { getByTestId } = render(
       <BoardSignalProvider>
         <HardwareSurface
@@ -257,15 +258,19 @@ describe('HardwareSurface — mapping workflow primitives', () => {
           onGenerateBringUpVectors={vi.fn()}
           onOpenExport={vi.fn()}
           onOpenVerify={vi.fn()}
+          onSetMappingPin={onSetMappingPin}
         />
       </BoardSignalProvider>
     );
 
     const table = getByTestId('ide-hw-map-table');
     const board = getByTestId('ide-hw-map-board');
-    expect(board.getAttribute('data-work-priority')).toBe('reference');
+    expect(board.getAttribute('data-work-priority')).toBe('primary');
     expect(table.compareDocumentPosition(board) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('resource selector');
+    fireEvent.click(getByTestId('ide-hw-map-row-sw0'));
+    expect(getByTestId('ide-hw-board-task-copy').textContent).toContain('highlighted compatible resource');
+    fireEvent.click(getByTestId('ide-hw-map-sw-1-hit'));
+    expect(onSetMappingPin).toHaveBeenCalledWith('sw0', 'V16');
   });
 
   it('updates the visible signal-to-board-to-pin chain after a mapped row is selected', () => {

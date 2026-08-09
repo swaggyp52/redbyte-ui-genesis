@@ -203,6 +203,9 @@ describe('ExportSurface workstation redesign', () => {
     expect(getByTestId('ide-export-copy-current-file')).toBeTruthy();
     expect(getByTestId('ide-export-download-current-file')).toBeTruthy();
     expect(getByTestId('ide-export-open-technical-evidence').textContent).toBe('Open technical evidence');
+    fireEvent.click(getByTestId('ide-export-validate-package'));
+    expect(getByTestId('ide-export-validation-result').textContent).toContain('files structurally valid');
+    expect(getByTestId('ide-export-validation-result').textContent).toContain('Vivado external');
   });
 
   it('keeps upstream ownership and the generated package workspace visible without opening a support drawer', () => {
@@ -493,7 +496,8 @@ describe('ExportSurface workstation redesign', () => {
 
     const primaryActions = getByTestId('ide-export-primary-actions');
     const primaryButtons = within(primaryActions).getAllByRole('button');
-    expect(primaryButtons).toHaveLength(2);
+    expect(primaryButtons).toHaveLength(3);
+    expect(getByTestId('ide-export-validate-package').textContent).toBe('Validate package');
     expect(getByTestId('ide-export-package-build-v1').textContent).toBe('Open Simulate');
     expect(getByTestId('ide-export-draft-download-v1').textContent).toBe('Download draft');
     expect(getByTestId('ide-export-package-build-v1').hasAttribute('disabled')).toBe(false);
