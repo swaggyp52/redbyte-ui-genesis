@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-08-08
+last_validated: 2026-08-09
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -30,13 +30,12 @@ imported_by: CLAUDE.md
 
 - Branch: `product/redbyte-workbench-v3`
 - Draft PR: [#80](https://github.com/swaggyp52/redbyte-ui-genesis/pull/80)
-- Milestone: **Visual Quality Recovery - Studio UI Foundation Freeze**
-- Status: implemented and locally committed for user visual review. Shared
-  component states and the five existing student workspaces were recomposed
-  without beginning Milestone D or expanding product semantics. The scenario
-  composer and hierarchy remain authoritative. Draft PR #80 is historical
-  context only for this local review state; this candidate is not pushed,
-  released, or hardware-proven.
+- Milestone: **Integrated Studio Reconstruction**
+- Status: implemented on the existing candidate branch for user visual review.
+  One shell now owns identity and stage navigation; Project, Design, Simulate,
+  Board & Constraints, and Build & Export use one presentation system and their
+  existing semantic authorities. The scenario composer and hierarchy remain
+  authoritative. This candidate is not merged, released, or hardware-proven.
 - Live impact: none. The candidate is not merged, deployed, or release-certified.
 
 Do not describe candidate behavior as current `main` behavior. Do not merge the
@@ -61,22 +60,22 @@ programming, and physical observation outside RedByte's browser workbench.
 
 The candidate now combines the shared workbench foundation, native reusable
 visual hierarchy, a functional scenario composer, C.1 geometry stabilization,
-and the Studio UI Foundation Freeze. Simulate owns named
+and the integrated Studio reconstruction. Simulate owns named
 persisted documents, a direct event timeline, optional output checks, real
 deterministic replay, failure repair context, and the same generated testbench
-source shown by Build & Export. Timeline and Checks keep the scenario explorer;
-Waveform and Testbench become full-width focus modes. Studio Light owns the
+source shown by Build & Export. The explorer, composer, waveform, and contextual
+inspector remain visible as one continuous workstation. Studio Light owns
 application surfaces while dark instrument surfaces are limited to the circuit
 canvas, waveform, and code viewer. This does not broaden circuit, simulation,
 HDL, board, or hardware support beyond the documented boundaries.
 
 ## Candidate Evidence And Exit Gates
 
-- The current local-only visual review record is stored under the ignored
-  `.redbyte/product-immersion/ui-quality-recovery/` path. It contains the defect
-  ledger, eight exact final captures, and seven before/after comparisons at
-  1440x900 and 1366x768 with Studio Light, Dark canvas, and 100% browser zoom.
-  User visual approval is still required before any push or next milestone.
+- The current visual review record is stored under the ignored
+  `.redbyte/product-immersion/studio-reconstruction/` path. It contains the
+  ownership ledger, 14 exact final captures, metadata, and before/after
+  comparisons at 1440x900 and 1366x768 with 100% browser zoom. User visual
+  approval is still required before any next milestone or merge.
 - Milestone C.1 Browser-E0 evidence is stored under the ignored
   `.redbyte/product-immersion/milestone-c1-geometry/` path. It records exact
   1366x768 and 1440x900 Timeline/Waveform geometry, Project circuit-preview
@@ -130,9 +129,9 @@ HDL, board, or hardware support beyond the documented boundaries.
 
 ## Next Authorized Endpoint
 
-Deliver Milestone C.1 to draft PR #80 and stop for product review. Do not begin
-Milestone D or another feature area until the stabilized 1366x768 and 1440x900
-workbench composition has been reviewed.
+Complete user visual and interaction review of the integrated Studio candidate
+and stop. Do not begin another feature area until the 1366x768 and 1440x900
+workbench evidence and both normal-use flows have been reviewed.
 
 ## Start
 

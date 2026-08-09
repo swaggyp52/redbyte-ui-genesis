@@ -1,5 +1,30 @@
 # AI State
 
+## Change Log 2026-08-09 (Product System v3 integrated Studio reconstruction)
+
+**Subsystem:** Shared shell and the Project, Design, Simulate, Board &
+Constraints, and Build & Export workspaces on the Product System v3 candidate.
+
+**Product reconstruction:** `IdeTopBar` now owns the only five-stage navigator,
+project identity, board/save state, Commands, Save, and one overflow menu.
+Project is a source explorer, live circuit overview, and contextual next-action
+workspace instead of a duplicated stage dashboard. Design keeps the circuit
+canvas dominant with compact module/mode and command rows, contextual Inspector,
+inline wire guidance, and top-module-only board labels. Simulate keeps scenario
+selection, authoring, a lane-sized waveform, optional checks, and failure repair
+in one continuous workbench. Board clicks and the inspector selector now commit
+through the same mapping callback. Build & Export adds explicit Browser-E0
+structural validation while keeping Vivado proof external. The obsolete
+`visual-system-v1.css` presentation layer was removed.
+
+**Evidence boundary:** Two normal browser flows and two visual-review cycles are
+recorded under the ignored `.redbyte/product-immersion/studio-reconstruction/`
+path at 1366x768 and 1440x900, 100% browser zoom, Studio Light and Studio Dark.
+Bounded local validation covers typecheck, CSS ownership, focused interaction
+tests, unified build, current-doc validation, encoding, and diff hygiene. This
+is Browser-E0 evidence only and does not claim merge, deployment, Vivado,
+synthesis, implementation, bitstream, Basys3 programming, or physical behavior.
+
 ## Change Log 2026-08-08 (Visual Quality Recovery: Studio UI Foundation Freeze)
 
 **Subsystem:** Shared Studio component states and the visible Project, Design,

@@ -127,6 +127,11 @@ RedByte operates under several core principles that shape its behavior:
 
 The current candidate unifies the student flow as **Project -> Design Edit / Live / Replay -> Simulate Scenario / Replay / Checks -> Board & Constraints -> Build & Export**, with **Import / Recover** as a separate recovery utility. Internal `verify`, `hardware`, and `export` route IDs remain for compatibility; current student-facing copy uses the Product System v3 stage names.
 
+The Studio shell presents project identity and all five stages in one compact
+application bar. Project uses a source explorer, live circuit overview, and one
+context rail. Charcoal is reserved for the circuit, waveform, and code
+instruments; their surrounding workspaces use the same Studio surface system.
+
 - Project explains the loaded student's design, proof, mapping, package state, and one recommended next action.
 - Design keeps the circuit grid dominant and gives ports direct, keyboard-reachable wiring targets.
 - Simulate owns named scenarios, authored stimulus, optional checks, per-document sequential execution policy, run transport, waveform evidence, Replay, and current-versus-stale validation authority.
@@ -818,9 +823,9 @@ Renaming a top-level input or output does not create a second mapping identity. 
 ### 10.2 Mapping Procedure
 
 1. Navigate to **Board & Constraints**.
-2. In the assignment table, choose **Assign**, **Edit mapping**, or **Resolve** for one signal.
-3. In the stable selected-signal editor, choose a compatible **Basys3 resource**. Inputs show switches, buttons, and clock resources; outputs show LEDs and display segments. Occupied resources are disabled.
-4. Review the resource, package pin, and generated `top.xdc` consequence, then choose **Save assignment**.
+2. Select one signal in the grouped signal list or assignment table.
+3. Choose a compatible **Basys3 resource** in the inspector, or click a highlighted compatible resource on the interactive board. Inputs show switches, buttons, and clock resources; outputs show LEDs and display segments. Occupied resources are unavailable.
+4. Review the resource, package pin, I/O standard, and generated `top.xdc` consequence. Both assignment paths update the same saved mapping authority.
 5. Repeat until all required rows are assigned and no conflicts remain.
 6. Confirm the semantic preview agrees on logical signal identity, direction, artifact port, board resource, package pin, I/O standard, and exact XDC line.
 
@@ -829,9 +834,12 @@ Result: The mapping status changes to "Mapping complete."
 > **Note:** For sequential circuits, the clock port must be assigned to CLK100MHZ (pin W5). This is the on-board 100 MHz oscillator.
 > Human-friendly labels such as `ENTER CLK` or `Main Reset` do not change that requirement; RedByte still treats those renamed top-level ports as the same clock/reset mapping authority.
 
-### 10.3 Board Reference and Assignment Authority
+### 10.3 Interactive Board and Assignment Authority
 
-The smaller Basys3 board graphic is a physical reference. It reflects mapped and selected resources, but clicking it does not assign a pin. The selected-signal **Basys3 resource** selector plus **Save assignment** are the sole normal-use assignment controls.
+The Basys3 board is a direct physical-assignment surface. After a logical signal
+is selected, compatible unoccupied resources are highlighted; clicking one and
+choosing the same resource in the inspector both call the canonical mapping
+authority. The generated XDC preview must update to the same package pin.
 
 ### 10.4 Clock Handling for Sequential Exports
 
@@ -991,7 +999,7 @@ Students use Build & Export for the normal downloadable project handoff. The gen
 2. Navigate to Build & Export, or use a state-owned **Open Build & Export** action.
 3. Confirm whether the package is trusted/current or draft. Choose **Download Package** for the trusted current handoff; choose **Download draft** only when the course accepts an explicitly untrusted package.
 4. Read **What should I submit?** and verify that the available action matches the course requirement.
-5. The Build & Export file browser shows the nine generated project files before download; **Open technical evidence** exposes secondary diagnostics and provenance.
+5. The grouped Build & Export source tree shows the current generated project files before download. **Validate package** performs Browser-E0 structural checks only; **Open technical evidence** exposes secondary diagnostics and provenance. Vivado remains the authority for synthesis and implementation.
 6. Check the package receipt for the selected download kind, trust state, source fingerprint, project/Verify hashes, mapping currentness, and SHA-256.
 7. Upload the downloaded project ZIP according to the institutional LMS or course instructions.
 
