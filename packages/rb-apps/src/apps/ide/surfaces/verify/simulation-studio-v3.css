@@ -3171,6 +3171,48 @@
   background-image: linear-gradient(rgba(150, 170, 196, .06) 1px, transparent 1px);
 }
 
+/* Before the first run, the scenario editor remains the primary work object.
+   Keep the waveform present as a concise, intentional next-state panel instead
+   of stretching duplicate guidance into an empty instrument well. */
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
+  .ide-verify-region--waveform {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
+  .ide-vwp {
+  min-height: 112px !important;
+  height: auto !important;
+  padding: 12px 14px !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
+  .ide-vwp-summary {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 4px 18px !important;
+  align-items: center !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
+  .ide-vwp-header-facts {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.ide-root.ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
+  .ide-verify-lab-grid[data-verify-workflow-phase='pre-run']
+  .ide-vwp-ready-hero {
+  display: none !important;
+}
+
 .ide-root .ide-workbench-shell[data-ide-mode-marker='verify']
   :is(.ide-verify-waveform-tools-panel, .ide-verify-waveform-bar) {
   border-color: #334155;

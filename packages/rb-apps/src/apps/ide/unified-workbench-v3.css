@@ -340,11 +340,13 @@
 
 @media (max-width: 1500px) {
   .ide-root .ide-top-bar { grid-template-columns: minmax(154px, 0.55fr) minmax(500px, 2fr) auto; padding-inline: 12px; gap: 8px; }
+  .ide-root .ide-breadcrumb-sep { display: none; }
   .ide-root .ide-topbar-fact-label,
   .ide-root .ide-save-label,
   .ide-root .ide-topbar-command kbd { display: none; }
   .ide-root .ide-project-name { max-width: 132px; }
-  .ide-root .ide-stage-nav-button { padding-inline: 6px; gap: 5px; }
+  .ide-root .ide-stage-nav-button { grid-template-columns: 20px minmax(0, 1fr) auto; padding-inline: 4px; gap: 3px; }
+  .ide-root .ide-stage-nav-icon { width: 20px; height: 20px; }
 }
 
 @media (max-width: 1180px) {

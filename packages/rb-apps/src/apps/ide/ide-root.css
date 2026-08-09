@@ -12532,23 +12532,6 @@ details[open].ide-export-evidence-details > summary::before {
   gap: 14px;
 }
 
-.ide-workbench-shell[data-ide-mode-marker='project'] .ide-workbench-workspace > .ide-panel > .ide-panel-body::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 220px;
-  background:
-    linear-gradient(180deg, rgba(12, 28, 45, 0.34), transparent 85%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(77, 110, 144, 0.04) 0,
-      rgba(77, 110, 144, 0.04) 1px,
-      transparent 1px,
-      transparent 72px
-    );
-  pointer-events: none;
-}
-
 [data-ide-mode-marker='project'] .ide-project-identity-strip {
   position: relative;
   z-index: 1;
@@ -19346,21 +19329,21 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(214, 228, 242, 0.96);
+  color: var(--rb-text-secondary);
 }
 
 .ide-design-inspector-structure-hint {
   margin: 0;
   font-size: 12px;
   line-height: 1.45;
-  color: rgba(182, 200, 218, 0.82);
+  color: var(--rb-text-muted);
 }
 
 .ide-design-inspector-next-step {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: rgba(194, 211, 229, 0.88);
+  color: var(--rb-text-secondary);
 }
 
 .ide-design-inspector-status {
@@ -19404,8 +19387,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   min-width: 0;
   padding: 10px 11px;
   border-radius: 10px;
-  border: 1px solid rgba(74, 97, 123, 0.4);
-  background: rgba(8, 15, 24, 0.72);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
 }
 
 .ide-design-inspector-meta-label {
@@ -19413,25 +19396,25 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(142, 171, 204, 0.64);
+  color: var(--rb-text-muted);
 }
 
 .ide-design-inspector-meta-value {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 13px;
-  color: #f7fbff;
+  color: var(--rb-text-primary);
 }
 
 .ide-design-inspector-facts {
   gap: 8px;
   margin-top: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(74, 97, 123, 0.22);
+  border-top: 1px solid var(--rb-border);
 }
 
 .ide-design-inspector-facts code {
-  color: #f7fbff;
+  color: var(--rb-text-primary);
 }
 
 .ide-design-inspector-section-stack {
@@ -19446,8 +19429,8 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 8px;
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(64, 88, 114, 0.35);
-  background: rgba(8, 14, 24, 0.64);
+  border: 1px solid var(--rb-border);
+  background: var(--rb-surface-2);
 }
 
 .ide-design-inspector-action-grid {
@@ -19474,7 +19457,7 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   gap: 3px;
   padding: 10px 11px;
   border-radius: 8px;
-  background: rgba(9, 16, 26, 0.82);
+  background: var(--rb-surface-2);
   font-size: 12px;
   line-height: 1.45;
 }
@@ -31599,31 +31582,31 @@ button:disabled,
 
 [data-ide-mode-marker='design'] .ide-design-inspector-subtitle {
   font-size: 13px !important;
-  color: rgba(150, 190, 225, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   line-height: 1.4 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-next-step {
   font-size: 13px !important;
-  color: rgba(150, 190, 225, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   line-height: 1.5 !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > span:first-child {
-  color: rgba(130, 165, 200, 0.72) !important;
+  color: var(--rb-text-secondary) !important;
   font-size: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > span:last-child,
 [data-ide-mode-marker='design'] .ide-design-live-summary .ide-kv-row > code {
-  color: rgba(200, 228, 255, 0.88) !important;
+  color: var(--rb-text-primary) !important;
   font-size: 12px !important;
 }
 
 [data-ide-mode-marker='design'] .ide-design-inspector-identity-card strong[data-testid='ide-design-inspector-identity-title'] {
   font-size: 14px !important;
   font-weight: 700 !important;
-  color: rgba(228, 244, 255, 0.96) !important;
+  color: var(--rb-text-primary) !important;
   line-height: 1.25 !important;
 }
 
