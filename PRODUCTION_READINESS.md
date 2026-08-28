@@ -1,3 +1,5 @@
+> **HISTORICAL RECORD.** This is a dated deployment-era document kept for history. The one canonical deployment doc is `DEPLOYMENT.md`.
+
 # FPGA Proof Viewer — Production Readiness Checklist
 
 **Date:** 2026-01-16  

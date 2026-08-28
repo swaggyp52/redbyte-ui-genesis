@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-08-09
+last_validated: 2026-08-28
 owner: Connor Angiel
 used_by_claude: true
 imported_by: CLAUDE.md
@@ -41,6 +41,29 @@ imported_by: CLAUDE.md
 Do not describe candidate behavior as current `main` behavior. Do not merge the
 candidate or begin the next milestone until this composer slice is reviewed and
 accepted.
+
+### Production convergence lane (2026-08-28, cloud session)
+
+- Branch: `claude/redbyte-production-convergence-ynz291` (based on
+  `origin/product/redbyte-workbench-v3` @ `ab5c1e02`), targeting the product
+  branch via draft PR.
+- Delivered: modernized Cloudflare deployment
+  (`cloudflare/wrangler-action@v3` + `wrangler pages deploy`; main = production,
+  `product/**`/`claude/**` = SHA-verified previews; explicit SKIPPED when
+  credentials absent), new `pr-fast-checks.yml` PR lane, rebuilt
+  `public/start.html` doorway and `README.md` on the v3 observe-first model,
+  docs vocabulary convergence (course/handoff/labs/canonical specs), one
+  canonical `DEPLOYMENT.md`, boot-chunk failure fallback, storage-guarded
+  stores, wrangler pinned as devDependency, dead root `index.html` removed.
+- Known red at this head: `pr-truth-gates` dies in its FIRST gate
+  (`ide:gate:examples-contract` races the collapsed v3 examples disclosure —
+  fix in this lane); `rc:d0:project-determinism-gate` baseline hash is stale at
+  `ab5c1e02` (pre-existing; excluded from the PR fast lane until the drift is
+  explained; do not silently re-baseline).
+- Boundary: the newer desktop-local head `65e1ff872` is NOT on origin and is
+  unreachable from cloud sessions. Desktop must push
+  `product/redbyte-workbench-v3` before PR #80 can advance to it; nothing in
+  this lane rewrites that branch.
 
 ## Candidate Product Truth
 

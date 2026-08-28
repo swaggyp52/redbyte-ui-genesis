@@ -1,5 +1,46 @@
 # AI State
 
+## Change Log 2026-08-28 (Production convergence + release engineering, cloud session)
+
+**Subsystem:** Deployment pipeline, CI lanes, public doorway, README, docs
+vocabulary, production error experience. Branch
+`claude/redbyte-production-convergence-ynz291` on top of
+`origin/product/redbyte-workbench-v3` @ `ab5c1e02`.
+
+**Changes:** Replaced the archived `cloudflare/pages-action@v1` deploy with
+`cloudflare/wrangler-action@v3` (`wrangler pages deploy dist`): main pushes
+deploy production to redbyteapps.dev, `product/**`/`claude/**` pushes deploy
+SHA-verified previews, missing credentials produce an explicit SKIPPED job.
+Added `pr-fast-checks.yml` (typecheck, CSS audit, doc/encoding/start-page/build
+contracts, no-solution + golden-export gates, unified build + artifact).
+Rebuilt `public/start.html` and `README.md` on the v3 observe-first model with
+real exact-SHA screenshots (`public/media/`); updated the three coupled
+contracts (`rb-public-start-page.test.mjs`, `verify-deploy.mjs`,
+`rb-build-deploy-contract.test.mjs`) in the same change. Converged stale
+Verify/Map Pins/Export vocabulary across course docs, labs, Gannon handoff,
+canonical specs, and CLAUDE.md; bannered seven OS-era root docs and three
+historical deployment docs; `DEPLOYMENT.md` is now the one canonical deploy
+doc. Hardened production error experience: boot-chunk load failure now renders
+a visible reload panel, `classroomModeStore`/`fileSystemStore` storage access
+is guarded, stale error-boundary titles renamed. Pinned `wrangler` ^4.127.1 as
+a devDependency. Deleted the dead root `index.html`.
+
+**Known failures at this head:** `pr-truth-gates` fails in its first gate,
+`ide:gate:examples-contract` (instant-visibility race against the collapsed v3
+examples disclosure; fixed in this branch). `rc:d0:project-determinism-gate`
+fails at pristine `ab5c1e02` (committed baseline hash stale; deliberately NOT
+re-baselined, excluded from the PR fast lane, awaiting explained drift). PWA:
+not supported (no manifest/service worker); the Product Manual offline claim
+was corrected.
+
+**Evidence boundary:** Validation in a Linux cloud container on Node 22.22.2
+(pin is 20.19.0; CI runs the pin): typecheck, CSS audit, rb:doc:validate 29/29,
+encoding, start-page + build contracts, golden Basys3 export gates, unified
+build + dist verification, and a full built-bundle Half Adder journey
+(starter -> Design -> Simulate run -> Board & Constraints -> 9-file package)
+with zero console errors. Desktop-local head `65e1ff872` remains unpushed and
+unreachable from cloud; nothing here claims it.
+
 ## Change Log 2026-08-09 (Product System v3 integrated Studio reconstruction)
 
 **Subsystem:** Shared shell and the Project, Design, Simulate, Board &
