@@ -154,7 +154,10 @@ jobs:
           set -euo pipefail
           echo "Smoke against ${BASE}"
           curl -fsSL "${BASE}/" > /dev/null
-          curl -fsSL "${BASE}/start.html" | grep -q "RedByte" || { echo "::error::start.html missing RedByte doorway content"; exit 1; }
+          # Capture before grepping: grep -q exiting early would break the pipe
+          # and fail the pipeline under pipefail even on healthy content.
+          start_page="$(curl -fsSL "${BASE}/start.html")"
+          printf '%s' "${start_page}" | grep -q "RedByte" || { echo "::error::start.html missing RedByte doorway content"; exit 1; }
           os_index="$(curl -fsSL "${BASE}/os/")"
           echo "${os_index}" | grep -q "REDBYTE_OS_IDE" || { echo "::error::/os/ missing REDBYTE_OS_IDE marker"; exit 1; }
           asset_path="$(printf '%s' "${os_index}" | grep -o '/os/assets/[^"]*\.js' | head -1 || true)"
