@@ -173,7 +173,7 @@
         "ui:progress-contract-gate": "pnpm exec vitest run packages/rb-utils/src/__tests__/progress-contract-gate.test.ts",
         "ui:help-topics-contract-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/ui-help-topics-contract-gate.test.ts",
         "ui:help-entrypoints-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/ui-help-entrypoints-gate.test.ts",
-        "ui:style-token-contract-gate": "echo 'rb-shell deleted - gate removed'",
+        "ui:style-token-contract-gate": "node scripts/style-fitness.mjs check",
         "ui:a11y-gate": "echo 'rb-shell deleted - gate removed'",
         "ui:quality-gate": "echo 'rb-shell deleted - gate removed'",
         "ui:screenshots": "pnpm e2e:build && pnpm exec playwright test tests/e2e/ui-screenshots.spec.ts --project chromium",
