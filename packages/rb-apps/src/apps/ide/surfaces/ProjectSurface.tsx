@@ -1034,7 +1034,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             ) : null}
           </aside>
 
-          <main className="ide-project-design-overview" data-testid="ide-project-design-overview">
+          <section aria-label="Design overview" className="ide-project-design-overview" data-testid="ide-project-design-overview">
             <header>
               <div><span>DESIGN OVERVIEW</span><h3>{resolvedTopModule}</h3></div>
               <IdeButton tone="secondary" onClick={onOpenDesign} testId="ide-project-overview-open-design-primary">Open in Design</IdeButton>
@@ -1047,7 +1047,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <div><span>Components</span><strong>{designNodeCount}</strong><small>{designConnectionCount} wires</small></div>
               <div><span>Modules</span><strong>{(hierarchy?.modules.length ?? 0) + 1}</strong><small>{[resolvedTopModule, ...(hierarchy?.modules ?? []).map((module) => module.displayName)].join(', ')}</small></div>
             </div>
-          </main>
+          </section>
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <div className="ide-project-context-panel">
