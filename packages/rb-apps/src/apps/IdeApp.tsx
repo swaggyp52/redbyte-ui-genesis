@@ -2711,7 +2711,7 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'verify' ? (
-          <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Simulate workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
@@ -2845,7 +2845,7 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'export' ? (
-          <ErrorBoundary fallbackTitle="Export workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Build & Export workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="export" />}
             >
