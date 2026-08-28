@@ -82,9 +82,16 @@ function writeFixture(rootDir, redirects) {
 }
 
 function runVerify(rootDir) {
+  // The fixture exercises the redirect/layout contract, not the CI environment
+  // conditionals in verify-dist (e.g. build.json env === "production" when
+  // GITHUB_ACTIONS is set), so run the child without CI markers.
+  const childEnv = { ...process.env };
+  delete childEnv.GITHUB_ACTIONS;
+  delete childEnv.CF_PAGES;
   return spawnSync(process.execPath, [verifyDistScript], {
     cwd: rootDir,
     encoding: 'utf8',
+    env: childEnv,
   });
 }
 
