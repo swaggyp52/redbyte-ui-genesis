@@ -83,6 +83,14 @@ jobs:
           VITE_APP_ENV: production
           GIT_SHA: ${{ github.sha }}
 
+      # The unified build runs on the repo-pinned Node 20.19.0 above. Wrangler
+      # v4 (lockfile-pinned) requires Node >= 22, so switch the job's Node for
+      # the deploy/verify steps only — the built dist/ is already final.
+      - name: Switch to Node 22 for Wrangler
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Resolve deploy target
         id: target
         run: |
