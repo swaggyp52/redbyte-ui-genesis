@@ -50,7 +50,7 @@ function writeFixture(rootDir, redirects) {
       '    <main data-testid="redbyte-start-page">',
       '      <h1>RedByte is a digital logic and FPGA workbench.</h1>',
       '      <a href="/os/" data-testid="redbyte-open-ide">Open IDE</a>',
-      '      <p>Project -> Design -> Verify Map Pins -> Export -> Vivado</p>',
+      '      <p>Project -> Design -> Simulate -> Board &amp; Constraints -> Build &amp; Export -> Vivado</p>',
       '      <p>E0 E1 E2 E3 stay separate.</p>',
       '    </main>',
       '  </body>',
