@@ -220,6 +220,11 @@ const STEPS = [
     args: ['-s', 'ide:gate:hardware-first-viewport'],
   },
   {
+    name: 'ide:gate:single-main-landmark',
+    cmd: 'pnpm',
+    args: ['-s', 'ide:gate:single-main-landmark'],
+  },
+  {
     name: 'ide:gate:shell-layout-integrity',
     cmd: 'pnpm',
     args: ['-s', 'ide:gate:shell-layout-integrity'],
