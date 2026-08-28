@@ -61,7 +61,7 @@ async function openImportFromProject(page) {
 
   const importPath = page.locator('[data-testid="ide-project-path-import-recover"]').first();
   if (!(await visible(importPath))) {
-    const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+    const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
     assert(await visible(changeProject), 'Loaded Project must expose Change Project before replacement/recovery paths');
     await changeProject.click();
   }
@@ -263,7 +263,7 @@ await runIdeGate('IDE import recovery contract satisfied', async ({ page, baseUr
   await openMode(page, 'project');
   const loadedProject = page.locator('[data-testid="ide-project-command-center"]').first();
   assert(await visible(loadedProject), 'Loaded Project must keep command center visible');
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await visible(changeProject), 'Loaded Project must expose Change Project');
   await changeProject.click();
   assert(

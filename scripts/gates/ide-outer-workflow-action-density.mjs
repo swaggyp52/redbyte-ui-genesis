@@ -30,7 +30,7 @@ await runIdeGate('IDE outer workflow action density satisfied', async ({ page, b
       });
       assert(/Simulate/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must keep its current next-stage Simulate action direct`);
       assert(/Change Project/i.test(projectDirect.labels.join(' | ')), `${viewport.label}/Project must expose Change Project`);
-      await page.locator('[data-testid="ide-project-change-project"]').first().click();
+      await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
       const projectDisclosed = await assertActionCluster(page, viewport, 'project disclosed alternatives', '[data-testid="ide-project-command-board-v1"]', 7, {
         maxTop: 300,
       });
