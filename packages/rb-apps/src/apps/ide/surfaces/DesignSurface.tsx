@@ -43,6 +43,7 @@ import {
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import { DesignComponentLibrary } from './DesignComponentLibrary';
+import { useDesignPlacementController } from './useDesignPlacementController';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
 import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import {
@@ -363,19 +364,6 @@ interface BoardIoPaletteItem {
   direction: 'in' | 'out';
 }
 
-interface PendingPlacementState {
-  kind: 'node' | 'board-io';
-  label: string;
-  nodeType?: string;
-  boardIoEntry?: BoardIoPaletteItem;
-}
-
-interface PlacementGhostState {
-  screenX: number;
-  screenY: number;
-  worldX: number;
-  worldY: number;
-}
 
 interface BoardPaletteGroup {
   id: 'switches' | 'buttons' | 'system' | 'leds' | 'display';
@@ -397,20 +385,6 @@ const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
   { id: IDE_COMMAND_IDS.zoomOutDesignCanvas, label: 'Zoom out' },
   { id: IDE_COMMAND_IDS.zoomInDesignCanvas, label: 'Zoom in' },
 ];
-
-const CANVAS_PLACEMENT_BLOCK_SELECTOR =
-  '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
-
-function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
-  if (!target) return false;
-  return Boolean(
-    target.closest(CANVAS_PLACEMENT_BLOCK_SELECTOR) ||
-      target.closest('[data-node-id]') ||
-      target.closest('[data-port-id]') ||
-      target.closest('[data-wire-id]') ||
-      target.closest('[data-testid^="logic-wire-reconnect"]')
-  );
-}
 
 function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
   return {
@@ -1027,8 +1001,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [pasteStep, setPasteStep] = useState(0);
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
-  const [pendingPlacement, setPendingPlacement] = useState<PendingPlacementState | null>(null);
-  const [placementGhost, setPlacementGhost] = useState<PlacementGhostState | null>(null);
 
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
@@ -1381,11 +1353,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
     [activeMacroInsertionId, macros]
   );
-  const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const starterNextAction =
     starterContext?.nextAction?.trim() ||
     'Inspect the scaffold on the canvas, then continue editing or move to Simulate.';
-  const isPlacementMode = placementModeLabel != null;
   // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
   // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
   // Calling emitCircuitMutation after them races against useLayoutEffect in IdeApp
@@ -1942,18 +1912,61 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
     [boardIoRowByAlias]
   );
-  const resolveCanvasPlacementPosition = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!canvasHostRef.current) return null;
-      const rect = canvasHostRef.current.getBoundingClientRect();
-      const worldPoint = {
-        x: (clientX - rect.left - camera.x) / camera.zoom,
-        y: (clientY - rect.top - camera.y) / camera.zoom,
-      };
-      return findSmartSpawnPosition(editorCircuit.nodes as Node[], worldPoint);
-    },
-    [camera.x, camera.y, camera.zoom, editorCircuit.nodes]
+  // placeMacroAtClientPoint is declared after the macro handlers below; the
+  // placement controller only needs it at click time, so delegate through a ref.
+  const macroCanvasClickRef = useRef<(clientX: number, clientY: number) => void>(() => {});
+  const delegateMacroCanvasClick = useCallback((clientX: number, clientY: number) => {
+    macroCanvasClickRef.current(clientX, clientY);
+  }, []);
+  const clearMacroArm = useCallback(() => setActiveMacroInsertionId(null), []);
+  const setSelectToolMode = useCallback(() => setToolMode('select'), [setToolMode]);
+  const clearWireFeedback = useCallback(() => setWireFeedback(null), []);
+  const findExistingBoardNode = useCallback(
+    (entry: BoardIoPaletteItem) =>
+      boardIoRowByAlias.get(`${entry.direction}:${normalizeAlias(entry.alias)}`),
+    [boardIoRowByAlias]
   );
+
+  const {
+    pendingPlacement,
+    placementGhost,
+    beginNodePlacement,
+    beginBoardIoPlacement,
+    cancelPendingPlacement,
+    handleCanvasPlacementClick,
+    handleCanvasPlacementPointerMove,
+    clearPending: clearPendingPlacementSilently,
+    clearGhost: clearPlacementGhost,
+  } = useDesignPlacementController({
+    canvasHostRef,
+    camera,
+    canvasSize,
+    circuit: editorCircuit,
+    interactionMode,
+    setInteractionMode,
+    isMacroArmActive: Boolean(activeInsertionMacro),
+    clearMacroArm,
+    onMacroCanvasClick: delegateMacroCanvasClick,
+    isWireStartActive: Boolean(wireStartPort),
+    endWire,
+    toolMode,
+    setSelectToolMode,
+    clearWireFeedback,
+    findExistingBoardNode,
+    selectNodes: selectMultipleNodes,
+    notify: setActionToast,
+    nodeTypeLabel,
+    predictNextNodeIds,
+    onRuntimeAddNode,
+    onRuntimeAddBoardIo,
+    onRuntimeAddIo,
+    fallbackAddNode: addNode,
+    emitCircuitMutation,
+    markReplayStale,
+  });
+
+  const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
+  const isPlacementMode = placementModeLabel != null;
 
   const spawnAtCanvasCenter = useCallback(
     (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -1991,60 +2004,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       emitCircuitMutation,
       markReplayStale,
       onRuntimeAddNode,
-    ]
-  );
-
-  const beginPalettePlacement = useCallback(
-    (placement: PendingPlacementState) => {
-      if (wireStartPort) {
-        endWire();
-      } else if (toolMode !== 'select') {
-        setToolMode('select');
-      }
-      if (activeInsertionMacro) {
-        setActiveMacroInsertionId(null);
-      }
-      setWireFeedback(null);
-      setPendingPlacement(placement);
-      setInteractionMode('placing');
-    },
-    [activeInsertionMacro, endWire, setInteractionMode, setToolMode, toolMode, wireStartPort]
-  );
-
-  const beginNodePlacement = useCallback(
-    (nodeType: string) => {
-      beginPalettePlacement({
-        kind: 'node',
-        label: nodeTypeLabel(nodeType),
-        nodeType,
-      });
-    },
-    [beginPalettePlacement]
-  );
-
-  const beginBoardIoPlacement = useCallback(
-    (entry: BoardIoPaletteItem) => {
-      const aliasKey = `${entry.direction}:${normalizeAlias(entry.alias)}`;
-      const existing = boardIoRowByAlias.get(aliasKey);
-      if (existing) {
-        if (existing.nodeId) {
-          setToolMode('select');
-          selectMultipleNodes([existing.nodeId], false);
-        }
-        setActionToast(`${entry.alias} already exists on canvas.`);
-        return;
-      }
-      beginPalettePlacement({
-        kind: 'board-io',
-        label: entry.alias,
-        boardIoEntry: entry,
-      });
-    },
-    [
-      beginPalettePlacement,
-      boardIoRowByAlias,
-      selectMultipleNodes,
-      setToolMode,
     ]
   );
 
@@ -2106,28 +2065,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setActionToast('Added AND gate. Switch to Wire, then connect the ports.');
   }, [spawnAtCanvasCenter]);
 
-  const cancelPendingPlacement = useCallback(
-    (reason: 'cancel' | 'escape' | 'tool') => {
-      if (!pendingPlacement) return;
-      setPendingPlacement(null);
-      setPlacementGhost(null);
-      if (interactionMode === 'placing') {
-        setInteractionMode('idle');
-      }
-      if (reason === 'escape') {
-        setActionToast(`Cancelled placing ${pendingPlacement.label} (Esc).`);
-      } else if (reason === 'cancel') {
-        setActionToast(`Cancelled placing ${pendingPlacement.label}.`);
-      }
-    },
-    [interactionMode, pendingPlacement, setInteractionMode]
-  );
-
   const cancelActivePlacement = useCallback(
     (reason: 'cancel' | 'escape' | 'tool') => {
       if (activeInsertionMacro) {
         setActiveMacroInsertionId(null);
-        setPlacementGhost(null);
+        clearPlacementGhost();
         if (interactionMode === 'placing') {
           setInteractionMode('idle');
         }
@@ -2140,104 +2082,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       cancelPendingPlacement(reason);
     },
-    [activeInsertionMacro, cancelPendingPlacement, interactionMode, setInteractionMode]
+    [activeInsertionMacro, cancelPendingPlacement, clearPlacementGhost, interactionMode, setInteractionMode]
   );
-
-  const commitPendingPlacement = useCallback(
-    (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
-      if (!pendingPlacement) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
-      if (!position) return;
-      const keepPlacing = options?.keepPlacing === true;
-
-      const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
-      if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
-        if (onRuntimeAddNode) {
-          markReplayStale();
-          onRuntimeAddNode(pendingPlacement.nodeType, position);
-        } else {
-          addNode(pendingPlacement.nodeType, position, { skipHistory: true });
-          emitCircuitMutation();
-        }
-        setActionToast(`${pendingPlacement.label} placed.`);
-      } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
-        const entry = pendingPlacement.boardIoEntry;
-        if (onRuntimeAddBoardIo) {
-          onRuntimeAddBoardIo({
-            alias: entry.alias,
-            direction: entry.direction,
-            kind: entry.kind,
-            position,
-          });
-        } else if (onRuntimeAddIo) {
-          onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
-        } else {
-          addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position, { skipHistory: true });
-          emitCircuitMutation();
-        }
-        setActionToast(`Added ${entry.alias} to canvas.`);
-      }
-
-      setWireFeedback(null);
-      if (!keepPlacing) {
-        setPendingPlacement(null);
-        setPlacementGhost(null);
-      }
-      if (!keepPlacing && interactionMode === 'placing') {
-        setInteractionMode('idle');
-      }
-      if (nextNodeId) {
-        queueMicrotask(() => {
-          selectMultipleNodes([nextNodeId], false);
-        });
-      }
-    },
-    [
-      addNode,
-      editorCircuit,
-      emitCircuitMutation,
-      interactionMode,
-      markReplayStale,
-      onRuntimeAddBoardIo,
-      onRuntimeAddIo,
-      onRuntimeAddNode,
-      pendingPlacement,
-      resolveCanvasPlacementPosition,
-      selectMultipleNodes,
-      setInteractionMode,
-    ]
-  );
-
-  const updatePlacementGhost = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
-      if (!position) return;
-      setPlacementGhost({
-        screenX: position.x * camera.zoom + camera.x,
-        screenY: position.y * camera.zoom + camera.y,
-        worldX: position.x,
-        worldY: position.y,
-      });
-    },
-    [
-      activeInsertionMacro,
-      camera.x,
-      camera.y,
-      camera.zoom,
-      pendingPlacement,
-      resolveCanvasPlacementPosition,
-    ]
-  );
-
-  useEffect(() => {
-    if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) {
-      setPlacementGhost(null);
-      return;
-    }
-    const rect = canvasHostRef.current.getBoundingClientRect();
-    updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -2882,12 +2728,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       } else if (toolMode !== 'select') {
         setToolMode('select');
       }
-      setPendingPlacement(null);
+      clearPendingPlacementSilently();
       setWireFeedback(null);
       setActiveMacroInsertionId(macroId);
       setInteractionMode('placing');
     },
-    [endWire, onInstantiateMacro, setInteractionMode, setToolMode, toolMode, wireStartPort]
+    [clearPendingPlacementSilently, endWire, onInstantiateMacro, setInteractionMode, setToolMode, toolMode, wireStartPort]
   );
 
   const handleDeleteMacro = useCallback(
@@ -2953,6 +2799,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setInteractionMode,
     ]
   );
+  macroCanvasClickRef.current = placeMacroAtClientPoint;
 
   const handleInsertMacroOnCanvas = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -2973,32 +2820,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       placeMacroAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     },
     [placeMacroAtClientPoint]
-  );
-
-  const handleCanvasPlacementClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement | null;
-      if (isCanvasPlacementBlocked(target)) return;
-      if (activeInsertionMacro) {
-        event.preventDefault();
-        event.stopPropagation();
-        placeMacroAtClientPoint(event.clientX, event.clientY);
-        return;
-      }
-      if (!pendingPlacement) return;
-      event.preventDefault();
-      event.stopPropagation();
-      commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
-    },
-    [activeInsertionMacro, commitPendingPlacement, pendingPlacement, placeMacroAtClientPoint]
-  );
-
-  const handleCanvasPlacementPointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!pendingPlacement || activeInsertionMacro) return;
-      updatePlacementGhost(event.clientX, event.clientY);
-    },
-    [activeInsertionMacro, pendingPlacement, updatePlacementGhost]
   );
 
   useEffect(() => {
@@ -7798,7 +7619,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onPointerMove={handleCanvasPlacementPointerMove}
                     onPointerLeave={() => {
                       if (pendingPlacement) {
-                        setPlacementGhost(null);
+                        clearPlacementGhost();
                       }
                     }}
                   >
@@ -8011,7 +7832,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         data-testid="ide-design-placement-hit-layer"
                         onClick={handleCanvasPlacementClick}
                         onPointerMove={handleCanvasPlacementPointerMove}
-                        onPointerLeave={() => setPlacementGhost(null)}
+                        onPointerLeave={() => clearPlacementGhost()}
                       />
                     ) : null}
                     {pendingPlacement && placementGhost && !activeInsertionMacro ? (
