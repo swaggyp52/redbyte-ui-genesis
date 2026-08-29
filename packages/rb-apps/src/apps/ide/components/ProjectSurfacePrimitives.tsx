@@ -580,21 +580,24 @@ export const ExamplesBrowser: React.FC<ExamplesBrowserProps> = ({
                   </div>
                   <div className="ide-projectx-example-card-actions">
                     {/*
-                      Preserve the legacy `ide-project-load-start-*` testid so
-                      lab-day flows that click "Load & Design" on alternate
-                      starters keep working. The new wrapper testid below
-                      (`ide-projectx-example-load-*`) is additive.
+                      Both legacy hooks survive on nested elements, matching the
+                      retired flat list: the clickable button carries
+                      `ide-project-landing-example-*` (the gate harness's
+                      universal project loader) and the label span carries
+                      `ide-project-load-start-*` (lab-day flows); clicks on the
+                      span reach the button. `ide-projectx-example-load-*`
+                      stays additive.
                     */}
                     <span
                       data-testid={`ide-projectx-example-load-${ex.id}`}
                       style={{ display: 'contents' }}
                     >
                       <IdeButton
-                        tone="primary"
+                        tone="secondary"
                         onClick={() => onLoad(ex.id)}
-                        testId={`ide-project-load-start-${ex.id}`}
+                        testId={`ide-project-landing-example-${ex.id}`}
                       >
-                        Load &amp; Design →
+                        <span data-testid={`ide-project-load-start-${ex.id}`}>Load &amp; Design -&gt;</span>
                       </IdeButton>
                     </span>
                   </div>

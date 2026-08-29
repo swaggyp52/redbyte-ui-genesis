@@ -13,6 +13,7 @@ import {
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import { IdeButton, IdeModal, IdePanel } from '../components/IdePrimitives';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
+import { ExamplesBrowser } from '../components/ProjectSurfacePrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
 import type { RuntimeSimState } from '../projectRuntime';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
@@ -1471,27 +1472,23 @@ const StarterCatalog: React.FC<{
       </button>
     ) : null}
     <div className="ide-project-v3-starter-list" data-testid="ide-project-start-column">
-      <div className="ide-project-v3-starter-heading">Course starters</div>
-      {examples.map((example) => (
-        <button
-          key={example.id}
-          type="button"
-          className={activeExampleId === example.id ? 'is-active' : ''}
-          onClick={() => onOpenExample(example.id)}
-          data-testid={`ide-project-landing-example-${example.id}`}
-        >
-          <span
-            className={activeExampleId === example.id ? 'is-active' : ''}
-            data-testid={`ide-projectx-example-${example.id}`}
-          >
-            <strong className="ide-projectx-example-card-title">{example.name}</strong>
-            <small>{example.concept}</small>
-          </span>
-          <span className="ide-project-v3-starter-action" data-testid={`ide-project-load-start-${example.id}`}>
-            Load &amp; Design -&gt;
-          </span>
-        </button>
-      ))}
+      <ExamplesBrowser
+        examples={examples.map((example) => ({
+          id: example.id,
+          name: example.name,
+          concept: example.concept,
+          expectedBehavior: example.expectedBehavior,
+          course: example.course,
+          lab: example.lab,
+          tags: example.tags,
+          learningPathOrder: example.learningPath?.order,
+          flagship: example.learningPath?.flagship,
+          openProof: example.learningPath?.openProof,
+        }))}
+        activeExampleId={activeExampleId}
+        onLoad={onOpenExample}
+        testId="ide-project-examples-browser"
+      />
       {LAB_STARTERS.map((starter) => (
         <button
           key={starter.id}
