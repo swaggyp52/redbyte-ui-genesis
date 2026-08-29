@@ -90,6 +90,7 @@ export const IdeStageNav: React.FC<IdeStageNavProps> = ({
             data-state={state}
             data-stage={stage.id}
             aria-current={isActive ? 'step' : undefined}
+            title={stage.label}
             onClick={() => onModeChange(stage.id)}
           >
             <span className="ide-stage-nav-icon">
