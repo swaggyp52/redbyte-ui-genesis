@@ -17,6 +17,8 @@ export type {
   CircuitIR,
   ElaborationResult,
   IRDiagnostic,
+  IRBusPort,
+  IRBusPortBit,
   IRFeatures,
   IRNet,
   IRNetEndpoint,

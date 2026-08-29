@@ -101,8 +101,23 @@ export function buildTopLevelBindingRefs(
   const boundaryKindsByNodeId = new Map(
     (ir?.ports ?? []).map((port) => [port.sourceNodeId, port.kind] as const),
   );
-  const inputRefs = buildDirectionRefs(ioMapping.inputs, 'in', boundaryKindsByNodeId);
-  const outputRefs = buildDirectionRefs(ioMapping.outputs, 'out', boundaryKindsByNodeId);
+  // Declared buses from the IR are the vector authority; the label heuristic
+  // below remains only as the fallback for undeclared scalars.
+  const declaredByNodeId = new Map<string, DeclaredBusBit>();
+  for (const bus of ir?.buses ?? []) {
+    for (const bit of bus.bits) {
+      declaredByNodeId.set(bit.portId, {
+        busId: bus.id,
+        baseName: bus.name,
+        bitIndex: bit.index,
+        left: bus.left,
+        right: bus.right,
+        width: bus.signalType.width,
+      });
+    }
+  }
+  const inputRefs = buildDirectionRefs(ioMapping.inputs, 'in', boundaryKindsByNodeId, declaredByNodeId);
+  const outputRefs = buildDirectionRefs(ioMapping.outputs, 'out', boundaryKindsByNodeId, declaredByNodeId);
 
   return {
     topPorts: [
@@ -126,20 +141,36 @@ export function buildTopLevelBindingRefs(
   };
 }
 
+interface DeclaredBusBit {
+  busId: string;
+  baseName: string;
+  bitIndex: number;
+  left: number;
+  right: number;
+  width: number;
+}
+
 function buildDirectionRefs(
   entries: IoMappingEntry[],
   direction: 'in' | 'out',
   boundaryKindsByNodeId: Map<string, CircuitIR['ports'][number]['kind']>,
+  declaredByNodeId?: Map<string, DeclaredBusBit>,
 ): { topPorts: VhdlTopPort[]; refs: Basys3ExportBindingRef[] } {
   const scalarRefs: Basys3ExportBindingRef[] = [];
   const vectorGroups = new Map<string, Basys3ExportBindingRef[]>();
   const vectorOrder: string[] = [];
+  const declaredGroups = new Map<string, DeclaredBusBit>();
 
   for (const entry of stableSortMapping(entries)) {
     const boundaryKind = boundaryKindsByNodeId.get(entry.nodeId);
-    const vectorRef =
-      parseExplicitVectorLabel(entry.label) ??
-      parseBasys3BoundaryAliasVector(entry.pin, direction, boundaryKind);
+    const declared = declaredByNodeId?.get(entry.nodeId);
+    const vectorRef = declared
+      ? { baseName: declared.baseName, bitIndex: declared.bitIndex }
+      : parseExplicitVectorLabel(entry.label) ??
+        parseBasys3BoundaryAliasVector(entry.pin, direction, boundaryKind);
+    if (declared) {
+      declaredGroups.set(declared.baseName, declared);
+    }
     if (!vectorRef) {
       const portName = toSignalName(entry);
       scalarRefs.push({
@@ -185,6 +216,28 @@ function buildDirectionRefs(
       .sort(compareBindingRef);
     // Only consider mapped bits
     const mappedBits = groupEntries.map((entry) => entry.bitIndex ?? 0);
+
+    // Declared bus: when every declared bit is present, the declaration owns
+    // the port — full declared range, honoring ascending declarations, even
+    // when the mapped range happens to start above zero.
+    const declared = declaredGroups.get(groupKey);
+    if (declared && groupEntries.length === declared.width) {
+      const descending = declared.left >= declared.right;
+      topPorts.push({
+        name: groupKey,
+        dir: direction,
+        vhdlType: `STD_LOGIC_VECTOR(${declared.left} ${descending ? 'downto' : 'to'} ${declared.right})`,
+      });
+      refs.push(
+        ...groupEntries.map((entry) => ({
+          ...entry,
+          signalRef: `${groupKey}(${entry.bitIndex})`,
+          xdcRef: `${groupKey}[${entry.bitIndex}]`,
+        }))
+      );
+      continue;
+    }
+
     if (mappedBits.length === 1) {
       // Only one bit mapped: emit scalar port
       topPorts.push({
