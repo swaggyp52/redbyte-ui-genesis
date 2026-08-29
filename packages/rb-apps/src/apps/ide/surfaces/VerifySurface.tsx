@@ -6398,6 +6398,20 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                     });
                   }}
                 >
+                {hiddenSignals.length > 0 ? (
+                  <div className="ide-verify-hidden-lanes" data-testid="ide-verify-hidden-lanes">
+                    <span>
+                      {hiddenSignals.length} lane{hiddenSignals.length === 1 ? '' : 's'} hidden
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHiddenSignals([])}
+                      data-testid="ide-verify-hidden-lanes-restore"
+                    >
+                      Show all
+                    </button>
+                  </div>
+                ) : null}
                 <WaveformViewer
                   signals={displaySignalTimeline}
                   ticks={zoomedTicks}
@@ -6417,6 +6431,18 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                   signalGroups={laneGroupBySignal}
                   onHoverSignal={handleSignalHover}
                   selectedSignal={selectedSignal}
+                  onTogglePinSignal={(signal) =>
+                    setPinnedSignalOrder((previous) =>
+                      previous.includes(signal)
+                        ? previous.filter((entry) => entry !== signal)
+                        : [...previous, signal]
+                    )
+                  }
+                  onHideSignal={(signal) =>
+                    setHiddenSignals((previous) =>
+                      previous.includes(signal) ? previous : [...previous, signal]
+                    )
+                  }
                   emptyMessage={
                     lastRun
                       ? 'No waveform data in this run — check I/O mapping in Board & Constraints'

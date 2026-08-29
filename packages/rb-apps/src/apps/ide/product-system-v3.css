@@ -1866,3 +1866,25 @@
 .ide-root .ide-projectx-path-arrow {
   color: var(--rb-text-muted);
 }
+
+/* Hidden waveform lanes restore chip (Simulate). */
+.ide-root .ide-verify-hidden-lanes {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 3px 8px;
+  border: 1px solid var(--rb-border-default, var(--rb-border));
+  border-radius: 999px;
+  color: var(--rb-text-secondary);
+  font-size: 12px;
+}
+
+.ide-root .ide-verify-hidden-lanes button {
+  border: 0;
+  background: transparent;
+  color: var(--rb-accent, var(--rb-action));
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
