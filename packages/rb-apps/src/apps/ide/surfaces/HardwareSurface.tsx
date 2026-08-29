@@ -18,6 +18,7 @@ import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenar
 import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
+import { VirtualBasys3Board, type VirtualBoardResourceMap } from '../components/VirtualBasys3Board';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
@@ -1027,7 +1028,11 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         .filter((r): r is HardwareMappingRow & { nodeId: string } => Boolean(r.nodeId))
         .map((r) => ({
           nodeId: r.nodeId,
-          label: getStudentFacingIoLabel(r, r.id),
+          // The board alias comes from the assigned pin (V17 → SW0); useIoBus
+          // matches SW/LD aliases, so a pin-mapped bus lights its switches and
+          // LEDs even though its logical label is A[0]. Fall back to the label
+          // for legacy rows that are labeled with the alias directly.
+          label: resolveBoardControlAlias(r.pin) ?? getStudentFacingIoLabel(r, r.id),
           direction: r.direction,
         })),
     [mappingRows]
@@ -1044,6 +1049,30 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   const mappedLd = useMemo(
     () => Array.from({ length: 16 }, (_, i) => ioBus.meta.ldNodeIds[i] != null),
     [ioBus.meta.ldNodeIds]
+  );
+  // Cross-probe map: board resource alias → mapped logical signal + package pin,
+  // derived from the same mapping rows the export pipeline consumes.
+  const virtualBoardResourceMap = useMemo(() => {
+    const rowByNodeId = new Map(mappingRows.map((row) => [row.nodeId, row] as const));
+    const map: Record<string, VirtualBoardResourceMap> = {};
+    const bind = (alias: string, nodeId: string | null) => {
+      if (!nodeId) return;
+      const row = rowByNodeId.get(nodeId);
+      if (!row) return;
+      map[alias] = {
+        signalLabel: getStudentFacingIoLabel(row, row.id),
+        pin: row.pin?.trim() ? row.pin.trim().toUpperCase() : null,
+      };
+    };
+    ioBus.meta.swNodeIds.forEach((nodeId, i) => bind(`SW${i}`, nodeId));
+    ioBus.meta.ldNodeIds.forEach((nodeId, i) => bind(`LD${i}`, nodeId));
+    const btnLabels = ['BTNC', 'BTNU', 'BTND', 'BTNL', 'BTNR'];
+    ioBus.meta.btnNodeIds.forEach((nodeId, i) => bind(btnLabels[i], nodeId));
+    return map;
+  }, [mappingRows, ioBus.meta.swNodeIds, ioBus.meta.ldNodeIds, ioBus.meta.btnNodeIds]);
+  const anyVirtualBoardMapping = useMemo(
+    () => mappedSw.some(Boolean) || mappedLd.some(Boolean),
+    [mappedSw, mappedLd]
   );
   const effectiveBoardSignal = hoverBoardSignal ?? activeBoardSignal;
   const inferredReadiness = useMemo(
@@ -3073,6 +3102,19 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <p className="ide-copy ide-copy--flush">Select Edit to keep one signal in the assignment editor.</p>
                 </header>
                 <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
+                {anyVirtualBoardMapping ? (
+                  <VirtualBasys3Board
+                    switches={ioBus.state.sw}
+                    leds={ioBus.state.ld}
+                    buttons={ioBus.state.btn}
+                    mappedSwitches={mappedSw}
+                    mappedLeds={mappedLd}
+                    resourceMap={virtualBoardResourceMap}
+                    onToggleSwitch={(i) => ioBus.actions.toggleSwitch(i)}
+                    onPressButton={(i, pressed) => ioBus.actions.setButton(i, pressed ? 1 : 0)}
+                    onFocusResource={(alias) => setSelectedBoardResourceAlias(alias)}
+                  />
+                ) : null}
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                     Add inputs and outputs in Design, then return here to assign board resources.
