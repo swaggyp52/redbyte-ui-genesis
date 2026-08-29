@@ -42,6 +42,7 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { DesignComponentLibrary } from './DesignComponentLibrary';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
 import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import {
@@ -376,12 +377,6 @@ interface PlacementGhostState {
   worldY: number;
 }
 
-interface PaletteSectionDefinition {
-  id: 'logic' | 'sequential' | 'io' | 'reusable' | 'board';
-  title: string;
-  description: string;
-}
-
 interface BoardPaletteGroup {
   id: 'switches' | 'buttons' | 'system' | 'leds' | 'display';
   title: string;
@@ -447,62 +442,6 @@ const COMPOSITE_PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter(
   (item) => item.section === 'reusable'
 );
 
-const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
-  {
-    id: 'board',
-    title: 'Board Resources',
-    description:
-      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board & Constraints.',
-  },
-  {
-    id: 'io',
-    title: 'Inputs & Outputs',
-    description:
-      'Generic pins for abstract or board-agnostic designs. Name them anything you like. Use Board Resources (above) to start from specific Basys3 hardware signals instead.',
-  },
-  {
-    id: 'logic',
-    title: 'Logic Gates',
-    description: 'Core combinational building blocks for the main circuit path.',
-  },
-  {
-    id: 'sequential',
-    title: 'Sequential & Timing',
-    description:
-      'Native registers and state banks first, then timing sources — legacy DFF/TFF sit in clearly marked tiers.',
-  },
-  {
-    id: 'reusable',
-    title: 'Reusable Blocks',
-    description: 'Built-in helpers, saved macros, and custom parts you can place quickly.',
-  },
-];
-
-const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
-  key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
-  title: string;
-  description: string;
-  testId: string;
-}[] = [
-  {
-    key: 'sequentialRegisters',
-    title: 'Registers & state banks',
-    description: 'Native path: width, clock enable, reset behavior, and edge polarity are explicit.',
-    testId: 'ide-design-palette-sequential-registers',
-  },
-  {
-    key: 'sequentialTiming',
-    title: 'Timing',
-    description: 'Clock sources that drive sequential updates (map to board timing in Board & Constraints).',
-    testId: 'ide-design-palette-sequential-timing',
-  },
-  {
-    key: 'sequentialLegacy',
-    title: 'Legacy primitives',
-    description: 'Classic DFF for imports and tutorials — new work should start with Native registers.',
-    testId: 'ide-design-palette-sequential-legacy',
-  },
-];
 
 const BASYS3_DESIGN_BOARD_ITEMS = listBasys3DesignBoardResourceInventory({
   // RST is a logical authoring helper, not a Basys3 board resource. Keep it
@@ -4700,55 +4639,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     runtimeSim.signals,
     runtimeSim.tick,
   ]);
-  const paletteHasQuery = paletteQueryTerms.length > 0;
   const boardResourcesCount = filteredBoardGroups.reduce((count, group) => count + group.entries.length, 0);
-  const hasPaletteResults =
-    filteredPaletteByCategory.logic.length > 0 ||
-    filteredPaletteByCategory.sequential.length > 0 ||
-    filteredPaletteByCategory.io.length > 0 ||
-    filteredPaletteByCategory.components.length > 0 ||
-    filteredCustomComponents.length > 0 ||
-    filteredMacros.length > 0 ||
-    filteredBoardGroups.length > 0;
 
-  const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
-    options?: {
-      badge?: string;
-      className?: string;
-      onClick?: () => void;
-      testId?: string;
-      title?: string;
-    }
-  ) => {
-    const isPending = pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
-    return (
-      <button
-        key={item.type}
-        type="button"
-        className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
-        onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
-        data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
-        aria-pressed={isPending}
-        title={options?.title ?? `${item.title} - ${item.subtitle}`}
-      >
-        <span className="ide-design-component-tile-glyph" aria-hidden="true">
-          {item.glyph}
-        </span>
-        <span className="ide-palette-card-body">
-            <span className="ide-palette-card-title-row">
-            <span className="ide-design-component-tile-title">{item.title}</span>
-            {options?.badge || item.paletteBadge ? (
-              <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
-            ) : null}
-          </span>
-          <span className="ide-palette-card-subtitle">{item.subtitle}</span>
-        </span>
-      </button>
-    );
-  };
-  const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
-    PALETTE_SECTION_ORDER;
   const selectedNodeInspectorModel = selectedNode
     ? (() => {
         const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
@@ -6260,241 +6152,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ))}
           </div>
           {activeLeftDockTab === 'components' ? (
-          <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
-            <header className="ide-design-subheader ide-design-palette-header">
-              <div>
-                <h3>Component Library</h3>
-              </div>
-            </header>
-            <div className="ide-design-palette-toolbar">
-              <input
-                type="text"
-                className="ide-design-search"
-                value={paletteQuery}
-                onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates or pins..."
-                data-testid="ide-design-search"
-              />
-              {paletteHasQuery && (
-                <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
-                  {hasPaletteResults
-                    ? `${filteredPaletteByCategory.logic.length + filteredPaletteByCategory.sequential.length + filteredPaletteByCategory.io.length + filteredPaletteByCategory.components.length} results`
-                    : `No results for "${paletteQuery.trim()}".`}
-                </p>
-              )}
-            </div>
-
-            <div className="ide-design-palette-sections">
-              {commonPaletteItems.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--common"
-                  data-testid="ide-design-palette-section-common"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>Common</h4>
-                      <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
-                    </div>
-                    <p className="ide-palette-section-copy">
-                      Start here for most combinational and first sequential circuits.
-                    </p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {commonPaletteItems.map((item) =>
-                      renderNodePaletteCard(item, {
-                        testId: `ide-design-common-${item.type.toLowerCase()}`,
-                      })
-                    )}
-                  </div>
-                </section>
-              ) : null}
-              {/* Board Resources — first: primary destination for board-aware work */}
-              {filteredBoardGroups.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--board"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed="false"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
-                    </div>
-                  </header>
-                  <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
-                      {filteredBoardGroups.map((group) => (
-                        <div
-                          key={group.id}
-                          className="ide-palette-board-group"
-                          data-testid={`ide-design-board-group-${group.id}`}
-                        >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
-                          </div>
-                          <div className="ide-palette-board-grid">
-                            {group.entries.map((entry) => {
-                              const isPlaced = isBoardAliasPlaced(entry);
-                              const isPending =
-                                pendingPlacement?.kind === 'board-io' &&
-                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                                pendingPlacement.boardIoEntry?.direction === entry.direction;
-                              const testId =
-                                entry.direction === 'in'
-                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                              return (
-                                <button
-                                  key={entry.alias}
-                                  className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                  type="button"
-                                  onClick={() => beginBoardIoPlacement(entry)}
-                                  data-testid={testId}
-                                  disabled={isPlaced}
-                                  title={
-                                    isPlaced
-                                      ? `${entry.alias} already placed`
-                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
-                                  }
-                                  aria-pressed={isPending}
-                                >
-                                  {entry.alias}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Inputs & Outputs — second: generic pins for abstract designs */}
-              {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{ioPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.io.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Logic Gates */}
-              {filteredPaletteByCategory.logic.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--logic"
-                  data-testid="ide-design-palette-section-logic"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{logicPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.logic.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Sequential & Timing */}
-              {filteredPaletteByCategory.sequential.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--sequential"
-                  data-testid="ide-design-palette-section-sequential"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{sequentialPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.sequential.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
-                  </header>
-                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
-                    const items = filteredPaletteByCategory[subsection.key];
-                    if (!items || items.length === 0) return null;
-                    return (
-                      <div key={subsection.key} className="ide-palette-subsection" data-testid={subsection.testId}>
-                        <div className="ide-palette-subsection-header">
-                          <div>
-                            <h5>{subsection.title}</h5>
-                            <p>{subsection.description}</p>
-                          </div>
-                          <span className="ide-palette-subsection-count">{items.length}</span>
-                        </div>
-                        <div className="ide-palette-card-list">
-                          {items.map((item) => renderNodePaletteCard(item))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
-                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
-                    type — useful for counters and multi-bit state.
-                  </p>
-                </section>
-              ) : null}
-
-              {/* Reusable Blocks — macros, custom parts, built-in helpers */}
-              {filteredPaletteByCategory.components.length > 0 ||
-              filteredCustomComponents.length > 0 ||
-              filteredMacros.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--reusable"
-                  data-testid="ide-design-palette-section-reusable"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{reusablePaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.components.length +
-                          filteredCustomComponents.length +
-                          filteredMacros.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
-                  </header>
-
-                  {filteredPaletteByCategory.components.length > 0 ? (
-                    <div
-                      className="ide-palette-subsection"
-                      data-testid="ide-design-palette-built-in-blocks"
-                    >
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Built-in Blocks</h5>
-                          <p>Ready-made helpers for arithmetic and sequential experiments.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
-                          {filteredPaletteByCategory.components.length}
-                        </span>
-                      </div>
-                      <div className="ide-palette-card-list">
-                        {filteredPaletteByCategory.components.map((item) =>
-                          renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
+          <DesignComponentLibrary
+            query={paletteQuery}
+            onQueryChange={setPaletteQuery}
+            commonItems={commonPaletteItems}
+            categories={filteredPaletteByCategory}
+            boardGroups={filteredBoardGroups}
+            boardResourcesCount={boardResourcesCount}
+            pendingPlacement={pendingPlacement}
+            onBeginNodePlacement={beginNodePlacement}
+            onBeginBoardIoPlacement={beginBoardIoPlacement}
+            isBoardEntryPlaced={isBoardAliasPlaced}
+            boardEntryTooltip={(entry) =>
+              isBoardAliasPlaced(entry)
+                ? `${entry.alias} already placed`
+                : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
+            }
+            reusableExtraCount={filteredCustomComponents.length + filteredMacros.length}
+            reusableSlot={
+              <>
                   {filteredCustomComponents.length > 0 ? (
                     <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
                       <div className="ide-palette-subsection-header">
@@ -6531,7 +6207,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     </div>
                   ) : null}
-
                   <MacroLibraryPanel
                     macros={filteredMacros}
                     totalMacroCount={macros.length}
@@ -6540,24 +6215,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onSelectMacro={handleSelectMacro}
                     onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
                   />
-                </section>
-              ) : null}
-
-            </div>
-
-            {!hasPaletteResults && paletteHasQuery ? (
-              <IdeEmptyState
-                title={`No results for "${paletteQuery.trim()}"`}
-                body="Try logic terms like AND or flipflop, or board terms like SW0, LED, or clock."
-                primaryAction={
-                  <IdeButton tone="ghost" onClick={() => setPaletteQuery('')}>
-                    Clear search
-                  </IdeButton>
-                }
-                testId="ide-design-palette-empty"
-              />
-            ) : null}
-          </SurfacePanel>
+              </>
+            }
+          />
           ) : activeLeftDockTab === 'hierarchy' ? (
             <SurfacePanel className="ide-design-project-browser" testId="ide-design-hierarchy">
               <header className="ide-design-subheader">
