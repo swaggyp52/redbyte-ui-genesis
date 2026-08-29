@@ -3,7 +3,7 @@
 // Licensed under the RedByte Proprietary License (RPL-1.0). See LICENSE.
 
 // Main component
-export { LogicCanvas } from './LogicCanvas';
+export { LogicCanvas, FIT_ZOOM_STEPS } from './LogicCanvas';
 export type { LogicCanvasProps } from './LogicCanvas';
 
 // Store

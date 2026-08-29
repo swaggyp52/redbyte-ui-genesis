@@ -155,6 +155,24 @@
   white-space: nowrap;
 }
 
+/* Zoom readout doubles as a one-click return to 100%. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout {
+  min-width: 52px;
+  padding: 4px 6px;
+  border: 1px solid var(--rb-border-default);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--rb-text-secondary);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout:hover,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout:focus-visible {
+  color: var(--rb-text-primary);
+  background: color-mix(in srgb, var(--rb-action) 8%, transparent);
+}
+
 /* Section collapse chevron leads the section title, file-tree style. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle {
   display: inline-flex;

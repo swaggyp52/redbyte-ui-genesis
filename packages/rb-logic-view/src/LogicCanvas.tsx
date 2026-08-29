@@ -126,7 +126,11 @@ const BUILTIN_PORT_NAMES: Record<string, string[]> = {
   Counter4Bit: ['CLK', 'Q0', 'Q1', 'Q2', 'Q3'],
 };
 
-const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+/**
+ * Canonical fit-zoom step table shared with the Design surface toolbar so
+ * both zoom paths snap to the same levels.
+ */
+export const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
 
 function snapFitZoom(rawZoom: number): number {
   return FIT_ZOOM_STEPS.reduce((closest, candidate) =>

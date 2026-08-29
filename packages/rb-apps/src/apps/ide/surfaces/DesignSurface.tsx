@@ -11,6 +11,7 @@ import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
 import { getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
+  FIT_ZOOM_STEPS,
   LogicCanvas,
   describePortRefForStudents,
   describeWireRejectionForStudents,
@@ -533,8 +534,6 @@ const BASYS3_INPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filte
 const BASYS3_OUTPUT_ITEMS: BoardIoPaletteItem[] = BASYS3_DESIGN_BOARD_ITEMS.filter(
   (item) => item.direction === 'out'
 );
-
-const FIT_ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.4] as const;
 
 function tokenizePaletteQuery(value: string): string[] {
   return value
@@ -1648,112 +1647,102 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     deleteSelection();
   }, [deleteSelection, handleCopy, selection.nodes]);
 
-  const handleAlignSelection = useCallback((edge: 'left' | 'top') => {
-    if (selection.nodes.size < 2) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 2) return;
+  const applySelectionPositions = useCallback(
+    (positionById: Map<string, { x: number; y: number }>, toast: string) => {
+      let didChange = false;
+      const next = {
+        ...circuit,
+        nodes: circuit.nodes.map((node) => {
+          const target = positionById.get(node.id);
+          if (!target) return node;
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          if (current.x === target.x && current.y === target.y) return node;
+          didChange = true;
+          return { ...node, position: target };
+        }),
+      };
+      if (!didChange) return;
+      updateCircuit(next, { skipHistory: true, enforceLimits: true });
+      setActionToast(toast);
+      emitCircuitMutation(next);
+    },
+    [circuit, emitCircuitMutation, updateCircuit]
+  );
 
-    const targetCoordinate =
-      edge === 'left'
-        ? Math.min(...selectedNodes.map((node) => node.position?.x ?? 0))
-        : Math.min(...selectedNodes.map((node) => node.position?.y ?? 0));
+  const handleAlignSelection = useCallback(
+    (edge: 'left' | 'right' | 'h-center' | 'top' | 'bottom' | 'v-center') => {
+      if (selection.nodes.size < 2) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 2) return;
 
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-        const nextPosition =
-          edge === 'left'
-            ? { x: targetCoordinate, y: currentPosition.y }
-            : { x: currentPosition.x, y: targetCoordinate };
+      const axis = edge === 'left' || edge === 'right' || edge === 'h-center' ? 'x' : 'y';
+      const coordinates = selectedNodes.map((node) => node.position?.[axis] ?? 0);
+      const minimum = Math.min(...coordinates);
+      const maximum = Math.max(...coordinates);
+      const target =
+        edge === 'left' || edge === 'top'
+          ? minimum
+          : edge === 'right' || edge === 'bottom'
+            ? maximum
+            : (minimum + maximum) / 2;
 
-        if (
-          currentPosition.x === nextPosition.x &&
-          currentPosition.y === nextPosition.y
-        ) {
-          return node;
-        }
+      const positionById = new Map(
+        selectedNodes.map((node) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          return [node.id, axis === 'x' ? { x: target, y: current.y } : { x: current.x, y: target }] as const;
+        })
+      );
+      const edgeLabel =
+        edge === 'h-center' ? 'horizontal center' : edge === 'v-center' ? 'vertical center' : edge;
+      applySelectionPositions(
+        new Map(positionById),
+        `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edgeLabel}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-        didChange = true;
-        return {
-          ...node,
-          position: nextPosition,
-        };
-      }),
-    };
+  const handleDistributeSelection = useCallback(
+    (axis: 'horizontal' | 'vertical') => {
+      if (selection.nodes.size < 3) return;
+      const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
+      if (selectedNodes.length < 3) return;
 
-    if (!didChange) return;
+      const key = axis === 'horizontal' ? 'x' : 'y';
+      const secondary = axis === 'horizontal' ? 'y' : 'x';
+      const sortedNodes = [...selectedNodes].sort((left, right) => {
+        const primaryDelta = (left.position?.[key] ?? 0) - (right.position?.[key] ?? 0);
+        if (primaryDelta !== 0) return primaryDelta;
+        const secondaryDelta = (left.position?.[secondary] ?? 0) - (right.position?.[secondary] ?? 0);
+        if (secondaryDelta !== 0) return secondaryDelta;
+        return left.id.localeCompare(right.id);
+      });
 
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Aligned ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} to the ${edge}.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+      const first = sortedNodes[0]?.position?.[key] ?? 0;
+      const last = sortedNodes[sortedNodes.length - 1]?.position?.[key] ?? 0;
+      const step = (last - first) / (sortedNodes.length - 1);
+      const positionById = new Map(
+        sortedNodes.map((node, index) => {
+          const current = { x: node.position?.x ?? 0, y: node.position?.y ?? 0 };
+          const distributed = first + step * index;
+          return [
+            node.id,
+            key === 'x' ? { x: distributed, y: current.y } : { x: current.x, y: distributed },
+          ] as const;
+        })
+      );
+      applySelectionPositions(
+        new Map(positionById),
+        `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} ${axis === 'horizontal' ? 'horizontally' : 'vertically'}.`
+      );
+    },
+    [applySelectionPositions, circuit.nodes, selection.nodes]
+  );
 
-  const handleDistributeSelectionHorizontally = useCallback(() => {
-    if (selection.nodes.size < 3) return;
-    const selectedNodes = circuit.nodes.filter((node) => selection.nodes.has(node.id));
-    if (selectedNodes.length < 3) return;
-
-    const sortedNodes = [...selectedNodes].sort((left, right) => {
-      const leftX = left.position?.x ?? 0;
-      const rightX = right.position?.x ?? 0;
-      if (leftX !== rightX) return leftX - rightX;
-      const leftY = left.position?.y ?? 0;
-      const rightY = right.position?.y ?? 0;
-      if (leftY !== rightY) return leftY - rightY;
-      return left.id.localeCompare(right.id);
-    });
-
-    const leftmostX = sortedNodes[0]?.position?.x ?? 0;
-    const rightmostX = sortedNodes[sortedNodes.length - 1]?.position?.x ?? 0;
-    const step = (rightmostX - leftmostX) / (sortedNodes.length - 1);
-    const distributedXById = new Map(
-      sortedNodes.map((node, index) => [node.id, leftmostX + step * index])
-    );
-
-    let didChange = false;
-    const next = {
-      ...circuit,
-      nodes: circuit.nodes.map((node) => {
-        if (!selection.nodes.has(node.id)) return node;
-        const targetX = distributedXById.get(node.id);
-        if (typeof targetX !== 'number') return node;
-
-        const currentPosition = {
-          x: node.position?.x ?? 0,
-          y: node.position?.y ?? 0,
-        };
-
-        if (currentPosition.x === targetX) {
-          return node;
-        }
-
-        didChange = true;
-        return {
-          ...node,
-          position: {
-            x: targetX,
-            y: currentPosition.y,
-          },
-        };
-      }),
-    };
-
-    if (!didChange) return;
-
-    updateCircuit(next, { skipHistory: true, enforceLimits: true });
-    setActionToast(
-      `Distributed ${selectedNodes.length} node${selectedNodes.length !== 1 ? 's' : ''} horizontally.`
-    );
-    emitCircuitMutation(next);
-  }, [circuit, emitCircuitMutation, selection.nodes, updateCircuit]);
+  const handleDistributeSelectionHorizontally = useCallback(
+    () => handleDistributeSelection('horizontal'),
+    [handleDistributeSelection]
+  );
 
   const handleNudgeSelection = useCallback((dx: number, dy: number) => {
     if (selection.nodes.size === 0) return;
@@ -2702,6 +2691,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const zoomOut = useCallback(() => {
     zoomCamera(-120, canvasSize.width / 2, canvasSize.height / 2);
   }, [canvasSize.height, canvasSize.width, zoomCamera]);
+
+  /** Return to 100% while keeping the world point at the viewport center fixed. */
+  const zoomTo100 = useCallback(() => {
+    const centerX = canvasSize.width / 2;
+    const centerY = canvasSize.height / 2;
+    const worldX = (centerX - camera.x) / camera.zoom;
+    const worldY = (centerY - camera.y) / camera.zoom;
+    setCamera({ x: centerX - worldX, y: centerY - worldY, zoom: 1 });
+  }, [camera.x, camera.y, camera.zoom, canvasSize.height, canvasSize.width, setCamera]);
 
   useEffect(() => {
     const onIdeCommand = (event: Event) => {
@@ -4805,6 +4803,21 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // S: select tool — advertised by the toolbar tooltip. W stays canvas-scoped
+      // inside CanvasHost; S has no canvas binding, so the surface owns it.
+      if (
+        event.key.toLowerCase() === 's' &&
+        !isTextInput &&
+        !event.defaultPrevented &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        setSelectMode();
+        return;
+      }
+
       // Escape: clear selection globally (idempotent — safe even if CanvasHost also fires)
       if (event.key === 'Escape' && !isTextInput) {
         clearSelection();
@@ -4814,7 +4827,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, snapToGrid, toggleSnapToGrid]);
+  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -5595,21 +5608,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             </div>
           </div>
           <div className="ide-design-inspector-action-group" data-testid="ide-design-inspector-arrange-group">
-            <span className="ide-design-inspector-group-label">Arrange</span>
-            <div className="ide-design-inspector-action-grid">
+            <span className="ide-design-inspector-group-label">Align</span>
+            <div className="ide-design-inspector-action-grid ide-design-align-grid">
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('left')} testId="ide-design-align-left-btn">
-                Align left
+                Left
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('h-center')} testId="ide-design-align-hcenter-btn">
+                Center
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('right')} testId="ide-design-align-right-btn">
+                Right
               </IdeButton>
               <IdeButton tone="ghost" onClick={() => handleAlignSelection('top')} testId="ide-design-align-top-btn">
-                Align top
+                Top
               </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('v-center')} testId="ide-design-align-vcenter-btn">
+                Middle
+              </IdeButton>
+              <IdeButton tone="ghost" onClick={() => handleAlignSelection('bottom')} testId="ide-design-align-bottom-btn">
+                Bottom
+              </IdeButton>
+            </div>
+            <span className="ide-design-inspector-group-label">Distribute</span>
+            <div className="ide-design-inspector-action-grid">
               <IdeButton
                 tone="ghost"
                 onClick={handleDistributeSelectionHorizontally}
                 disabled={selection.nodes.size < 3}
                 testId="ide-design-distribute-horizontal-btn"
               >
-                Distribute horizontally
+                Horizontally
+              </IdeButton>
+              <IdeButton
+                tone="ghost"
+                onClick={() => handleDistributeSelection('vertical')}
+                disabled={selection.nodes.size < 3}
+                testId="ide-design-distribute-vertical-btn"
+              >
+                Vertically
               </IdeButton>
             </div>
           </div>
@@ -7584,6 +7620,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         Zoom −
                       </IdeButton>
                       ) : null}
+                      <button
+                        type="button"
+                        className="ide-design-zoom-readout"
+                        onClick={zoomTo100}
+                        title="Current zoom — click to return to 100%"
+                        data-testid="ide-design-zoom-readout"
+                      >
+                        {Math.round(camera.zoom * 100)}%
+                      </button>
                       {toolbarVisible(IDE_COMMAND_IDS.zoomInDesignCanvas) ? (
                       <IdeButton tone="ghost" onClick={zoomIn} testId="ide-design-zoom-in">
                         Zoom +
