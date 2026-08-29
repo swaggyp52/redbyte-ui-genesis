@@ -727,6 +727,34 @@ export function connectBuses(circuit: Circuit, fromBusId: string, toBusId: strin
 }
 
 /**
+ * Drop bus bits whose member node no longer exists (e.g. after a node
+ * deletion) and remove declarations left with no members. Declared ranges are
+ * kept, so a pruned bus honestly reports its missing indices via BUS002.
+ */
+export function pruneBusBits(circuit: Circuit): Circuit {
+  const buses = circuit.buses;
+  if (!buses || buses.length === 0) return circuit;
+  const nodeIds = new Set(circuit.nodes.map((node) => node.id));
+  let changed = false;
+  const next: BusDeclaration[] = [];
+  for (const bus of buses) {
+    const bits = bus.bits.filter((bit) => nodeIds.has(bit.nodeId));
+    if (bits.length === 0) {
+      changed = true;
+      continue;
+    }
+    if (bits.length !== bus.bits.length) {
+      changed = true;
+      next.push({ ...bus, bits });
+    } else {
+      next.push(bus);
+    }
+  }
+  if (!changed) return circuit;
+  return { ...circuit, buses: next.length > 0 ? next : undefined };
+}
+
+/**
  * The set of node ids claimed by any declared bus, for projection layers that
  * need to know which scalars are bus members.
  */

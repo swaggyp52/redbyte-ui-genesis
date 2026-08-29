@@ -89,6 +89,7 @@ export {
   formatBusWordHex,
   normalizeBusDeclarations,
   parseVectorLabel,
+  pruneBusBits,
   readBusWord,
   renameBus,
   synthesizeBusDeclarations,

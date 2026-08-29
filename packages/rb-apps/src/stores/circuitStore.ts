@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import type { Circuit, CircuitEngine, Node, Connection, PortRef } from '@redbyte/rb-logic-core';
 import type { TickEngine } from '@redbyte/rb-logic-core';
+import { pruneBusBits } from '@redbyte/rb-logic-core';
 import { recordAuditTransition } from '../utils/audit';
 import { isCEMode } from '../utils/ceMode';
 import { digestValue } from '../utils/digest';
@@ -30,9 +31,14 @@ function getNextNodeId(circuit: Circuit): string {
 
 // Circuit fingerprint for identity checks (prevents no-op updates)
 function computeCircuitFingerprint(circuit: Circuit): string {
-  // Fast fingerprint: node count + edge count + sorted node/edge metadata
+  // Fast fingerprint: node count + edge count + sorted node/edge metadata.
+  // Labels are included so rename-only edits (and their undo) register.
   const nodeData = circuit.nodes
-    .map(n => `${n.id}:${n.type}:${n.position?.x ?? n.x ?? 0}:${n.position?.y ?? n.y ?? 0}:${Number.isFinite(n.rotation) ? n.rotation : 0}`)
+    .map(n => `${n.id}:${n.type}:${n.position?.x ?? n.x ?? 0}:${n.position?.y ?? n.y ?? 0}:${Number.isFinite(n.rotation) ? n.rotation : 0}:${n.label ?? ''}`)
+    .sort()
+    .join('|');
+  const busData = (circuit.buses ?? [])
+    .map(bus => `${bus.id}:${bus.name}:${bus.direction}:${bus.left}:${bus.right}:${bus.bits.length}`)
     .sort()
     .join('|');
   const edgeData = circuit.connections
@@ -45,7 +51,7 @@ function computeCircuitFingerprint(circuit: Circuit): string {
     })
     .sort()
     .join('|');
-  return digestValue({ nodes: nodeData, edges: edgeData });
+  return digestValue({ nodes: nodeData, edges: edgeData, buses: busData });
 }
 
 // Deep clone circuit to avoid mutation leaks in history
@@ -97,7 +103,9 @@ function clampCircuit(circuit: Circuit, limit: number): { circuit: Circuit; clam
   );
 
   return {
-    circuit: { nodes: keptNodes, connections: keptConnections },
+    // Spread preserves declared buses (and any future circuit-level fields);
+    // pruneBusBits drops bit refs whose member node was clamped away.
+    circuit: pruneBusBits({ ...circuit, nodes: keptNodes, connections: keptConnections }),
     clamped: true,
     dropped: circuit.nodes.length - limit,
   };
@@ -226,13 +234,13 @@ function createCircuitStore() {
         }
 
         // CHOKE POINT: normalize and clamp incoming circuit BEFORE anything else
-        let circuit: Circuit = {
+        let circuit: Circuit = pruneBusBits({
           ...incoming,
           nodes: incoming.nodes.map((node) => ({
             ...node,
             rotation: Number.isFinite(node.rotation) ? (node.rotation as number) : 0,
           })),
-        };
+        });
         let clampEvent: CircuitState['lastClampEvent'] = null;
 
         if (enforceLimits) {

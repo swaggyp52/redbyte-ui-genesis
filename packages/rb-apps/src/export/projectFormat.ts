@@ -9,6 +9,11 @@ import type {
   Node,
   PortRef,
 } from '@redbyte/rb-logic-core';
+import {
+  normalizeBusDeclarations,
+  pruneBusBits,
+  synthesizeBusDeclarations,
+} from '@redbyte/rb-logic-core';
 import type { MacroDefinition } from '../apps/ide/macros/MacroLibrary';
 import type { RunRecord } from '../recording/runRecord';
 import type { Probe } from '../stores/probeStore';
@@ -145,7 +150,19 @@ const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
       return compareCodepoint(left, right);
     });
 
-  return { nodes, connections };
+  // Declared buses: parse what the file carries, prune refs to nodes that do
+  // not exist, then promote any remaining legacy Base[N] label groups so
+  // pre-bus projects load with first-class vectors (idempotent migration).
+  const declared = normalizeBusDeclarations((circuit as { buses?: unknown }).buses);
+  const withDeclared = pruneBusBits({
+    nodes,
+    connections,
+    buses: declared.length > 0 ? declared : undefined,
+  });
+  const migrated = synthesizeBusDeclarations(withDeclared);
+  return migrated.buses && migrated.buses.length > 0
+    ? { nodes, connections, buses: migrated.buses }
+    : { nodes, connections };
 };
 
 const normalizeProbes = (probes?: Probe[]): Probe[] | undefined => {
