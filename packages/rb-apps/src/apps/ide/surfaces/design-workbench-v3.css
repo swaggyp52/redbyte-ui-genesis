@@ -130,6 +130,64 @@
   font-size: 13px !important;
 }
 
+/* Interface line on library cards: compact engineering facts, not prose. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-ports {
+  overflow: hidden;
+  color: var(--rb-text-secondary);
+  font-family: var(--rb-font-mono, ui-monospace, 'Cascadia Mono', 'JetBrains Mono', monospace);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Capability chip: only rendered when a part is NOT fully supported. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-card-cap {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid color-mix(in srgb, var(--rb-warning, #b45309) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rb-warning, #b45309) 12%, transparent);
+  color: var(--rb-warning, #b45309);
+  font-size: 10px;
+  font-weight: 640;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Section collapse chevron leads the section title, file-tree style. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  order: -1;
+  width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--rb-text-secondary);
+  cursor: pointer;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:hover,
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:focus-visible {
+  background: color-mix(in srgb, var(--rb-action) 10%, transparent);
+  color: var(--rb-text-primary);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-palette-section-toggle:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design']
+  .ide-palette-section[data-collapsed='true'] {
+  padding-block-end: 4px;
+}
+
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > span,
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-kv-row > code {

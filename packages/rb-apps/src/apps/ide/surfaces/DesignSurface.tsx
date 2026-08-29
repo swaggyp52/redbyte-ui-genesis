@@ -126,6 +126,7 @@ import {
   type ComponentDefinitionCategory,
   type ComponentDesignPaletteSection,
 } from '../componentDefinitions';
+import { deriveLibraryCardFacts } from '../componentLibraryPresentation';
 import {
   DESIGN_TOOLBAR_COMMAND_GROUPS,
   IDE_COMMAND_IDS,
@@ -354,6 +355,14 @@ interface PaletteItem {
   sequentialTier?: 'registers' | 'timing' | 'legacy';
   /** Optional badge on the palette card (e.g. Native / Legacy). */
   paletteBadge?: string;
+  /** Compact interface line rendered on the card (e.g. "A, B → Y"). */
+  portSummary?: string;
+  /** One port per line, surfaced through the card tooltip. */
+  interfaceDetail?: string;
+  /** Support chip when the part is not fully simulatable + exportable. */
+  capabilityBadge?: string | null;
+  /** Tooltip explanation for the capability chip. */
+  capabilityTitle?: string | null;
 }
 
 interface BoardIoPaletteItem {
@@ -406,6 +415,8 @@ const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
 const CANVAS_PLACEMENT_BLOCK_SELECTOR =
   '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
 
+const LIBRARY_COLLAPSED_SECTIONS_KEY = 'rb.ide.design.libraryCollapsed.v1';
+
 function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
   if (!target) return false;
   return Boolean(
@@ -418,6 +429,7 @@ function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
 }
 
 function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
+  const facts = deriveLibraryCardFacts(definition);
   return {
     type: definition.runtimeType,
     title: definition.displayName,
@@ -428,6 +440,10 @@ function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
     searchTerms: [...definition.searchTerms],
     sequentialTier: definition.designPalette.sequentialTier,
     paletteBadge: definition.designPalette.badge,
+    portSummary: facts.portSummary,
+    interfaceDetail: facts.interfaceDetail,
+    capabilityBadge: facts.capabilityBadge,
+    capabilityTitle: facts.capabilityTitle,
   };
 }
 
@@ -986,6 +1002,58 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   }, [circuit, topEntityName, ioRows]);
 
   const [paletteQuery, setPaletteQuery] = useState('');
+  /**
+   * Collapsed library sections persist per browser so a student's rail
+   * arrangement survives reloads. Storage failures degrade to all-open.
+   */
+  const [collapsedLibrarySections, setCollapsedLibrarySections] = useState<ReadonlySet<string>>(
+    () => {
+      try {
+        const raw = localStorage.getItem(LIBRARY_COLLAPSED_SECTIONS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+      } catch {
+        return new Set<string>();
+      }
+    }
+  );
+  const toggleLibrarySection = useCallback((sectionId: string) => {
+    setCollapsedLibrarySections((previous) => {
+      const next = new Set(previous);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      try {
+        localStorage.setItem(LIBRARY_COLLAPSED_SECTIONS_KEY, JSON.stringify([...next]));
+      } catch {
+        // Storage-denied environments simply lose collapse persistence.
+      }
+      return next;
+    });
+  }, []);
+  /** Keyboard navigation between library cards: Arrow/Home/End roving focus. */
+  const handleLibraryRailKeyDown = useCallback((event: React.KeyboardEvent<HTMLElement>) => {
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    const cards = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        'button.ide-palette-card, button.ide-design-resource-tile'
+      )
+    ).filter((card) => !card.disabled);
+    if (cards.length === 0) return;
+    const activeIndex = cards.findIndex((card) => card === document.activeElement);
+    event.preventDefault();
+    const nextIndex =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? cards.length - 1
+          : event.key === 'ArrowDown'
+            ? Math.min(cards.length - 1, activeIndex + 1)
+            : Math.max(0, activeIndex - 1);
+    cards[nextIndex]?.focus();
+  }, []);
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const canvasHostRef = useRef<HTMLDivElement | null>(null);
   const [canvasHostElement, setCanvasHostElement] = useState<HTMLDivElement | null>(null);
@@ -2299,6 +2367,92 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     const rect = canvasHostRef.current.getBoundingClientRect();
     updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
   }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
+
+  /**
+   * Palette drag-to-place. A press on a library card starts a potential drag;
+   * moving past the threshold arms the same pendingPlacement pipeline the
+   * click path uses, the ghost follows the pointer, and releasing over the
+   * canvas commits through commitPendingPlacement (Shift keeps placing).
+   * Releasing anywhere else cancels. A press-and-release without movement
+   * stays a plain click, so the click-to-arm flow is unchanged.
+   */
+  const paletteDragRef = useRef<{
+    spec:
+      | { kind: 'node'; nodeType: string; label: string }
+      | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string };
+    startX: number;
+    startY: number;
+    armed: boolean;
+  } | null>(null);
+
+  const beginPaletteCardDrag = useCallback(
+    (
+      event: React.PointerEvent,
+      spec:
+        | { kind: 'node'; nodeType: string; label: string }
+        | { kind: 'board-io'; entry: BoardIoPaletteItem; label: string }
+    ) => {
+      if (event.button !== 0 || isReplayMode) return;
+      paletteDragRef.current = {
+        spec,
+        startX: event.clientX,
+        startY: event.clientY,
+        armed: false,
+      };
+    },
+    [isReplayMode]
+  );
+
+  useEffect(() => {
+    const handleMove = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      if (!drag) return;
+      if (!drag.armed) {
+        if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+        drag.armed = true;
+        if (drag.spec.kind === 'node') {
+          beginNodePlacement(drag.spec.nodeType);
+        } else {
+          beginBoardIoPlacement(drag.spec.entry);
+        }
+      }
+      updatePlacementGhost(event.clientX, event.clientY);
+    };
+    const handleUp = (event: PointerEvent) => {
+      const drag = paletteDragRef.current;
+      paletteDragRef.current = null;
+      if (!drag?.armed) return;
+      const host = canvasHostRef.current;
+      const rect = host?.getBoundingClientRect();
+      const overCanvas =
+        rect != null &&
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom;
+      const releaseTarget =
+        typeof document.elementFromPoint === 'function'
+          ? (document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null)
+          : null;
+      if (overCanvas && !isCanvasPlacementBlocked(releaseTarget)) {
+        commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
+      } else {
+        cancelPendingPlacement('cancel');
+      }
+    };
+    document.addEventListener('pointermove', handleMove);
+    document.addEventListener('pointerup', handleUp);
+    return () => {
+      document.removeEventListener('pointermove', handleMove);
+      document.removeEventListener('pointerup', handleUp);
+    };
+  }, [
+    beginBoardIoPlacement,
+    beginNodePlacement,
+    cancelPendingPlacement,
+    commitPendingPlacement,
+    updatePlacementGhost,
+  ]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -4712,7 +4866,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     filteredBoardGroups.length > 0;
 
   const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
+    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'> &
+      Partial<Pick<PaletteItem, 'portSummary' | 'interfaceDetail' | 'capabilityBadge' | 'capabilityTitle'>>,
     options?: {
       badge?: string;
       className?: string;
@@ -4722,15 +4877,30 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     }
   ) => {
     const isPending = pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
+    const tooltip =
+      options?.title ??
+      [
+        `${item.title} - ${item.subtitle}`,
+        item.interfaceDetail || null,
+        item.capabilityTitle || null,
+        'Click to arm placement, or drag onto the canvas.',
+      ]
+        .filter(Boolean)
+        .join('\n');
     return (
       <button
         key={item.type}
         type="button"
         className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
         onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
+        onPointerDown={
+          options?.onClick
+            ? undefined
+            : (event) => beginPaletteCardDrag(event, { kind: 'node', nodeType: item.type, label: item.title })
+        }
         data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
         aria-pressed={isPending}
-        title={options?.title ?? `${item.title} - ${item.subtitle}`}
+        title={tooltip}
       >
         <span className="ide-design-component-tile-glyph" aria-hidden="true">
           {item.glyph}
@@ -4738,15 +4908,44 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         <span className="ide-palette-card-body">
             <span className="ide-palette-card-title-row">
             <span className="ide-design-component-tile-title">{item.title}</span>
+            {item.capabilityBadge ? (
+              <span className="ide-palette-card-cap" title={item.capabilityTitle ?? undefined}>
+                {item.capabilityBadge}
+              </span>
+            ) : null}
             {options?.badge || item.paletteBadge ? (
               <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
             ) : null}
           </span>
-          <span className="ide-palette-card-subtitle">{item.subtitle}</span>
+          <span className="ide-palette-card-subtitle">
+            {item.portSummary ? (
+              <span className="ide-palette-card-ports">{item.portSummary}</span>
+            ) : (
+              item.subtitle
+            )}
+          </span>
         </span>
       </button>
     );
   };
+  /** A search always shows every match, regardless of collapsed sections. */
+  const librarySectionOpen = useCallback(
+    (sectionId: string): boolean => paletteHasQuery || !collapsedLibrarySections.has(sectionId),
+    [collapsedLibrarySections, paletteHasQuery]
+  );
+  const renderLibrarySectionToggle = (sectionId: string, label: string) => (
+    <button
+      type="button"
+      className="ide-palette-section-toggle"
+      aria-expanded={librarySectionOpen(sectionId)}
+      aria-label={`${librarySectionOpen(sectionId) ? 'Collapse' : 'Expand'} ${label}`}
+      onClick={() => toggleLibrarySection(sectionId)}
+      disabled={paletteHasQuery}
+      data-testid={`ide-design-library-toggle-${sectionId}`}
+    >
+      <span aria-hidden="true">{librarySectionOpen(sectionId) ? '▾' : '▸'}</span>
+    </button>
+  );
   const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
     PALETTE_SECTION_ORDER;
   const selectedNodeInspectorModel = selectedNode
@@ -6284,28 +6483,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               )}
             </div>
 
-            <div className="ide-design-palette-sections">
+            <div className="ide-design-palette-sections" onKeyDown={handleLibraryRailKeyDown}>
               {commonPaletteItems.length > 0 ? (
                 <section
                   className="ide-palette-section ide-palette-section--common"
                   data-testid="ide-design-palette-section-common"
+                  data-collapsed={librarySectionOpen('common') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>Common</h4>
                       <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
+                      {renderLibrarySectionToggle('common', 'Common')}
                     </div>
-                    <p className="ide-palette-section-copy">
-                      Start here for most combinational and first sequential circuits.
-                    </p>
+                    {librarySectionOpen('common') ? (
+                      <p className="ide-palette-section-copy">
+                        Start here for most combinational and first sequential circuits.
+                      </p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {commonPaletteItems.map((item) =>
-                      renderNodePaletteCard(item, {
-                        testId: `ide-design-common-${item.type.toLowerCase()}`,
-                      })
-                    )}
-                  </div>
+                  {librarySectionOpen('common') ? (
+                    <div className="ide-palette-card-list">
+                      {commonPaletteItems.map((item) =>
+                        renderNodePaletteCard(item, {
+                          testId: `ide-design-common-${item.type.toLowerCase()}`,
+                        })
+                      )}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
               {/* Board Resources — first: primary destination for board-aware work */}
@@ -6313,7 +6518,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--board"
                   data-testid="ide-design-palette-section-board"
-                  data-collapsed="false"
+                  data-collapsed={librarySectionOpen('board') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6321,8 +6526,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                     <div className="ide-palette-section-meta">
                       <span className="ide-palette-section-count">{boardResourcesCount}</span>
+                      {renderLibrarySectionToggle('board', boardPaletteSection.title)}
                     </div>
                   </header>
+                  {librarySectionOpen('board') ? (
                   <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
                       {filteredBoardGroups.map((group) => (
                         <div
@@ -6354,6 +6561,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                   className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
                                   type="button"
                                   onClick={() => beginBoardIoPlacement(entry)}
+                                  onPointerDown={(event) =>
+                                    beginPaletteCardDrag(event, {
+                                      kind: 'board-io',
+                                      entry,
+                                      label: entry.alias,
+                                    })
+                                  }
                                   data-testid={testId}
                                   disabled={isPlaced}
                                   title={
@@ -6371,24 +6585,34 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       ))}
                   </div>
+                  ) : null}
                 </section>
               ) : null}
 
               {/* Inputs & Outputs — second: generic pins for abstract designs */}
               {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
+                <section
+                  className="ide-palette-section ide-palette-section--io"
+                  data-testid="ide-design-palette-section-io"
+                  data-collapsed={librarySectionOpen('io') ? 'false' : 'true'}
+                >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
                       <h4>{ioPaletteSection.title}</h4>
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.io.length}
                       </span>
+                      {renderLibrarySectionToggle('io', ioPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
+                    {librarySectionOpen('io') ? (
+                      <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
+                  {librarySectionOpen('io') ? (
+                    <div className="ide-palette-card-list">
+                      {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6397,6 +6621,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--logic"
                   data-testid="ide-design-palette-section-logic"
+                  data-collapsed={librarySectionOpen('logic') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6404,12 +6629,17 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.logic.length}
                       </span>
+                      {renderLibrarySectionToggle('logic', logicPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
+                    {librarySectionOpen('logic') ? (
+                      <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
-                  </div>
+                  {librarySectionOpen('logic') ? (
+                    <div className="ide-palette-card-list">
+                      {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
+                    </div>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6418,6 +6648,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--sequential"
                   data-testid="ide-design-palette-section-sequential"
+                  data-collapsed={librarySectionOpen('sequential') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6425,10 +6656,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <span className="ide-palette-section-count">
                         {filteredPaletteByCategory.sequential.length}
                       </span>
+                      {renderLibrarySectionToggle('sequential', sequentialPaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
+                    {librarySectionOpen('sequential') ? (
+                      <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
+                    ) : null}
                   </header>
-                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
+                  {librarySectionOpen('sequential') ? SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
                     const items = filteredPaletteByCategory[subsection.key];
                     if (!items || items.length === 0) return null;
                     return (
@@ -6445,11 +6679,13 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </div>
                       </div>
                     );
-                  })}
-                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
-                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
-                    type — useful for counters and multi-bit state.
-                  </p>
+                  }) : null}
+                  {librarySectionOpen('sequential') ? (
+                    <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
+                      Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
+                      type — useful for counters and multi-bit state.
+                    </p>
+                  ) : null}
                 </section>
               ) : null}
 
@@ -6460,6 +6696,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 <section
                   className="ide-palette-section ide-palette-section--reusable"
                   data-testid="ide-design-palette-section-reusable"
+                  data-collapsed={librarySectionOpen('reusable') ? 'false' : 'true'}
                 >
                   <header className="ide-palette-section-header">
                     <div className="ide-palette-section-title-row">
@@ -6469,11 +6706,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           filteredCustomComponents.length +
                           filteredMacros.length}
                       </span>
+                      {renderLibrarySectionToggle('reusable', reusablePaletteSection.title)}
                     </div>
-                    <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
+                    {librarySectionOpen('reusable') ? (
+                      <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
+                    ) : null}
                   </header>
 
-                  {filteredPaletteByCategory.components.length > 0 ? (
+                  {librarySectionOpen('reusable') && filteredPaletteByCategory.components.length > 0 ? (
                     <div
                       className="ide-palette-subsection"
                       data-testid="ide-design-palette-built-in-blocks"
@@ -6495,7 +6735,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                   ) : null}
 
-                  {filteredCustomComponents.length > 0 ? (
+                  {librarySectionOpen('reusable') && filteredCustomComponents.length > 0 ? (
                     <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
                       <div className="ide-palette-subsection-header">
                         <div>
@@ -6532,14 +6772,16 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     </div>
                   ) : null}
 
-                  <MacroLibraryPanel
-                    macros={filteredMacros}
-                    totalMacroCount={macros.length}
-                    searchQuery={paletteQuery}
-                    activeMacroId={activeMacroInsertionId}
-                    onSelectMacro={handleSelectMacro}
-                    onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
-                  />
+                  {librarySectionOpen('reusable') ? (
+                    <MacroLibraryPanel
+                      macros={filteredMacros}
+                      totalMacroCount={macros.length}
+                      searchQuery={paletteQuery}
+                      activeMacroId={activeMacroInsertionId}
+                      onSelectMacro={handleSelectMacro}
+                      onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
+                    />
+                  ) : null}
                 </section>
               ) : null}
 

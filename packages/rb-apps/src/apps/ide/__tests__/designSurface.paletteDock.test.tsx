@@ -10,6 +10,7 @@ import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { COMPONENT_DEFINITION_REGISTRY } from '../componentDefinitions';
+import { deriveLibraryCardFacts } from '../componentLibraryPresentation';
 import { createClockTimingGuidance } from '../timingGuidance';
 
 const BASE_CIRCUIT: Circuit = {
@@ -239,14 +240,20 @@ describe('DesignSurface palette dock redesign', () => {
     const view = renderSurface();
     const xnorDefinition = COMPONENT_DEFINITION_REGISTRY.getByRuntimeType('XNOR');
     expect(xnorDefinition).toBeDefined();
+    const xnorFacts = deriveLibraryCardFacts(xnorDefinition!);
 
+    // The card leads with engineering facts: the prose description moves into
+    // the tooltip alongside the port-by-port interface, while the visible
+    // card row shows the compact interface summary.
     const xnorCard = view.getByTestId('ide-design-palette-xnor');
-    expect(xnorCard).toHaveAttribute(
-      'title',
+    expect(xnorCard.getAttribute('title')).toContain(
       `${xnorDefinition?.displayName} - ${xnorDefinition?.description}`
     );
+    for (const port of xnorDefinition?.ports ?? []) {
+      expect(xnorCard.getAttribute('title')).toContain(port.displayName);
+    }
     expect(xnorCard.textContent).toContain(xnorDefinition?.displayName);
-    expect(xnorCard.textContent).toContain(xnorDefinition?.description);
+    expect(xnorCard.textContent).toContain(xnorFacts.portSummary);
 
     fireEvent.change(view.getByTestId('ide-design-search'), {
       target: { value: xnorDefinition?.category },

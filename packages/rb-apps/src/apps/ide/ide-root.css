@@ -24444,9 +24444,18 @@ button:disabled,
 }
 
 /* ── Design palette: compact drawer, not sprawling panel ───── */
-/* Hide verbose descriptions — glyph + title only */
+/* The subtitle line carries the compact port interface (e.g. "a, b → out"),
+   kept to one ellipsized line; verbose prose lives in the card tooltip. */
 [data-ide-mode-marker='design'] .ide-palette-card-subtitle {
-  display: none !important;
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+[data-ide-mode-marker='design'] .ide-design-component-tile-title {
+  text-wrap: balance;
 }
 [data-ide-mode-marker='design'] .ide-palette-card {
   padding: 6px 8px !important;
