@@ -38,8 +38,40 @@
 - [ ] Wave 12: scale + a11y
 - [ ] Signature journeys 1-3 via browser
 
-## Exact continuation
+## Delivered this session (all pushed to PR #82, tests green, browser-proven)
 
-If resuming cold: `git checkout claude/redbyte-desktop-build-m5ryqw`, read this file,
-read BUS_MODEL_AUDIT.md, check `git log --oneline safety/pre-product-core-convergence..HEAD`
-for what already landed, and continue at the first unchecked wave above.
+17 commits on `safety/pre-product-core-convergence..HEAD`:
+- Wave 1 first-class bus model: schema, authority (`rb-logic-core/src/bus.ts`),
+  persistence+migration, IR `IRBusPort`+IR007, declared vector VHDL export
+  (byte-identical goldens), sim word projection, board grouping, Design
+  `createDesignBus` authoring, bus inspector identity.
+- Wave 3 (partial): light technical canvas + `appearance`-aware `NodeView`
+  schematic nodes, neon overrides scoped to dark, shell tab hover-title.
+- Wave 6: Virtual Basys3 board (Browser E0), drive→observe proven.
+- Wave 7 (partial): bus-planner meaningful action states (defect J).
+- 55 new tests + both golden gates green together; regression baseline verified
+  clean vs 9b730be.
+
+## Exact continuation (next chapters, in value order)
+
+1. **Analyzer bus lanes** (Wave 5E): the verify report groups scalar member
+   signals into declared buses and the `WaveformInstrument`
+   (`surfaces/verify/WaveformInstrument.tsx:705`) renders word-valued lanes with
+   a radix (today any multi-char value draws as a LOW rail — add a word-render
+   branch BEFORE emitting bus samples). Entangled with `verifyReport.ts`
+   `VerifyWaveSample` generation; VerifySurface has many PRE-EXISTING failures —
+   bisect against baseline before treating any as a regression.
+2. **Hierarchy depth** (Wave 2): nested module definitions/instances, vector
+   module ports (`projectHierarchy.ts` `ModulePort.width` is a literal `1` — the
+   audit R11 lists the width-eraser sites), parameters. Enables the FullAdder
+   step of the signature journey.
+3. **Simulate convergence** (Wave 5): Bench/Analyzer/Runs primary structure;
+   audit the unpushed desktop Simulate work before rebuilding.
+4. **Project control center** (Wave 4), **Import parity** (Wave 9), **New Project
+   flow** (Wave 10), scale/a11y (Wave 12).
+
+If resuming cold: `git checkout claude/redbyte-desktop-build-m5ryqw`, read this
+file, read BUS_MODEL_AUDIT.md and BROWSER_JOURNEYS.md, check
+`git log --oneline safety/pre-product-core-convergence..HEAD`, and continue at
+chapter 1 above. Dev server: `corepack pnpm run dev` (large-file HMR can go
+stale — restart the dev server before browser-verifying edits to DesignSurface).
