@@ -440,6 +440,7 @@ export const IdeApp: React.FC = () => {
   const designRedoDepth = useProjectRuntime((state) => state.designFuture.length);
   const addDesignNode = useProjectRuntime((state) => state.addDesignNode);
   const addDesignIo = useProjectRuntime((state) => state.addDesignIo);
+  const createDesignBus = useProjectRuntime((state) => state.createDesignBus);
   const addDesignBoardIo = useProjectRuntime((state) => state.addDesignBoardIo);
   const connectDesignNodes = useProjectRuntime((state) => state.connectDesignNodes);
   const setActiveModule = useProjectRuntime((state) => state.setActiveModule);
@@ -2665,6 +2666,7 @@ export const IdeApp: React.FC = () => {
               onCircuitMutated={handleDesignMutation}
               onRuntimeAddNode={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignNode : undefined}
               onRuntimeAddIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignIo : undefined}
+              onRuntimeCreateBus={hierarchy.activeModuleId === TOP_MODULE_ID ? createDesignBus : undefined}
               onRuntimeAddBoardIo={hierarchy.activeModuleId === TOP_MODULE_ID ? addDesignBoardIo : undefined}
               onRuntimeConnect={hierarchy.activeModuleId === TOP_MODULE_ID ? connectDesignNodes : undefined}
               onRuntimeUndo={undoProjectEdit}

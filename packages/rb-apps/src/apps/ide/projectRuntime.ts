@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Circuit, CompositeNodeDef, Node, SimulationModel } from '@redbyte/rb-logic-core';
 import { buildSimulationModel, elaborateCircuit, registerCompositeNode } from '@redbyte/rb-logic-core';
+import { BusValidationError, createBusBoundary } from '@redbyte/rb-logic-core';
 import type { HardwareMappingDocumentV2, IoMapping, TestVector } from '@redbyte/rb-utils';
 import {
   applyMaterializedPinToHardwareMappingV2,
@@ -387,6 +388,18 @@ export interface ProjectRuntimeState {
   redoProjectEdit: () => void;
   addDesignNode: (nodeType: string, position: { x: number; y: number }) => void;
   addDesignIo: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  /**
+   * Create a first-class bus boundary: one labeled member node per bit plus
+   * the declaration that owns them, with an IO row per member so Board and
+   * Simulate see the bits immediately. Returns the created bus id, or an
+   * error message when the name/width is rejected.
+   */
+  createDesignBus: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   addDesignBoardIo: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -1458,6 +1471,63 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             }
           );
         });
+      },
+      createDesignBus: ({ name, direction, width, position }) => {
+        const state = get();
+        const left = Math.max(0, Math.floor(width) - 1);
+        let result: { ok: true; busId: string } | { ok: false; error: string };
+        let nextState: ProjectRuntimeState | null = null;
+        try {
+          const created = createBusBoundary(state.circuit, {
+            name,
+            direction,
+            left,
+            right: 0,
+            position: position ? { x: roundToMill(position.x), y: roundToMill(position.y) } : undefined,
+          });
+          const rowDirection = direction === 'input' ? 'in' : 'out';
+          const rowPort = direction === 'input' ? 'out' : 'in';
+          const nextIoRows = cloneIoRows(state.projectIoRows);
+          for (const member of created.memberNodes) {
+            const rowId = getNextIoRowId(nextIoRows, normalizeBoardRowId(member.label ?? member.id));
+            nextIoRows.push({
+              id: rowId,
+              nodeId: member.id,
+              port: rowPort,
+              label: member.label ?? member.id,
+              direction: rowDirection,
+              pin: '',
+              required: true,
+            });
+          }
+          nextState = {
+            ...state,
+            ...commitDesignSnapshot(
+              state,
+              {
+                circuit: created.circuit,
+                projectIoRows: nextIoRows,
+                hardwareMappingV2: undefined,
+                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+              },
+              {
+                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                  -state.maxDesignHistory
+                ),
+                designFuture: [],
+              }
+            ),
+          };
+          result = { ok: true, busId: created.bus.id };
+        } catch (error) {
+          if (error instanceof BusValidationError) {
+            result = { ok: false, error: error.message };
+          } else {
+            throw error;
+          }
+        }
+        if (nextState) set(nextState);
+        return result;
       },
       addDesignBoardIo: ({ alias, direction, kind, position }) => {
         set((state) => {
@@ -3205,6 +3275,11 @@ function cloneCircuit(circuit: Circuit): Circuit {
   return {
     nodes: circuit.nodes.map((node) => ({ ...node })),
     connections: circuit.connections.map((connection) => ({ ...connection })),
+    // Declared buses are part of the circuit; a shallow clone that dropped
+    // them would erase first-class vectors on every design edit.
+    ...(circuit.buses
+      ? { buses: circuit.buses.map((bus) => ({ ...bus, bits: bus.bits.map((bit) => ({ ...bit })) })) }
+      : {}),
   };
 }
 

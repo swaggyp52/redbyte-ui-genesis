@@ -207,6 +207,12 @@ export interface DesignSurfaceProps {
   onCircuitMutated?: (circuit: Circuit) => void;
   onRuntimeAddNode?: (nodeType: string, position: { x: number; y: number }) => void;
   onRuntimeAddIo?: (direction: 'input' | 'output', position: { x: number; y: number }) => void;
+  onRuntimeCreateBus?: (input: {
+    name: string;
+    direction: 'input' | 'output';
+    width: number;
+    position?: { x: number; y: number };
+  }) => { ok: true; busId: string } | { ok: false; error: string };
   onRuntimeAddBoardIo?: (input: {
     alias: string;
     direction: 'in' | 'out';
@@ -859,6 +865,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   onCircuitMutated,
   onRuntimeAddNode,
   onRuntimeAddIo,
+  onRuntimeCreateBus,
   onRuntimeAddBoardIo,
   onRuntimeConnect,
   onRuntimeUndo,
@@ -2170,6 +2177,43 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setToolMode,
     ]
   );
+
+  // Bus authoring dialog: create a first-class vector boundary (A[3:0]) as
+  // one durable action. Members land on the canvas and gain IO rows for Board.
+  const [busDialog, setBusDialog] = useState<{
+    direction: 'input' | 'output';
+    name: string;
+    width: number;
+    error: string | null;
+  } | null>(null);
+  const openBusDialog = useCallback((direction: 'input' | 'output') => {
+    setBusDialog({ direction, name: '', width: 4, error: null });
+  }, []);
+  const submitBusDialog = useCallback(() => {
+    if (!busDialog || !onRuntimeCreateBus) {
+      setBusDialog(null);
+      return;
+    }
+    const center = {
+      x: (canvasSize.width / 2 - camera.x) / camera.zoom,
+      y: (canvasSize.height / 2 - camera.y) / camera.zoom,
+    };
+    const basePosition = findSmartSpawnPosition(editorCircuit.nodes as Node[], center);
+    const outcome = onRuntimeCreateBus({
+      name: busDialog.name.trim(),
+      direction: busDialog.direction,
+      width: busDialog.width,
+      position: { x: basePosition.x, y: basePosition.y },
+    });
+    if (outcome.ok) {
+      setBusDialog(null);
+      setActionToast(
+        `Created ${busDialog.name.trim()}[${Math.max(0, busDialog.width - 1)}:0] ${busDialog.direction} bus.`
+      );
+    } else {
+      setBusDialog({ ...busDialog, error: outcome.error });
+    }
+  }, [busDialog, onRuntimeCreateBus, canvasSize.width, canvasSize.height, camera.x, camera.y, camera.zoom, editorCircuit]);
 
   const addIoPins = useCallback(() => {
     if (onRuntimeAddIo) {
@@ -6575,6 +6619,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               <div>
                 <h3>Component Library</h3>
               </div>
+              {onRuntimeCreateBus ? (
+                <IdeButton
+                  tone="secondary"
+                  onClick={() => openBusDialog('input')}
+                  testId="ide-design-library-new-bus"
+                >
+                  New bus…
+                </IdeButton>
+              ) : null}
             </header>
             <div className="ide-design-palette-toolbar">
               <input
@@ -8791,6 +8844,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <IdeButton tone="secondary" onClick={() => beginNodePlacement('OUTPUT')} testId="ide-design-empty-add-output">
                             Add output
                           </IdeButton>
+                          {onRuntimeCreateBus ? (
+                            <IdeButton tone="secondary" onClick={() => openBusDialog('input')} testId="ide-design-empty-add-bus">
+                              Add bus
+                            </IdeButton>
+                          ) : null}
                           <IdeButton tone="ghost" onClick={() => beginNodePlacement('AND')} testId="ide-design-empty-place-gate">
                             Place gate
                           </IdeButton>
@@ -9363,6 +9421,103 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 testId="ide-design-create-module-confirm"
               >
                 Create and replace selection
+              </IdeButton>
+            </>
+          }
+        />
+      ) : null}
+      {busDialog ? (
+        <IdeModal
+          title="Create bus"
+          testId="ide-design-create-bus-dialog"
+          onClose={() => setBusDialog(null)}
+          body={
+            <div className="ide-module-create-dialog">
+              <p className="ide-copy">
+                A bus is a declared vector signal — one identity that carries several
+                bits (for example <code>A[3:0]</code>). Bits appear on the canvas and
+                map to the board as a group.
+              </p>
+              <div className="ide-module-create-fields">
+                <label>
+                  <span>Direction</span>
+                  <select
+                    value={busDialog.direction}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? { ...current, direction: event.target.value as 'input' | 'output', error: null }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-direction"
+                  >
+                    <option value="input">Input</option>
+                    <option value="output">Output</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Name</span>
+                  <input
+                    value={busDialog.name}
+                    placeholder="A"
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current ? { ...current, name: event.target.value, error: null } : current
+                      )
+                    }
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        submitBusDialog();
+                      }
+                    }}
+                    data-testid="ide-design-create-bus-name"
+                  />
+                </label>
+                <label>
+                  <span>Width (bits)</span>
+                  <input
+                    type="number"
+                    min={2}
+                    max={32}
+                    value={busDialog.width}
+                    onChange={(event) =>
+                      setBusDialog((current) =>
+                        current
+                          ? {
+                              ...current,
+                              width: Math.max(2, Math.min(32, Number.parseInt(event.target.value, 10) || 2)),
+                              error: null,
+                            }
+                          : current
+                      )
+                    }
+                    data-testid="ide-design-create-bus-width"
+                  />
+                </label>
+              </div>
+              <p className="ide-copy ide-copy--flush" data-testid="ide-design-create-bus-preview">
+                Creates <code>{(busDialog.name.trim() || 'A')}[{Math.max(1, busDialog.width - 1)}:0]</code>{' '}
+                — {busDialog.width} {busDialog.direction} bit{busDialog.width === 1 ? '' : 's'}.
+              </p>
+              {busDialog.error ? (
+                <IdeCallout tone="error" testId="ide-design-create-bus-error">
+                  {busDialog.error}
+                </IdeCallout>
+              ) : null}
+            </div>
+          }
+          actions={
+            <>
+              <IdeButton tone="ghost" onClick={() => setBusDialog(null)}>Cancel</IdeButton>
+              <IdeButton
+                tone="primary"
+                onClick={submitBusDialog}
+                disabled={busDialog.name.trim().length === 0}
+                testId="ide-design-create-bus-confirm"
+              >
+                Create bus
               </IdeButton>
             </>
           }
