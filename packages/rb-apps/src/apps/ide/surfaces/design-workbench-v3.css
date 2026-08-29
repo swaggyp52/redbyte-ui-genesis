@@ -155,6 +155,22 @@
   white-space: nowrap;
 }
 
+/* Instance-of-definition identity in the inspector and breadcrumb. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-instance-identity {
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 3px solid var(--rb-action);
+  background: color-mix(in srgb, var(--rb-action) 7%, transparent);
+  border-radius: 4px;
+  color: var(--rb-text-primary);
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-breadcrumb-of {
+  color: var(--rb-text-secondary);
+  font-weight: 500;
+}
+
 /* Floating on-canvas rename input, anchored just below the node. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-rename {
   position: absolute;

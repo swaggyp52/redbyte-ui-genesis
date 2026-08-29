@@ -3959,6 +3959,39 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => flattenDesignHierarchy(designHierarchy.root),
     [designHierarchy]
   );
+  /** Which instance a definition was entered through, for breadcrumb context. */
+  const [drilledInstance, setDrilledInstance] = useState<{ moduleId: string; instanceName: string } | null>(null);
+  const activeModuleKey = hierarchy?.activeModuleId ?? TOP_MODULE_ID;
+  useEffect(() => {
+    setDrilledInstance((current) =>
+      current && current.moduleId !== activeModuleKey ? null : current
+    );
+  }, [activeModuleKey]);
+
+  /**
+   * Per-hierarchy-location camera memory: leaving a module stores its camera,
+   * returning restores it, and a first visit frames the module's content.
+   */
+  const moduleCameraMemoryRef = useRef(new Map<string, { x: number; y: number; zoom: number }>());
+  const lastCameraLocationRef = useRef<string | null>(null);
+  const restoreCameraForLocationRef = useRef<() => void>(() => {});
+  restoreCameraForLocationRef.current = () => {
+    const stored = moduleCameraMemoryRef.current.get(activeModuleKey);
+    if (stored) {
+      setCamera(stored);
+    } else {
+      fitToCircuit();
+    }
+  };
+  useEffect(() => {
+    const previous = lastCameraLocationRef.current;
+    if (previous !== null && previous !== activeModuleKey) {
+      moduleCameraMemoryRef.current.set(previous, useLogicViewStore.getState().camera);
+      restoreCameraForLocationRef.current();
+    }
+    lastCameraLocationRef.current = activeModuleKey;
+  }, [activeModuleKey]);
+
   const activeNativeModule = useMemo(
     () => hierarchy?.modules.find((module) => module.id === hierarchy.activeModuleId) ?? null,
     [hierarchy],
@@ -4042,11 +4075,22 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         setActiveRightDockTab('inspector');
         return;
       }
+      // Native module rows can actually enter the definition; only legacy
+      // composite rows without a module counterpart stay inspect-only.
+      const nativeModule = componentType
+        ? hierarchy?.modules.find(
+            (module) => module.name === componentType || module.displayName === componentType
+          )
+        : undefined;
+      if (nativeModule && onOpenModule) {
+        onOpenModule(nativeModule.id);
+        return;
+      }
       setPaletteQuery(componentType ?? '');
       setActiveLeftDockTab('components');
       setActionToast('Opened the matching custom definition in Components. Nested definitions remain inspect-only.');
     },
-    [clearSelection, selectMultipleNodes, setDesignView]
+    [clearSelection, hierarchy, onOpenModule, selectMultipleNodes, setDesignView]
   );
   const preferredNodeTracePort = useMemo(() => {
     if (!selectedNode) return null;
@@ -5486,6 +5530,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
           {selectedNativeModule ? (
             <div className="ide-design-inspector-action-group" data-testid="ide-design-module-instance-actions">
               <span className="ide-design-inspector-group-label">Module instance</span>
+              <p className="ide-design-instance-identity" data-testid="ide-design-instance-identity">
+                <strong>{readInstanceName(selectedNode) || selectedNode.label || selectedNode.id}</strong>
+                <span> : {selectedNativeModule.displayName}</span>
+              </p>
               <div className="ide-design-inspector-action-grid">
                 <IdeButton
                   tone="primary"
@@ -6903,6 +6951,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               }}
                             >Use</button>
                           ) : null}
+                          {isEditingTopModule && usageCount > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const instanceIds = editorCircuit.nodes
+                                  .filter(
+                                    (node) =>
+                                      node.config?.moduleDefinitionId === module.id ||
+                                      node.type === module.name
+                                  )
+                                  .map((node) => node.id);
+                                selectMultipleNodes(instanceIds, false);
+                                setActionToast(
+                                  `Selected ${instanceIds.length} ${module.displayName} instance${instanceIds.length === 1 ? '' : 's'}.`
+                                );
+                              }}
+                              data-testid={`ide-design-select-instances-${module.id}`}
+                            >Instances</button>
+                          ) : null}
                           {onDuplicateModuleDefinition ? <button type="button" onClick={() => onDuplicateModuleDefinition(module.id)}>Duplicate</button> : null}
                           {onDeleteModuleDefinition ? <button type="button" disabled={usageCount > 0} onClick={() => onDeleteModuleDefinition(module.id)}>Delete</button> : null}
                         </div>
@@ -7294,7 +7361,14 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       <>
                         <span aria-hidden="true">/</span>
                         <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
-                          {activeNativeModule.displayName}
+                          {drilledInstance?.moduleId === activeNativeModule.id ? (
+                            <span data-testid="ide-design-breadcrumb-instance">
+                              {drilledInstance.instanceName}
+                              <span className="ide-design-breadcrumb-of"> : {activeNativeModule.displayName}</span>
+                            </span>
+                          ) : (
+                            activeNativeModule.displayName
+                          )}
                         </button>
                       </>
                     ) : null}
@@ -8630,6 +8704,10 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           (module) => module.id === moduleDefinitionId || module.name === node.type,
                         );
                         if (nativeModule && onOpenModule) {
+                          setDrilledInstance({
+                            moduleId: nativeModule.id,
+                            instanceName: readInstanceName(node) || node.label || node.id,
+                          });
                           onOpenModule(nativeModule.id);
                           return;
                         }
@@ -8856,6 +8934,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                               type="button"
                               className="ide-design-wire-context-menu-item"
                               onClick={() => {
+                                setDrilledInstance({
+                                  moduleId: nativeModule.id,
+                                  instanceName:
+                                    readInstanceName(menuNode) || menuNode.label || menuNode.id,
+                                });
                                 onOpenModule(nativeModule.id);
                                 setNodeContextMenu(null);
                               }}
