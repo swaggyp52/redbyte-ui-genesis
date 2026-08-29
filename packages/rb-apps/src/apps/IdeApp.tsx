@@ -80,6 +80,7 @@ import {
 import { deriveIoSignalRoles } from './ide/ioSignalRoles';
 import { deriveTimingGuidance } from './ide/timingGuidance';
 import {
+  createProjectId,
   useProjectRuntime,
   type ProjectIoRow,
   type ProjectTestbenchSnapshot,
@@ -2583,6 +2584,30 @@ export const IdeApp: React.FC = () => {
                   setLastSavedAt(`Save failed: ${saved.error.message}`);
                 }
                 if (sessionMetaRef.current) saveLabSessionMeta(sessionMetaRef.current);
+              }}
+              onDuplicateProject={() => {
+                if (!exportProjectRef.current) return;
+                const duplicateName = `${projectName?.trim() || 'Untitled Project'} copy`;
+                const duplicateId = createProjectId(duplicateName);
+                const duplicateProject = {
+                  ...exportProjectRef.current,
+                  name: duplicateName,
+                  meta: { ...(exportProjectRef.current.meta ?? {}), projectId: duplicateId },
+                };
+                const saved = projectRepository.save({
+                  projectId: duplicateId,
+                  projectName: duplicateName,
+                  projectHash,
+                  project: duplicateProject,
+                  scenarios,
+                  activeScenarioId,
+                });
+                if (saved.ok) {
+                  refreshSavedProjects();
+                  setLastSavedAt(`Duplicated as "${duplicateName}" — open it from Open existing.`);
+                } else {
+                  setLastSavedAt(`Duplicate failed: ${saved.error.message}`);
+                }
               }}
               onRestoreLastSave={() => {
                 if (!window.confirm('Restore the last saved project? Unsaved changes will be lost.')) return;

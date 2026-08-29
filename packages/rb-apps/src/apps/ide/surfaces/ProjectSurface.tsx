@@ -117,6 +117,7 @@ export interface ProjectSurfaceProps {
   runtimeSim?: RuntimeSimState;
   onGoToHardware?: () => void;
   onSaveNow?: () => void;
+  onDuplicateProject?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
   saveState?: 'saved' | 'unsaved' | 'autosaving' | 'saving' | 'save-failed';
@@ -174,6 +175,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   onOpenRecentProject,
   diagnosticRouteRequest,
   onSaveNow,
+  onDuplicateProject,
   onRestoreLastSave,
   onResetProject,
   saveState = 'saved',
@@ -548,6 +550,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               recentProjects={recentProjects}
               onOpenRecentProject={onOpenRecentProject}
               onSaveNow={onSaveNow}
+              onDuplicateProject={onDuplicateProject}
               onRestoreLastSave={onRestoreLastSave}
               onResetProject={onResetProject}
               determinismHash={determinismHash}
@@ -689,6 +692,7 @@ interface LoadedProjectOverviewProps {
   recentProjects: NonNullable<ProjectSurfaceProps['recentProjects']>;
   onOpenRecentProject?: (projectId: string) => void;
   onSaveNow?: () => void;
+  onDuplicateProject?: () => void;
   onRestoreLastSave?: () => void;
   onResetProject?: () => void;
   determinismHash: string;
@@ -769,6 +773,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   recentProjects,
   onOpenRecentProject,
   onSaveNow,
+  onDuplicateProject,
   onRestoreLastSave,
   onResetProject,
   determinismHash,
@@ -920,6 +925,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             {onOpenSavedProjects ? (
               <IdeButton tone="ghost" onClick={onOpenSavedProjects} testId="ide-session-open-existing">Open existing</IdeButton>
             ) : null}
+            {onDuplicateProject ? (
+              <IdeButton tone="ghost" onClick={onDuplicateProject} testId="ide-session-duplicate">Duplicate project</IdeButton>
+            ) : null}
             {onResetProject ? (
               <IdeButton tone="danger" onClick={onResetProject} testId="ide-session-reset">Reset project</IdeButton>
             ) : null}
@@ -994,14 +1002,49 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <header><span>Project explorer</span><strong>{projectName}</strong></header>
             <p className="ide-project-explorer-heading">Design Sources</p>
             <button type="button" className="is-active" onClick={onOpenDesign}>
-              <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module</small></span>
+              <span aria-hidden="true">◇</span><span><strong>{resolvedTopModule}</strong><small>Top visual module · authored</small></span>
             </button>
-            {(hierarchy?.modules ?? []).map((module) => (
-              <button key={module.id} type="button" onClick={() => onFocusCustomComponent?.(module.name)}>
-                <span aria-hidden="true">▣</span>
-                <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · visual source</small></span>
-              </button>
-            ))}
+            {(hierarchy?.modules ?? []).map((module) => {
+              const instanceCount = (circuit?.nodes ?? []).filter(
+                (node) =>
+                  (node.config as Record<string, unknown> | undefined)?.moduleDefinitionId === module.id ||
+                  node.type === module.name
+              ).length;
+              return (
+                <button key={module.id} type="button" onClick={() => onFocusCustomComponent?.(module.name)}>
+                  <span aria-hidden="true">▣</span>
+                  <span>
+                    <strong>{module.displayName}</strong>
+                    <small>
+                      {module.ports.length} ports · {instanceCount} instance{instanceCount === 1 ? '' : 's'} · authored
+                    </small>
+                  </span>
+                </button>
+              );
+            })}
+            {(hierarchy?.modules.length ?? 0) > 0 ? (
+              <div
+                className="ide-project-compile-order"
+                data-testid="ide-project-compile-order"
+                aria-label="Design compilation order"
+              >
+                <span>Compile order</span>
+                <ol>
+                  {(hierarchy?.modules ?? []).map((module, index) => (
+                    <li key={module.id}>
+                      <code>{index + 1}</code> {module.name}.vhd
+                    </li>
+                  ))}
+                  <li>
+                    <code>{(hierarchy?.modules.length ?? 0) + 1}</code> {resolvedTopModule}.vhd
+                    <small>
+                      {' '}
+                      — instantiates {(hierarchy?.modules ?? []).map((module) => module.displayName).join(', ')}
+                    </small>
+                  </li>
+                </ol>
+              </div>
+            ) : null}
             {(outline?.macros.length ?? 0) > 0 ? <p className="ide-project-explorer-heading">Reusable Components</p> : null}
             {(outline?.macros ?? []).map((macro) => (
               <button key={macro.id} type="button" onClick={() => onFocusMacro?.(macro.id, macro.name)}>
@@ -1020,7 +1063,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <span aria-hidden="true">◇</span><span><strong>{activeScenarioName ?? 'Scenario workspace'}</strong><small>{activeScenarioEventCount} events · {activeScenarioCheckCount} {activeScenarioCheckCount === 1 ? 'check' : 'checks'}</small></span>
             </button>
             <button type="button" onClick={onOpenVerify}>
-              <span aria-hidden="true">ƒ</span><span><strong>testbench.vhd</strong><small>{hasVectors ? 'Generated from the active scenario' : 'Add events to generate simulation source'}</small></span>
+              <span aria-hidden="true">ƒ</span><span><strong>testbench.vhd</strong><small>{hasVectors ? 'Generated from the active scenario · read-only' : 'Add events to generate simulation source'}</small></span>
             </button>
             <p className="ide-project-explorer-heading">Constraints</p>
             <button type="button" onClick={onOpenHardware}>

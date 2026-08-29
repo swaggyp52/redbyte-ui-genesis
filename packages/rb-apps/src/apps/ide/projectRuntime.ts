@@ -5014,7 +5014,7 @@ function compareText(left: string, right: string): number {
   return 0;
 }
 
-function createProjectId(seed: string): string {
+export function createProjectId(seed: string): string {
   const normalizedSeed = normalizeBoardRowId(seed).replace(/_/g, '-');
   const suffix = Date.now().toString(36).slice(-6);
   return `rb-${normalizedSeed}-${suffix}`;
