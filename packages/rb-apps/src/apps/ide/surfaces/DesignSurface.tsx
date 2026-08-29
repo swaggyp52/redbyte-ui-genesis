@@ -1167,6 +1167,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   // V-2: Fanin path tracer — highlights all wires/nodes feeding the clicked port
   const [traceState, setTraceState] = useState<DesignTraceState | null>(null);
   const [wireContextMenu, setWireContextMenu] = useState<DesignWireContextMenuState | null>(null);
+  const [nodeContextMenu, setNodeContextMenu] = useState<{ x: number; y: number; nodeId: string } | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<{ x: number; y: number } | null>(null);
+  /** True when the label editor should float over the node on the canvas
+   * (double-click, F2, context menu) instead of the inspector row. */
+  const [renameOnCanvas, setRenameOnCanvas] = useState(false);
   const lastTracedPortRef = useRef<string | null>(null);
   const previousToolModeRef = useRef(toolMode);
   const previousHasSelectionRef = useRef(false);
@@ -3457,20 +3462,23 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     emitCircuitMutation();
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, [editingLabelNodeId, emitCircuitMutation, labelDraft, updateNode]);
 
   const cancelNodeLabel = useCallback(() => {
     setEditingLabelNodeId(null);
     setLabelDraft('');
+    setRenameOnCanvas(false);
   }, []);
 
   const handleLabelKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') { e.preventDefault(); commitNodeLabel(); }
     if (e.key === 'Escape') { e.preventDefault(); cancelNodeLabel(); }
   }, [commitNodeLabel, cancelNodeLabel]);
-  const beginNodeLabelEdit = useCallback((node: Node) => {
+  const beginNodeLabelEdit = useCallback((node: Node, location: 'inspector' | 'canvas' = 'inspector') => {
     setEditingLabelNodeId(node.id);
     setLabelDraft(node.label ?? '');
+    setRenameOnCanvas(location === 'canvas');
   }, []);
   const liveIoSignals = useMemo(() => {
     const inputRows = editorCircuit.nodes
@@ -4437,7 +4445,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         : 'ok');
   const renderNodeLabelEditor = (node: Node) => (
     <div className="ide-design-label-editor" data-testid="ide-design-label-editor">
-      {editingLabelNodeId === node.id ? (
+      {editingLabelNodeId === node.id && !renameOnCanvas ? (
         <div className="ide-design-label-editor-row">
           <input
             className="ide-text-input ide-design-label-input"
@@ -4610,10 +4618,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
 
   useEffect(() => {
-    if (!wireContextMenu) return;
-    const handlePointerDown = () => setWireContextMenu(null);
+    if (!wireContextMenu && !nodeContextMenu && !canvasContextMenu) return;
+    const closeAllMenus = () => {
+      setWireContextMenu(null);
+      setNodeContextMenu(null);
+      setCanvasContextMenu(null);
+    };
+    const handlePointerDown = () => closeAllMenus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setWireContextMenu(null);
+      if (event.key === 'Escape') closeAllMenus();
     };
     window.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('keydown', handleKeyDown);
@@ -4621,7 +4634,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       window.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [wireContextMenu]);
+  }, [canvasContextMenu, nodeContextMenu, wireContextMenu]);
 
   useEffect(() => {
     if (!isPlacementMode) return;
@@ -4803,6 +4816,20 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
         return;
       }
 
+      // F2: rename the single selected node in place on the canvas.
+      if (event.key === 'F2' && !isTextInput && !event.defaultPrevented) {
+        const liveSelection = useLogicViewStore.getState().selection;
+        if (liveSelection.nodes.size === 1) {
+          const nodeId = [...liveSelection.nodes][0];
+          const liveNode = useCircuitStore.getState().circuit.nodes.find((n) => n.id === nodeId);
+          if (liveNode) {
+            event.preventDefault();
+            beginNodeLabelEdit(liveNode as Node, 'canvas');
+          }
+        }
+        return;
+      }
+
       // S: select tool — advertised by the toolbar tooltip. W stays canvas-scoped
       // inside CanvasHost; S has no canvas binding, so the surface owns it.
       if (
@@ -4827,7 +4854,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
+  }, [beginNodeLabelEdit, beginNodePlacement, clearSelection, deleteSelection, gridSize, handleCopy, handleCut, handleDuplicate, handleFitToSelection, handleNudgeSelection, handlePaste, handleRedo, handleSelectAll, handleUndo, setSelectMode, snapToGrid, toggleSnapToGrid]);
 
   useEffect(() => {
     const pending = pendingDebugToggleRef.current;
@@ -8606,7 +8633,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           onOpenModule(nativeModule.id);
                           return;
                         }
-                        beginNodeLabelEdit(node);
+                        beginNodeLabelEdit(node, 'canvas');
                       }}
                       onPlacementCancel={() => cancelActivePlacement('escape')}
                       changedNodeIds={changedNodeIds}
@@ -8629,6 +8656,26 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           y: Math.max(12, Math.min(rect.height - 132, clientY - rect.top)),
                           wireId,
                           signalKey,
+                        });
+                      }}
+                      onNodeContextMenu={({ nodeId, clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        // Right-click adopts the node into the selection, the standard
+                        // precondition for the selection-based menu actions below.
+                        selectMultipleNodes([nodeId], false);
+                        setNodeContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 190, clientY - rect.top)),
+                          nodeId,
+                        });
+                      }}
+                      onCanvasContextMenu={({ clientX, clientY }) => {
+                        if (isReplayMode || !canvasViewportRef.current) return;
+                        const rect = canvasViewportRef.current.getBoundingClientRect();
+                        setCanvasContextMenu({
+                          x: Math.max(12, Math.min(rect.width - 188, clientX - rect.left)),
+                          y: Math.max(12, Math.min(rect.height - 168, clientY - rect.top)),
                         });
                       }}
                     />
@@ -8786,6 +8833,175 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         </button>
                       </div>
                     ) : null}
+                    {nodeContextMenu ? (() => {
+                      const menuNode = editorCircuit.nodes.find((n) => n.id === nodeContextMenu.nodeId);
+                      if (!menuNode) return null;
+                      const moduleDefinitionId = typeof menuNode.config?.moduleDefinitionId === 'string'
+                        ? menuNode.config.moduleDefinitionId
+                        : null;
+                      const nativeModule = hierarchy?.modules.find(
+                        (module) => module.id === moduleDefinitionId || module.name === menuNode.type,
+                      );
+                      return (
+                        <div
+                          className="ide-design-wire-context-menu"
+                          data-testid="ide-design-node-context-menu"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{ left: nodeContextMenu.x, top: nodeContextMenu.y }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          {nativeModule && onOpenModule ? (
+                            <button
+                              type="button"
+                              className="ide-design-wire-context-menu-item"
+                              onClick={() => {
+                                onOpenModule(nativeModule.id);
+                                setNodeContextMenu(null);
+                              }}
+                              data-testid="ide-design-node-menu-open-module"
+                            >
+                              Open {nativeModule.displayName} definition
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              beginNodeLabelEdit(menuNode, 'canvas');
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-rename"
+                          >
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleDuplicate();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-duplicate"
+                          >
+                            Duplicate
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              handleCopy();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-copy"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            type="button"
+                            className="ide-design-wire-context-menu-item"
+                            onClick={() => {
+                              deleteSelection();
+                              setNodeContextMenu(null);
+                            }}
+                            data-testid="ide-design-node-menu-delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      );
+                    })() : null}
+                    {canvasContextMenu ? (
+                      <div
+                        className="ide-design-wire-context-menu"
+                        data-testid="ide-design-canvas-context-menu"
+                        data-blocks-canvas-placement="1"
+                        data-blocks-macro-placement="1"
+                        style={{ left: canvasContextMenu.x, top: canvasContextMenu.y }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handlePaste();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={!clipboard}
+                          data-testid="ide-design-canvas-menu-paste"
+                        >
+                          Paste
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleSelectAll();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length === 0}
+                          data-testid="ide-design-canvas-menu-select-all"
+                        >
+                          Select all
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            fitToCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          data-testid="ide-design-canvas-menu-fit"
+                        >
+                          Fit view
+                        </button>
+                        <button
+                          type="button"
+                          className="ide-design-wire-context-menu-item"
+                          onClick={() => {
+                            handleArrangeCircuit();
+                            setCanvasContextMenu(null);
+                          }}
+                          disabled={editorCircuit.nodes.length < 2}
+                          data-testid="ide-design-canvas-menu-arrange"
+                        >
+                          Arrange circuit
+                        </button>
+                      </div>
+                    ) : null}
+                    {renameOnCanvas && editingLabelNodeId ? (() => {
+                      const renameNode = editorCircuit.nodes.find((n) => n.id === editingLabelNodeId);
+                      if (!renameNode) return null;
+                      const screenX = (renameNode.position?.x ?? renameNode.x ?? 0) * camera.zoom + camera.x;
+                      const screenY = (renameNode.position?.y ?? renameNode.y ?? 0) * camera.zoom + camera.y;
+                      return (
+                        <div
+                          className="ide-design-canvas-rename"
+                          data-testid="ide-design-canvas-rename"
+                          data-blocks-canvas-placement="1"
+                          data-blocks-macro-placement="1"
+                          style={{
+                            left: Math.max(8, Math.min(canvasSize.width - 168, screenX - 80)),
+                            top: Math.max(8, Math.min(canvasSize.height - 40, screenY + 34)),
+                          }}
+                          onPointerDown={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            className="ide-text-input ide-design-canvas-rename-input"
+                            type="text"
+                            value={labelDraft}
+                            onChange={(e) => setLabelDraft(e.target.value)}
+                            onKeyDown={handleLabelKeyDown}
+                            onBlur={commitNodeLabel}
+                            autoFocus
+                            placeholder="Signal or part name…"
+                            aria-label={`Rename ${nodeTypeLabel(renameNode.type)}`}
+                            data-testid="ide-design-canvas-rename-input"
+                            maxLength={32}
+                          />
+                        </div>
+                      );
+                    })() : null}
                   </div>
                 </section>
               </div>

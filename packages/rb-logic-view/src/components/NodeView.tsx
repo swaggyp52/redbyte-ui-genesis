@@ -68,6 +68,7 @@ export interface NodeViewProps {
   ) => void;
   onToggleSwitch?: (nodeId: string) => void;
   onNodeDoubleClick?: (nodeId: string) => void;
+  onNodeContextMenu?: (nodeId: string, clientX: number, clientY: number) => void;
   onProbeToggle?: (nodeId: string, portName: string, label: string) => void;
   signals?: Map<string, LogicDisplayValue>;
   chipMetadata?: ChipMetadata;
@@ -130,6 +131,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
   onPortClick,
   onPortClusterClick,
   onNodeDoubleClick,
+  onNodeContextMenu,
   onProbeToggle,
   signals,
   chipMetadata,
@@ -296,6 +298,13 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!onNodeContextMenu) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onNodeContextMenu(node.id, e.clientX, e.clientY);
+  };
+
   // No longer need global window listener because we have pointer capture!
   const color = NODE_COLORS[node.type] || '#94a3b8';
   const outputSignal = signals?.get(`${node.id}.out`) ?? 0;
@@ -445,6 +454,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
         data-node-selected={isSelected ? '1' : '0'}
         data-testid={`node-${node.type}-${node.id}`}
         onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
@@ -1133,6 +1143,7 @@ const NodeViewComponent: React.FC<NodeViewProps> = ({
       data-lod={lod}
       data-node-selected={isSelected ? '1' : '0'}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       style={{ cursor: isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}

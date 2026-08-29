@@ -79,6 +79,10 @@ export interface LogicCanvasProps {
     clientX: number;
     clientY: number;
   }) => void;
+  /** Right-click on a node body. Client coordinates are viewport-relative to the page. */
+  onNodeContextMenu?: (input: { nodeId: string; clientX: number; clientY: number }) => void;
+  /** Right-click on empty canvas (not a node, port, or wire). */
+  onCanvasContextMenu?: (input: { clientX: number; clientY: number }) => void;
   /** B1: Node IDs in topological evaluation order. When set, each node gets an evalSequence badge on hover. */
   nodeEvalOrder?: string[] | null;
   /** B1: Node IDs whose outputs changed on the last sim tick. Rendered with isHighlighted when set. */
@@ -207,6 +211,8 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onConnectionRejected,
   onPlacementCancel,
   onWireContextMenu,
+  onNodeContextMenu,
+  onCanvasContextMenu,
   nodeEvalOrder,
   changedNodeIds,
   nodeIssueSeverities,
@@ -1567,7 +1573,14 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
         onPointerMove={handlePointerMoveForWirePreview}
         onPointerUp={canvasInput.onPointerUp}
         onPointerCancel={canvasInput.onPointerCancel}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          if (!onCanvasContextMenu) return;
+          const target = e.target as Element | null;
+          // Node and wire right-clicks own their menus; only empty canvas fires here.
+          if (target?.closest('[data-node-id], [data-port-id], [data-wire-id]')) return;
+          onCanvasContextMenu({ clientX: e.clientX, clientY: e.clientY });
+        }}
       >
         {/* Grid — stable container prevents SVG reconciliation mismatch */}
         <g key="grid-layer">
@@ -1841,6 +1854,11 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               onPortClusterClick={handlePortClusterClick}
               onToggleSwitch={handleToggleSwitch}
               onNodeDoubleClick={onNodeDoubleClick}
+              onNodeContextMenu={
+                onNodeContextMenu
+                  ? (nodeId, clientX, clientY) => onNodeContextMenu({ nodeId, clientX, clientY })
+                  : undefined
+              }
               onProbeToggle={onProbeToggle}
               signals={renderSignals}
               chipMetadata={getChipMetadata?.(node.type, node)}

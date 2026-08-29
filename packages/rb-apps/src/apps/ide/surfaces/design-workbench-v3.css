@@ -155,6 +155,23 @@
   white-space: nowrap;
 }
 
+/* Floating on-canvas rename input, anchored just below the node. */
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-rename {
+  position: absolute;
+  z-index: 30;
+  width: 160px;
+}
+
+.ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-canvas-rename-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--rb-action);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+}
+
 /* Zoom readout doubles as a one-click return to 100%. */
 .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-zoom-readout {
   min-width: 52px;

@@ -246,7 +246,7 @@ describe('DesignSurface — single-node inspector action groups', () => {
 // ─── Multi-select inspector action hierarchy ──────────────────────────────────
 
 describe('DesignSurface — multi-select inspector action groups', () => {
-  it('shows an Arrange group with align-left and align-top actions before Danger', async () => {
+  it('shows the full Align/Distribute arrangement group before Danger', async () => {
     const view = renderSurface();
 
     act(() => {
@@ -261,11 +261,22 @@ describe('DesignSurface — multi-select inspector action groups', () => {
     const dangerGroup = view.getByTestId('ide-design-inspector-danger-group');
     const position = arrangeGroup.compareDocumentPosition(dangerGroup);
 
-    expect(arrangeGroup.textContent).toContain('Arrange');
-    expect(view.getByTestId('ide-design-align-left-btn').textContent).toContain('Align left');
-    expect(view.getByTestId('ide-design-align-top-btn').textContent).toContain('Align top');
-    expect(view.getByTestId('ide-design-distribute-horizontal-btn').textContent).toContain('Distribute horizontally');
+    expect(arrangeGroup.textContent).toContain('Align');
+    expect(arrangeGroup.textContent).toContain('Distribute');
+    // The complete professional set: both axes, both edges, both centers.
+    for (const testId of [
+      'ide-design-align-left-btn',
+      'ide-design-align-hcenter-btn',
+      'ide-design-align-right-btn',
+      'ide-design-align-top-btn',
+      'ide-design-align-vcenter-btn',
+      'ide-design-align-bottom-btn',
+    ]) {
+      expect(view.getByTestId(testId)).toBeTruthy();
+    }
+    // Distribution needs three nodes; with two selected both stay disabled.
     expect((view.getByTestId('ide-design-distribute-horizontal-btn') as HTMLButtonElement).disabled).toBe(true);
+    expect((view.getByTestId('ide-design-distribute-vertical-btn') as HTMLButtonElement).disabled).toBe(true);
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
