@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { IdeButton } from './IdePrimitives';
 import {
   groupIoRowsIntoBuses,
@@ -13,10 +14,13 @@ interface PlannerRow {
   label: string;
   direction: 'in' | 'out';
   pin: string;
+  nodeId?: string;
 }
 
 export interface HardwareBusPlannerProps {
   rows: readonly PlannerRow[];
+  /** First-class bus declarations; when present they own the grouping. */
+  declaredBuses?: readonly BusDeclaration[];
   onSetMappingPin?: (rowId: string, packagePin: string) => void;
 }
 
@@ -31,8 +35,8 @@ interface AppliedSnapshot {
  * VHDL vector. Each apply is previewed member-by-member first and can be
  * reverted as a single action.
  */
-export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, onSetMappingPin }) => {
-  const groups = useMemo(() => groupIoRowsIntoBuses(rows), [rows]);
+export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, declaredBuses, onSetMappingPin }) => {
+  const groups = useMemo(() => groupIoRowsIntoBuses(rows, declaredBuses), [rows, declaredBuses]);
   const ownerByPin = useMemo(() => {
     const owners = new Map<string, { rowId: string; label: string }>();
     for (const row of rows) {

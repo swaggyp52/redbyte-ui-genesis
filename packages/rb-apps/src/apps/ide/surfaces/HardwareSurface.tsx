@@ -12,6 +12,7 @@ import {
 } from '../components/IdePrimitives';
 import { HardwareBusPlanner } from '../components/HardwareBusPlanner';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
 import { useIoBus } from '../ioBus';
@@ -183,6 +184,8 @@ export interface HardwareSurfaceProps {
   projectName: string;
   expectedBehavior: string;
   mappingRows: HardwareMappingRow[];
+  /** First-class bus declarations from the project circuit. */
+  declaredBuses?: readonly BusDeclaration[];
   /** Exact semantic-to-artifact bindings produced by the export contract. */
   mappingProjection?: Basys3SemanticMappingProjection[];
   missingRequiredPortsFromExport?: number;
@@ -402,6 +405,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   projectName,
   expectedBehavior,
   mappingRows,
+  declaredBuses,
   mappingProjection = [],
   missingRequiredPortsFromExport = 0,
   expectedIoRows,
@@ -3068,7 +3072,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <div><p className="ide-surface-block-label">Signal assignments</p><h3 id="ide-hw-v3-table-title">Project I/O</h3></div>
                   <p className="ide-copy ide-copy--flush">Select Edit to keep one signal in the assignment editor.</p>
                 </header>
-                <HardwareBusPlanner rows={mappingRows} onSetMappingPin={onSetMappingPin} />
+                <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                     Add inputs and outputs in Design, then return here to assign board resources.

@@ -2837,6 +2837,7 @@ export const IdeApp: React.FC = () => {
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
+              declaredBuses={circuit.buses}
               mappingProjection={exportViewModel.mappingProjection}
               missingRequiredPortsFromExport={exportRequiredMappingGapCount}
               expectedIoRows={hardwareExpectedIoRows}
