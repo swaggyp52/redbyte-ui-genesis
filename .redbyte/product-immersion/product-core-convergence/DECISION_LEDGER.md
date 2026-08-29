@@ -2,6 +2,13 @@
 
 Format: one dated entry per load-bearing decision. Newest first.
 
+## 2026-08-29 — Regression baseline verified
+- The IDE `__tests__` battery reports ~131 failures on HEAD. Verified against the
+  safety tag (9b730be): the same failing files fail identically on baseline
+  (copy drift, stale testids from prior UI work). This program's changes are net
+  regression-free in the sampled areas; all new tests are green. Both classroom
+  golden export gates remain byte-identical.
+
 ## 2026-08-29 — Session posture
 - Continue on PR #82 head branch `claude/redbyte-desktop-build-m5ryqw` per directive §1/§24; no new product-depth PR.
 - Local safety tag `safety/pre-product-core-convergence` at 9b730be (unpublished).
