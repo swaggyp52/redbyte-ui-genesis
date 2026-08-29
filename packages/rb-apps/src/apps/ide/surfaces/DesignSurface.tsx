@@ -30,7 +30,9 @@ import {
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
-import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
+import { buildDesignDebugSignalTrace } from '../pathTrace';
+import { fanIn, fanOut, neighbors, pathBetween } from '../design/graphTraceQueries';
+import { resolveSemanticZoomTier } from '../design/semanticZoomProjection';
 import { arrangeCircuitByDependency, hasRunnableBoundaryPath } from '../designGraphLayout';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -549,7 +551,7 @@ interface DesignDebugToggleSample {
 }
 
 interface DesignTraceState {
-  kind: 'wire-net' | 'fanin-port' | 'fanout-port';
+  kind: 'wire-net' | 'fanin-port' | 'fanout-port' | 'path-between';
   sourceKey: string;
   label: string;
   signalKey: string | null;
@@ -1194,7 +1196,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       lastTracedPortRef.current = portKey;
       autoWireSelectionTraceIdRef.current = null;
-      const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+      const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
       const highlights = new Map<string, string[]>();
       wireIds.forEach((wid) => highlights.set(wid, ['#fbbf24']));
       const portKeys = buildTracePortKeySet(wireIds);
@@ -1224,7 +1226,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       lastTracedPortRef.current = fanoutKey;
       autoWireSelectionTraceIdRef.current = null;
-      const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
+      const { wireIds, nodeIds } = fanOut(editorCircuit, nodeId);
       const highlights = new Map<string, string[]>();
       wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
       const portKeys = buildTracePortKeySet(wireIds);
@@ -2994,6 +2996,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
+  const zoomTier = resolveSemanticZoomTier(camera.zoom);
   const wireSourceLabel = wireStartPort
     ? describePortRefForStudents(editorCircuit, wireStartPort, getChipMetadata)
     : null;
@@ -3385,7 +3388,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal?.(verifyLinkedSignalKey);
     const [nodeId, portName = 'out'] = verifyLinkedSignalKey.split('.');
     if (!nodeId) return;
-    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => highlights.set(wireId, ['#a78bfa']));
     const highlightedNodes = new Set(nodeIds);
@@ -3415,7 +3418,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal?.(debugLinkedSignalKey);
     const [nodeId, portName = 'out'] = debugLinkedSignalKey.split('.');
     if (!nodeId) return;
-    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => highlights.set(wireId, ['#fb7185']));
     const highlightedNodes = new Set(nodeIds);
@@ -4187,8 +4190,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const focusSelectedPath = useCallback(() => {
     const nodeId = selectedNode?.id ?? selectedWireContext?.targetNodeId ?? null;
     if (!nodeId) return;
-    const fanin = getFaninCone(editorCircuit, nodeId);
-    const fanout = getFanoutCone(editorCircuit, nodeId);
+    const fanin = fanIn(editorCircuit, nodeId);
+    const fanout = fanOut(editorCircuit, nodeId);
     const nodeIds = new Set([...fanin.nodeIds, ...fanout.nodeIds, nodeId]);
     const wireIds = new Set([...fanin.wireIds, ...fanout.wireIds]);
     if (selectedWireContext) wireIds.add(selectedWireContext.wireId);
@@ -5030,6 +5033,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {(() => {
+            const hood = neighbors(editorCircuit, selectedNode.id, 1);
+            const connectedIds = [...hood.nodeIds].filter((nodeId) => nodeId !== selectedNode.id);
+            if (connectedIds.length === 0) return null;
+            return (
+              <div className="ide-design-inspector-action-group" data-testid="ide-design-neighborhood-group">
+                <span className="ide-design-inspector-group-label">
+                  Connected ({connectedIds.length})
+                </span>
+                <div className="ide-design-swap-chips">
+                  {connectedIds.map((nodeId) => {
+                    const neighborNode = editorCircuit.nodes.find((node) => node.id === nodeId);
+                    return (
+                      <button
+                        key={nodeId}
+                        type="button"
+                        className="ide-design-swap-chip"
+                        data-testid={`ide-design-neighbor-${nodeId}`}
+                        onClick={() => selectMultipleNodes([nodeId], false)}
+                        title={`Select ${neighborNode?.label ?? nodeId}`}
+                      >
+                        {neighborNode?.label ?? nodeId}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
@@ -5127,6 +5159,52 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {selection.nodes.size === 2
+            ? (() => {
+                const [firstId, secondId] = selectedNodeIdsAll;
+                const forward = pathBetween(editorCircuit, firstId, secondId);
+                const traced = forward ?? pathBetween(editorCircuit, secondId, firstId);
+                const fromId = forward ? firstId : secondId;
+                const toId = forward ? secondId : firstId;
+                const labelFor = (nodeId: string) =>
+                  editorCircuit.nodes.find((node) => node.id === nodeId)?.label ?? nodeId;
+                return (
+                  <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-path-group">
+                    <span className="ide-design-inspector-group-label">Trace</span>
+                    <div className="ide-design-inspector-action-grid">
+                      <IdeButton
+                        tone="ghost"
+                        disabled={!traced}
+                        onClick={() => {
+                          if (!traced) return;
+                          const highlights = new Map<string, string[]>();
+                          traced.wireIds.forEach((wireId) => highlights.set(wireId, ['#34d399']));
+                          autoWireSelectionTraceIdRef.current = null;
+                          lastTracedPortRef.current = null;
+                          setTraceState({
+                            kind: 'path-between',
+                            sourceKey: `path:${fromId}->${toId}`,
+                            label: `Path ${labelFor(fromId)} -> ${labelFor(toId)}`,
+                            signalKey: null,
+                            wireHighlights: highlights,
+                            nodeIds: new Set(traced.nodeIds),
+                            portKeys: buildTracePortKeySet(traced.wireIds),
+                          });
+                        }}
+                        testId="ide-design-trace-path-btn"
+                      >
+                        Trace path
+                      </IdeButton>
+                    </div>
+                    {!traced ? (
+                      <small data-testid="ide-design-trace-path-none">
+                        No directed path between these nodes.
+                      </small>
+                    ) : null}
+                  </div>
+                );
+              })()
+            : null}
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
             <div className="ide-design-inspector-action-group">
               <span className="ide-design-inspector-group-label">Compose</span>
@@ -7609,6 +7687,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}
+                    data-zoom-tier={zoomTier}
                     data-wire-active={wireStartPort ? '1' : '0'}
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-placement-active={isPlacementMode ? '1' : '0'}
