@@ -65,6 +65,20 @@ describe('HardwareBusPlanner', () => {
     expect((view.getByTestId('ide-hw-bus-planner-apply') as HTMLButtonElement).disabled).toBe(false);
   });
 
+  it('reads as already mapped instead of "Assign 0 pins" when the whole bus is placed', () => {
+    const rows = busRows({
+      a0: getBasys3BoardResource('SW0')!.packagePin,
+      a1: getBasys3BoardResource('SW1')!.packagePin,
+      a2: getBasys3BoardResource('SW2')!.packagePin,
+      a3: getBasys3BoardResource('SW3')!.packagePin,
+    });
+    const view = render(<HardwareBusPlanner rows={rows} onSetMappingPin={vi.fn()} />);
+    const mapped = view.getByTestId('ide-hw-bus-planner-mapped');
+    expect(mapped.textContent).toContain('Bus already mapped');
+    // No misleading "Assign 0 pins" primary button.
+    expect(view.queryByTestId('ide-hw-bus-planner-apply')).toBeNull();
+  });
+
   it('reverts the whole bus assignment as one action', () => {
     const onSetMappingPin = vi.fn();
     const view = render(

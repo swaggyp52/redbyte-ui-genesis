@@ -871,3 +871,8 @@
   .ide-root .rb-vboard__led,
   .ide-root .rb-vboard__sw-knob { transition: none; }
 }
+
+.ide-root .ide-hw-bus-planner__mapped {
+  font-size: 12.5px;
+  color: var(--rb-text-secondary);
+}

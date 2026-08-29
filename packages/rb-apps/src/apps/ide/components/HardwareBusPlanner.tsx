@@ -73,6 +73,19 @@ export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, de
 
   const blockedEntries = preview.filter((entry) => entry.state === 'occupied' || entry.state === 'unavailable');
   const applyCount = preview.filter((entry) => entry.state === 'ok').length;
+  const alreadyHereCount = preview.filter((entry) => entry.state === 'already-assigned-here').length;
+  const allAlreadyMapped = preview.length > 0 && alreadyHereCount === preview.length;
+  // The primary action's label reflects what pressing it does, so it is never
+  // the useless "Assign 0 pins": a fully-mapped bus reads as mapped (with
+  // Reverse/Revert to change it), a blocked plan names the block, and only a
+  // genuinely assignable plan invites assignment.
+  const applyLabel = allAlreadyMapped
+    ? 'Bus already mapped'
+    : applyCount === 0
+      ? blockedEntries.length > 0
+        ? 'Resolve conflicts to assign'
+        : 'No pins to assign'
+      : `Assign ${applyCount} pin${applyCount === 1 ? '' : 's'}`;
 
   const applyPlan = useCallback(() => {
     if (!activeGroup || !onSetMappingPin || blockedEntries.length > 0) return;
@@ -182,14 +195,20 @@ export const HardwareBusPlanner: React.FC<HardwareBusPlannerProps> = ({ rows, de
           </ul>
 
           <div className="ide-hw-bus-planner__actions">
-            <IdeButton
-              tone="primary"
-              onClick={applyPlan}
-              disabled={!onSetMappingPin || blockedEntries.length > 0 || applyCount === 0}
-              testId="ide-hw-bus-planner-apply"
-            >
-              Assign {applyCount} pin{applyCount === 1 ? '' : 's'}
-            </IdeButton>
+            {allAlreadyMapped ? (
+              <span className="ide-hw-bus-planner__mapped" data-testid="ide-hw-bus-planner-mapped">
+                {applyLabel} — use Reverse to flip bit order, or Revert to undo.
+              </span>
+            ) : (
+              <IdeButton
+                tone="primary"
+                onClick={applyPlan}
+                disabled={!onSetMappingPin || blockedEntries.length > 0 || applyCount === 0}
+                testId="ide-hw-bus-planner-apply"
+              >
+                {applyLabel}
+              </IdeButton>
+            )}
             {lastApplied && lastApplied.baseName === activeGroup.baseName ? (
               <IdeButton tone="ghost" onClick={revertPlan} testId="ide-hw-bus-planner-revert">
                 Revert bus assignment

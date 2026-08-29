@@ -25,8 +25,8 @@
   - Board: declared-bus grouping authority; `setMappingPins` structure-safe
   - Design: `createDesignBus` action + Create-bus dialog + Library "New bus…"; browser-proven A[3:0]
 - [ ] Wave 2: hierarchy depth (nested definitions, vector module ports, params)
-- [ ] Wave 3: Design workbench (visual language, wiring, semantic zoom, physical-leak fix) — IN PROGRESS
-  - Next: canvas visual language — kill neon/dark-in-light-shell, oversized nodes at zoom, physical pin leak (U16/E19)
+- [~] Wave 3: Design workbench — visual language DONE (light technical canvas, professional schematic nodes via NodeView `appearance` prop, neon overrides scoped to dark, oversized labels reduced, shell tab hover-title). Remaining: wiring/semantic-zoom/physical-leak deeper items.
+- [x] Wave 6: Virtual Basys3 board (Browser E0) — DONE, browser-proven drive→observe (SW→mapped input→LED). Board aliasing now pin-derived.
 - [ ] Wave 4: Project control center
 - [ ] Wave 5: Simulate convergence (Bench/Analyzer/Runs)
 - [ ] Wave 6: Virtual board (Browser E0)
