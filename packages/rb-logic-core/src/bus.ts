@@ -633,7 +633,11 @@ export function renameBus(circuit: Circuit, busId: string, nextName: string): Ci
 
 /**
  * Remove a bus declaration. With `deleteMembers`, also removes the member
- * nodes and their connections; otherwise the members demote to scalars.
+ * nodes and their connections; otherwise the members demote to scalars and
+ * their labels rewrite from `A[i]` to `A_i` — the vector convention is how
+ * every fallback heuristic (export, board grouping, load migration) detects
+ * buses, so demotion must leave the label space too or the bus resurrects
+ * on the next load.
  */
 export function deleteBus(
   circuit: Circuit,
@@ -644,8 +648,18 @@ export function deleteBus(
   const bus = buses.find((entry) => entry.id === busId);
   if (!bus) return circuit;
   const remaining = buses.filter((entry) => entry.id !== busId);
+  const bitIndexByNodeId = new Map(bus.bits.map((bit) => [bit.nodeId, bit.index]));
   const next: Circuit = {
     ...circuit,
+    nodes: circuit.nodes.map((node) => {
+      const index = bitIndexByNodeId.get(node.id);
+      if (index === undefined) return node;
+      const current = node.label ?? '';
+      const match = current.match(EXPLICIT_VECTOR_LABEL);
+      if (!match) return node;
+      const suffix = current.slice(match[0].length);
+      return { ...node, label: `${bus.name}_${index}${suffix}` };
+    }),
     buses: remaining.length > 0 ? remaining : undefined,
   };
   if (!opts.deleteMembers) return next;

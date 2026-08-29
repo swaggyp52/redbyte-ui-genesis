@@ -260,6 +260,10 @@ describe('deleteBus', () => {
     const demoted = deleteBus(circuit, bus.id);
     expect(demoted.buses).toBeUndefined();
     expect(demoted.nodes).toHaveLength(2);
+    // Demotion leaves the vector label space too, or every Base[N] fallback
+    // (export, board grouping, load migration) would resurrect the bus.
+    expect(demoted.nodes.map((node) => node.label).sort()).toEqual(['A_0', 'A_1']);
+    expect(synthesizeBusDeclarations(demoted).buses).toBeUndefined();
 
     const removed = deleteBus(circuit, bus.id, { deleteMembers: true });
     expect(removed.nodes).toHaveLength(0);

@@ -902,11 +902,19 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             .map(([rowId, pin]) => [rowId.trim(), pin.trim()] as const)
             .filter(([rowId]) => rowId.length > 0);
           if (updateEntries.length === 0) return {};
-          const updateById = new Map(updateEntries);
-          const nextRows = cloneIoRows(state.projectIoRows).map((row) =>
-            updateById.has(row.id) ? { ...row, pin: updateById.get(row.id) ?? '' } : row
-          );
-          const nextDoc = buildHardwareMappingV2FromProjectIoRows(nextRows);
+          // Route every row through the same structured-mapping authority as
+          // setMappingPin. Rebuilding the document from flat rows here would
+          // flatten structured (bus/slice/group) entries on every bulk write.
+          const { hardwareMappingV2: synchronizedCurrentDoc } =
+            deriveAuthoritativeHardwareState(state.circuit, state.hardwareMappingV2);
+          let nextDoc = structuredClone(synchronizedCurrentDoc);
+          for (const [rowId, pin] of updateEntries) {
+            nextDoc = applyScalarResourceMetadata(
+              applyMaterializedPinToHardwareMappingV2(nextDoc, rowId, pin),
+              rowId,
+              pin
+            );
+          }
           const { hardwareMappingV2, projectIoRows } = deriveAuthoritativeHardwareState(
             state.circuit,
             nextDoc

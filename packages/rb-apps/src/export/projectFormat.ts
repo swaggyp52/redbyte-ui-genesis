@@ -116,7 +116,10 @@ export const createRBProject = (input: Omit<RBProject, 'kind' | 'version' | 'upd
   updatedAt: new Date().toISOString(),
 });
 
-const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
+const normalizeProjectCircuit = (
+  circuit: Circuit,
+  opts: { synthesizeBuses?: boolean } = {}
+): Circuit => {
   const nodes = [...circuit.nodes]
     .map((node, index) => normalizeProjectNode(node, index))
     .sort((a, b) => compareCodepoint(a.id, b.id));
@@ -150,16 +153,20 @@ const normalizeProjectCircuit = (circuit: Circuit): Circuit => {
       return compareCodepoint(left, right);
     });
 
-  // Declared buses: parse what the file carries, prune refs to nodes that do
-  // not exist, then promote any remaining legacy Base[N] label groups so
-  // pre-bus projects load with first-class vectors (idempotent migration).
+  // Declared buses: parse what the document carries and prune refs to nodes
+  // that do not exist. Legacy Base[N] label groups are promoted to
+  // declarations on DECODE ONLY (the idempotent migration for pre-bus
+  // projects) — encode stays a pure projection of in-memory state so saving
+  // never invents declarations or resurrects a deleted bus.
   const declared = normalizeBusDeclarations((circuit as { buses?: unknown }).buses);
   const withDeclared = pruneBusBits({
     nodes,
     connections,
     buses: declared.length > 0 ? declared : undefined,
   });
-  const migrated = synthesizeBusDeclarations(withDeclared);
+  const migrated = opts.synthesizeBuses
+    ? synthesizeBusDeclarations(withDeclared)
+    : withDeclared;
   return migrated.buses && migrated.buses.length > 0
     ? { nodes, connections, buses: migrated.buses }
     : { nodes, connections };
@@ -386,7 +393,7 @@ export const normalizeRBProject = (value: unknown): RBProject => {
     updatedAt: readOptionalString(value.updatedAt) ?? '1970-01-01T00:00:00.000Z',
     name,
     description: readOptionalString(value.description) ?? undefined,
-    circuit: normalizeProjectCircuit(value.circuit as Circuit),
+    circuit: normalizeProjectCircuit(value.circuit as Circuit, { synthesizeBuses: true }),
     probes: normalizeProbes(Array.isArray(value.probes) ? value.probes : undefined),
     hdl: normalizeHdl(isRecord(value.hdl) ? (value.hdl as ToolchainProjectInput) : undefined),
     fpga: isRecord(value.fpga) ? { ...(value.fpga as RBFpgaConfig) } : undefined,

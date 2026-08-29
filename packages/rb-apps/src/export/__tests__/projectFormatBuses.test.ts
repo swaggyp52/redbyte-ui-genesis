@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import { busRangeLabel, createBusBoundary } from '@redbyte/rb-logic-core';
+import { busRangeLabel, createBusBoundary, deleteBus } from '@redbyte/rb-logic-core';
 import { createRBProject, decodeRBProject, encodeRBProject } from '../projectFormat';
 
 const project = (circuit: Circuit) =>
@@ -79,6 +79,17 @@ describe('project format: first-class buses', () => {
     const bus = decoded.circuit.buses?.find((entry) => entry.name === 'A');
     expect(bus).toBeDefined();
     expect(bus?.bits).toHaveLength(1);
+  });
+
+  it('a deleted bus stays deleted across save and reload', () => {
+    const { circuit, bus } = createBusBoundary(
+      { nodes: [], connections: [] },
+      { name: 'A', direction: 'input', left: 1, right: 0 }
+    );
+    const demoted = deleteBus(circuit, bus.id);
+    const reloaded = decodeRBProject(encodeRBProject(project(demoted)));
+    expect(reloaded.circuit.buses).toBeUndefined();
+    expect(reloaded.circuit.nodes.map((node) => node.label).sort()).toEqual(['A_0', 'A_1']);
   });
 
   it('keeps projects with no vector labels free of bus declarations', () => {
