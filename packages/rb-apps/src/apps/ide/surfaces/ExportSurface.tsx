@@ -1782,6 +1782,16 @@ export const ExportSurface: React.FC<ExportSurfaceProps> = ({
                   Download draft
                 </IdeButton>
               ) : null}
+              {!exportBlocked && handoffTruth.primaryCtaIntent === 'program-handoff' ? (
+                <IdeButton
+                  tone="ghost"
+                  onClick={() => void handleDownloadExport('kit')}
+                  disabled={downloadDisabled}
+                  testId="ide-export-kit-download-v1"
+                >
+                  Download flat kit
+                </IdeButton>
+              ) : null}
               {packageValidation ? (
                 <small className={`ide-export-v3__validation is-${packageValidation.status}`} role="status" data-testid="ide-export-validation-result">
                   {packageValidation.message} Browser E0 only · Vivado external.
