@@ -6255,7 +6255,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 onClick={() => setActiveLeftDockTab(tab)}
                 data-testid={`ide-design-left-tab-${tab}`}
               >
-                {tab === 'components' ? 'Components' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+                {tab === 'components' ? 'Library' : tab === 'board' ? 'Board I/O' : `${tab[0].toUpperCase()}${tab.slice(1)}`}
               </button>
             ))}
           </div>

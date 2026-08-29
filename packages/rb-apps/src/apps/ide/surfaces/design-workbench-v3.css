@@ -8,8 +8,10 @@
   font-size: max(13px, 1em) !important;
 }
 
+/* Dock tabs are compact rail navigation, not form controls — they keep their
+   own size contract in product-system-v3.css so four labels fit a 180px rail. */
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design']
-  :is(button, input, select, textarea, label) {
+  :is(button, input, select, textarea, label):not(.ide-design-dock-tabs button) {
   font-size: 14px !important;
 }
 

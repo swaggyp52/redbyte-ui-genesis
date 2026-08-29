@@ -1441,11 +1441,14 @@
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button {
   min-width: 0;
-  min-height: 38px;
-  padding-inline: 8px;
+  min-height: 34px;
+  padding-inline: 4px;
   color: var(--rb-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .ide-root .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-dock-tabs button.is-active,
