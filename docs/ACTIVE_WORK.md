@@ -65,6 +65,29 @@ accepted.
   `product/redbyte-workbench-v3` before PR #80 can advance to it; nothing in
   this lane rewrites that branch.
 
+### Core product build lane (2026-08-29, cloud session)
+
+- Branch: `claude/redbyte-desktop-build-m5ryqw` (base `513b003cc` = v3 +
+  all of PR #81, which was strictly ahead of v3 — a pure fast-forward
+  union), delivered via draft PR
+  [#82](https://github.com/swaggyp52/redbyte-ui-genesis/pull/82) into the
+  product branch. Merging #82 also resolves #81.
+- Delivered: single-main landmark contract; Design library rail rebuilt on
+  the component registry (port lines, capability chips, drag-to-place,
+  collapse persistence, keyboard nav); full align/distribute; S hotkey;
+  unified zoom steps + % readout; node/canvas context menus; on-canvas
+  rename; fanout junction dots; marquee wire adoption; instance-aware
+  breadcrumbs + per-module camera memory; Project sources view with derived
+  compile order; Duplicate project; ExamplesBrowser activation (search/tags/
+  learning path); Board bulk bus mapping over the canonical `Base[N]`
+  convention; flat Vivado kit download; waveform lane pin/hide controls.
+- Proof: Browser-E0 only (vitest contracts + Playwright captures at
+  1440×900/1366×768). No Vivado/bitstream/board claims. Golden export SHAs
+  untouched. See root `RESUME.md` for the commit ledger and next queue.
+- Boundary: the unpushed desktop head `65e1ff872` remains desktop-only;
+  this lane never rewrites `product/redbyte-workbench-v3`. Desktop
+  reconciliation is one merge of this branch.
+
 ## Candidate Product Truth
 
 The candidate's student-visible workbench spine is:
