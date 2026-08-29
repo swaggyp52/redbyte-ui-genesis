@@ -8,7 +8,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import type { Circuit, CompositeNodeDef, Node } from '@redbyte/rb-logic-core';
-import { getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
+import { busForNode, busRangeLabel, getComponentSupport, TickEngine } from '@redbyte/rb-logic-core';
 import type { HardwareBoardResourceType, HardwareTimingRole } from '@redbyte/rb-utils';
 import {
   FIT_ZOOM_STEPS,
@@ -5509,6 +5509,18 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </div>
             </div>
           ) : null}
+          {(() => {
+            const membership = busForNode(editorCircuit, selectedNode.id);
+            if (!membership) return null;
+            return (
+              <div className="ide-kv-row" data-testid="ide-design-selection-bus">
+                <span>Bus</span>
+                <span>
+                  <code>{busRangeLabel(membership.bus)}</code> · bit {membership.index}
+                </span>
+              </div>
+            );
+          })()}
           <div className="ide-kv-row">
             <span>Reference</span>
             <code data-testid="ide-design-selection-id">{studentNodeLabel}</code>
