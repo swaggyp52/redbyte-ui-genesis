@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { ProjectHealth } from '../projectHealth';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -57,6 +57,7 @@ import {
   suggestEntryIdFromHdl,
 } from '../hardwareMappingGuidance';
 import {
+  BASYS3_BOARD_PROFILE,
   getBasys3BoardResource,
   listBasys3BoardResources,
   resolveBasys3BoardAlias,
@@ -64,6 +65,15 @@ import {
   type Basys3BoardResource,
 } from '../../../fpga/boards/basys3/basys3Pins';
 import { listBasys3CompatibleBoardAliases } from '../../../fpga/boards/basys3/basys3BoardSurfaceProjection';
+import { buildPinPlannerRows } from './board/pinPlannerProjection';
+import { PinPlannerTable } from './board/PinPlannerTable';
+import { ConflictRepairPanel } from './board/ConflictRepairPanel';
+import {
+  detectBusNamingConvention,
+  formatBusBitLogical,
+  planBusMapping,
+  resolveProposalRowTargets,
+} from './board/busMappingPlanner';
 import type { IdeChromeContract } from '../chromeContract';
 import './hardware-mapping-workspace-v3.css';
 
@@ -202,6 +212,8 @@ export interface HardwareSurfaceProps {
   /** Jump to Project surface — authoritative student-facing pin table (typed Map Pins). */
   onGoToProject?: () => void;
   onSetMappingPin?: (rowId: string, alias: string) => void;
+  /** Atomic batch variant — applies a bus proposal without transient duplicate-pin states. */
+  onSetMappingPins?: (updates: Record<string, string>) => void;
   hardwareMappingV2?: HardwareMappingDocumentV2;
   onApplyHardwareMappingEdit?: (operation: HardwareMappingV2EditOperation) => void;
   signalRoles?: Record<string, IoSignalRole>;
@@ -259,6 +271,37 @@ function resolveBoardControlAlias(pin: string | undefined): string | null {
   const trimmed = pin?.trim() ?? '';
   if (!trimmed) return null;
   return resolveBasys3BoardAlias(trimmed) ?? trimmed.toUpperCase();
+}
+
+function matchBusBitName(candidate: string): { base: string; bit: number } | null {
+  const trimmed = candidate.replace(/\s+/g, ' ').trim();
+  const bracket = trimmed.match(/^(.*)\[(\d+)\]$/);
+  if (bracket && bracket[1].trim()) {
+    return { base: bracket[1].trim(), bit: Number(bracket[2]) };
+  }
+  const suffix = trimmed.match(/^(.*?)(\d+)$/);
+  if (suffix && suffix[1].trim()) {
+    return { base: suffix[1].trim(), bit: Number(suffix[2]) };
+  }
+  return null;
+}
+
+/**
+ * A row belongs to a bus family only through a name that is NOT itself a
+ * board resource alias — 'A0 (SW0)' is bit 0 of bus A, never bit 0 of "SW".
+ */
+function resolveBusBitIdentity(row: HardwareMappingRow): { base: string; bit: number; logical: string } | null {
+  const label = (getStudentFacingIoLabel(row, row.id).trim() || row.id).replace(/\s+/g, ' ').trim();
+  const parenthetical = label.match(/^(.*?)\s*\(([^()]+)\)\s*$/);
+  const candidates = parenthetical
+    ? [parenthetical[1].trim(), parenthetical[2].trim(), row.id]
+    : [label, row.id];
+  for (const candidate of candidates) {
+    if (!candidate || resolveBasys3BoardAlias(candidate)) continue;
+    const match = matchBusBitName(candidate);
+    if (match) return { ...match, logical: candidate };
+  }
+  return null;
 }
 
 function describeBoardControl(pin: string | undefined): string {
@@ -415,6 +458,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
   onGoToDesign,
   onGoToProject,
   onSetMappingPin,
+  onSetMappingPins,
   hardwareMappingV2,
   onApplyHardwareMappingEdit,
   signalRoles,
@@ -703,6 +747,14 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
     }
     return result;
   }, [mappingRows]);
+  const pinPlannerRows = useMemo(
+    () =>
+      buildPinPlannerRows(mappingRows, BASYS3_BOARD_PROFILE, {
+        mappingProjection,
+        resolvePackagePin: resolveBasys3PackagePin,
+      }),
+    [mappingRows, mappingProjection]
+  );
   const conflictingMappingRows = useMemo(
     () => {
       if (mappingProjection.length > 0) {
@@ -732,6 +784,60 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
         : [],
     [plannerResources, selectedAllowedBoardAliases]
   );
+  const selectedBusPlan = useMemo(() => {
+    if (!selectedMappingRow || compatiblePlannerResources.length === 0) return null;
+    const identity = resolveBusBitIdentity(selectedMappingRow);
+    if (!identity) return null;
+    const familyRows = mappingRows.flatMap((row) => {
+      if (row.direction !== selectedMappingRow.direction) return [];
+      const bit = resolveBusBitIdentity(row);
+      return bit && bit.base.toUpperCase() === identity.base.toUpperCase() ? [{ row, bit }] : [];
+    });
+    if (familyRows.length < 2) return null;
+    const width = Math.max(...familyRows.map((entry) => entry.bit.bit)) + 1;
+    const convention = detectBusNamingConvention(
+      familyRows.map((entry) => entry.bit.logical),
+      identity.base
+    );
+    const familyRowIds = new Set(familyRows.map((entry) => entry.row.id));
+    const existingAssignments = mappingRows.flatMap((row) => {
+      const packagePin = resolveBasys3PackagePin(row.pin);
+      if (!packagePin) return [];
+      const bit = familyRowIds.has(row.id) ? resolveBusBitIdentity(row) : null;
+      const logical = bit
+        ? formatBusBitLogical(identity.base, bit.bit, convention)
+        : formatProjectSignalName(row);
+      return [{ logical, packagePin }];
+    });
+    const proposal = planBusMapping(
+      {
+        busName: identity.base,
+        width,
+        bitOrder: 'lsb-first',
+        direction: selectedMappingRow.direction,
+        convention,
+      },
+      compatiblePlannerResources,
+      existingAssignments,
+      { skipOccupied: true }
+    );
+    const resolution = resolveProposalRowTargets(proposal, mappingRows);
+    if (resolution.targets.length === 0) return null;
+    return { base: identity.base, familyCount: familyRows.length, proposal, resolution };
+  }, [compatiblePlannerResources, mappingRows, selectedMappingRow]);
+  const applySelectedBusPlan = useCallback(() => {
+    if (!selectedBusPlan) return;
+    const updates = Object.fromEntries(
+      selectedBusPlan.resolution.targets.map((target) => [target.rowId, target.pin])
+    );
+    if (onSetMappingPins) {
+      onSetMappingPins(updates);
+    } else if (onSetMappingPin) {
+      for (const [rowId, pin] of Object.entries(updates)) {
+        onSetMappingPin(rowId, pin);
+      }
+    }
+  }, [onSetMappingPin, onSetMappingPins, selectedBusPlan]);
   const officialCatalogResources = useMemo(() => listBasys3BoardResources(), []);
   const resourcePlannerGroups = useMemo(() => {
     const groups = new Map<string, Basys3BoardResource[]>();
@@ -3168,6 +3274,15 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                     </table>
                   </div>
                 )}
+                <PinPlannerTable
+                  rows={pinPlannerRows}
+                  selectedRowId={selectedMappingRowId}
+                  onSelectRow={(plannerRow) => {
+                    setSelectedMappingRowId(plannerRow.rowId);
+                    const row = mappingRows.find((candidate) => candidate.id === plannerRow.rowId);
+                    setSelectedBoardResourceAlias(resolveBoardControlAlias(row?.pin));
+                  }}
+                />
               </section>
 
               <aside className="ide-hw-v3__side" aria-label="Selected mapping and board reference">
@@ -3186,9 +3301,37 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                         {selectedMappingRow.direction === 'in' ? 'Circuit input' : 'Circuit output'}{' · '}{selectedMappingRow.required ? 'Required' : 'Optional'}
                       </p>
                       {selectedSignalConflict ? (
-                        <IdeCallout tone="error" title={selectedConflictTitle} testId="ide-hw-selected-mapping-conflict">
-                          {selectedConflictMessage}
-                        </IdeCallout>
+                        <ConflictRepairPanel
+                          testId="ide-hw-selected-mapping-conflict"
+                          conflict={{
+                            resource: selectedMappingBoardControl ?? selectedMappingRow.pin.toUpperCase(),
+                            packagePin:
+                              selectedMappingPackagePin === 'Not assigned' ? null : selectedMappingPackagePin,
+                            currentOwner:
+                              (mappedRowsByPackagePin.get(resolveBasys3PackagePin(selectedMappingRow.pin) ?? '') ?? [])
+                                .filter((row) => row.id !== selectedMappingRow.id)
+                                .map(formatProjectSignalName)[0] ?? formatProjectSignalName(selectedMappingRow),
+                            requestedOwner: formatProjectSignalName(selectedMappingRow),
+                            reason: selectedConflictMessage,
+                          }}
+                          onClear={
+                            onSetMappingPin ? () => onSetMappingPin(selectedMappingRow.id, '') : undefined
+                          }
+                          onNextCompatible={
+                            onSetMappingPin
+                              ? () => {
+                                  const next = compatiblePlannerResources.find(
+                                    (resource) =>
+                                      !(mappedRowsByPackagePin.get(resource.packagePin) ?? []).some(
+                                        (row) => row.id !== selectedMappingRow.id
+                                      )
+                                  );
+                                  if (next) onSetMappingPin(selectedMappingRow.id, next.packagePin);
+                                }
+                              : undefined
+                          }
+                          onCancel={() => setSelectedBoardResourceAlias(null)}
+                        />
                       ) : null}
                       <label className="ide-hw-v3__field" htmlFor="ide-hw-direct-resource-select">
                         Basys3 resource
@@ -3239,6 +3382,26 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                           >Clear</IdeButton>
                         ) : null}
                       </div>
+                      {selectedBusPlan ? (
+                        <div className="ide-hw-v3__editor-actions" data-testid="ide-hw-bus-plan">
+                          <IdeButton
+                            tone="ghost"
+                            onClick={applySelectedBusPlan}
+                            disabled={!onSetMappingPin && !onSetMappingPins}
+                            testId="ide-hw-bus-plan-apply"
+                            title={selectedBusPlan.resolution.targets
+                              .map((target) => `${target.logical} -> ${target.pin}`)
+                              .join(', ')}
+                          >
+                            {`Map ${selectedBusPlan.base} bus (${selectedBusPlan.resolution.targets.length} of ${selectedBusPlan.familyCount} bits) in order`}
+                          </IdeButton>
+                          {selectedBusPlan.proposal.conflicts.length > 0 ? (
+                            <small data-testid="ide-hw-bus-plan-conflicts">
+                              {`${selectedBusPlan.proposal.conflicts.length} bit(s) have no free compatible resource.`}
+                            </small>
+                          ) : null}
+                        </div>
+                      ) : null}
                       <div className="ide-hardware-basys3-binding-chain" data-testid="ide-hardware-basys3-binding-chain" aria-label="Selected Basys3 binding chain">
                         <span data-testid="ide-hardware-chain-signal"><small>Signal</small><strong>{selectedMappingLabel}</strong></span>
                         {selectedMappingProjection ? (

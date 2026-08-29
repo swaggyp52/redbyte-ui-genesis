@@ -2825,6 +2825,7 @@ export const IdeApp: React.FC = () => {
               fallback={<IdeSurfaceLoadingFallback mode="hardware" />}
             >
             <HardwareSurface
+              onSetMappingPins={setMappingPins}
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
