@@ -667,3 +667,99 @@
   .ide-root .ide-hw-v3__board,
   .ide-root .ide-hw-v3__editor { grid-column: 1; grid-row: auto; }
 }
+
+/* ── Bus planner: bulk-map Base[N] groups onto SW/LD banks ── */
+.ide-root .ide-hw-bus-planner {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 9px;
+  background: var(--rb-surface-2);
+}
+
+.ide-root .ide-hw-bus-planner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ide-root .ide-hw-bus-planner__header h4 {
+  margin: 0;
+  color: var(--rb-text-primary);
+  font-size: 15px;
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-root .ide-hw-bus-planner__group-pick,
+.ide-root .ide-hw-bus-planner__controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rb-text-secondary);
+  font-size: 12.5px;
+}
+
+.ide-root .ide-hw-bus-planner__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.ide-root .ide-hw-bus-planner__controls input[type='number'] {
+  width: 64px;
+}
+
+.ide-root .ide-hw-bus-planner__warn {
+  color: var(--rb-warning, #b45309);
+  font-size: 12px;
+}
+
+.ide-root .ide-hw-bus-planner__preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ide-root .ide-hw-bus-planner__preview li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--rb-text-primary);
+}
+
+.ide-root .ide-hw-bus-planner__preview li code {
+  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-root .ide-hw-bus-planner__preview li small {
+  color: var(--rb-text-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.ide-root .ide-hw-bus-planner__preview li[data-state='occupied'] small,
+.ide-root .ide-hw-bus-planner__preview li[data-state='unavailable'] small {
+  color: var(--rb-warning, #b45309);
+  font-weight: 600;
+}
+
+.ide-root .ide-hw-bus-planner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ide-root .ide-hw-bus-planner__blocked {
+  color: var(--rb-warning, #b45309);
+  font-size: 12.5px;
+}

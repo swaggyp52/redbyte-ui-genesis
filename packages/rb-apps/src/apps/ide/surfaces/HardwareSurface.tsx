@@ -10,6 +10,7 @@ import {
   IdePanel,
   IdeStatusPill,
 } from '../components/IdePrimitives';
+import { HardwareBusPlanner } from '../components/HardwareBusPlanner';
 import { SurfaceCommandStrip, SurfacePanel } from '../components/SurfaceLayoutPrimitives';
 import type { RuntimeSimState, RuntimeVerifyRun } from '../projectRuntime';
 import { computeScenarioContentHash, type VerifyScenario } from '../verifyScenario';
@@ -3067,6 +3068,7 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <div><p className="ide-surface-block-label">Signal assignments</p><h3 id="ide-hw-v3-table-title">Project I/O</h3></div>
                   <p className="ide-copy ide-copy--flush">Select Edit to keep one signal in the assignment editor.</p>
                 </header>
+                <HardwareBusPlanner rows={mappingRows} onSetMappingPin={onSetMappingPin} />
                 {mapModeGroups.length === 0 ? (
                   <IdeCallout tone="info" title="Nothing to map yet" testId="ide-hw-map-empty">
                     Add inputs and outputs in Design, then return here to assign board resources.
