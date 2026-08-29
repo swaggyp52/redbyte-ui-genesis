@@ -690,7 +690,13 @@
   margin: 0;
   color: var(--rb-text-primary);
   font-size: 15px;
-  font-family: var(--rb-font-mono, ui-monospace, monospace);
+}
+
+.ide-root .ide-hw-bus-planner input[type='number'] {
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-surface-1);
+  color: var(--rb-text-primary);
 }
 
 .ide-root .ide-hw-bus-planner__group-pick,
