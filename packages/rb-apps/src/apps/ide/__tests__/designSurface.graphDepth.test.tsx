@@ -12,6 +12,11 @@ import type { RuntimeSimState } from '../projectRuntime';
 import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
+import {
+  PROJECT_HIERARCHY_SCHEMA_VERSION,
+  TOP_MODULE_ID,
+  type ProjectHierarchyDocument,
+} from '../projectHierarchy';
 
 const BASE_CIRCUIT: Circuit = {
   nodes: [
@@ -58,7 +63,7 @@ function installResizeObserver(width = 1320, height = 720) {
   vi.stubGlobal('ResizeObserver', ImmediateResizeObserver);
 }
 
-function renderSurface() {
+function renderSurface(extraProps: Partial<React.ComponentProps<typeof DesignSurface>> = {}) {
   return render(
     <DesignSurface
       runtimeSim={makeRuntimeSim()}
@@ -71,8 +76,29 @@ function renderSurface() {
       onRuntimeSimToggleProbe={vi.fn()}
       onGoToProject={vi.fn()}
       onGoToVerify={vi.fn()}
+      {...extraProps}
     />
   );
+}
+
+function makeHierarchy(activeModuleId: string): ProjectHierarchyDocument {
+  return {
+    schemaVersion: PROJECT_HIERARCHY_SCHEMA_VERSION,
+    topModuleId: TOP_MODULE_ID,
+    activeModuleId,
+    modules: [
+      {
+        id: 'm1',
+        name: 'adder_core',
+        displayName: 'Adder Core',
+        kind: 'native-visual',
+        ports: [],
+        circuit: { nodes: [], connections: [] },
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ],
+  };
 }
 
 beforeEach(() => {
@@ -155,6 +181,36 @@ describe('DesignSurface — connected neighborhood chips', () => {
       expect(view.getByTestId('ide-design-selection-inspector')).toBeTruthy();
     });
     expect(view.queryByTestId('ide-design-neighborhood-group')).toBeNull();
+  });
+});
+
+describe('DesignSurface — single hierarchy navigator', () => {
+  it('renders exactly one module breadcrumb, in the command context row', async () => {
+    const view = renderSurface();
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-command-breadcrumb')).toBeTruthy();
+    });
+    expect(view.queryByTestId('ide-design-module-breadcrumb')).toBeNull();
+    expect(
+      document.querySelectorAll(
+        '[aria-label="Design module breadcrumb"], [aria-label="Design hierarchy"]'
+      ).length
+    ).toBe(1);
+    expect(view.getByTestId('ide-design-breadcrumb-top').getAttribute('aria-current')).toBe('location');
+  });
+
+  it('marks the active module scope and routes navigation through onOpenModule', async () => {
+    const onOpenModule = vi.fn();
+    const view = renderSurface({ hierarchy: makeHierarchy('m1'), onOpenModule });
+    await waitFor(() => {
+      expect(view.getByTestId('ide-design-breadcrumb-module')).toBeTruthy();
+    });
+    const moduleCrumb = view.getByTestId('ide-design-breadcrumb-module');
+    expect(moduleCrumb.textContent).toBe('Adder Core');
+    expect(moduleCrumb.getAttribute('aria-current')).toBe('location');
+    expect(view.getByTestId('ide-design-breadcrumb-top').getAttribute('aria-current')).toBeNull();
+    fireEvent.click(view.getByTestId('ide-design-breadcrumb-top'));
+    expect(onOpenModule).toHaveBeenCalledWith(TOP_MODULE_ID);
   });
 });
 

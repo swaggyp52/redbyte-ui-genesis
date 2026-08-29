@@ -6540,19 +6540,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : (
                 <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
-                  <nav className="ide-design-module-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
-                    <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
-                      {topEntityName || 'top'}
-                    </button>
-                    {activeNativeModule ? (
-                      <>
-                        <span aria-hidden="true">/</span>
-                        <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
-                          {activeNativeModule.displayName}
-                        </button>
-                      </>
-                    ) : null}
-                  </nav>
                   <div className="ide-design-workspace-heading-main">
                     <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
                       {activeNativeModule ? `Editing ${activeNativeModule.displayName}` : isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
@@ -6696,9 +6683,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
             <div className="ide-design-command-context-row" data-testid="ide-design-command-context-row">
               <div className="ide-design-command-context" aria-label="Current design module and mode">
-                <nav className="ide-design-command-breadcrumb" aria-label="Design module breadcrumb">
-                  <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
-                  {activeNativeModule ? <><span aria-hidden="true">/</span><button type="button" onClick={() => onOpenModule?.(activeNativeModule.id)}>{activeNativeModule.displayName}</button></> : null}
+                <nav
+                  className="ide-design-command-breadcrumb"
+                  aria-label="Design module breadcrumb"
+                  data-testid="ide-design-command-breadcrumb"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpenModule?.(TOP_MODULE_ID)}
+                    className={isEditingTopModule ? 'is-current' : ''}
+                    aria-current={isEditingTopModule ? 'location' : undefined}
+                    title={isEditingTopModule ? 'Top module (current scope)' : 'Return to the top module'}
+                    data-testid="ide-design-breadcrumb-top"
+                  >
+                    {topEntityName || 'top'}
+                  </button>
+                  {activeNativeModule ? (
+                    <>
+                      <span aria-hidden="true">/</span>
+                      <button
+                        type="button"
+                        className="is-current"
+                        aria-current="location"
+                        onClick={() => onOpenModule?.(activeNativeModule.id)}
+                        title={`Editing ${activeNativeModule.displayName} · board assignments stay with the top module`}
+                        data-testid="ide-design-breadcrumb-module"
+                      >
+                        {activeNativeModule.displayName}
+                      </button>
+                    </>
+                  ) : null}
                 </nav>
                 {toolMode === 'wire' && !isPlacementMode ? (
                   <div className="ide-design-wire-inline" data-testid="ide-design-wire-inline" data-wire-active={wireStartPort ? '1' : '0'}>
