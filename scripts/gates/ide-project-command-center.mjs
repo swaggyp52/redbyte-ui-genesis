@@ -155,7 +155,7 @@ await runIdeGate('IDE project command center contract satisfied', async ({ page,
   await page.waitForSelector('[data-testid="ide-mode-verify"]', { timeout: 15000 });
   await page.locator('[data-testid="mode-button-project"]').click();
   await page.waitForSelector('[data-testid="ide-mode-project"]', { timeout: 15000 });
-  await page.locator('[data-testid="ide-project-change-project"]').first().click();
+  await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
   assert(await visible(page.locator('[data-testid="ide-project-entry-paths"]').first()), 'Change Project must reveal peer entry paths');
 
   const requiredPaths = [

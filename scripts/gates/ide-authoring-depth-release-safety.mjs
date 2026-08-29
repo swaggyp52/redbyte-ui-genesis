@@ -190,7 +190,7 @@ async function assertPartialBlankAuthoring(page, viewport, options = {}) {
 
 async function assertProjectContinuity(page, viewport) {
   await assertSurfaceSafe(page, `${viewport.label}/Project after blank authoring`);
-  const changeProject = page.locator('[data-testid="ide-project-change-project"]').first();
+  const changeProject = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await changeProject.isVisible().catch(() => false), `${viewport.label}: Project must expose Change Project`);
   await changeProject.click();
   await page.locator('[data-testid="ide-project-entry-paths"]').first().waitFor({ state: 'visible', timeout: 10000 });

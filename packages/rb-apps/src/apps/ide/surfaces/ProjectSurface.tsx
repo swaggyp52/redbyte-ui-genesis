@@ -31,6 +31,15 @@ import {
   deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
 } from '../simulationEvidence';
+import type { VerifyScenario } from '../verifyScenario';
+import {
+  ProjectSimulationSetsDocument,
+  type SimulationSetLastRun,
+} from './ProjectSimulationSetsDocument';
+import {
+  ProjectConstraintSetsDocument,
+  type ProjectConstraintXdcArtifact,
+} from './ProjectConstraintSetsDocument';
 import './ProjectSurface.v3.css';
 
 export const CHROME_CONTRACT = {
@@ -90,6 +99,17 @@ export interface ProjectSurfaceProps {
   activeScenarioName?: string | null;
   activeScenarioEventCount?: number;
   activeScenarioCheckCount?: number;
+  /** Set-documents block: all optional; when simulationSets is absent nothing new renders. */
+  simulationSets?: readonly VerifyScenario[];
+  activeSimulationSetId?: string | null;
+  simulationSetLastRun?: SimulationSetLastRun | null;
+  simulationRunHistoryCount?: number;
+  onCreateSimulationSet?: () => void;
+  onDuplicateSimulationSet?: () => void; // active set only (projectRuntime limitation)
+  onRenameSimulationSet?: (name: string) => void; // active set only
+  onDeleteSimulationSet?: (scenarioId: string) => void;
+  onSwitchSimulationSet?: (scenarioId: string) => void;
+  constraintXdcArtifact?: ProjectConstraintXdcArtifact | null;
   activeExampleId: string | null;
   onOpenExample: (exampleId: string) => void;
   primaryCtaLabel: string;
@@ -156,6 +176,16 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   activeScenarioName = null,
   activeScenarioEventCount = 0,
   activeScenarioCheckCount = 0,
+  simulationSets,
+  activeSimulationSetId = null,
+  simulationSetLastRun = null,
+  simulationRunHistoryCount,
+  onCreateSimulationSet,
+  onDuplicateSimulationSet,
+  onRenameSimulationSet,
+  onDeleteSimulationSet,
+  onSwitchSimulationSet,
+  constraintXdcArtifact = null,
   activeExampleId,
   onOpenExample,
   primaryCtaLabel,
@@ -562,6 +592,17 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               hasVectors={readiness.hasVectors}
               onFocusMacro={onFocusMacro}
               onFocusCustomComponent={onFocusCustomComponent}
+              simulationSets={simulationSets}
+              activeSimulationSetId={activeSimulationSetId}
+              simulationSetLastRun={simulationSetLastRun}
+              simulationRunHistoryCount={simulationRunHistoryCount}
+              onCreateSimulationSet={onCreateSimulationSet}
+              onDuplicateSimulationSet={onDuplicateSimulationSet}
+              onRenameSimulationSet={onRenameSimulationSet}
+              onDeleteSimulationSet={onDeleteSimulationSet}
+              onSwitchSimulationSet={onSwitchSimulationSet}
+              mappingRows={mappingRows}
+              constraintXdcArtifact={constraintXdcArtifact}
             />
           ) : (
             <ProjectLanding
@@ -703,6 +744,18 @@ interface LoadedProjectOverviewProps {
   hasVectors: boolean;
   onFocusMacro?: (macroId: string, macroName: string) => void;
   onFocusCustomComponent?: (componentName: string) => void;
+  /** Set-documents block (threaded from ProjectSurfaceProps; absent = render nothing new). */
+  simulationSets?: readonly VerifyScenario[];
+  activeSimulationSetId?: string | null;
+  simulationSetLastRun?: SimulationSetLastRun | null;
+  simulationRunHistoryCount?: number;
+  onCreateSimulationSet?: () => void;
+  onDuplicateSimulationSet?: () => void;
+  onRenameSimulationSet?: (name: string) => void;
+  onDeleteSimulationSet?: (scenarioId: string) => void;
+  onSwitchSimulationSet?: (scenarioId: string) => void;
+  mappingRows: ProjectMappingRow[];
+  constraintXdcArtifact?: ProjectConstraintXdcArtifact | null;
 }
 
 const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
@@ -783,6 +836,17 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   hasVectors,
   onFocusMacro,
   onFocusCustomComponent,
+  simulationSets,
+  activeSimulationSetId = null,
+  simulationSetLastRun = null,
+  simulationRunHistoryCount,
+  onCreateSimulationSet,
+  onDuplicateSimulationSet,
+  onRenameSimulationSet,
+  onDeleteSimulationSet,
+  onSwitchSimulationSet,
+  mappingRows,
+  constraintXdcArtifact = null,
 }) => {
   const saveLabel = saveState === 'unsaved'
     ? 'Unsaved changes'
@@ -1034,7 +1098,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             ) : null}
           </aside>
 
-          <main className="ide-project-design-overview" data-testid="ide-project-design-overview">
+          <section className="ide-project-design-overview" data-testid="ide-project-design-overview" aria-label="Design overview">
             <header>
               <div><span>DESIGN OVERVIEW</span><h3>{resolvedTopModule}</h3></div>
               <IdeButton tone="secondary" onClick={onOpenDesign} testId="ide-project-overview-open-design-primary">Open in Design</IdeButton>
@@ -1047,7 +1111,33 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <div><span>Components</span><strong>{designNodeCount}</strong><small>{designConnectionCount} wires</small></div>
               <div><span>Modules</span><strong>{(hierarchy?.modules.length ?? 0) + 1}</strong><small>{[resolvedTopModule, ...(hierarchy?.modules ?? []).map((module) => module.displayName)].join(', ')}</small></div>
             </div>
-          </main>
+          </section>
+
+          {simulationSets ? (
+            <>
+              <ProjectSimulationSetsDocument
+                scenarios={simulationSets}
+                activeScenarioId={activeSimulationSetId}
+                dutName={resolvedTopModule}
+                lastRun={simulationSetLastRun}
+                dirtySinceVerify={health.dirtySinceVerify}
+                runHistoryCount={simulationRunHistoryCount}
+                onOpenBench={onOpenVerify}
+                onSetActive={onSwitchSimulationSet}
+                onCreate={onCreateSimulationSet}
+                onDuplicate={onDuplicateSimulationSet}
+                onRename={onRenameSimulationSet}
+                onDelete={onDeleteSimulationSet}
+              />
+              <ProjectConstraintSetsDocument
+                board={fpgaConfig?.board}
+                rows={mappingRows}
+                xdcArtifact={constraintXdcArtifact}
+                onOpenBoard={onOpenHardware}
+                onOpenXdc={onOpenExport}
+              />
+            </>
+          ) : null}
 
         <div className="ide-project-v3-stage-table" data-testid="ide-project-workspace-grid">
           <div className="ide-project-context-panel">

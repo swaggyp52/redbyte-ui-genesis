@@ -1,0 +1,85 @@
+{
+  "generated": "shrink-only grandfathered baseline; see scripts/style-fitness.mjs",
+  "files": {
+    "apps/playground/src/index.css": {
+      "rawColors": 0,
+      "important": 6
+    },
+    "packages/rb-apps/src/apps/ide/components/Basys3BoardView.module.css": {
+      "rawColors": 3,
+      "important": 0
+    },
+    "packages/rb-apps/src/apps/ide/components/HardwareBoard2D.module.css": {
+      "rawColors": 6,
+      "important": 5
+    },
+    "packages/rb-apps/src/apps/ide/components/StudioControlStateMatrix.css": {
+      "rawColors": 1,
+      "important": 0
+    },
+    "packages/rb-apps/src/apps/ide/ide-polish-pass.css": {
+      "rawColors": 598,
+      "important": 800
+    },
+    "packages/rb-apps/src/apps/ide/ide-root.css": {
+      "rawColors": 4086,
+      "important": 3753
+    },
+    "packages/rb-apps/src/apps/ide/product-system-v3.css": {
+      "rawColors": 144,
+      "important": 25
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/ProjectSurface.v3.css": {
+      "rawColors": 91,
+      "important": 0
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/design-workbench-v3.css": {
+      "rawColors": 103,
+      "important": 178
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/export-handoff-workspace-v3.css": {
+      "rawColors": 75,
+      "important": 9
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/hardware-mapping-workspace-v3.css": {
+      "rawColors": 45,
+      "important": 4
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/import-recovery-workspace-v3.css": {
+      "rawColors": 55,
+      "important": 4
+    },
+    "packages/rb-apps/src/apps/ide/surfaces/verify/simulation-studio-v3.css": {
+      "rawColors": 171,
+      "important": 383
+    },
+    "packages/rb-apps/src/apps/ide/theme/redbyte-primitives.css": {
+      "rawColors": 18,
+      "important": 0
+    },
+    "packages/rb-apps/src/apps/ide/theme/redbyte-theme.css": {
+      "rawColors": 32,
+      "important": 0
+    },
+    "packages/rb-apps/src/apps/ide/unified-workbench-v3.css": {
+      "rawColors": 4,
+      "important": 9
+    },
+    "packages/rb-apps/src/components/ErrorBoundary.module.css": {
+      "rawColors": 20,
+      "important": 0
+    },
+    "packages/rb-apps/src/styles/os-controls.css": {
+      "rawColors": 1,
+      "important": 0
+    },
+    "packages/rb-apps/src/styles/os-tokens.css": {
+      "rawColors": 125,
+      "important": 0
+    },
+    "packages/rb-apps/src/ui/theme.css": {
+      "rawColors": 16,
+      "important": 0
+    }
+  }
+}

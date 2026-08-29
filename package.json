@@ -173,7 +173,7 @@
         "ui:progress-contract-gate": "pnpm exec vitest run packages/rb-utils/src/__tests__/progress-contract-gate.test.ts",
         "ui:help-topics-contract-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/ui-help-topics-contract-gate.test.ts",
         "ui:help-entrypoints-gate": "pnpm exec vitest run packages/rb-apps/src/__tests__/ui-help-entrypoints-gate.test.ts",
-        "ui:style-token-contract-gate": "echo 'rb-shell deleted - gate removed'",
+        "ui:style-token-contract-gate": "node scripts/style-fitness.mjs check",
         "ui:a11y-gate": "echo 'rb-shell deleted - gate removed'",
         "ui:quality-gate": "echo 'rb-shell deleted - gate removed'",
         "ui:screenshots": "pnpm e2e:build && pnpm exec playwright test tests/e2e/ui-screenshots.spec.ts --project chromium",
@@ -323,7 +323,8 @@
         "ide:gate:blank-canvas-product-proof": "node ./scripts/gates/ide-blank-canvas-product-proof.mjs",
         "ide:gate:from-scratch-general-workflow": "node ./scripts/gates/ide-from-scratch-general-workflow.mjs",
         "ide:gate:viewport-overflow-contract": "node ./scripts/gates/ide-viewport-overflow-contract.mjs",
-        "ide:gate:shell-layout-integrity": "node ./scripts/gates/ide-shell-layout-integrity.mjs",
+        "ide:gate:single-main-landmark": "node ./scripts/gates/ide-single-main-landmark.mjs",
+    "ide:gate:shell-layout-integrity": "node ./scripts/gates/ide-shell-layout-integrity.mjs",
         "ide:gate:shell-workbench-hierarchy": "node ./scripts/gates/ide-shell-workbench-hierarchy.mjs",
         "ide:gate:shell-navigation-overhaul": "node ./scripts/gates/ide-shell-navigation-overhaul.mjs",
         "ide:gate:primary-work-object-dominance": "node ./scripts/gates/ide-primary-work-object-dominance.mjs",
@@ -403,6 +404,7 @@
         "vite-plugin-dts": "^4.5.4",
         "vite-tsconfig-paths": "5.1.4",
         "vitest": "2.1.8",
+        "wrangler": "^4.127.1",
         "ws": "^8.19.0"
     },
     "dependencies": {

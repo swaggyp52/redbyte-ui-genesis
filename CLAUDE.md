@@ -1,8 +1,8 @@
 # RedByte - Agent Operating Manual
 
-RedByte is an FPGA educational IDE. Project is the dashboard/home surface; students then design circuits, verify behavior against test vectors, bind ports to Basys3 resources in Map Pins / Hardware, and export Vivado-ready packages. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado target: 2024.2.
+RedByte is an FPGA educational IDE. Project is the operating-center workspace; students then design circuits, simulate and observe behavior (checks are optional and explicit), bind ports to Basys3 resources in Board & Constraints, and build Vivado-ready packages in Build & Export. Primary package: `packages/rb-apps`. Target hardware: Basys3 (`xc7a35tcpg236-1`). Vivado target: 2024.2.
 
-The canonical product hierarchy is: Project -> Design -> Verify -> Map Pins / Hardware -> Export. Import is a utility action. Board programming is an external handoff after Export.
+The canonical product hierarchy is: Project -> Design -> Simulate -> Board & Constraints -> Build & Export. Internal route ids remain project/design/verify/hardware/export. Import is a utility action. Board programming is an external handoff after Build & Export.
 
 ---
 

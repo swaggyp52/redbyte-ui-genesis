@@ -10,6 +10,7 @@ import { useCircuitStore } from '../../../stores/circuitStore';
 import { useLayoutStore } from '../../../stores/layoutStore';
 import { useLogicViewStore } from '@redbyte/rb-logic-view';
 import { COMPONENT_DEFINITION_REGISTRY } from '../componentDefinitions';
+import { describeComponentPortSignature } from '../surfaces/DesignComponentLibrary';
 import { createClockTimingGuidance } from '../timingGuidance';
 
 const BASE_CIRCUIT: Circuit = {
@@ -241,9 +242,12 @@ describe('DesignSurface palette dock redesign', () => {
     expect(xnorDefinition).toBeDefined();
 
     const xnorCard = view.getByTestId('ide-design-palette-xnor');
+    // Tooltip projects the canonical port signature alongside name + copy.
+    const xnorSignature = describeComponentPortSignature('XNOR');
+    expect(xnorSignature).toBeTruthy();
     expect(xnorCard).toHaveAttribute(
       'title',
-      `${xnorDefinition?.displayName} - ${xnorDefinition?.description}`
+      `${xnorDefinition?.displayName} (${xnorSignature}) - ${xnorDefinition?.description}`
     );
     expect(xnorCard.textContent).toContain(xnorDefinition?.displayName);
     expect(xnorCard.textContent).toContain(xnorDefinition?.description);

@@ -140,7 +140,7 @@ async function readMetrics(page) {
         root instanceof HTMLElement ? root.scrollWidth - root.clientWidth : document.documentElement.scrollWidth - window.innerWidth
       ),
       commandBox: box('[data-testid="ide-project-command-center"]'),
-      changeProjectBox: box('[data-testid="ide-project-change-project"]'),
+      changeProjectBox: box('[data-testid="ide-project-context-change"]') ?? box('[data-testid="ide-project-change-project"]'),
       primaryBox: box('[data-testid="ide-project-command-strip-primary-cta"]'),
       primaryText:
         document
@@ -165,7 +165,7 @@ async function readMetrics(page) {
 async function revealChangePaths(page) {
   const entryPaths = page.locator('[data-testid="ide-project-entry-paths"]').first();
   if (await entryPaths.isVisible().catch(() => false)) return;
-  const trigger = page.locator('[data-testid="ide-project-change-project"]').first();
+  const trigger = page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first();
   assert(await visible(trigger), 'Loaded Project must expose Change Project');
   await trigger.click();
   await entryPaths.waitFor({ state: 'visible', timeout: 10000 });

@@ -1,6 +1,6 @@
 ---
 doc_status: current
-last_validated: 2026-07-27
+last_validated: 2026-08-28
 owner: Connor Angiel
 used_by_claude: true
 role: student first-lab quickstart
@@ -10,7 +10,7 @@ role: student first-lab quickstart
 
 Use this when your instructor assigns a RedByte lab.
 
-RedByte is a browser IDE for supported Basys3 digital-logic projects. It helps you build a circuit, verify behavior, map signals to Basys3 resources, and export a Vivado-ready package. It does not replace Vivado. Vivado still builds the bitstream, programs the board, and produces hardware logs when your lab requires them.
+RedByte is a browser IDE for supported Basys3 digital-logic projects. It helps you build a circuit, simulate its behavior, map signals to Basys3 resources, and export a Vivado-ready package. It does not replace Vivado. Vivado still builds the bitstream, programs the board, and produces hardware logs when your lab requires them.
 
 This guide describes the **Stable Preview - Browser-E0** workflow. Browser-E0
 means the browser workflow and generated package were exercised; it does not
@@ -46,7 +46,7 @@ Vivado and a Basys3 board are not required to open RedByte or complete browser-l
 Use the surfaces in this order unless your instructor says otherwise:
 
 ```text
-Project -> Design -> Verify -> Map Pins -> Export
+Project -> Design -> Simulate -> Board & Constraints -> Build & Export
 
 Vivado and board observation are downstream proof activities, not additional RedByte stages.
 ```
@@ -63,12 +63,12 @@ RedByte owns Project through Export. Vivado build, board programming, and board 
 
 - Build or inspect the actual circuit graph on the canvas.
 - Use **Edit** to change the circuit, **Live** to explore propagation, and
-  **Replay** to inspect a recorded Verify run without changing the design.
+  **Replay** to inspect a recorded Simulate run without changing the design.
 - Use Board, IO, Logic, Sequential, and Reusable palette sections as your assignment allows.
 - Fix visible design issues before moving on.
 - If you loaded a scaffold, it is starter material, not proof that your assignment is solved.
 
-### Verify
+### Simulate
 
 - Choose or author a Scenario, run simulation, and inspect waveform or circuit Replay.
 - Expected-output checks are optional. A zero-check run records observed behavior
@@ -82,7 +82,7 @@ capture, active-high asynchronous reset, and supported enable semantics.
 RegisterBus, StateBank, falling-edge capture, multi-clock designs, and
 unsupported register modes are blocked.
 
-### Map Pins
+### Board & Constraints
 
 - Map each required project input and output to a Basys3 resource such as `SW0`, `SW1`, `LD0`, a button, or `CLK100MHZ`.
 - Check the visible chain:
@@ -93,9 +93,9 @@ project signal -> Basys3 resource -> package pin -> XDC line
 
 - Browser mapping is E0 evidence. It does not prove the board has been programmed or observed.
 
-### Export
+### Build & Export
 
-- Build or download the Vivado package from Export.
+- Build or download the Vivado package from Build & Export.
 - A Draft export can be useful for debugging, but it is not trusted proof.
 - A trusted E0 export requires current Design, current Compare PASS, current mapping, and the current package to agree.
 - Keep the exported ZIP with your submission. It can include `top.vhd`, `top.xdc`, `testbench.vhd`, `vivado_import.tcl`, README/handoff files, `EXPECTED_IO.json`, and `project.rbproj.json`.
@@ -140,9 +140,9 @@ Do not modify files inside the exported ZIP after download unless your instructo
 |---|---|
 | You have no project yet | Open Project and choose Build Fresh or a course starter. |
 | Design looks wrong after loading | Use Fit or Center in Design, then inspect nodes and wires. |
-| Verify says stale | Rerun Compare after changing the design, testbench, or mapping. |
+| Simulate says stale | Rerun Compare after changing the design, testbench, or mapping. |
 | Compare FAIL | Open the first mismatch and compare expected vs observed values. |
-| Hardware says mapping is incomplete | Map every required input/output row to a Basys3 resource. |
+| Board & Constraints says mapping is incomplete | Map every required input/output row to a Basys3 resource. |
 | Export is Draft or Needs Review | Finish Compare PASS and mapping, then rebuild the package. |
 | Vivado reports port or XDC mismatch | Re-export from RedByte and reopen the fresh package in Vivado. |
 | Import fails | Use a RedByte export ZIP with `project.rbproj.json`, or ask a TA before replacing current work. |

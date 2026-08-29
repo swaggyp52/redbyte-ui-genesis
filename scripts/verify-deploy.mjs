@@ -21,7 +21,23 @@ if (EXPECTED_SHA) console.log(`Expecting commit: ${EXPECTED_SHA}`);
     let hasError = false;
 
     try {
-        // 1. Check build truth
+        // 1. Check build truth. /os/version.json carries the FULL commit SHA and is
+        // the deploy-verification authority; /build.json carries a 7-char short SHA.
+        console.log('Testing /os/version.json...');
+        const versionResponse = await page.request.get(`${TARGET_URL}/os/version.json`);
+        if (!versionResponse.ok()) {
+            console.error('/os/version.json missing.');
+            hasError = true;
+        } else {
+            const versionData = await versionResponse.json();
+            console.log('Version data:', versionData);
+
+            if (EXPECTED_SHA && versionData.sha !== EXPECTED_SHA) {
+                console.error(`Version mismatch. Got ${versionData.sha}, expected ${EXPECTED_SHA}.`);
+                hasError = true;
+            }
+        }
+
         console.log('Testing /build.json...');
         const response = await page.request.get(`${TARGET_URL}/build.json`);
         if (response.status() === 404) {
@@ -31,8 +47,8 @@ if (EXPECTED_SHA) console.log(`Expecting commit: ${EXPECTED_SHA}`);
             const buildData = await response.json();
             console.log('Build data:', buildData);
 
-            if (EXPECTED_SHA && buildData.sha !== EXPECTED_SHA) {
-                console.error(`Version mismatch. Got ${buildData.sha}, expected ${EXPECTED_SHA}.`);
+            if (EXPECTED_SHA && buildData.sha && !EXPECTED_SHA.startsWith(buildData.sha)) {
+                console.error(`Short-SHA mismatch. Got ${buildData.sha}, expected prefix of ${EXPECTED_SHA}.`);
                 hasError = true;
             }
         }
@@ -44,7 +60,7 @@ if (EXPECTED_SHA) console.log(`Expecting commit: ${EXPECTED_SHA}`);
         if (
             publicStartContent.includes('RedByte is a digital logic and FPGA workbench.') &&
             publicStartContent.includes('Project') &&
-            publicStartContent.includes('Verify') &&
+            publicStartContent.includes('Simulate') &&
             publicStartContent.includes('href="/os/"')
         ) {
             console.log('Public start page loaded at root.');

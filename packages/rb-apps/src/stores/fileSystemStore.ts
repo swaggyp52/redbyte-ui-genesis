@@ -128,7 +128,13 @@ function persistState(state: FileSystemState): void {
   };
 
   const json = serializeState(envelope);
-  localStorage.setItem(STORAGE_KEY, json);
+  try {
+    localStorage.setItem(STORAGE_KEY, json);
+  } catch (error) {
+    // Quota exhaustion or blocked site data must not crash the calling
+    // event handler; the in-memory state stays authoritative for the session.
+    console.warn('[fileSystemStore] persist failed; keeping in-memory state only.', error);
+  }
 }
 
 // Lazy-init singleton to prevent TDZ crash from circular imports

@@ -30,7 +30,9 @@ import {
   type DesignFocusContext,
 } from '../components/DesignFocusBanner';
 import { DesignFocusInspector } from '../components/DesignFocusInspector';
-import { buildDesignDebugSignalTrace, getFaninCone, getFanoutCone } from '../pathTrace';
+import { buildDesignDebugSignalTrace } from '../pathTrace';
+import { fanIn, fanOut, neighbors, pathBetween } from '../design/graphTraceQueries';
+import { resolveSemanticZoomTier } from '../design/semanticZoomProjection';
 import { arrangeCircuitByDependency, hasRunnableBoundaryPath } from '../designGraphLayout';
 import { IdeSurfaceLayout } from '../components/IdeSurfaceLayout';
 import {
@@ -42,6 +44,8 @@ import {
   IdeStatusPill,
 } from '../components/IdePrimitives';
 import { SurfacePanel } from '../components/SurfaceLayoutPrimitives';
+import { DesignComponentLibrary } from './DesignComponentLibrary';
+import { useDesignPlacementController } from './useDesignPlacementController';
 import type { RuntimeSimState, RuntimeSignalProbe, RuntimeVerifyRun } from '../projectRuntime';
 import type { VerifyScenarioStep } from '../verifyScenarioSteps';
 import {
@@ -362,25 +366,6 @@ interface BoardIoPaletteItem {
   direction: 'in' | 'out';
 }
 
-interface PendingPlacementState {
-  kind: 'node' | 'board-io';
-  label: string;
-  nodeType?: string;
-  boardIoEntry?: BoardIoPaletteItem;
-}
-
-interface PlacementGhostState {
-  screenX: number;
-  screenY: number;
-  worldX: number;
-  worldY: number;
-}
-
-interface PaletteSectionDefinition {
-  id: 'logic' | 'sequential' | 'io' | 'reusable' | 'board';
-  title: string;
-  description: string;
-}
 
 interface BoardPaletteGroup {
   id: 'switches' | 'buttons' | 'system' | 'leds' | 'display';
@@ -402,20 +387,6 @@ const DESIGN_TOOLBAR_CUSTOMIZATION_OPTIONS: readonly {
   { id: IDE_COMMAND_IDS.zoomOutDesignCanvas, label: 'Zoom out' },
   { id: IDE_COMMAND_IDS.zoomInDesignCanvas, label: 'Zoom in' },
 ];
-
-const CANVAS_PLACEMENT_BLOCK_SELECTOR =
-  '[data-blocks-canvas-placement="1"], [data-blocks-macro-placement="1"]';
-
-function isCanvasPlacementBlocked(target: HTMLElement | null): boolean {
-  if (!target) return false;
-  return Boolean(
-    target.closest(CANVAS_PLACEMENT_BLOCK_SELECTOR) ||
-      target.closest('[data-node-id]') ||
-      target.closest('[data-port-id]') ||
-      target.closest('[data-wire-id]') ||
-      target.closest('[data-testid^="logic-wire-reconnect"]')
-  );
-}
 
 function definitionToPaletteItem(definition: ComponentDefinition): PaletteItem {
   return {
@@ -447,62 +418,6 @@ const COMPOSITE_PALETTE_ITEMS = BUILTIN_PALETTE_ITEMS.filter(
   (item) => item.section === 'reusable'
 );
 
-const PALETTE_SECTION_ORDER: PaletteSectionDefinition[] = [
-  {
-    id: 'board',
-    title: 'Board Resources',
-    description:
-      'Basys3 physical pins — place these to name your I/O signals directly from the board. Placing SW3 creates an input pin pre-configured as SW3; placing LD0 creates an output pin pre-configured as LD0. You will still assign board mappings in Board & Constraints.',
-  },
-  {
-    id: 'io',
-    title: 'Inputs & Outputs',
-    description:
-      'Generic pins for abstract or board-agnostic designs. Name them anything you like. Use Board Resources (above) to start from specific Basys3 hardware signals instead.',
-  },
-  {
-    id: 'logic',
-    title: 'Logic Gates',
-    description: 'Core combinational building blocks for the main circuit path.',
-  },
-  {
-    id: 'sequential',
-    title: 'Sequential & Timing',
-    description:
-      'Native registers and state banks first, then timing sources — legacy DFF/TFF sit in clearly marked tiers.',
-  },
-  {
-    id: 'reusable',
-    title: 'Reusable Blocks',
-    description: 'Built-in helpers, saved macros, and custom parts you can place quickly.',
-  },
-];
-
-const SEQUENTIAL_PALETTE_SUBSECTIONS: readonly {
-  key: 'sequentialRegisters' | 'sequentialTiming' | 'sequentialLegacy';
-  title: string;
-  description: string;
-  testId: string;
-}[] = [
-  {
-    key: 'sequentialRegisters',
-    title: 'Registers & state banks',
-    description: 'Native path: width, clock enable, reset behavior, and edge polarity are explicit.',
-    testId: 'ide-design-palette-sequential-registers',
-  },
-  {
-    key: 'sequentialTiming',
-    title: 'Timing',
-    description: 'Clock sources that drive sequential updates (map to board timing in Board & Constraints).',
-    testId: 'ide-design-palette-sequential-timing',
-  },
-  {
-    key: 'sequentialLegacy',
-    title: 'Legacy primitives',
-    description: 'Classic DFF for imports and tutorials — new work should start with Native registers.',
-    testId: 'ide-design-palette-sequential-legacy',
-  },
-];
 
 const BASYS3_DESIGN_BOARD_ITEMS = listBasys3DesignBoardResourceInventory({
   // RST is a logical authoring helper, not a Basys3 board resource. Keep it
@@ -636,7 +551,7 @@ interface DesignDebugToggleSample {
 }
 
 interface DesignTraceState {
-  kind: 'wire-net' | 'fanin-port' | 'fanout-port';
+  kind: 'wire-net' | 'fanin-port' | 'fanout-port' | 'path-between';
   sourceKey: string;
   label: string;
   signalKey: string | null;
@@ -1088,8 +1003,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const [pasteStep, setPasteStep] = useState(0);
   const [macroDialogState, setMacroDialogState] = useState<DesignMacroDialogState | null>(null);
   const [activeMacroInsertionId, setActiveMacroInsertionId] = useState<string | null>(null);
-  const [pendingPlacement, setPendingPlacement] = useState<PendingPlacementState | null>(null);
-  const [placementGhost, setPlacementGhost] = useState<PlacementGhostState | null>(null);
 
   // A-2: Inline node label editor state
   const [editingLabelNodeId, setEditingLabelNodeId] = useState<string | null>(null);
@@ -1283,7 +1196,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       lastTracedPortRef.current = portKey;
       autoWireSelectionTraceIdRef.current = null;
-      const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+      const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
       const highlights = new Map<string, string[]>();
       wireIds.forEach((wid) => highlights.set(wid, ['#fbbf24']));
       const portKeys = buildTracePortKeySet(wireIds);
@@ -1313,7 +1226,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       lastTracedPortRef.current = fanoutKey;
       autoWireSelectionTraceIdRef.current = null;
-      const { wireIds, nodeIds } = getFanoutCone(editorCircuit, nodeId);
+      const { wireIds, nodeIds } = fanOut(editorCircuit, nodeId);
       const highlights = new Map<string, string[]>();
       wireIds.forEach((wid) => highlights.set(wid, ['#34d399']));
       const portKeys = buildTracePortKeySet(wireIds);
@@ -1442,11 +1355,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     () => macros.find((entry) => entry.id === activeMacroInsertionId) ?? null,
     [activeMacroInsertionId, macros]
   );
-  const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
   const starterNextAction =
     starterContext?.nextAction?.trim() ||
     'Inspect the scaffold on the canvas, then continue editing or move to Simulate.';
-  const isPlacementMode = placementModeLabel != null;
   // NOTE: commitRuntimeMutation was removed. onRuntime* callbacks (addDesignNode,
   // addDesignIo, addDesignBoardIo, connectDesignNodes) mutate projectRuntime directly.
   // Calling emitCircuitMutation after them races against useLayoutEffect in IdeApp
@@ -2003,18 +1914,61 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       boardIoRowByAlias.has(`${entry.direction}:${normalizeAlias(entry.alias)}`),
     [boardIoRowByAlias]
   );
-  const resolveCanvasPlacementPosition = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!canvasHostRef.current) return null;
-      const rect = canvasHostRef.current.getBoundingClientRect();
-      const worldPoint = {
-        x: (clientX - rect.left - camera.x) / camera.zoom,
-        y: (clientY - rect.top - camera.y) / camera.zoom,
-      };
-      return findSmartSpawnPosition(editorCircuit.nodes as Node[], worldPoint);
-    },
-    [camera.x, camera.y, camera.zoom, editorCircuit.nodes]
+  // placeMacroAtClientPoint is declared after the macro handlers below; the
+  // placement controller only needs it at click time, so delegate through a ref.
+  const macroCanvasClickRef = useRef<(clientX: number, clientY: number) => void>(() => {});
+  const delegateMacroCanvasClick = useCallback((clientX: number, clientY: number) => {
+    macroCanvasClickRef.current(clientX, clientY);
+  }, []);
+  const clearMacroArm = useCallback(() => setActiveMacroInsertionId(null), []);
+  const setSelectToolMode = useCallback(() => setToolMode('select'), [setToolMode]);
+  const clearWireFeedback = useCallback(() => setWireFeedback(null), []);
+  const findExistingBoardNode = useCallback(
+    (entry: BoardIoPaletteItem) =>
+      boardIoRowByAlias.get(`${entry.direction}:${normalizeAlias(entry.alias)}`),
+    [boardIoRowByAlias]
   );
+
+  const {
+    pendingPlacement,
+    placementGhost,
+    beginNodePlacement,
+    beginBoardIoPlacement,
+    cancelPendingPlacement,
+    handleCanvasPlacementClick,
+    handleCanvasPlacementPointerMove,
+    clearPending: clearPendingPlacementSilently,
+    clearGhost: clearPlacementGhost,
+  } = useDesignPlacementController({
+    canvasHostRef,
+    camera,
+    canvasSize,
+    circuit: editorCircuit,
+    interactionMode,
+    setInteractionMode,
+    isMacroArmActive: Boolean(activeInsertionMacro),
+    clearMacroArm,
+    onMacroCanvasClick: delegateMacroCanvasClick,
+    isWireStartActive: Boolean(wireStartPort),
+    endWire,
+    toolMode,
+    setSelectToolMode,
+    clearWireFeedback,
+    findExistingBoardNode,
+    selectNodes: selectMultipleNodes,
+    notify: setActionToast,
+    nodeTypeLabel,
+    predictNextNodeIds,
+    onRuntimeAddNode,
+    onRuntimeAddBoardIo,
+    onRuntimeAddIo,
+    fallbackAddNode: addNode,
+    emitCircuitMutation,
+    markReplayStale,
+  });
+
+  const placementModeLabel = activeInsertionMacro?.name ?? pendingPlacement?.label ?? null;
+  const isPlacementMode = placementModeLabel != null;
 
   const spawnAtCanvasCenter = useCallback(
     (nodeType: string, extraOffset: { x: number; y: number } = { x: 0, y: 0 }) => {
@@ -2052,60 +2006,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       emitCircuitMutation,
       markReplayStale,
       onRuntimeAddNode,
-    ]
-  );
-
-  const beginPalettePlacement = useCallback(
-    (placement: PendingPlacementState) => {
-      if (wireStartPort) {
-        endWire();
-      } else if (toolMode !== 'select') {
-        setToolMode('select');
-      }
-      if (activeInsertionMacro) {
-        setActiveMacroInsertionId(null);
-      }
-      setWireFeedback(null);
-      setPendingPlacement(placement);
-      setInteractionMode('placing');
-    },
-    [activeInsertionMacro, endWire, setInteractionMode, setToolMode, toolMode, wireStartPort]
-  );
-
-  const beginNodePlacement = useCallback(
-    (nodeType: string) => {
-      beginPalettePlacement({
-        kind: 'node',
-        label: nodeTypeLabel(nodeType),
-        nodeType,
-      });
-    },
-    [beginPalettePlacement]
-  );
-
-  const beginBoardIoPlacement = useCallback(
-    (entry: BoardIoPaletteItem) => {
-      const aliasKey = `${entry.direction}:${normalizeAlias(entry.alias)}`;
-      const existing = boardIoRowByAlias.get(aliasKey);
-      if (existing) {
-        if (existing.nodeId) {
-          setToolMode('select');
-          selectMultipleNodes([existing.nodeId], false);
-        }
-        setActionToast(`${entry.alias} already exists on canvas.`);
-        return;
-      }
-      beginPalettePlacement({
-        kind: 'board-io',
-        label: entry.alias,
-        boardIoEntry: entry,
-      });
-    },
-    [
-      beginPalettePlacement,
-      boardIoRowByAlias,
-      selectMultipleNodes,
-      setToolMode,
     ]
   );
 
@@ -2167,28 +2067,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     setActionToast('Added AND gate. Switch to Wire, then connect the ports.');
   }, [spawnAtCanvasCenter]);
 
-  const cancelPendingPlacement = useCallback(
-    (reason: 'cancel' | 'escape' | 'tool') => {
-      if (!pendingPlacement) return;
-      setPendingPlacement(null);
-      setPlacementGhost(null);
-      if (interactionMode === 'placing') {
-        setInteractionMode('idle');
-      }
-      if (reason === 'escape') {
-        setActionToast(`Cancelled placing ${pendingPlacement.label} (Esc).`);
-      } else if (reason === 'cancel') {
-        setActionToast(`Cancelled placing ${pendingPlacement.label}.`);
-      }
-    },
-    [interactionMode, pendingPlacement, setInteractionMode]
-  );
-
   const cancelActivePlacement = useCallback(
     (reason: 'cancel' | 'escape' | 'tool') => {
       if (activeInsertionMacro) {
         setActiveMacroInsertionId(null);
-        setPlacementGhost(null);
+        clearPlacementGhost();
         if (interactionMode === 'placing') {
           setInteractionMode('idle');
         }
@@ -2201,104 +2084,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       }
       cancelPendingPlacement(reason);
     },
-    [activeInsertionMacro, cancelPendingPlacement, interactionMode, setInteractionMode]
+    [activeInsertionMacro, cancelPendingPlacement, clearPlacementGhost, interactionMode, setInteractionMode]
   );
-
-  const commitPendingPlacement = useCallback(
-    (clientX: number, clientY: number, options?: { keepPlacing?: boolean }) => {
-      if (!pendingPlacement) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
-      if (!position) return;
-      const keepPlacing = options?.keepPlacing === true;
-
-      const nextNodeId = predictNextNodeIds(editorCircuit, 1)[0] ?? null;
-      if (pendingPlacement.kind === 'node' && pendingPlacement.nodeType) {
-        if (onRuntimeAddNode) {
-          markReplayStale();
-          onRuntimeAddNode(pendingPlacement.nodeType, position);
-        } else {
-          addNode(pendingPlacement.nodeType, position, { skipHistory: true });
-          emitCircuitMutation();
-        }
-        setActionToast(`${pendingPlacement.label} placed.`);
-      } else if (pendingPlacement.kind === 'board-io' && pendingPlacement.boardIoEntry) {
-        const entry = pendingPlacement.boardIoEntry;
-        if (onRuntimeAddBoardIo) {
-          onRuntimeAddBoardIo({
-            alias: entry.alias,
-            direction: entry.direction,
-            kind: entry.kind,
-            position,
-          });
-        } else if (onRuntimeAddIo) {
-          onRuntimeAddIo(entry.direction === 'in' ? 'input' : 'output', position);
-        } else {
-          addNode(entry.direction === 'in' ? 'INPUT' : 'OUTPUT', position, { skipHistory: true });
-          emitCircuitMutation();
-        }
-        setActionToast(`Added ${entry.alias} to canvas.`);
-      }
-
-      setWireFeedback(null);
-      if (!keepPlacing) {
-        setPendingPlacement(null);
-        setPlacementGhost(null);
-      }
-      if (!keepPlacing && interactionMode === 'placing') {
-        setInteractionMode('idle');
-      }
-      if (nextNodeId) {
-        queueMicrotask(() => {
-          selectMultipleNodes([nextNodeId], false);
-        });
-      }
-    },
-    [
-      addNode,
-      editorCircuit,
-      emitCircuitMutation,
-      interactionMode,
-      markReplayStale,
-      onRuntimeAddBoardIo,
-      onRuntimeAddIo,
-      onRuntimeAddNode,
-      pendingPlacement,
-      resolveCanvasPlacementPosition,
-      selectMultipleNodes,
-      setInteractionMode,
-    ]
-  );
-
-  const updatePlacementGhost = useCallback(
-    (clientX: number, clientY: number) => {
-      if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) return;
-      const position = resolveCanvasPlacementPosition(clientX, clientY);
-      if (!position) return;
-      setPlacementGhost({
-        screenX: position.x * camera.zoom + camera.x,
-        screenY: position.y * camera.zoom + camera.y,
-        worldX: position.x,
-        worldY: position.y,
-      });
-    },
-    [
-      activeInsertionMacro,
-      camera.x,
-      camera.y,
-      camera.zoom,
-      pendingPlacement,
-      resolveCanvasPlacementPosition,
-    ]
-  );
-
-  useEffect(() => {
-    if (!pendingPlacement || activeInsertionMacro || !canvasHostRef.current) {
-      setPlacementGhost(null);
-      return;
-    }
-    const rect = canvasHostRef.current.getBoundingClientRect();
-    updatePlacementGhost(rect.left + rect.width / 2, rect.top + rect.height / 2);
-  }, [activeInsertionMacro, canvasSize.height, canvasSize.width, pendingPlacement, updatePlacementGhost]);
 
   const setSelectMode = useCallback(() => {
     cancelActivePlacement('tool');
@@ -2943,12 +2730,12 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       } else if (toolMode !== 'select') {
         setToolMode('select');
       }
-      setPendingPlacement(null);
+      clearPendingPlacementSilently();
       setWireFeedback(null);
       setActiveMacroInsertionId(macroId);
       setInteractionMode('placing');
     },
-    [endWire, onInstantiateMacro, setInteractionMode, setToolMode, toolMode, wireStartPort]
+    [clearPendingPlacementSilently, endWire, onInstantiateMacro, setInteractionMode, setToolMode, toolMode, wireStartPort]
   );
 
   const handleDeleteMacro = useCallback(
@@ -3014,6 +2801,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       setInteractionMode,
     ]
   );
+  macroCanvasClickRef.current = placeMacroAtClientPoint;
 
   const handleInsertMacroOnCanvas = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -3034,32 +2822,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
       placeMacroAtClientPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
     },
     [placeMacroAtClientPoint]
-  );
-
-  const handleCanvasPlacementClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      const target = event.target as HTMLElement | null;
-      if (isCanvasPlacementBlocked(target)) return;
-      if (activeInsertionMacro) {
-        event.preventDefault();
-        event.stopPropagation();
-        placeMacroAtClientPoint(event.clientX, event.clientY);
-        return;
-      }
-      if (!pendingPlacement) return;
-      event.preventDefault();
-      event.stopPropagation();
-      commitPendingPlacement(event.clientX, event.clientY, { keepPlacing: event.shiftKey });
-    },
-    [activeInsertionMacro, commitPendingPlacement, pendingPlacement, placeMacroAtClientPoint]
-  );
-
-  const handleCanvasPlacementPointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!pendingPlacement || activeInsertionMacro) return;
-      updatePlacementGhost(event.clientX, event.clientY);
-    },
-    [activeInsertionMacro, pendingPlacement, updatePlacementGhost]
   );
 
   useEffect(() => {
@@ -3234,6 +2996,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   ]);
   const zoomPercent = Math.round(camera.zoom * 100);
   const effectiveInteractionMode = isPlacementMode && interactionMode === 'idle' ? 'placing' : interactionMode;
+  const zoomTier = resolveSemanticZoomTier(camera.zoom);
   const wireSourceLabel = wireStartPort
     ? describePortRefForStudents(editorCircuit, wireStartPort, getChipMetadata)
     : null;
@@ -3625,7 +3388,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal?.(verifyLinkedSignalKey);
     const [nodeId, portName = 'out'] = verifyLinkedSignalKey.split('.');
     if (!nodeId) return;
-    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => highlights.set(wireId, ['#a78bfa']));
     const highlightedNodes = new Set(nodeIds);
@@ -3655,7 +3418,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     onRuntimeSimSetSelectedSignal?.(debugLinkedSignalKey);
     const [nodeId, portName = 'out'] = debugLinkedSignalKey.split('.');
     if (!nodeId) return;
-    const { wireIds, nodeIds } = getFaninCone(editorCircuit, nodeId);
+    const { wireIds, nodeIds } = fanIn(editorCircuit, nodeId);
     const highlights = new Map<string, string[]>();
     wireIds.forEach((wireId) => highlights.set(wireId, ['#fb7185']));
     const highlightedNodes = new Set(nodeIds);
@@ -4427,8 +4190,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const focusSelectedPath = useCallback(() => {
     const nodeId = selectedNode?.id ?? selectedWireContext?.targetNodeId ?? null;
     if (!nodeId) return;
-    const fanin = getFaninCone(editorCircuit, nodeId);
-    const fanout = getFanoutCone(editorCircuit, nodeId);
+    const fanin = fanIn(editorCircuit, nodeId);
+    const fanout = fanOut(editorCircuit, nodeId);
     const nodeIds = new Set([...fanin.nodeIds, ...fanout.nodeIds, nodeId]);
     const wireIds = new Set([...fanin.wireIds, ...fanout.wireIds]);
     if (selectedWireContext) wireIds.add(selectedWireContext.wireId);
@@ -4700,55 +4463,8 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
     runtimeSim.signals,
     runtimeSim.tick,
   ]);
-  const paletteHasQuery = paletteQueryTerms.length > 0;
   const boardResourcesCount = filteredBoardGroups.reduce((count, group) => count + group.entries.length, 0);
-  const hasPaletteResults =
-    filteredPaletteByCategory.logic.length > 0 ||
-    filteredPaletteByCategory.sequential.length > 0 ||
-    filteredPaletteByCategory.io.length > 0 ||
-    filteredPaletteByCategory.components.length > 0 ||
-    filteredCustomComponents.length > 0 ||
-    filteredMacros.length > 0 ||
-    filteredBoardGroups.length > 0;
 
-  const renderNodePaletteCard = (
-    item: Pick<PaletteItem, 'type' | 'title' | 'subtitle' | 'glyph' | 'paletteBadge'>,
-    options?: {
-      badge?: string;
-      className?: string;
-      onClick?: () => void;
-      testId?: string;
-      title?: string;
-    }
-  ) => {
-    const isPending = pendingPlacement?.kind === 'node' && pendingPlacement.nodeType === item.type;
-    return (
-      <button
-        key={item.type}
-        type="button"
-        className={`ide-palette-card${options?.className ? ` ${options.className}` : ''}${isPending ? ' is-placement-active' : ''}`}
-        onClick={options?.onClick ?? (() => beginNodePlacement(item.type))}
-        data-testid={options?.testId ?? `ide-design-palette-${item.type.toLowerCase()}`}
-        aria-pressed={isPending}
-        title={options?.title ?? `${item.title} - ${item.subtitle}`}
-      >
-        <span className="ide-design-component-tile-glyph" aria-hidden="true">
-          {item.glyph}
-        </span>
-        <span className="ide-palette-card-body">
-            <span className="ide-palette-card-title-row">
-            <span className="ide-design-component-tile-title">{item.title}</span>
-            {options?.badge || item.paletteBadge ? (
-              <span className="ide-palette-card-badge">{options?.badge ?? item.paletteBadge}</span>
-            ) : null}
-          </span>
-          <span className="ide-palette-card-subtitle">{item.subtitle}</span>
-        </span>
-      </button>
-    );
-  };
-  const [boardPaletteSection, ioPaletteSection, logicPaletteSection, sequentialPaletteSection, reusablePaletteSection] =
-    PALETTE_SECTION_ORDER;
   const selectedNodeInspectorModel = selectedNode
     ? (() => {
         const displayName = selectedNode.label?.trim() || nodeTypeLabel(selectedNode.type);
@@ -5317,6 +5033,35 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {(() => {
+            const hood = neighbors(editorCircuit, selectedNode.id, 1);
+            const connectedIds = [...hood.nodeIds].filter((nodeId) => nodeId !== selectedNode.id);
+            if (connectedIds.length === 0) return null;
+            return (
+              <div className="ide-design-inspector-action-group" data-testid="ide-design-neighborhood-group">
+                <span className="ide-design-inspector-group-label">
+                  Connected ({connectedIds.length})
+                </span>
+                <div className="ide-design-swap-chips">
+                  {connectedIds.map((nodeId) => {
+                    const neighborNode = editorCircuit.nodes.find((node) => node.id === nodeId);
+                    return (
+                      <button
+                        key={nodeId}
+                        type="button"
+                        className="ide-design-swap-chip"
+                        data-testid={`ide-design-neighbor-${nodeId}`}
+                        onClick={() => selectMultipleNodes([nodeId], false)}
+                        title={`Select ${neighborNode?.label ?? nodeId}`}
+                      >
+                        {neighborNode?.label ?? nodeId}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
           {selectedSequentialInspector?.actionLabel &&
           ((selectedSequentialInspector.actionKind === 'trace-control' && selectedSequentialInspector.actionPort) ||
             (selectedSequentialInspector.actionKind === 'go-to-hardware' && onGoToHardware)) ? (
@@ -5414,6 +5159,52 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
               </IdeButton>
             </div>
           </div>
+          {selection.nodes.size === 2
+            ? (() => {
+                const [firstId, secondId] = selectedNodeIdsAll;
+                const forward = pathBetween(editorCircuit, firstId, secondId);
+                const traced = forward ?? pathBetween(editorCircuit, secondId, firstId);
+                const fromId = forward ? firstId : secondId;
+                const toId = forward ? secondId : firstId;
+                const labelFor = (nodeId: string) =>
+                  editorCircuit.nodes.find((node) => node.id === nodeId)?.label ?? nodeId;
+                return (
+                  <div className="ide-design-inspector-action-group" data-testid="ide-design-trace-path-group">
+                    <span className="ide-design-inspector-group-label">Trace</span>
+                    <div className="ide-design-inspector-action-grid">
+                      <IdeButton
+                        tone="ghost"
+                        disabled={!traced}
+                        onClick={() => {
+                          if (!traced) return;
+                          const highlights = new Map<string, string[]>();
+                          traced.wireIds.forEach((wireId) => highlights.set(wireId, ['#34d399']));
+                          autoWireSelectionTraceIdRef.current = null;
+                          lastTracedPortRef.current = null;
+                          setTraceState({
+                            kind: 'path-between',
+                            sourceKey: `path:${fromId}->${toId}`,
+                            label: `Path ${labelFor(fromId)} -> ${labelFor(toId)}`,
+                            signalKey: null,
+                            wireHighlights: highlights,
+                            nodeIds: new Set(traced.nodeIds),
+                            portKeys: buildTracePortKeySet(traced.wireIds),
+                          });
+                        }}
+                        testId="ide-design-trace-path-btn"
+                      >
+                        Trace path
+                      </IdeButton>
+                    </div>
+                    {!traced ? (
+                      <small data-testid="ide-design-trace-path-none">
+                        No directed path between these nodes.
+                      </small>
+                    ) : null}
+                  </div>
+                );
+              })()
+            : null}
           {onSaveMacro && selectedNodeIdsAll.length >= 2 ? (
             <div className="ide-design-inspector-action-group">
               <span className="ide-design-inspector-group-label">Compose</span>
@@ -6260,241 +6051,25 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ))}
           </div>
           {activeLeftDockTab === 'components' ? (
-          <SurfacePanel className="ide-design-palette" testId="ide-design-dock-palette">
-            <header className="ide-design-subheader ide-design-palette-header">
-              <div>
-                <h3>Component Library</h3>
-              </div>
-            </header>
-            <div className="ide-design-palette-toolbar">
-              <input
-                type="text"
-                className="ide-design-search"
-                value={paletteQuery}
-                onChange={(event) => setPaletteQuery(event.target.value)}
-                placeholder="Search gates or pins..."
-                data-testid="ide-design-search"
-              />
-              {paletteHasQuery && (
-                <p className="ide-design-palette-results" data-testid="ide-design-palette-results">
-                  {hasPaletteResults
-                    ? `${filteredPaletteByCategory.logic.length + filteredPaletteByCategory.sequential.length + filteredPaletteByCategory.io.length + filteredPaletteByCategory.components.length} results`
-                    : `No results for "${paletteQuery.trim()}".`}
-                </p>
-              )}
-            </div>
-
-            <div className="ide-design-palette-sections">
-              {commonPaletteItems.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--common"
-                  data-testid="ide-design-palette-section-common"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>Common</h4>
-                      <span className="ide-palette-section-count">{commonPaletteItems.length}</span>
-                    </div>
-                    <p className="ide-palette-section-copy">
-                      Start here for most combinational and first sequential circuits.
-                    </p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {commonPaletteItems.map((item) =>
-                      renderNodePaletteCard(item, {
-                        testId: `ide-design-common-${item.type.toLowerCase()}`,
-                      })
-                    )}
-                  </div>
-                </section>
-              ) : null}
-              {/* Board Resources — first: primary destination for board-aware work */}
-              {filteredBoardGroups.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--board"
-                  data-testid="ide-design-palette-section-board"
-                  data-collapsed="false"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{boardPaletteSection.title}</h4>
-                    </div>
-                    <div className="ide-palette-section-meta">
-                      <span className="ide-palette-section-count">{boardResourcesCount}</span>
-                    </div>
-                  </header>
-                  <div className="ide-palette-board-groups" data-testid="ide-design-board-io-palette">
-                      {filteredBoardGroups.map((group) => (
-                        <div
-                          key={group.id}
-                          className="ide-palette-board-group"
-                          data-testid={`ide-design-board-group-${group.id}`}
-                        >
-                          <div className="ide-palette-subsection-header">
-                            <div>
-                              <h5>{group.title}</h5>
-                              <p>{group.description}</p>
-                            </div>
-                            <span className="ide-palette-subsection-count">{group.entries.length}</span>
-                          </div>
-                          <div className="ide-palette-board-grid">
-                            {group.entries.map((entry) => {
-                              const isPlaced = isBoardAliasPlaced(entry);
-                              const isPending =
-                                pendingPlacement?.kind === 'board-io' &&
-                                pendingPlacement.boardIoEntry?.alias === entry.alias &&
-                                pendingPlacement.boardIoEntry?.direction === entry.direction;
-                              const testId =
-                                entry.direction === 'in'
-                                  ? `ide-design-board-input-${entry.alias.toLowerCase()}`
-                                  : `ide-design-board-output-${entry.alias.toLowerCase()}`;
-                              return (
-                                <button
-                                  key={entry.alias}
-                                  className={`ide-design-resource-tile${isPlaced ? ' is-placed' : ''}${isPending ? ' is-placement-active' : ''}`}
-                                  type="button"
-                                  onClick={() => beginBoardIoPlacement(entry)}
-                                  data-testid={testId}
-                                  disabled={isPlaced}
-                                  title={
-                                    isPlaced
-                                      ? `${entry.alias} already placed`
-                                      : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
-                                  }
-                                  aria-pressed={isPending}
-                                >
-                                  {entry.alias}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Inputs & Outputs — second: generic pins for abstract designs */}
-              {filteredPaletteByCategory.io.length > 0 ? (
-                <section className="ide-palette-section ide-palette-section--io" data-testid="ide-design-palette-section-io">
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{ioPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.io.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{ioPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.io.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Logic Gates */}
-              {filteredPaletteByCategory.logic.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--logic"
-                  data-testid="ide-design-palette-section-logic"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{logicPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.logic.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{logicPaletteSection.description}</p>
-                  </header>
-                  <div className="ide-palette-card-list">
-                    {filteredPaletteByCategory.logic.map((item) => renderNodePaletteCard(item))}
-                  </div>
-                </section>
-              ) : null}
-
-              {/* Sequential & Timing */}
-              {filteredPaletteByCategory.sequential.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--sequential"
-                  data-testid="ide-design-palette-section-sequential"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{sequentialPaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.sequential.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{sequentialPaletteSection.description}</p>
-                  </header>
-                  {SEQUENTIAL_PALETTE_SUBSECTIONS.map((subsection) => {
-                    const items = filteredPaletteByCategory[subsection.key];
-                    if (!items || items.length === 0) return null;
-                    return (
-                      <div key={subsection.key} className="ide-palette-subsection" data-testid={subsection.testId}>
-                        <div className="ide-palette-subsection-header">
-                          <div>
-                            <h5>{subsection.title}</h5>
-                            <p>{subsection.description}</p>
-                          </div>
-                          <span className="ide-palette-subsection-count">{items.length}</span>
-                        </div>
-                        <div className="ide-palette-card-list">
-                          {items.map((item) => renderNodePaletteCard(item))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <p className="ide-palette-section-hint" data-testid="ide-design-palette-sequential-workflow-hint">
-                    Tip: after choosing a register, hold Shift while clicking the canvas to place another of the same
-                    type — useful for counters and multi-bit state.
-                  </p>
-                </section>
-              ) : null}
-
-              {/* Reusable Blocks — macros, custom parts, built-in helpers */}
-              {filteredPaletteByCategory.components.length > 0 ||
-              filteredCustomComponents.length > 0 ||
-              filteredMacros.length > 0 ? (
-                <section
-                  className="ide-palette-section ide-palette-section--reusable"
-                  data-testid="ide-design-palette-section-reusable"
-                >
-                  <header className="ide-palette-section-header">
-                    <div className="ide-palette-section-title-row">
-                      <h4>{reusablePaletteSection.title}</h4>
-                      <span className="ide-palette-section-count">
-                        {filteredPaletteByCategory.components.length +
-                          filteredCustomComponents.length +
-                          filteredMacros.length}
-                      </span>
-                    </div>
-                    <p className="ide-palette-section-copy">{reusablePaletteSection.description}</p>
-                  </header>
-
-                  {filteredPaletteByCategory.components.length > 0 ? (
-                    <div
-                      className="ide-palette-subsection"
-                      data-testid="ide-design-palette-built-in-blocks"
-                    >
-                      <div className="ide-palette-subsection-header">
-                        <div>
-                          <h5>Built-in Blocks</h5>
-                          <p>Ready-made helpers for arithmetic and sequential experiments.</p>
-                        </div>
-                        <span className="ide-palette-subsection-count">
-                          {filteredPaletteByCategory.components.length}
-                        </span>
-                      </div>
-                      <div className="ide-palette-card-list">
-                        {filteredPaletteByCategory.components.map((item) =>
-                          renderNodePaletteCard(item, { badge: item.paletteBadge ?? 'Built-in' })
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
+          <DesignComponentLibrary
+            query={paletteQuery}
+            onQueryChange={setPaletteQuery}
+            commonItems={commonPaletteItems}
+            categories={filteredPaletteByCategory}
+            boardGroups={filteredBoardGroups}
+            boardResourcesCount={boardResourcesCount}
+            pendingPlacement={pendingPlacement}
+            onBeginNodePlacement={beginNodePlacement}
+            onBeginBoardIoPlacement={beginBoardIoPlacement}
+            isBoardEntryPlaced={isBoardAliasPlaced}
+            boardEntryTooltip={(entry) =>
+              isBoardAliasPlaced(entry)
+                ? `${entry.alias} already placed`
+                : `${entry.alias}${getBasys3BoardResource(entry.alias)?.packagePin ? ` · ${getBasys3BoardResource(entry.alias)?.packagePin}` : ''} - ${describeBoardEntry(entry)}`
+            }
+            reusableExtraCount={filteredCustomComponents.length + filteredMacros.length}
+            reusableSlot={
+              <>
                   {filteredCustomComponents.length > 0 ? (
                     <div className="ide-palette-subsection" data-testid="ide-palette-group-custom">
                       <div className="ide-palette-subsection-header">
@@ -6531,7 +6106,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       </div>
                     </div>
                   ) : null}
-
                   <MacroLibraryPanel
                     macros={filteredMacros}
                     totalMacroCount={macros.length}
@@ -6540,24 +6114,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onSelectMacro={handleSelectMacro}
                     onDeleteMacro={onDeleteMacro ? handleDeleteMacro : undefined}
                   />
-                </section>
-              ) : null}
-
-            </div>
-
-            {!hasPaletteResults && paletteHasQuery ? (
-              <IdeEmptyState
-                title={`No results for "${paletteQuery.trim()}"`}
-                body="Try logic terms like AND or flipflop, or board terms like SW0, LED, or clock."
-                primaryAction={
-                  <IdeButton tone="ghost" onClick={() => setPaletteQuery('')}>
-                    Clear search
-                  </IdeButton>
-                }
-                testId="ide-design-palette-empty"
-              />
-            ) : null}
-          </SurfacePanel>
+              </>
+            }
+          />
           ) : activeLeftDockTab === 'hierarchy' ? (
             <SurfacePanel className="ide-design-project-browser" testId="ide-design-hierarchy">
               <header className="ide-design-subheader">
@@ -6981,19 +6540,6 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                 </div>
               ) : (
                 <div className="ide-design-workspace-heading" data-testid="ide-design-workspace-heading">
-                  <nav className="ide-design-module-breadcrumb" aria-label="Design hierarchy" data-testid="ide-design-module-breadcrumb">
-                    <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)} className={isEditingTopModule ? 'is-current' : ''}>
-                      {topEntityName || 'top'}
-                    </button>
-                    {activeNativeModule ? (
-                      <>
-                        <span aria-hidden="true">/</span>
-                        <button type="button" className="is-current" onClick={() => onOpenModule?.(activeNativeModule.id)}>
-                          {activeNativeModule.displayName}
-                        </button>
-                      </>
-                    ) : null}
-                  </nav>
                   <div className="ide-design-workspace-heading-main">
                     <span className="ide-design-workspace-title" data-testid="ide-design-workspace-title">
                       {activeNativeModule ? `Editing ${activeNativeModule.displayName}` : isCodeWorkspace ? 'Code editor' : isSplitWorkspace ? 'Circuit and code' : 'Circuit canvas'}
@@ -7137,9 +6683,36 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
             ) : null}
             <div className="ide-design-command-context-row" data-testid="ide-design-command-context-row">
               <div className="ide-design-command-context" aria-label="Current design module and mode">
-                <nav className="ide-design-command-breadcrumb" aria-label="Design module breadcrumb">
-                  <button type="button" onClick={() => onOpenModule?.(TOP_MODULE_ID)}>{topEntityName || 'top'}</button>
-                  {activeNativeModule ? <><span aria-hidden="true">/</span><button type="button" onClick={() => onOpenModule?.(activeNativeModule.id)}>{activeNativeModule.displayName}</button></> : null}
+                <nav
+                  className="ide-design-command-breadcrumb"
+                  aria-label="Design module breadcrumb"
+                  data-testid="ide-design-command-breadcrumb"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpenModule?.(TOP_MODULE_ID)}
+                    className={isEditingTopModule ? 'is-current' : ''}
+                    aria-current={isEditingTopModule ? 'location' : undefined}
+                    title={isEditingTopModule ? 'Top module (current scope)' : 'Return to the top module'}
+                    data-testid="ide-design-breadcrumb-top"
+                  >
+                    {topEntityName || 'top'}
+                  </button>
+                  {activeNativeModule ? (
+                    <>
+                      <span aria-hidden="true">/</span>
+                      <button
+                        type="button"
+                        className="is-current"
+                        aria-current="location"
+                        onClick={() => onOpenModule?.(activeNativeModule.id)}
+                        title={`Editing ${activeNativeModule.displayName} · board assignments stay with the top module`}
+                        data-testid="ide-design-breadcrumb-module"
+                      >
+                        {activeNativeModule.displayName}
+                      </button>
+                    </>
+                  ) : null}
                 </nav>
                 {toolMode === 'wire' && !isPlacementMode ? (
                   <div className="ide-design-wire-inline" data-testid="ide-design-wire-inline" data-wire-active={wireStartPort ? '1' : '0'}>
@@ -8128,6 +7701,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     data-testid="ide-design-live-canvas"
                     data-tool-mode={toolMode}
                     data-interaction-mode={effectiveInteractionMode}
+                    data-zoom-tier={zoomTier}
                     data-wire-active={wireStartPort ? '1' : '0'}
                     data-wire-source-label={wireSourceLabel ?? ''}
                     data-placement-active={isPlacementMode ? '1' : '0'}
@@ -8138,7 +7712,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     onPointerMove={handleCanvasPlacementPointerMove}
                     onPointerLeave={() => {
                       if (pendingPlacement) {
-                        setPlacementGhost(null);
+                        clearPlacementGhost();
                       }
                     }}
                   >
@@ -8351,7 +7925,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                         data-testid="ide-design-placement-hit-layer"
                         onClick={handleCanvasPlacementClick}
                         onPointerMove={handleCanvasPlacementPointerMove}
-                        onPointerLeave={() => setPlacementGhost(null)}
+                        onPointerLeave={() => clearPlacementGhost()}
                       />
                     ) : null}
                     {pendingPlacement && placementGhost && !activeInsertionMacro ? (

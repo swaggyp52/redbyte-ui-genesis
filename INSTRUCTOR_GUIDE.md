@@ -1,3 +1,5 @@
+> **SUPERSEDED (historical).** This document describes an earlier RedByte era and does not reflect the current five-workspace product (Project / Design / Simulate / Board & Constraints / Build & Export). Current truth: `docs/course/INSTRUCTOR_QUICKSTART.md`.
+
 # RedByte OS Instructor Guide
 
 ## Table of Contents

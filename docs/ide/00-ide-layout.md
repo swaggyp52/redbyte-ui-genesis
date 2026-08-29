@@ -18,7 +18,7 @@ RedByte IDE is a deterministic Basys3 FPGA workflow surface:
 1. Project
 2. Design
 3. Verify
-4. Hardware / Map Pins
+4. Board & Constraints (internal id: hardware)
 5. Export
 6. Import
 

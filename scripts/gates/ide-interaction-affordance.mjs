@@ -111,7 +111,7 @@ await runIdeGate('IDE interaction affordance contract satisfied', async ({ page,
   await loadStarterProject(page, { exactExampleId: 'logic-gates' });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator('[data-testid="mode-button-project"]').first().click();
-  await page.locator('[data-testid="ide-project-change-project"]').first().click();
+  await page.locator('[data-testid="ide-project-context-change"]:visible, [data-testid="ide-project-change-project"]:visible').first().click();
   await page.waitForSelector('[data-testid="ide-project-entry-paths"]', { timeout: 15000 });
   assert(
     !(await page.locator('[data-testid="ide-onboarding-overlay"]').first().isVisible().catch(() => false)),

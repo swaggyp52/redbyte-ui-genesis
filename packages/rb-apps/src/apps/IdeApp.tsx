@@ -1824,6 +1824,12 @@ export const IdeApp: React.FC = () => {
     () => buildExportViewModel(exportProject, verifyLastRun, activeScenario ?? undefined),
     [activeScenario, exportProject, verifyLastRun]
   );
+  const constraintXdcArtifact = useMemo(() => {
+    const xdc = exportViewModel.artifacts.find(
+      (artifact) => artifact.category === 'constraints'
+    );
+    return xdc ? { path: xdc.path, status: xdc.status, note: xdc.note } : null;
+  }, [exportViewModel.artifacts]);
   const currentExportPackageSourceHash = useMemo(
     () => buildProjectExportPackageSourceHash(exportProject, exportViewModel.artifacts),
     [exportProject, exportViewModel.artifacts]
@@ -2517,6 +2523,16 @@ export const IdeApp: React.FC = () => {
                   0
                 ) ?? 0
               }
+              simulationSets={scenarios}
+              activeSimulationSetId={activeScenarioId}
+              simulationSetLastRun={verifyLastRun ?? null}
+              simulationRunHistoryCount={verifyRunHistory.length}
+              onCreateSimulationSet={createVerifyScenario}
+              onDuplicateSimulationSet={duplicateVerifyScenario}
+              onRenameSimulationSet={renameVerifyScenario}
+              onDeleteSimulationSet={deleteVerifyScenario}
+              onSwitchSimulationSet={switchVerifyScenario}
+              constraintXdcArtifact={constraintXdcArtifact}
               activeExampleId={activeExampleId}
               onOpenExample={handleOpenExample}
               primaryCtaLabel={primaryProjectCta.label}
@@ -2711,7 +2727,7 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'verify' ? (
-          <ErrorBoundary fallbackTitle="Verify workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Simulate workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="verify" />}
             >
@@ -2809,6 +2825,7 @@ export const IdeApp: React.FC = () => {
               fallback={<IdeSurfaceLoadingFallback mode="hardware" />}
             >
             <HardwareSurface
+              onSetMappingPins={setMappingPins}
               projectName={projectName}
               expectedBehavior={hardwareExpectedBehavior}
               mappingRows={projectIoRows}
@@ -2845,7 +2862,7 @@ export const IdeApp: React.FC = () => {
             </Suspense>
           </ErrorBoundary>
         ) : activeMode === 'export' ? (
-          <ErrorBoundary fallbackTitle="Export workspace encountered an error">
+          <ErrorBoundary fallbackTitle="Build & Export workspace encountered an error">
             <Suspense
               fallback={<IdeSurfaceLoadingFallback mode="export" />}
             >

@@ -1936,3 +1936,11 @@
   }
   .ide-workbench-shell[data-ide-mode-marker='design'] .ide-design-toolbar-layout .ide-button { padding-inline: 6px; }
 }
+
+/* Semantic zoom: the live canvas stamps data-zoom-tier (overview | working |
+   detail) from resolveSemanticZoomTier; overview declutters port names and
+   node sub-labels, which are unreadable below the overview threshold anyway. */
+.ide-workbench-shell[data-ide-mode-marker='design'] [data-zoom-tier='overview'] .logic-port-label,
+.ide-workbench-shell[data-ide-mode-marker='design'] [data-zoom-tier='overview'] .logic-node-sub-label {
+  display: none;
+}
