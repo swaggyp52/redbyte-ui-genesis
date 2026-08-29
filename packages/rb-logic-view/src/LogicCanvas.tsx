@@ -248,6 +248,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   const startWire = useLogicViewStore((state) => state.startWire);
   const endWire = useLogicViewStore((state) => state.endWire);
   const selectMultipleNodes = useLogicViewStore((state) => state.selectMultipleNodes);
+  const selectMultiple = useLogicViewStore((state) => state.selectMultiple);
   const setToolMode = useLogicViewStore((state) => state.setToolMode);
   const setInteractionMode = useLogicViewStore((state) => state.setInteractionMode);
   const setEditingState = useLogicViewStore((state) => state.setEditingState);
@@ -415,6 +416,34 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     [circuit.connections, visibleNodeIds]
   );
 
+  /** Output ports driving two or more loads, rendered as junction dots. */
+  const fanoutJunctions = React.useMemo(() => {
+    const loadsBySource = new Map<string, number>();
+    for (const connection of circuit.connections) {
+      const { fromNodeId, fromPortName } = resolveConnectionEndpoints(connection);
+      const sourceKey = `${fromNodeId}.${fromPortName}`;
+      loadsBySource.set(sourceKey, (loadsBySource.get(sourceKey) ?? 0) + 1);
+    }
+    if (loadsBySource.size === 0) return [];
+    const nodeById = new Map(circuit.nodes.map((node) => [node.id, node]));
+    const junctions: { key: string; screenX: number; screenY: number; active: boolean }[] = [];
+    for (const [sourceKey, loadCount] of loadsBySource) {
+      if (loadCount < 2) continue;
+      const separator = sourceKey.indexOf('.');
+      const nodeId = sourceKey.slice(0, separator);
+      if (!visibleNodeIds.has(nodeId)) continue;
+      const node = nodeById.get(nodeId);
+      if (!node?.position) continue;
+      junctions.push({
+        key: sourceKey,
+        screenX: (node.position.x + 24) * camera.zoom + camera.x,
+        screenY: node.position.y * camera.zoom + camera.y,
+        active: (renderSignals.get(sourceKey) ?? 0) === 1,
+      });
+    }
+    return junctions.sort((a, b) => a.key.localeCompare(b.key));
+  }, [camera.x, camera.y, camera.zoom, circuit.connections, circuit.nodes, renderSignals, visibleNodeIds]);
+
   // Invariant: controlled mode requires onCircuitChange callback
   if (import.meta.env.DEV) {
     if (externalCircuit && !onCircuitChange) {
@@ -552,12 +581,21 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
     onClearSelection: clearSelection,
     onMarqueeChange: (marquee) => setEditingState({ marquee }),
     onMarqueeCommit: (nodeIds, addToSelection) => {
+      // Wires whose BOTH endpoints sit inside the marquee join the selection,
+      // so boxing a subcircuit grabs its internal wiring too.
+      const boxedNodes = new Set(nodeIds);
+      const containedWireIds = circuit.connections
+        .map((conn) => {
+          const { fromNodeId, toNodeId } = resolveConnectionEndpoints(conn);
+          return boxedNodes.has(fromNodeId) && boxedNodes.has(toNodeId) ? toWireId(conn) : null;
+        })
+        .filter((wireId): wireId is string => wireId !== null);
       if (addToSelection) {
-        const existing = Array.from(selection.nodes);
-        const merged = Array.from(new Set([...existing, ...nodeIds]));
-        selectMultipleNodes(merged);
+        const mergedNodes = Array.from(new Set([...Array.from(selection.nodes), ...nodeIds]));
+        const mergedWires = Array.from(new Set([...Array.from(selection.wires), ...containedWireIds]));
+        selectMultiple(mergedNodes, mergedWires);
       } else {
-        selectMultipleNodes(nodeIds);
+        selectMultiple(nodeIds, containedWireIds);
       }
       setEditingState({ marquee: undefined });
     },
@@ -1645,6 +1683,26 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               />
             );
           })}
+        </g>
+
+        {/* Fanout junctions — a driver feeding two or more loads gets a solid
+            dot at its output port, so fanout reads differently from a mere
+            crossing of independent wires. */}
+        <g key="fanout-junction-layer">
+          {fanoutJunctions.map((junction) => (
+            <circle
+              key={junction.key}
+              cx={junction.screenX}
+              cy={junction.screenY}
+              r={Math.max(2.5, Math.min(5, 3.2 * camera.zoom))}
+              className="logic-fanout-junction"
+              fill={junction.active ? '#34d399' : '#8aa6c3'}
+              stroke="#0b1622"
+              strokeWidth={1}
+              pointerEvents="none"
+              data-testid={`logic-fanout-junction-${junction.key}`}
+            />
+          ))}
         </g>
 
         {/* Wire Preview — stable container */}
