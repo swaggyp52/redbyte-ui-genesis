@@ -8705,6 +8705,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                       circuit={editorCircuit}
                       width={canvasSize.width}
                       height={canvasSize.height}
+                      appearance={canvasAppearance === 'dark' ? 'dark' : 'light'}
                       showToolbar={false}
                       showHud={false}
                       getChipMetadata={getChipMetadata}

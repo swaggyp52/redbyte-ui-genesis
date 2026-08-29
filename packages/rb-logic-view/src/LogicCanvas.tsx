@@ -65,6 +65,9 @@ export interface LogicCanvasProps {
   onNodeDiagnosticBadgeClick?: (nodeId: string) => void;
   ioPresentationMap?: Record<string, NodeIoPresentation>;
   presentationZoomMode?: 'dense' | 'classroom';
+  /** Canvas color language. 'dark' (default) preserves the legacy look; 'light'
+   *  renders professional schematic nodes on the light technical canvas. */
+  appearance?: 'light' | 'dark';
   onUndo?: () => void;
   onRedo?: () => void;
   /** Fired when the user clicks a port (after internal wiring logic). Use for path-tracing / fanin highlight. */
@@ -205,6 +208,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
   onNodeDiagnosticBadgeClick,
   ioPresentationMap,
   presentationZoomMode = 'dense',
+  appearance = 'dark',
   onUndo,
   onRedo,
   onPortClick,
@@ -1903,6 +1907,7 @@ export const LogicCanvas: React.FC<LogicCanvasProps> = ({
               node={node}
               camera={camera}
               presentationZoomMode={presentationZoomMode}
+              appearance={appearance}
               isSelected={selection.nodes.has(node.id)}
               isHighlighted={node.id === highlightedNodeId || (tracedNodeIds?.has(node.id) ?? false) || (changedNodeIds?.has(node.id) ?? false)}
               isMismatchHighlighted={mismatchNodeIds?.has(node.id) ?? false}

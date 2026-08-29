@@ -1763,7 +1763,7 @@
 .ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg { background: #f8fafc !important; }
 .ide-design-workspace[data-canvas-appearance='system'] .rb-logic-canvas-svg { background: var(--rb-canvas) !important; }
 
-.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: 15px; font-weight: 750; }
+.ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-label { font-size: 13px; font-weight: 650; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-port-label { font-size: 12px; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-sub-label { font-size: 12px; }
 .ide-workbench-shell[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body { stroke: #f59e0b; stroke-width: 2.5px; filter: none; }
@@ -1772,6 +1772,26 @@
 }
 .ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg :is(g, rect, path, circle) {
   filter: none !important;
+}
+/* Light technical canvas owns its node fills, overriding the legacy dark
+   !important rules in ide-root.css so the schematic reads as light cards with
+   a restrained neutral border. State is carried by the output indicator,
+   toggle, and value labels, not by a saturated body fill. */
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg .logic-node-body {
+  fill: #ffffff !important;
+  stroke: #cbd5e1 !important;
+  stroke-width: 1.2 !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg .logic-node-header {
+  fill: #eef2f7 !important;
+  stroke: rgba(100, 116, 139, 0.35) !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: #7c3aed !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: #2563eb !important;
+  stroke-width: 1.8px !important;
 }
 
 .ide-workbench-shell[data-ide-mode-marker='design'] :is(.ide-inspector-section, .ide-inspector-card, .ide-design-inspector-section, .ide-design-inspector-identity-card, .ide-design-inspector-action-group) {

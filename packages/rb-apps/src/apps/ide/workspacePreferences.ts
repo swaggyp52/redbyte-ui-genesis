@@ -160,8 +160,10 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferencesV1 = deepFreeze(
   design: {
     view: 'canvas',
     toolbarCommandIds: [...DEFAULT_DESIGN_TOOLBAR_COMMAND_IDS],
-    canvasAppearance: 'dark',
-    canvasDensity: 'comfortable',
+    // Default to a light technical canvas so Design reads as one instrument
+    // inside the light Studio shell rather than a separate dark application.
+    canvasAppearance: 'light',
+    canvasDensity: 'compact',
   },
 });
 

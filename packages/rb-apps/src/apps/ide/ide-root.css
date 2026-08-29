@@ -22284,31 +22284,41 @@ details[open] > .ide-sub-section-header::before { transform: rotate(90deg); }
   opacity: 1 !important;
 }
 
-/* ── Circuit nodes: stronger presence + interaction glow ── */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-body {
+/* ── Circuit nodes: dark canvas gets a stronger presence + interaction glow.
+   Scoped to the dark appearance so the light technical canvas keeps the
+   professional schematic fills the renderer paints via SVG attributes. ── */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg .logic-node-body {
   fill: #0c1b2b !important;
   stroke: rgba(110,162,205,0.68) !important;
   stroke-width: 1.2 !important;
   transition: stroke 150ms ease, filter 150ms ease !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg .logic-node-header {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg .logic-node-header {
   fill: rgba(7,15,26,0.96) !important;
   stroke: rgba(120,180,230,0.32) !important;
 }
-/* Hover: node lights up */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover {
+/* Hover: node lights up (dark canvas only) */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-id]:hover {
   filter: drop-shadow(0 0 5px rgba(56,189,248,0.35)) !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
   stroke: rgba(100,180,255,0.88) !important;
 }
-/* Selected: distinct emphasis glow */
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] {
+/* Selected: distinct emphasis glow (dark canvas only) */
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-selected='1'] {
   filter: drop-shadow(0 0 8px rgba(46,196,182,0.5)) !important;
 }
-[data-ide-mode-marker='design'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+.ide-design-workspace[data-canvas-appearance='dark'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
   stroke: rgba(46,196,182,0.92) !important;
   stroke-width: 1.6 !important;
+}
+/* Light technical canvas: restrained hover/selection, no neon drop-shadow. */
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-id]:hover .logic-node-body {
+  stroke: #7c3aed !important;
+}
+.ide-design-workspace[data-canvas-appearance='light'] .rb-logic-canvas-svg [data-node-selected='1'] .logic-node-body {
+  stroke: #2563eb !important;
+  stroke-width: 1.8 !important;
 }
 
 /* ── Wires: higher contrast, hover emphasis ── */
