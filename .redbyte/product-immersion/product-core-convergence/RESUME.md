@@ -17,9 +17,16 @@
 ## Program state
 
 - [x] Chapter 0: source-truth recovery, safety tag, notes scaffolding
-- [ ] Wave 1: bus-model audit (workflow running) → first-class vector model
+- [x] Wave 1: first-class vector model — DONE and product-integrated
+  - Core `BusDeclaration` model + authority (`bus.ts`): create/rename/delete/connect, taps, slices, words, validation BUS001-007, migration
+  - Persistence: decode-only legacy migration, deletion-safe demotion, fingerprint + clone fixes
+  - IR: `IRBusPort` resolution + IR007; HDL export emits declared vector ports (asc/desc), byte-identical goldens
+  - Sim: `busValues` projection (observed word == scalar bits), engine-proven
+  - Board: declared-bus grouping authority; `setMappingPins` structure-safe
+  - Design: `createDesignBus` action + Create-bus dialog + Library "New bus…"; browser-proven A[3:0]
 - [ ] Wave 2: hierarchy depth (nested definitions, vector module ports, params)
-- [ ] Wave 3: Design workbench (visual language, wiring, semantic zoom, physical-leak fix)
+- [ ] Wave 3: Design workbench (visual language, wiring, semantic zoom, physical-leak fix) — IN PROGRESS
+  - Next: canvas visual language — kill neon/dark-in-light-shell, oversized nodes at zoom, physical pin leak (U16/E19)
 - [ ] Wave 4: Project control center
 - [ ] Wave 5: Simulate convergence (Bench/Analyzer/Runs)
 - [ ] Wave 6: Virtual board (Browser E0)
