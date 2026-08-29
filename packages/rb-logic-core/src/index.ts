@@ -44,6 +44,9 @@ export { getFaninCone } from './pathTrace';
 
 // Types
 export type {
+  BusBitRef,
+  BusDeclaration,
+  BusDirection,
   Circuit,
   CircuitSchemaV1,
   CircuitSchemaV1Node,
@@ -61,6 +64,43 @@ export type {
   Signal,
   TickEngineConfig,
 } from './types';
+
+// First-class bus authority
+export {
+  BUS_INPUT_MEMBER_TYPES,
+  BUS_MEMBER_PORT,
+  BUS_OUTPUT_MEMBER_TYPES,
+  BusRangeError,
+  BusValidationError,
+  BusWidthMismatchError,
+  busBitPortRef,
+  busBitRef,
+  busForNode,
+  busIndices,
+  busIsDescending,
+  busMemberNodeIds,
+  busRangeLabel,
+  busSlice,
+  busWidth,
+  busWordToBits,
+  connectBuses,
+  createBusBoundary,
+  deleteBus,
+  formatBusWordHex,
+  normalizeBusDeclarations,
+  parseVectorLabel,
+  readBusWord,
+  renameBus,
+  synthesizeBusDeclarations,
+  validateBusDeclarations,
+} from './bus';
+export type {
+  BusDiagnostic,
+  BusDiagnosticCode,
+  BusWord,
+  CreateBusResult,
+  CreateBusSpec,
+} from './bus';
 
 // Core classes
 export { NodeRegistry } from './NodeRegistry';

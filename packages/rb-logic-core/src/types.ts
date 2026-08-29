@@ -76,11 +76,53 @@ export interface RuntimeNode extends Node {
 }
 
 /**
+ * Direction of a bus at the design boundary.
+ */
+export type BusDirection = 'input' | 'output';
+
+/**
+ * One bit of a declared bus: the scalar boundary node that carries it.
+ * The scalar node remains the propagation substrate; the declaration owns
+ * the vector identity, width, and ordering.
+ */
+export interface BusBitRef {
+  /** Bit index within the declared range (e.g. 2 for A[2]). */
+  index: number;
+  /** Graph node id of the scalar boundary node carrying this bit. */
+  nodeId: string;
+}
+
+/**
+ * First-class vector signal declaration.
+ *
+ * `left`/`right` follow HDL declaration order: left=3,right=0 declares
+ * A[3:0] (descending, VHDL `downto`); left<right declares an ascending
+ * range (VHDL `to`). Width is |left-right|+1.
+ */
+export interface BusDeclaration {
+  /** Stable identity; survives rename. */
+  id: string;
+  /** HDL-safe base name, e.g. "A" for A[3:0]. */
+  name: string;
+  direction: BusDirection;
+  left: number;
+  right: number;
+  /** One entry per declared bit index. Order not significant; index is authoritative. */
+  bits: BusBitRef[];
+}
+
+/**
  * Complete circuit definition
  */
 export interface Circuit {
   nodes: Node[];
   connections: Connection[];
+  /**
+   * Declared vector signals over boundary nodes. Optional and additive:
+   * the scalar substrate in `nodes`/`connections` is always complete, so
+   * consumers unaware of buses still see a valid scalar circuit.
+   */
+  buses?: BusDeclaration[];
 }
 
 /**
