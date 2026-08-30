@@ -26,6 +26,7 @@ import { detectVerifyMode, type VerifyMode } from './ide/verifyMode';
 import { resolveVerifyInputNodeIds } from './ide/verifyNodeIdBridge';
 import { deriveDesignCompilerDiagnostics } from './ide/designCompilerDiagnostics';
 import { getIdeModeLabel, type IdeMode } from './ide/workflowStages';
+import { buildTopEntityName, normalizeTopEntityName } from './ide/topEntity';
 import { IdeTopBar } from './ide/components/IdeTopBar';
 import { IdeStatusBar } from './ide/components/IdeStatusBar';
 import { IdeCommandPalette } from './ide/components/IdeCommandPalette';
@@ -290,7 +291,6 @@ export const IdeApp: React.FC = () => {
   const [loadModalOpen, setLoadModalOpen] = useState(false);
   const [savedProjects, setSavedProjects] = useState<PersistedIdeProjectIndexEntry[]>([]);
   const [savedProjectHash, setSavedProjectHash] = useState<string | null>(null);
-  const fpgaConfigBootstrappedRef = useRef(false);
   const [isAutosaving, setIsAutosaving] = useState(false);
   const [studentName, setStudentName] = useState<string>('');
   const hasRestoredRef = useRef(false);
@@ -384,11 +384,10 @@ export const IdeApp: React.FC = () => {
   const projectId = useProjectRuntime((state) => state.projectId);
   const projectName = useProjectRuntime((state) => state.projectName);
   const projectDescription = useProjectRuntime((state) => state.projectDescription);
-  const [fpgaConfig, setFpgaConfig] = useState<IdeFpgaConfig>(() => ({
-    board: 'basys3',
-    top: 'redbyte_top',
-    part: DEFAULT_FPGA_PART,
-  }));
+  // Active top lives in the store as its single writable authority; the shell
+  // only projects it (board/part are fixed for the Basys3 target).
+  const activeTop = useProjectRuntime((state) => state.activeTop);
+  const setActiveTop = useProjectRuntime((state) => state.setActiveTop);
   const [guidedLabViewportToken, setGuidedLabViewportToken] = useState(0);
   const importMeta = useProjectRuntime((state) => state.importMeta);
   const setImportMeta = useProjectRuntime((state) => state.setImportMeta);
@@ -628,10 +627,8 @@ export const IdeApp: React.FC = () => {
 
   const applyExample = useCallback(
     (exampleId: string) => {
-      const example = getIdeExampleById(exampleId);
       loadExample(exampleId);
       setProjectHdlSources([]);
-      setFpgaConfig(buildIdeFpgaConfig({ name: example?.name ?? projectNameRef.current }));
       setImportMeta(null);
       setDiagnosticRouteRequest(null);
       setDesignFocusRequest(null);
@@ -670,24 +667,23 @@ export const IdeApp: React.FC = () => {
   );
   const derivedTopEntityName = useMemo(() => buildTopEntityName(projectName), [projectName]);
   const effectiveTopEntityName = useMemo(
-    () => normalizeTopEntityName(fpgaConfig.top, derivedTopEntityName),
-    [derivedTopEntityName, fpgaConfig.top]
+    () => normalizeTopEntityName(activeTop, derivedTopEntityName),
+    [activeTop, derivedTopEntityName]
+  );
+  // Projected snapshot for surfaces that read a bundled fpga config. `top` is
+  // the store's active-top projection — never an independent writable copy.
+  const fpgaConfig = useMemo<IdeFpgaConfig>(
+    () => ({ board: 'basys3', top: effectiveTopEntityName, part: DEFAULT_FPGA_PART }),
+    [effectiveTopEntityName]
   );
   const handleFpgaConfigChange = useCallback(
     (config: { part?: string; top?: string }) => {
-      setFpgaConfig((current) => ({
-        ...current,
-        top:
-          config.top !== undefined
-            ? normalizeTopEntityName(config.top, derivedTopEntityName)
-            : current.top,
-        part:
-          config.part !== undefined
-            ? normalizeFpgaPart(config.part)
-            : current.part,
-      }));
+      // Part is fixed for the Basys3 target; only the active top is editable.
+      if (config.top !== undefined) {
+        setActiveTop(config.top);
+      }
     },
-    [derivedTopEntityName]
+    [setActiveTop]
   );
   const handleGenerateBringUpVectors = useCallback(() => {
     generateBringUpVectors();
@@ -729,7 +725,7 @@ export const IdeApp: React.FC = () => {
         scenarioAuthority: 'none',
       });
       setActiveLabTaskId(FULL_ADDER_LAB_ID);
-      setFpgaConfig(buildIdeFpgaConfig({ name: FULL_ADDER_SCRATCH_LAB.shortTitle }));
+      setActiveTop(buildTopEntityName(FULL_ADDER_SCRATCH_LAB.shortTitle));
       setImportMeta(null);
       setDiagnosticRouteRequest(null);
       setDesignFocusRequest(null);
@@ -1006,7 +1002,6 @@ export const IdeApp: React.FC = () => {
       }
 
       setProjectHdlSources(cloneProjectHdlSources(project));
-      setFpgaConfig(buildIdeFpgaConfig(project));
       setImportMeta(options?.importMeta ?? null);
       pendingImportMetaRef.current = null;
       setSavedProjectHash(options?.savedProjectHash ?? null);
@@ -1087,22 +1082,6 @@ export const IdeApp: React.FC = () => {
       setLastSavedAt('Legacy autosave restore failed. The stored draft was preserved for recovery or explicit dismissal.');
     }
   }, [handleSafeLoadIntoIde, setLastSavedAt]);
-
-  useEffect(() => {
-    if (fpgaConfigBootstrappedRef.current) return;
-    fpgaConfigBootstrappedRef.current = true;
-    setFpgaConfig((current) => {
-      const next = buildIdeFpgaConfig({ name: projectName });
-      if (
-        current.board === next.board &&
-        current.top === next.top &&
-        current.part === next.part
-      ) {
-        return current;
-      }
-      return next;
-    });
-  }, [projectName]);
 
   useEffect(() => {
     if (activeMode !== 'design') return;
@@ -1397,7 +1376,7 @@ export const IdeApp: React.FC = () => {
       };
       const renamedHash = digestWorkspaceSnapshot(renamedProject, scenarios, activeScenarioId);
       if (followsProjectIdentity) {
-        setFpgaConfig((current) => ({ ...current, top: renamedTop }));
+        setActiveTop(renamedTop);
       }
       setProjectIdentity({ projectName: trimmed });
 
@@ -1642,7 +1621,6 @@ export const IdeApp: React.FC = () => {
   const handleResetToExample = useCallback(() => {
     resetToActiveExample();
     setProjectHdlSources([]);
-    setFpgaConfig(buildIdeFpgaConfig({ name: activeExample?.name ?? projectNameRef.current }));
     setImportMeta(null);
     setSavedProjectHash(null);
     setLoadModalOpen(false);
@@ -1699,7 +1677,6 @@ export const IdeApp: React.FC = () => {
       // a real runtime delta remains unsaved and is picked up by autosave.
       resumedProjectName = hydratedRuntime.projectName;
       setProjectHdlSources(cloneProjectHdlSources(project));
-      setFpgaConfig(buildIdeFpgaConfig(project));
       setSavedProjectHash(snapshot.projectHash);
       refreshSavedProjects();
       setCurrentMode(restoredMode);
@@ -2107,7 +2084,6 @@ export const IdeApp: React.FC = () => {
     }
     replaceWithBlankProject();
     setProjectHdlSources([]);
-    setFpgaConfig(buildIdeFpgaConfig({ name: 'Untitled Project' }));
     if (projectKind === 'import') {
       clearImportRecoveryUrlState();
     }
@@ -2641,7 +2617,6 @@ export const IdeApp: React.FC = () => {
                 clearLabSessionMeta();
                 resetToActiveExample();
                 setProjectHdlSources([]);
-                setFpgaConfig(buildIdeFpgaConfig({ name: activeExample?.name ?? projectNameRef.current }));
                 setImportMeta(null);
                 setCurrentMode('project');
                 setSavedProjectHash(null);
@@ -3097,30 +3072,6 @@ function normalizeProjectCircuit(circuit: RBProject['circuit']): RBProject['circ
   };
 }
 
-function buildTopEntityName(projectName: string): string {
-  const normalized = projectName
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  const base = normalized.length > 0 ? normalized : 'redbyte_top';
-  return /^[a-z]/.test(base) ? base : `rb_${base}`;
-}
-
-function normalizeTopEntityName(value: string | undefined, fallbackTopEntity: string): string {
-  const fallback = fallbackTopEntity.trim().length > 0 ? fallbackTopEntity : 'redbyte_top';
-  const normalized = (value ?? '')
-    .trim()
-    .replace(/[^A-Za-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-  if (normalized.length === 0) return fallback;
-  return /^[A-Za-z_]/.test(normalized) ? normalized : `rb_${normalized}`;
-}
-
-function normalizeFpgaPart(value: string | undefined): string {
-  const trimmed = (value ?? '').trim();
-  return trimmed.length > 0 ? trimmed : DEFAULT_FPGA_PART;
-}
 
 function findFullAdderLabSignal(label: string): GuidedLabSignal | null {
   const normalized = normalizeSignalKey(label);
@@ -3177,17 +3128,6 @@ function nextGuidedLabNodeId(circuit: Circuit, label: string): string {
   }
   return `${base}_${Date.now().toString(36)}`;
 }
-
-function buildIdeFpgaConfig(project: Partial<Pick<RBProject, 'name' | 'hdl' | 'fpga'>>): IdeFpgaConfig {
-  const projectName = (project.name ?? '').trim();
-  const fallbackTop = buildTopEntityName(projectName);
-  return {
-    board: 'basys3',
-    top: normalizeTopEntityName(project.hdl?.top ?? project.fpga?.top, fallbackTop),
-    part: normalizeFpgaPart(project.fpga?.part),
-  };
-}
-
 
 function buildConstraintText(
   ioRows: Array<{

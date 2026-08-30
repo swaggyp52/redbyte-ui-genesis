@@ -65,6 +65,7 @@ import {
   type VerifyWaveSample,
 } from './verifyReport';
 import { deriveIoSignalRoles } from './ioSignalRoles';
+import { buildTopEntityName, normalizeTopEntityName, resolveActiveTopEntity } from './topEntity';
 import { generateBringUpVectors, generateStimulusVectors } from './bringupArtifacts';
 import { normalizeGuidedLabTaskId } from './labTaskDefinition';
 import {
@@ -331,6 +332,11 @@ export interface ProjectRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /**
+   * The active HDL top-entity name. This store is its single writable owner;
+   * surfaces project it (never hold their own copy). Set via {@link setActiveTop}.
+   */
+  activeTop: string;
   projectKind: ProjectKind;
   sourceExampleId: string | null;
   scenarioAuthority: ScenarioAuthority;
@@ -427,6 +433,12 @@ export interface ProjectRuntimeState {
     activeExampleId?: string | null;
     markDirty?: boolean;
   }) => void;
+  /**
+   * Set the active HDL top-entity. Empty/whitespace resets to the name-derived
+   * default. The candidate is normalized to a valid HDL identifier. Returns
+   * whether the requested name was a usable identifier (empty → reset → ok).
+   */
+  setActiveTop: (name: string) => { ok: boolean; error?: string };
   setImportMeta: (meta: IdeImportMeta | null) => void;
   setActiveLabTaskId: (labTaskId: string | null) => void;
   startBlankProject: () => void;
@@ -466,6 +478,8 @@ interface PersistedRuntimeState {
   projectName: string;
   projectDescription: string;
   lastSavedAt: string;
+  /** Single authority for the active HDL top-entity name (see {@link topEntity}). */
+  activeTop?: string;
   projectKind?: ProjectKind;
   sourceExampleId?: string | null;
   scenarioAuthority?: ScenarioAuthority;
@@ -504,6 +518,7 @@ interface DesignHistorySnapshot {
 }
 
 interface RuntimeSeedState extends PersistedRuntimeState {
+  activeTop: string;
   scenarios: VerifyScenario[];
   activeScenarioId: string;
   designPast: DesignHistorySnapshot[];
@@ -848,6 +863,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           projectName: loadedProjectName,
           projectDescription: loadedProjectDescription,
           lastSavedAt: `Imported: ${loadedProjectName || 'project'}`,
+          activeTop: resolveActiveTopEntity(
+            project.hdl?.top ?? project.fpga?.top,
+            loadedProjectName
+          ),
           projectKind,
           sourceExampleId,
           scenarioAuthority,
@@ -2090,6 +2109,29 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           };
         });
       },
+      setActiveTop: (name) => {
+        const trimmed = name.trim();
+        if (trimmed.length === 0) {
+          // Empty resets to the name-derived default (a valid, deliberate choice).
+          set((state) => ({
+            activeTop: buildTopEntityName(state.projectName),
+            projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+          }));
+          return { ok: true };
+        }
+        if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
+          return {
+            ok: false,
+            error:
+              'Top entity must start with a letter and use only letters, digits, or underscores (max 64 characters).',
+          };
+        }
+        set((state) => ({
+          activeTop: normalizeTopEntityName(trimmed, buildTopEntityName(state.projectName)),
+          projectHealthCore: { ...state.projectHealthCore, dirtySinceExport: true },
+        }));
+        return { ok: true };
+      },
       startBlankProject: () => {
         set((state) => {
           if (state.projectKind === 'blank' || state.projectKind === 'custom') return state;
@@ -2481,6 +2523,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
         projectName: state.projectName,
         projectDescription: state.projectDescription,
         lastSavedAt: state.lastSavedAt,
+        activeTop: state.activeTop,
         projectKind: state.projectKind,
         sourceExampleId: state.sourceExampleId,
         scenarioAuthority: state.scenarioAuthority,
@@ -2788,6 +2831,10 @@ export function mergePersistedRuntimeState(
       typeof candidate.lastSavedAt === 'string' && candidate.lastSavedAt.trim().length > 0
         ? candidate.lastSavedAt.trim()
         : currentState.lastSavedAt,
+    activeTop:
+      typeof candidate.activeTop === 'string' && candidate.activeTop.trim().length > 0
+        ? candidate.activeTop
+        : resolveActiveTopEntity(undefined, restoredIdentity.projectName),
     projectKind: restoredProjectKind,
     sourceExampleId: persistedSourceExampleId,
     scenarioAuthority: detachedScenarioAuthority,
@@ -2943,11 +2990,13 @@ function createEmptyProjectState(
   const projectIoRows: ProjectIoRow[] = deriveProjectIoRowsFromCircuitAndV2(circuit, hardwareMappingV2);
   const projectVectors: TestVector[] = [];
   const defaultScenario = createDefaultScenario(projectVectors);
+  const projectName = input.projectName ?? 'Untitled Project';
   return {
     projectId: input.projectId ?? createProjectId('blank'),
-    projectName: input.projectName ?? 'Untitled Project',
+    projectName,
     projectDescription: '',
     lastSavedAt: input.lastSavedAt ?? 'Project home',
+    activeTop: buildTopEntityName(projectName),
     projectKind: input.projectKind ?? 'home',
     sourceExampleId: null,
     scenarioAuthority: 'none',
@@ -2999,6 +3048,7 @@ function stateFromExample(
     projectName: example.name,
     projectDescription: example.summary,
     lastSavedAt: 'Seeded example',
+    activeTop: resolveActiveTopEntity(undefined, example.name),
     projectKind: 'example',
     sourceExampleId: example.id,
     scenarioAuthority: example.vectors.length > 0 ? 'starter' : 'none',
