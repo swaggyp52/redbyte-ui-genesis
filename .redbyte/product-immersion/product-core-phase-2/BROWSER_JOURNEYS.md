@@ -38,9 +38,23 @@ entity untitled_project is
 Each instance gets its own bus BIT (A(0)..A(3)); each SUM bit is driven
 separately; carry chains correctly. Vector top ports + scalar component ports.
 
+## PII-4 — Simulate vector word lanes (live run)
+Blank → Design → create A[1:0] input bus + Y[1:0] output bus → wire A[0]→Y[0],
+A[1]→Y[1] (identity) → Simulate → run a 2-bit sweep (A = 00,01,10,11 over
+t0..t3). The BUS WORDS strip above the waveform shows, at the selected tick t3,
+`A[1:0] STIMULUS · 2B  0x3  11₂ · 3` (cyan) and `Y[1:0] OBSERVED · 2B  0x3`
+(teal), each with a per-tick strip `0 1 2 3` (t3 highlighted). Clicking a strip
+cell selects that tick. Screenshot `81-bus-word-lanes.png`.
+
 ## Model-level proofs (unit tests, deterministic)
 - `hierarchicalVhdl.test.ts`: bit-selected structural top (`A => A(0)`, `SUM(0) <=`).
 - `projectHierarchy.test.ts`: 3-level flatten (top→Double→Inv→4 NOTs) with
   3-deep composed instance paths; cycle detection on a forged Double→Inv→Double loop.
 - `hierarchicalAdderSim.test.ts`: elaborated 2-bit adder computes A+B for all
   inputs; survives save/reload and re-simulates (3+1=4).
+- `vectorModulePorts.test.ts`: bus-member boundaries fuse into width-N module
+  ports; module VHDL declares `STD_LOGIC_VECTOR`; elaborate+sim (A=11→Y=01).
+- `busWordLanes.test.ts`: timeline→word projection (MSB-first, X/Z-preserving,
+  missing bit = unknown, ascending & descending buses).
+- `verifySurfaceBusWords.test.tsx`: VerifySurface renders real bus words from a
+  run waveform (`A[1:0]=0x2=10₂=2`); unknown bit propagates to `x'?`.
