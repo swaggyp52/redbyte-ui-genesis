@@ -113,8 +113,18 @@ Delivered this block:
   changed-artifact list). 10 unit tests + `package-history-journey.mjs` (two downloads → both
   listed, provenance, 3 changed artifacts, selectable).
 
-Remaining queue (order authorized): nested create-module-from-selection while drilled;
-model-driven semantic zoom + camera restore; cross-workspace SUM[2] signature journey;
+- [~] **Nested create-module-from-selection** — ATTEMPTED, reverted clean (no partial ship).
+  Extending the store `createModuleFromSelection` past TOP is straightforward, BUT
+  `createModuleFromSelection(activeModule.circuit, …)` leaves the ACTIVE module's PORT
+  `sourceBoundary.internalRefs` pointing at the extracted nodes (now inside the new child),
+  so `expandInstancesOnce` rewires the parent's port connections to `u-outer__and_node` (one
+  level) while the nodes flatten to `u-outer__u-inner__and_node` (two levels) — a
+  connection/node prefix mismatch that fails CircuitEngine validation ("Connection to missing
+  node"). The proper fix re-derives the active module's port internal-refs to follow the new
+  child instance's ports; risky, deferred. Root cause pinpointed for a future targeted fix.
+
+Remaining queue (order authorized): cross-workspace SUM[2] signature journey (NEXT — the
+capstone proof of the integrated system); model-driven semantic zoom + camera restore;
 visual/a11y/200%-zoom/keyboard hardening; Import/Recovery parity. (Selectable package
 provenance + multi-level Design location already landed in P1-F and the location history.)
 - **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
