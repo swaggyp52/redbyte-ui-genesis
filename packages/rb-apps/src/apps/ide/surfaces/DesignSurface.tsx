@@ -68,6 +68,7 @@ import { netlistFromCircuit } from '../../../export/netlistExport';
 import { vhdlFromNetlist } from '../../../export/vhdlExport';
 import { synthesizableVerilogFromNetlist } from '../../../export/verilogExport';
 import type { HdlSource } from '../../../fpga/toolchainBackend';
+import { deriveSemanticZoomTier, type SemanticZoomTier } from '../semanticZoom';
 import { buildVhdlTopLevelBindings } from '../../../fpga/boards/basys3/basys3Bundle';
 import {
   getBasys3BoardResource,
@@ -1072,7 +1073,15 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
   const previousWireCountRef = useRef(editorCircuit.connections.length);
   const [canvasSize, setCanvasSize] = useState({ width: 880, height: 520 });
   const [paneRowSize, setPaneRowSize] = useState({ width: 0, height: 0 });
-  const presentationZoom: 'dense' | 'classroom' = 'dense';
+  // Model-driven semantic zoom: the canvas density tier follows the camera —
+  // zoom out to read the whole design (legible `classroom`), zoom in to edit
+  // closely (compact `dense`). Hysteresis (previous tier) prevents flicker.
+  const semanticZoomTierRef = useRef<SemanticZoomTier>('dense');
+  const presentationZoom: SemanticZoomTier = deriveSemanticZoomTier(
+    camera.zoom,
+    semanticZoomTierRef.current,
+  );
+  semanticZoomTierRef.current = presentationZoom;
   const [diagnosticsDialogOpen, setDiagnosticsDialogOpen] = useState(false);
   const [actionToast, setActionToast] = useState<string | null>(null);
   const [wireFeedback, setWireFeedback] = useState<string | null>(null);
