@@ -19,6 +19,7 @@ import { useIoBus } from '../ioBus';
 import { HardwareBoard2D } from '../components/HardwareBoard2D';
 import { Basys3BoardView } from '../components/Basys3BoardView';
 import { VirtualBasys3Board, type VirtualBoardResourceMap } from '../components/VirtualBasys3Board';
+import { PinPlannerPanel } from '../components/PinPlannerPanel';
 import { useBoardSignal } from '../BoardSignalContext';
 import { getIoSignalLookupKeys, getStudentFacingIoLabel, normalizeIoSignalKey } from '../ioLabels';
 import { SIGNAL_LANGUAGE } from '../productLanguage';
@@ -3102,6 +3103,9 @@ export const HardwareSurface: React.FC<HardwareSurfaceProps> = ({
                   <p className="ide-copy ide-copy--flush">Select Edit to keep one signal in the assignment editor.</p>
                 </header>
                 <HardwareBusPlanner rows={mappingRows} declaredBuses={declaredBuses} onSetMappingPin={onSetMappingPin} />
+                {hardwareMappingV2 && onApplyHardwareMappingEdit ? (
+                  <PinPlannerPanel doc={hardwareMappingV2} onEdit={applyStructuredEdit} />
+                ) : null}
                 {anyVirtualBoardMapping ? (
                   <VirtualBasys3Board
                     switches={ioBus.state.sw}

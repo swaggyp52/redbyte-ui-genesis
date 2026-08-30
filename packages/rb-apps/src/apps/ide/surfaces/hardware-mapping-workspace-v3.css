@@ -876,3 +876,70 @@
   font-size: 12.5px;
   color: var(--rb-text-secondary);
 }
+
+/* ── Pin Planner (electrical assignment table + conflict repair + XDC diff) ── */
+.ide-pin-planner {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--rb-border);
+  border-radius: 10px;
+  background: var(--rb-surface);
+  margin: 10px 0;
+}
+.ide-pin-planner-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ide-pin-planner-head h4 { margin: 2px 0 0; font-size: 14px; color: var(--rb-text-primary); }
+.ide-pin-planner-stats { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; color: var(--rb-text-secondary); }
+.ide-pin-planner-stats .is-conflict { color: var(--rb-warning); font-weight: 700; }
+.ide-pin-planner-undo {
+  border: 1px solid var(--rb-border); background: transparent; color: var(--rb-text-secondary);
+  font-size: 11.5px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+}
+.ide-pin-planner-undo:hover { border-color: var(--rb-border-strong); color: var(--rb-text-primary); }
+
+.ide-pin-planner-conflicts { display: grid; gap: 6px; }
+.ide-pin-planner-conflict {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 7px 9px; border-radius: 7px;
+  border: 1px solid var(--rb-warning); background: color-mix(in srgb, var(--rb-warning) 10%, transparent);
+}
+.ide-pin-planner-conflict-pin { font-family: var(--rb-font-mono); font-weight: 700; color: var(--rb-warning); }
+.ide-pin-planner-conflict-signals { flex: 1 1 auto; font-size: 12px; color: var(--rb-text-primary); }
+.ide-pin-planner-resolve {
+  border: 1px solid var(--rb-warning); background: var(--rb-surface); color: var(--rb-text-primary);
+  font-size: 11.5px; padding: 3px 9px; border-radius: 6px; cursor: pointer;
+}
+
+.ide-pin-planner-table-scroll { overflow-x: auto; }
+.ide-pin-planner-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ide-pin-planner-table th {
+  text-align: left; padding: 5px 8px; color: var(--rb-text-muted);
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--rb-border);
+}
+.ide-pin-planner-table td { padding: 5px 8px; border-bottom: 1px solid var(--rb-border-subtle, var(--rb-border)); }
+.ide-pin-planner-row.is-conflict { background: color-mix(in srgb, var(--rb-warning) 8%, transparent); }
+.ide-pin-planner-label code { font-family: var(--rb-font-mono); color: var(--rb-text-primary); }
+.ide-pin-planner-dir { color: var(--rb-text-muted); }
+.ide-pin-planner-pin-input {
+  width: 74px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--rb-border);
+  background: var(--rb-app-bg, var(--rb-surface)); color: var(--rb-text-primary);
+  font-family: var(--rb-font-mono); font-size: 12px; text-transform: uppercase;
+}
+.ide-pin-planner-row.is-conflict .ide-pin-planner-pin-input { border-color: var(--rb-warning); }
+.ide-pin-planner-resource, .ide-pin-planner-iostd { color: var(--rb-text-secondary); }
+.ide-pin-planner-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700;
+}
+.ide-pin-planner-badge.is-ok { background: color-mix(in srgb, var(--rb-accent) 16%, transparent); color: var(--rb-accent); }
+.ide-pin-planner-badge.is-conflict { background: color-mix(in srgb, var(--rb-warning) 18%, transparent); color: var(--rb-warning); }
+.ide-pin-planner-badge.is-issue { background: color-mix(in srgb, var(--rb-warning) 14%, transparent); color: var(--rb-warning); }
+.ide-pin-planner-badge.is-empty { color: var(--rb-text-muted); }
+
+.ide-pin-planner-xdc {
+  border: 1px solid var(--rb-border); border-radius: 8px; padding: 8px 10px; background: var(--rb-app-bg, var(--rb-surface));
+}
+.ide-pin-planner-xdc-title { margin: 0 0 4px; font-size: 11.5px; color: var(--rb-text-secondary); font-weight: 600; }
+.ide-pin-planner-xdc-body { margin: 0; font-family: var(--rb-font-mono); font-size: 11px; white-space: pre-wrap; }
+.ide-pin-planner-xdc-line.is-added { color: var(--rb-accent); }
+.ide-pin-planner-xdc-line.is-removed { color: var(--rb-warning); }
