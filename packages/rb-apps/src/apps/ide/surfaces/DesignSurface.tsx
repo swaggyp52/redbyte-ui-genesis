@@ -6933,7 +6933,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 <span className="ide-palette-card-subtitle">{definition ? `${definition.ports.length} ports · editable visual source` : item.description || 'Custom reusable block.'}</span>
                                 <span className="ide-native-component-card-actions">
                                   {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
-                                    <button type="button" onClick={() => {
+                                    <button type="button" data-testid={`ide-design-palette-place-${definition.id}`} onClick={() => {
                                       const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
                                       onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
                                     }}>Place instance</button>

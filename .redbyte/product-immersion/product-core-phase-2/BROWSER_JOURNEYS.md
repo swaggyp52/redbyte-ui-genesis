@@ -46,6 +46,29 @@ t0..t3). The BUS WORDS strip above the waveform shows, at the selected tick t3,
 (teal), each with a per-tick strip `0 1 2 3` (t3 highlighted). Clicking a strip
 cell selects that tick. Screenshot `81-bus-word-lanes.png`.
 
+## PII-5 — Blank → hierarchical 4-bit ripple-carry adder, ALL through the real UI
+`packages/rb-e2e/nested-adder-journey.mjs` (Node 20.19.0). The project runtime
+store is READ only (to locate DOM targets and assert) — never mutated to author.
+- **Author FullAdder**: place A/B/CIN inputs, x1/x2 XOR, a1/a2 AND, o1 OR, SUM/COUT
+  outputs via the palette + click-to-place hit layer; wire all 12 connections with
+  the wire tool (click source port → click dest port); rename the 5 boundary signals
+  via the inspector; select the 5 gates and Create component from selection → FullAdder
+  module with ports A,B,CIN,SUM,COUT.
+- **Build the 4-bit top**: Ctrl+A/Delete clears the top (FullAdder definition survives);
+  New-bus dialog creates A[3:0]/B[3:0] input + SUM[3:0] output buses; a CARRY output +
+  a Ground are placed; the FullAdder is placed 4× via the library "Place instance" and
+  the instances renamed u_fa0..u_fa3; all nodes dragged to a clean left→right grid.
+- **Wire 17 connections** with the wire tool: bus bit A[i]/B[i] → u_fai.A/.B, u_fai.SUM →
+  SUM[i], Ground → u_fa0.CIN, the COUT→CIN carry chain, u_fa3.COUT → CARRY. Instance
+  ports are dense-clustered, so those use the endpoint picker
+  (`logic-port-cluster-<id>-input/output` → `logic-port-picker-choice-<id>-<port>`).
+  Result: 17/17 expected connections, 0 wrong, 0 extra; canvas "Problems: 0".
+- **Simulate** the authored design (A=0xA, B=0xD): the deterministic run returns
+  **SUM=0x7, CARRY=1** (pass); the Simulate surface shows it Observed (`93-simulate.png`).
+- **Save + reload**: the FullAdder module, all four u_fa0..u_fa3 instances, 17 connections,
+  and A/B/SUM buses survive the reload.
+Screenshots `90-fulladder-created.png`, `91b-grid.png`, `92-wired.png`, `93-simulate.png`.
+
 ## Model-level proofs (unit tests, deterministic)
 - `hierarchicalVhdl.test.ts`: bit-selected structural top (`A => A(0)`, `SUM(0) <=`).
 - `projectHierarchy.test.ts`: 3-level flatten (top→Double→Inv→4 NOTs) with
@@ -58,3 +81,7 @@ cell selects that tick. Screenshot `81-bus-word-lanes.png`.
   missing bit = unknown, ascending & descending buses).
 - `verifySurfaceBusWords.test.tsx`: VerifySurface renders real bus words from a
   run waveform (`A[1:0]=0x2=10₂=2`); unknown bit propagates to `x'?`.
+- `projectRuntime.nestedPlacement.test.ts`: a module can contain another module
+  instance; top→Mid→Leaf flattens to 4 NOTs; cycle rejection leaves state unchanged; undo.
+- `hierarchicalVhdlNested.test.ts`: a definition containing a module instance emits
+  `entity work.<Child>` (structural); leaf-first source order.
