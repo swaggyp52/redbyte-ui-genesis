@@ -1335,3 +1335,57 @@
   font-size: 11px;
   white-space: nowrap;
 }
+
+/* ── Runs document (verifyRunHistory projection) ──────────────────────────── */
+.ide-project-context-runs { padding: 0; border: 0; background: transparent; }
+.ide-project-runs {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--rb-border);
+  border-radius: 8px;
+  background: var(--rb-surface);
+}
+.ide-project-runs-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-runs-head span { color: var(--rb-text-muted); font-size: 12px; font-weight: 700; }
+.ide-project-runs-head strong { font-size: 12px; color: var(--rb-text-secondary, var(--rb-text-muted)); font-weight: 600; }
+.ide-project-runs-empty { margin: 0; font-size: 12.5px; color: var(--rb-text-muted); line-height: 1.5; }
+.ide-project-runs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.ide-project-run-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--rb-border);
+  border-radius: 7px;
+  background: var(--rb-app-bg, var(--rb-surface));
+}
+.ide-project-run-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.ide-project-run-badge.is-pass { background: color-mix(in srgb, var(--rb-success) 16%, transparent); color: var(--rb-success); }
+.ide-project-run-badge.is-fail { background: color-mix(in srgb, var(--rb-danger) 16%, transparent); color: var(--rb-danger); }
+.ide-project-run-body { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.ide-project-run-line { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ide-project-run-line strong { font-size: 12.5px; color: var(--rb-text-primary, inherit); }
+.ide-project-run-time { font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-failure { margin: 0; font-size: 11.5px; color: var(--rb-danger); }
+.ide-project-run-failure code { font-family: var(--rb-font-mono); font-size: 11px; }
+.ide-project-run-changes { margin: 0; font-size: 11px; color: var(--rb-text-muted); }
+.ide-project-run-changes.is-unchanged { opacity: 0.75; }
+.ide-project-runs-open {
+  justify-self: start;
+  border: 1px solid var(--rb-border);
+  background: transparent;
+  color: var(--rb-action);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ide-project-runs-open:hover { background: var(--rb-surface-subtle, var(--rb-surface)); }

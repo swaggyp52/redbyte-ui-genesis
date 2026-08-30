@@ -2620,6 +2620,7 @@ export const IdeApp: React.FC = () => {
               studentName={studentName}
               onStudentNameChange={setStudentName}
               hasVerifyRun={verifyLastRun !== undefined}
+              runHistory={verifyRunHistory}
               fpgaConfig={fpgaConfig}
               importFidelity={importFidelity}
               outline={projectOutline}

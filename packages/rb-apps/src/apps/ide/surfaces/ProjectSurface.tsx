@@ -15,7 +15,8 @@ import { IdeButton, IdeModal, IdePanel } from '../components/IdePrimitives';
 import { ProjectWarningsPanel } from '../components/ProjectWarningsPanel';
 import { ExamplesBrowser } from '../components/ProjectSurfacePrimitives';
 import type { ProjectOutlineSummary } from '../projectOutline';
-import type { RuntimeSimState } from '../projectRuntime';
+import type { RuntimeSimState, VerifyRunLedgerEntry } from '../projectRuntime';
+import { ProjectRunsList } from '../components/ProjectRunsList';
 import type { GuidedLabTaskDefinition } from '../labTaskDefinition';
 import { getStudentFacingIoLabel } from '../ioLabels';
 import { LAB_STARTERS } from '../labStarters';
@@ -143,6 +144,7 @@ export interface ProjectSurfaceProps {
   studentName?: string;
   onStudentNameChange?: (name: string) => void;
   hasVerifyRun?: boolean;
+  runHistory?: VerifyRunLedgerEntry[];
   fpgaConfig?: { part: string; top: string; board: string };
   importFidelity?: 'full' | 'reconstructed' | 'partial' | null;
   onFpgaConfigChange?: (config: { part?: string; top?: string }) => void;
@@ -199,6 +201,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
   saveState = 'saved',
   onRenameProject,
   hasVerifyRun = false,
+  runHistory = [],
   fpgaConfig,
   importFidelity,
   onFpgaConfigChange,
@@ -560,6 +563,7 @@ export const ProjectSurface: React.FC<ProjectSurfaceProps> = ({
               requiredRows={requiredRows}
               missingRequiredRows={missingRequiredRows}
               hasVerifyRun={hasVerifyRun}
+              runHistory={runHistory}
               onOpenHardware={onOpenHardware}
               exportSummary={exportSummary}
               exportPackageCurrent={exportPackageCurrent}
@@ -702,6 +706,7 @@ interface LoadedProjectOverviewProps {
   requiredRows: ProjectMappingRow[];
   missingRequiredRows: ProjectMappingRow[];
   hasVerifyRun: boolean;
+  runHistory: VerifyRunLedgerEntry[];
   onOpenHardware: () => void;
   exportSummary: string;
   exportPackageCurrent: boolean;
@@ -783,6 +788,7 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
   requiredRows,
   missingRequiredRows,
   hasVerifyRun,
+  runHistory,
   onOpenHardware,
   exportSummary,
   exportPackageCurrent,
@@ -1205,6 +1211,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
               <span>Recent activity</span>
               <strong>{recentActivity.label}</strong>
               <p>{recentActivity.detail}</p>
+            </section>
+            <section className="ide-project-context-section ide-project-context-runs">
+              <ProjectRunsList runs={runHistory} onOpenVerify={onOpenVerify} />
             </section>
             <section className="ide-project-context-section ide-project-context-actions">
               <span>Project actions</span>
