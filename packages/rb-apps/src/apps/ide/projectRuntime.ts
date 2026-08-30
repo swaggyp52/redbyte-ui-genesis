@@ -2292,28 +2292,54 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       placeModuleInstance: (moduleId, position, instanceName) => {
         let placed: Node | null = null;
         set((state) => {
-          if (state.hierarchy.activeModuleId !== TOP_MODULE_ID) return state;
           const definition = state.hierarchy.modules.find((module) => module.id === moduleId);
           if (!definition) return state;
+          const activeModuleId = state.hierarchy.activeModuleId;
           try {
-            const result = placeNativeModuleInstance(state.circuit, definition, position, instanceName);
+            // Top-level placement: the instance drops into the project's top circuit.
+            if (activeModuleId === TOP_MODULE_ID) {
+              const result = placeNativeModuleInstance(state.circuit, definition, position, instanceName);
+              placed = result.instance;
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: result.circuit,
+                  hierarchy: cloneProjectHierarchy(state.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested placement: the instance drops into the currently-edited module
+            // definition's own circuit, so a module can contain another module.
+            const active = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!active) return state;
+            const result = placeNativeModuleInstance(active.circuit, definition, position, instanceName);
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(state.hierarchy),
+              modules: state.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? { ...module, circuit: cloneCircuit(result.circuit), updatedAt: new Date().toISOString() }
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            // Reject a placement that would make a module instantiate itself
+            // directly or indirectly. The project stays valid and unchanged.
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              placed = null;
+              return state;
+            }
             placed = result.instance;
-            return commitDesignSnapshot(
-              state,
-              {
-                circuit: result.circuit,
-                hierarchy: cloneProjectHierarchy(state.hierarchy),
-                projectIoRows: cloneIoRows(state.projectIoRows),
-                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
-                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
-              },
-              {
-                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
-                  -state.maxDesignHistory,
-                ),
-                designFuture: [],
-              },
-            );
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
+            for (const registered of customComponents) registerCompositeNode(registered);
+            return commitModuleDefinitionSnapshot(state, hierarchy);
           } catch {
             placed = null;
             return state;
