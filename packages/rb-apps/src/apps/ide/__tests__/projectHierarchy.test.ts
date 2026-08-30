@@ -5,6 +5,7 @@ import {
   createEmptyProjectHierarchy,
   createModuleFromSelection,
   elaborateProjectHierarchy,
+  hierarchyCycleModules,
   placeModuleInstance,
 } from '../projectHierarchy';
 
@@ -99,5 +100,96 @@ describe('native visual project hierarchy', () => {
     const decoded = decodeRBProject(encodeRBProject(project));
     expect(decoded.hierarchy?.activeModuleId).toBe(created.definition.id);
     expect(decoded.hierarchy?.modules[0]?.circuit.nodes.some((node) => node.id === 'xor1')).toBe(true);
+  });
+
+  describe('nested hierarchy', () => {
+    // Leaf module Inv: A → NOT → NOT → Y (a two-gate identity buffer; modules
+    // require at least two connected components).
+    const buildInv = () => {
+      const base: Circuit = {
+        nodes: [
+          { id: 'A', type: 'INPUT', label: 'A', position: { x: 0, y: 0 } },
+          { id: 'Y', type: 'OUTPUT', label: 'Y', position: { x: 400, y: 0 } },
+          { id: 'n1', type: 'NOT', position: { x: 150, y: 0 } },
+          { id: 'n2', type: 'NOT', position: { x: 280, y: 0 } },
+        ],
+        connections: [
+          { from: { nodeId: 'A', portName: 'out' }, to: { nodeId: 'n1', portName: 'in' } },
+          { from: { nodeId: 'n1', portName: 'out' }, to: { nodeId: 'n2', portName: 'in' } },
+          { from: { nodeId: 'n2', portName: 'out' }, to: { nodeId: 'Y', portName: 'in' } },
+        ],
+      };
+      return createModuleFromSelection(base, createEmptyProjectHierarchy(), {
+        moduleName: 'Inv', instanceName: 'u_inv0', selectedNodeIds: ['n1', 'n2'],
+        nowIso: '2026-08-08T12:00:00.000Z',
+      });
+    };
+
+    // Middle module Double: two chained Inv instances (A → u_i0 → u_i1 → Y).
+    const buildDouble = (invResult: ReturnType<typeof buildInv>) => {
+      const inv = invResult.definition;
+      let top: Circuit = { nodes: [
+        { id: 'DA', type: 'INPUT', label: 'A', position: { x: 0, y: 0 } },
+        { id: 'DY', type: 'OUTPUT', label: 'Y', position: { x: 600, y: 0 } },
+      ], connections: [] };
+      const p0 = placeModuleInstance(top, inv, { x: 150, y: 0 }, 'u_i0');
+      const p1 = placeModuleInstance(p0.circuit, inv, { x: 380, y: 0 }, 'u_i1');
+      top = { nodes: p1.circuit.nodes, connections: [
+        { from: { nodeId: 'DA', portName: 'out' }, to: { nodeId: p0.instance.id, portName: 'A' } },
+        { from: { nodeId: p0.instance.id, portName: 'Y' }, to: { nodeId: p1.instance.id, portName: 'A' } },
+        { from: { nodeId: p1.instance.id, portName: 'Y' }, to: { nodeId: 'DY', portName: 'in' } },
+      ] };
+      return createModuleFromSelection(top, invResult.hierarchy, {
+        moduleName: 'Double', instanceName: 'u_double0', selectedNodeIds: [p0.instance.id, p1.instance.id],
+        nowIso: '2026-08-08T12:00:00.000Z',
+      });
+    };
+
+    it('flattens a 3-level hierarchy (top → Double → Inv) to primitive gates', () => {
+      const inv = buildInv();
+      const double = buildDouble(inv);
+      // Final top: one Double instance between A and Y.
+      let top: Circuit = { nodes: [
+        { id: 'TA', type: 'INPUT', label: 'IN', position: { x: 0, y: 0 } },
+        { id: 'TY', type: 'OUTPUT', label: 'OUT', position: { x: 600, y: 0 } },
+      ], connections: [] };
+      const placed = placeModuleInstance(top, double.definition, { x: 250, y: 0 }, 'u_top');
+      top = { nodes: placed.circuit.nodes, connections: [
+        { from: { nodeId: 'TA', portName: 'out' }, to: { nodeId: placed.instance.id, portName: 'A' } },
+        { from: { nodeId: placed.instance.id, portName: 'Y' }, to: { nodeId: 'TY', portName: 'in' } },
+      ] };
+      const flat = elaborateProjectHierarchy(top, double.hierarchy);
+      // Four NOT gates survive (two Inv instances × two NOTs), no module nodes.
+      const nots = flat.nodes.filter((n) => n.type === 'NOT');
+      expect(nots).toHaveLength(4);
+      expect(flat.nodes.every((n) => !n.config?.moduleDefinitionId)).toBe(true);
+      // Composed instance paths reach three levels deep.
+      expect(nots.some((n) => String(n.config?.hierarchyPath).split('.').length >= 3)).toBe(true);
+      // The top input reaches the first NOT and the second NOT reaches the top output.
+      const feedsTop = flat.connections.some((c) => (typeof c.from !== 'string' && c.from.nodeId === 'TA'));
+      const drivesTop = flat.connections.some((c) => (typeof c.to !== 'string' && c.to.nodeId === 'TY'));
+      expect(feedsTop && drivesTop).toBe(true);
+    });
+
+    it('reports a cycle when a module would instantiate itself indirectly', () => {
+      const inv = buildInv();
+      const double = buildDouble(inv);
+      // No cycle in the honest DAG.
+      expect(hierarchyCycleModules(double.hierarchy)).toEqual([]);
+      // Forge a cycle: make Inv's circuit contain a Double instance (Double → Inv → Double).
+      const cyclic = {
+        ...double.hierarchy,
+        modules: double.hierarchy.modules.map((m) =>
+          m.name === 'Inv'
+            ? { ...m, circuit: { ...m.circuit, nodes: [...m.circuit.nodes, {
+                id: 'nested_double', type: 'Double', label: 'u_d',
+                config: { moduleDefinitionId: double.definition.id, moduleName: 'Double', instanceName: 'u_d' },
+              }] } }
+            : m,
+        ),
+      };
+      const cycle = hierarchyCycleModules(cyclic);
+      expect(cycle.length).toBeGreaterThan(0);
+    });
   });
 });

@@ -166,12 +166,11 @@ export function analyzeModuleSelection(
   if (nodes.length < 2) errors.push('Select at least two connected components.');
   if (nodes.length !== selected.length) errors.push('The selection contains a missing component.');
 
-  const nested = nodes.filter(
-    (node) => customModuleNames.includes(node.type) || readString(node.config?.moduleDefinitionId),
-  );
-  if (nested.length > 0) {
-    errors.push('Custom modules cannot contain another custom module in this milestone.');
-  }
+  // Nested modules are supported: a selection may include instances of other
+  // modules, producing a definition that itself instantiates them (deep
+  // hierarchy). A new definition cannot reference itself, so this never
+  // creates a cycle at creation time; a later edit that would form a cycle is
+  // rejected by hierarchyCycleModules at placement.
   const boundaryNodes = nodes.filter((node) => isTopLevelBoundaryNode(node));
   if (boundaryNodes.length > 0) {
     errors.push('Select the functional logic only; top-level inputs and outputs stay in the parent module.');
@@ -358,23 +357,33 @@ export function placeModuleInstance(
   };
 }
 
-export function elaborateProjectHierarchy(
-  topCircuit: Circuit,
-  hierarchy: ProjectHierarchyDocument | undefined,
-): Circuit {
-  if (!hierarchy || hierarchy.modules.length === 0) return cloneCircuit(topCircuit);
-  const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
-  const modulesByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
-  const instanceNodes = topCircuit.nodes.filter((node) => resolveModuleForNode(node, modulesById, modulesByName));
-  if (instanceNodes.length === 0) return cloneCircuit(topCircuit);
+const MAX_ELABORATION_DEPTH = 64;
+
+/**
+ * Flatten one level of module instances in `circuit`. Each instance's
+ * definition is inlined with an `instanceId__` prefix (boundary nodes dropped),
+ * and every connection is rewired through instance ports. A nested instance
+ * (an instance node living inside a definition) survives one pass as a prefixed
+ * instance node and is expanded on the next pass — iterating this to a fixed
+ * point yields deep hierarchy with stable composed instance-path prefixes.
+ */
+function expandInstancesOnce(
+  circuit: Circuit,
+  modulesById: Map<string, NativeVisualModuleDefinition>,
+  modulesByName: Map<string, NativeVisualModuleDefinition>,
+): { circuit: Circuit; expanded: boolean } {
+  const instanceNodes = circuit.nodes.filter((node) => resolveModuleForNode(node, modulesById, modulesByName));
+  if (instanceNodes.length === 0) return { circuit: cloneCircuit(circuit), expanded: false };
   const instanceIds = new Set(instanceNodes.map((node) => node.id));
   const instancesById = new Map(instanceNodes.map((node) => [node.id, node]));
-  const nodes = topCircuit.nodes.filter((node) => !instanceIds.has(node.id)).map(cloneNode);
+  const nodes = circuit.nodes.filter((node) => !instanceIds.has(node.id)).map(cloneNode);
   const connections: Connection[] = [];
 
   for (const instance of instanceNodes) {
     const definition = resolveModuleForNode(instance, modulesById, modulesByName)!;
     const prefix = `${instance.id}__`;
+    const parentPath = readString(instance.config?.hierarchyPath) || 'top';
+    const instancePath = `${parentPath}.${readInstanceName(instance)}`;
     const boundaryNodeIds = new Set(
       definition.circuit.nodes
         .filter((node) => readString(node.config?.moduleBoundary))
@@ -387,7 +396,9 @@ export function elaborateProjectHierarchy(
           ...cloneNode(node),
           id: `${prefix}${node.id}`,
           label: `${readInstanceName(instance)}.${node.label ?? node.id}`,
-          config: { ...(node.config ?? {}), hierarchyPath: `top.${readInstanceName(instance)}` },
+          // Compose the path so a nested instance carries top.u_outer.u_inner…;
+          // the next expansion pass reads this to keep composing.
+          config: { ...(node.config ?? {}), hierarchyPath: instancePath },
         })),
     );
     connections.push(
@@ -399,13 +410,12 @@ export function elaborateProjectHierarchy(
         })
         .map((connection) => prefixConnection(connection, prefix)),
     );
-
   }
 
-  // Resolve each top-level wire through both ends at once. Doing this after all
-  // instances are expanded is important for module-to-module wires: neither the
-  // source nor target instance may survive in the flattened simulation graph.
-  for (const connection of topCircuit.connections) {
+  // Rewire every connection in the working circuit (not only original top
+  // wires): after inlining, wires from a definition that touched a nested
+  // instance are present here and must resolve through that instance's ports.
+  for (const connection of circuit.connections) {
     const parentSource = normalizeEndpoint(connection.from, 'out');
     const parentTarget = normalizeEndpoint(connection.to, 'in');
     const sourceInstance = instancesById.get(parentSource.nodeId);
@@ -441,7 +451,67 @@ export function elaborateProjectHierarchy(
       connections.push({ from: clonePortRef(source), to: clonePortRef(target) });
     }
   }
-  return { nodes, connections };
+  return { circuit: { nodes, connections }, expanded: true };
+}
+
+export function elaborateProjectHierarchy(
+  topCircuit: Circuit,
+  hierarchy: ProjectHierarchyDocument | undefined,
+): Circuit {
+  if (!hierarchy || hierarchy.modules.length === 0) return cloneCircuit(topCircuit);
+  const modulesById = new Map(hierarchy.modules.map((module) => [module.id, module]));
+  const modulesByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
+
+  let current = topCircuit;
+  for (let depth = 0; depth < MAX_ELABORATION_DEPTH; depth += 1) {
+    const { circuit: next, expanded } = expandInstancesOnce(current, modulesById, modulesByName);
+    if (!expanded) return next;
+    current = next;
+  }
+  // Depth cap reached — a recursive/cyclic definition. Return the last
+  // expansion; hierarchyCycleModules() is the authority that rejects cycles
+  // before they reach here.
+  return cloneCircuit(current);
+}
+
+/**
+ * Module ids that participate in an instantiation cycle (a module that
+ * directly or indirectly instantiates itself). Empty when the hierarchy is a
+ * DAG. Used to reject a cycle at authoring time and keep the project valid.
+ */
+export function hierarchyCycleModules(hierarchy: ProjectHierarchyDocument | undefined): string[] {
+  if (!hierarchy || hierarchy.modules.length === 0) return [];
+  const byId = new Map(hierarchy.modules.map((module) => [module.id, module]));
+  const byName = new Map(hierarchy.modules.map((module) => [module.name, module]));
+  const childIds = (module: NativeVisualModuleDefinition): string[] => {
+    const ids = new Set<string>();
+    for (const node of module.circuit.nodes) {
+      const child = byId.get(readString(node.config?.moduleDefinitionId)) ?? byName.get(node.type);
+      if (child) ids.add(child.id);
+    }
+    return [...ids];
+  };
+  const state = new Map<string, 'visiting' | 'done'>();
+  const inCycle = new Set<string>();
+  const visit = (id: string, stack: string[]): void => {
+    const mark = state.get(id);
+    if (mark === 'done') return;
+    if (mark === 'visiting') {
+      // Everything from where `id` first entered the stack is in the cycle.
+      const start = stack.indexOf(id);
+      for (const member of stack.slice(start >= 0 ? start : 0)) inCycle.add(member);
+      inCycle.add(id);
+      return;
+    }
+    state.set(id, 'visiting');
+    const module = byId.get(id);
+    if (module) {
+      for (const child of childIds(module)) visit(child, [...stack, id]);
+    }
+    state.set(id, 'done');
+  };
+  for (const module of hierarchy.modules) visit(module.id, []);
+  return [...inCycle];
 }
 
 export function toCompositeDefinition(module: NativeVisualModuleDefinition): CompositeNodeDef {

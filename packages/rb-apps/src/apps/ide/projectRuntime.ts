@@ -136,6 +136,7 @@ import {
   createEmptyProjectHierarchy,
   createModuleFromSelection as createNativeModuleFromSelection,
   elaborateProjectHierarchy,
+  hierarchyCycleModules,
   moduleUsageCount,
   normalizeProjectHierarchy,
   placeModuleInstance as placeNativeModuleInstance,
@@ -2351,6 +2352,11 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
                 : cloneModuleDefinition(module),
             ),
           };
+          // Reject an edit that would make a module instantiate itself directly
+          // or indirectly. The project stays valid and unchanged on rejection.
+          if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+            return state;
+          }
           const customComponents = hierarchy.modules.map(toCompositeDefinition);
           for (const definition of customComponents) registerCompositeNode(definition);
           return commitModuleDefinitionSnapshot(state, hierarchy);
