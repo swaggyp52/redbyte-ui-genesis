@@ -8,6 +8,7 @@ import {
 } from '../projectHierarchy';
 import { recomputeSimulationState, resetSimulationState } from '../sim/simEngine';
 import type { SimulationIoRow } from '../sim/simTypes';
+import { createRBProject, decodeRBProject, encodeRBProject } from '../../../export/projectFormat';
 
 // A FullAdder module built the real way (create-from-selection over gates).
 function buildFullAdder() {
@@ -118,5 +119,48 @@ describe('hierarchical adder simulation', () => {
       const sum = readOut(settled.value, 'S0') + (readOut(settled.value, 'S1') << 1) + (readOut(settled.value, 'CY') << 2);
       expect(sum).toBe(a + b);
     }
+  });
+
+  it('survives save/reload with its hierarchy and re-simulates correctly', () => {
+    const { top, hierarchy } = buildTwoBitAdder();
+    const project = createRBProject({
+      createdAt: '2026-08-30T00:00:00.000Z',
+      name: '2-bit adder',
+      circuit: top,
+      hierarchy,
+    });
+    const reloaded = decodeRBProject(encodeRBProject(project));
+
+    // Hierarchy and its FullAdder definition survive the round-trip.
+    expect(reloaded.hierarchy?.modules.map((m) => m.name)).toContain('FullAdder');
+    const fa = reloaded.hierarchy?.modules.find((m) => m.name === 'FullAdder');
+    expect(fa?.ports.map((p) => p.name).sort()).toEqual(['A', 'B', 'CIN', 'COUT', 'SUM']);
+    // Both instances survive at the top.
+    const instances = reloaded.circuit.nodes.filter((n) => n.config?.moduleDefinitionId);
+    expect(instances).toHaveLength(2);
+
+    // The reloaded project still elaborates and adds correctly.
+    const flat = elaborateProjectHierarchy(reloaded.circuit, reloaded.hierarchy);
+    const ioRows: SimulationIoRow[] = [
+      { id: 'A0', nodeId: 'A0', label: 'A[0]', direction: 'in' },
+      { id: 'A1', nodeId: 'A1', label: 'A[1]', direction: 'in' },
+      { id: 'B0', nodeId: 'B0', label: 'B[0]', direction: 'in' },
+      { id: 'B1', nodeId: 'B1', label: 'B[1]', direction: 'in' },
+      { id: 'S0', nodeId: 'S0', label: 'SUM[0]', direction: 'out' },
+      { id: 'S1', nodeId: 'S1', label: 'SUM[1]', direction: 'out' },
+      { id: 'CY', nodeId: 'CY', label: 'CARRY', direction: 'out' },
+    ];
+    const reset = resetSimulationState(flat, ioRows);
+    expect(reset.status).toBe('ok');
+    if (reset.status !== 'ok') return;
+    let sim = { ...reset.value, inputs: { ...reset.value.inputs, A0: 1, A1: 1, B0: 1, B1: 0 } }; // 3 + 1
+    const settled = recomputeSimulationState(flat, ioRows, sim);
+    expect(settled.status).toBe('ok');
+    if (settled.status !== 'ok') return;
+    const read = (id: string): number => {
+      const v = settled.value.signals[id] ?? settled.value.signals[`${id}.in`] ?? 0;
+      return v === 1 ? 1 : 0;
+    };
+    expect(read('S0') + (read('S1') << 1) + (read('CY') << 2)).toBe(4);
   });
 });
