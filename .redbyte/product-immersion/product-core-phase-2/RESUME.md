@@ -97,13 +97,17 @@ Delivered this block:
   case, change-since-last flags, Open Simulate. Read-model only. 6 component tests +
   `runs-document-journey.mjs` (empty → real run PASS → 2 recorded → open).
 
+- [x] **P1-E Pin planner + conflict repair** (`6badcbc` logic, `bc34113` XDC diff, `7b5a261`
+  UI): extended `hardwareMappingV2EditorModel` with granular `set_bit_pin` / `swap_pins` /
+  `resolve_conflict` ops (+ `readAssignmentPin`); `hardwarePinPlanner.ts` read-models
+  (collectPinAssignments / detectPinConflicts / validatePinAssignments with Basys3 electrical
+  facts); `hardwareXdcPreview.ts` deterministic XDC lines + before/after diff; `PinPlannerPanel`
+  in HardwareSurface — electrical assignment table, inline conflict flags + one-click repair,
+  editable pin fields, exact XDC before/after, one-action undo. 19 unit tests +
+  `pin-planner-journey.mjs` (render → electrical metadata → conflict create → XDC +1/−1 → repair).
+
 Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **NEXT → P1-E Pin planner + conflict repair** — mapping authority `hardwareMappingV2`
-  (setMappingPin/setMappingPins/applyHardwareMappingEdit/autoSuggestMapping); electrical facts
-  in `basys3Pins.ts` BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to
-  `hardwareMappingV2EditorModel.ts` union; assignment table + conflict create+repair + exact
-  XDC before/after (buildTopXdc diff) in HardwareSurface.
-- **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
+- **NEXT → P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
   `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
   from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
   reason in ExportSurface (single generator `buildExportViewModel`).
