@@ -120,6 +120,9 @@ import {
   type VerifyStateTone,
 } from './verify/VerifySurfacePrimitives';
 import { WaveformViewer, type WaveformSignalRow, type SignalLaneGroup } from './verify/WaveformInstrument';
+import { BusWordLanesPanel } from './verify/BusWordLanesPanel';
+import { assembleBusWordLanes } from '../sim/busWordLanes';
+import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
@@ -304,6 +307,8 @@ export interface VerifySurfaceProps {
   };
   /** Canonical generated simulation source from the export view model. */
   generatedTestbenchSource?: string;
+  /** First-class bus declarations from the authoring circuit, for word lanes. */
+  buses?: readonly BusDeclaration[];
 }
 
 // ─── SVG WaveformViewer (extracted to verify/WaveformInstrument.tsx) ─────────
@@ -419,6 +424,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   unsupportedFeedbackDiagnostic = null,
   circuitGraph,
   generatedTestbenchSource,
+  buses,
 }) => {
   const gradingBlockedByDesign = Boolean(designBlockingIssue);
   // Preserve observation traces, but revoke checked PASS/FAIL presentation
@@ -2773,6 +2779,14 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
       tickWindowCenter ?? selectedTick ?? allWaveformTicks[0] ?? 0
     );
   }, [allWaveformTicks, focusedFailureTick, tickZoom, tickWindowCenter, selectedTick]);
+  // First-class bus word lanes: collapse member bit rows into observed words
+  // over the same tick window the waveform shows. Assembled from the full
+  // timeline (not the filtered/hidden lane view) so a bus word stays complete
+  // even when a member lane is hidden or de-prioritized.
+  const busWordLanes = useMemo(
+    () => assembleBusWordLanes(buses ?? [], signalTimeline, zoomedTicks),
+    [buses, signalTimeline, zoomedTicks]
+  );
   const runVectorCount = lastRun?.report.vectors?.length ?? effectiveNextRunVectors.length;
   const waveformWindowLabel = useMemo(
     () => formatTickWindowLabel(allWaveformTicks, zoomedTicks, tickZoom),
@@ -6378,6 +6392,11 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
                 data-testid="ide-verify-waveform-preview"
                 data-verify-trace-only={isTraceOnly ? '1' : '0'}
               >
+                <BusWordLanesPanel
+                  lanes={busWordLanes}
+                  selectedTick={selectedTick}
+                  onSelectTick={setSelectedTick}
+                />
                 <div
                   className="ide-verify-waveform-scroll"
                   ref={waveformScrollRef}

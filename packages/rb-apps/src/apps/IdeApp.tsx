@@ -2744,6 +2744,7 @@ export const IdeApp: React.FC = () => {
             >
             <VerifySurface
               circuitGraph={simulationCircuit}
+              buses={circuit.buses ?? []}
               deterministicHash={currentVerifyReplayHash}
               projectName={projectName}
               board={fpgaConfig?.board ?? 'Basys3'}
