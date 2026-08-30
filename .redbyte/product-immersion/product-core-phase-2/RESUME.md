@@ -85,12 +85,16 @@ Delivered this block:
   (`active-top-authority-probe.mjs`): project chip projects the store value, UI set updates the
   one authority, invalid rejected, reload restores.
 
+- [x] **Engineering-location history** (`de9cffd`): `LocationBar` (Back/Forward/Up + drill
+  path) over a bounded `useEngineeringLocation` history store + `computeModulePath`. Pure UI
+  navigation state; mode + activeModuleId stay owned by their existing owners. Two-phase guard
+  so replaying history never re-records. 10 unit tests + `engineering-location-journey.mjs`
+  (cross-workspace Back×3/Forward×2 + real-UI module authoring → drill → Up → Back). IdeApp
+  landmark render contract still green.
+
 Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **NEXT → engineering-location history** — location is split across IdeApp `currentMode`
-  useState / `hierarchy.activeModuleId` / useLogicViewStore; no multi-level path, no
-  Back/Forward/Up. Add a location-path projection + a bounded history stack (read-model over
-  the existing owners; navigation is UI interaction state — allowed).
-- **Canonical Runs document** — surface `verifyRunHistory` (50-entry ring) as a Runs list.
+- **NEXT → Canonical Runs document** — surface `verifyRunHistory` (50-entry ring, L358) as a
+  Runs list in Project (read-model over the existing ring; no new authority).
 - **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
   `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
   from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
