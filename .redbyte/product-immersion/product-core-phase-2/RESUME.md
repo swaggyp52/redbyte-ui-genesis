@@ -53,9 +53,40 @@
   structural VHDL itself is proven by `hierarchicalVhdl.test.ts` + `hierarchicalVhdlNested.test.ts`.
 - [ ] Semantic-zoom projection; multi-level breadcrumb path stack; create-from-selection while nested.
 
-## Next chapters (P1+)
-Project operational control center (tops/sources/filesets/compile-order/sim-sets/constraint-sets/runs/recovery);
-virtual-board ↔ Bench sync; pin planner depth + electrical; package history/provenance; import parity.
+## P1 — Operational Workbench Convergence (2026-08-30, started)
+Safety tag `safety/pre-operational-workbench-convergence` @ 6d9bef4 (parent). Full owner
+census in `OWNER_CENSUS_P1.md` (extend these owners; never add a second writable authority).
+
+Delivered this block:
+- [x] **Set Active Top** (`6d9bef4`): the Overview "Top" fact is now a validated command
+  over the existing `fpgaConfig.top` authority (HDL-identifier validation, error on invalid,
+  persists as `fpga.top`, survives save/reload — browser-proven). NOTE: `fpgaConfig` is still
+  an IdeApp `useState` (ephemeral, hydrated from the saved project); the census flags folding
+  it into `useProjectRuntime` as a persisted slice + `setActiveTop` action (convergence hazard).
+
+Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
+- **P1-D Shared experiment** — the ephemeral experiment `state.sim` (sim.inputs/sim.signals,
+  actions.sim.setInput L611 / toggleInput L647-unwired) ALREADY backs the Design canvas +
+  Virtual Board (HardwareSurface via `useIoBus`). Gap: a **Manual Bench in Simulate** over the
+  same `state.sim` (VerifySurface today drives PERSISTENT scenario vectors, not `state.sim`).
+  Add a live word-drive bench calling actions.sim.setInput, reading runtimeSim.signals; prove
+  Bench↔Virtual-Board both directions + Analyzer agree (Half Adder, 4-bit A=0xA/B=0xD→0x7/CARRY, Register1).
+- **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
+  `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
+  from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
+  reason in ExportSurface (single generator `buildExportViewModel`).
+- **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
+  applyHardwareMappingEdit/autoSuggestMapping); electrical facts in `basys3Pins.ts`
+  BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to `hardwareMappingV2EditorModel.ts`
+  union; build the assignment table + conflict-repair + XDC diff (buildTopXdc) in HardwareSurface.
+- **P1-B Project docs actionable** — surface `verifyRunHistory` (50-entry ring, L358) as a Runs
+  list; wire Recovery row to `projectRepository.checkpoint()`/recover.
+- **P1-G Location/nav** — location split across currentMode useState / hierarchy.activeModuleId /
+  useLogicViewStore; no multi-level path, no Back/Forward except mode. Needs a location-path
+  projection + history stack.
+
+Reminder: `LoadedProjectOverview` (the operational Project view) renders only when
+`readiness.hasCircuit` — browser probes must populate a circuit before asserting Project controls.
 
 ## Continuation
 `git checkout claude/redbyte-desktop-build-m5ryqw`; read this + BROWSER_JOURNEYS.md + `.redbyte/product-immersion/product-core-convergence/BUS_MODEL_AUDIT.md`; `git log --oneline safety/pre-product-core-phase-2..HEAD`. The module-port owner audit (this session's workflow) mapped every width site — see the audit summary in the session transcript.
