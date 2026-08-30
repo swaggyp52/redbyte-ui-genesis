@@ -123,10 +123,14 @@ Delivered this block:
   node"). The proper fix re-derives the active module's port internal-refs to follow the new
   child instance's ports; risky, deferred. Root cause pinpointed for a future targeted fix.
 
-Remaining queue (order authorized): cross-workspace SUM[2] signature journey (NEXT — the
-capstone proof of the integrated system); model-driven semantic zoom + camera restore;
-visual/a11y/200%-zoom/keyboard hardening; Import/Recovery parity. (Selectable package
-provenance + multi-level Design location already landed in P1-F and the location history.)
+- [x] **Signature journey** (`2c238bf`): `signature-journey.mjs` — ONE uninterrupted
+  cross-workspace flow through the real UI exercising every convergence chapter (active-top,
+  location path, shared Manual Bench, Virtual Board mirror, Pin Planner conflict+XDC repair,
+  package history, Runs document, engineering-location Back). All 7 stages green.
+
+Remaining queue (order authorized): model-driven semantic zoom + camera restore (NEXT);
+visual/a11y/200%-zoom/keyboard hardening; Import/Recovery parity; nested create-module (blocked,
+root cause above). Selectable package provenance + multi-level Design location already landed.
 - **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
   applyHardwareMappingEdit/autoSuggestMapping); electrical facts in `basys3Pins.ts`
   BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to `hardwareMappingV2EditorModel.ts`
