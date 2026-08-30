@@ -113,15 +113,14 @@ Delivered this block:
   changed-artifact list). 10 unit tests + `package-history-journey.mjs` (two downloads → both
   listed, provenance, 3 changed artifacts, selectable).
 
-- [~] **Nested create-module-from-selection** — ATTEMPTED, reverted clean (no partial ship).
-  Extending the store `createModuleFromSelection` past TOP is straightforward, BUT
-  `createModuleFromSelection(activeModule.circuit, …)` leaves the ACTIVE module's PORT
-  `sourceBoundary.internalRefs` pointing at the extracted nodes (now inside the new child),
-  so `expandInstancesOnce` rewires the parent's port connections to `u-outer__and_node` (one
-  level) while the nodes flatten to `u-outer__u-inner__and_node` (two levels) — a
-  connection/node prefix mismatch that fails CircuitEngine validation ("Connection to missing
-  node"). The proper fix re-derives the active module's port internal-refs to follow the new
-  child instance's ports; risky, deferred. Root cause pinpointed for a future targeted fix.
+- [x] **Nested create-module-from-selection** (`364ddb1`): FIXED. The root cause — the parent
+  module's port `sourceBoundary.internalRefs` going stale after a nested extraction — is
+  resolved by `projectHierarchy.rederiveModulePortRefs`, which rebuilds each port's refs from
+  the module's live circuit (input→outgoing targets, output→incoming source; scalar + vector).
+  The store's `createModuleFromSelection` nested branch applies it before the cycle check +
+  module-definition snapshot. 3 store tests + `nested-create-module-journey.mjs` (real UI:
+  author Outer → drill in → create Inner from selection while nested → two-level design still
+  simulates SW0=1,SW1=1→CARRY=1,SUM=0).
 
 - [x] **Signature journey** (`2c238bf`): `signature-journey.mjs` — ONE uninterrupted
   cross-workspace flow through the real UI exercising every convergence chapter (active-top,
@@ -137,9 +136,10 @@ Delivered this block:
   overflow at 1440×900 / 1366×768 / 200% zoom on any surface; bench toggle keyboard-focusable
   + Enter-activates.
 
-Remaining queue: Import/Recovery parity; nested create-module (blocked — root cause above:
-the parent module's port `sourceBoundary.internalRefs` need re-derivation after a nested
-extraction). Everything else in the Minimum Exit Bar is delivered + browser-proven.
+Minimum Exit Bar: ALL items delivered + browser-proven (shared experiment, single active-top,
+Runs, navigation path+Back/Forward/Up, Pin Planner conflict+XDC, package history+comparison,
+Design multi-level location + nested create-module + semantic zoom + camera restore, signature
+journey, 1440×900/1366×768/200%/keyboard). Optional remaining depth: Import/Recovery parity.
 - **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
   applyHardwareMappingEdit/autoSuggestMapping); electrical facts in `basys3Pins.ts`
   BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to `hardwareMappingV2EditorModel.ts`
