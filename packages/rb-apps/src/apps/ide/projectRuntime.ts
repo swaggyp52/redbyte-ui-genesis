@@ -362,6 +362,8 @@ export interface ProjectRuntimeState {
   designRevision: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  /** Bounded, newest-last ledger of package generation/download events. */
+  exportHistory: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   actions: ProjectRuntimeActions;
@@ -500,6 +502,7 @@ interface PersistedRuntimeState {
   designRevision?: number;
   verifyLastRun?: RuntimeVerifyRun;
   verifyRunHistory: VerifyRunLedgerEntry[];
+  exportHistory?: ProjectHealthExportResult[];
   sim: RuntimeSimState;
   projectHealthCore: ProjectHealthCore;
   macros: MacroDefinition[];
@@ -519,6 +522,7 @@ interface DesignHistorySnapshot {
 
 interface RuntimeSeedState extends PersistedRuntimeState {
   activeTop: string;
+  exportHistory: ProjectHealthExportResult[];
   scenarios: VerifyScenario[];
   activeScenarioId: string;
   designPast: DesignHistorySnapshot[];
@@ -886,6 +890,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           designRevision: 0,
           verifyLastRun: undefined,
           verifyRunHistory: [],
+          exportHistory: [],
           sim: initializeSimulationStateForCircuit(
             elaborateProjectHierarchy(circuit, hierarchy),
             projectIoRows,
@@ -2065,6 +2070,10 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
             lastExport: result,
             dirtySinceExport: result.status === 'ok' ? false : state.projectHealthCore.dirtySinceExport,
           },
+          // Append every generation/download event to the bounded history so
+          // the package workspace can compare successive packages and show
+          // provenance. lastExport stays the single "current" pointer.
+          exportHistory: [...state.exportHistory, result].slice(-20),
         }));
       },
       setProjectIdentity: (input) => {
@@ -2552,6 +2561,7 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
           ? cloneVerifyRun(state.verifyLastRun)
           : undefined,
         verifyRunHistory: state.verifyRunHistory.slice(-50),
+        exportHistory: state.exportHistory.slice(-20),
         sim: cloneSimState(state.sim),
         projectHealthCore: {
           lastVerify: state.projectHealthCore.lastVerify,
@@ -2858,6 +2868,9 @@ export function mergePersistedRuntimeState(
     designRevision,
     verifyLastRun: detachedVerifyLastRun,
     verifyRunHistory: detachedVerifyRunHistory,
+    exportHistory: Array.isArray(candidate.exportHistory)
+      ? (candidate.exportHistory as ProjectHealthExportResult[]).slice(-20)
+      : [],
     sim: {
       ...sim,
       probes: normalizeScenarioProbes(
@@ -3017,6 +3030,7 @@ function createEmptyProjectState(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim: initializeSimulationStateForCircuit(circuit, projectIoRows),
     projectHealthCore: {
       dirtySinceVerify: false,
@@ -3069,6 +3083,7 @@ function stateFromExample(
     designRevision: 0,
     verifyLastRun: undefined,
     verifyRunHistory: [],
+    exportHistory: [],
     sim,
     projectHealthCore: {
       dirtySinceVerify: false,

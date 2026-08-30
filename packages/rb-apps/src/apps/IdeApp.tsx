@@ -415,6 +415,7 @@ export const IdeApp: React.FC = () => {
   const verifyRunHistory = useProjectRuntime((state) => state.verifyRunHistory);
   const runtimeSim = useProjectRuntime((state) => state.sim);
   const projectHealthCore = useProjectRuntime((state) => state.projectHealthCore);
+  const exportHistory = useProjectRuntime((state) => state.exportHistory);
   const macros = useProjectRuntime((state) => state.macros);
   const loadExample = useProjectRuntime((state) => state.loadExample);
   const loadFromProject = useProjectRuntime((state) => state.loadFromProject);
@@ -2960,6 +2961,7 @@ export const IdeApp: React.FC = () => {
               verifyResult={projectHealthCore.lastVerify}
               verifyLastRun={verifyLastRun}
               lastExport={projectHealthCore.lastExport}
+              exportHistory={exportHistory}
               designBlockingIssue={blockingDesignIssue ?? undefined}
               designReady={workflowAuthority.designReady}
               workflowAuthority={workflowAuthority}
