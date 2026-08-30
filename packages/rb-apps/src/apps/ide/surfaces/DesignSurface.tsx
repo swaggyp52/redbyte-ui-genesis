@@ -6932,7 +6932,7 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                                 <span className="ide-palette-card-title-row"><strong>{item.title}</strong><span className="ide-palette-card-badge">Project</span></span>
                                 <span className="ide-palette-card-subtitle">{definition ? `${definition.ports.length} ports · editable visual source` : item.description || 'Custom reusable block.'}</span>
                                 <span className="ide-native-component-card-actions">
-                                  {definition && isEditingTopModule && onPlaceModuleInstance ? (
+                                  {definition && onPlaceModuleInstance && definition.id !== hierarchy?.activeModuleId ? (
                                     <button type="button" onClick={() => {
                                       const center = { x: (canvasSize.width / 2 - camera.x) / camera.zoom, y: (canvasSize.height / 2 - camera.y) / camera.zoom };
                                       onPlaceModuleInstance(definition.id, findSmartSpawnPosition(editorCircuit.nodes as Node[], center));
@@ -6993,10 +6993,9 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                     <span><strong>{topEntityName || 'top'}</strong><small>Top module · board I/O owner</small></span>
                   </button>
                   {hierarchy.modules.map((module) => {
-                    const usageCount = moduleUsageCount(
-                      hierarchy.activeModuleId === TOP_MODULE_ID ? editorCircuit : { nodes: [], connections: [] },
-                      module.id,
-                    );
+                    // Usage is counted in the circuit currently on the canvas
+                    // (top OR an open module definition), so nested instances count too.
+                    const usageCount = moduleUsageCount(editorCircuit, module.id);
                     return (
                       <article key={module.id} className={hierarchy.activeModuleId === module.id ? 'is-active' : ''}>
                         <button type="button" onClick={() => onOpenModule?.(module.id)} data-testid={`ide-design-open-module-${module.id}`}>
@@ -7004,9 +7003,11 @@ export const DesignSurface: React.FC<DesignSurfaceProps> = ({
                           <span><strong>{module.displayName}</strong><small>{module.ports.length} ports · {usageCount} instance{usageCount === 1 ? '' : 's'}</small></span>
                         </button>
                         <div className="ide-native-module-actions">
-                          {isEditingTopModule && onPlaceModuleInstance ? (
+                          {onPlaceModuleInstance && module.id !== hierarchy.activeModuleId ? (
                             <button
                               type="button"
+                              data-testid={`ide-design-place-module-${module.id}`}
+                              title={isEditingTopModule ? 'Place an instance in the top design' : 'Place an instance inside the open module'}
                               onClick={() => {
                                 const center = {
                                   x: (canvasSize.width / 2 - camera.x) / camera.zoom,
