@@ -92,9 +92,17 @@ Delivered this block:
   (cross-workspace Back×3/Forward×2 + real-UI module authoring → drill → Up → Back). IdeApp
   landmark render contract still green.
 
+- [x] **Canonical Runs document** (`d7d8b36`): `ProjectRunsList` projects `verifyRunHistory`
+  (50-entry ring) into the Project context panel — newest-first pass/fail rows, first failing
+  case, change-since-last flags, Open Simulate. Read-model only. 6 component tests +
+  `runs-document-journey.mjs` (empty → real run PASS → 2 recorded → open).
+
 Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **NEXT → Canonical Runs document** — surface `verifyRunHistory` (50-entry ring, L358) as a
-  Runs list in Project (read-model over the existing ring; no new authority).
+- **NEXT → P1-E Pin planner + conflict repair** — mapping authority `hardwareMappingV2`
+  (setMappingPin/setMappingPins/applyHardwareMappingEdit/autoSuggestMapping); electrical facts
+  in `basys3Pins.ts` BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to
+  `hardwareMappingV2EditorModel.ts` union; assignment table + conflict create+repair + exact
+  XDC before/after (buildTopXdc diff) in HardwareSurface.
 - **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
   `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
   from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
