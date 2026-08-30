@@ -128,9 +128,18 @@ Delivered this block:
   location path, shared Manual Bench, Virtual Board mirror, Pin Planner conflict+XDC repair,
   package history, Runs document, engineering-location Back). All 7 stages green.
 
-Remaining queue (order authorized): model-driven semantic zoom + camera restore (NEXT);
-visual/a11y/200%-zoom/keyboard hardening; Import/Recovery parity; nested create-module (blocked,
-root cause above). Selectable package provenance + multi-level Design location already landed.
+- [x] **Model-driven semantic zoom** (`45cb948`): `semanticZoom.ts` `deriveSemanticZoomTier`
+  (zoom-out→`classroom` legible, zoom-in→`dense` compact, hysteresis); DesignSurface wires
+  `presentationZoom` from `camera.zoom` (was hardcoded 'dense') → NodeView renders the tier;
+  also fixed 2 pre-existing dead-comparison type errors. Camera restore already existed.
+  6 unit tests + `semantic-zoom-journey.mjs` (200%→dense, 63%→classroom+indicator, 100%→dense).
+- [x] **Visual/a11y hardening** (`315d50d`): `visual-hardening-probe.mjs` — no horizontal
+  overflow at 1440×900 / 1366×768 / 200% zoom on any surface; bench toggle keyboard-focusable
+  + Enter-activates.
+
+Remaining queue: Import/Recovery parity; nested create-module (blocked — root cause above:
+the parent module's port `sourceBoundary.internalRefs` need re-derivation after a nested
+extraction). Everything else in the Minimum Exit Bar is delivered + browser-proven.
 - **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
   applyHardwareMappingEdit/autoSuggestMapping); electrical facts in `basys3Pins.ts`
   BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to `hardwareMappingV2EditorModel.ts`
