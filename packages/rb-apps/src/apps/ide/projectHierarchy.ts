@@ -678,6 +678,70 @@ export function readInstanceName(node: Node): string {
   return readString(node.config?.instanceName) || readString(node.config?.label) || node.label || node.id;
 }
 
+/**
+ * Re-derive a module's port `sourceBoundary.internalRefs` from the module's
+ * CURRENT circuit connectivity. When a nested extraction replaces the nodes a
+ * boundary used to touch with a new child instance, the boundary node's wires
+ * move to that instance's ports but the port definition's cached internalRefs
+ * still point at the removed nodes — which then mis-elaborates the parent. This
+ * walks each boundary node (matched by `modulePortId` + bit index) and rebuilds
+ * its internalRefs from the live wires: an input boundary's outgoing targets, an
+ * output boundary's single incoming source. Ports whose boundary/wiring can't be
+ * resolved are left unchanged (defensive).
+ */
+export function rederiveModulePortRefs(
+  module: NativeVisualModuleDefinition,
+): NativeVisualModuleDefinition {
+  const circuit = module.circuit;
+  // Index boundary nodes by (modulePortId, bitIndex).
+  const boundaryByKey = new Map<string, Node>();
+  for (const node of circuit.nodes) {
+    const portId = readString(node.config?.modulePortId);
+    const boundary = readString(node.config?.moduleBoundary);
+    if (!portId || (boundary !== 'input' && boundary !== 'output')) continue;
+    const bitIndex = Number(node.config?.portBitIndex ?? 0);
+    boundaryByKey.set(`${portId}:${bitIndex}`, node);
+  }
+  const outgoingTargets = (nodeId: string): PortRef[] =>
+    circuit.connections
+      .filter((connection) => normalizeEndpoint(connection.from, 'out').nodeId === nodeId)
+      .map((connection) => clonePortRef(normalizeEndpoint(connection.to, 'in')));
+  const incomingSource = (nodeId: string): PortRef | undefined => {
+    const hit = circuit.connections.find(
+      (connection) => normalizeEndpoint(connection.to, 'in').nodeId === nodeId,
+    );
+    return hit ? clonePortRef(normalizeEndpoint(hit.from, 'out')) : undefined;
+  };
+  const refsFor = (portId: string, bitIndex: number, direction: ModulePortDirection): PortRef[] | null => {
+    const boundary = boundaryByKey.get(`${portId}:${bitIndex}`);
+    if (!boundary) return null;
+    if (direction === 'input') return outgoingTargets(boundary.id);
+    const source = incomingSource(boundary.id);
+    return source ? [source] : [];
+  };
+
+  const ports = module.ports.map((port) => {
+    if (modulePortWidth(port) > 1 && port.sourceBoundary.bits) {
+      const bits = port.sourceBoundary.bits.map((bit) => {
+        const refs = refsFor(port.id, bit.index, port.direction);
+        return refs ? { ...bit, internalRefs: refs } : bit;
+      });
+      return {
+        ...port,
+        sourceBoundary: {
+          ...port.sourceBoundary,
+          bits,
+          internalRefs: bits.flatMap((bit) => bit.internalRefs.map(clonePortRef)),
+        },
+      };
+    }
+    const refs = refsFor(port.id, 0, port.direction);
+    if (!refs) return port;
+    return { ...port, sourceBoundary: { ...port.sourceBoundary, internalRefs: refs } };
+  });
+  return { ...module, ports };
+}
+
 function groupBoundaryConnections(
   circuit: Circuit,
   connections: Connection[],

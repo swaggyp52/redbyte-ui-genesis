@@ -142,6 +142,7 @@ import {
   normalizeProjectHierarchy,
   placeModuleInstance as placeNativeModuleInstance,
   readInstanceName,
+  rederiveModulePortRefs,
   toCompositeDefinition,
   type CreateModuleInput,
   type CreateModuleResult,
@@ -2312,27 +2313,59 @@ export const useProjectRuntime = create<ProjectRuntimeState>()(
       createModuleFromSelection: (input) => {
         let created: CreateModuleResult | null = null;
         set((state) => {
-          if (state.hierarchy.activeModuleId !== TOP_MODULE_ID) return state;
+          const activeModuleId = state.hierarchy.activeModuleId;
           try {
-            created = createNativeModuleFromSelection(state.circuit, state.hierarchy, input);
-            const customComponents = created.hierarchy.modules.map(toCompositeDefinition);
+            if (activeModuleId === TOP_MODULE_ID) {
+              created = createNativeModuleFromSelection(state.circuit, state.hierarchy, input);
+              const customComponents = created.hierarchy.modules.map(toCompositeDefinition);
+              for (const definition of customComponents) registerCompositeNode(definition);
+              return commitDesignSnapshot(
+                state,
+                {
+                  circuit: cloneCircuit(created.circuit),
+                  hierarchy: cloneProjectHierarchy(created.hierarchy),
+                  projectIoRows: cloneIoRows(state.projectIoRows),
+                  hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
+                  macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
+                },
+                {
+                  designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
+                    -state.maxDesignHistory,
+                  ),
+                  designFuture: [],
+                },
+              );
+            }
+            // Nested: create the child module from the ACTIVE module's circuit,
+            // then write the instance-replaced circuit back into the active
+            // module AND re-derive its port internal-refs so the parent's ports
+            // now resolve through the new child instance (not the extracted
+            // nodes). The top circuit is untouched — a module-definition edit.
+            const activeModule = state.hierarchy.modules.find((module) => module.id === activeModuleId);
+            if (!activeModule) return state;
+            created = createNativeModuleFromSelection(activeModule.circuit, state.hierarchy, input);
+            const updatedCircuit = created.circuit;
+            const nowIso = new Date().toISOString();
+            const hierarchy: ProjectHierarchyDocument = {
+              ...cloneProjectHierarchy(created.hierarchy),
+              activeModuleId,
+              modules: created.hierarchy.modules.map((module) =>
+                module.id === activeModuleId
+                  ? rederiveModulePortRefs({
+                      ...cloneModuleDefinition(module),
+                      circuit: cloneCircuit(updatedCircuit),
+                      updatedAt: nowIso,
+                    })
+                  : cloneModuleDefinition(module),
+              ),
+            };
+            if (hierarchyCycleModules(hierarchy).includes(activeModuleId)) {
+              created = null;
+              return state;
+            }
+            const customComponents = hierarchy.modules.map(toCompositeDefinition);
             for (const definition of customComponents) registerCompositeNode(definition);
-            return commitDesignSnapshot(
-              state,
-              {
-                circuit: cloneCircuit(created.circuit),
-                hierarchy: cloneProjectHierarchy(created.hierarchy),
-                projectIoRows: cloneIoRows(state.projectIoRows),
-                hardwareMappingV2: cloneHardwareMappingDocumentV2(state.hardwareMappingV2),
-                macroInsertionCounts: cloneMacroInsertionCounts(state.macroInsertionCounts),
-              },
-              {
-                designPast: [...state.designPast, createDesignHistorySnapshot(state)].slice(
-                  -state.maxDesignHistory,
-                ),
-                designFuture: [],
-              },
-            );
+            return commitModuleDefinitionSnapshot(state, hierarchy);
           } catch {
             created = null;
             return state;
