@@ -126,6 +126,7 @@ import type { BusDeclaration } from '@redbyte/rb-logic-core';
 import { explainSignal, type ExplainerCircuitGraph, type ExplainerSignalMapping } from './verify/signalExplainer';
 import { WhyInspectorPanel } from './verify/WhyInspectorPanel';
 import { VerifyCommandBar } from './verify/VerifyCommandBar';
+import { ManualBench } from './verify/ManualBench';
 import { VerifyWaveformPlaceholder } from './verify/VerifyWaveformPlaceholder';
 import { TickReadoutStrip } from './verify/TickReadoutStrip';
 import { VerifyLabSequencerPanel } from './verify/VerifyLabSequencerPanel';
@@ -587,9 +588,9 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
   }, [onSignalSelected]);
   const [draftTick, setDraftTick] = useState<number>(() => nextVectorTick(vectors));
   const [runState, setRunState] = useState<'idle' | 'running' | 'complete'>('idle');
-  const [studioMode, setStudioMode] = useState<'scenario' | 'replay' | 'checks' | 'testbench'>(
-    () => lastRun ? 'replay' : 'scenario'
-  );
+  const [studioMode, setStudioMode] = useState<
+    'scenario' | 'bench' | 'replay' | 'checks' | 'testbench'
+  >(() => (lastRun ? 'replay' : 'scenario'));
   const [orphanPreflight, setOrphanPreflight] = useState(false);
   const [draftInputs, setDraftInputs] = useState<Record<string, '0' | '1'>>(() =>
     createDraftInputs(editableInputFields)
@@ -5777,7 +5778,13 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           </div>
         )}
 
-        {studioMode === 'testbench' ? (
+        {studioMode === 'bench' ? (
+          <ManualBench
+            onOpenVirtualBoard={onGoToHardware}
+            onOpenAnalyzer={lastRun ? () => setStudioMode('replay') : undefined}
+            onAddToSequence={onAppendScenarioStep}
+          />
+        ) : studioMode === 'testbench' ? (
           <ScenarioTestbenchPreview
             scenarioName={activeScenario?.name ?? lastRun?.scenarioName ?? verifyScenarioName}
             source={generatedTestbenchSource}
@@ -5796,6 +5803,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
             observedValuesByTick={testbenchObservedValuesByTick}
           />
         )}
+        {studioMode !== 'bench' ? (
         <details className="ide-scenario-table-disclosure" data-testid="ide-scenario-table-disclosure">
           <summary>Open detailed event table</summary>
           <ScenarioBuilderPanel
@@ -5850,6 +5858,7 @@ export const VerifySurface: React.FC<VerifySurfaceProps> = ({
           showExpectedLanes={studioMode === 'checks'}
           />
         </details>
+        ) : null}
         </VerifyStimulusRegion>
 
         <VerifyWaveformRegion>

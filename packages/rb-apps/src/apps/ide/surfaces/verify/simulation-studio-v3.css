@@ -3275,3 +3275,328 @@ html[data-rb-theme='light'] .ide-root.ide-root .ide-workbench-shell[data-ide-mod
   .ide-verify-primary-status--embedded .ide-callout .ide-callout-title {
   color: #152033 !important;
 }
+
+/* ── Manual Bench ─────────────────────────────────────────────────────────
+ * Live drive/measure instrument over the shared experiment (state.sim). Sits
+ * in the Simulate stimulus region and shares the studio's dark instrument
+ * palette: cyan = driven input, teal = observed output, matching the bus-word
+ * lanes so the same value reads identically across instruments.
+ */
+.ide-manual-bench {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #1d2a3d;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #0c131f 0%, #0a0f18 100%);
+  color: #e7eefb;
+}
+
+.ide-manual-bench-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ide-manual-bench-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.ide-manual-bench-kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5fd0e6;
+}
+
+.ide-manual-bench-title h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: #f2f7ff;
+}
+
+.ide-manual-bench-sub {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #9fb2cc;
+  max-width: 62ch;
+}
+
+.ide-manual-bench-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ide-manual-bench-empty,
+.ide-manual-bench-col-empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: #8ba0bd;
+}
+
+.ide-manual-bench-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .ide-manual-bench-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ide-manual-bench-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #17222f;
+  background: #0b1119;
+}
+
+.ide-manual-bench-col-title {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #7f94b1;
+}
+
+.ide-manual-bench-drive .ide-manual-bench-col-title {
+  color: #6fd7ec;
+}
+
+.ide-manual-bench-measure .ide-manual-bench-col-title {
+  color: #63e0c7;
+}
+
+.ide-manual-bench-bus,
+.ide-manual-bench-scalar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #182534;
+  background: #0d1622;
+}
+
+.ide-manual-bench-scalar {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.ide-manual-bench-bus-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ide-manual-bench-bus-range {
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 13px;
+  color: #cfe0f7;
+}
+
+.ide-manual-bench-bus-word {
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 14px;
+  font-weight: 650;
+  color: #7fe9ff;
+}
+
+.ide-manual-bench-bus-observed {
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 18px;
+  font-weight: 700;
+  color: #66f0d3;
+}
+
+.ide-manual-bench-bus-observed[data-known='false'] {
+  color: #f0b866;
+}
+
+.ide-manual-bench-observed-detail {
+  display: flex;
+  gap: 6px;
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 11.5px;
+  color: #8ba0bd;
+}
+
+.ide-manual-bench-bus-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ide-manual-bench-radix {
+  display: inline-flex;
+  border: 1px solid #22344a;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.ide-manual-bench-radix-btn {
+  padding: 4px 9px;
+  font-size: 11px;
+  border: 0;
+  background: #0c1420;
+  color: #93a8c6;
+  cursor: pointer;
+}
+
+.ide-manual-bench-radix-btn.is-active {
+  background: #123047;
+  color: #7fe9ff;
+}
+
+.ide-manual-bench-word-input {
+  width: 96px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid #22344a;
+  background: #070c14;
+  color: #eaf2ff;
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.ide-manual-bench-word-input:focus-visible {
+  outline: 2px solid #3aa7c7;
+  outline-offset: 1px;
+}
+
+.ide-manual-bench-bits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ide-manual-bench-bit {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 34px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #21324a;
+  background: #0a121d;
+  color: #b9c9e2;
+  cursor: pointer;
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+}
+
+.ide-manual-bench-bits.is-observed .ide-manual-bench-bit {
+  cursor: default;
+}
+
+.ide-manual-bench-bit-index {
+  font-size: 9px;
+  color: #6d82a1;
+}
+
+.ide-manual-bench-bit-value {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ide-manual-bench-bit.is-high {
+  border-color: #2f6f86;
+  background: #0f2b3b;
+  color: #7fe9ff;
+}
+
+.ide-manual-bench-measure .ide-manual-bench-bit.is-high {
+  border-color: #2c7d6a;
+  background: #0d2f2a;
+  color: #66f0d3;
+}
+
+.ide-manual-bench-bit.is-low {
+  color: #8397b4;
+}
+
+.ide-manual-bench-bit.is-unknown {
+  border-style: dashed;
+  color: #f0b866;
+}
+
+.ide-manual-bench-scalar-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: #d4e1f5;
+}
+
+.ide-manual-bench-switch,
+.ide-manual-bench-lamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-family: var(--rb-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.ide-manual-bench-switch {
+  border: 1px solid #22344a;
+  background: #0a121d;
+  color: #b9c9e2;
+  cursor: pointer;
+}
+
+.ide-manual-bench-switch.is-high {
+  border-color: #2f6f86;
+  background: #123047;
+  color: #7fe9ff;
+}
+
+.ide-manual-bench-lamp {
+  border: 1px solid #1d3a34;
+  background: #0a1a17;
+  color: #8397b4;
+}
+
+.ide-manual-bench-lamp.is-high {
+  border-color: #2c7d6a;
+  background: #0d2f2a;
+  color: #66f0d3;
+}
+
+.ide-manual-bench-lamp.is-unknown {
+  border-style: dashed;
+  color: #f0b866;
+}
+
+.ide-manual-bench-sequence-link {
+  align-self: flex-start;
+  padding: 2px 2px;
+  border: 0;
+  background: transparent;
+  color: #6fb4d6;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ide-manual-bench-sequence-link:hover {
+  color: #9fd6ef;
+}
