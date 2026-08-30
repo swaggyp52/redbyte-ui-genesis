@@ -17,17 +17,75 @@ export function generateHierarchicalVhdlProject(project: RBProject): Hierarchica
   const ioMapping = project.ioMapping;
   if (!hierarchy || hierarchy.modules.length === 0 || !ioMapping) return null;
   const topEntity = safeIdentifier(project.hdl?.top ?? project.fpga?.top ?? 'top');
+  const moduleById = new Map(hierarchy.modules.map((module) => [module.id, module]));
+  const moduleByName = new Map(hierarchy.modules.map((module) => [module.name, module]));
   return {
     topVhd: generateStructuralTop(project.circuit, hierarchy.modules, ioMapping, topEntity),
-    moduleSources: hierarchy.modules.map((module) => ({
+    // Leaf definitions first so a module that instantiates another is analyzed
+    // after its dependency (Vivado compile order follows source order).
+    moduleSources: orderModulesLeafFirst(hierarchy.modules, moduleById, moduleByName).map((module) => ({
       path: `${snakeCase(module.name)}.vhd`,
       entityName: module.name,
-      text: generateModuleSource(module),
+      text: generateModuleSource(module, moduleById, moduleByName),
     })),
   };
 }
 
-function generateModuleSource(module: NativeVisualModuleDefinition): string {
+/** Resolve the child module a node instantiates, or null for a primitive gate. */
+function resolveChildModule(
+  node: Node,
+  moduleById: Map<string, NativeVisualModuleDefinition>,
+  moduleByName: Map<string, NativeVisualModuleDefinition>,
+): NativeVisualModuleDefinition | null {
+  return (
+    moduleById.get(readString(node.config?.moduleDefinitionId)) ??
+    moduleByName.get(node.type) ??
+    null
+  );
+}
+
+/** Topological (leaf-first) order over the module instantiation DAG. */
+function orderModulesLeafFirst(
+  modules: readonly NativeVisualModuleDefinition[],
+  moduleById: Map<string, NativeVisualModuleDefinition>,
+  moduleByName: Map<string, NativeVisualModuleDefinition>,
+): NativeVisualModuleDefinition[] {
+  const ordered: NativeVisualModuleDefinition[] = [];
+  const placed = new Set<string>();
+  const visiting = new Set<string>();
+  const visit = (module: NativeVisualModuleDefinition): void => {
+    if (placed.has(module.id) || visiting.has(module.id)) return;
+    visiting.add(module.id);
+    for (const node of module.circuit.nodes) {
+      const child = resolveChildModule(node, moduleById, moduleByName);
+      if (child && child.id !== module.id) visit(child);
+    }
+    visiting.delete(module.id);
+    if (!placed.has(module.id)) {
+      placed.add(module.id);
+      ordered.push(module);
+    }
+  };
+  for (const module of modules) visit(module);
+  return ordered;
+}
+
+function generateModuleSource(
+  module: NativeVisualModuleDefinition,
+  moduleById: Map<string, NativeVisualModuleDefinition>,
+  moduleByName: Map<string, NativeVisualModuleDefinition>,
+): string {
+  // A definition that itself instantiates another module needs a STRUCTURAL
+  // architecture (component instantiations), not the gate-only netlist path —
+  // otherwise the nested instance would export as an unknown gate → '0'.
+  const containsInstance = module.circuit.nodes.some(
+    (node) =>
+      typeof node.config?.moduleBoundary !== 'string' &&
+      resolveChildModule(node, moduleById, moduleByName) !== null,
+  );
+  if (containsInstance) {
+    return generateStructuralModuleSource(module, moduleById, moduleByName);
+  }
   const boundaryIds = new Set(
     module.circuit.nodes
       .filter((node) => typeof node.config?.moduleBoundary === 'string')
@@ -79,6 +137,113 @@ function generateModuleSource(module: NativeVisualModuleDefinition): string {
     includeFileHeader: true,
     labTitle: `${module.displayName} project component`,
   }).vhd;
+}
+
+/**
+ * Structural VHDL for a definition that itself instantiates other modules.
+ * Boundary nodes become entity ports; internal gates become concurrent signal
+ * assignments; nested module-instance nodes become `entity work.<Child>` port
+ * maps — the same mechanism generateStructuralTop uses for the top, driven here
+ * by the module's own ports rather than a board IO mapping.
+ */
+function generateStructuralModuleSource(
+  module: NativeVisualModuleDefinition,
+  moduleById: Map<string, NativeVisualModuleDefinition>,
+  moduleByName: Map<string, NativeVisualModuleDefinition>,
+): string {
+  const circuit = module.circuit;
+  const portById = new Map(module.ports.map((port) => [port.id, port]));
+  // boundary node id -> the port expression it stands for (NAME or NAME(bit)).
+  interface BoundaryRef { direction: 'input' | 'output'; expr: string }
+  const boundaryByNode = new Map<string, BoundaryRef>();
+  for (const node of circuit.nodes) {
+    const direction = readString(node.config?.moduleBoundary);
+    if (direction !== 'input' && direction !== 'output') continue;
+    const port = portById.get(readString(node.config?.modulePortId));
+    if (!port) continue;
+    const bitIndex = typeof node.config?.portBitIndex === 'number' ? node.config.portBitIndex : 0;
+    const expr = modulePortWidth(port) > 1 ? `${port.name}(${bitIndex})` : port.name;
+    boundaryByNode.set(node.id, { direction, expr });
+  }
+
+  const incoming = new Map<string, PortRef>();
+  for (const connection of circuit.connections) {
+    const from = endpoint(connection.from, 'out');
+    const to = endpoint(connection.to, 'in');
+    incoming.set(`${to.nodeId}.${to.portName}`, from);
+  }
+
+  const signalNames = new Set<string>();
+  const signalFor = (nodeId: string, portName = 'out'): string => {
+    const name = `n_${safeIdentifier(nodeId)}_${safeIdentifier(portName)}`;
+    signalNames.add(name);
+    return name;
+  };
+  const sourceForInput = (nodeId: string, portName: string): string => {
+    const ref = incoming.get(`${nodeId}.${portName}`);
+    if (!ref) return "'0'";
+    const boundary = boundaryByNode.get(ref.nodeId);
+    if (boundary?.direction === 'input') return boundary.expr;
+    return signalFor(ref.nodeId, ref.portName);
+  };
+
+  const statements: string[] = [];
+  for (const node of circuit.nodes) {
+    if (boundaryByNode.has(node.id)) continue;
+    const child = resolveChildModule(node, moduleById, moduleByName);
+    if (child) {
+      const associations = child.ports.map((port) => {
+        const expression = port.direction === 'input'
+          ? sourceForInput(node.id, port.name)
+          : signalFor(node.id, port.name);
+        return `      ${port.name} => ${expression}`;
+      });
+      statements.push(
+        `  ${safeIdentifier(readString(node.config?.instanceName) || node.label || node.id)} : entity work.${child.name}`,
+        '    port map (',
+        associations.join(',\n'),
+        '    );',
+      );
+      continue;
+    }
+    const target = signalFor(node.id, 'out');
+    const a = sourceForInput(node.id, firstConnectedPort(node, incoming, ['a', 'in', 'd']) ?? 'a');
+    const b = sourceForInput(node.id, firstConnectedPort(node, incoming, ['b']) ?? 'b');
+    const c = sourceForInput(node.id, firstConnectedPort(node, incoming, ['c']) ?? 'c');
+    statements.push(`  ${target} <= ${gateExpression(node.type, a, b, c)};`);
+  }
+  // Drive each output port bit from whatever feeds its boundary node.
+  for (const node of circuit.nodes) {
+    const boundary = boundaryByNode.get(node.id);
+    if (boundary?.direction !== 'output') continue;
+    const ref = incoming.get(`${node.id}.in`);
+    const driver = ref
+      ? (boundaryByNode.get(ref.nodeId)?.expr ?? signalFor(ref.nodeId, ref.portName))
+      : "'0'";
+    statements.push(`  ${boundary.expr} <= ${driver};`);
+  }
+
+  const ports = module.ports.map((port) =>
+    `    ${port.name} : ${port.direction === 'input' ? 'IN' : 'OUT'} ${modulePortVhdlType(port)}`,
+  );
+  return [
+    '-- Generated by RedByte from a native visual module (structural).',
+    'library IEEE;',
+    'use IEEE.STD_LOGIC_1164.ALL;',
+    '',
+    `entity ${module.name} is`,
+    ports.length > 0 ? '  port (' : '',
+    ports.join(';\n'),
+    ports.length > 0 ? '  );' : '',
+    `end entity ${module.name};`,
+    '',
+    `architecture structural of ${module.name} is`,
+    ...[...signalNames].sort().map((signal) => `  signal ${signal} : STD_LOGIC := '0';`),
+    'begin',
+    ...statements,
+    'end structural;',
+    '',
+  ].filter((line) => line !== '').join('\n');
 }
 
 function generateStructuralTop(
