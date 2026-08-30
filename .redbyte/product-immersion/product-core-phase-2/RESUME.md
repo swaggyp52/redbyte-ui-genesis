@@ -63,14 +63,23 @@ Delivered this block:
   persists as `fpga.top`, survives save/reload — browser-proven). NOTE: `fpgaConfig` is still
   an IdeApp `useState` (ephemeral, hydrated from the saved project); the census flags folding
   it into `useProjectRuntime` as a persisted slice + `setActiveTop` action (convergence hazard).
+- [x] **P1-D Shared Bench↔Virtual Board experiment** (`c9eb19d` bench, `19a1079` proof):
+  `ManualBench.tsx` — a 5th "Bench" tab in Simulation Studio that is a PURE READ-MODEL over
+  `useProjectRuntime().sim` (drives via `actions.sim.setInput` through `planBusWordDrive`,
+  reads `sim.signals` via `readBusValue`/`readBusMemberBit`). Because the Design canvas and
+  Virtual Board (`useIoBus`) read/write the SAME store, all three auto-synchronize — no second
+  authority, no glue. Word drive supports hex/dec/bin + per-bit toggles; explicit opt-in
+  "Add to sequence" is the only durable write (existing scenario authority). Reset uses
+  `actions.sim.reset`. Stable `EMPTY_BUSES` avoids a useSyncExternalStore loop.
+  PROVEN: `bench-board-sync-journey.mjs` (real UI, both directions: bench→board and
+  board→bench on the Half Adder, no scenario/run mutation) + 6 component tests through the real
+  engine — Half Adder (drive+measure+external-drive reflect), 4-bit adder A=0xA/B=0xD→SUM=0x7,
+  CARRY=1 (hex/bin/dec word drive), Register1 rising-edge capture both directions.
 
 Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **P1-D Shared experiment** — the ephemeral experiment `state.sim` (sim.inputs/sim.signals,
-  actions.sim.setInput L611 / toggleInput L647-unwired) ALREADY backs the Design canvas +
-  Virtual Board (HardwareSurface via `useIoBus`). Gap: a **Manual Bench in Simulate** over the
-  same `state.sim` (VerifySurface today drives PERSISTENT scenario vectors, not `state.sim`).
-  Add a live word-drive bench calling actions.sim.setInput, reading runtimeSim.signals; prove
-  Bench↔Virtual-Board both directions + Analyzer agree (Half Adder, 4-bit A=0xA/B=0xD→0x7/CARRY, Register1).
+- **NEXT → active-top consolidation** — fold `fpgaConfig.top` (IdeApp useState) into
+  `useProjectRuntime` as a persisted slice + `setActiveTop` action so there is ONE writable
+  active-top authority (see Set Active Top NOTE above). Then engineering-location path history.
 - **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
   `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
   from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
