@@ -76,10 +76,21 @@ Delivered this block:
   engine — Half Adder (drive+measure+external-drive reflect), 4-bit adder A=0xA/B=0xD→SUM=0x7,
   CARRY=1 (hex/bin/dec word drive), Register1 rising-edge capture both directions.
 
+- [x] **Active-top consolidation** (`da0b4f8`): `fpgaConfig.top` (IdeApp useState) is GONE.
+  The store now owns persisted `activeTop` + validated `setActiveTop` (empty→derived default,
+  invalid rejected, change marks export-dirty), seeded on all loads + restored by merge with a
+  name-derived fallback. Shared `topEntity.ts` derivation (duplicated IdeApp copies deleted);
+  `fpgaConfig` is a derived projection; 8 setFpgaConfig sites + bootstrap effect/ref removed.
+  Type-clean vs baseline; persistence(33)+createBus(4)+activeTop(8) green; browser-proven
+  (`active-top-authority-probe.mjs`): project chip projects the store value, UI set updates the
+  one authority, invalid rejected, reload restores.
+
 Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **NEXT → active-top consolidation** — fold `fpgaConfig.top` (IdeApp useState) into
-  `useProjectRuntime` as a persisted slice + `setActiveTop` action so there is ONE writable
-  active-top authority (see Set Active Top NOTE above). Then engineering-location path history.
+- **NEXT → engineering-location history** — location is split across IdeApp `currentMode`
+  useState / `hierarchy.activeModuleId` / useLogicViewStore; no multi-level path, no
+  Back/Forward/Up. Add a location-path projection + a bounded history stack (read-model over
+  the existing owners; navigation is UI interaction state — allowed).
+- **Canonical Runs document** — surface `verifyRunHistory` (50-entry ring) as a Runs list.
 - **P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
   `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
   from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
