@@ -27,7 +27,24 @@ import type { IoSignalRole } from '../ioSignalRoles';
 import type { IdeChromeContract } from '../chromeContract';
 import { PROFESSIONAL_CLASSROOM_COPY } from '../productUiStandards';
 import type { Circuit } from '@redbyte/rb-logic-core';
-import type { ProjectHierarchyDocument } from '../projectHierarchy';
+import { busRangeLabel } from '@redbyte/rb-logic-core';
+import type { ProjectHierarchyDocument, ModulePort } from '../projectHierarchy';
+import { modulePortWidth } from '../projectHierarchy';
+
+/** Compact interface signature for a module, e.g. "A[1:0], B → SUM[3:0]". */
+function modulePortSignature(ports: readonly ModulePort[]): string {
+  const label = (port: ModulePort): string => {
+    const width = modulePortWidth(port);
+    if (width <= 1) return port.name;
+    const range = port.range ?? { left: width - 1, right: 0 };
+    return `${port.name}[${range.left}:${range.right}]`;
+  };
+  const ins = ports.filter((p) => p.direction === 'input').map(label);
+  const outs = ports.filter((p) => p.direction === 'output').map(label);
+  const left = ins.length > 0 ? ins.join(', ') : '—';
+  const right = outs.length > 0 ? outs.join(', ') : '—';
+  return `${left} → ${right}`;
+}
 import {
   deriveBehavioralEvidenceTierFromResult,
   formatBehavioralEvidenceTier,
@@ -1016,8 +1033,8 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                   <span aria-hidden="true">▣</span>
                   <span>
                     <strong>{module.displayName}</strong>
-                    <small>
-                      {module.ports.length} ports · {instanceCount} instance{instanceCount === 1 ? '' : 's'} · authored
+                    <small data-testid={`ide-project-module-ports-${module.id}`}>
+                      {modulePortSignature(module.ports)} · {instanceCount} instance{instanceCount === 1 ? '' : 's'}
                     </small>
                   </span>
                 </button>
@@ -1044,6 +1061,23 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
                     </small>
                   </li>
                 </ol>
+              </div>
+            ) : null}
+            {(circuit?.buses?.length ?? 0) > 0 ? (
+              <div
+                className="ide-project-buses"
+                data-testid="ide-project-buses"
+                aria-label="Top-level buses"
+              >
+                <span>Buses</span>
+                <ul>
+                  {(circuit?.buses ?? []).map((bus) => (
+                    <li key={bus.id}>
+                      <code>{busRangeLabel(bus)}</code>
+                      <small>{bus.direction === 'input' ? 'input' : 'output'} · {Math.abs(bus.left - bus.right) + 1} bits</small>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {(outline?.macros.length ?? 0) > 0 ? <p className="ide-project-explorer-heading">Reusable Components</p> : null}
