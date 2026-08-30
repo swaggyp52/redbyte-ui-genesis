@@ -845,6 +845,24 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
     ...(outline?.customComponents.map((component) => component.name) ?? []),
   ];
   const resolvedTopModule = fpgaConfig?.top?.trim() || topModuleName.trim() || 'No top module';
+  // Set Active Top: a validated, first-class Overview command over the existing
+  // fpgaConfig.top authority (persisted as fpga.top; survives save/reload).
+  const [topEditing, setTopEditing] = useState(false);
+  const [topDraft, setTopDraft] = useState(resolvedTopModule);
+  const [topError, setTopError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!topEditing) setTopDraft(resolvedTopModule);
+  }, [resolvedTopModule, topEditing]);
+  const commitActiveTop = useCallback(() => {
+    const trimmed = topDraft.trim();
+    if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(trimmed)) {
+      setTopError('Top must be a valid HDL identifier (letter, then letters/digits/underscore).');
+      return;
+    }
+    if (trimmed !== resolvedTopModule) onFpgaConfigChange?.({ top: trimmed });
+    setTopError(null);
+    setTopEditing(false);
+  }, [topDraft, resolvedTopModule, onFpgaConfigChange]);
   const simulationSourceLabel = hasVectors
     ? scenarioAuthority === 'starter'
       ? 'Starter scenario vectors'
@@ -913,7 +931,38 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             </p>
           ) : null}
           <div className="ide-project-v3-facts" data-testid="ide-project-professional-facts">
-            <span><small>Top</small><strong>{resolvedTopModule}</strong></span>
+            <span className="ide-project-active-top" data-testid="ide-project-active-top">
+              <small>Top</small>
+              {topEditing && onFpgaConfigChange ? (
+                <span className="ide-project-active-top-edit">
+                  <input
+                    className="ide-text-input"
+                    value={topDraft}
+                    autoFocus
+                    data-testid="ide-project-active-top-input"
+                    aria-label="Active top entity"
+                    onChange={(event) => { setTopDraft(event.currentTarget.value); setTopError(null); }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') commitActiveTop();
+                      if (event.key === 'Escape') { setTopEditing(false); setTopError(null); }
+                    }}
+                  />
+                  <IdeButton tone="primary" onClick={commitActiveTop} testId="ide-project-active-top-confirm">Set</IdeButton>
+                  <IdeButton tone="ghost" onClick={() => { setTopEditing(false); setTopError(null); }}>Cancel</IdeButton>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="ide-project-active-top-value"
+                  data-testid="ide-project-set-active-top"
+                  onClick={() => { if (onFpgaConfigChange) setTopEditing(true); }}
+                  title={onFpgaConfigChange ? 'Set the active top entity' : undefined}
+                >
+                  <strong>{resolvedTopModule}</strong>
+                  {onFpgaConfigChange ? <span aria-hidden="true" className="ide-project-active-top-pencil">✎</span> : null}
+                </button>
+              )}
+            </span>
             <span><small>Target</small><strong data-testid="ide-project-overview-board">{fpgaConfig?.board ?? 'Basys3'}</strong></span>
             <span><small>Design</small><strong>{designNodeCount} components · {reusableModuleNames.length + 1} modules</strong></span>
             <span title={simulationSourceDetail}><small>Simulation</small><strong>{projectVerifyState === 'trace' ? 'Observed' : health.lastVerify && !health.dirtySinceVerify ? 'Current' : health.dirtySinceVerify ? 'Stale' : 'Not run'} · {scenarioCount} scenarios</strong></span>
@@ -921,6 +970,9 @@ const LoadedProjectOverview: React.FC<LoadedProjectOverviewProps> = ({
             <span><small>Storage</small><strong data-testid="ide-project-overview-saved-state">{saveLabel}</strong></span>
             {fidelityLabel ? <span data-testid="ide-project-import-fidelity"><small>Import</small><strong>{fidelityLabel}</strong></span> : null}
           </div>
+          {topError ? (
+            <p className="ide-project-active-top-error" role="alert" data-testid="ide-project-active-top-error">{topError}</p>
+          ) : null}
         </div>
       </header>
 

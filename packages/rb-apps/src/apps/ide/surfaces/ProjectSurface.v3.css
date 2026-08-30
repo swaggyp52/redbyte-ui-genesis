@@ -1075,6 +1075,23 @@
 }
 .ide-project-v3-facts small { color: var(--rb-text-muted); font-size: 12px; }
 .ide-project-v3-facts strong { color: var(--rb-text-primary); font-size: 13px; font-weight: 700; }
+/* Set Active Top — actionable Overview control over fpgaConfig.top */
+.ide-project-active-top-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--rb-text-primary);
+  font: inherit;
+}
+.ide-project-active-top-value:hover strong { text-decoration: underline; }
+.ide-project-active-top-pencil { color: var(--rb-text-muted); font-size: 11px; }
+.ide-project-active-top-edit { display: inline-flex; align-items: center; gap: 4px; }
+.ide-project-active-top-edit .ide-text-input { width: 150px; padding: 3px 6px; font-size: 12px; }
+.ide-project-active-top-error { margin: 6px 0 0; color: var(--rb-danger, #c0392b); font-size: 12px; }
 .ide-project-v3-title,
 .ide-project-v3-title-button,
 .ide-project-v3-title-input { font-size: clamp(22px, 2vw, 26px); line-height: 1.15; }
