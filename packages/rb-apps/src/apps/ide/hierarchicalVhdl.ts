@@ -81,8 +81,14 @@ function generateStructuralTop(
   const moduleById = new Map(modules.map((module) => [module.id, module]));
   const moduleByName = new Map(modules.map((module) => [module.name, module]));
   const nodeById = new Map(circuit.nodes.map((node) => [node.id, node]));
-  const inputPortByNode = new Map(bindings.topInputBindings.map((binding) => [binding.toNodeId, binding.portName]));
-  const outputPortByNode = new Map(bindings.topOutputBindings.map((binding) => [binding.fromNodeId, binding.portName]));
+  // A boundary node maps to a top-level port; for a vector port it maps to one
+  // BIT of that port. Emit the bit-selected reference `NAME(i)` so a bus member
+  // wires to A(0) rather than the whole vector A (which would be a width
+  // mismatch and, on outputs, a multi-driver).
+  const topPortRef = (binding: { portName: string; bitIndex?: number }): string =>
+    binding.bitIndex === undefined ? binding.portName : `${binding.portName}(${binding.bitIndex})`;
+  const inputPortByNode = new Map(bindings.topInputBindings.map((binding) => [binding.toNodeId, topPortRef(binding)]));
+  const outputPortByNode = new Map(bindings.topOutputBindings.map((binding) => [binding.fromNodeId, topPortRef(binding)]));
   const incoming = new Map<string, PortRef>();
   for (const connection of circuit.connections) {
     const from = endpoint(connection.from, 'out');

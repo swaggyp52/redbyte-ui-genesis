@@ -3290,8 +3290,19 @@ function cloneModuleDefinition(
     ...module,
     ports: module.ports.map((port) => ({
       ...port,
+      ...(port.range ? { range: { ...port.range } } : {}),
       sourceBoundary: {
         internalRefs: port.sourceBoundary.internalRefs.map((ref) => ({ ...ref })),
+        // Preserve vector per-bit boundary refs; dropping them would erase the
+        // vector identity of a module port on any hierarchy edit.
+        ...(port.sourceBoundary.bits
+          ? {
+              bits: port.sourceBoundary.bits.map((bit) => ({
+                index: bit.index,
+                internalRefs: bit.internalRefs.map((ref) => ({ ...ref })),
+              })),
+            }
+          : {}),
       },
     })),
     circuit: cloneCircuit(module.circuit),

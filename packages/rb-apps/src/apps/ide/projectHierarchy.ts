@@ -5,14 +5,57 @@ export const TOP_MODULE_ID = 'top' as const;
 
 export type ModulePortDirection = 'input' | 'output';
 
+/** One bit of a vector module port and the internal boundary refs it drives. */
+export interface ModulePortBit {
+  index: number;
+  internalRefs: PortRef[];
+}
+
 export interface ModulePort {
   id: string;
   name: string;
   direction: ModulePortDirection;
-  width: 1;
+  /** Bit width. 1 = scalar STD_LOGIC. N>1 = STD_LOGIC_VECTOR. */
+  width: number;
+  /**
+   * Declaration order for width>1 (left/right, VHDL downto/to). Absent for
+   * scalars. `left`=3,`right`=0 → (3 downto 0).
+   */
+  range?: { left: number; right: number };
   sourceBoundary: {
+    /** Scalar substrate: the internal boundary node(s) for a scalar port
+     *  (bit-0 fanout). Vector ports use `bits`, one entry per declared bit. */
     internalRefs: PortRef[];
+    bits?: ModulePortBit[];
   };
+}
+
+/** Width of a module port; tolerant of legacy documents lacking the field. */
+export function modulePortWidth(port: Pick<ModulePort, 'width'>): number {
+  return typeof port.width === 'number' && port.width >= 1 ? Math.floor(port.width) : 1;
+}
+
+/** Declared bit indices of a vector module port, left→right. */
+export function modulePortIndices(port: ModulePort): number[] {
+  const width = modulePortWidth(port);
+  if (width <= 1) return [0];
+  const range = port.range ?? { left: width - 1, right: 0 };
+  const step = range.left >= range.right ? -1 : 1;
+  const out: number[] = [];
+  for (let i = range.left; ; i += step) {
+    out.push(i);
+    if (i === range.right) break;
+  }
+  return out;
+}
+
+/** VHDL type for a module port. */
+export function modulePortVhdlType(port: ModulePort): string {
+  const width = modulePortWidth(port);
+  if (width <= 1) return 'STD_LOGIC';
+  const range = port.range ?? { left: width - 1, right: 0 };
+  const dir = range.left >= range.right ? 'downto' : 'to';
+  return `STD_LOGIC_VECTOR(${range.left} ${dir} ${range.right})`;
 }
 
 export interface NativeVisualModuleDefinition {
@@ -197,7 +240,7 @@ export function createModuleFromSelection(
       id: draft.id,
       name,
       direction: draft.direction,
-      width: 1 as const,
+      width: 1,
       sourceBoundary: { internalRefs: draft.internalRefs.map(clonePortRef) },
     } satisfies ModulePort;
   });
@@ -620,14 +663,14 @@ function moduleFromCompositeDefinition(
       id: `legacy-input-${portIndex + 1}`,
       name,
       direction: 'input' as const,
-      width: 1 as const,
+      width: 1,
       sourceBoundary: { internalRefs: [parseInternalRef(ref)] },
     })),
     ...Object.entries(definition.outputMapping).map(([name, ref], portIndex) => ({
       id: `legacy-output-${portIndex + 1}`,
       name,
       direction: 'output' as const,
-      width: 1 as const,
+      width: 1,
       sourceBoundary: { internalRefs: [parseInternalRef(ref)] },
     })),
   ];
@@ -670,15 +713,37 @@ function normalizeModulePort(value: unknown, index: number): ModulePort | null {
   const name = readString(value.name);
   if (!direction || !name) return null;
   const sourceBoundary = isRecord(value.sourceBoundary) ? value.sourceBoundary : {};
+  const fallbackPort = direction === 'input' ? 'in' : 'out';
   const internalRefs = Array.isArray(sourceBoundary.internalRefs)
-    ? sourceBoundary.internalRefs.map((ref) => normalizeEndpoint(ref, direction === 'input' ? 'in' : 'out'))
+    ? sourceBoundary.internalRefs.map((ref) => normalizeEndpoint(ref, fallbackPort))
     : [];
+  const rawWidth = value.width;
+  const width = typeof rawWidth === 'number' && rawWidth >= 1 ? Math.floor(rawWidth) : 1;
+  const range =
+    isRecord(value.range) &&
+    typeof value.range.left === 'number' &&
+    typeof value.range.right === 'number'
+      ? { left: Math.floor(value.range.left), right: Math.floor(value.range.right) }
+      : width > 1
+        ? { left: width - 1, right: 0 }
+        : undefined;
+  const bits = Array.isArray(sourceBoundary.bits)
+    ? sourceBoundary.bits
+        .filter((bit): bit is Record<string, unknown> => isRecord(bit) && typeof bit.index === 'number')
+        .map((bit) => ({
+          index: Math.floor(bit.index as number),
+          internalRefs: Array.isArray(bit.internalRefs)
+            ? bit.internalRefs.map((ref) => normalizeEndpoint(ref, fallbackPort))
+            : [],
+        }))
+    : undefined;
   return {
     id: readString(value.id) || `${direction}-${index + 1}`,
     name: validatePortName(name),
     direction,
-    width: 1,
-    sourceBoundary: { internalRefs },
+    width,
+    ...(range ? { range } : {}),
+    sourceBoundary: { internalRefs, ...(bits && bits.length > 0 ? { bits } : {}) },
   };
 }
 
