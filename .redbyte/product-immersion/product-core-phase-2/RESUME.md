@@ -106,11 +106,17 @@ Delivered this block:
   editable pin fields, exact XDC before/after, one-action undo. 19 unit tests +
   `pin-planner-journey.mjs` (render → electrical metadata → conflict create → XDC +1/−1 → repair).
 
-Exact next chapters (each: extend the named owner, browser-prove, commit — no new authority):
-- **NEXT → P1-F Package history** — `recordExport` (projectRuntime L2046) OVERWRITES a single
-  `projectHealthCore.lastExport`. Add a bounded persisted `exportHistory[]` (append + digests
-  from ProjectHealthExportResult), surface a history list + prev/current comparison + stale
-  reason in ExportSurface (single generator `buildExportViewModel`).
+- [x] **P1-F Package history** (`ecc2a75`): persisted bounded `exportHistory` ledger (append in
+  recordExport, cap 20, persisted+merged) alongside the unchanged lastExport pointer.
+  `exportHistoryModel.ts` (views + compareExportEntries + shortHash); `ExportHistoryPanel` in
+  Build & Export — selectable provenance list + prev/current comparison (identical or exact
+  changed-artifact list). 10 unit tests + `package-history-journey.mjs` (two downloads → both
+  listed, provenance, 3 changed artifacts, selectable).
+
+Remaining queue (order authorized): nested create-module-from-selection while drilled;
+model-driven semantic zoom + camera restore; cross-workspace SUM[2] signature journey;
+visual/a11y/200%-zoom/keyboard hardening; Import/Recovery parity. (Selectable package
+provenance + multi-level Design location already landed in P1-F and the location history.)
 - **P1-E Pin planner** — mapping authority `hardwareMappingV2` (setMappingPin/setMappingPins/
   applyHardwareMappingEdit/autoSuggestMapping); electrical facts in `basys3Pins.ts`
   BASYS3_BOARD_PROFILE. Add a swap_pins/resolve_conflict op to `hardwareMappingV2EditorModel.ts`
