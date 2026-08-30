@@ -624,6 +624,47 @@ export function moduleUsageCount(circuit: Circuit, moduleId: string): number {
   return circuit.nodes.filter((node) => readString(node.config?.moduleDefinitionId) === moduleId).length;
 }
 
+/**
+ * Resolve the drill chain from the top circuit down to `activeModuleId`, as a
+ * list of module ids beginning with {@link TOP_MODULE_ID}. Used by the
+ * engineering-location breadcrumb. When a module is instantiated in more than
+ * one place the first path found (depth-first) is returned — enough to render a
+ * valid "where am I" trail. Falls back to `[TOP, activeModuleId]` if no
+ * containing instance can be found (e.g. an orphaned definition).
+ */
+export function computeModulePath(
+  topCircuit: Circuit,
+  modules: NativeVisualModuleDefinition[],
+  activeModuleId: string,
+): string[] {
+  if (!activeModuleId || activeModuleId === TOP_MODULE_ID) return [TOP_MODULE_ID];
+  const byId = new Map(modules.map((module) => [module.id, module]));
+  if (!byId.has(activeModuleId)) return [TOP_MODULE_ID];
+  const childModuleIds = (circuit: Circuit): string[] => {
+    const ids: string[] = [];
+    for (const node of circuit.nodes) {
+      const defId = readString(node.config?.moduleDefinitionId);
+      if (defId && byId.has(defId)) ids.push(defId);
+    }
+    return ids;
+  };
+  const guard = new Set<string>();
+  const dfs = (circuit: Circuit, trail: string[]): string[] | null => {
+    for (const childId of childModuleIds(circuit)) {
+      if (childId === activeModuleId) return [...trail, childId];
+      if (guard.has(childId)) continue;
+      guard.add(childId);
+      const child = byId.get(childId);
+      if (child) {
+        const found = dfs(child.circuit, [...trail, childId]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  return dfs(topCircuit, [TOP_MODULE_ID]) ?? [TOP_MODULE_ID, activeModuleId];
+}
+
 export function isModuleInstance(node: Node, hierarchy: ProjectHierarchyDocument): boolean {
   return Boolean(
     hierarchy.modules.find(
