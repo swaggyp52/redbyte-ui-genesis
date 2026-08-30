@@ -1,4 +1,5 @@
 import type { Circuit, CompositeNodeDef, Connection, Node, PortRef } from '@redbyte/rb-logic-core';
+import { parseVectorLabel } from '@redbyte/rb-logic-core';
 
 export const PROJECT_HIERARCHY_SCHEMA_VERSION = 'rb.project-hierarchy.v1' as const;
 export const TOP_MODULE_ID = 'top' as const;
@@ -49,6 +50,22 @@ export function modulePortIndices(port: ModulePort): number[] {
   return out;
 }
 
+/** Split a connection port name of the form `Name(3)` into base + bit. */
+export function splitBitPort(portName: string): { base: string; bitIndex?: number } {
+  const match = /^(.*)\((\d+)\)$/.exec(portName);
+  if (!match) return { base: portName };
+  return { base: match[1], bitIndex: Number.parseInt(match[2], 10) };
+}
+
+/** Internal boundary refs for a module port bit (or the scalar port). */
+export function modulePortInternalRefs(port: ModulePort, bitIndex?: number): PortRef[] {
+  if (modulePortWidth(port) > 1 && port.sourceBoundary.bits && bitIndex !== undefined) {
+    const bit = port.sourceBoundary.bits.find((entry) => entry.index === bitIndex);
+    return bit ? bit.internalRefs : [];
+  }
+  return port.sourceBoundary.internalRefs;
+}
+
 /** VHDL type for a module port. */
 export function modulePortVhdlType(port: ModulePort): string {
   const width = modulePortWidth(port);
@@ -81,6 +98,10 @@ export interface ModuleBoundaryDraft {
   suggestedName: string;
   direction: ModulePortDirection;
   internalRefs: PortRef[];
+  /** Set when the external boundary node is a `Base[N]` bus member. Lets
+   *  create-from-selection fuse sibling drafts into one vector module port. */
+  busBase?: string;
+  bitIndex?: number;
 }
 
 export interface ModuleSelectionAnalysis {
@@ -228,21 +249,74 @@ export function createModuleFromSelection(
   }
 
   const portDrafts = [...analysis.inputs, ...analysis.outputs];
+  // Fuse sibling drafts of the same bus (same direction + Base[N]) into one
+  // vector module port; unbused drafts stay scalar. A caller-supplied
+  // portNames override on any member keeps the drafts scalar (explicit intent).
+  const busKey = (draft: ModuleBoundaryDraft): string | null =>
+    draft.busBase && draft.bitIndex !== undefined && !input.portNames?.[draft.id]
+      ? `${draft.direction}:${draft.busBase}`
+      : null;
+  const busGroups = new Map<string, ModuleBoundaryDraft[]>();
+  const scalarDrafts: ModuleBoundaryDraft[] = [];
+  for (const draft of portDrafts) {
+    const key = busKey(draft);
+    if (key) {
+      const list = busGroups.get(key) ?? [];
+      list.push(draft);
+      busGroups.set(key, list);
+    } else {
+      scalarDrafts.push(draft);
+    }
+  }
   const usedPortNames = new Set<string>();
-  const ports = portDrafts.map((draft) => {
-    const requested = input.portNames?.[draft.id] ?? draft.suggestedName;
+  const claimName = (requested: string): string => {
     const name = validatePortName(requested);
     const key = name.toLowerCase();
     if (usedPortNames.has(key)) throw new Error(`Duplicate module port name "${name}".`);
     usedPortNames.add(key);
-    return {
-      id: draft.id,
-      name,
-      direction: draft.direction,
-      width: 1,
-      sourceBoundary: { internalRefs: draft.internalRefs.map(clonePortRef) },
-    } satisfies ModulePort;
-  });
+    return name;
+  };
+  interface PortBuild { port: ModulePort; drafts: ModuleBoundaryDraft[] }
+  const portBuilds: PortBuild[] = [];
+  for (const [, group] of busGroups) {
+    if (group.length < 2) {
+      scalarDrafts.push(...group);
+      continue;
+    }
+    const sorted = [...group].sort((a, b) => (a.bitIndex ?? 0) - (b.bitIndex ?? 0));
+    const indices = sorted.map((d) => d.bitIndex ?? 0);
+    const left = Math.max(...indices);
+    const right = Math.min(...indices);
+    const name = claimName(sorted[0].busBase!);
+    portBuilds.push({
+      port: {
+        id: `bus-${sorted[0].direction}-${name}`,
+        name,
+        direction: sorted[0].direction,
+        width: left - right + 1,
+        range: { left, right },
+        sourceBoundary: {
+          internalRefs: sorted.flatMap((d) => d.internalRefs.map(clonePortRef)),
+          bits: sorted.map((d) => ({ index: d.bitIndex ?? 0, internalRefs: d.internalRefs.map(clonePortRef) })),
+        },
+      },
+      drafts: sorted,
+    });
+  }
+  for (const draft of scalarDrafts) {
+    const name = claimName(input.portNames?.[draft.id] ?? draft.suggestedName);
+    portBuilds.push({
+      port: {
+        id: draft.id,
+        name,
+        direction: draft.direction,
+        width: 1,
+        sourceBoundary: { internalRefs: draft.internalRefs.map(clonePortRef) },
+      },
+      drafts: [draft],
+    });
+  }
+  const ports = portBuilds.map((build) => build.port);
 
   const selectedSet = new Set(analysis.selectedNodeIds);
   const selectedNodes = circuit.nodes.filter((node) => selectedSet.has(node.id));
@@ -289,23 +363,25 @@ export function createModuleFromSelection(
     if (selectedSet.has(from.nodeId) || selectedSet.has(to.nodeId)) continue;
     nextConnections.push(cloneConnection(connection));
   }
-  for (const port of ports) {
-    const draft = portDrafts.find((entry) => entry.id === port.id)!;
-    if (port.direction === 'input') {
-      const representative = findIncomingRepresentative(circuit, selectedSet, draft.internalRefs);
-      if (representative) {
-        nextConnections.push({
-          from: clonePortRef(representative),
-          to: { nodeId: instance.id, portName: port.name },
-        });
-      }
-    } else {
-      const targets = findOutgoingTargets(circuit, selectedSet, draft.internalRefs[0]);
-      for (const target of targets) {
-        nextConnections.push({
-          from: { nodeId: instance.id, portName: port.name },
-          to: clonePortRef(target),
-        });
+  for (const { port, drafts } of portBuilds) {
+    const isVector = modulePortWidth(port) > 1;
+    for (const draft of drafts) {
+      // Scalar ports address the port by name; vector ports address one bit as
+      // `PortName(i)` so each bus member wires to its own bit (the elaboration
+      // and HDL both read this convention).
+      const portRef = isVector
+        ? { nodeId: instance.id, portName: `${port.name}(${draft.bitIndex ?? 0})` }
+        : { nodeId: instance.id, portName: port.name };
+      if (port.direction === 'input') {
+        const representative = findIncomingRepresentative(circuit, selectedSet, draft.internalRefs);
+        if (representative) {
+          nextConnections.push({ from: clonePortRef(representative), to: portRef });
+        }
+      } else {
+        const targets = findOutgoingTargets(circuit, selectedSet, draft.internalRefs[0]);
+        for (const target of targets) {
+          nextConnections.push({ from: { ...portRef }, to: clonePortRef(target) });
+        }
       }
     }
   }
@@ -424,10 +500,11 @@ function expandInstancesOnce(
     let source = clonePortRef(parentSource);
     if (sourceInstance) {
       const sourceDefinition = resolveModuleForNode(sourceInstance, modulesById, modulesByName);
+      const { base, bitIndex } = splitBitPort(parentSource.portName);
       const outputPort = sourceDefinition?.ports.find(
-        (port) => port.direction === 'output' && port.name === parentSource.portName,
+        (port) => port.direction === 'output' && port.name === base,
       );
-      const internalSource = outputPort?.sourceBoundary.internalRefs[0];
+      const internalSource = outputPort ? modulePortInternalRefs(outputPort, bitIndex)[0] : undefined;
       if (!internalSource) continue;
       source = {
         nodeId: `${sourceInstance.id}__${internalSource.nodeId}`,
@@ -438,10 +515,11 @@ function expandInstancesOnce(
     let targets: PortRef[] = [clonePortRef(parentTarget)];
     if (targetInstance) {
       const targetDefinition = resolveModuleForNode(targetInstance, modulesById, modulesByName);
+      const { base, bitIndex } = splitBitPort(parentTarget.portName);
       const inputPort = targetDefinition?.ports.find(
-        (port) => port.direction === 'input' && port.name === parentTarget.portName,
+        (port) => port.direction === 'input' && port.name === base,
       );
-      targets = (inputPort?.sourceBoundary.internalRefs ?? []).map((target) => ({
+      targets = (inputPort ? modulePortInternalRefs(inputPort, bitIndex) : []).map((target) => ({
         nodeId: `${targetInstance.id}__${target.nodeId}`,
         portName: target.portName,
       }));
@@ -564,7 +642,7 @@ function groupBoundaryConnections(
   connections: Connection[],
   direction: ModulePortDirection,
 ): ModuleBoundaryDraft[] {
-  const groups = new Map<string, { refs: PortRef[]; suggestedName: string }>();
+  const groups = new Map<string, { refs: PortRef[]; suggestedName: string; busBase?: string; bitIndex?: number }>();
   for (const connection of connections) {
     const from = normalizeEndpoint(connection.from, 'out');
     const to = normalizeEndpoint(connection.to, 'in');
@@ -573,11 +651,16 @@ function groupBoundaryConnections(
     const key = `${keyRef.nodeId}.${keyRef.portName}`;
     const externalNodeId = direction === 'input' ? from.nodeId : to.nodeId;
     const externalNode = circuit.nodes.find((node) => node.id === externalNodeId);
+    const externalLabel = readString(externalNode?.config?.label) || externalNode?.label || '';
+    const bus = parseVectorLabel(externalLabel);
     const suggestedName =
-      readString(externalNode?.config?.label) ||
-      externalNode?.label ||
-      (direction === 'input' ? `IN${groups.size + 1}` : `OUT${groups.size + 1}`);
-    const group = groups.get(key) ?? { refs: [], suggestedName };
+      externalLabel || (direction === 'input' ? `IN${groups.size + 1}` : `OUT${groups.size + 1}`);
+    const group = groups.get(key) ?? {
+      refs: [],
+      suggestedName,
+      busBase: bus?.baseName,
+      bitIndex: bus?.bitIndex,
+    };
     if (!group.refs.some((ref) => ref.nodeId === internalRef.nodeId && ref.portName === internalRef.portName)) {
       group.refs.push(clonePortRef(internalRef));
     }
@@ -592,6 +675,7 @@ function groupBoundaryConnections(
       internalRefs: group.refs.sort((left, right) =>
         `${left.nodeId}.${left.portName}`.localeCompare(`${right.nodeId}.${right.portName}`),
       ),
+      ...(group.busBase ? { busBase: group.busBase, bitIndex: group.bitIndex } : {}),
     }));
 }
 
@@ -615,34 +699,46 @@ function normalizeModuleCircuit(
   const connections = internalConnections.map(cloneConnection);
   const inputs = ports.filter((port) => port.direction === 'input');
   const outputs = ports.filter((port) => port.direction === 'output');
-  inputs.forEach((port, index) => {
-    const id = `port_in_${index + 1}`;
-    nodes.push({
-      id,
-      type: BOUNDARY_INPUT_TYPE,
-      label: port.name,
-      position: { x: 20, y: 80 + index * 120 },
-      x: 20,
-      y: 80 + index * 120,
-      config: { label: port.name, moduleBoundary: 'input', modulePortId: port.id },
+  let rowIn = 0;
+  inputs.forEach((port) => {
+    // A vector port materializes one boundary node per bit, each labeled
+    // `Port[i]` and carrying its bit index, so the scalar substrate inside the
+    // definition stays complete and the export/elaboration can address bits.
+    const bits = modulePortWidth(port) > 1 && port.sourceBoundary.bits
+      ? [...port.sourceBoundary.bits]
+      : [{ index: 0, internalRefs: port.sourceBoundary.internalRefs }];
+    bits.forEach((bit) => {
+      const index = rowIn++;
+      const id = `port_in_${index + 1}`;
+      const label = modulePortWidth(port) > 1 ? `${port.name}[${bit.index}]` : port.name;
+      nodes.push({
+        id, type: BOUNDARY_INPUT_TYPE, label,
+        position: { x: 20, y: 80 + index * 120 }, x: 20, y: 80 + index * 120,
+        config: { label, moduleBoundary: 'input', modulePortId: port.id, portBitIndex: bit.index },
+      });
+      for (const target of bit.internalRefs) {
+        connections.push({ from: { nodeId: id, portName: 'out' }, to: clonePortRef(target) });
+      }
     });
-    for (const target of port.sourceBoundary.internalRefs) {
-      connections.push({ from: { nodeId: id, portName: 'out' }, to: clonePortRef(target) });
-    }
   });
-  outputs.forEach((port, index) => {
-    const id = `port_out_${index + 1}`;
-    const source = port.sourceBoundary.internalRefs[0];
-    nodes.push({
-      id,
-      type: BOUNDARY_OUTPUT_TYPE,
-      label: port.name,
-      position: { x: Math.round(maxX - minX + 440), y: 80 + index * 120 },
-      x: Math.round(maxX - minX + 440),
-      y: 80 + index * 120,
-      config: { label: port.name, moduleBoundary: 'output', modulePortId: port.id },
+  let rowOut = 0;
+  outputs.forEach((port) => {
+    const bits = modulePortWidth(port) > 1 && port.sourceBoundary.bits
+      ? [...port.sourceBoundary.bits]
+      : [{ index: 0, internalRefs: port.sourceBoundary.internalRefs }];
+    bits.forEach((bit) => {
+      const index = rowOut++;
+      const id = `port_out_${index + 1}`;
+      const label = modulePortWidth(port) > 1 ? `${port.name}[${bit.index}]` : port.name;
+      const source = bit.internalRefs[0];
+      nodes.push({
+        id, type: BOUNDARY_OUTPUT_TYPE, label,
+        position: { x: Math.round(maxX - minX + 440), y: 80 + index * 120 },
+        x: Math.round(maxX - minX + 440), y: 80 + index * 120,
+        config: { label, moduleBoundary: 'output', modulePortId: port.id, portBitIndex: bit.index },
+      });
+      if (source) connections.push({ from: clonePortRef(source), to: { nodeId: id, portName: 'in' } });
     });
-    if (source) connections.push({ from: clonePortRef(source), to: { nodeId: id, portName: 'in' } });
   });
   return { nodes, connections };
 }

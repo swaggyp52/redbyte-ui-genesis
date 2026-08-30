@@ -4,7 +4,8 @@ import { netlistFromCircuit } from '../../export/netlistExport';
 import { vhdlFromNetlist, type VhdlTopPort } from '../../export/vhdlExport';
 import { buildVhdlTopLevelBindings } from '../../fpga/boards/basys3/basys3Bundle';
 import type { RBProject } from '../../export/projectFormat';
-import type { NativeVisualModuleDefinition } from './projectHierarchy';
+import type { NativeVisualModuleDefinition, ModulePort } from './projectHierarchy';
+import { modulePortVhdlType, modulePortWidth } from './projectHierarchy';
 
 export interface HierarchicalVhdlProject {
   topVhd: string;
@@ -45,22 +46,31 @@ function generateModuleSource(module: NativeVisualModuleDefinition): string {
   const topPorts: VhdlTopPort[] = module.ports.map((port) => ({
     name: port.name,
     dir: port.direction === 'input' ? 'in' : 'out',
-    vhdlType: 'STD_LOGIC',
+    vhdlType: modulePortVhdlType(port),
   }));
+  // Vector module ports bind per declared bit (portName + bitIndex); scalar
+  // ports keep their single binding. The netlist emitter turns bitIndex into
+  // `PORT(i)` associations inside the module architecture.
+  const portBits = (port: ModulePort): Array<{ bitIndex?: number; refs: typeof port.sourceBoundary.internalRefs }> =>
+    modulePortWidth(port) > 1 && port.sourceBoundary.bits
+      ? port.sourceBoundary.bits.map((bit) => ({ bitIndex: bit.index, refs: bit.internalRefs }))
+      : [{ bitIndex: undefined, refs: port.sourceBoundary.internalRefs }];
   const topInputBindings = module.ports
     .filter((port) => port.direction === 'input')
-    .flatMap((port) => port.sourceBoundary.internalRefs.map((ref) => ({
+    .flatMap((port) => portBits(port).flatMap((bit) => bit.refs.map((ref) => ({
       portName: port.name,
+      bitIndex: bit.bitIndex,
       toNodeId: ref.nodeId,
       toPort: ref.portName,
-    })));
+    }))));
   const topOutputBindings = module.ports
     .filter((port) => port.direction === 'output')
-    .flatMap((port) => port.sourceBoundary.internalRefs.slice(0, 1).map((ref) => ({
+    .flatMap((port) => portBits(port).flatMap((bit) => bit.refs.slice(0, 1).map((ref) => ({
       portName: port.name,
+      bitIndex: bit.bitIndex,
       fromNodeId: ref.nodeId,
       fromPort: ref.portName,
-    })));
+    }))));
   return vhdlFromNetlist(netlistFromCircuit(internalCircuit), {
     entityName: module.name,
     topPorts,
