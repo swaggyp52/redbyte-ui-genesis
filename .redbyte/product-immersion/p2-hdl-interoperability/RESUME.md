@@ -68,6 +68,24 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-4 delivered (model layer) — source-backed module tiers + cross-probe.**
+  - `apps/ide/moduleTier.ts`: `classifyModuleTier` maps a design unit to one of
+    native-visual-editable / source-editable / structural-read-only /
+    opaque-preserved / missing, from (is-native? has-source? language capability?
+    reconstruction level?). Honest today: imported RTL that fully reconstructs is
+    `structural-read-only` (no in-place source editing yet; `source-editable`
+    activates automatically once a language's capability is `editable`). +
+    rank/label helpers. 7 tests.
+  - `apps/ide/sourceCrossProbe.ts`: bidirectional source↔visual index.
+    `buildCrossProbeIndex` (deterministic), forward queries (`linksForModule`,
+    `linksForNode`, `linksForSource`), reverse queries (`linkAtSourcePosition`
+    returns the innermost containing link; `designTargetsForRange` for overlap).
+    Built on the P2-3 range model. 6 tests.
+  - Compile-order + libraries instrument already shipped in P2-2
+    (`deriveCompileOrder`, `listLibraries`). Parameter/generic depth and the
+    Design/Source UI wiring (rendering tiers + live cross-probe, populating links
+    from parser output) are the follow-on increments.
+  - Proof (pinned Node 20.19.0): 13 tests green; 0 tsc errors. Pure logic.
 - **P2-3 delivered — language capability matrix + diagnostics/range model.**
   - `apps/ide/sourceDiagnostics.ts` (committed first): the repo's first
     `SourceRange`/`SourcePosition` model — there was none; existing diagnostics
