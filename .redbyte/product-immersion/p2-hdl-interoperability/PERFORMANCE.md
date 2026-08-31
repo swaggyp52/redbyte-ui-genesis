@@ -14,4 +14,13 @@ are captured under pinned Node 20.19.0; record method + machine caveat with each
 
 | Scenario | Metric | Value | Method / caveat |
 |----------|--------|-------|-----------------|
-| _(pending P2-1 / P2-8)_ | | | |
+| 402-node + 80-source project | encode | ~8 ms | `projectFormat.scale.test.ts`, pinned Node 20.19.0, this cloud session. |
+| 402-node + 80-source project | decode | ~2 ms | same run. |
+| 402-node + 80-source project | serialized size | ~167 KB | deterministic (byte-identical re-encode asserted). |
+| 200→400 gates (2× size) | decode∘encode wall-clock | sub-6× (asserted) | linearity guard against O(n²); absolute times are single-digit ms. |
+
+**Durability (asserted, not timed):** a large project round-trips losslessly
+(`decode(encode(p)) ≡ normalize(p)`) and re-encodes byte-identically. The
+format holds at scale with no super-linear blow-up. Absolute millisecond
+figures are environment-dependent (informational); the round-trip + determinism
++ linearity assertions are the durable proof.

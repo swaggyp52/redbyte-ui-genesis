@@ -68,6 +68,13 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-8 (proof) — project-format scale/durability.**
+  `export/__tests__/projectFormat.scale.test.ts`: a 402-node + 80-source project
+  round-trips losslessly (`decode(encode(p)) ≡ normalize(p)`) and re-encodes
+  byte-identically; a 200→400 linearity guard rules out O(n²). Measured this
+  session: encode ~8 ms, decode ~2 ms, ~167 KB serialized (see PERFORMANCE.md).
+  Correctness assertions are the durable proof; absolute ms are informational.
+  2 tests; 0 tsc errors.
 - **P2-7 (model layer) — multiple constraint sets.**
   `apps/ide/constraintSets.ts`: a project may carry several named XDC constraint
   sets with exactly one active (mirroring Vivado constrs_1/constrs_2).
