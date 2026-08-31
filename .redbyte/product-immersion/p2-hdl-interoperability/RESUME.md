@@ -68,6 +68,16 @@ control-plane **data-contract readiness report** (no auth implemented).
 
 ## Commit ledger (newest first)
 
+- **P2-7 (model layer) — multiple constraint sets.**
+  `apps/ide/constraintSets.ts`: a project may carry several named XDC constraint
+  sets with exactly one active (mirroring Vivado constrs_1/constrs_2).
+  `ConstraintSetsDocument` (`schemaVersion 1.0`) + add / remove / rename /
+  setActive operations (name-derived ids, no random component; first-added
+  becomes active; removing the active promotes the first remaining),
+  `activeConstraintSet`, `parseActiveConstraintSet` (reuses the bounded
+  `parseXdcPins` reader), and `normalizeConstraintSets` (tolerant; guarantees
+  exactly one active when any exist). 6 tests; 0 tsc errors. Store-field
+  persistence + XDC-set UI are follow-ons.
 - **P2-5 (contract layer) — import review-before-apply plan.**
   `apps/ide/importReview.ts`: `buildImportReviewPlan` describes what an import
   *would* do without applying anything — per-source fileset + capability tier +
